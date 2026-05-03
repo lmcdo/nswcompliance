@@ -12,6 +12,19 @@ interface EmsActivation {
   flood_type: string;
 }
 
+interface FloodStudyEntry {
+  depth_m: number | null;
+  level_m_ahd: number | null;
+}
+
+interface FloodStudy {
+  study_key: string;
+  study_name: string;
+  source: string;
+  design: Record<string, FloodStudyEntry>;
+  historical: Record<string, FloodStudyEntry>;
+}
+
 interface FloodOutputs {
   epi_flood_class: string | null;
   epi_flood_label: string | null;
@@ -34,6 +47,10 @@ interface FloodOutputs {
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
+  ground_elevation_m_ahd: number | null;
+  in_100yr_flood_zone: boolean;
+  flood_studies: FloodStudy[];
+  // Backward-compat Hawkesbury flat fields
   hawkesbury_flood_level_2aep: number | null;
   hawkesbury_flood_level_5aep: number | null;
   hawkesbury_flood_level_10aep: number | null;
@@ -461,7 +478,7 @@ function FloodCard({ result }: { result: FloodResult }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
 
-      {/* Header — flood signal as primary indicator */}
+      {/* Header — flood signal + 100yr headline */}
       <div className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
@@ -472,6 +489,31 @@ function FloodCard({ result }: { result: FloodResult }) {
             {signalMeta.label}
           </span>
         </div>
+        {/* 100-year flood zone headline */}
+        {o.in_100yr_flood_zone && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-3">
+            <p className="text-sm font-semibold text-red-800">
+              This property is within the 1-in-100 year flood extent
+            </p>
+            {o.ground_elevation_m_ahd != null && (
+              <p className="text-xs text-red-600 mt-0.5">
+                Ground elevation: {o.ground_elevation_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}m AHD
+              </p>
+            )}
+          </div>
+        )}
+        {!o.in_100yr_flood_zone && signal !== 'unavailable' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-3">
+            <p className="text-sm font-semibold text-green-800">
+              Not within the mapped 1-in-100 year flood extent
+            </p>
+            {o.ground_elevation_m_ahd != null && (
+              <p className="text-xs text-green-600 mt-0.5">
+                Ground elevation: {o.ground_elevation_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}m AHD
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
         <p className="text-xs text-gray-400 mt-1">
           Screening tool only — not a legal flood determination.
@@ -533,19 +575,51 @@ function FloodCard({ result }: { result: FloodResult }) {
         </div>
       )}
 
-      {/* Hawkesbury raster — 100AEP teaser (free tier hook) */}
-      {o.hawkesbury_flood_level_100aep != null && (
-        <div className="p-6 border-t border-gray-100">
-          <p className="text-xs text-gray-400 mb-1">Hawkesbury FRMSP 2025 — flood level at this site</p>
-          <p className="text-sm font-semibold text-gray-800">
-            1-in-100 yr flood level: {o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Full AEP table (2yr – PMF) included in the paid report
-            {o.hawkesbury_flood_study ? ` · ${o.hawkesbury_flood_study}` : ''}
-          </p>
-        </div>
-      )}
+      {/* Flood study raster results — depth + level per AEP (free tier: 1pct teaser) */}
+      {(o.flood_studies ?? []).map((study) => {
+        const pct1 = study.design?.['1pct'];
+        const hasDesign = pct1?.depth_m != null || pct1?.level_m_ahd != null;
+        const historicalYears = Object.keys(study.historical ?? {}).sort();
+        if (!hasDesign && historicalYears.length === 0) return null;
+        return (
+          <div key={study.study_key} className="p-6">
+            <p className="text-xs text-gray-400 mb-1">{study.study_name} — {study.source}</p>
+            {pct1?.depth_m != null && (
+              <p className="text-sm font-semibold text-gray-800">
+                1-in-100 yr flood depth: {pct1.depth_m.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m
+                {pct1.level_m_ahd != null && (
+                  <span className="font-normal text-gray-500">
+                    {' '}(water level {pct1.level_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD)
+                  </span>
+                )}
+              </p>
+            )}
+            {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
+              <p className="text-sm font-semibold text-gray-800">
+                1-in-100 yr flood level: {pct1.level_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
+              </p>
+            )}
+            {historicalYears.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-1">Historical flood events at this site:</p>
+                <div className="flex flex-wrap gap-2">
+                  {historicalYears.map((yr) => {
+                    const ev = study.historical[yr];
+                    return (
+                      <span key={yr} className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded">
+                        {yr}: {ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded'}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-1.5">
+              Full AEP table included in the paid report
+            </p>
+          </div>
+        );
+      })}
 
       {/* Warnings — always shown */}
       {(o.s1_gap_warning || result.warnings?.length) && (

@@ -45,7 +45,10 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "flood_study_date": str | null,                            # EPI layer effective date (free tier)
     "s1_gap_warning": str | null,
     "data_currency": str,
-    "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable"  # multi-source convergence
+    "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable",
+    "ground_elevation_m_ahd": float | null,       # NSW 5m DEM (SIX Maps ImageServer)
+    "in_100yr_flood_zone": bool,                   # derived from EPI + SES + study rasters
+    "flood_studies": list[{study_key, study_name, source, design: {aep: {depth_m, level_m_ahd}}, historical: {year: {depth_m, level_m_ahd}}}]
   },
   "confidence": str,
   "data_sources": list[str]
@@ -138,28 +141,112 @@ _NSW_GAUGES = [
 _GAUGE_MAX_DISTANCE_KM = 75.0  # don't associate gauge if further than this
 
 # ---------------------------------------------------------------------------
-# Hawkesbury FRMSP 2025 — AEP raster flood levels
+# NSW 5m DEM — ground elevation via SIX Maps ImageServer (full NSW coverage)
 # ---------------------------------------------------------------------------
 
-HAWKESBURY_RASTER_DIR = os.environ.get(
-    "HAWKESBURY_RASTER_DIR",
-    os.path.join(os.path.dirname(__file__), "..", "data", "flood_studies", "hawkesbury", "rasters"),
+_DEM_IDENTIFY_URL = (
+    "https://maps.six.nsw.gov.au/arcgis/rest/services/"
+    "public/NSW_5M_Elevation/ImageServer/identify"
 )
-# Keys are used as field name suffixes: hawkesbury_flood_level_{key}
-HAWKESBURY_AEP_FILES: dict[str, str] = {
-    "2aep":   "2AEP_Floodstudy_Stretched.tif",
-    "5aep":   "5AEP_Floodstudy_Stretched.tif",
-    "10aep":  "10AEP_Floodstudy_Stretched.tif",
-    "20aep":  "20AEP_Floodstudy_Stretched.tif",
-    "50aep":  "50AEP_Floodstudy_Stretched.tif",
-    "100aep": "100AEP_Floodstudy_Stretched.tif",
-    "200aep": "200AEP_Floodstudy_Stretched.tif",
-    "500aep": "500AEP_Floodstudy_Stretched.tif",
-    "pmf":    "PMF_Floodstudy_Stretched.tif",
+_DEM_TIMEOUT = 15  # seconds
+_DATA_SOURCE_DEM = "NSW Spatial Services 5m DEM (SIX Maps ImageServer)"
+
+# ---------------------------------------------------------------------------
+# Generalised flood study raster config
+# ---------------------------------------------------------------------------
+# Each study has: name, directory, CRS (often missing from TIF metadata),
+# nodata value, AEP design event files (depth + water level), and optionally
+# historical calibration event files.
+# File templates use {type} placeholder: "d" = depth, "h" = water level.
+
+_FLOOD_STUDIES_BASE = os.path.join(os.path.dirname(__file__), "..", "data", "flood_studies")
+
+FLOOD_STUDIES: dict[str, dict] = {
+    "hawkesbury": {
+        "name": "Hawkesbury FRMSP 2025",
+        "source": "NSW Reconstruction Authority",
+        "dir": os.environ.get(
+            "HAWKESBURY_RASTER_DIR",
+            os.path.join(_FLOOD_STUDIES_BASE, "hawkesbury", "rasters"),
+        ),
+        "crs": "EPSG:7856",
+        "nodata": -99999.0,
+        # Hawkesbury rasters are water level only (h), no pre-computed depth (d)
+        "has_depth": False,
+        # Hawkesbury files use ARI naming: 2AEP=2yr ARI=50%AEP, 100AEP=100yr ARI=1%AEP
+        "design": {
+            "50pct":  "2AEP_Floodstudy_Stretched.tif",   # 2yr ARI = 50% AEP
+            "20pct":  "5AEP_Floodstudy_Stretched.tif",   # 5yr ARI = 20% AEP
+            "10pct":  "10AEP_Floodstudy_Stretched.tif",  # 10yr ARI = 10% AEP
+            "5pct":   "20AEP_Floodstudy_Stretched.tif",  # 20yr ARI = 5% AEP
+            "2pct":   "50AEP_Floodstudy_Stretched.tif",  # 50yr ARI = 2% AEP
+            "1pct":   "100AEP_Floodstudy_Stretched.tif", # 100yr ARI = 1% AEP
+            "0_5pct": "200AEP_Floodstudy_Stretched.tif", # 200yr ARI = 0.5% AEP
+            "0_2pct": "500AEP_Floodstudy_Stretched.tif", # 500yr ARI = 0.2% AEP
+            "pmf":    "PMF_Floodstudy_Stretched.tif",
+        },
+        "historical": {},
+    },
+    "tweed": {
+        "name": "Tweed Valley Flood Study Update 2024",
+        "source": "Tweed Shire Council / BMT",
+        "dir": os.path.join(_FLOOD_STUDIES_BASE, "tweed"),
+        "crs": "EPSG:28356",  # GDA94 MGA56 — missing from TIF metadata
+        "nodata": -999.0,
+        "has_depth": True,
+        "design": {
+            "20pct":  "design/Tweed_001_20p_{type}_Max.tif",
+            "5pct":   "design/Tweed_001_5p_{type}_Max.tif",
+            "1pct":   "design/Tweed_001_1p_{type}_Max.tif",
+            "0_2pct": "design/Tweed_001_1in500_{type}_Max.tif",
+            "pmf":    "design/Tweed_001_PMP_{type}_Max.tif",
+        },
+        "historical": {
+            "1989": "calibration/Tweed_001_1989_{type}_Max.tif",
+            "2017": "calibration/Tweed_001_2017_{type}_Max.tif",
+            "2020": "calibration/Tweed_001_2020_{type}_Max.tif",
+            "2022": "calibration/Tweed_001_2022_{type}_Max.tif",
+        },
+    },
+    "wollongong": {
+        "name": "Wollongong City Flood Study 2024",
+        "source": "Wollongong City Council / Jacobs",
+        "dir": os.path.join(_FLOOD_STUDIES_BASE, "wollongong"),
+        "crs": "EPSG:7856",  # GDA2020 MGA56 — missing from ASC metadata
+        "nodata": -999.0,
+        "has_depth": True,
+        # Envelope files (critical-duration max across all storm durations)
+        "design": {
+            "20pct":  "design/Wollongong_20pct_{type}_Max.asc",
+            "10pct":  "design/Wollongong_10pct_{type}_Max.asc",
+            "5pct":   "design/Wollongong_5pct_{type}_Max.asc",
+            "2pct":   "design/Wollongong_2pct_{type}_Max.asc",
+            "1pct":   "design/Wollongong_1pct_{type}_Max.asc",
+            "pmf":    "design/Wollongong_pmf_{type}_Max.asc",
+        },
+        "historical": {},
+    },
 }
-HAWKESBURY_NODATA = -99999.0
-# Transform WGS84 lng/lat → GDA2020/MGA Zone 56 (EPSG:7856) before ds.index()
-_HAWK_TRANSFORMER = Transformer.from_crs("EPSG:4326", "EPSG:7856", always_xy=True)
+
+# Pre-build CRS transformers (WGS84 → study CRS) — one per unique CRS
+_STUDY_TRANSFORMERS: dict[str, Transformer] = {}
+for _study in FLOOD_STUDIES.values():
+    _crs = _study["crs"]
+    if _crs not in _STUDY_TRANSFORMERS:
+        _STUDY_TRANSFORMERS[_crs] = Transformer.from_crs("EPSG:4326", _crs, always_xy=True)
+
+# Canonical AEP display labels
+_AEP_LABELS: dict[str, str] = {
+    "20pct": "20% AEP (1-in-5 yr)",
+    "10pct": "10% AEP (1-in-10 yr)",
+    "5pct":  "5% AEP (1-in-20 yr)",
+    "2pct":  "2% AEP (1-in-50 yr)",
+    "1pct":  "1% AEP (1-in-100 yr)",
+    "0_5pct": "0.5% AEP (1-in-200 yr)",
+    "0_2pct": "0.2% AEP (1-in-500 yr)",
+    "50pct": "50% AEP (1-in-2 yr)",
+    "pmf":   "PMF (Probable Maximum Flood)",
+}
 
 
 def _get_conn():
@@ -704,66 +791,184 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
 # Hawkesbury FRMSP 2025 raster sampling
 # ---------------------------------------------------------------------------
 
-def _query_hawkesbury_rasters(lat: float, lng: float) -> dict:
+def _sample_raster(path: str, x: float, y: float, nodata: float) -> Optional[float]:
+    """Read a single pixel value from a raster at projected coordinates.
+
+    Returns None if file missing, point outside bounds, nodata, or error.
     """
-    Sample Hawkesbury FRMSP 2025 remapped flood levels at a point.
-    Returns flood water surface elevation (metres AHD) for 9 AEP events.
-    All values None if point is outside raster extent or files not present.
-
-    CRS: rasters are EPSG:7856 (GDA2020/MGA Zone 56). Point is transformed
-    before ds.index() — passing WGS84 coords directly would silently return
-    wrong pixel (CRS mismatch pattern bug).
-
-    Source: NSW Reconstruction Authority, Hawkesbury FRMSP 2025.
-    Nona Ruddell, nona.ruddell@reconstruction.nsw.gov.au.
-    """
-    null_result: dict = {f"hawkesbury_flood_level_{k}": None for k in HAWKESBURY_AEP_FILES}
-    null_result["hawkesbury_flood_study"] = None
-
+    import rasterio
+    if not os.path.exists(path):
+        return None
     try:
-        import rasterio
-    except ImportError:
-        logger.warning("rasterio not installed — Hawkesbury raster sampling unavailable")
-        return null_result
-
-    # Transform WGS84 lng/lat → EPSG:7856
-    x, y = _HAWK_TRANSFORMER.transform(lng, lat)
-
-    # Bounds check using 100AEP as proxy — all 9 rasters share the same extent.
-    proxy = os.path.join(HAWKESBURY_RASTER_DIR, HAWKESBURY_AEP_FILES["100aep"])
-    if not os.path.exists(proxy):
-        logger.info("Hawkesbury rasters not present on this host — skipping")
-        return null_result
-
-    try:
-        with rasterio.open(proxy) as ds:
+        with rasterio.open(path) as ds:
             left, bottom, right, top = ds.bounds
             if not (left <= x <= right and bottom <= y <= top):
-                return null_result  # outside Hawkesbury extent — not an error
+                return None
+            row, col = ds.index(x, y)
+            row = max(0, min(row, ds.height - 1))
+            col = max(0, min(col, ds.width - 1))
+            val = float(ds.read(1)[row, col])
+        if val == nodata or math.isnan(val):
+            return None
+        return val
     except Exception as e:
-        logger.warning(f"Hawkesbury bounds check failed: {e}")
-        return null_result
+        logger.warning(f"Raster sample {os.path.basename(path)}: {e}")
+        return None
 
-    result: dict = {}
-    for aep_key, filename in HAWKESBURY_AEP_FILES.items():
-        path = os.path.join(HAWKESBURY_RASTER_DIR, filename)
+
+def _query_flood_study_rasters(lat: float, lng: float) -> dict:
+    """Sample all configured flood study rasters at a point.
+
+    Iterates FLOOD_STUDIES config. For each study whose raster directory exists
+    and whose extent contains the point, returns depth/level per AEP event plus
+    historical event depths where available.
+
+    Returns flat dict merged into internal_outputs:
+      flood_studies: list of matched study dicts
+      hawkesbury_flood_level_*: backward-compat aliases for Hawkesbury
+    """
+    try:
+        import rasterio  # noqa: F401
+    except ImportError:
+        logger.warning("rasterio not installed — flood study raster sampling unavailable")
+        return {"flood_studies": []}
+
+    matched_studies: list[dict] = []
+
+    for study_key, cfg in FLOOD_STUDIES.items():
+        study_dir = cfg["dir"]
+        nodata = cfg["nodata"]
+        has_depth = cfg["has_depth"]
+        transformer = _STUDY_TRANSFORMERS[cfg["crs"]]
+        x, y = transformer.transform(lng, lat)
+
+        # Bounds check using the 1pct design event as proxy (most studies have it)
+        proxy_aep = "1pct" if "1pct" in cfg["design"] else next(iter(cfg["design"]))
+        proxy_template = cfg["design"][proxy_aep]
+        # Resolve file path — Hawkesbury uses plain filenames, Tweed uses {type} templates
+        if "{type}" in proxy_template:
+            proxy_path = os.path.join(study_dir, proxy_template.format(type="d" if has_depth else "h"))
+        else:
+            proxy_path = os.path.join(study_dir, proxy_template)
+
+        if not os.path.exists(proxy_path):
+            logger.info(f"Flood study {study_key} rasters not present — skipping")
+            continue
+
+        # Quick bounds check
         try:
-            with rasterio.open(path) as ds:
-                row, col = ds.index(x, y)
-                row = max(0, min(row, ds.height - 1))
-                col = max(0, min(col, ds.width - 1))
-                val = float(ds.read(1)[row, col])
-            if val == HAWKESBURY_NODATA or math.isnan(val) or val < 0:
-                result[f"hawkesbury_flood_level_{aep_key}"] = None
-            else:
-                result[f"hawkesbury_flood_level_{aep_key}"] = round(val, 2)
+            with rasterio.open(proxy_path) as ds:
+                left, bottom, right, top = ds.bounds
+                if not (left <= x <= right and bottom <= y <= top):
+                    continue
         except Exception as e:
-            logger.warning(f"Hawkesbury raster {aep_key}: {e}")
-            result[f"hawkesbury_flood_level_{aep_key}"] = None
+            logger.warning(f"Flood study {study_key} bounds check: {e}")
+            continue
 
-    has_data = any(v is not None for v in result.values())
-    result["hawkesbury_flood_study"] = "Hawkesbury FRMSP 2025" if has_data else None
+        # Sample design events
+        design_results: dict[str, dict] = {}
+        for aep_key, template in cfg["design"].items():
+            entry: dict = {"depth_m": None, "level_m_ahd": None}
+            if "{type}" in template:
+                if has_depth:
+                    d_path = os.path.join(study_dir, template.format(type="d"))
+                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata)
+                    if entry["depth_m"] is not None:
+                        entry["depth_m"] = round(max(0.0, entry["depth_m"]), 2)
+                h_path = os.path.join(study_dir, template.format(type="h"))
+                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata)
+                if entry["level_m_ahd"] is not None:
+                    entry["level_m_ahd"] = round(entry["level_m_ahd"], 2)
+            else:
+                # Hawkesbury-style: single file is water level (h)
+                val = _sample_raster(os.path.join(study_dir, template), x, y, nodata)
+                if val is not None:
+                    entry["level_m_ahd"] = round(val, 2)
+
+            if entry["depth_m"] is not None or entry["level_m_ahd"] is not None:
+                design_results[aep_key] = entry
+
+        # Sample historical events
+        historical_results: dict[str, dict] = {}
+        for event_year, template in cfg.get("historical", {}).items():
+            entry = {"depth_m": None, "level_m_ahd": None}
+            if "{type}" in template:
+                if has_depth:
+                    d_path = os.path.join(study_dir, template.format(type="d"))
+                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata)
+                    if entry["depth_m"] is not None:
+                        entry["depth_m"] = round(max(0.0, entry["depth_m"]), 2)
+                h_path = os.path.join(study_dir, template.format(type="h"))
+                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata)
+                if entry["level_m_ahd"] is not None:
+                    entry["level_m_ahd"] = round(entry["level_m_ahd"], 2)
+            if entry["depth_m"] is not None or entry["level_m_ahd"] is not None:
+                historical_results[event_year] = entry
+
+        if design_results or historical_results:
+            matched_studies.append({
+                "study_key": study_key,
+                "study_name": cfg["name"],
+                "source": cfg["source"],
+                "design": design_results,
+                "historical": historical_results,
+            })
+
+    # Build result dict
+    result: dict = {"flood_studies": matched_studies}
+
+    # Backward-compat: flat hawkesbury_flood_level_* fields
+    hawk = next((s for s in matched_studies if s["study_key"] == "hawkesbury"), None)
+    # Map new canonical AEP keys → old flat field suffixes.
+    # Old naming used ARI (years): 2aep=2yr ARI=50%AEP, 100aep=100yr ARI=1%AEP.
+    _HAWK_AEP_MAP = {
+        "50pct": "2aep", "20pct": "5aep", "10pct": "10aep", "5pct": "20aep",
+        "2pct": "50aep", "1pct": "100aep", "0_5pct": "200aep", "0_2pct": "500aep", "pmf": "pmf",
+    }
+    for new_key, old_suffix in _HAWK_AEP_MAP.items():
+        val = None
+        if hawk:
+            entry = hawk["design"].get(new_key)
+            if entry:
+                val = entry.get("level_m_ahd")
+        result[f"hawkesbury_flood_level_{old_suffix}"] = val
+    result["hawkesbury_flood_study"] = hawk["study_name"] if hawk else None
+
     return result
+
+
+def _query_ground_elevation(lat: float, lng: float) -> dict:
+    """Query NSW 5m DEM via SIX Maps ImageServer identify endpoint.
+
+    Returns ground_elevation_m_ahd (float) or None if unavailable.
+    No auth required. Full NSW coverage at 5m resolution.
+    """
+    try:
+        geometry = f'{{"x":{lng},"y":{lat},"spatialReference":{{"wkid":4326}}}}'
+        r = requests.get(
+            _DEM_IDENTIFY_URL,
+            params={
+                "geometry": geometry,
+                "geometryType": "esriGeometryPoint",
+                "returnGeometry": "false",
+                "returnCatalogItems": "false",
+                "f": "json",
+            },
+            timeout=_DEM_TIMEOUT,
+        )
+        r.raise_for_status()
+        body = r.json()
+        raw_value = body.get("value")
+        if raw_value is None or raw_value == "NoData":
+            return {"ground_elevation_m_ahd": None}
+        elevation = float(raw_value)
+        return {"ground_elevation_m_ahd": round(elevation, 2)}
+    except (ValueError, TypeError):
+        logger.warning(f"DEM identify: non-numeric value {body.get('value')!r}")
+        return {"ground_elevation_m_ahd": None}
+    except Exception as e:
+        logger.warning(f"DEM identify: {e}")
+        return {"ground_elevation_m_ahd": None}
 
 
 # ---------------------------------------------------------------------------
@@ -788,11 +993,17 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
 
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
     ses_in_overlay = internal_outputs.get("ses_in_flood_planning_area") is True
-    # Hawkesbury FRMSP raster: non-null 100AEP level confirms site is in flood extent
+    # Any flood study raster with a 1pct design result confirms site is in flood extent
+    flood_studies = internal_outputs.get("flood_studies") or []
+    study_in_overlay = any(
+        s.get("design", {}).get("1pct") is not None for s in flood_studies
+    )
+    # Backward-compat check for Hawkesbury flat field (from cached reports)
     hawk_100 = internal_outputs.get("hawkesbury_flood_level_100aep")
-    hawk_in_overlay = hawk_100 is not None
+    if hawk_100 is not None:
+        study_in_overlay = True
     # Combined statutory overlay signal: EPI state portal OR local council study OR raster
-    in_overlay     = epi_in_overlay or ses_in_overlay or hawk_in_overlay
+    in_overlay     = epi_in_overlay or ses_in_overlay or study_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
@@ -807,7 +1018,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     # and Phase 2 runs; hawkesbury_flood_level_100aep is populated by Phase 3.
     epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
     ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
-    no_local_study = not ses_queried and not hawk_in_overlay
+    no_local_study = not ses_queried and not study_in_overlay
     if epi_no_coverage and no_local_study and not ems_detected and not bom_flood and effective_pct < 5:
         return "unavailable"
 
@@ -883,8 +1094,12 @@ def _build_data_sources(internal_outputs: dict) -> list:
         sources.append(_DATA_SOURCE_DEA)
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
-    if internal_outputs.get("hawkesbury_flood_study"):
-        sources.append("Hawkesbury FRMSP 2025 — NSW Reconstruction Authority (2m raster, 9 AEP events)")
+    for study in (internal_outputs.get("flood_studies") or []):
+        name = study.get("study_name", "Unknown")
+        source = study.get("source", "")
+        sources.append(f"{name} — {source} (flood study raster)")
+    if internal_outputs.get("ground_elevation_m_ahd") is not None:
+        sources.append(_DATA_SOURCE_DEM)
     sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
@@ -934,11 +1149,46 @@ def _normalise_outputs(raw: dict) -> dict:
         "s1_gap_warning":             raw.get("s1_gap_warning"),
         "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
-    # Hawkesbury FRMSP 2025 AEP flood levels (metres AHD)
+    # Hawkesbury FRMSP 2025 AEP flood levels — backward-compat flat fields
     for aep_key in ("2aep", "5aep", "10aep", "20aep", "50aep", "100aep", "200aep", "500aep", "pmf"):
         field = f"hawkesbury_flood_level_{aep_key}"
         normalised[field] = raw.get(field)
     normalised["hawkesbury_flood_study"] = raw.get("hawkesbury_flood_study")
+
+    # New generalised fields
+    normalised["flood_studies"] = raw.get("flood_studies") or []
+    normalised["ground_elevation_m_ahd"] = raw.get("ground_elevation_m_ahd")
+
+    # Derive in_100yr_flood_zone from all available sources
+    in_100yr = False
+    # 1. EPI flood planning area = 1% AEP extent by NSW planning definition
+    if epi_class and epi_class not in ("none", ""):
+        in_100yr = True
+    # 2. SES/council flood class contains 1%AEP
+    ses_class = normalised.get("ses_flood_class") or ""
+    if "1%" in ses_class or "1AEP" in ses_class.upper() or "100" in ses_class:
+        in_100yr = True
+    # 3. Any flood study raster returned a 1pct design result
+    for study in normalised["flood_studies"]:
+        if study.get("design", {}).get("1pct") is not None:
+            in_100yr = True
+            break
+    # 4. Hawkesbury backward-compat
+    if normalised.get("hawkesbury_flood_level_100aep") is not None:
+        in_100yr = True
+    normalised["in_100yr_flood_zone"] = in_100yr
+
+    # Compute flood depth from study raster + DEM where both available
+    ground_elev = normalised["ground_elevation_m_ahd"]
+    for study in normalised["flood_studies"]:
+        for aep_key, entry in study.get("design", {}).items():
+            if entry.get("depth_m") is None and entry.get("level_m_ahd") is not None and ground_elev is not None:
+                computed_depth = entry["level_m_ahd"] - ground_elev
+                entry["depth_m"] = round(max(0.0, computed_depth), 2)
+        for event_year, entry in study.get("historical", {}).items():
+            if entry.get("depth_m") is None and entry.get("level_m_ahd") is not None and ground_elev is not None:
+                computed_depth = entry["level_m_ahd"] - ground_elev
+                entry["depth_m"] = round(max(0.0, computed_depth), 2)
 
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
@@ -1028,21 +1278,23 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
-    with ThreadPoolExecutor(max_workers=7) as pool:
+    with ThreadPoolExecutor(max_workers=9) as pool:
         f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
         f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
         f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
         f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
         f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
         f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
-        f_hawk = pool.submit(_query_hawkesbury_rasters, req.lat, req.lng)
+        f_studies = pool.submit(_query_flood_study_rasters, req.lat, req.lng)
+        f_dem  = pool.submit(_query_ground_elevation, req.lat, req.lng)
         epi  = f_epi.result()
         ems  = f_ems.result()
         jrc  = f_jrc.result()
         bom  = f_bom.result()
         ses  = f_ses.result()
         wofs = f_wofs.result()
-        hawk = f_hawk.result()
+        studies = f_studies.result()
+        dem  = f_dem.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -1051,7 +1303,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom, **ses, **wofs, **hawk,
+        **epi, **ems, **jrc, **bom, **ses, **wofs, **studies, **dem,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 

@@ -33,6 +33,8 @@ See full architectural details in the exploration agent output above.
 - `/api/permissibility/check` - LEP land use
 - `/api/capacity/calculate` - Height/FSR/setbacks
 - `/api/procedural` - CDC vs DA guidance
+- `/api/satellite/flood` - Flood Truth pipeline (EPI + SAR + EMS + JRC + BOM + raster studies + DEM)
+- `/api/reports/flood/generate` - Flood Truth PDF report generation
 
 ### Database
 - **regulatory_provisions:** 47,818 rows (DCP text)

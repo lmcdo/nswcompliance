@@ -51,6 +51,16 @@ Quick reference for what PlotDetect can and cannot do.
 - **TOD precinct** identification (SEPP Housing 2021)
 - **Local provisions** (Part 6 LEP)
 
+### 6. Flood Truth Engine
+- **Multi-source flood assessment** for any NSW address
+- **Data sources:** NSW EPI WFS (71 LGAs), Sentinel-1 SAR, Copernicus EMS, JRC surface water, BOM gauges, SES/council spatial overlays (100+ LGAs)
+- **Council flood study rasters:** Hawkesbury (9 AEPs), Tweed (5 AEPs + 4 historical events), Wollongong (6 AEPs) — depth and water level per AEP event
+- **NSW 5m DEM ground elevation** via SIX Maps ImageServer (full NSW, no auth)
+- **100-year flood zone headline** derived from EPI + SES + study rasters
+- **Flood depth calculation:** flood level minus ground elevation per AEP
+- **PDF report** with full AEP depth/level tables (paid), historical event data, aerial imagery
+- **Flood signal classification:** none / low / moderate / elevated (multi-source convergence)
+
 ---
 
 ## ❌ **What PlotDetect Cannot Do (Yet)**
