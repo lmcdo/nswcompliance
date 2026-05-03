@@ -257,7 +257,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          {result.report_id ? (
+          {result.report_id && (result.outputs.flood_signal ?? 'none') !== 'none' ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
             ) : (
@@ -299,12 +299,16 @@ function FloodLockedPreviewCard({
   const o = result.outputs;
   const signal = o.flood_signal ?? 'none';
 
+  const emsCount = o.ems_activations?.length ?? 0;
+
   const alarmHeadline = signal === 'unavailable'
     ? 'No automated flood data for this address — this is the riskiest result'
     : signal === 'elevated'
     ? 'This property flagged on multiple independent flood sources — your lender has already seen this'
     : signal === 'moderate'
-    ? 'Flood exposure detected — your conveyancer will ask for the depths below before settlement'
+    ? emsCount > 0
+      ? `${emsCount} historical flood event${emsCount !== 1 ? 's' : ''} recorded at this location — full details below`
+      : 'Additional flood data sources flagged this location — full details below'
     : signal === 'low'
     ? 'In a statutory flood zone — insurers price premiums against the depth numbers below'
     : o.epi_flood_class && o.epi_flood_class !== 'none'
@@ -320,8 +324,6 @@ function FloodLockedPreviewCard({
     : signal === 'low'
     ? 'Being in a flood zone doesn\'t kill a deal, but not knowing your depths does. Insurance underwriters price flood loading directly against the 1-in-100 year level. Your number is below.'
     : 'The full report gives your conveyancer source citations across 6 independent datasets. For properties that come back clean, this replaces a $300+ council certificate.';
-
-  const emsCount = o.ems_activations?.length ?? 0;
 
   const rows = [
     {
@@ -483,7 +485,9 @@ function FloodCard({ result }: { result: FloodResult }) {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date} · {sourceCount} data sources</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {o.ses_study_lga ? `${o.ses_study_lga} · ` : ''}Run {result.run_date} · {sourceCount} data sources
+            </p>
           </div>
           <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${signalMeta.badge}`}>
             {signalMeta.label}
@@ -524,7 +528,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* Free tier: council overlay + satellite water history */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
+          <p className="text-xs text-gray-400 mb-1">Statutory flood zone (LEP)</p>
           <p className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${epiMeta.color} mb-1`}>
             {epiMeta.label}
           </p>
@@ -556,7 +560,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* SES / council flood study — shown when spatial_overlays has flood data for this LGA */}
       {o.ses_in_flood_planning_area !== null && (
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Council flood study overlay</p>
+          <p className="text-xs text-gray-400 mb-1">Council flood study</p>
           <div className="flex items-center gap-2 mb-1">
             <span className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${
               o.ses_in_flood_planning_area
@@ -571,6 +575,19 @@ function FloodCard({ result }: { result: FloodResult }) {
           <p className="text-xs text-gray-400">
             {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
             {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
+          </p>
+        </div>
+      )}
+
+      {/* EMS historical flood events — free-tier count */}
+      {o.ems_activations && o.ems_activations.length > 0 && (
+        <div className="p-6">
+          <p className="text-xs text-gray-400 mb-1">Copernicus EMS — historical flood activations</p>
+          <p className="text-sm font-medium text-gray-900">
+            {o.ems_activations.length} recorded event{o.ems_activations.length !== 1 ? 's' : ''} at this location
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Event dates and details included in the paid report
           </p>
         </div>
       )}
