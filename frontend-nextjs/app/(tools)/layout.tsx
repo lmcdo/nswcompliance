@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 const TOOLS = [
-  { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
   { label: 'Flood Risk', href: '/reports/flood', emoji: '🌊' },
+  { label: 'Bushfire Pre-Screen', href: '/reports/bushfire', emoji: '🔥' },
+  { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
+  { label: 'Pre-DA Site History', href: '/reports/pre-da-history', emoji: '🛰' },
   { label: 'Solar Yield', href: '/reports/solar-yield', emoji: '☀️' },
   { label: 'Shadow Detector', href: '/reports/shadow', emoji: '🌑' },
   { label: 'Threat Radar', href: '/reports/threat-radar', emoji: '📡' },

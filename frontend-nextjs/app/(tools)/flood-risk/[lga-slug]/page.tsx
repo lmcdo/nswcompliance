@@ -118,10 +118,10 @@ export default function FloodRiskLgaPage(
           and nearby DA activity.
         </p>
         <a
-          href="/canibuildit"
+          href="/reports"
           className="inline-block px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
         >
-          Check granny flat eligibility →
+          See all property checks →
         </a>
         <p className="text-xs text-gray-400 mt-3">
           Also check:{' '}
