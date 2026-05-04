@@ -72,7 +72,7 @@ function buildEvent(metadata: Record<string, string>, mode = 'payment') {
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
-  process.env.NEXT_PUBLIC_APP_URL = 'https://canibuildit.com.au';
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://canibuildit.com.au';
 });
 
 // ---------------------------------------------------------------------------

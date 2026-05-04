@@ -100,7 +100,7 @@ async function handleThreatRadarMonitor(
   }
 
   // Activate monitoring by calling the existing threat-radar subscribe endpoint
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
   try {
     await fetch(`${baseUrl}/api/satellite/threat-radar`, {
       method: 'POST',
@@ -167,7 +167,7 @@ async function handleGrannyFlatAnalysis(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
   const resultsUrl = `${baseUrl}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`;
 
   try {
@@ -227,7 +227,7 @@ async function handleGrannyFlatReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -331,7 +331,7 @@ async function handleSatelliteReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -394,7 +394,7 @@ async function handlePreDAHistoryReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
 
   // Mark as paid before generating PDF (generate route gates on is_paid)
   const supabase = createServiceClient(
