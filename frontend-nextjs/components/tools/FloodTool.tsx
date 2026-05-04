@@ -12,19 +12,6 @@ interface EmsActivation {
   flood_type: string;
 }
 
-interface FloodStudyEntry {
-  depth_m: number | null;
-  level_m_ahd: number | null;
-}
-
-interface FloodStudy {
-  study_key: string;
-  study_name: string;
-  source: string;
-  design: Record<string, FloodStudyEntry>;
-  historical: Record<string, FloodStudyEntry>;
-}
-
 interface FloodOutputs {
   epi_flood_class: string | null;
   epi_flood_label: string | null;
@@ -38,6 +25,7 @@ interface FloodOutputs {
   dea_wofs_frequency_pct: number | null;
   ses_in_flood_planning_area: boolean | null;
   ses_flood_class: string | null;
+  ses_aep_tiers: string[] | null;
   ses_study_name: string | null;
   ses_study_lga: string | null;
   bom_gauge_name: string | null;
@@ -47,10 +35,6 @@ interface FloodOutputs {
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
-  ground_elevation_m_ahd: number | null;
-  in_100yr_flood_zone: boolean;
-  flood_studies: FloodStudy[];
-  // Backward-compat Hawkesbury flat fields
   hawkesbury_flood_level_2aep: number | null;
   hawkesbury_flood_level_5aep: number | null;
   hawkesbury_flood_level_10aep: number | null;
@@ -257,7 +241,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          {result.report_id && (result.outputs.flood_signal ?? 'none') !== 'none' ? (
+          {result.report_id ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
             ) : (
@@ -299,16 +283,12 @@ function FloodLockedPreviewCard({
   const o = result.outputs;
   const signal = o.flood_signal ?? 'none';
 
-  const emsCount = o.ems_activations?.length ?? 0;
-
   const alarmHeadline = signal === 'unavailable'
     ? 'No automated flood data for this address — this is the riskiest result'
     : signal === 'elevated'
     ? 'This property flagged on multiple independent flood sources — your lender has already seen this'
     : signal === 'moderate'
-    ? emsCount > 0
-      ? `${emsCount} historical flood event${emsCount !== 1 ? 's' : ''} recorded at this location — full details below`
-      : 'Additional flood data sources flagged this location — full details below'
+    ? 'Flood exposure detected — your conveyancer will ask for the depths below before settlement'
     : signal === 'low'
     ? 'In a statutory flood zone — insurers price premiums against the depth numbers below'
     : o.epi_flood_class && o.epi_flood_class !== 'none'
@@ -324,6 +304,8 @@ function FloodLockedPreviewCard({
     : signal === 'low'
     ? 'Being in a flood zone doesn\'t kill a deal, but not knowing your depths does. Insurance underwriters price flood loading directly against the 1-in-100 year level. Your number is below.'
     : 'The full report gives your conveyancer source citations across 6 independent datasets. For properties that come back clean, this replaces a $300+ council certificate.';
+
+  const emsCount = o.ems_activations?.length ?? 0;
 
   const rows = [
     {
@@ -480,44 +462,17 @@ function FloodCard({ result }: { result: FloodResult }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
 
-      {/* Header — flood signal + 100yr headline */}
+      {/* Header — flood signal as primary indicator */}
       <div className="p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {o.ses_study_lga ? `${o.ses_study_lga} · ` : ''}Run {result.run_date} · {sourceCount} data sources
-            </p>
+            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date} · {sourceCount} data sources</p>
           </div>
           <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${signalMeta.badge}`}>
             {signalMeta.label}
           </span>
         </div>
-        {/* 100-year flood zone headline */}
-        {o.in_100yr_flood_zone && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-3">
-            <p className="text-sm font-semibold text-red-800">
-              This property is within the 1-in-100 year flood extent
-            </p>
-            {o.ground_elevation_m_ahd != null && (
-              <p className="text-xs text-red-600 mt-0.5">
-                Ground elevation: {o.ground_elevation_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}m AHD
-              </p>
-            )}
-          </div>
-        )}
-        {!o.in_100yr_flood_zone && signal !== 'unavailable' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-3">
-            <p className="text-sm font-semibold text-green-800">
-              Not within the mapped 1-in-100 year flood extent
-            </p>
-            {o.ground_elevation_m_ahd != null && (
-              <p className="text-xs text-green-600 mt-0.5">
-                Ground elevation: {o.ground_elevation_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}m AHD
-              </p>
-            )}
-          </div>
-        )}
         <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
         <p className="text-xs text-gray-400 mt-1">
           Screening tool only — not a legal flood determination.
@@ -528,7 +483,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* Free tier: council overlay + satellite water history */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Statutory flood zone (LEP)</p>
+          <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
           <p className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${epiMeta.color} mb-1`}>
             {epiMeta.label}
           </p>
@@ -560,18 +515,33 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* SES / council flood study — shown when spatial_overlays has flood data for this LGA */}
       {o.ses_in_flood_planning_area !== null && (
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Council flood study</p>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${
-              o.ses_in_flood_planning_area
-                ? 'bg-red-100 text-red-800'
-                : 'bg-green-100 text-green-700'
-            }`}>
-              {o.ses_in_flood_planning_area
-                ? `In flood extent${o.ses_flood_class ? ` — ${o.ses_flood_class}` : ''}`
-                : 'Outside mapped flood extent'}
-            </span>
-          </div>
+          <p className="text-xs text-gray-400 mb-1">Council flood study overlay</p>
+          {o.ses_in_flood_planning_area ? (
+            <>
+              {/* Multiple AEP tiers — show as tag list when available */}
+              {o.ses_aep_tiers && o.ses_aep_tiers.length > 1 ? (
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {o.ses_aep_tiers.map((tier) => (
+                    <span key={tier} className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
+                      {tier}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-1">
+                  <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
+                    {o.ses_flood_class ? `In flood extent — ${o.ses_flood_class}` : 'In flood extent'}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="mb-1">
+              <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">
+                Outside mapped flood extent
+              </span>
+            </div>
+          )}
           <p className="text-xs text-gray-400">
             {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
             {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
@@ -579,64 +549,19 @@ function FloodCard({ result }: { result: FloodResult }) {
         </div>
       )}
 
-      {/* EMS historical flood events — free-tier count */}
-      {o.ems_activations && o.ems_activations.length > 0 && (
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Copernicus EMS — historical flood activations</p>
-          <p className="text-sm font-medium text-gray-900">
-            {o.ems_activations.length} recorded event{o.ems_activations.length !== 1 ? 's' : ''} at this location
+      {/* Hawkesbury raster — 100AEP teaser (free tier hook) */}
+      {o.hawkesbury_flood_level_100aep != null && (
+        <div className="p-6 border-t border-gray-100">
+          <p className="text-xs text-gray-400 mb-1">Hawkesbury FRMSP 2025 — flood level at this site</p>
+          <p className="text-sm font-semibold text-gray-800">
+            1-in-100 yr flood level: {o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            Event dates and details included in the paid report
+          <p className="text-xs text-gray-400 mt-0.5">
+            Full AEP table (2yr – PMF) included in the paid report
+            {o.hawkesbury_flood_study ? ` · ${o.hawkesbury_flood_study}` : ''}
           </p>
         </div>
       )}
-
-      {/* Flood study raster results — depth + level per AEP (free tier: 1pct teaser) */}
-      {(o.flood_studies ?? []).map((study) => {
-        const pct1 = study.design?.['1pct'];
-        const hasDesign = pct1?.depth_m != null || pct1?.level_m_ahd != null;
-        const historicalYears = Object.keys(study.historical ?? {}).sort();
-        if (!hasDesign && historicalYears.length === 0) return null;
-        return (
-          <div key={study.study_key} className="p-6">
-            <p className="text-xs text-gray-400 mb-1">{study.study_name} — {study.source}</p>
-            {pct1?.depth_m != null && (
-              <p className="text-sm font-semibold text-gray-800">
-                1-in-100 yr flood depth: {pct1.depth_m.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m
-                {pct1.level_m_ahd != null && (
-                  <span className="font-normal text-gray-500">
-                    {' '}(water level {pct1.level_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD)
-                  </span>
-                )}
-              </p>
-            )}
-            {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
-              <p className="text-sm font-semibold text-gray-800">
-                1-in-100 yr flood level: {pct1.level_m_ahd.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
-              </p>
-            )}
-            {historicalYears.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs text-gray-500 mb-1">Historical flood events at this site:</p>
-                <div className="flex flex-wrap gap-2">
-                  {historicalYears.map((yr) => {
-                    const ev = study.historical[yr];
-                    return (
-                      <span key={yr} className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded">
-                        {yr}: {ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded'}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            <p className="text-xs text-gray-400 mt-1.5">
-              Full AEP table included in the paid report
-            </p>
-          </div>
-        );
-      })}
 
       {/* Warnings — always shown */}
       {(o.s1_gap_warning || result.warnings?.length) && (

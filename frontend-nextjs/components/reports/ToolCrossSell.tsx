@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history';
+type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history' | 'bushfire';
 
 interface Card {
   title: string;
@@ -21,7 +21,7 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
   'granny-flat': (address) => ({
     title: 'Granny Flat Yield Predictor',
     body: 'Find out if your lot is eligible for a granny flat and estimate the rental income.',
-    href: `/reports/granny-flat?address=${encodeURIComponent(address)}`,
+    href: `/granny-flat?address=${encodeURIComponent(address)}`,
     label: 'Check granny flat eligibility →',
   }),
   'flood-truth': (address) => ({
@@ -54,6 +54,12 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
     href: `/reports/pre-da-history?address=${encodeURIComponent(address)}`,
     label: 'Check site history →',
   }),
+  'bushfire': (address) => ({
+    title: 'Bushfire Pre-Screen',
+    body: 'Check if an NSW property is on bushfire prone land and what that means for development.',
+    href: `/reports/bushfire?address=${encodeURIComponent(address)}`,
+    label: 'Check bushfire risk →',
+  }),
 };
 
 // Relevance order per tool — granny flat income angle always first when applicable
@@ -64,6 +70,7 @@ const ORDER: Record<ToolKey, ToolKey[]> = {
   'threat-radar':     ['granny-flat', 'flood-truth', 'shadow-detector', 'solar-yield', 'pre-da-history'],
   'granny-flat':      ['flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield', 'pre-da-history'],
   'pre-da-history':   ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
+  'bushfire':         ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
 };
 
 export function ToolCrossSell({

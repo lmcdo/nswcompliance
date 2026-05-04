@@ -1,13 +1,14 @@
 """
 Wet Season Flood Truth Engine -- FastAPI router.
 
-POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + BOM gauge
+POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + DEA WOfS + BOM gauge
 POST /pipeline/flood/batch  -- batch LGA processing (Trigger.dev cron, quarterly)
 
 Data sources:
   NSW SEED EPI Flood WFS         (statutory overlay, free, no auth)
   Copernicus EMS activations      (copernicus_flood_events table, one-time ingest)
   JRC Global Surface Water        (Landsat 1984–present, GCS tiles, free)
+  DEA Water Observations (WOfS)   (Landsat 1987–present, 25m AU, ows.dea.ga.gov.au, CC BY 4.0)
   BOM/WaterConnect nearest gauge  (WaterNSW SOS2, last major flood event)
   Sentinel-1 RTC                  (Microsoft Planetary Computer, batch only)
 
@@ -82,6 +83,10 @@ EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
 BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
+
+DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
+_DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
 
 FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
@@ -472,6 +477,65 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# DEA Water Observations (WOfS)
+# ---------------------------------------------------------------------------
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA WOfS multi-year frequency at a point via WCS GetCoverage.
+
+    Layer: ga_ls_wo_fq_myear_3 (all-of-archive composite, 1987–present, 25m).
+    Band 1 = frequency (0.0–1.0 fraction). nodata = -999.0.
+    Returns dea_wofs_frequency_pct (0–100) or None on failure.
+
+    Simpler than JRC: no vsicurl, no tile lookup — single HTTP request, in-memory rasterio.
+    """
+    try:
+        import io
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — DEA WOfS unavailable")
+        return {"dea_wofs_frequency_pct": None}
+
+    try:
+        delta = 0.001  # ~100m bbox, enough for a point sample
+        r = requests.get(
+            DEA_WCS_BASE,
+            params={
+                "service": "WCS",
+                "version": "1.0.0",
+                "request": "GetCoverage",
+                "coverage": DEA_WOFS_LAYER,
+                "format": "GeoTIFF",
+                "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+                "crs": "EPSG:4326",
+                "resx": str(delta),
+                "resy": str(delta),
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+
+        # Validate response is a GeoTIFF (not an XML error response)
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            logger.warning(f"DEA WOfS: unexpected Content-Type {ct}")
+            return {"dea_wofs_frequency_pct": None}
+
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
+
+
+# ---------------------------------------------------------------------------
 # BOM nearest river gauge
 # ---------------------------------------------------------------------------
 
@@ -663,7 +727,7 @@ DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"
 
 # Canonical display labels for raw DB values stored in spatial_overlays.value.
 # Raw values vary by source: snake_case from FPA shapefiles, title case from EPI,
-# short codes from council FeatureServers. Always apply this before returning.
+# short codes from council FeatureServers, and AEP% from filename-parsed studies.
 _SES_CLASS_DISPLAY: dict[str, str] = {
     "flood_planning_area":               "Flood Planning Area",
     "Flood Planning Area":               "Flood Planning Area",
@@ -675,27 +739,52 @@ _SES_CLASS_DISPLAY: dict[str, str] = {
     "Level of Probable Maximum Flood":   "Probable Maximum Flood",
     "Probable Maximum Flood Line":       "Probable Maximum Flood",
     "Area 1":                            "Flood Prone Area 1",
+    # Campbelltown AEP tiers (parsed from filename by ingest script)
+    "0.2%AEP":  "0.2% AEP (1-in-500 yr)",
+    "0.5%AEP":  "0.5% AEP (1-in-200 yr)",
+    "1.0%AEP":  "1% AEP (1-in-100 yr)",
+    "2.0%AEP":  "2% AEP (1-in-50 yr)",
+    "5.0%AEP":  "5% AEP (1-in-20 yr)",
+    "20.0%AEP": "20% AEP (1-in-5 yr)",
+}
+
+# Lower rank = more frequent flood = more informative for day-to-day risk.
+# Used to pick the primary ses_flood_class when multiple AEP tiers match.
+_AEP_FREQUENCY_RANK: dict[str, int] = {
+    "20% AEP (1-in-5 yr)":       1,
+    "5% AEP (1-in-20 yr)":       2,
+    "2% AEP (1-in-50 yr)":       3,
+    "1% AEP (1-in-100 yr)":      4,
+    "Design Flood (1% AEP)":     4,
+    "1% AEP Flood Extent":       4,
+    "0.5% AEP (1-in-200 yr)":    5,
+    "0.2% AEP (1-in-500 yr)":    6,
+    "Flood Planning Area":        7,
+    "Flood Prone Land":           7,
+    "Flood Prone Area 1":         7,
+    "Probable Maximum Flood":     8,
 }
 
 
 def _query_ses_flood_study(lat: float, lng: float) -> dict:
     """
     Point-in-polygon against spatial_overlays for flood layer type.
-    Covers all council flood studies ingested by ingest_flood_studies.py,
-    including Hawkesbury FPA and any future SES portal studies.
+    Returns all matching AEP tiers for the point (not just the first).
 
     Returns:
       ses_in_flood_planning_area: bool | None
         True  — point is inside at least one flood extent polygon
         False — spatial_overlays has flood rows but point is outside all of them
         None  — spatial_overlays has no flood rows (table empty/unavailable)
-      ses_flood_class: str | None   — value of the matched row (e.g. "flood_planning_area")
-      ses_study_name: str | None    — instrument_key of the matched row
-      ses_study_lga: str | None     — lga_name of the matched row
+      ses_flood_class: str | None   — most frequent (highest AEP%) tier matched
+      ses_aep_tiers: list[str]      — all matched tier display labels
+      ses_study_name: str | None    — instrument_key of the primary matched row
+      ses_study_lga: str | None     — lga_name of the primary matched row
     """
     null_result = {
         "ses_in_flood_planning_area": None,
         "ses_flood_class": None,
+        "ses_aep_tiers": [],
         "ses_study_name": None,
         "ses_study_lga": None,
     }
@@ -707,32 +796,42 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
             cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
             if cur.fetchone()["n"] == 0:
                 return null_result
-            # Point-in-polygon: find first matching flood polygon
+            # Fetch ALL matching flood polygons — no LIMIT so multi-AEP studies return all tiers.
             cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(
                 """
-                SELECT instrument_key, lga_name, value
+                SELECT DISTINCT ON (value) instrument_key, lga_name, value
                 FROM spatial_overlays
                 WHERE layer_type = 'flood'
                   AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                ORDER BY currency_date DESC
-                LIMIT 1
+                ORDER BY value, currency_date DESC
                 """,
                 (lng, lat),
             )
-            row = cur.fetchone()
-        if row:
+            rows = cur.fetchall()
+        if not rows:
             return {
-                "ses_in_flood_planning_area": True,
-                "ses_flood_class": _SES_CLASS_DISPLAY.get(row["value"], row["value"]),
-                "ses_study_name": row["instrument_key"],
-                "ses_study_lga": row["lga_name"],
+                "ses_in_flood_planning_area": False,
+                "ses_flood_class": None,
+                "ses_aep_tiers": [],
+                "ses_study_name": None,
+                "ses_study_lga": None,
             }
+        # Map all raw values to display labels
+        tiers = [_SES_CLASS_DISPLAY.get(r["value"], r["value"]) for r in rows]
+        # Primary class = most frequent tier (lowest _AEP_FREQUENCY_RANK value)
+        primary_tier = min(tiers, key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99))
+        # Use the row matching the primary tier for study provenance
+        primary_row = next(
+            r for r in rows
+            if _SES_CLASS_DISPLAY.get(r["value"], r["value"]) == primary_tier
+        )
         return {
-            "ses_in_flood_planning_area": False,
-            "ses_flood_class": None,
-            "ses_study_name": None,
-            "ses_study_lga": None,
+            "ses_in_flood_planning_area": True,
+            "ses_flood_class": primary_tier,
+            "ses_aep_tiers": sorted(tiers, key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99)),
+            "ses_study_name": primary_row["instrument_key"],
+            "ses_study_lga": primary_row["lga_name"],
         }
     except Exception as e:
         logger.warning(f"SES flood study query: {e}")
@@ -1005,6 +1104,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     # Combined statutory overlay signal: EPI state portal OR local council study OR raster
     in_overlay     = epi_in_overlay or ses_in_overlay or study_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
+    # Use DEA WOfS frequency when JRC is unavailable (DEA is AU-specific, 25m, 1987–present)
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
     effective_pct  = jrc_pct if jrc_pct > 0 else wofs_pct

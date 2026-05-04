@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 const TOOLS = [
   {
     name: 'Granny Flat Eligibility',
-    href: '/reports/granny-flat',
+    href: '/granny-flat',
     sources: [
       { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, lot size, strata status, LEP controls' },
       { name: 'SEPP Housing 2021', use: 'Eligibility criteria: lot size ≥450m², not strata, correct zone' },
@@ -85,7 +85,7 @@ export default function HowItWorksPage() {
         <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
           canibuildit<span className="text-teal-600">.com.au</span>
         </Link>
-        <Link href="/reports/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
           Try the tools →
         </Link>
       </nav>
