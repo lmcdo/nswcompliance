@@ -2,8 +2,8 @@
  * Pre-DA Site History Report PDF
  * Generated server-side via @react-pdf/renderer renderToBuffer().
  *
- * Data source: pre_da_history_reports.report_json (JSONB).
- * Covers: Tessera cosine similarity 2017–2025, DA events, heritage flag, flood/fire.
+ * Audience: buyer's agents, solicitors, town planners, property investors.
+ * Written in plain English — no jargon, no academic tone.
  */
 
 import React from 'react';
@@ -21,6 +21,14 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+export interface DAEvent {
+  pan: string;
+  status?: string;
+  app_type?: string;
+  dev_type?: string;
+  date?: string;
+}
+
 export interface TimelineEntry {
   year: number;
   level: 'stable' | 'minor' | 'moderate' | 'major' | 'no_data';
@@ -30,7 +38,10 @@ export interface TimelineEntry {
   suppressed?: boolean;
   explanation?: string;
   change_type?: string;
-  da_events?: string[];
+  da_events?: (string | DAEvent)[];
+  ndvi_delta?: number;
+  ndbi_delta?: number;
+  spectral_escalation?: boolean;
 }
 
 export interface PreDAHistoryReportData {
@@ -81,7 +92,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 48,
     lineHeight: 1.4,
   },
-  // Logo / cover
   coverLogoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 56 },
   coverLogoImg:  { width: 18, height: 18 },
   coverLogo:     { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
@@ -89,19 +99,16 @@ const s = StyleSheet.create({
   coverAddress:  { fontSize: 12, color: GRAY_700, marginBottom: 4 },
   coverDate:     { fontSize: 9, color: GRAY_500, marginBottom: 32 },
   coverSubtitle: { fontSize: 9, color: GRAY_500, marginBottom: 4 },
-  // Section
   sectionTitle: {
-    fontSize: 10, fontFamily: 'Helvetica-Bold', color: GRAY_900,
+    fontSize: 11, fontFamily: 'Helvetica-Bold', color: GRAY_900,
     borderBottomWidth: 1, borderBottomColor: GRAY_300,
     paddingBottom: 4, marginBottom: 10, marginTop: 24,
   },
-  // Stat grid
   statRow:  { flexDirection: 'row', gap: 12, marginBottom: 12 },
   statBox:  { flex: 1, backgroundColor: GRAY_100, borderRadius: 4, padding: 10 },
   statLabel: { fontSize: 7.5, color: GRAY_500, marginBottom: 3, textTransform: 'uppercase' },
   statValue: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
   statSub:  { fontSize: 7.5, color: GRAY_500, marginTop: 2 },
-  // Callouts
   calloutTeal: {
     backgroundColor: TEAL_LIGHT, borderWidth: 1, borderColor: TEAL_BORDER,
     borderRadius: 4, padding: 10, marginBottom: 10,
@@ -120,7 +127,6 @@ const s = StyleSheet.create({
   },
   calloutTitle: { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
   calloutText:  { fontSize: 8.5, color: GRAY_700, lineHeight: 1.5 },
-  // Table
   tableHeader: {
     flexDirection: 'row', backgroundColor: GRAY_900,
     paddingVertical: 5, paddingHorizontal: 8, borderRadius: 3, marginBottom: 2,
@@ -133,37 +139,25 @@ const s = StyleSheet.create({
   tableRowAlt: { backgroundColor: GRAY_100 },
   tableCell:     { fontSize: 8, color: GRAY_700 },
   tableCellBold: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
-  // Level badge
-  badgeGreen:  { backgroundColor: GREEN_LIGHT, color: GREEN, fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
-  badgeAmber:  { backgroundColor: AMBER_LIGHT, color: AMBER, fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
-  badgeOrange: { backgroundColor: '#fff7ed', color: '#c2410c', fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
-  badgeRed:    { backgroundColor: RED_LIGHT, color: RED, fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
-  badgeGray:   { backgroundColor: GRAY_100, color: GRAY_500, fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
-  // Footer
   footer: {
     position: 'absolute', bottom: 20, left: 48, right: 48,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
   footerText: { fontSize: 7.5, color: GRAY_500 },
-  // Misc
   body:   { fontSize: 8.5, color: GRAY_700, lineHeight: 1.6 },
   bold:   { fontFamily: 'Helvetica-Bold' },
-  mb4:    { marginBottom: 4 },
-  mb8:    { marginBottom: 8 },
-  mb12:   { marginBottom: 12 },
-  mb16:   { marginBottom: 16 },
 });
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function levelBadgeStyle(level: string) {
-  if (level === 'major') return s.badgeRed;
-  if (level === 'moderate') return s.badgeOrange;
-  if (level === 'minor') return s.badgeAmber;
-  if (level === 'stable') return s.badgeGreen;
-  return s.badgeGray;
+function levelColor(level: string) {
+  if (level === 'major') return RED;
+  if (level === 'moderate') return '#c2410c';
+  if (level === 'minor') return AMBER;
+  if (level === 'stable') return GREEN;
+  return GRAY_500;
 }
 
 function levelLabel(level: string): string {
@@ -174,6 +168,15 @@ function levelLabel(level: string): string {
   return 'No data';
 }
 
+function levelBadgeStyle(level: string) {
+  const base = { fontSize: 7.5, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 };
+  if (level === 'major') return { ...base, backgroundColor: RED_LIGHT, color: RED };
+  if (level === 'moderate') return { ...base, backgroundColor: '#fff7ed', color: '#c2410c' };
+  if (level === 'minor') return { ...base, backgroundColor: AMBER_LIGHT, color: AMBER };
+  if (level === 'stable') return { ...base, backgroundColor: GREEN_LIGHT, color: GREEN };
+  return { ...base, backgroundColor: GRAY_100, color: GRAY_500 };
+}
+
 function fmtDate(d: string): string {
   try {
     return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -182,9 +185,100 @@ function fmtDate(d: string): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+/** Normalise DA events — handles both legacy string[] and new DAEvent[] format */
+function normaliseDAs(raw?: (string | DAEvent)[]): DAEvent[] {
+  if (!raw) return [];
+  return raw.map(item =>
+    typeof item === 'string' ? { pan: item } : item
+  );
+}
+
+/** Get all unique DA events across all timeline entries */
+function collectAllDAs(timeline: TimelineEntry[]): (DAEvent & { year: number })[] {
+  const seen = new Set<string>();
+  const result: (DAEvent & { year: number })[] = [];
+  for (const entry of timeline) {
+    for (const da of normaliseDAs(entry.da_events)) {
+      if (!seen.has(da.pan)) {
+        seen.add(da.pan);
+        result.push({ ...da, year: entry.year });
+      }
+    }
+  }
+  return result;
+}
+
+/** Plain-English description of what a change_type means */
+function changeTypeExplain(ct?: string): string {
+  if (!ct) return '';
+  if (ct === 'hardening') return 'Increased hard surfaces detected (concrete, roofing, paving)';
+  if (ct === 'greening') return 'Increased vegetation detected (landscaping, tree growth)';
+  if (ct === 'demolition') return 'Structures appear to have been removed';
+  if (ct === 'construction') return 'New structures or significant building work detected';
+  return '';
+}
+
+/** Build the executive summary paragraph */
+function buildSummary(data: PreDAHistoryReportData, notableYears: TimelineEntry[], allDAs: (DAEvent & { year: number })[]): string {
+  const parts: string[] = [];
+
+  if (notableYears.length === 0 && allDAs.length === 0) {
+    parts.push(
+      `Satellite analysis from 2017 to 2024 found no significant physical changes to this property. ` +
+      `No development applications were matched to this address on the NSW ePlanning Portal.`
+    );
+  } else {
+    if (notableYears.length > 0) {
+      const years = notableYears.map(e => e.year).join(', ');
+      parts.push(
+        `Satellite imagery detected physical changes to this property in ${years}.`
+      );
+    }
+    if (allDAs.length > 0) {
+      parts.push(
+        `${allDAs.length} development application${allDAs.length > 1 ? 's were' : ' was'} found ` +
+        `on the NSW ePlanning Portal for this address.`
+      );
+    }
+  }
+
+  if (data.heritage_flag) {
+    parts.push('A heritage overlay applies to this property — any works will require a Statement of Heritage Impact.');
+  }
+
+  return parts.join(' ');
+}
+
+/** What the buyer/planner should do next */
+function buildRecommendations(data: PreDAHistoryReportData, notableYears: TimelineEntry[], allDAs: (DAEvent & { year: number })[]): string[] {
+  const recs: string[] = [];
+
+  if (notableYears.some(e => e.level === 'major' || e.level === 'moderate')) {
+    recs.push('Commission a site inspection to verify the nature and approval status of physical changes detected by satellite.');
+  }
+
+  if (allDAs.length > 0) {
+    const pans = allDAs.slice(0, 3).map(d => d.pan).join(', ');
+    recs.push(
+      `Search the NSW Planning Portal for ${pans}${allDAs.length > 3 ? ' and others' : ''} ` +
+      `to confirm determination status, conditions, and any outstanding compliance issues.`
+    );
+  }
+
+  if (data.heritage_flag) {
+    recs.push('Engage a heritage consultant before scoping any development works on this site.');
+  }
+
+  if (notableYears.length === 0 && allDAs.length === 0) {
+    recs.push('No red flags identified. Standard pre-DA due diligence (s10.7 certificate, site inspection, planner consultation) is sufficient.');
+  } else {
+    recs.push('Request a Section 10.7(2) planning certificate from council to confirm current planning controls and any outstanding orders.');
+  }
+
+  recs.push('Verify all findings with the relevant council and a qualified town planner before lodging a DA.');
+
+  return recs;
+}
 
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
@@ -192,7 +286,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
       {logo_b64 ? (
         <Image src={`data:image/png;base64,${logo_b64}`} style={s.coverLogoImg} />
       ) : null}
-      <Text style={s.coverLogo}>PlotDetect</Text>
+      <Text style={s.coverLogo}>Can I Build It?</Text>
     </View>
   );
 }
@@ -202,190 +296,233 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 // ---------------------------------------------------------------------------
 
 export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportData }) {
-  const validYears  = data.timeline.filter((r) => r.level !== 'no_data');
-  const notableYears = data.timeline.filter((r) =>
+  const validYears = data.timeline.filter(r => r.level !== 'no_data');
+  const notableYears = data.timeline.filter(r =>
     r.level === 'minor' || r.level === 'moderate' || r.level === 'major'
   );
-  const allDaPans = Array.from(
-    new Set(data.timeline.flatMap((r) => r.da_events ?? []))
-  );
-
+  const stableYears = data.timeline.filter(r => r.level === 'stable');
+  const allDAs = collectAllDAs(data.timeline);
   const formattedDate = fmtDate(data.run_date);
+  const summary = buildSummary(data, notableYears, allDAs);
+  const recs = buildRecommendations(data, notableYears, allDAs);
+
+  // Risk verdict
+  const hasRisk = notableYears.some(e => e.level === 'major' || e.level === 'moderate');
+  const hasFlags = notableYears.length > 0 || allDAs.length > 0 || data.heritage_flag;
 
   return (
     <Document
-      title={`Pre-DA Site History Report — ${data.address}`}
+      title={`Pre-DA Site History — ${data.address}`}
       author="canibuildit.com.au"
       creator="canibuildit.com.au"
     >
       {/* ================================================================ */}
-      {/* Page 1 — Cover + Summary stats + Heritage flag                   */}
+      {/* Page 1 — Cover, verdict, executive summary, recommendations     */}
       {/* ================================================================ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
 
-        <Text style={s.coverTitle}>Pre-DA Site History Report</Text>
+        <Text style={s.coverTitle}>Site History Report</Text>
         <Text style={s.coverAddress}>{data.address}</Text>
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
-        {data.council ? (
-          <Text style={s.coverSubtitle}>Council: {data.council}</Text>
-        ) : null}
+        {data.council && <Text style={s.coverSubtitle}>{data.council}</Text>}
+        <Text style={{ fontSize: 8, color: GRAY_500, marginBottom: 4 }}>
+          Coordinates: {data.lat.toFixed(5)}, {data.lon.toFixed(5)}
+        </Text>
 
-        {/* ---- Summary stats ---- */}
-        <Text style={s.sectionTitle}>1. Summary</Text>
+        {/* ---- Verdict banner ---- */}
+        <View style={hasRisk ? s.calloutRed : hasFlags ? s.calloutAmber : s.calloutGreen}>
+          <Text style={{ ...s.calloutTitle, color: hasRisk ? RED : hasFlags ? AMBER : GREEN }}>
+            {hasRisk
+              ? 'Action required — physical changes detected'
+              : hasFlags
+                ? 'Review recommended — activity detected'
+                : 'No red flags identified'}
+          </Text>
+          <Text style={s.calloutText}>{summary}</Text>
+        </View>
+
+        {/* ---- At a glance ---- */}
+        <Text style={s.sectionTitle}>At a glance</Text>
         <View style={s.statRow}>
           <View style={s.statBox}>
-            <Text style={s.statLabel}>Years analysed</Text>
-            <Text style={s.statValue}>{validYears.length}/8</Text>
-            <Text style={s.statSub}>2017–2024</Text>
+            <Text style={s.statLabel}>Period covered</Text>
+            <Text style={s.statValue}>8 years</Text>
+            <Text style={s.statSub}>2017 to 2024</Text>
           </View>
           <View style={s.statBox}>
-            <Text style={s.statLabel}>Notable years</Text>
+            <Text style={s.statLabel}>Physical changes detected</Text>
             <Text style={{ ...s.statValue, color: notableYears.length > 0 ? AMBER : GREEN }}>
-              {notableYears.length}
+              {notableYears.length > 0 ? `${notableYears.length} year${notableYears.length > 1 ? 's' : ''}` : 'None'}
             </Text>
             <Text style={s.statSub}>
-              {notableYears.length === 0 ? 'No physical changes detected' : 'Year(s) with detected change'}
+              {notableYears.length > 0 ? notableYears.map(e => e.year).join(', ') : 'Site appears unchanged'}
             </Text>
           </View>
           <View style={s.statBox}>
-            <Text style={s.statLabel}>DA/CC events found</Text>
-            <Text style={s.statValue}>{allDaPans.length}</Text>
+            <Text style={s.statLabel}>DA applications found</Text>
+            <Text style={{ ...s.statValue, color: allDAs.length > 0 ? AMBER : GREEN }}>
+              {allDAs.length}
+            </Text>
             <Text style={s.statSub}>
-              {allDaPans.length > 0 ? allDaPans.slice(0, 2).join(', ') + (allDaPans.length > 2 ? '…' : '') : 'None matched'}
+              {allDAs.length > 0 ? 'Matched to this address' : 'None on ePlanning Portal'}
             </Text>
           </View>
         </View>
 
-        {/* ---- Heritage flag ---- */}
+        {/* ---- Heritage ---- */}
         {data.heritage_flag ? (
-          <View style={{ ...s.calloutAmber, marginTop: 4 }}>
-            <Text style={{ ...s.calloutTitle, color: AMBER }}>Heritage overlay detected</Text>
+          <View style={s.calloutAmber}>
+            <Text style={{ ...s.calloutTitle, color: AMBER }}>Heritage overlay applies</Text>
             <Text style={s.calloutText}>
-              {data.heritage_note ?? 'This property may be subject to a heritage overlay. Any development works require a Statement of Heritage Impact and may be subject to additional conditions.'}
+              {data.heritage_note ?? 'This property is subject to a heritage overlay. Any development works will require a Statement of Heritage Impact and may be subject to additional consent conditions. Check the LEP heritage schedule for the specific listing.'}
             </Text>
           </View>
         ) : (
-          <View style={{ ...s.calloutGreen, marginTop: 4 }}>
-            <Text style={{ ...s.calloutTitle, color: GREEN }}>No heritage overlay detected</Text>
+          <View style={{ ...s.calloutGreen }}>
+            <Text style={{ ...s.calloutTitle, color: GREEN }}>No heritage listing found</Text>
             <Text style={s.calloutText}>
-              No heritage listing was found for this lot in the PostGIS spatial overlay dataset.
-              Always verify against the current LEP heritage schedule before lodging.
+              No heritage item or conservation area was found for this lot. Always verify against the current LEP heritage schedule before lodging.
             </Text>
           </View>
         )}
 
-        {/* ---- Notable year summary ---- */}
-        {notableYears.length > 0 ? (
-          <>
-            <Text style={s.sectionTitle}>2. Notable Years</Text>
-            <Text style={{ ...s.body, marginBottom: 8 }}>
-              The following years showed physical site changes above the baseline threshold.
+        {/* ---- Recommended next steps ---- */}
+        <Text style={s.sectionTitle}>Recommended next steps</Text>
+        {recs.map((rec, i) => (
+          <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }}>
+            <Text style={{ ...s.body, fontFamily: 'Helvetica-Bold', marginRight: 6, color: TEAL }}>
+              {i + 1}.
             </Text>
-            {notableYears.map((entry, i) => (
-              <View key={i} style={{ marginBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                  <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 10 }}>{entry.year}</Text>
-                  <Text style={levelBadgeStyle(entry.level)}>{levelLabel(entry.level)}</Text>
-                  {entry.similarity != null ? (
-                    <Text style={{ fontSize: 7.5, color: GRAY_500 }}>
-                      similarity: {entry.similarity.toFixed(3)}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={s.calloutText}>
-                  {entry.explanation || entry.label}
-                  {entry.da_events && entry.da_events.length > 0
-                    ? `  •  DA refs: ${entry.da_events.join(', ')}`
-                    : ''}
-                </Text>
-              </View>
-            ))}
-          </>
-        ) : (
-          <View style={{ marginTop: 12 }}>
-            <Text style={s.sectionTitle}>2. Change Detection Result</Text>
-            <View style={s.calloutGreen}>
-              <Text style={{ ...s.calloutTitle, color: GREEN }}>No significant physical changes detected (2017–2024)</Text>
-              <Text style={s.calloutText}>
-                Cosine similarity between consecutive annual Tessera embeddings remained above the
-                stable threshold (0.95) across all analysed years. This property shows no evidence of
-                demolition, major construction, or significant physical alteration during this period.
-              </Text>
-            </View>
+            <Text style={s.body}>{rec}</Text>
           </View>
-        )}
+        ))}
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Pre-DA Site History Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
 
       {/* ================================================================ */}
-      {/* Page 2 — Full year-by-year timeline                              */}
+      {/* Page 2 — Year-by-year findings (written in English, not jargon)  */}
       {/* ================================================================ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.sectionTitle}>3. Year-by-Year Satellite Timeline</Text>
-        <Text style={{ ...s.body, marginBottom: 10 }}>
-          Annual cosine similarity scores between consecutive years using Tessera/Clay v1.5
-          10 m embeddings. Scores are neighbourhood-adjusted to suppress area-wide events.
-          Change thresholds: stable ≥ 0.95 · minor ≥ 0.85 · moderate ≥ 0.70 · major &lt; 0.70.
+        <Text style={s.sectionTitle}>Year-by-year satellite analysis</Text>
+        <Text style={{ ...s.body, marginBottom: 12 }}>
+          Satellite imagery from 2017 to 2024 was analysed for physical changes to the property.
+          Each year is compared to the previous year. Neighbourhood-wide variations (seasonal vegetation,
+          weather effects) are filtered out so that only site-specific changes are flagged.
         </Text>
 
-        {/* Table header */}
+        {/* Notable years — detailed cards */}
+        {notableYears.length > 0 && (
+          <>
+            {notableYears.map((entry) => {
+              const ctExplain = changeTypeExplain(entry.change_type);
+              return (
+                <View key={entry.year} style={{ marginBottom: 12, borderWidth: 1, borderColor: GRAY_300, borderRadius: 4, padding: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 12 }}>{entry.year}</Text>
+                    <Text style={levelBadgeStyle(entry.level)}>{levelLabel(entry.level)}</Text>
+                  </View>
+
+                  {ctExplain ? (
+                    <Text style={{ ...s.body, marginBottom: 4 }}>{ctExplain}.</Text>
+                  ) : null}
+
+                  {entry.explanation && (
+                    <Text style={{ ...s.body, marginBottom: 4 }}>{entry.explanation}</Text>
+                  )}
+
+                  {entry.da_events && entry.da_events.length > 0 && (
+                    <View style={{ backgroundColor: GRAY_100, borderRadius: 3, padding: 6, marginTop: 4 }}>
+                      <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: GRAY_700, marginBottom: 3 }}>
+                        Applications matched to this address:
+                      </Text>
+                      {normaliseDAs(entry.da_events).map(da => (
+                        <View key={da.pan} style={{ marginLeft: 8, marginBottom: 3 }}>
+                          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_700 }}>
+                            {da.pan}{da.status ? ` — ${da.status}` : ''}
+                          </Text>
+                          {da.app_type && (
+                            <Text style={{ fontSize: 7.5, color: GRAY_500, marginLeft: 0 }}>
+                              {da.app_type}{da.dev_type ? `: ${da.dev_type}` : ''}{da.date ? ` (${da.date})` : ''}
+                            </Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {entry.similarity != null && (
+                    <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+                      Satellite similarity score: {entry.similarity.toFixed(3)} (lower = more change)
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </>
+        )}
+
+        {/* Stable years — single summary, not repeated rows */}
+        {stableYears.length > 0 && (
+          <View style={{ ...s.calloutGreen, marginTop: 4 }}>
+            <Text style={{ ...s.calloutTitle, color: GREEN }}>
+              {stableYears.length === validYears.length
+                ? 'No physical changes detected in any year'
+                : `Stable in ${stableYears.length} of ${validYears.length} years`}
+            </Text>
+            <Text style={s.calloutText}>
+              {stableYears.map(e => e.year).join(', ')} — satellite imagery showed no
+              site-specific physical changes. Seasonal and neighbourhood-wide variations were filtered out.
+            </Text>
+          </View>
+        )}
+
+        {/* Full timeline table */}
+        <Text style={{ ...s.sectionTitle, marginTop: 20 }}>Complete timeline</Text>
         <View style={s.tableHeader}>
-          <Text style={{ ...s.tableHeaderCell, flex: 0.7 }}>Year</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 1.2 }}>Level</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 0.8 }}>Similarity</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 3 }}>Notes</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>DA refs</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 0.6 }}>Year</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Status</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 3 }}>What we found</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 1.4 }}>DA references</Text>
         </View>
 
         {data.timeline.map((entry, i) => (
           <View key={entry.year} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-            <Text style={{ ...s.tableCellBold, flex: 0.7 }}>{entry.year}</Text>
-            <Text style={{ ...s.tableCell, flex: 1.2, color:
-              entry.level === 'major' ? RED :
-              entry.level === 'moderate' ? '#c2410c' :
-              entry.level === 'minor' ? AMBER :
-              entry.level === 'no_data' ? GRAY_500 : GREEN
-            }}>
+            <Text style={{ ...s.tableCellBold, flex: 0.6 }}>{entry.year}</Text>
+            <Text style={{ ...s.tableCell, flex: 1, color: levelColor(entry.level) }}>
               {levelLabel(entry.level)}
             </Text>
-            <Text style={{ ...s.tableCell, flex: 0.8 }}>
-              {entry.similarity != null ? entry.similarity.toFixed(3) : '—'}
-            </Text>
             <Text style={{ ...s.tableCell, flex: 3, fontSize: 7.5 }}>
-              {entry.suppressed
-                ? 'Systemic event suppressed (neighbourhood-wide change)'
-                : entry.explanation || entry.label || '—'}
+              {entry.level === 'no_data'
+                ? 'Satellite data not yet available'
+                : entry.suppressed
+                  ? 'No site-specific change'
+                  : entry.explanation || entry.label || 'No change detected'}
             </Text>
-            <Text style={{ ...s.tableCell, flex: 1.5, fontSize: 7, color: GRAY_500 }}>
-              {entry.da_events && entry.da_events.length > 0
-                ? entry.da_events.join(', ')
-                : '—'}
+            <Text style={{ ...s.tableCell, flex: 1.4, fontSize: 7, color: GRAY_500 }}>
+              {normaliseDAs(entry.da_events).length > 0
+                ? normaliseDAs(entry.da_events).map(d => d.pan).join(', ')
+                : '-'}
             </Text>
           </View>
         ))}
 
-        <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 8 }}>
-          Note: 2025 satellite data is sparse — many tiles incomplete. 2025 column shows N/A for most addresses.
-          DA refs show the NSW ePlanning Portal Application Number for DAs/CCs active in that year.
-        </Text>
-
-        {/* Wayback SSIM section (if present) */}
-        {data.wayback_ssim && Object.keys(data.wayback_ssim).length > 0 ? (
+        {/* Wayback SSIM section */}
+        {data.wayback_ssim && Object.keys(data.wayback_ssim).length > 0 && (
           <>
-            <Text style={s.sectionTitle}>4. Visual Imagery Comparison (Wayback SSIM)</Text>
+            <Text style={{ ...s.sectionTitle, marginTop: 20 }}>Aerial imagery comparison</Text>
             <Text style={{ ...s.body, marginBottom: 8 }}>
-              Structural Similarity Index between consecutive years of Esri World Imagery Wayback tiles
-              (zoom 19 ≈ 30 cm/px). Score range 0–1; lower = more visual change.
+              High-resolution aerial images (30 cm/pixel) were compared year-on-year.
+              Lower scores indicate more visible change.
             </Text>
             <View style={s.tableHeader}>
               <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Period</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>SSIM Score</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Interpretation</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Score</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Meaning</Text>
             </View>
             {Object.entries(data.wayback_ssim).map(([period, score], i) => (
               <View key={period} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
@@ -393,127 +530,125 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
                 <Text style={{ ...s.tableCell, flex: 1 }}>{score.toFixed(3)}</Text>
                 <Text style={{ ...s.tableCell, flex: 2 }}>
                   {score >= 0.9 ? 'No visible change' :
-                   score >= 0.75 ? 'Minor visual change' :
-                   score >= 0.6 ? 'Moderate visual change' : 'Significant visual change'}
+                   score >= 0.75 ? 'Minor visible change' :
+                   score >= 0.6 ? 'Moderate visible change' : 'Significant visible change'}
                 </Text>
               </View>
             ))}
           </>
-        ) : null}
+        )}
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Pre-DA Site History Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
 
       {/* ================================================================ */}
-      {/* Page 3 — DA events detail + data quality + disclaimer            */}
+      {/* Page 3 — DA detail, data sources, disclaimer                    */}
       {/* ================================================================ */}
       <Page size="A4" style={s.page}>
 
-        {/* DA events list */}
-        {allDaPans.length > 0 ? (
+        {/* DA events detail */}
+        {allDAs.length > 0 && (
           <>
-            <Text style={s.sectionTitle}>
-              {data.wayback_ssim && Object.keys(data.wayback_ssim).length > 0 ? '5.' : '4.'}
-              {' '}Development Application Events
-            </Text>
+            <Text style={s.sectionTitle}>Development applications</Text>
             <Text style={{ ...s.body, marginBottom: 8 }}>
-              The following DA/CC/OC events were found on the NSW ePlanning Portal for this address.
-              DA events are sourced from the ePlanning API — complete from July 2021; earlier events
-              may not be captured.
+              The following applications were found on the NSW ePlanning Portal for this address.
+              The portal has comprehensive data from July 2021 onward; earlier applications may not appear.
             </Text>
             <View style={s.tableHeader}>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Application number</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Year</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Type</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Application</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Type</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Status</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 0.7 }}>Date</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Development type</Text>
             </View>
-            {data.timeline
-              .flatMap((entry) =>
-                (entry.da_events ?? []).map((pan) => ({
-                  pan,
-                  year: entry.year,
-                  level: entry.level,
-                  label: entry.explanation || entry.label,
-                }))
-              )
-              .filter(
-                (item, idx, arr) => arr.findIndex((x) => x.pan === item.pan) === idx
-              )
-              .map((item, i) => (
-                <View key={item.pan} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                  <Text style={{ ...s.tableCellBold, flex: 2 }}>{item.pan}</Text>
-                  <Text style={{ ...s.tableCell, flex: 1 }}>{item.year}</Text>
+            {allDAs.map((da, i) => (
+                <View key={da.pan} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                  <Text style={{ ...s.tableCellBold, flex: 1.5 }}>{da.pan}</Text>
+                  <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5 }}>
+                    {da.app_type || '-'}
+                  </Text>
+                  <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5, color: da.status === 'Approved' || da.status === 'Determined' ? GREEN : GRAY_700 }}>
+                    {da.status || '-'}
+                  </Text>
+                  <Text style={{ ...s.tableCell, flex: 0.7, fontSize: 7.5 }}>
+                    {da.date || String(da.year)}
+                  </Text>
                   <Text style={{ ...s.tableCell, flex: 2, fontSize: 7.5 }}>
-                    {item.label || '—'}
+                    {da.dev_type || '-'}
                   </Text>
                 </View>
               ))}
             <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
-              Verify current status at{' '}
+              Check current status at{' '}
               <Link src="https://www.planningportal.nsw.gov.au/" style={{ color: TEAL }}>
                 planningportal.nsw.gov.au
               </Link>
             </Text>
           </>
-        ) : null}
+        )}
 
-        {/* Methodology */}
-        <Text style={s.sectionTitle}>Methodology</Text>
-        <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, lineHeight: 1.6 }}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Satellite change detection: </Text>
-          Tessera/Clay v1.5 annual 10 m embeddings (128 channels, 2017–2025). Year-on-year cosine
-          similarity is computed across 5 lot-interior sample points (centroid + 4 interior corners)
-          and normalised against a 16-point neighbourhood ring to suppress area-wide events
-          (vegetation seasons, atmospheric effects).{'\n\n'}
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>DA event matching: </Text>
-          NSW ePlanning Portal API — OnlineDA and OnlinePCC endpoints. Filtered by council, then
-          fuzzy-matched to the subject address. Complete from July 2021; pre-July 2021 events
-          may not be captured.{'\n\n'}
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Heritage flag: </Text>
-          PostGIS spatial overlay query against the PlotDetect spatial database. Covers heritage
-          items and conservation areas from local and state planning instruments.{'\n\n'}
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Flood/fire annotations: </Text>
-          Hardcoded bounding-box annotations for known major NSW flood and bushfire events
-          (2019–2022). Not a substitute for formal flood/bushfire risk assessment.
+        {/* How this report was produced */}
+        <Text style={s.sectionTitle}>How this report was produced</Text>
+        <View style={{ marginBottom: 6 }}>
+          <Text style={{ ...s.body, marginBottom: 6 }}>
+            <Text style={s.bold}>Satellite change detection: </Text>
+            Annual satellite imagery (10 metre resolution, 2017-2024) was analysed for physical changes to the property.
+            Each year is compared to the previous year using AI-powered image embeddings.
+            Neighbourhood-wide changes (seasonal vegetation, weather) are automatically filtered out
+            so that only site-specific changes are flagged.
+          </Text>
+          <Text style={{ ...s.body, marginBottom: 6 }}>
+            <Text style={s.bold}>Development application search: </Text>
+            DA and CDC applications were searched on the NSW ePlanning Portal and matched to this address.
+            Portal data is comprehensive from July 2021. Earlier applications may not appear.
+          </Text>
+          <Text style={{ ...s.body, marginBottom: 6 }}>
+            <Text style={s.bold}>Heritage check: </Text>
+            The property was checked against heritage item and conservation area spatial overlays
+            from local and state planning instruments.
+          </Text>
+        </View>
+
+        <View style={{ marginTop: 4, marginBottom: 12 }}>
+          <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
+            <Text style={s.bold}>Data sources: </Text>
+            Sentinel-2 satellite imagery (ESA, via Spatial Days) | NSW ePlanning Portal |
+            NSW Planning Portal spatial overlays | NSW SES flood event records | NSW RFS bushfire records
+          </Text>
+        </View>
+
+        {/* Limitations */}
+        <Text style={s.sectionTitle}>Limitations</Text>
+        <Text style={{ ...s.body, color: GRAY_500, fontSize: 8, lineHeight: 1.6, marginBottom: 12 }}>
+          This report uses automated satellite analysis and cannot detect changes smaller than
+          approximately 30 square metres (e.g. a single-car carport). Interior renovations are not visible
+          to satellites. DA data before July 2021 may be incomplete. This report does not cover
+          unauthorised works, building compliance, contamination, or structural condition.
         </Text>
-
-        <View style={s.mb8} />
-
-        <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Data sources: </Text>
-          Tessera/Clay v1.5 (Spatial Days) · NSW ePlanning Portal · PlotDetect spatial database ·
-          NSW SES flood event records · NSW RFS bushfire event records
-        </Text>
-
-        <View style={s.mb12} />
 
         {/* Disclaimer */}
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, lineHeight: 1.6 }}>
-          This report is produced for preliminary due diligence purposes only and does not
-          constitute planning, legal, or engineering advice. Change detection results are based
-          on automated analysis of publicly available satellite data and may not capture all
-          physical changes, particularly for additions smaller than approximately 30 m².
-          DA event data is sourced from the NSW ePlanning Portal and may not reflect all
-          historical approvals or recent amendments.{'\n\n'}
-          Always commission a formal site inspection, engage a qualified town planner or
-          certifier, and verify planning controls with the relevant council and NSW Planning
-          Portal before lodging a development application.
+          This report is for preliminary due diligence purposes only. It does not constitute
+          planning, legal, or engineering advice. Always commission a formal site inspection,
+          engage a qualified town planner or certifier, and verify planning controls with the
+          relevant council and NSW Planning Portal before lodging a development application.
         </Text>
 
         <View style={{ ...s.calloutTeal, marginTop: 16 }}>
-          <Text style={{ ...s.calloutTitle, color: TEAL }}>Check this property's development potential</Text>
+          <Text style={{ ...s.calloutTitle, color: TEAL }}>More reports for this property</Text>
           <Text style={s.calloutText}>
-            <Link src="https://canibuildit.com.au" style={{ color: TEAL }}>canibuildit.com.au</Link>
-            {' '}— granny flat eligibility, flood risk, solar yield, and shadow impact reports for any NSW address.
+            <Link src={`https://canibuildit.com.au`} style={{ color: TEAL }}>canibuildit.com.au</Link>
+            {' '} — flood risk, bushfire pre-screen, shadow impact, solar yield, and granny flat eligibility for any NSW address.
           </Text>
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Pre-DA Site History Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
     </Document>
