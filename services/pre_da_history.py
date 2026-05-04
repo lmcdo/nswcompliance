@@ -1011,26 +1011,40 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         _mark_error(req.report_id, str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
 
-    # --- Tessera timeline ---
-    lot_embs = sample_lot_embeddings(lat, lon)
-    similarity_timeline = compute_similarity_timeline(lot_embs)
+    # --- Parallel pipeline: Tessera + NDVI/NDBI + DA events + Heritage ---
+    # These four blocks are independent after geocoding — run concurrently.
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    nbhd_embs = sample_neighbourhood_embeddings(lat, lon)
-    neighbourhood_sim_timeline = compute_similarity_timeline(nbhd_embs)
+    def _tessera_lot():
+        embs = sample_lot_embeddings(lat, lon)
+        return compute_similarity_timeline(embs)
 
-    # --- NDVI/NDBI ---
-    ndvi_ndbi = get_ndvi_ndbi_timeline(lat, lon)
-    ndvi_ndbi_deltas = compute_ndvi_ndbi_deltas(ndvi_ndbi)
+    def _tessera_nbhd():
+        embs = sample_neighbourhood_embeddings(lat, lon)
+        return compute_similarity_timeline(embs)
 
-    # --- DA events ---
-    if council:
-        all_da = get_da_events(council, req.address) + get_pcc_events(council, req.address)
-    else:
-        all_da = []
+    def _ndvi_ndbi():
+        raw = get_ndvi_ndbi_timeline(lat, lon)
+        return compute_ndvi_ndbi_deltas(raw)
+
+    def _da_events():
+        if council:
+            return get_da_events(council, req.address) + get_pcc_events(council, req.address)
         logger.warning(f"Council not resolved for {req.address} — DA events skipped")
+        return []
 
-    # --- Heritage ---
-    heritage = check_heritage_flag(lat, lon)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        fut_lot = pool.submit(_tessera_lot)
+        fut_nbhd = pool.submit(_tessera_nbhd)
+        fut_ndvi = pool.submit(_ndvi_ndbi)
+        fut_da = pool.submit(_da_events)
+        fut_heritage = pool.submit(check_heritage_flag, lat, lon)
+
+        similarity_timeline = fut_lot.result()
+        neighbourhood_sim_timeline = fut_nbhd.result()
+        ndvi_ndbi_deltas = fut_ndvi.result()
+        all_da = fut_da.result()
+        heritage = fut_heritage.result()
 
     # --- Wayback SSIM (small lots only) ---
     wayback_ssim: dict[str, float] = {}
