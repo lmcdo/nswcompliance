@@ -389,14 +389,16 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
 
         {/* ---- Recommended next steps ---- */}
         <Text style={s.sectionTitle}>Recommended next steps</Text>
-        {recs.map((rec, i) => (
-          <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }}>
-            <Text style={{ ...s.body, fontFamily: 'Helvetica-Bold', marginRight: 6, color: TEAL }}>
-              {i + 1}.
-            </Text>
-            <Text style={s.body}>{rec}</Text>
-          </View>
-        ))}
+        <View style={{ marginBottom: 24 }}>
+          {recs.map((rec, i) => (
+            <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }} wrap={false}>
+              <Text style={{ ...s.body, fontFamily: 'Helvetica-Bold', marginRight: 6, color: TEAL }}>
+                {i + 1}.
+              </Text>
+              <Text style={s.body}>{rec}</Text>
+            </View>
+          ))}
+        </View>
 
         <View style={s.footer} fixed>
           <Text style={s.footerText}>canibuildit.com.au</Text>
@@ -557,30 +559,51 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
               The following applications were found on the NSW ePlanning Portal for this address.
               The portal has comprehensive data from July 2021 onward; earlier applications may not appear.
             </Text>
-            <View style={s.tableHeader}>
-              <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Application</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Type</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Status</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 0.7 }}>Date</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Development type</Text>
-            </View>
-            {allDAs.map((da, i) => (
-                <View key={da.pan} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                  <Text style={{ ...s.tableCellBold, flex: 1.5 }}>{da.pan}</Text>
-                  <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5 }}>
-                    {da.app_type || '-'}
-                  </Text>
-                  <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5, color: da.status === 'Approved' || da.status === 'Determined' ? GREEN : GRAY_700 }}>
-                    {da.status || '-'}
-                  </Text>
-                  <Text style={{ ...s.tableCell, flex: 0.7, fontSize: 7.5 }}>
-                    {da.date || String(da.year)}
-                  </Text>
-                  <Text style={{ ...s.tableCell, flex: 2, fontSize: 7.5 }}>
-                    {da.dev_type || '-'}
-                  </Text>
+            {/* Rich table when pipeline provides full DA data, simple list otherwise */}
+            {allDAs.some(da => da.app_type || da.status) ? (
+              <>
+                <View style={s.tableHeader}>
+                  <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Application</Text>
+                  <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Type</Text>
+                  <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Status</Text>
+                  <Text style={{ ...s.tableHeaderCell, flex: 0.7 }}>Date</Text>
+                  <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Development type</Text>
                 </View>
-              ))}
+                {allDAs.map((da, i) => (
+                  <View key={da.pan} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                    <Text style={{ ...s.tableCellBold, flex: 1.5 }}>{da.pan}</Text>
+                    <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5 }}>
+                      {da.app_type || '-'}
+                    </Text>
+                    <Text style={{ ...s.tableCell, flex: 1, fontSize: 7.5, color: da.status === 'Approved' || da.status === 'Determined' ? GREEN : GRAY_700 }}>
+                      {da.status || '-'}
+                    </Text>
+                    <Text style={{ ...s.tableCell, flex: 0.7, fontSize: 7.5 }}>
+                      {da.date || String(da.year)}
+                    </Text>
+                    <Text style={{ ...s.tableCell, flex: 2, fontSize: 7.5 }}>
+                      {da.dev_type || '-'}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <>
+                <View style={s.tableHeader}>
+                  <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Application number</Text>
+                  <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Year detected</Text>
+                </View>
+                {allDAs.map((da, i) => (
+                  <View key={da.pan} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                    <Text style={{ ...s.tableCellBold, flex: 2 }}>{da.pan}</Text>
+                    <Text style={{ ...s.tableCell, flex: 1 }}>{da.year}</Text>
+                  </View>
+                ))}
+                <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 4 }}>
+                  For full application details (status, type, conditions), search each number on the NSW Planning Portal.
+                </Text>
+              </>
+            )}
             <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
               Check current status at{' '}
               <Link src="https://www.planningportal.nsw.gov.au/" style={{ color: TEAL }}>
