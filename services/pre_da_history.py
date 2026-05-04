@@ -277,26 +277,41 @@ def geocode_address(address: str) -> tuple[float, float, str]:
     Confirmed working endpoint pattern from spike_solar_samgeo.py and granny_flat.py.
     """
     # Step 1: address → propId
-    r = requests.get(
-        f"{NSW_PLANNING_BASE}/viewersf/V1/ePlanningApi/address",
-        params={"a": address, "noOfRecords": 1},
-        headers=NSW_PLANNING_HEADERS,
-        timeout=10,
-    )
-    r.raise_for_status()
+    # NSW Planning Portal is flaky — retry once on timeout
+    for attempt in range(2):
+        try:
+            r = requests.get(
+                f"{NSW_PLANNING_BASE}/viewersf/V1/ePlanningApi/address",
+                params={"a": address, "noOfRecords": 1},
+                headers=NSW_PLANNING_HEADERS,
+                timeout=20,
+            )
+            r.raise_for_status()
+            break
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            if attempt == 1:
+                raise ValueError("NSW Planning Portal timed out — try again in a few minutes")
+            time.sleep(2)
     results = r.json()
     if not results:
         raise ValueError(f"Address not found: {address}")
     prop_id = results[0]["propId"]
 
     # Step 2: propId → lot geometry → WGS84 centroid
-    lot_r = requests.get(
-        f"{NSW_PLANNING_BASE}/viewersf/V1/ePlanningApi/lot",
-        params={"propId": prop_id},
-        headers=NSW_PLANNING_HEADERS,
-        timeout=10,
-    )
-    lot_r.raise_for_status()
+    for attempt in range(2):
+        try:
+            lot_r = requests.get(
+                f"{NSW_PLANNING_BASE}/viewersf/V1/ePlanningApi/lot",
+                params={"propId": prop_id},
+                headers=NSW_PLANNING_HEADERS,
+                timeout=20,
+            )
+            lot_r.raise_for_status()
+            break
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            if attempt == 1:
+                raise ValueError("NSW Planning Portal timed out — try again in a few minutes")
+            time.sleep(2)
     lots = lot_r.json()
     if not lots:
         raise ValueError(f"No lot geometry for propId={prop_id}")
