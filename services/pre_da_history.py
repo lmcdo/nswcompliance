@@ -1011,17 +1011,11 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         _mark_error(req.report_id, str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
 
-    # --- Parallel pipeline: Tessera + NDVI/NDBI + DA events + Heritage ---
-    # These four blocks are independent after geocoding — run concurrently.
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    def _tessera_lot():
-        embs = sample_lot_embeddings(lat, lon)
-        return compute_similarity_timeline(embs)
-
-    def _tessera_nbhd():
-        embs = sample_neighbourhood_embeddings(lat, lon)
-        return compute_similarity_timeline(embs)
+    # --- Parallel pipeline ---
+    # Tessera runs sequentially (single GeoTessera instance to avoid OOM from
+    # duplicate tile caches). NDVI/NDBI, DA events, and heritage run in parallel
+    # alongside tessera since they don't use geotessera.
+    from concurrent.futures import ThreadPoolExecutor
 
     def _ndvi_ndbi():
         raw = get_ndvi_ndbi_timeline(lat, lon)
@@ -1033,15 +1027,22 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         logger.warning(f"Council not resolved for {req.address} — DA events skipped")
         return []
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        fut_lot = pool.submit(_tessera_lot)
-        fut_nbhd = pool.submit(_tessera_nbhd)
+    # Start non-tessera work in background
+    with ThreadPoolExecutor(max_workers=3) as pool:
         fut_ndvi = pool.submit(_ndvi_ndbi)
         fut_da = pool.submit(_da_events)
         fut_heritage = pool.submit(check_heritage_flag, lat, lon)
 
-        similarity_timeline = fut_lot.result()
-        neighbourhood_sim_timeline = fut_nbhd.result()
+        # Tessera runs in main thread — sequential to share tile cache
+        lot_embs = sample_lot_embeddings(lat, lon)
+        similarity_timeline = compute_similarity_timeline(lot_embs)
+        del lot_embs  # free memory before neighbourhood
+
+        nbhd_embs = sample_neighbourhood_embeddings(lat, lon)
+        neighbourhood_sim_timeline = compute_similarity_timeline(nbhd_embs)
+        del nbhd_embs
+
+        # Collect background results
         ndvi_ndbi_deltas = fut_ndvi.result()
         all_da = fut_da.result()
         heritage = fut_heritage.result()
