@@ -250,7 +250,7 @@ function PreDAHistoryToolInner() {
       {/* Payment banners */}
       {paymentStatus === 'success' && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-          Payment confirmed — your PDF report will arrive by email shortly.
+          <span className="font-semibold">Payment confirmed.</span> Your full PDF report will arrive by email shortly. The detailed results are shown below.
         </div>
       )}
       {paymentStatus === 'cancelled' && (
@@ -381,7 +381,6 @@ function PreDAHistoryToolInner() {
                   <tr className="bg-gray-900 text-white">
                     <th className="py-2 px-3 text-left font-medium">Year</th>
                     <th className="py-2 px-3 text-left font-medium">Level</th>
-                    <th className="py-2 px-3 text-left font-medium">Similarity</th>
                     <th className="py-2 px-3 text-left font-medium">Notes</th>
                     <th className="py-2 px-3 text-left font-medium">DA refs</th>
                   </tr>
@@ -395,12 +394,9 @@ function PreDAHistoryToolInner() {
                           {levelLabel(entry.level)}
                         </span>
                       </td>
-                      <td className={`py-2 px-3 ${levelTextColor(entry.level)}`}>
-                        {entry.similarity != null ? entry.similarity.toFixed(3) : '\u2014'}
-                      </td>
                       <td className="py-2 px-3 text-gray-600 max-w-xs">
                         {entry.suppressed
-                          ? 'No lot-specific change — area-wide variation filtered out'
+                          ? 'Stable — neighbourhood-wide variation, not site-specific'
                           : entry.explanation || entry.label || '\u2014'}
                       </td>
                       <td className="py-2 px-3 text-gray-400">
@@ -414,6 +410,45 @@ function PreDAHistoryToolInner() {
               </table>
             </div>
           </div>
+
+          {/* Paid detail — shown after payment */}
+          {paymentStatus === 'success' && result.timeline.some(e => e.change_type || e.da_events?.length) && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Detailed analysis</h2>
+              <div className="space-y-3">
+                {result.timeline
+                  .filter(e => !e.suppressed && e.level !== 'no_data')
+                  .map(entry => (
+                    <div key={entry.year} className="p-4 border border-gray-200 rounded-lg bg-white">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-gray-900">{entry.year}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${levelBg(entry.level)}`}>
+                          {levelLabel(entry.level)}
+                        </span>
+                        {entry.change_type && entry.change_type !== 'unknown' && (
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                            {entry.change_type}
+                          </span>
+                        )}
+                      </div>
+                      {entry.similarity != null && (
+                        <p className="text-xs text-gray-500 mb-1">
+                          Similarity score: {entry.similarity.toFixed(3)}
+                        </p>
+                      )}
+                      {entry.explanation && (
+                        <p className="text-sm text-gray-700">{entry.explanation}</p>
+                      )}
+                      {entry.da_events && entry.da_events.length > 0 && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          DA references: {entry.da_events.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Methodology note */}
           <p className="text-xs text-gray-400 mb-6 leading-relaxed">
