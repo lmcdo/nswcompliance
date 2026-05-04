@@ -14,8 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-
 // Stripe requires the raw body for signature verification — disable body parsing
 export const dynamic = 'force-dynamic';
 
@@ -395,16 +393,6 @@ async function handlePreDAHistoryReport(
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
-
-  // Mark as paid before generating PDF (generate route gates on is_paid)
-  const supabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-  await supabase
-    .from('pre_da_history_reports')
-    .update({ is_paid: true })
-    .eq('id', report_id);
 
   let pdfBuffer: Buffer;
 

@@ -14,11 +14,11 @@ const WINDOW_DAYS = 90;
 const BBOX_DELTA = 0.005;
 const RADIUS_M = 500;
 
-// ETL Supabase — DA/CDC data written by nsw-planning-etl GH Actions
-const getEtlSupabase = () =>
+// DA Supabase — same project as map-viewer-restructured (nsw-planning-etl populates it)
+const getDaSupabase = () =>
   createClient(
-    process.env.ETL_SUPABASE_URL!,
-    process.env.ETL_SUPABASE_SERVICE_KEY!,
+    process.env.DA_SUPABASE_URL!,
+    process.env.DA_SUPABASE_ANON_KEY!,
   );
 
 const schema = z.object({
@@ -69,7 +69,7 @@ function parseDevTypes(raw: string | null): string {
  */
 async function queryNearbyApplications(lat: number, lng: number): Promise<Application[]> {
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const supabase = getEtlSupabase();
+  const supabase = getDaSupabase();
 
   const minLat = lat - BBOX_DELTA;
   const maxLat = lat + BBOX_DELTA;
