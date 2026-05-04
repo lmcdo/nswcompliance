@@ -31,7 +31,7 @@ const VALID_ADDRESS   = '5 Commercial Rd Haberfield NSW 2045';
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.STRIPE_SOLAR_YIELD_PRICE_ID = 'price_sol_test_123';
-  process.env.NEXT_PUBLIC_APP_URL = 'https://canibuildit.com.au';
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://canibuildit.com.au';
   mockCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/pay/cs_test_sol' });
 });
 

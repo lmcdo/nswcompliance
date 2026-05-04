@@ -29,7 +29,7 @@ const VALID_ADDRESS   = '5 Elm St Haberfield NSW 2045';
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.STRIPE_SHADOW_PRICE_ID = 'price_shadow_test_123';
-  process.env.NEXT_PUBLIC_APP_URL = 'https://canibuildit.com.au';
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://canibuildit.com.au';
   mockCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/pay/cs_test_shadow' });
 });
 
