@@ -341,6 +341,23 @@ function PreDAHistoryToolInner() {
             </div>
           </div>
 
+          {/* Interpretation summary */}
+          <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed">
+            <p className="font-semibold text-slate-900 mb-1">What this means</p>
+            {notableYears.length === 0 && allDaPans.length === 0 && (
+              <p>No significant physical changes detected on this lot between 2017 and 2024. No development applications found on record. This is a clean site history — low risk of unapproved works or undisclosed changes.</p>
+            )}
+            {notableYears.length === 0 && allDaPans.length > 0 && (
+              <p>No significant physical changes detected by satellite, but {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. The approved works may have been minor or not yet constructed.</p>
+            )}
+            {notableYears.length > 0 && allDaPans.length > 0 && (
+              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} — and {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. Cross-reference the DA details with the satellite timeline to check whether all changes were approved.</p>
+            )}
+            {notableYears.length > 0 && allDaPans.length === 0 && (
+              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} but no development applications found on record. This may indicate unapproved works, natural events, or works predating the ePlanning Portal (pre-2021).</p>
+            )}
+          </div>
+
           {/* Heritage flag */}
           <div className={`mb-4 p-4 rounded-lg text-sm ${
             result.heritage_flag
@@ -383,7 +400,7 @@ function PreDAHistoryToolInner() {
                       </td>
                       <td className="py-2 px-3 text-gray-600 max-w-xs">
                         {entry.suppressed
-                          ? 'Suppressed \u2014 systemic area event'
+                          ? 'No lot-specific change — area-wide variation filtered out'
                           : entry.explanation || entry.label || '\u2014'}
                       </td>
                       <td className="py-2 px-3 text-gray-400">
@@ -397,6 +414,14 @@ function PreDAHistoryToolInner() {
               </table>
             </div>
           </div>
+
+          {/* Methodology note */}
+          <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+            Each year is compared to the previous year and to the surrounding neighbourhood. Years marked
+            &ldquo;area-wide variation filtered out&rdquo; showed satellite changes consistent with the whole
+            neighbourhood (drought, seasonal shift, or sensor variation) rather than lot-specific activity.
+            DA events are sourced from the NSW ePlanning Portal — complete from July 2021.
+          </p>
 
           {/* Stripe CTA */}
           <div className="p-6 bg-teal-50 border border-teal-200 rounded-lg">
