@@ -336,6 +336,11 @@ def _sample_embeddings(points: list[tuple[float, float]], years: list[int]) -> d
     """
     from geotessera import GeoTessera
     gt = GeoTessera()
+    return _sample_embeddings_with_client(gt, points, years)
+
+
+def _sample_embeddings_with_client(gt, points: list[tuple[float, float]], years: list[int]) -> dict[int, np.ndarray | None]:
+    """Sample embeddings using a pre-existing GeoTessera client (avoids duplicate tile caches)."""
     result = {}
     for year in years:
         emb = gt.sample_embeddings_at_points(points, year=year)
@@ -344,35 +349,35 @@ def _sample_embeddings(points: list[tuple[float, float]], years: list[int]) -> d
     return result
 
 
-def sample_lot_embeddings(lat: float, lon: float) -> dict[int, np.ndarray | None]:
-    """
-    5-point sampling: centroid + 4 interior corners at ~16m offset.
-    Reduces random pixel noise by ~40% vs centroid-only.
-    """
+def _lot_points(lat: float, lon: float) -> list[tuple[float, float]]:
+    """5-point sampling: centroid + 4 interior corners at ~16m offset."""
     OFFSET = 0.00015  # ~16m at Sydney latitude
-    points = [
+    return [
         (lon, lat),
         (lon + OFFSET, lat + OFFSET),
         (lon - OFFSET, lat + OFFSET),
         (lon + OFFSET, lat - OFFSET),
         (lon - OFFSET, lat - OFFSET),
     ]
-    return _sample_embeddings(points, YEARS)
 
 
-def sample_neighbourhood_embeddings(lat: float, lon: float) -> dict[int, np.ndarray | None]:
-    """
-    16-point ring at 28–55m from lot centroid.
-    Used for neighbourhood normalisation — filters drought/infrastructure/systemic events.
-    """
+def sample_lot_embeddings(lat: float, lon: float) -> dict[int, np.ndarray | None]:
+    return _sample_embeddings(_lot_points(lat, lon), YEARS)
+
+
+def _nbhd_points(lat: float, lon: float) -> list[tuple[float, float]]:
+    """8-point ring at ~40m from lot centroid (reduced from 16 to cut memory)."""
     OFFSET_NEAR = 0.00025  # ~28m
     OFFSET_FAR = 0.00050   # ~55m
     r_avg = (OFFSET_NEAR + OFFSET_FAR) / 2
-    ring_points = [
+    return [
         (lon + r_avg * math.cos(math.radians(a)), lat + r_avg * math.sin(math.radians(a)))
-        for a in range(0, 360, 22)  # 16 points
+        for a in range(0, 360, 45)  # 8 points
     ]
-    return _sample_embeddings(ring_points, YEARS)
+
+
+def sample_neighbourhood_embeddings(lat: float, lon: float) -> dict[int, np.ndarray | None]:
+    return _sample_embeddings(_nbhd_points(lat, lon), YEARS)
 
 
 def compute_similarity_timeline(
@@ -1033,14 +1038,22 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         fut_da = pool.submit(_da_events)
         fut_heritage = pool.submit(check_heritage_flag, lat, lon)
 
-        # Tessera runs in main thread — sequential to share tile cache
-        lot_embs = sample_lot_embeddings(lat, lon)
-        similarity_timeline = compute_similarity_timeline(lot_embs)
-        del lot_embs  # free memory before neighbourhood
+        # Tessera runs in main thread — single GeoTessera instance shared
+        # between lot and neighbourhood to avoid duplicate tile downloads.
+        # GC between passes to release numpy arrays from lot embeddings.
+        import gc
+        from geotessera import GeoTessera
+        gt = GeoTessera()
 
-        nbhd_embs = sample_neighbourhood_embeddings(lat, lon)
+        lot_embs = _sample_embeddings_with_client(gt, _lot_points(lat, lon), YEARS)
+        similarity_timeline = compute_similarity_timeline(lot_embs)
+        del lot_embs
+        gc.collect()
+
+        nbhd_embs = _sample_embeddings_with_client(gt, _nbhd_points(lat, lon), YEARS)
         neighbourhood_sim_timeline = compute_similarity_timeline(nbhd_embs)
-        del nbhd_embs
+        del nbhd_embs, gt
+        gc.collect()
 
         # Collect background results
         ndvi_ndbi_deltas = fut_ndvi.result()
