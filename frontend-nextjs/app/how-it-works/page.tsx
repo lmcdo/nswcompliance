@@ -53,6 +53,19 @@ const TOOLS = [
     limitations: 'Shadow analysis is computed for the winter solstice as the worst-case scenario. Results are an estimate — council-submitted shadow diagrams require a licensed surveyor or certifier.',
   },
   {
+    name: 'Pre-DA Site History',
+    href: '/reports/pre-da-history',
+    sources: [
+      { name: 'European Space Agency (Sentinel-2 via Element84)', use: 'Annual satellite imagery embeddings for year-on-year physical change detection (2017–2025)' },
+      { name: 'European Space Agency (Sentinel-2 optical)', use: 'NDVI (vegetation) and NDBI (built-up) spectral indices to distinguish construction from natural events' },
+      { name: 'NSW ePlanning Portal (OnlineDA + OnlineCDC APIs)', use: 'DA, CDC, construction certificate, and occupation certificate records for the address' },
+      { name: 'NSW Government spatial overlays (PostGIS)', use: 'Heritage conservation area boundary check' },
+      { name: 'NSW Planning Portal (geocoder)', use: 'Address resolution to precise lot coordinates' },
+    ],
+    cadence: 'Satellite embeddings are based on annual composites (June–September dry season, lowest cloud cover). DA records are queried live from the ePlanning Portal. Heritage overlays are updated when councils publish new spatial data.',
+    limitations: 'Satellite change detection has ~10m resolution — small structures (sheds, fences) may not register. Some inner Sydney suburbs have sparse satellite coverage before 2024. DA records depend on councils submitting to the ePlanning Portal. Heritage overlays may not include all individual heritage items (only conservation areas).',
+  },
+  {
     name: 'Threat Radar (DA Monitor)',
     href: '/reports/threat-radar',
     sources: [

@@ -14,7 +14,8 @@ const NAV_ITEMS = [
   { href: '/reports/shadow', label: 'Shadow' },
   { href: '/reports/threat-radar', label: 'Threat Radar' },
   { href: '/reports/flood', label: 'Flood Truth' },
-  { href: '/granny-flat', label: 'Granny Flat' },
+  { href: '/reports/granny-flat', label: 'Granny Flat' },
+  { href: '/reports/pre-da-history', label: 'Site History' },
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
@@ -53,6 +54,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
           <span>© 2026 canibuildit.com.au — NSW planning intelligence</span>
           <div className="flex flex-wrap gap-4">
+            <Link href="/#browse-by-area" className="hover:text-gray-600 transition-colors">Browse by area</Link>
             <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>
             <Link href="/pricing" className="hover:text-gray-600 transition-colors">Pricing</Link>
             <Link href="/partner" className="hover:text-gray-600 transition-colors">Embed program</Link>

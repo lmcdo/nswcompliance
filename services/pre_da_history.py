@@ -71,6 +71,10 @@ SIM_MODERATE = 0.70
 # Lot area below which we also run Wayback SSIM (Tessera resolution is poor)
 SMALL_LOT_THRESHOLD_M2 = 300
 
+# Max pages to fetch from ePlanning per application type (50 records/page).
+# 10 pages = 500 DAs — covers all but the very largest councils.
+EPLANNING_MAX_PAGES = 10
+
 DATA_QUALITY_NOTE = (
     "Satellite analysis based on Tessera/Clay v1.5 annual embeddings (10m resolution). "
     "DA events sourced from NSW ePlanning Portal — complete from July 2021; "
@@ -239,10 +243,8 @@ def _get_council_from_db(lat: float, lon: float) -> str:
                 "SELECT lga_name FROM spatial_overlays "
                 "WHERE layer_type = 'height' "
                 "AND lga_name IS NOT NULL "
-                "AND ST_Contains("
-                "  ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326), "
-                "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)"
-                ") LIMIT 1",
+                "AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
+                "LIMIT 1",
                 (lon, lat),
             )
             row = cur.fetchone()
@@ -251,10 +253,8 @@ def _get_council_from_db(lat: float, lon: float) -> str:
                 cur.execute(
                     "SELECT lga_name FROM spatial_overlays "
                     "WHERE lga_name IS NOT NULL "
-                    "AND ST_Contains("
-                    "  ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326), "
-                    "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)"
-                    ") LIMIT 1",
+                    "AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
+                    "LIMIT 1",
                     (lon, lat),
                 )
                 row = cur.fetchone()
@@ -387,57 +387,135 @@ def compute_similarity_timeline(
 # Layer 3 — Sentinel-2 NDVI/NDBI timeline
 # ---------------------------------------------------------------------------
 
+# SCL clean pixel classes: 4=vegetation, 5=bare_soil, 6=water, 11=snow/ice
+_SCL_CLEAN = {4, 5, 6, 11}
+_MAX_SCENES_PER_YEAR = 3  # top-N least-cloudy scenes for median composite
+
+
+def _sample_3x3_median(src, native_x: float, native_y: float) -> float | None:
+    """Read a 3x3 window around the point and return the median non-zero value."""
+    import rasterio as _rio
+    row, col = src.index(native_x, native_y)
+    # Clamp to raster bounds
+    row = max(1, min(row, src.height - 2))
+    col = max(1, min(col, src.width - 2))
+    window = _rio.windows.Window(col - 1, row - 1, 3, 3)
+    data = src.read(1, window=window).flatten().astype(float)
+    valid = data[data > 0]
+    if len(valid) == 0:
+        return None
+    return float(np.median(valid))
+
+
+def _fetch_ndvi_ndbi_year(year: int, lat: float, lon: float, bbox: list) -> tuple[int, dict]:
+    """
+    Fetch Sentinel-2 NDVI + NDBI for a single year. Thread-safe — own STAC client.
+
+    Noise reduction (3 layers):
+      1. SCL cloud mask — skip scenes where the target pixel is cloud/shadow
+      2. Multi-scene median — median across top-N clean scenes per year
+      3. 3x3 spatial median — median of 9 pixels per scene (catches edge noise)
+    """
+    import pystac_client
+    import rasterio
+    from pyproj import Transformer
+
+    null = {"ndvi": None, "ndbi": None}
+    catalog = pystac_client.Client.open(ELEMENT84_URL)
+    items = catalog.search(
+        collections=["sentinel-2-l2a"],
+        bbox=bbox,
+        datetime=f"{year}-06-01/{year}-09-30",  # dry season — minimises cloud
+        query={"eo:cloud_cover": {"lt": 20}},
+    ).item_collection()
+
+    if not items:
+        return year, null
+
+    # Sort by cloud cover, take top N
+    items_sorted = sorted(items, key=lambda x: x.properties.get("eo:cloud_cover", 100))
+    candidates = items_sorted[:_MAX_SCENES_PER_YEAR]
+
+    ndvi_samples: list[float] = []
+    ndbi_samples: list[float] = []
+
+    for item in candidates:
+        try:
+            epsg = item.properties.get("proj:epsg", 32756)
+            tx = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
+            native_x, native_y = tx.transform(lon, lat)
+
+            # Fix 1: SCL cloud mask check — skip contaminated pixels
+            if "scl" in item.assets:
+                with rasterio.open(item.assets["scl"].href) as scl_src:
+                    scl_val = list(scl_src.sample([(native_x, native_y)]))[0][0]
+                    if int(scl_val) not in _SCL_CLEAN:
+                        continue  # cloud, shadow, or cirrus — skip this scene
+
+            # Fix 3: 3x3 spatial median per band
+            # Element84 asset names: B08 (NIR) → "nir", B04 (Red) → "red", B11 (SWIR) → "swir16"
+            with (
+                rasterio.open(item.assets["nir"].href) as nir_src,
+                rasterio.open(item.assets["red"].href) as red_src,
+                rasterio.open(item.assets["swir16"].href) as swir_src,
+            ):
+                b8_raw = _sample_3x3_median(nir_src, native_x, native_y)
+                b4_raw = _sample_3x3_median(red_src, native_x, native_y)
+                b11_raw = _sample_3x3_median(swir_src, native_x, native_y)
+
+            if b8_raw is None or b4_raw is None or b11_raw is None:
+                continue
+
+            b8, b4, b11 = b8_raw / 10000.0, b4_raw / 10000.0, b11_raw / 10000.0
+
+            if b8 + b4 > 0:
+                ndvi_samples.append((b8 - b4) / (b8 + b4))
+            if b11 + b8 > 0:
+                ndbi_samples.append((b11 - b8) / (b11 + b8))
+        except Exception as exc:
+            logger.debug(f"Sentinel-2 {year} scene {item.id}: {exc}")
+            continue
+
+    # Fix 2: median across clean scenes
+    ndvi = float(np.median(ndvi_samples)) if ndvi_samples else None
+    ndbi = float(np.median(ndbi_samples)) if ndbi_samples else None
+
+    return year, {"ndvi": ndvi, "ndbi": ndbi}
+
+
 def get_ndvi_ndbi_timeline(lat: float, lon: float) -> dict[int, dict]:
     """
     For each year 2017–2025, fetch Sentinel-2 L2A and compute NDVI + NDBI at centroid.
-    Uses Element84 Earth Search — free, no auth.
-    Returns dict of year → {"ndvi": float|None, "ndbi": float|None}.
+    Uses Element84 Earth Search — free, no auth. Parallelised across years.
+
+    CRS note: Element84 COGs are in native UTM. Must transform (lon, lat) from
+    EPSG:4326 → raster CRS before rasterio.sample(). Pattern from flood_truth.py.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     try:
-        import pystac_client
-        import rasterio
+        import pystac_client  # noqa: F401
+        import rasterio  # noqa: F401
+        from pyproj import Transformer  # noqa: F401
     except ImportError:
-        logger.warning("pystac_client or rasterio not installed — NDVI/NDBI skipped")
+        logger.warning("pystac_client, rasterio, or pyproj not installed — NDVI/NDBI skipped")
         return {y: {"ndvi": None, "ndbi": None} for y in YEARS}
 
-    catalog = pystac_client.Client.open(ELEMENT84_URL)
     bbox = [lon - 0.001, lat - 0.001, lon + 0.001, lat + 0.001]
-    results = {}
+    results: dict[int, dict] = {}
 
-    for year in YEARS:
-        ndvi_val, ndbi_val = None, None
-        try:
-            items = catalog.search(
-                collections=["sentinel-2-l2a"],
-                bbox=bbox,
-                datetime=f"{year}-06-01/{year}-09-30",  # dry season — minimises cloud
-                query={"eo:cloud_cover": {"lt": 20}},
-            ).item_collection()
-
-            if not items:
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {
+            pool.submit(_fetch_ndvi_ndbi_year, y, lat, lon, bbox): y for y in YEARS
+        }
+        for fut in as_completed(futures):
+            year = futures[fut]
+            try:
+                _, result = fut.result(timeout=45)
+                results[year] = result
+            except Exception as exc:
+                logger.debug(f"Sentinel-2 {year}: {exc}")
                 results[year] = {"ndvi": None, "ndbi": None}
-                continue
-
-            item = sorted(items, key=lambda x: x.properties.get("eo:cloud_cover", 100))[0]
-
-            with (
-                rasterio.open(item.assets["B08"].href) as b8_src,
-                rasterio.open(item.assets["B04"].href) as b4_src,
-                rasterio.open(item.assets["B11"].href) as b11_src,
-            ):
-                b8 = list(b8_src.sample([(lon, lat)]))[0][0] / 10000.0
-                b4 = list(b4_src.sample([(lon, lat)]))[0][0] / 10000.0
-                b11 = list(b11_src.sample([(lon, lat)]))[0][0] / 10000.0
-
-                if b8 + b4 > 0:
-                    ndvi_val = float((b8 - b4) / (b8 + b4))
-                if b11 + b8 > 0:
-                    ndbi_val = float((b11 - b8) / (b11 + b8))
-
-        except Exception as exc:
-            logger.debug(f"Sentinel-2 {year}: {exc}")
-
-        results[year] = {"ndvi": ndvi_val, "ndbi": ndbi_val}
 
     return results
 
@@ -474,12 +552,16 @@ def _extract_da_fields(rec: dict) -> dict:
     """Flatten a raw ePlanning response record to a standard dict."""
     loc = (rec.get("Location") or [{}])[0]
     dev_types = [d.get("DevelopmentType", "") for d in (rec.get("DevelopmentType") or [])]
+    date_updated = rec.get("DateLastUpdated", "")
+    dev_type = "; ".join(t for t in dev_types if t)
     return {
         "pan": rec.get("PlanningPortalApplicationNumber"),
         "status": rec.get("ApplicationStatus"),
         "app_type": rec.get("ApplicationType"),
-        "dev_type": "; ".join(t for t in dev_types if t),
-        "date_updated": rec.get("DateLastUpdated", ""),
+        "dev_type": dev_type,
+        "date_updated": date_updated,
+        "date": date_updated[:10],  # YYYY-MM-DD alias for consumers
+        "description": dev_type or rec.get("ApplicationType", ""),
         "address": loc.get("FullAddress", ""),
         "suburb": loc.get("Suburb", ""),
         "lon": float(loc["X"]) if loc.get("X") else None,
@@ -489,7 +571,7 @@ def _extract_da_fields(rec: dict) -> dict:
 
 def _fetch_eplanning_page(endpoint: str, filters: dict, page: int) -> list[dict]:
     """
-    Single paginated call to OnlineDA or OnlinePCC.
+    Single paginated call to OnlineDA or OnlineCDC.
     Filters must be the inner dict — this function wraps them in the {"filters": ...} envelope.
     """
     r = requests.get(
@@ -517,7 +599,7 @@ def get_da_events(council: str, address_fragment: str) -> list[dict]:
     results = []
     for app_type in ["Development Application", "Complying Development Certificate"]:
         page = 1
-        while True:
+        while page <= EPLANNING_MAX_PAGES:
             try:
                 batch = _fetch_eplanning_page(
                     "OnlineDA",
@@ -548,15 +630,15 @@ def get_pcc_events(council: str, address_fragment: str) -> list[dict]:
     results = []
     for app_type in ["Construction Certificate", "Occupation Certificate"]:
         page = 1
-        while True:
+        while page <= EPLANNING_MAX_PAGES:
             try:
                 batch = _fetch_eplanning_page(
-                    "OnlinePCC",
+                    "OnlineCDC",
                     {"CouncilName": [council], "ApplicationType": app_type},
                     page,
                 )
             except Exception as exc:
-                logger.warning(f"ePlanning OnlinePCC page {page}: {exc}")
+                logger.warning(f"ePlanning OnlineCDC page {page}: {exc}")
                 break
             results.extend(batch)
             if len(batch) < 50:
@@ -576,28 +658,33 @@ def get_pcc_events(council: str, address_fragment: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def check_heritage_flag(lat: float, lon: float) -> dict:
-    """Query PostGIS for heritage overlay at point. Returns flag + note."""
+    """Query PostGIS for heritage overlay at point. Returns flag + note.
+    Pattern matched to solar_yield.py:_check_heritage (confirmed working).
+    """
+    conn = None
     try:
-        import psycopg2.extras
         conn = _get_conn()
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT overlay_type, overlay_name
-                FROM spatial_overlays
-                WHERE ST_Contains(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                  AND overlay_type IN ('heritage_conservation_area', 'heritage_item')
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
                 LIMIT 1
                 """,
                 (lon, lat),
             )
-            row = cur.fetchone()
-        conn.close()
-        if row:
-            return {"flag": True, "note": f"Within {row['overlay_name']}"}
+            found = cur.fetchone() is not None
+        return {
+            "flag": found,
+            "note": "Within a heritage overlay — any works may require a Statement of Heritage Impact" if found else None,
+        }
     except Exception as exc:
         logger.warning(f"Heritage flag query failed: {exc}")
-    return {"flag": False, "note": None}
+        return {"flag": False, "note": None}
+    finally:
+        if conn:
+            conn.close()
 
 # ---------------------------------------------------------------------------
 # Layer 6 — Flood/fire event annotation
@@ -741,15 +828,22 @@ def build_year_annotation(
     Applies: neighbourhood suppression → NDVI/NDBI disambiguation → DA cross-reference.
     """
     # Step 1: neighbourhood-adjusted suppression
+    # Only suppress if BOTH the Tessera delta is within noise AND the NDVI/NDBI
+    # deltas are insignificant. Strong spectral signals (vegetation loss, built-up
+    # increase) override Tessera neighbourhood similarity.
     if neighbourhood_similarity is not None:
         delta = similarity - neighbourhood_similarity
-        if abs(delta) < 0.02:
+        ndvi_significant = ndvi_delta is not None and ndvi_delta < -0.10
+        ndbi_significant = ndbi_delta is not None and ndbi_delta > 0.05
+        if abs(delta) < 0.04 and not ndvi_significant and not ndbi_significant:
             return {
                 "year": year,
                 "level": "stable",
                 "label": "No lot-specific change (systemic environmental event suppressed)",
                 "color": "green",
                 "suppressed": True,
+                "ndvi_delta": round(ndvi_delta, 3) if ndvi_delta is not None else None,
+                "ndbi_delta": round(ndbi_delta, 3) if ndbi_delta is not None else None,
                 "da_events": [],
             }
 
@@ -780,6 +874,18 @@ def build_year_annotation(
                     "change_type": "noise",
                     "da_events": [],
                 }
+
+    # Step 3b: spectral escalation — strong NDVI/NDBI overrides Tessera "stable"
+    # Tessera embeddings are 10m neighbourhood-scale features. A single tree removal
+    # or driveway pour may not register in the embedding but shows clearly in NDVI/NDBI.
+    if classification["level"] == "stable" and change_type in ("construction", "vegetation", "hardening"):
+        strong_ndvi = ndvi_delta is not None and ndvi_delta < -0.15
+        strong_ndbi = ndbi_delta is not None and ndbi_delta > 0.08
+        if strong_ndvi or strong_ndbi:
+            classification["level"] = "minor"
+            classification["color"] = "yellow"
+            classification["label"] = "Minor change detected"
+            classification["spectral_escalation"] = True
 
     # Step 4: DA event cross-reference
     # Use date_updated year as proxy for event year (LodgementDate not in API response)
@@ -872,6 +978,17 @@ def run_pre_da_history(req: PreDAHistoryRequest):
     When report_id is provided (async Trigger.dev flow), the pre-allocated row is
     UPDATEd with status='complete'. Otherwise a new row is INSERTed (dev / direct call).
     """
+    try:
+        return _run_pre_da_history_inner(req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Pipeline crashed: {exc}", exc_info=True)
+        _mark_error(req.report_id, f"Pipeline crashed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Pipeline failed: {exc}")
+
+
+def _run_pre_da_history_inner(req: PreDAHistoryRequest):
     # --- Geocode ---
     try:
         lat, lon, council = geocode_address(req.address)
@@ -928,6 +1045,9 @@ def run_pre_da_history(req: PreDAHistoryRequest):
     }
 
     # --- Store to Supabase ---
+    # DB write MUST succeed — if it fails, the frontend poll will hang on 'pending' forever.
+    # Raise so Trigger.dev retries or the error propagates to the caller.
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
@@ -958,9 +1078,13 @@ def run_pre_da_history(req: PreDAHistoryRequest):
                 if row:
                     result["id"] = str(row[0])
         conn.commit()
-        conn.close()
     except Exception as exc:
-        logger.warning(f"Supabase write failed: {exc}")
+        logger.error(f"Supabase write failed: {exc}")
+        _mark_error(req.report_id, f"DB write failed: {exc}")
+        raise HTTPException(status_code=503, detail="Report storage failed — please retry")
+    finally:
+        if conn:
+            conn.close()
 
     return result
 

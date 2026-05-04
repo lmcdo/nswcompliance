@@ -5,11 +5,13 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 const TOOLS = [
-  { label: 'Granny Flat Check', href: '/granny-flat', emoji: '🏡' },
-  { label: 'Flood Risk', href: '/flood-risk', emoji: '🌊' },
-  { label: 'Solar Yield', href: '/solar-potential', emoji: '☀️' },
-  { label: 'Shadow Detector', href: '/shadow', emoji: '🌑' },
-  { label: 'Threat Radar', href: '/threat-radar', emoji: '📡' },
+  { label: 'Flood Risk', href: '/reports/flood', emoji: '🌊' },
+  { label: 'Bushfire Pre-Screen', href: '/reports/bushfire', emoji: '🔥' },
+  { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
+  { label: 'Pre-DA Site History', href: '/reports/pre-da-history', emoji: '🛰' },
+  { label: 'Solar Yield', href: '/reports/solar-yield', emoji: '☀️' },
+  { label: 'Shadow Detector', href: '/reports/shadow', emoji: '🌑' },
+  { label: 'Threat Radar', href: '/reports/threat-radar', emoji: '📡' },
 ];
 
 const TOP_LGAS = [
@@ -85,10 +87,10 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
               Pricing
             </Link>
             <Link
-              href="/granny-flat"
+              href="/reports"
               className="text-sm px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
-              Free check →
+              All tools →
             </Link>
           </nav>
         </div>
@@ -108,7 +110,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
               NSW planning intelligence for property owners and investors.
             </p>
             <p className="text-xs text-gray-300">
-              Data: NSW Planning Portal · Spatial Services NSW · BOM
+              Data: NSW Planning Portal · Spatial Services NSW · Bureau of Meteorology · European Space Agency
             </p>
           </div>
 

@@ -31,6 +31,19 @@ export interface BomFloodEvent {
   ari_category: string;
 }
 
+export interface FloodStudyEntry {
+  depth_m: number | null;
+  level_m_ahd: number | null;
+}
+
+export interface FloodStudyResult {
+  study_key: string;
+  study_name: string;
+  source: string;
+  design: Record<string, FloodStudyEntry>;
+  historical: Record<string, FloodStudyEntry>;
+}
+
 export interface FloodReportData {
   address: string;
   run_date: string;
@@ -67,6 +80,10 @@ export interface FloodReportData {
   hawkesbury_flood_level_500aep?: number | null;
   hawkesbury_flood_level_pmf?: number | null;
   hawkesbury_flood_study?: string | null;
+  // Generalised flood study rasters + DEM elevation
+  ground_elevation_m_ahd?: number | null;
+  in_100yr_flood_zone?: boolean;
+  flood_studies?: FloodStudyResult[];
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
@@ -226,7 +243,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
   const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.none;
   const epiKey     = data.epi_flood_class ?? 'none';
   const epiLabel   = EPI_CLASS_META[epiKey]?.label ?? epiKey;
-  const totalPages = data.tile_b64 ? 3 : 2;
+  const hasStudies = data.is_paid && (data.flood_studies ?? []).length > 0;
+  const totalPages = (data.tile_b64 ? 1 : 0) + (hasStudies ? 3 : 2);
 
   return (
     <Document title={`Flood Truth Report — ${data.address}`} author="PlotDetect">
@@ -247,6 +265,32 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             {signalMeta.label}
           </Text>
         </View>
+
+        {/* 100yr flood zone headline */}
+        {data.in_100yr_flood_zone === true && (
+          <View style={{ backgroundColor: RED_LIGHT, borderLeft: `3 solid ${RED}`, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderRadius: 2 }}>
+            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: RED }}>
+              Within 1-in-100 year flood zone
+            </Text>
+            {data.ground_elevation_m_ahd != null && (
+              <Text style={{ fontSize: 8, color: GRAY_700, marginTop: 3 }}>
+                Ground elevation: {data.ground_elevation_m_ahd.toFixed(1)}m AHD
+              </Text>
+            )}
+          </View>
+        )}
+        {data.in_100yr_flood_zone === false && (
+          <View style={{ backgroundColor: GREEN_LIGHT, borderLeft: `3 solid ${GREEN}`, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderRadius: 2 }}>
+            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: GREEN }}>
+              Not in 1-in-100 year flood zone
+            </Text>
+            {data.ground_elevation_m_ahd != null && (
+              <Text style={{ fontSize: 8, color: GRAY_700, marginTop: 3 }}>
+                Ground elevation: {data.ground_elevation_m_ahd.toFixed(1)}m AHD
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Insurance implication note */}
         <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginTop: 6, marginBottom: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
@@ -381,43 +425,47 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           </View>
         )}
 
-        {/* Hawkesbury AEP flood level table (paid, raster data present) */}
-        {data.is_paid === true && data.hawkesbury_flood_level_100aep != null && (() => {
-          const AEP_ROWS: Array<{ label: string; field: keyof FloodReportData }> = [
-            { label: '1-in-2 yr (50% AEP)',   field: 'hawkesbury_flood_level_2aep' },
-            { label: '1-in-5 yr (20% AEP)',   field: 'hawkesbury_flood_level_5aep' },
-            { label: '1-in-10 yr (10% AEP)',  field: 'hawkesbury_flood_level_10aep' },
-            { label: '1-in-20 yr (5% AEP)',   field: 'hawkesbury_flood_level_20aep' },
-            { label: '1-in-50 yr (2% AEP)',   field: 'hawkesbury_flood_level_50aep' },
-            { label: '1-in-100 yr (1% AEP)',  field: 'hawkesbury_flood_level_100aep' },
-            { label: '1-in-200 yr (0.5% AEP)', field: 'hawkesbury_flood_level_200aep' },
-            { label: '1-in-500 yr (0.2% AEP)', field: 'hawkesbury_flood_level_500aep' },
-            { label: 'PMF (Probable Maximum)', field: 'hawkesbury_flood_level_pmf' },
-          ];
+        {/* Flood study raster results — free: 1pct teaser per study */}
+        {(data.flood_studies ?? []).map((study) => {
+          const pct1 = study.design?.['1pct'];
+          const hasDesign = pct1?.depth_m != null || pct1?.level_m_ahd != null;
+          const historicalYears = Object.keys(study.historical ?? {}).sort();
+          if (!hasDesign && historicalYears.length === 0) return null;
           return (
-            <View style={{ marginBottom: 12 }}>
-              <Text style={s.sectionTitle}>Flood levels by AEP event — Hawkesbury FRMSP 2025</Text>
-              <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
-                <Text style={{ flex: 3, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>AEP event</Text>
-                <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Flood level (m AHD)</Text>
-              </View>
-              {AEP_ROWS.map((row, i) => {
-                const val = data[row.field] as number | null | undefined;
-                return (
-                  <View key={i} style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5 }}>
-                    <Text style={{ flex: 3, fontSize: 8.5, color: GRAY_700 }}>{row.label}</Text>
-                    <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: val != null ? RED : GRAY_500, textAlign: 'right' }}>
-                      {val != null ? val.toFixed(2) : 'n/a'}
-                    </Text>
-                  </View>
-                );
-              })}
-              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
-                {data.hawkesbury_flood_study ?? 'Hawkesbury FRMSP 2025'} - NSW Reconstruction Authority. 2m resolution remapped grid.
-              </Text>
+            <View key={study.study_key} style={[s.card, { marginBottom: 8 }]}>
+              <Text style={s.cardLabel}>{study.study_name} — {study.source}</Text>
+              {pct1?.depth_m != null && (
+                <Text style={s.cardValue}>
+                  {'1-in-100 yr flood depth: ' + pct1.depth_m.toFixed(2) + 'm'}
+                  {pct1.level_m_ahd != null ? ` (${pct1.level_m_ahd.toFixed(2)}m AHD)` : ''}
+                </Text>
+              )}
+              {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
+                <Text style={s.cardValue}>
+                  {'1-in-100 yr flood level: ' + pct1.level_m_ahd.toFixed(2) + 'm AHD'}
+                </Text>
+              )}
+              {historicalYears.length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                  {historicalYears.map((yr) => {
+                    const ev = study.historical[yr];
+                    const evLabel = ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded';
+                    return (
+                      <Text key={yr} style={{ fontSize: 7, backgroundColor: AMBER_LIGHT, color: '#92400e', paddingVertical: 2, paddingHorizontal: 5, borderRadius: 3 }}>
+                        {yr}: {evLabel}
+                      </Text>
+                    );
+                  })}
+                </View>
+              )}
+              {data.is_paid !== true && (
+                <Text style={[s.cardSub, { color: GRAY_500, marginTop: 3 }]}>
+                  Full AEP depth table included in the paid report
+                </Text>
+              )}
             </View>
           );
-        })()}
+        })}
 
         {/* SAR row */}
         {data.sar_flood_detected !== null && (
@@ -463,7 +511,122 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       </Page>
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 2: Disclaimer                                                   */}
+      {/* PAGE 2: Full AEP depth tables per flood study (PAID only)           */}
+      {/* ------------------------------------------------------------------ */}
+      {hasStudies && (() => {
+        const AEP_DISPLAY: Record<string, string> = {
+          '50pct': '1-in-2 yr (50% AEP)',
+          '20pct': '1-in-5 yr (20% AEP)',
+          '10pct': '1-in-10 yr (10% AEP)',
+          '5pct':  '1-in-20 yr (5% AEP)',
+          '2pct':  '1-in-50 yr (2% AEP)',
+          '1pct':  '1-in-100 yr (1% AEP)',
+          '0_5pct': '1-in-200 yr (0.5% AEP)',
+          '0_2pct': '1-in-500 yr (0.2% AEP)',
+          'pmf':   'PMF (Probable Maximum Flood)',
+        };
+        const AEP_ORDER = ['50pct','20pct','10pct','5pct','2pct','1pct','0_5pct','0_2pct','pmf'];
+        return (
+          <Page size="A4" style={s.page}>
+            <LogoRow logo_b64={data.logo_b64} />
+            <Text style={s.sectionTitle}>Flood depth and level by AEP event</Text>
+            {data.ground_elevation_m_ahd != null && (
+              <Text style={[s.bodyText, { marginBottom: 10 }]}>
+                Ground elevation at this site: {data.ground_elevation_m_ahd.toFixed(1)}m AHD (NSW 5m DEM).
+                Depth = flood level minus ground elevation.
+              </Text>
+            )}
+
+            {(data.flood_studies ?? []).map((study) => {
+              const designKeys = AEP_ORDER.filter((k) => study.design?.[k]);
+              const histKeys = Object.keys(study.historical ?? {}).sort();
+              if (designKeys.length === 0 && histKeys.length === 0) return null;
+              const hasDepth = designKeys.some((k) => study.design[k]?.depth_m != null);
+              return (
+                <View key={study.study_key} style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 6 }}>
+                    {study.study_name}
+                  </Text>
+                  <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 6 }}>
+                    Source: {study.source}
+                  </Text>
+
+                  {/* Table header */}
+                  <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                    <Text style={{ flex: 3, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>
+                      AEP event
+                    </Text>
+                    {hasDepth && (
+                      <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>
+                        Depth (m)
+                      </Text>
+                    )}
+                    <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>
+                      Level (m AHD)
+                    </Text>
+                  </View>
+
+                  {/* Design event rows */}
+                  {designKeys.map((aepKey) => {
+                    const entry = study.design[aepKey];
+                    const isHundred = aepKey === '1pct';
+                    return (
+                      <View key={aepKey} style={{
+                        flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5,
+                        backgroundColor: isHundred ? RED_LIGHT : undefined,
+                      }}>
+                        <Text style={{ flex: 3, fontSize: 8.5, color: isHundred ? RED : GRAY_700, fontFamily: isHundred ? 'Helvetica-Bold' : 'Helvetica' }}>
+                          {AEP_DISPLAY[aepKey] ?? aepKey}
+                        </Text>
+                        {hasDepth && (
+                          <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: entry?.depth_m != null ? (isHundred ? RED : GRAY_900) : GRAY_500, textAlign: 'right' }}>
+                            {entry?.depth_m != null ? entry.depth_m.toFixed(2) : '—'}
+                          </Text>
+                        )}
+                        <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: entry?.level_m_ahd != null ? (isHundred ? RED : GRAY_900) : GRAY_500, textAlign: 'right' }}>
+                          {entry?.level_m_ahd != null ? entry.level_m_ahd.toFixed(2) : '—'}
+                        </Text>
+                      </View>
+                    );
+                  })}
+
+                  {/* Historical event rows */}
+                  {histKeys.length > 0 && (
+                    <>
+                      <View style={{ flexDirection: 'row', paddingVertical: 4, marginTop: 4 }}>
+                        <Text style={{ fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>
+                          Historical events
+                        </Text>
+                      </View>
+                      {histKeys.map((yr) => {
+                        const entry = study.historical[yr];
+                        return (
+                          <View key={yr} style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5 }}>
+                            <Text style={{ flex: 3, fontSize: 8.5, color: AMBER }}>{yr} flood event</Text>
+                            {hasDepth && (
+                              <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: entry?.depth_m != null ? AMBER : GRAY_500, textAlign: 'right' }}>
+                                {entry?.depth_m != null ? entry.depth_m.toFixed(2) : '—'}
+                              </Text>
+                            )}
+                            <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: entry?.level_m_ahd != null ? AMBER : GRAY_500, textAlign: 'right' }}>
+                              {entry?.level_m_ahd != null ? entry.level_m_ahd.toFixed(2) : '—'}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </>
+                  )}
+                </View>
+              );
+            })}
+
+            <Footer pageNum={2} total={totalPages} />
+          </Page>
+        );
+      })()}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Disclaimer page                                                      */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
@@ -497,11 +660,11 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           Report generated by PlotDetect · plotdetect.com.au · {data.run_date}
         </Text>
 
-        <Footer pageNum={2} total={totalPages} />
+        <Footer pageNum={hasStudies ? 3 : 2} total={totalPages} />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 3: Aerial tile (optional)                                       */}
+      {/* Aerial tile page (optional)                                          */}
       {/* ------------------------------------------------------------------ */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
@@ -517,7 +680,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
-          <Footer pageNum={3} total={totalPages} />
+          <Footer pageNum={totalPages} total={totalPages} />
         </Page>
       )}
 

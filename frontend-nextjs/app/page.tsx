@@ -1,274 +1,246 @@
-import type { Metadata } from 'next';
-import { AddressSearchForm } from '@/components/homepage/AddressSearchForm';
-import { sanitizeHTML } from '@/lib/sanitize';
+import Link from 'next/link';
 
-export const metadata: Metadata = {
-  title: 'canibuildit — Free NSW Property Planning Tools',
-  description: 'Check granny flat eligibility, flood risk, solar yield, shadow impact, and planning alerts for any NSW address. Free. Live data from the NSW Planning Portal.',
-  openGraph: {
-    title: 'canibuildit — Free NSW Property Planning Tools',
-    description: 'Five free tools for any NSW address: granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts.',
-    url: 'https://canibuildit.com.au',
-    siteName: 'canibuildit',
-    type: 'website',
-  },
-  alternates: {
-    canonical: 'https://canibuildit.com.au',
-  },
-};
-
-const TOOLS = [
+const BUYING = [
   {
-    emoji: '🏡',
-    title: 'Granny Flat Check',
-    subtitle: 'Could this property earn $280–$340/week extra?',
-    detail: 'Zone, lot size, strata, and SEPP Housing 2021 eligibility — instantly.',
-    href: '/granny-flat',
-    cta: 'Check eligibility',
-    accent: 'teal',
-  },
-  {
-    emoji: '🌊',
-    title: 'Flood Risk',
-    subtitle: 'Is this property flood-affected under the LEP?',
-    detail: 'Flood control lot status, ARI category, and planning implications.',
+    title: 'Flood Risk Check',
+    detail: 'Statutory flood zone, council flood study depths, satellite water history — 71 LGAs.',
     href: '/reports/flood',
-    cta: 'Check flood risk',
-    accent: 'blue',
+    badge: 'Free + $49 report',
+    accent: 'border-blue-200 hover:border-blue-300',
   },
   {
-    emoji: '☀️',
-    title: 'Solar Yield',
-    subtitle: 'How much solar can this roof generate?',
-    detail: 'Roof geometry, orientation, and estimated annual kWh yield.',
-    href: '/reports/solar-yield',
-    cta: 'Estimate yield',
-    accent: 'amber',
+    title: 'Bushfire Pre-Screen',
+    detail: 'RFS Bush Fire Prone Land status and BAL band estimate for any NSW address.',
+    href: '/reports/bushfire',
+    badge: 'Free',
+    accent: 'border-orange-200 hover:border-orange-300',
   },
   {
-    emoji: '🌑',
-    title: 'Shadow Detector',
-    subtitle: 'Will a proposed addition cause overshadowing?',
-    detail: 'Shadow path analysis at 9am, noon, and 3pm on June 21.',
-    href: '/reports/shadow',
-    cta: 'Run analysis',
-    accent: 'slate',
-  },
-  {
-    emoji: '📡',
-    title: 'Threat Radar',
-    subtitle: 'What developments are planned nearby?',
-    detail: 'Active DAs, CDCs, and rezoning proposals within 500m.',
-    href: '/reports/threat-radar',
-    cta: 'Scan area',
-    accent: 'violet',
+    title: 'Pre-DA Site History',
+    detail: 'Eight years of satellite change detection cross-referenced with DA records and heritage overlays.',
+    href: '/reports/pre-da-history',
+    badge: '$49 report',
+    accent: 'border-purple-200 hover:border-purple-300',
   },
 ];
 
-const ACCENT: Record<string, { border: string; bg: string; cta: string; icon: string }> = {
-  teal:   { border: 'border-teal-200',   bg: 'hover:bg-teal-50',   cta: 'bg-teal-600 hover:bg-teal-700',     icon: 'bg-teal-100' },
-  blue:   { border: 'border-blue-200',   bg: 'hover:bg-blue-50',   cta: 'bg-blue-600 hover:bg-blue-700',     icon: 'bg-blue-100' },
-  amber:  { border: 'border-amber-200',  bg: 'hover:bg-amber-50',  cta: 'bg-amber-500 hover:bg-amber-600',   icon: 'bg-amber-100' },
-  slate:  { border: 'border-slate-200',  bg: 'hover:bg-slate-50',  cta: 'bg-slate-700 hover:bg-slate-800',   icon: 'bg-slate-100' },
-  violet: { border: 'border-violet-200', bg: 'hover:bg-violet-50', cta: 'bg-violet-600 hover:bg-violet-700', icon: 'bg-violet-100' },
-};
+const BUILDING = [
+  {
+    title: 'Granny Flat Checker',
+    detail: 'SEPP eligibility, satellite structure detection, and $280–$340/week rental yield estimate.',
+    href: '/reports/granny-flat',
+    badge: 'Free + $49 report',
+    accent: 'border-teal-200 hover:border-teal-300',
+  },
+  {
+    title: 'Shadow Detector',
+    detail: 'Shadow path analysis at 9am, noon, and 3pm on the winter solstice — worst-case envelope.',
+    href: '/reports/shadow',
+    badge: '$29 report',
+    accent: 'border-slate-200 hover:border-slate-300',
+  },
+  {
+    title: 'Threat Radar',
+    detail: 'Every DA and CDC within 500m — with weekly email alerts for new lodgements.',
+    href: '/reports/threat-radar',
+    badge: 'Free',
+    accent: 'border-violet-200 hover:border-violet-300',
+  },
+];
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: 'canibuildit',
-  url: 'https://canibuildit.com.au',
-  description: 'Five free NSW property planning tools: granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts.',
-  applicationCategory: 'RealEstateApplication',
-  operatingSystem: 'Web',
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'AUD',
+const YIELD = [
+  {
+    title: 'Solar Yield',
+    detail: 'Roof geometry, orientation, and estimated annual kWh — sized before you visit the site.',
+    href: '/reports/solar-yield',
+    badge: '$19 report',
+    accent: 'border-amber-200 hover:border-amber-300',
   },
-  areaServed: {
-    '@type': 'State',
-    name: 'New South Wales',
-    addressCountry: 'AU',
+  {
+    title: 'Granny Flat Checker',
+    detail: 'Could this property earn $280–$340/week extra? Zone, lot size, strata, SEPP rules — instantly.',
+    href: '/reports/granny-flat',
+    badge: 'Free + $49 report',
+    accent: 'border-teal-200 hover:border-teal-300',
   },
-};
+];
+
+const REGIONS = [
+  {
+    region: 'Greater Sydney — Inner & East',
+    lgas: [
+      { name: 'Inner West', slug: 'inner-west' },
+      { name: 'Bayside', slug: 'bayside' },
+      { name: 'Randwick', slug: 'randwick' },
+      { name: 'Waverley', slug: 'waverley' },
+      { name: 'Woollahra', slug: 'woollahra' },
+    ],
+  },
+  {
+    region: 'Greater Sydney — North',
+    lgas: [
+      { name: 'Northern Beaches', slug: 'northern-beaches' },
+      { name: 'Ku-ring-gai', slug: 'ku-ring-gai' },
+      { name: 'Hornsby', slug: 'hornsby' },
+      { name: 'Lane Cove', slug: 'lane-cove' },
+      { name: 'Ryde', slug: 'ryde' },
+    ],
+  },
+  {
+    region: 'Greater Sydney — West',
+    lgas: [
+      { name: 'Parramatta', slug: 'parramatta' },
+      { name: 'Blacktown', slug: 'blacktown' },
+      { name: 'The Hills Shire', slug: 'the-hills-shire' },
+      { name: 'Penrith', slug: 'penrith' },
+      { name: 'Hawkesbury', slug: 'hawkesbury' },
+    ],
+  },
+  {
+    region: 'Greater Sydney — South & Southwest',
+    lgas: [
+      { name: 'Campbelltown', slug: 'campbelltown' },
+      { name: 'Camden', slug: 'camden' },
+      { name: 'Liverpool', slug: 'liverpool' },
+      { name: 'Sutherland Shire', slug: 'sutherland-shire' },
+      { name: 'Georges River', slug: 'georges-river' },
+      { name: 'Canterbury-Bankstown', slug: 'canterbury-bankstown' },
+    ],
+  },
+  {
+    region: 'Regional NSW',
+    lgas: [
+      { name: 'Wollongong', slug: 'wollongong' },
+      { name: 'Wingecarribee', slug: 'wingecarribee' },
+      { name: 'Clarence Valley', slug: 'clarence-valley' },
+      { name: 'Yass Valley', slug: 'yass-valley' },
+      { name: 'Bathurst Regional', slug: 'bathurst-regional' },
+      { name: 'Tamworth Regional', slug: 'tamworth-regional' },
+      { name: 'Forbes', slug: 'forbes' },
+    ],
+  },
+];
+
+function ToolCard({ title, detail, href, badge, accent }: {
+  title: string; detail: string; href: string; badge: string; accent: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`block rounded-xl border ${accent} bg-white p-5 transition-all hover:shadow-sm`}
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
+        <span className="shrink-0 text-[11px] font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
+          {badge}
+        </span>
+      </div>
+      <p className="text-xs text-gray-500 leading-relaxed">{detail}</p>
+    </Link>
+  );
+}
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#0b1628] text-white">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: sanitizeHTML(JSON.stringify(jsonLd)) }}
-      />
-
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         <span className="text-lg font-bold tracking-tight">
           canibuildit<span className="text-[#00d9b8]">.com.au</span>
         </span>
         <div className="flex items-center gap-6">
-          <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
+          <Link href="/reports" className="text-sm text-slate-400 hover:text-white transition-colors">
+            All tools
+          </Link>
+          <Link href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
             Pricing
-          </a>
-          <a href="/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
-            Try the tools →
-          </a>
+          </Link>
+          <Link href="/how-it-works" className="text-sm text-slate-400 hover:text-white transition-colors">
+            How it works
+          </Link>
         </div>
       </nav>
 
       {/* Hero */}
       <section className="px-6 pt-16 pb-20 max-w-3xl mx-auto text-center">
         <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
-          Could this property earn
+          What should you know
           <br />
-          <span className="text-[#00d9b8]">an extra $280–$340/week?</span>
+          <span className="text-[#00d9b8]">before you buy, build, or insure?</span>
         </h1>
-        <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-          Check granny flat eligibility for any NSW address — free. Plus flood risk,
-          solar yield, shadow analysis, and planning alerts.
+        <p className="text-slate-400 text-lg mb-6 max-w-xl mx-auto">
+          Seven free property checks for any NSW address. Live government data,
+          satellite imagery, and Bureau of Meteorology records. No account needed.
         </p>
-
-        <AddressSearchForm />
-
-        <p className="text-xs text-slate-600 mt-3">
-          Starts the Granny Flat Check — pick any tool below for other questions.
-        </p>
+        <Link
+          href="/reports"
+          className="inline-block px-6 py-3 bg-[#00d9b8] text-[#0b1628] font-semibold text-sm rounded-xl hover:bg-[#00c4a7] transition-colors"
+        >
+          Check a property →
+        </Link>
       </section>
 
-      {/* Tool cards */}
+      {/* Problem-grouped tool cards */}
       <section className="bg-white text-gray-900 py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-2">Five tools. One address.</h2>
-          <p className="text-center text-gray-500 text-sm mb-10">
-            Live data from the NSW Planning Portal — no stale PDFs, no guesswork.
-          </p>
+        <div className="max-w-5xl mx-auto space-y-12">
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            {TOOLS.slice(0, 3).map((tool) => {
-              const a = ACCENT[tool.accent];
-              return (
-                <a
-                  key={tool.href}
-                  href={tool.href}
-                  className={`rounded-2xl border ${a.border} ${a.bg} p-6 flex flex-col gap-3 transition-colors`}
-                >
-                  <div className={`w-10 h-10 rounded-xl ${a.icon} flex items-center justify-center text-xl`}>
-                    {tool.emoji}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{tool.title}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">{tool.subtitle}</p>
-                  </div>
-                  <p className="text-xs text-gray-400 flex-1">{tool.detail}</p>
-                  <span className={`inline-block self-start mt-auto px-4 py-1.5 ${a.cta} text-white text-xs font-medium rounded-lg transition-colors`}>
-                    {tool.cta}
-                  </span>
-                </a>
-              );
-            })}
+          {/* Buying */}
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Buying a property?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Your conveyancer will ask for flood and bushfire status. Get the data before they do.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {BUYING.map((t) => <ToolCard key={t.href} {...t} />)}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {TOOLS.slice(3).map((tool) => {
-              const a = ACCENT[tool.accent];
-              return (
-                <a
-                  key={tool.href}
-                  href={tool.href}
-                  className={`rounded-2xl border ${a.border} ${a.bg} p-6 flex flex-col gap-3 transition-colors`}
-                >
-                  <div className={`w-10 h-10 rounded-xl ${a.icon} flex items-center justify-center text-xl`}>
-                    {tool.emoji}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{tool.title}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">{tool.subtitle}</p>
-                  </div>
-                  <p className="text-xs text-gray-400 flex-1">{tool.detail}</p>
-                  <span className={`inline-block self-start mt-auto px-4 py-1.5 ${a.cta} text-white text-xs font-medium rounded-lg transition-colors`}>
-                    {tool.cta}
-                  </span>
-                </a>
-              );
-            })}
+
+          {/* Building */}
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Planning to build?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Check what&apos;s possible, what&apos;s planned nearby, and whether your build will create objections.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {BUILDING.map((t) => <ToolCard key={t.href + '-build'} {...t} />)}
+            </div>
           </div>
+
+          {/* Yield */}
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Evaluating yield?</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Estimate income potential before you buy or before you quote.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {YIELD.map((t) => <ToolCard key={t.href + '-yield'} {...t} />)}
+            </div>
+          </div>
+
         </div>
       </section>
 
       {/* Browse by area */}
-      <section className="bg-gray-50 border-t border-gray-100 py-16 px-6">
+      <section id="browse-by-area" className="bg-gray-50 border-t border-gray-100 py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by council area</h2>
           <p className="text-sm text-gray-500 mb-8">
-            Select an LGA to run any tool — results are instant, address-specific, and free.
+            Select an LGA to see all available tools for that council area.
           </p>
 
           <div className="space-y-8">
-            {[
-              {
-                region: 'Greater Sydney — Inner & East',
-                lgas: [
-                  { name: 'Inner West', slug: 'inner-west' },
-                  { name: 'Bayside', slug: 'bayside' },
-                  { name: 'Randwick', slug: 'randwick' },
-                  { name: 'Waverley', slug: 'waverley' },
-                  { name: 'Woollahra', slug: 'woollahra' },
-                ],
-              },
-              {
-                region: 'Greater Sydney — North',
-                lgas: [
-                  { name: 'Northern Beaches', slug: 'northern-beaches' },
-                  { name: 'Ku-ring-gai', slug: 'ku-ring-gai' },
-                  { name: 'Hornsby', slug: 'hornsby' },
-                  { name: 'Lane Cove', slug: 'lane-cove' },
-                  { name: 'Ryde', slug: 'ryde' },
-                ],
-              },
-              {
-                region: 'Greater Sydney — West',
-                lgas: [
-                  { name: 'Parramatta', slug: 'parramatta' },
-                  { name: 'Blacktown', slug: 'blacktown' },
-                  { name: 'The Hills Shire', slug: 'the-hills-shire' },
-                  { name: 'Penrith', slug: 'penrith' },
-                  { name: 'Hawkesbury', slug: 'hawkesbury' },
-                ],
-              },
-              {
-                region: 'Greater Sydney — South & Southwest',
-                lgas: [
-                  { name: 'Campbelltown', slug: 'campbelltown' },
-                  { name: 'Camden', slug: 'camden' },
-                  { name: 'Liverpool', slug: 'liverpool' },
-                  { name: 'Sutherland Shire', slug: 'sutherland-shire' },
-                  { name: 'Georges River', slug: 'georges-river' },
-                  { name: 'Canterbury-Bankstown', slug: 'canterbury-bankstown' },
-                ],
-              },
-              {
-                region: 'Regional NSW',
-                lgas: [
-                  { name: 'Wollongong', slug: 'wollongong' },
-                  { name: 'Wingecarribee', slug: 'wingecarribee' },
-                  { name: 'Clarence Valley', slug: 'clarence-valley' },
-                  { name: 'Yass Valley', slug: 'yass-valley' },
-                  { name: 'Bathurst Regional', slug: 'bathurst-regional' },
-                  { name: 'Tamworth Regional', slug: 'tamworth-regional' },
-                  { name: 'Forbes', slug: 'forbes' },
-                ],
-              },
-            ].map(({ region, lgas }) => (
+            {REGIONS.map(({ region, lgas }) => (
               <div key={region}>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">{region}</p>
                 <div className="flex flex-wrap gap-2">
                   {lgas.map(({ name, slug }) => (
-                    <a
+                    <Link
                       key={slug}
                       href={`/granny-flat/${slug}`}
                       className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:border-teal-400 hover:text-teal-700 transition-colors"
                     >
                       {name}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -276,7 +248,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-8 text-xs text-gray-400">
-            Each page includes granny flat eligibility, solar yield, shadow check, and planning alerts for that council area.
+            Each page includes granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts for that council area.
           </p>
         </div>
       </section>
@@ -290,10 +262,12 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-slate-500">
             {[
               { color: 'bg-teal-500',   label: 'NSW Planning Portal' },
-              { color: 'bg-blue-500',   label: 'NSW Flood Data Service' },
-              { color: 'bg-amber-500',  label: 'Google Earth Engine' },
+              { color: 'bg-blue-500',   label: 'Bureau of Meteorology' },
+              { color: 'bg-amber-500',  label: 'European Space Agency' },
               { color: 'bg-violet-500', label: 'NSW ePlanning Portal' },
               { color: 'bg-slate-400',  label: 'Spatial Services NSW' },
+              { color: 'bg-red-400',    label: 'NSW Rural Fire Service' },
+              { color: 'bg-cyan-500',   label: 'Copernicus EMS' },
             ].map(({ color, label }) => (
               <span key={label} className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
@@ -301,6 +275,9 @@ export default function HomePage() {
               </span>
             ))}
           </div>
+          <p className="text-center text-xs text-slate-400 mt-4">
+            71 council flood study areas · 8 years of satellite imagery · 128 council DA feeds
+          </p>
         </div>
       </section>
 
@@ -308,7 +285,7 @@ export default function HomePage() {
       <footer className="bg-[#0b1628] py-8 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-sm text-slate-600">
-            © 2026 canibuildit.com.au — NSW planning intelligence for property owners and builders.
+            © 2026 canibuildit.com.au — NSW property intelligence for buyers, owners, and builders.
           </p>
           <p className="text-xs text-slate-700 mt-2">
             Results are indicative only and do not constitute planning advice. Always consult a registered town planner or certifier.
@@ -328,9 +305,9 @@ export default function HomePage() {
               { href: '/privacy', label: 'Privacy' },
               { href: '/terms', label: 'Terms' },
             ].map(({ href, label }) => (
-              <a key={href} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              <Link key={href} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
                 {label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

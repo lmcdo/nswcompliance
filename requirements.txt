@@ -205,3 +205,4 @@ planetary-computer
 geotessera
 psycopg2-binary
 scikit-image
+rapidfuzz

@@ -34,6 +34,11 @@ See full architectural details in the exploration agent output above.
 - `/api/permissibility/check` - LEP land use
 - `/api/capacity/calculate` - Height/FSR/setbacks
 - `/api/procedural` - CDC vs DA guidance
+- `/api/satellite/flood` - Flood Truth pipeline (EPI + SAR + EMS + JRC + BOM + raster studies + DEM)
+- `/api/reports/flood/generate` - Flood Truth PDF report generation
+- `/api/satellite/pre-da-history` - Pre-DA Site History pipeline (ePlanning DAs + PCCs + Sentinel-2 NDVI/NDBI + heritage overlay)
+- `/api/reports/pre-da-history/generate` - Pre-DA Site History PDF generation (gated on `is_paid`)
+- `/api/stripe/checkout/pre-da-history` - Stripe checkout session for $49 Pre-DA report
 
 ### Satellite Product Endpoints (Python backend)
 - `POST /pipeline/bushfire` - Bushfire Pre-Screen (RFS BFPL + PostGIS overlays + compliance)
@@ -50,6 +55,7 @@ See full architectural details in the exploration agent output above.
 - **regulatory_definitions:** 465+ terms
 - **housing_sepp_standards:** 33 standards
 - **dcp_precinct_boundaries:** 90 precincts (GeoJSON)
+- **pre_da_history_reports:** Pre-DA site history report state (status, is_paid, report_json)
 
 ### 4-Layer Filtering Model
 1. **Generic** (Part 2) - Always apply

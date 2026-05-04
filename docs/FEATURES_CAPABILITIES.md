@@ -51,6 +51,23 @@ Quick reference for what PlotDetect can and cannot do.
 - **TOD precinct** identification (SEPP Housing 2021)
 - **Local provisions** (Part 6 LEP)
 
+### 6. Pre-DA Site History Report
+- **Site development history** for any NSW address (paid $49 report)
+- **Data sources:** ePlanning DAs + PCCs (paginated, capped at 10 pages), Sentinel-2 NDVI/NDBI change detection (via Element84 STAC, CRS-aware sampling), heritage overlay (spatial_overlays PostGIS), council zoning
+- **Payment:** Stripe Checkout with idempotency key, `is_paid` gate on generate route, webhook sets paid flag before PDF generation
+- **PDF report** with DA timeline, vegetation/built change, heritage flag, zoning context
+- **Poll-based status** with 60-poll timeout on frontend
+
+### 7. Flood Truth Engine
+- **Multi-source flood assessment** for any NSW address
+- **Data sources:** NSW EPI WFS (71 LGAs), Sentinel-1 SAR, Copernicus EMS, JRC surface water, BOM gauges, SES/council spatial overlays (100+ LGAs)
+- **Council flood study rasters:** Hawkesbury (9 AEPs), Tweed (5 AEPs + 4 historical events), Wollongong (6 AEPs) — depth and water level per AEP event
+- **NSW 5m DEM ground elevation** via SIX Maps ImageServer (full NSW, no auth)
+- **100-year flood zone headline** derived from EPI + SES + study rasters
+- **Flood depth calculation:** flood level minus ground elevation per AEP
+- **PDF report** with full AEP depth/level tables (paid), historical event data, aerial imagery
+- **Flood signal classification:** none / low / moderate / elevated (multi-source convergence)
+
 ---
 
 ## ❌ **What PlotDetect Cannot Do (Yet)**
