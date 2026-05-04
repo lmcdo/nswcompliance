@@ -948,7 +948,16 @@ def build_year_annotation(
     if explanation:
         classification["explanation"] = "; ".join(explanation)
     classification["change_type"] = change_type
-    classification["da_events"] = [d["pan"] for d in das_this_year]
+    classification["da_events"] = [
+        {
+            "pan": d["pan"],
+            "status": d.get("status"),
+            "app_type": d.get("app_type"),
+            "dev_type": d.get("dev_type"),
+            "date": d.get("date"),
+        }
+        for d in das_this_year
+    ]
 
     return {"year": year, **classification}
 
