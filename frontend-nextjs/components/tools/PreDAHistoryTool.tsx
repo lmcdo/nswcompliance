@@ -121,9 +121,9 @@ function PreDAHistoryToolInner() {
     return () => { stepTimersRef.current.forEach(clearTimeout); };
   }, [state]);
 
-  // Start polling a report_id (max 60 polls x 3s = 3 min)
+  // Start polling a report_id (max 100 polls x 3s = 5 min)
   const pollCountRef = useRef(0);
-  const MAX_POLLS = 60;
+  const MAX_POLLS = 100;
 
   const startPolling = useCallback((id: string) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -133,7 +133,7 @@ function PreDAHistoryToolInner() {
       pollCountRef.current += 1;
       if (pollCountRef.current > MAX_POLLS) {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        setErrorMsg('Analysis timed out after 3 minutes — please try again.');
+        setErrorMsg('Analysis timed out after 5 minutes — please try again.');
         setState('error');
         return;
       }
@@ -281,7 +281,7 @@ function PreDAHistoryToolInner() {
             Run site history analysis
           </button>
           <p className="mt-2 text-xs text-gray-400 text-center">
-            Analysis runs in the background — takes 2–4 minutes.
+            Analysis runs in the background — takes 3–5 minutes.
           </p>
         </div>
       )}
