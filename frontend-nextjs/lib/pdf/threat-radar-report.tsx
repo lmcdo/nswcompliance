@@ -32,6 +32,15 @@ export interface ThreatRadarApplication {
   CouncilName?: string;
   ApplicantName?: string;
   _distance_m?: number | null;
+  Latitude?: string | number;
+  Longitude?: string | number;
+  NumberOfStoreys?: number | string | null;
+  DemolitionDwellings?: number | string | null;
+  SubdivisionProposedFlag?: string | null;
+  EpiVariationProposedFlag?: string | null;
+  AccompaniedByVpaFlag?: string | null;
+  DevelopmentSubjectToSicFlag?: string | null;
+  DevelopmentCategory?: string | null;
 }
 
 export interface ThreatRadarReportData {

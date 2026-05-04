@@ -50,6 +50,13 @@ interface Application {
   Latitude?: string | number;
   Longitude?: string | number;
   _distance_m?: number | null;
+  NumberOfStoreys?: number | string | null;
+  DemolitionDwellings?: number | string | null;
+  SubdivisionProposedFlag?: string | null;
+  EpiVariationProposedFlag?: string | null;
+  AccompaniedByVpaFlag?: string | null;
+  DevelopmentSubjectToSicFlag?: string | null;
+  DevelopmentCategory?: string | null;
 }
 
 function parseDevTypes(raw: string | null): string {
@@ -81,7 +88,9 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       .from('development_applications')
       .select(
         'planning_portal_id,council_name,address,description,application_status,determination_date,' +
-        'cost_of_development,latitude,longitude,development_type,lodgement_date,proposed_dwellings',
+        'cost_of_development,latitude,longitude,development_type,lodgement_date,proposed_dwellings,' +
+        'number_of_storeys,demolition_dwellings,subdivision_proposed_flag,' +
+        'epi_variation_proposed_flag,accompanied_by_vpa_flag,development_subject_to_sic_flag,development_category',
       )
       // ETL fetches by DeterminationDate — match on either date to capture recently-determined apps
       .or(`lodgement_date.gte.${since},determination_date.gte.${since}`)
@@ -91,7 +100,9 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       .from('complying_development_certificates')
       .select(
         'planning_portal_id,council_name,address,description,application_status,determination_date,' +
-        'cost_of_development,latitude,longitude,development_type,submission_date,number_of_new_dwellings',
+        'cost_of_development,latitude,longitude,development_type,submission_date,number_of_new_dwellings,' +
+        'number_of_storeys,number_of_demolition_dwellings,subdivision_proposed_flag,' +
+        'epi_variation_proposed_flag,accompanied_by_vpa_flag,development_subject_to_sic_flag,development_category',
       )
       .gte('submission_date', since)
       .gte('latitude', minLat).lte('latitude', maxLat)
@@ -120,6 +131,13 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       Latitude: row.latitude as number,
       Longitude: row.longitude as number,
       _distance_m: Math.round(dist),
+      NumberOfStoreys: row.number_of_storeys ?? null,
+      DemolitionDwellings: row.demolition_dwellings ?? null,
+      SubdivisionProposedFlag: row.subdivision_proposed_flag ?? null,
+      EpiVariationProposedFlag: row.epi_variation_proposed_flag ?? null,
+      AccompaniedByVpaFlag: row.accompanied_by_vpa_flag ?? null,
+      DevelopmentSubjectToSicFlag: row.development_subject_to_sic_flag ?? null,
+      DevelopmentCategory: row.development_category ?? null,
     });
   }
 
@@ -143,6 +161,13 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       Latitude: row.latitude as number,
       Longitude: row.longitude as number,
       _distance_m: Math.round(dist),
+      NumberOfStoreys: row.number_of_storeys ?? null,
+      DemolitionDwellings: row.number_of_demolition_dwellings ?? null,
+      SubdivisionProposedFlag: row.subdivision_proposed_flag ?? null,
+      EpiVariationProposedFlag: row.epi_variation_proposed_flag ?? null,
+      AccompaniedByVpaFlag: row.accompanied_by_vpa_flag ?? null,
+      DevelopmentSubjectToSicFlag: row.development_subject_to_sic_flag ?? null,
+      DevelopmentCategory: row.development_category ?? null,
     });
   }
 
