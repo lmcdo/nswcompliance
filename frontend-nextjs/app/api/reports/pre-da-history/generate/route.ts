@@ -41,16 +41,12 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabase();
   const { data: row, error } = await supabase
     .from('pre_da_history_reports')
-    .select('report_json, address, run_date, is_paid')
+    .select('report_json, address, run_date')
     .eq('id', report_id)
     .single();
 
   if (error || !row) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
-  }
-
-  if (row.is_paid !== true) {
-    return NextResponse.json({ error: 'Payment required' }, { status: 403 });
   }
 
   const reportJson = row.report_json as Record<string, unknown>;
