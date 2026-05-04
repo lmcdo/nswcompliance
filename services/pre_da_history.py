@@ -978,6 +978,17 @@ def run_pre_da_history(req: PreDAHistoryRequest):
     When report_id is provided (async Trigger.dev flow), the pre-allocated row is
     UPDATEd with status='complete'. Otherwise a new row is INSERTed (dev / direct call).
     """
+    try:
+        return _run_pre_da_history_inner(req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Pipeline crashed: {exc}", exc_info=True)
+        _mark_error(req.report_id, f"Pipeline crashed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Pipeline failed: {exc}")
+
+
+def _run_pre_da_history_inner(req: PreDAHistoryRequest):
     # --- Geocode ---
     try:
         lat, lon, council = geocode_address(req.address)

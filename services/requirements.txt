@@ -28,6 +28,10 @@ xmltodict==0.14.2
 Pillow==11.3.0
 opencv-python-headless==4.10.0.84
 
+# Pre-DA Site History — Tessera embeddings + Wayback SSIM
+geotessera
+scikit-image
+
 # samgeo + torch (Solar Yield panel detection, Granny Flat structure detection)
 # TOO LARGE for Railway free tier (~4GB). Deploy to Modal/RunPod/Lambda Labs GPU.
 # samgeo==1.2.0
