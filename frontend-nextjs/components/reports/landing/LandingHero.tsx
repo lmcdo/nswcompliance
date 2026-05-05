@@ -18,9 +18,10 @@ interface LandingHeroProps {
   subtitle: string
   ctaLabel: string
   stats?: HeroStat[]
+  heroImage?: string
 }
 
-export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaLabel, stats }: LandingHeroProps) {
+export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaLabel, stats, heroImage }: LandingHeroProps) {
   const [address, setAddress] = useState("")
   const [isFocused, setIsFocused] = useState(false)
 
@@ -34,6 +35,14 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
 
   return (
     <section className="relative overflow-hidden">
+      {/* Aerial satellite background */}
+      {heroImage && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.08]"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        />
+      )}
+
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
 

@@ -93,12 +93,13 @@ export async function POST(req: NextRequest) {
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
   const today = new Date().toISOString().split('T')[0];
 
+  const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
+  const lotPoly = (rawOutputs.lot_polygon as { type: 'Polygon'; coordinates: number[][][] } | null) ?? null;
+
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'neighbourhood', lotPoly) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
-
-  const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
 
   const data: ShadowReportData = {
     address: String(raw.address),

@@ -40,6 +40,11 @@ See full architectural details in the exploration agent output above.
 - `/api/reports/pre-da-history/generate` - Pre-DA Site History PDF generation (gated on `is_paid`)
 - `/api/stripe/checkout/pre-da-history` - Stripe checkout session for $49 Pre-DA report
 
+### Aerial Imagery
+- Browser: `AerialTile` component uses NSW SIX Maps (CC-BY 4.0, no API key, free)
+- PDFs: `lib/pdf/aerial-tile.ts` uses NSW SIX Maps export endpoint. Auto-zooms to lot polygon when available.
+- `/api/satellite/aerial-tile` (Google Static Maps proxy) — **removed** (was dead code, no consumer)
+
 ### Satellite Product Endpoints (Python backend)
 - `POST /pipeline/bushfire` - Bushfire Pre-Screen (RFS BFPL + PostGIS overlays + compliance)
 - `POST /pipeline/flood` - Flood Truth Engine (EPI + SAR + JRC + BoM)

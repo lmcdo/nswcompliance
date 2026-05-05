@@ -37,6 +37,7 @@ export function ProductLandingV2({ product }: ProductLandingV2Props) {
         subtitle={config.subtitle}
         ctaLabel={config.ctaLabel}
         stats={config.heroStats}
+        heroImage={config.heroImage}
       />
 
       <DataSourceStrip sources={config.dataSources} />

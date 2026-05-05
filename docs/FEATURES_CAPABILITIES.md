@@ -110,9 +110,13 @@ Quick reference for what PlotDetect can and cannot do.
 - **Bushfire Pre-Screen** (`/reports/bushfire`) — RFS Bush Fire Prone Land lookup, BAL estimation, s4.14 referral triggers, 10/50 clearing entitlements, CDC pathway gating. NSW only. $29/report.
 - **Flood Truth Engine** (`/reports/flood`) — EPI flood planning overlays (71 LGAs), SAR change detection, JRC water occurrence, BoM gauge history.
 - **Solar Yield Underwriter** (`/reports/solar-yield`) — Rooftop solar potential assessment.
-- **Shadow Ambush Detector** (`/reports/shadow`) — Neighbouring development shadow impact.
+- **Shadow Ambush Detector** (`/reports/shadow`) — Neighbouring development shadow impact. Includes AerialTile with lot boundary overlay.
 - **Threat Radar** (`/reports/threat-radar`) — Nearby DA/CDC activity monitoring.
+- **Pre-DA Site History** (`/reports/pre-da-history`) — 8-year satellite change detection + DA history + heritage overlay.
 - **Granny Flat Yield Predictor** (`/reports/granny-flat`) — Structure detection + yield calculation.
+
+### 7. Product Landing Pages
+Each satellite product has a composable landing page with: hero (address input + satellite aerial background), verified data source badges, feature grid, free-vs-paid pricing comparison, methodology section, and optional coverage section (flood). Hero address input dispatches to tool component via custom event for seamless search flow.
 
 ---
 

@@ -196,20 +196,6 @@ export const satelliteRateLimiter = redis
     })
   : null;
 
-/**
- * Aerial tile rate limiter: 30 requests per minute per IP
- * aerial-tile is a PUBLIC_ROUTE (bypasses global middleware limiter),
- * so it applies its own limit to protect Google Maps Static API budget.
- */
-export const aerialTileRateLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, '1 m'),
-      analytics: true,
-      prefix: 'rl:aerial-tile',
-    })
-  : null;
-
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================

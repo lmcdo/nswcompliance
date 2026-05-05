@@ -36,6 +36,7 @@ export interface ProductLandingConfig {
   subtitle: string
   ctaLabel: string
   heroStats?: StatItem[]
+  heroImage?: string
 
   // Data sources
   dataSources: DataSourceItem[]

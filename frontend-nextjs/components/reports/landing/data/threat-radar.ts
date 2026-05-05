@@ -7,6 +7,7 @@ export const threatRadarConfig: ProductLandingConfig = {
   title: "Neighbour Development Threat Radar",
   subtitle: "Know before your neighbour breaks ground.",
   ctaLabel: "Scan Area",
+  heroImage: "/images/landing/hero-threat-radar.png",
   heroStats: [
     { value: "500m", label: "Scan radius" },
     { value: "180d", label: "Lookback period" },

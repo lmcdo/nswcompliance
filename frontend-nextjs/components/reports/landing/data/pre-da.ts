@@ -9,6 +9,7 @@ export const preDAConfig: ProductLandingConfig = {
   title: "Pre-DA Site History Report",
   subtitle: "What happened on this land before you got here?",
   ctaLabel: "Check History",
+  heroImage: "/images/landing/hero-pre-da.png",
   heroStats: [
     { value: "8yr", label: "Satellite history" },
     { value: "ESA", label: "Sentinel imagery" },

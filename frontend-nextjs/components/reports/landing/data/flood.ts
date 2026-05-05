@@ -9,6 +9,7 @@ export const floodConfig: ProductLandingConfig = {
   title: "Flood Risk Check",
   subtitle: "Know exactly how deep the water gets — not just whether it floods.",
   ctaLabel: "Check Risk",
+  heroImage: "/images/landing/hero-flood.png",
   heroStats: [
     { value: "71+", label: "LGAs covered" },
     { value: "8", label: "Data sources" },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -116,6 +116,29 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const pendingLandingSearch = useRef(false);
+
+  // Listen for hero address input
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        pendingLandingSearch.current = true;
+        setAddress(addr);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Auto-submit when address is set from landing hero
+  useEffect(() => {
+    if (pendingLandingSearch.current && address.trim()) {
+      pendingLandingSearch.current = false;
+      formRef.current?.requestSubmit();
+    }
+  }, [address]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -191,12 +214,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
 
   return (
     <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900">Solar Potential Assessment</h1>
-      <p className="mt-1.5 text-sm text-gray-500">
-        Roof geometry, system sizing, financial return, and suitability grade for any NSW address.
-      </p>
-
-      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}

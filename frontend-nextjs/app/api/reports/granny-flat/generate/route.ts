@@ -52,10 +52,14 @@ export async function POST(req: NextRequest) {
     const lat = typeof raw.lat === 'number' ? raw.lat : null;
     const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
+    const lotPoly = (raw.lot_polygon_wgs84 as { type: 'Polygon'; coordinates: number[][][] } | null)
+      ?? (raw.lot_polygon as { type: 'Polygon'; coordinates: number[][][] } | null)
+      ?? null;
+
     const [tile_b64, logo_b64] = await Promise.all([
       (raw.tile_b64 as string | null) != null
         ? Promise.resolve(raw.tile_b64 as string)
-        : (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
+        : (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property', lotPoly) : Promise.resolve(null),
       Promise.resolve(getLogoBase64()),
     ]);
 

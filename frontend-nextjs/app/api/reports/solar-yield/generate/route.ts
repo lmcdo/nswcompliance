@@ -137,8 +137,10 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
+  const lotPoly = (raw.lot_polygon as { type: 'Polygon'; coordinates: number[][][] } | null) ?? null;
+
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'neighbourhood', lotPoly) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 

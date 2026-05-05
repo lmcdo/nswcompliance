@@ -7,6 +7,7 @@ export const shadowConfig: ProductLandingConfig = {
   title: "Shadow Risk Analyser",
   subtitle: "Will a new build next door block your sun?",
   ctaLabel: "Check Risk",
+  heroImage: "/images/landing/hero-shadow.png",
   heroStats: [
     { value: "5", label: "ADG scenarios" },
     { value: "NSW", label: "Full coverage" },

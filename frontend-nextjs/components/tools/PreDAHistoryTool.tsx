@@ -97,6 +97,29 @@ function PreDAHistoryToolInner() {
 
   const stepTimersRef  = useRef<ReturnType<typeof setTimeout>[]>([]);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingLandingSearch = useRef(false);
+  const handleRunRef = useRef<() => void>(() => {});
+
+  // Listen for hero address input
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        pendingLandingSearch.current = true;
+        setAddress(addr);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Auto-submit when address is set from landing hero
+  useEffect(() => {
+    if (pendingLandingSearch.current && address.trim()) {
+      pendingLandingSearch.current = false;
+      handleRunRef.current();
+    }
+  }, [address]);
 
   // Payment callback banner
   useEffect(() => {
@@ -210,6 +233,7 @@ function PreDAHistoryToolInner() {
       setState('error');
     }
   };
+  handleRunRef.current = handleRun;
 
   const handleCheckout = async () => {
     const rid = result?.id ?? reportId;

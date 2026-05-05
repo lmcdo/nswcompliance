@@ -7,6 +7,7 @@ export const solarConfig: ProductLandingConfig = {
   title: "Rooftop Solar Yield Estimate",
   subtitle: "How much could solar earn on this roof?",
   ctaLabel: "Check Yield",
+  heroImage: "/images/landing/hero-solar.png",
   heroStats: [
     { value: "A–F", label: "Suitability grade" },
     { value: "kWh", label: "Annual estimate" },
