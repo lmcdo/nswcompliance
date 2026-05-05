@@ -1,46 +1,61 @@
+import type { LucideIcon } from "lucide-react"
+
 export interface StatItem {
   value: string
   label: string
 }
 
-export interface Testimonial {
-  quote: string
-  author: string
-  role: string
+export interface DataSourceItem {
+  icon: LucideIcon
+  name: string
+  description: string
 }
 
-export interface ComparisonCard {
-  problem: string
-  limitation: string
-  solution: string
-}
-
-export interface WhatYouGetItem {
+export interface FeatureItem {
+  icon: LucideIcon
   title: string
   description: string
 }
 
-export interface TrustSource {
+export interface ComparisonRow {
   name: string
-  logo: string
+  free: boolean
+  paid: boolean
+}
+
+export interface CoverageRegion {
+  name: string
+  councils: string[]
 }
 
 export interface ProductLandingConfig {
   // Hero
-  badgeText: string
+  badge: string
+  badgeIcon: LucideIcon
   title: string
-  titleAccent: string
   subtitle: string
   ctaLabel: string
+  heroStats?: StatItem[]
 
-  // Trust bar
-  trustSources: TrustSource[]
+  // Data sources
+  dataSources: DataSourceItem[]
 
-  // Social proof
-  stats: StatItem[]
-  testimonials: Testimonial[]
+  // Feature grid
+  featuresTitle: string
+  featuresSubtitle: string
+  features: FeatureItem[]
 
-  // Why this matters
-  comparisons: ComparisonCard[]
-  whatYouGet: WhatYouGetItem[]
+  // Pricing
+  pricingTitle: string
+  pricingSubtitle: string
+  price: string
+  comparison: ComparisonRow[]
+  methodology: string
+
+  // Coverage (optional)
+  coverageTitle?: string
+  coverageSubtitle?: string
+  coverageStats?: StatItem[]
+  coverageRegions?: CoverageRegion[]
+  coverageNote?: string
 }

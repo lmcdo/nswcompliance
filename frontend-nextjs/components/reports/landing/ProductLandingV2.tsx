@@ -1,9 +1,10 @@
 "use client"
 
 import { LandingHero } from "./LandingHero"
-import { TrustBar } from "./TrustBar"
-import { SocialProof } from "./SocialProof"
-import { WhyThisMatters } from "./WhyThisMatters"
+import { DataSourceStrip } from "./DataSourceStrip"
+import { FeatureGrid } from "./FeatureGrid"
+import { PricingTable } from "./PricingTable"
+import { CoverageSection } from "./CoverageSection"
 import type { ProductLandingConfig } from "./types"
 import { floodConfig } from "./data/flood"
 import { shadowConfig } from "./data/shadow"
@@ -28,26 +29,41 @@ export function ProductLandingV2({ product }: ProductLandingV2Props) {
   if (!config) return null
 
   return (
-    <div className="mx-auto max-w-5xl px-4">
+    <div>
       <LandingHero
-        badgeText={config.badgeText}
+        badge={config.badge}
+        badgeIcon={config.badgeIcon}
         title={config.title}
-        titleAccent={config.titleAccent}
         subtitle={config.subtitle}
         ctaLabel={config.ctaLabel}
+        stats={config.heroStats}
       />
 
-      <TrustBar sources={config.trustSources} />
+      <DataSourceStrip sources={config.dataSources} />
 
-      <SocialProof
-        stats={config.stats}
-        testimonials={config.testimonials}
+      <FeatureGrid
+        title={config.featuresTitle}
+        subtitle={config.featuresSubtitle}
+        features={config.features}
       />
 
-      <WhyThisMatters
-        comparisons={config.comparisons}
-        whatYouGet={config.whatYouGet}
+      <PricingTable
+        title={config.pricingTitle}
+        subtitle={config.pricingSubtitle}
+        price={config.price}
+        comparison={config.comparison}
+        methodology={config.methodology}
       />
+
+      {config.coverageRegions && config.coverageRegions.length > 0 && (
+        <CoverageSection
+          title={config.coverageTitle || "Coverage"}
+          subtitle={config.coverageSubtitle || ""}
+          stats={config.coverageStats || []}
+          regions={config.coverageRegions}
+          note={config.coverageNote}
+        />
+      )}
     </div>
   )
 }

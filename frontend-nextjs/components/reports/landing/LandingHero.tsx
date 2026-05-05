@@ -1,20 +1,28 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
+import { Search, Shield, MapPin, Satellite } from "lucide-react"
 import { AddressAutocomplete } from "@/components/reports/AddressAutocomplete"
 import { Button } from "@/components/ui/button"
 import type { LucideIcon } from "lucide-react"
 
-interface LandingHeroProps {
-  badgeText: string
-  title: string
-  titleAccent: string
-  subtitle: string
-  ctaLabel: string
+interface HeroStat {
+  value: string
+  label: string
 }
 
-export function LandingHero({ badgeText, title, titleAccent, subtitle, ctaLabel }: LandingHeroProps) {
+interface LandingHeroProps {
+  badge: string
+  badgeIcon: LucideIcon
+  title: string
+  subtitle: string
+  ctaLabel: string
+  stats?: HeroStat[]
+}
+
+export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaLabel, stats }: LandingHeroProps) {
   const [address, setAddress] = useState("")
+  const [isFocused, setIsFocused] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,81 +32,95 @@ export function LandingHero({ badgeText, title, titleAccent, subtitle, ctaLabel 
     }
   }
 
-  const handleSelect = (addr: string) => {
-    setAddress(addr)
-  }
-
   return (
-    <section className="py-16 md:py-24">
-      <div className="text-center max-w-2xl mx-auto mb-10">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium mb-6">
-          <span className="size-1.5 rounded-full bg-accent animate-pulse" />
-          {badgeText}
+    <section className="relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
+
+      {/* Subtle grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="relative mx-auto max-w-4xl px-4 py-20 sm:py-28 lg:py-32">
+        {/* Header badge */}
+        <div className="mb-6 flex justify-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+            <BadgeIcon className="h-4 w-4" />
+            <span>{badge}</span>
+          </div>
         </div>
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
+
+        {/* Main heading */}
+        <h1 className="text-balance text-center text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
           {title}
-          <br />
-          <span className="text-primary">{titleAccent}</span>
         </h1>
-        <p className="mt-4 text-muted-foreground text-lg">
+
+        {/* Subheading */}
+        <p className="mx-auto mt-4 max-w-2xl text-balance text-center text-lg text-muted-foreground sm:text-xl">
           {subtitle}
         </p>
-      </div>
 
-      {/* Address search */}
-      <form onSubmit={handleSubmit} className="relative max-w-2xl mx-auto">
-        <div className="relative flex items-center gap-2 p-2 rounded-2xl bg-card border-2 border-border hover:border-muted-foreground/30 transition-all duration-200 focus-within:border-primary focus-within:shadow-lg focus-within:shadow-primary/10">
-          <div className="pl-3">
-            <svg
-              className="size-5 text-muted-foreground"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
+        {/* Search Bar */}
+        <form onSubmit={handleSubmit} className="relative mx-auto mt-10 max-w-2xl">
+          <div
+            className={`
+              relative flex items-center rounded-2xl bg-card shadow-xl ring-1 transition-all duration-300
+              ${isFocused
+                ? "ring-primary shadow-primary/20 shadow-2xl"
+                : "ring-border/50 shadow-lg"
+              }
+            `}
+          >
+            <div className="flex items-center pl-5">
+              <MapPin className={`h-5 w-5 transition-colors ${isFocused ? "text-primary" : "text-muted-foreground"}`} />
+            </div>
+
+            <AddressAutocomplete
+              value={address}
+              onChange={setAddress}
+              onSelect={(addr) => setAddress(addr)}
+              placeholder="Enter a NSW property address..."
+              className="flex-1 bg-transparent px-4 py-5 text-lg text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+
+            <div className="pr-2">
+              <Button
+                type="submit"
+                size="lg"
+                className="rounded-xl px-6 py-6 text-base font-semibold"
+                disabled={!address.trim()}
+              >
+                <Search className="mr-2 h-5 w-5" />
+                {ctaLabel}
+              </Button>
+            </div>
           </div>
 
-          <AddressAutocomplete
-            value={address}
-            onChange={setAddress}
-            onSelect={(addr) => handleSelect(addr)}
-            placeholder="Enter any NSW property address..."
-            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base md:text-lg outline-none py-2"
-          />
+          {/* Helper text */}
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            <Shield className="mr-1 inline-block h-4 w-4" />
+            Free instant check · No signup required · Full NSW coverage
+          </p>
+        </form>
 
-          <Button
-            type="submit"
-            size="lg"
-            disabled={!address.trim()}
-            className="rounded-xl px-6 font-medium"
-          >
-            {ctaLabel}
-          </Button>
-        </div>
-      </form>
-
-      {/* Micro-trust below search */}
-      <div className="flex items-center justify-center gap-6 mt-6 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
-          Data never stored
-        </span>
-        <span className="flex items-center gap-1.5">
-          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Free preview included
-        </span>
-        <span className="flex items-center gap-1.5">
-          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Results in 8 seconds
-        </span>
+        {/* Quick stats */}
+        {stats && stats.length > 0 && (
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {stats.map((stat, i) => (
+              <div key={stat.label} className="flex items-center gap-x-10">
+                {i > 0 && <div className="hidden h-8 w-px bg-border sm:block" />}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )
