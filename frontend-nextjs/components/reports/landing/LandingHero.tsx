@@ -29,7 +29,6 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
     e.preventDefault()
     if (address.trim()) {
       window.dispatchEvent(new CustomEvent("landing-search", { detail: { address: address.trim() } }))
-      document.getElementById("tool-input")?.scrollIntoView({ behavior: "smooth", block: "center" })
     }
   }
 
