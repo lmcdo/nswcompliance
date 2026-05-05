@@ -44,13 +44,13 @@ export function PricingTable({ title, subtitle, price, comparison, methodology }
               <div className="p-4 text-sm text-foreground">{row.name}</div>
               <div className="flex items-center justify-center p-4">
                 {row.free ? (
-                  <Check className="h-5 w-5 text-accent" />
+                  <Check className="h-5 w-5 text-teal-600" />
                 ) : (
                   <Minus className="h-5 w-5 text-muted-foreground/40" />
                 )}
               </div>
               <div className="flex items-center justify-center p-4">
-                <Check className="h-5 w-5 text-accent" />
+                <Check className="h-5 w-5 text-teal-600" />
               </div>
             </div>
           ))}
