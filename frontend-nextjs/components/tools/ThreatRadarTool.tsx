@@ -242,30 +242,32 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
       </div>
 
       <div className="space-y-6">
-        {/* Address + search */}
-        <form onSubmit={handleSearch} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
-            <AddressAutocomplete
-              value={address}
-              onChange={setAddress}
-              onSelect={(addr) => setAddress(addr)}
-              placeholder="e.g. 16 O'Connor St Haberfield NSW 2045"
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              disabled={searchState === 'searching'}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={searchState === 'searching' || !address.trim()}
-            className="w-full py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {searchState === 'searching' ? 'Searching...' : 'Check nearby applications'}
-          </button>
-          {searchState === 'error' && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{searchError}</div>
-          )}
-        </form>
+        {/* Address + search — hidden once results are showing */}
+        {searchState !== 'done' && (
+          <form onSubmit={handleSearch} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
+              <AddressAutocomplete
+                value={address}
+                onChange={setAddress}
+                onSelect={(addr) => setAddress(addr)}
+                placeholder="e.g. 16 O'Connor St Haberfield NSW 2045"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                disabled={searchState === 'searching'}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={searchState === 'searching' || !address.trim()}
+              className="w-full py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {searchState === 'searching' ? 'Searching...' : 'Check nearby applications'}
+            </button>
+            {searchState === 'error' && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{searchError}</div>
+            )}
+          </form>
+        )}
 
         {/* Results */}
         {searchState === 'done' && searchResult && (
@@ -770,13 +772,15 @@ function SearchResults({
                   {/* Threat badges */}
                   <ThreatBadges app={app} />
 
-                  {app.ApplicationDescription && (
-                    <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
+                  {app.PropertyAddress && (
+                    <p className="text-sm text-gray-700 font-medium">{app.PropertyAddress}</p>
                   )}
 
-                  {app.PropertyAddress && (
-                    <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
-                  )}
+                  {app.ApplicationDescription ? (
+                    <p className="text-sm text-gray-600">{app.ApplicationDescription}</p>
+                  ) : app.DevelopmentType ? (
+                    <p className="text-sm text-gray-500 italic">{app.DevelopmentType}</p>
+                  ) : null}
 
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {app.Status && (

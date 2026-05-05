@@ -12,6 +12,8 @@ import {
   Text,
   StyleSheet,
   Image,
+  Svg,
+  Circle,
 } from '@react-pdf/renderer';
 
 // ---------------------------------------------------------------------------
@@ -226,6 +228,72 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
     <View style={s.footer} fixed>
       <Text style={s.footerText}>Neighbour Development Threat Radar — plotdetect.com.au</Text>
       <Text style={s.footerText}>{pageNum} / {total}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AerialWithMarkers — aerial tile with SVG overlay for property + DA markers
+// ---------------------------------------------------------------------------
+
+// Tile uses 'property' zoom preset: d_lng=0.0005, d_lat=0.0005, 512x512px
+const TILE_D_LNG = 0.0005;
+const TILE_D_LAT = 0.0005;
+const TILE_PX = 512;
+
+function AerialWithMarkers({
+  tile_b64,
+  lat,
+  lng,
+  applications,
+}: {
+  tile_b64: string;
+  lat: number;
+  lng: number;
+  applications: ThreatRadarApplication[];
+}) {
+  const toX = (appLng: number) => ((appLng - (lng - TILE_D_LNG)) / (2 * TILE_D_LNG)) * TILE_PX;
+  const toY = (appLat: number) => ((lat + TILE_D_LAT - appLat) / (2 * TILE_D_LAT)) * TILE_PX;
+
+  // Filter apps with valid coords that fall within tile bbox
+  const visibleApps = applications.filter((a) => {
+    const aLat = Number(a.Latitude);
+    const aLng = Number(a.Longitude);
+    if (!aLat || !aLng) return false;
+    return (
+      aLat >= lat - TILE_D_LAT && aLat <= lat + TILE_D_LAT &&
+      aLng >= lng - TILE_D_LNG && aLng <= lng + TILE_D_LNG
+    );
+  });
+
+  return (
+    <View style={{ position: 'relative', width: '100%' }}>
+      <Image
+        src={`data:image/png;base64,${tile_b64}`}
+        style={{ width: '100%', borderRadius: 4 }}
+      />
+      <Svg viewBox={`0 0 ${TILE_PX} ${TILE_PX}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+        {/* DA/CDC markers */}
+        {visibleApps.map((app, i) => {
+          const x = toX(Number(app.Longitude));
+          const y = toY(Number(app.Latitude));
+          const isDA = app.ApplicationType === 'DA';
+          return (
+            <Circle
+              key={i}
+              cx={String(x)}
+              cy={String(y)}
+              r="8"
+              fill={isDA ? '#f59e0b' : '#a855f7'}
+              opacity="0.85"
+              stroke="white"
+              strokeWidth="2"
+            />
+          );
+        })}
+        {/* Property center marker — teal dot with white border */}
+        <Circle cx={String(TILE_PX / 2)} cy={String(TILE_PX / 2)} r="10" fill="#0d9488" stroke="white" strokeWidth="3" />
+      </Svg>
     </View>
   );
 }
@@ -464,11 +532,13 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
           <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
           <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
-            NSW SIX Maps aerial imagery for context.
+            Your property (teal) and nearby DA/CDC applications (amber/purple) on NSW SIX Maps aerial imagery.
           </Text>
-          <Image
-            src={`data:image/png;base64,${data.tile_b64}`}
-            style={{ width: '100%', borderRadius: 4 }}
+          <AerialWithMarkers
+            tile_b64={data.tile_b64}
+            lat={data.lat}
+            lng={data.lng}
+            applications={apps}
           />
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
