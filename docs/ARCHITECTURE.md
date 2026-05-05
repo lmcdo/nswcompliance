@@ -28,6 +28,11 @@ See full architectural details in the exploration agent output above.
 **Quick Win:** 1 day to add basic synthesis
 **Full Solution:** 7-10 days for comprehensive answer with citations
 
+### Property Profile Hub
+- `/property?address=...` — lightweight property profile page (zone, height, FSR, heritage, flood, lot polygon, aerial map)
+- `/api/property/profile?address=...` — backend: Planning Portal layerintersect + valuation + lot geometry only (no satellite pipelines)
+- Homepage address input routes here; tool cards on the profile link to `/reports/{tool}?address=...` for auto-run
+
 ### Key Endpoints
 - `/api/ai/chat` - AI chat entry point
 - `/api/provisions/for-property` - 4-layer DCP filtering

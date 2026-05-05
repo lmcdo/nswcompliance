@@ -12,7 +12,7 @@ export function HomeHero() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (address.trim()) {
-      router.push(`/reports/flood?address=${encodeURIComponent(address.trim())}`);
+      router.push(`/property?address=${encodeURIComponent(address.trim())}`);
     }
   };
 

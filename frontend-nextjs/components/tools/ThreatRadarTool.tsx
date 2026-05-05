@@ -73,6 +73,17 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
     return () => window.removeEventListener('landing-search', handler);
   }, []);
 
+  // Read ?address= from URL on mount (e.g. from property profile page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim()) return;

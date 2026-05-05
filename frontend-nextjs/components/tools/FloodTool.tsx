@@ -127,8 +127,18 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     return () => window.removeEventListener('landing-search', handler);
   }, []);
 
+  // Read URL params on mount: ?address= (auto-run) and ?payment=success (download CTA)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Auto-run if address provided via URL (e.g. from property profile page)
+    const addrParam = params.get('address')?.trim();
+    if (addrParam && !params.get('payment')) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     if (params.get('payment') === 'success') {
       const rid = params.get('report_id')?.trim();
       if (rid) setPaidReportId(rid);

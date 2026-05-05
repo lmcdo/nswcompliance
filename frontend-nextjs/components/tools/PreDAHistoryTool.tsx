@@ -112,11 +112,17 @@ function PreDAHistoryToolInner() {
     return () => window.removeEventListener('landing-search', handler);
   }, []);
 
-  // Payment callback banner
+  // Read URL params: ?address= (auto-run) and ?payment= (callback banner)
   useEffect(() => {
     const payment = searchParams?.get('payment');
     if (payment === 'success')    setPaymentStatus('success');
     if (payment === 'cancelled')  setPaymentStatus('cancelled');
+
+    const addrParam = searchParams?.get('address')?.trim();
+    if (addrParam && !payment) {
+      setAddress(addrParam);
+      setTimeout(() => handleRunRef.current(), 0);
+    }
   }, [searchParams]);
 
   // Advance cosmetic progress steps while polling

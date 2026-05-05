@@ -118,6 +118,9 @@ Quick reference for what PlotDetect can and cannot do.
 ### 7. Product Landing Pages
 Each satellite product has a composable landing page with: hero (address input + satellite aerial background), verified data source badges, feature grid, free-vs-paid pricing comparison, methodology section, and optional coverage section (flood). Hero address input dispatches to tool component via custom event for seamless search flow.
 
+### 8. Property Profile Hub
+Homepage address input navigates to `/property?address=...` — a lightweight property profile showing zone, height, FSR, heritage, flood, lot polygon, and aerial map from free NSW Planning Portal data only (no satellite pipelines, near-zero cost). Below the profile, 7 tool cards link to `/reports/{tool}?address=...` for auto-run. All tools now read `?address=` from URL on mount and auto-submit.
+
 ---
 
 ## 🔧 **In Progress / Partially Working**
