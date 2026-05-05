@@ -1,12 +1,9 @@
 "use client"
 
 import { LandingHero } from "./LandingHero"
-import { DataSourceStrip } from "./DataSourceStrip"
-import { FeatureGrid } from "./FeatureGrid"
-import { PricingTable } from "./PricingTable"
-import { CoverageSection } from "./CoverageSection"
-import { WhyThisMatters } from "./WhyThisMatters"
+import { TrustBar } from "./TrustBar"
 import { SocialProof } from "./SocialProof"
+import { WhyThisMatters } from "./WhyThisMatters"
 import type { ProductLandingConfig } from "./types"
 import { floodConfig } from "./data/flood"
 import { shadowConfig } from "./data/shadow"
@@ -31,57 +28,26 @@ export function ProductLandingV2({ product }: ProductLandingV2Props) {
   if (!config) return null
 
   return (
-    <div>
+    <div className="mx-auto max-w-5xl px-4">
       <LandingHero
-        badge={config.badge}
-        badgeIcon={config.badgeIcon}
+        badgeText={config.badgeText}
         title={config.title}
+        titleAccent={config.titleAccent}
         subtitle={config.subtitle}
         ctaLabel={config.ctaLabel}
-        stats={config.heroStats}
       />
 
-      {config.dataSources && config.dataSources.length > 0 && (
-        <DataSourceStrip sources={config.dataSources} />
-      )}
+      <TrustBar sources={config.trustSources} />
 
-      {config.comparisons && config.comparisons.length > 0 && (
-        <WhyThisMatters
-          comparisons={config.comparisons}
-          whatYouGet={config.whatYouGet}
-        />
-      )}
-
-      <FeatureGrid
-        title={config.featuresTitle}
-        subtitle={config.featuresSubtitle}
-        features={config.features}
+      <SocialProof
+        stats={config.stats}
+        testimonials={config.testimonials}
       />
 
-      <PricingTable
-        title={config.pricingTitle}
-        subtitle={config.pricingSubtitle}
-        price={config.price}
-        comparison={config.comparison}
-        methodology={config.methodology}
+      <WhyThisMatters
+        comparisons={config.comparisons}
+        whatYouGet={config.whatYouGet}
       />
-
-      {config.coverageRegions && config.coverageRegions.length > 0 && (
-        <CoverageSection
-          title={config.coverageTitle || "Coverage"}
-          subtitle={config.coverageSubtitle || ""}
-          stats={config.coverageStats || []}
-          regions={config.coverageRegions}
-          note={config.coverageNote}
-        />
-      )}
-
-      {config.stats && config.testimonials && (
-        <SocialProof
-          stats={config.stats}
-          testimonials={config.testimonials}
-        />
-      )}
     </div>
   )
 }

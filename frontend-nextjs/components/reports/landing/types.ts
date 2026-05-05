@@ -1,23 +1,3 @@
-import { LucideIcon } from "lucide-react"
-
-export interface FeatureItem {
-  icon: LucideIcon
-  title: string
-  description: string
-}
-
-export interface ComparisonRow {
-  name: string
-  free: boolean
-  paid: boolean
-}
-
-export interface DataSource {
-  icon: LucideIcon
-  name: string
-  description: string
-}
-
 export interface StatItem {
   value: string
   label: string
@@ -35,47 +15,32 @@ export interface ComparisonCard {
   solution: string
 }
 
-export interface CoverageRegion {
+export interface WhatYouGetItem {
+  title: string
+  description: string
+}
+
+export interface TrustSource {
   name: string
-  councils: string[]
+  logo: string
 }
 
 export interface ProductLandingConfig {
   // Hero
-  badge: string
-  badgeIcon: LucideIcon
+  badgeText: string
   title: string
+  titleAccent: string
   subtitle: string
   ctaLabel: string
-  heroStats?: StatItem[]
 
-  // Data sources (optional)
-  dataSources?: DataSource[]
+  // Trust bar
+  trustSources: TrustSource[]
 
-  // Features
-  featuresTitle: string
-  featuresSubtitle: string
-  features: FeatureItem[]
+  // Social proof
+  stats: StatItem[]
+  testimonials: Testimonial[]
 
-  // Pricing
-  pricingTitle: string
-  pricingSubtitle: string
-  price: string
-  comparison: ComparisonRow[]
-  methodology: string
-
-  // Coverage (optional)
-  coverageTitle?: string
-  coverageSubtitle?: string
-  coverageStats?: StatItem[]
-  coverageRegions?: CoverageRegion[]
-  coverageNote?: string
-
-  // WhyThisMatters (optional)
-  comparisons?: ComparisonCard[]
-  whatYouGet?: FeatureItem[]
-
-  // Social proof (optional)
-  stats?: StatItem[]
-  testimonials?: Testimonial[]
+  // Why this matters
+  comparisons: ComparisonCard[]
+  whatYouGet: WhatYouGetItem[]
 }
