@@ -225,6 +225,11 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         </div>
       )}
 
+      {/* Payment return — show download CTA even without result in state */}
+      {paidReportId && state !== 'complete' && (
+        <FloodPaidDownloadCTA reportId={paidReportId} />
+      )}
+
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />

@@ -225,6 +225,10 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         </div>
       )}
 
+      {paidReportId && state !== 'complete' && (
+        <ShadowPaidDownloadCTA reportId={paidReportId} />
+      )}
+
       {state === 'complete' && result && (
         <>
           <ShadowCard result={result} />

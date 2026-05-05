@@ -274,6 +274,11 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
         </div>
       )}
 
+      {/* Payment return — show download CTA even without report in state */}
+      {paidReportId && state !== 'complete' && (
+        <PaidDownloadCTA reportId={paidReportId} />
+      )}
+
       {state === 'complete' && report && (
         <>
           <ReportCard report={report} />
