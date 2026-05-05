@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { SolarYieldTool } from '@/components/tools/SolarYieldTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
-import { solarConfig } from '@/components/reports/landing/data/solar'
 
 export const metadata: Metadata = {
   title: 'Rooftop Solar Yield Estimate — canibuildit.com.au',
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 export default function SolarYieldPage() {
   return (
     <div>
-      <ProductLandingV2 config={solarConfig} />
+      <ProductLandingV2 product="solar" />
       <div className="max-w-2xl mx-auto px-4">
         <SolarYieldTool />
       </div>

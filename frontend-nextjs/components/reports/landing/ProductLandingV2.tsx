@@ -1,3 +1,5 @@
+"use client"
+
 import { LandingHero } from "./LandingHero"
 import { DataSourceStrip } from "./DataSourceStrip"
 import { FeatureGrid } from "./FeatureGrid"
@@ -6,12 +8,28 @@ import { CoverageSection } from "./CoverageSection"
 import { WhyThisMatters } from "./WhyThisMatters"
 import { SocialProof } from "./SocialProof"
 import type { ProductLandingConfig } from "./types"
+import { floodConfig } from "./data/flood"
+import { shadowConfig } from "./data/shadow"
+import { solarConfig } from "./data/solar"
+import { threatRadarConfig } from "./data/threat-radar"
+import { preDAConfig } from "./data/pre-da"
 
-interface ProductLandingV2Props {
-  config: ProductLandingConfig
+const configs: Record<string, ProductLandingConfig> = {
+  flood: floodConfig,
+  shadow: shadowConfig,
+  solar: solarConfig,
+  "threat-radar": threatRadarConfig,
+  "pre-da": preDAConfig,
 }
 
-export function ProductLandingV2({ config }: ProductLandingV2Props) {
+interface ProductLandingV2Props {
+  product: string
+}
+
+export function ProductLandingV2({ product }: ProductLandingV2Props) {
+  const config = configs[product]
+  if (!config) return null
+
   return (
     <div>
       <LandingHero

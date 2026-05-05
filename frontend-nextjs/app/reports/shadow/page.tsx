@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { ShadowTool } from '@/components/tools/ShadowTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
-import { shadowConfig } from '@/components/reports/landing/data/shadow'
 
 export const metadata: Metadata = {
   title: 'Shadow Risk Analyser — canibuildit.com.au',
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 export default function ShadowPage() {
   return (
     <div>
-      <ProductLandingV2 config={shadowConfig} />
+      <ProductLandingV2 product="shadow" />
       <div className="max-w-2xl mx-auto px-4">
         <ShadowTool />
       </div>

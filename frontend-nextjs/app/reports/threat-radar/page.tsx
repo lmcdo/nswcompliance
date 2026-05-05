@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { ThreatRadarTool } from '@/components/tools/ThreatRadarTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
-import { threatRadarConfig } from '@/components/reports/landing/data/threat-radar'
 
 export const metadata: Metadata = {
   title: 'Neighbour Development Threat Radar — canibuildit.com.au',
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 export default function ThreatRadarPage() {
   return (
     <div>
-      <ProductLandingV2 config={threatRadarConfig} />
+      <ProductLandingV2 product="threat-radar" />
       <div className="max-w-2xl mx-auto px-4">
         <ThreatRadarTool />
       </div>

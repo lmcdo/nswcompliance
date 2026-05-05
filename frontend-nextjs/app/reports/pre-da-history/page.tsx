@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { PreDAHistoryTool } from '@/components/tools/PreDAHistoryTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
-import { preDAConfig } from '@/components/reports/landing/data/pre-da'
 
 export const metadata: Metadata = {
   title: 'Pre-DA Site History Report — canibuildit.com.au',
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 export default function PreDAHistoryPage() {
   return (
     <div>
-      <ProductLandingV2 config={preDAConfig} />
+      <ProductLandingV2 product="pre-da" />
       <div className="max-w-2xl mx-auto px-4">
         <PreDAHistoryTool />
       </div>

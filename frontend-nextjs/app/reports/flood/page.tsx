@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { FloodTool } from '@/components/tools/FloodTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
-import { floodConfig } from '@/components/reports/landing/data/flood'
 
 export const metadata: Metadata = {
   title: 'Flood Risk Check — canibuildit.com.au',
@@ -23,7 +22,7 @@ export const metadata: Metadata = {
 export default function FloodPage() {
   return (
     <div>
-      <ProductLandingV2 config={floodConfig} />
+      <ProductLandingV2 product="flood" />
       <div className="max-w-2xl mx-auto px-4">
         <FloodTool />
       </div>
