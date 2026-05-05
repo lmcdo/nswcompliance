@@ -59,28 +59,19 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   const [searchError, setSearchError] = useState('');
   const [subscribeError, setSubscribeError] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
-  const pendingLandingSearch = useRef(false);
 
-  // Listen for hero address input
+  // Listen for hero address input — submit directly after state update flushes
   useEffect(() => {
     const handler = (e: Event) => {
       const addr = (e as CustomEvent).detail?.address;
       if (addr) {
-        pendingLandingSearch.current = true;
         setAddress(addr);
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
       }
     };
     window.addEventListener('landing-search', handler);
     return () => window.removeEventListener('landing-search', handler);
   }, []);
-
-  // Auto-submit when address is set from landing hero
-  useEffect(() => {
-    if (pendingLandingSearch.current && address.trim()) {
-      pendingLandingSearch.current = false;
-      formRef.current?.requestSubmit();
-    }
-  }, [address]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
