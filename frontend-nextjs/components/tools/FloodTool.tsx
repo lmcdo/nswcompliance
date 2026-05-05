@@ -207,7 +207,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         Copernicus EMS observed flood events, and a source-cited PDF for conveyancers and lenders.
       </p>
 
-      <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}

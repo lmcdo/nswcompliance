@@ -261,7 +261,7 @@ function PreDAHistoryToolInner() {
 
       {/* Address input */}
       {(state === 'idle' || state === 'error') && (
-        <div className="mb-6">
+        <div id="tool-input" className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">NSW property address</label>
           <AddressAutocomplete
             value={address}

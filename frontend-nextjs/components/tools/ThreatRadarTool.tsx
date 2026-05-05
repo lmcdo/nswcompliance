@@ -144,7 +144,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
 
       <div className="space-y-6">
         {/* Address + search */}
-        <form onSubmit={handleSearch} className="space-y-3">
+        <form id="tool-input" onSubmit={handleSearch} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
             <AddressAutocomplete

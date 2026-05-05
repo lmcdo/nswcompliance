@@ -196,7 +196,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
         Roof geometry, system sizing, financial return, and suitability grade for any NSW address.
       </p>
 
-      <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}

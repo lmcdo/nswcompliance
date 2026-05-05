@@ -176,7 +176,7 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
