@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { BushfireTool } from '@/components/tools/BushfireTool'
+import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 
 export const metadata: Metadata = {
   title: 'Bushfire Pre-Screen — canibuildit.com.au',
@@ -20,8 +21,11 @@ export const metadata: Metadata = {
 
 export default function BushfirePage() {
   return (
-    <div className="max-w-2xl">
-      <BushfireTool />
+    <div>
+      <ProductLandingV2 product="bushfire" />
+      <div className="max-w-2xl mx-auto px-4">
+        <BushfireTool />
+      </div>
     </div>
   )
 }

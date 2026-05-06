@@ -145,19 +145,8 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
   };
 
   return (
-    <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900">Bushfire Pre-Screen</h1>
-      <p className="mt-1.5 text-sm text-gray-500">
-        Check if an NSW property is on bushfire prone land and understand the development
-        implications. Uses the live NSW RFS Bush Fire Prone Land Map — state-wide coverage,
-        no login required.
-      </p>
-      <p className="mt-2 text-sm text-gray-400">
-        Free. Shows BFPL category, estimated BAL band, RFS referral requirement, 10/50 vegetation
-        clearing entitlements, and any flood or heritage overlays at the site.
-      </p>
-
-      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+    <div>
+      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
