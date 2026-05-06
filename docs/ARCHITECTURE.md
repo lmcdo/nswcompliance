@@ -39,6 +39,8 @@ See full architectural details in the exploration agent output above.
 - `/api/permissibility/check` - LEP land use
 - `/api/capacity/calculate` - Height/FSR/setbacks
 - `/api/procedural` - CDC vs DA guidance
+- `/api/satellite/bushfire` - Bushfire Pre-Screen pipeline (RFS BFPL + lot geometry passthrough)
+- `/api/reports/bushfire/generate` - Bushfire PDF report (composite aerial + BFPL overlay + lot boundary + neighbour context)
 - `/api/satellite/flood` - Flood Truth pipeline (EPI + SAR + EMS + JRC + BOM + raster studies + DEM)
 - `/api/reports/flood/generate` - Flood Truth PDF report generation
 - `/api/satellite/pre-da-history` - Pre-DA Site History pipeline (ePlanning DAs + PCCs + Sentinel-2 NDVI/NDBI + heritage overlay)

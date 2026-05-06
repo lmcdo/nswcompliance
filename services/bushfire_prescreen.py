@@ -443,6 +443,7 @@ class BushfireRequest(BaseModel):
     lat: float
     lng: float
     report_id: str
+    lot_geometry: Optional[dict] = None
 
 
 # ---------------------------------------------------------------------------
@@ -533,9 +534,12 @@ def run_bushfire(req: BushfireRequest):
 
     # Write to DB
     try:
+        inputs = {"lat": req.lat, "lng": req.lng}
+        if req.lot_geometry:
+            inputs["lot_geometry"] = req.lot_geometry
         _write_report(
             req.report_id, req.address, req.lat, req.lng,
-            req.prop_id, {"lat": req.lat, "lng": req.lng},
+            req.prop_id, inputs,
             internal_outputs, confidence, data_sources,
         )
     except Exception as e:
