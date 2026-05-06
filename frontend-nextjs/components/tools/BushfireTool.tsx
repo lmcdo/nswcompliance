@@ -89,14 +89,15 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
   const [result, setResult] = useState<BushfireResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+  const pendingAddress = useRef<string | null>(null);
 
   // Listen for hero address input
   useEffect(() => {
     const handler = (e: Event) => {
       const addr = (e as CustomEvent).detail?.address;
       if (addr) {
+        pendingAddress.current = addr;
         setAddress(addr);
-        setTimeout(() => formRef.current?.requestSubmit(), 0);
       }
     };
     window.addEventListener('landing-search', handler);
@@ -108,11 +109,19 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
     const params = new URLSearchParams(window.location.search);
     const addrParam = params.get('address')?.trim();
     if (addrParam) {
+      pendingAddress.current = addrParam;
       setAddress(addrParam);
-      setTimeout(() => formRef.current?.requestSubmit(), 0);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  // Submit once address state has committed from pending
+  useEffect(() => {
+    if (pendingAddress.current && address === pendingAddress.current) {
+      pendingAddress.current = null;
+      formRef.current?.requestSubmit();
+    }
+  }, [address]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
