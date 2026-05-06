@@ -49,8 +49,9 @@ export async function GET(request: NextRequest) {
     const fsrLayer = layers.find(l => l.layerName === 'Floor Space Ratio Map');
     const heritageLayer = layers.find(l => l.layerName === 'Heritage Map');
 
-    const zone = zoneLayer?.results?.[0]?.['Land Use Zone'] ?? null;
-    const zoneDescription = zoneLayer?.results?.[0]?.['Zone Description'] ?? propertyData.zoneDescription ?? null;
+    const zone = zoneLayer?.results?.[0]?.['Zone'] ?? null;
+    const zoneTitle = zoneLayer?.results?.[0]?.['title'] ?? null; // e.g. "E4: General Industrial"
+    const zoneDescription = zoneTitle ?? propertyData.zoneDescription ?? null;
     const lga = zoneLayer?.results?.[0]?.['LGA Name'] ?? null;
     const maxHeight = heightLayer?.results?.[0]?.['Maximum Building Height'] ?? null;
     const maxFsr = fsrLayer?.results?.[0]?.['Floor Space Ratio'] ?? null;

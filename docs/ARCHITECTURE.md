@@ -30,7 +30,7 @@ See full architectural details in the exploration agent output above.
 
 ### Property Profile Hub
 - `/property?address=...` — lightweight property profile page (zone, height, FSR, heritage, flood, lot polygon, aerial map)
-- `/api/property/profile?address=...` — backend: Planning Portal layerintersect + valuation + lot geometry only (no satellite pipelines)
+- `/api/property/profile?address=...` — backend: Planning Portal layerintersect (zone, height, FSR, heritage) + valuation + lot geometry only (no satellite pipelines)
 - Homepage address input routes here; tool cards on the profile link to `/reports/{tool}?address=...` for auto-run
 
 ### Key Endpoints

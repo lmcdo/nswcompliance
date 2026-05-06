@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -88,6 +88,31 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<BushfireResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Listen for hero address input
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Read ?address= from URL on mount (e.g. from property profile page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +157,7 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
         clearing entitlements, and any flood or heritage overlays at the site.
       </p>
 
-      <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}

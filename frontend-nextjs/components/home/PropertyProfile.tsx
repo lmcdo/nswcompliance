@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Droplets, Flame, Sun, Eye, Radio, Home, FileSearch,
-  MapPin, Ruler, Building2, TreePine, Shield, ChevronRight,
+  MapPin, Ruler, Building2, Shield, ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -33,7 +33,17 @@ interface PropertyData {
   propertyArea: string | null;
 }
 
-const TOOLS = [
+interface ToolItem {
+  key: string;
+  title: string;
+  detail: string;
+  href: string;
+  badge: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+}
+
+const BUYING_TOOLS: ToolItem[] = [
   {
     key: 'flood',
     title: 'Flood Risk Check',
@@ -53,32 +63,17 @@ const TOOLS = [
     iconColor: 'text-orange-600 bg-orange-50',
   },
   {
-    key: 'shadow',
-    title: 'Shadow Detector',
-    detail: 'ADG shadow analysis at 9am, noon, and 3pm on winter solstice.',
-    href: '/reports/shadow',
-    badge: '$29 report',
-    icon: Eye,
-    iconColor: 'text-slate-600 bg-slate-50',
+    key: 'pre-da',
+    title: 'Pre-DA Site History',
+    detail: '8 years of satellite change detection + DA records + heritage.',
+    href: '/reports/pre-da-history',
+    badge: '$49 report',
+    icon: FileSearch,
+    iconColor: 'text-purple-600 bg-purple-50',
   },
-  {
-    key: 'solar',
-    title: 'Solar Yield',
-    detail: 'Roof geometry, orientation, and estimated annual kWh.',
-    href: '/reports/solar-yield',
-    badge: '$19 report',
-    icon: Sun,
-    iconColor: 'text-amber-600 bg-amber-50',
-  },
-  {
-    key: 'threat-radar',
-    title: 'Threat Radar',
-    detail: 'Every DA and CDC within 500m — with weekly alerts.',
-    href: '/reports/threat-radar',
-    badge: 'Free',
-    icon: Radio,
-    iconColor: 'text-violet-600 bg-violet-50',
-  },
+];
+
+const BUILDING_TOOLS: ToolItem[] = [
   {
     key: 'granny-flat',
     title: 'Granny Flat Checker',
@@ -89,13 +84,43 @@ const TOOLS = [
     iconColor: 'text-teal-600 bg-teal-50',
   },
   {
-    key: 'pre-da',
-    title: 'Pre-DA Site History',
-    detail: '8 years of satellite change detection + DA records + heritage.',
-    href: '/reports/pre-da-history',
-    badge: '$49 report',
-    icon: FileSearch,
-    iconColor: 'text-purple-600 bg-purple-50',
+    key: 'shadow',
+    title: 'Shadow Detector',
+    detail: 'ADG shadow analysis at 9am, noon, and 3pm on winter solstice.',
+    href: '/reports/shadow',
+    badge: '$29 report',
+    icon: Eye,
+    iconColor: 'text-slate-600 bg-slate-50',
+  },
+  {
+    key: 'threat-radar',
+    title: 'Threat Radar',
+    detail: 'Every DA and CDC within 500m — with weekly alerts.',
+    href: '/reports/threat-radar',
+    badge: 'Free',
+    icon: Radio,
+    iconColor: 'text-violet-600 bg-violet-50',
+  },
+];
+
+const YIELD_TOOLS: ToolItem[] = [
+  {
+    key: 'solar',
+    title: 'Solar Yield',
+    detail: 'Roof geometry, orientation, and estimated annual kWh.',
+    href: '/reports/solar-yield',
+    badge: '$19 report',
+    icon: Sun,
+    iconColor: 'text-amber-600 bg-amber-50',
+  },
+  {
+    key: 'granny-flat-yield',
+    title: 'Granny Flat Checker',
+    detail: 'Could this property earn $280–$340/week extra? Zone, lot size, SEPP rules.',
+    href: '/reports/granny-flat',
+    badge: 'Free + $49 report',
+    icon: Home,
+    iconColor: 'text-teal-600 bg-teal-50',
   },
 ];
 
@@ -161,7 +186,7 @@ export function PropertyProfile() {
       )}
 
       {data && (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {/* Header */}
           <div>
             <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
@@ -172,9 +197,9 @@ export function PropertyProfile() {
           </div>
 
           {/* Map + summary grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Aerial map */}
-            <div className="lg:col-span-2 rounded-xl overflow-hidden border border-gray-200" style={{ height: 320 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Aerial map — square-ish aspect */}
+            <div className="lg:col-span-3 rounded-xl overflow-hidden border border-gray-200 aspect-[4/3]">
               {data.lotPolygon ? (
                 <AerialTile lat={data.lat} lng={data.lng} lotPolygon={data.lotPolygon} />
               ) : (
@@ -183,8 +208,13 @@ export function PropertyProfile() {
             </div>
 
             {/* Key facts */}
-            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-              <PropertyFact icon={Building2} label="Zone" value={data.zone ?? 'Unknown'} sub={data.zoneDescription} />
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 self-start">
+              <PropertyFact
+                icon={Building2}
+                label="Zone"
+                value={data.zoneDescription ?? data.zone ?? 'Unknown'}
+              />
+              <PropertyFact icon={MapPin} label="LGA" value={data.lga ?? 'Unknown'} />
               <PropertyFact icon={Ruler} label="Max height" value={data.maxHeight ? `${data.maxHeight}m` : 'N/A'} />
               <PropertyFact icon={Building2} label="FSR" value={data.maxFsr ?? 'N/A'} />
               <PropertyFact icon={MapPin} label="Lot area" value={data.lotArea ? `${data.lotArea.toLocaleString()} m²` : data.propertyArea ?? 'N/A'} />
@@ -204,39 +234,26 @@ export function PropertyProfile() {
             </div>
           </div>
 
-          {/* Tool cards */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">Run a detailed check</h2>
-            <p className="text-sm text-gray-500 mb-5">
-              Each tool uses satellite imagery and government data sources. Select the check relevant to your situation.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {TOOLS.map((tool) => {
-                const Icon = tool.icon;
-                const href = `${tool.href}?address=${encodeURIComponent(data.address)}`;
-                return (
-                  <Link
-                    key={tool.key}
-                    href={href}
-                    className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-sm"
-                  >
-                    <div className={`shrink-0 rounded-lg p-2.5 ${tool.iconColor}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <h3 className="text-sm font-semibold text-gray-900">{tool.title}</h3>
-                        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
-                      </div>
-                      <p className="text-xs text-gray-500 leading-relaxed mb-2">{tool.detail}</p>
-                      <span className="text-[11px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                        {tool.badge}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+          {/* Tool cards — grouped by intent */}
+          <div className="space-y-10">
+            <ToolGroup
+              title="Buying a property?"
+              subtitle="Your conveyancer will ask for flood and bushfire status. Get the data before they do."
+              tools={BUYING_TOOLS}
+              address={data.address}
+            />
+            <ToolGroup
+              title="Planning to build?"
+              subtitle="Check what's possible, what's planned nearby, and whether your build will create objections."
+              tools={BUILDING_TOOLS}
+              address={data.address}
+            />
+            <ToolGroup
+              title="Evaluating yield?"
+              subtitle="Estimate income potential before you buy or before you quote."
+              tools={YIELD_TOOLS}
+              address={data.address}
+            />
           </div>
 
           {/* Disclaimer */}
@@ -246,6 +263,52 @@ export function PropertyProfile() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ToolGroup({
+  title,
+  subtitle,
+  tools,
+  address,
+}: {
+  title: string;
+  subtitle: string;
+  tools: ToolItem[];
+  address: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-lg font-bold text-gray-900 mb-1">{title}</h2>
+      <p className="text-sm text-gray-500 mb-4">{subtitle}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {tools.map((tool) => {
+          const Icon = tool.icon;
+          const href = `${tool.href}?address=${encodeURIComponent(address)}`;
+          return (
+            <Link
+              key={tool.key}
+              href={href}
+              className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-all hover:border-gray-300 hover:shadow-sm"
+            >
+              <div className={`shrink-0 rounded-lg p-2.5 ${tool.iconColor}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <h3 className="text-sm font-semibold text-gray-900">{tool.title}</h3>
+                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed mb-2">{tool.detail}</p>
+                <span className="text-[11px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                  {tool.badge}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
