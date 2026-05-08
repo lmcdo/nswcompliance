@@ -50,6 +50,12 @@ except ImportError:
     HubScrapeError = Exception
 
 
+class WAFBlockError(Exception):
+    """Raised when a 403 indicates WAF/access denial, not a content issue.
+    Should not increment check_failures — it's an infrastructure problem, not data."""
+    pass
+
+
 @dataclass
 class DiffResult:
     url_same:     list[str] = field(default_factory=list)   # chapter_keys: URL unchanged
@@ -80,6 +86,41 @@ HEADERS = {
 
 SANITY_MAX_CHANGE_PCT = 40  # Alert if >40% of a council's chapters changed in one run
 
+# ── Shared session for connection pooling ────────────────────────────────────
+SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+
+# ── Adaptive delay tracking ──────────────────────────────────────────────────
+_domain_delays: dict[str, float] = {}  # domain → current delay in seconds
+DEFAULT_DELAY = 2.0
+MAX_DELAY = 60.0
+
+
+def _get_domain(url: str) -> str:
+    from urllib.parse import urlparse
+    return urlparse(url).netloc
+
+
+def adaptive_delay(url: str) -> None:
+    """Sleep for the current adaptive delay for this URL's domain."""
+    domain = _get_domain(url)
+    delay = _domain_delays.get(domain, DEFAULT_DELAY)
+    time.sleep(delay)
+
+
+def _backoff(url: str) -> None:
+    """Increase delay for this domain after a rate-limit or error."""
+    domain = _get_domain(url)
+    current = _domain_delays.get(domain, DEFAULT_DELAY)
+    _domain_delays[domain] = min(current * 2, MAX_DELAY)
+
+
+def _decay(url: str) -> None:
+    """Decrease delay for this domain after a success."""
+    domain = _get_domain(url)
+    current = _domain_delays.get(domain, DEFAULT_DELAY)
+    _domain_delays[domain] = max(current * 0.8, DEFAULT_DELAY)
+
 # ── Telegram alerting ────────────────────────────────────────────────────────
 def send_telegram(message: str) -> None:
     """Send a Telegram message. Silently no-ops if env vars not set."""
@@ -102,9 +143,29 @@ def sha256(data: bytes) -> str:
 
 
 def head_request(url: str) -> dict:
-    """HTTP HEAD to cheaply check Content-Length before downloading."""
+    """HTTP HEAD to cheaply check Content-Length before downloading.
+    Falls back to a range-0 GET if HEAD returns 405 (some council APIs
+    only support GET — e.g. Canterbury Bankstown webdocs).
+    """
     try:
-        resp = requests.head(url, headers=HEADERS, timeout=30, allow_redirects=True)
+        resp = SESSION.head(url, timeout=30, allow_redirects=True)
+        if resp.status_code == 405:
+            # Server doesn't support HEAD — try GET with Range header
+            # to avoid downloading the full file just for metadata.
+            resp = SESSION.get(
+                url, timeout=30, allow_redirects=True,
+                headers={**SESSION.headers, "Range": "bytes=0-0"},
+                stream=True,
+            )
+            resp.close()
+            # Range request returns 206; some servers ignore Range and return 200
+            status = 200 if resp.status_code in (200, 206) else resp.status_code
+            return {
+                "content_length": resp.headers.get("Content-Length"),
+                "etag": resp.headers.get("ETag"),
+                "last_modified": resp.headers.get("Last-Modified"),
+                "status": status,
+            }
         return {
             "content_length": resp.headers.get("Content-Length"),
             "etag": resp.headers.get("ETag"),
@@ -118,12 +179,36 @@ def head_request(url: str) -> dict:
 def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures.CaseInsensitiveDict]:
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=60, allow_redirects=True)
+            resp = SESSION.get(url, timeout=60, allow_redirects=True)
+            if resp.status_code == 429:
+                _backoff(url)
+                delay = _domain_delays.get(_get_domain(url), DEFAULT_DELAY)
+                print(f"    [429 rate-limited] backing off {delay:.0f}s")
+                time.sleep(delay)
+                continue
+            if resp.status_code == 403:
+                _backoff(url)
+                raise WAFBlockError(f"HTTP 403 Forbidden (WAF/access denied): {url}")
             resp.raise_for_status()
+            _decay(url)
+            # Verify Content-Type is PDF — guards against HTML error pages
+            # being hashed as "changes" (QA pattern bug #7).
+            ct = resp.headers.get("Content-Type", "")
+            if ct and "pdf" not in ct.lower() and "octet-stream" not in ct.lower():
+                raise RuntimeError(
+                    f"Expected PDF but got Content-Type: {ct} — "
+                    f"server may have returned an error page: {url}"
+                )
             # Return resp.headers directly (CaseInsensitiveDict) — do NOT convert to dict().
             # dict() loses case-insensitivity; servers/CDNs may send 'etag' (lowercase)
             # while the code looks up 'ETag', causing None to be stored every run.
             return resp.content, resp.headers
+        except requests.exceptions.HTTPError as exc:
+            print(f"    [attempt {attempt}/{retries}] {exc}")
+            if attempt < retries:
+                time.sleep(2 * attempt)
+        except (RuntimeError, WAFBlockError):
+            raise  # Don't retry 403/WAF blocks or content-type errors
         except Exception as exc:
             print(f"    [attempt {attempt}/{retries}] {exc}")
             if attempt < retries:
@@ -391,8 +476,18 @@ def run_monitor(
             try:
                 # Step 1: Quick HEAD check on Content-Length
                 head = head_request(url)
-                if head.get("status") not in (200, 206):
-                    raise RuntimeError(f"HEAD returned HTTP {head.get('status')}: {url}")
+                head_status = head.get("status")
+                if head_status == 403:
+                    # WAF/access denied — don't count as check_failure (not a content issue).
+                    # Log and skip, but don't increment the failure counter.
+                    print(f"    [WAF] HTTP 403 — access denied, skipping (not counted as failure)")
+                    _backoff(url)
+                    results["failed"] += 1
+                    council_failed += 1
+                    adaptive_delay(url)
+                    continue
+                if head_status not in (200, 206):
+                    raise RuntimeError(f"HEAD returned HTTP {head_status}: {url}")
 
                 remote_len = head.get("content_length")
                 if remote_len:
@@ -529,6 +624,19 @@ def run_monitor(
                     council_changed += 1
                 results["checked"] += 1
 
+            except WAFBlockError as exc:
+                # 403 WAF/access denial — skip without incrementing check_failures.
+                # Infrastructure problem (CDN blocking GH Actions IP), not a data issue.
+                print(f"    [WAF-BLOCKED] {exc}")
+                cur.execute(
+                    "UPDATE dcp_chapter_registry SET url_last_checked=%s WHERE id=%s",
+                    (now, chapter_id),
+                )
+                if not dry_run:
+                    conn.commit()
+                council_failed += 1
+                results["failed"] += 1
+
             except Exception as exc:
                 print(f"    [ERROR] {exc}")
                 new_failures = failures + 1
@@ -541,7 +649,7 @@ def run_monitor(
                 council_failed += 1
                 results["failed"] += 1
 
-            time.sleep(2)  # polite delay — reduced request volume vs old approach
+            adaptive_delay(url)  # per-domain adaptive delay (default 2s, backs off on 429)
 
         # Update instrument_currency for this council if all its chapters passed.
         # Use council_failed (not results["failed"]) — the global counter is cumulative
@@ -574,13 +682,121 @@ def sanity_check(results: dict, total_chapters: int) -> list[str]:
     return warnings
 
 
+def reseed_hashes(conn, council_filter: str | None, dry_run: bool, delay: float = 5.0) -> None:
+    """
+    Re-download all active chapters and update stored content_hash, url_etag,
+    url_content_length, and check_failures without triggering extraction.
+
+    Use after a CMS migration invalidates stored ETags/Content-Lengths, causing
+    the normal monitor to think every chapter has changed.
+
+    Does NOT:
+      - Set needs_extraction = TRUE (provisions are already extracted)
+      - Upload to R2 (R2 copies are already correct)
+      - Send Telegram alerts
+    """
+    cur = conn.cursor()
+    now = datetime.now(timezone.utc)
+
+    query = """
+        SELECT id, council, chapter_key, council_url, content_hash, url_etag
+        FROM dcp_chapter_registry
+        WHERE is_active = TRUE AND council_url IS NOT NULL
+    """
+    params = []
+    if council_filter:
+        query += " AND council = %s"
+        params.append(council_filter)
+    query += " ORDER BY council, sort_order"
+
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    cols = [d[0] for d in cur.description]
+    chapters = [dict(zip(cols, row)) for row in rows]
+    cur.close()
+
+    print(f"\nReseeding hashes for {len(chapters)} chapters (delay={delay}s)...\n")
+
+    updated = 0
+    skipped = 0
+    failed = 0
+
+    for chapter in chapters:
+        chapter_id = chapter["id"]
+        council = chapter["council"]
+        key = chapter["chapter_key"]
+        url = chapter["council_url"]
+        stored_hash = chapter["content_hash"]
+        stored_etag = chapter["url_etag"]
+
+        print(f"  {council}/{key}", end="", flush=True)
+
+        try:
+            content, resp_headers = download_pdf(url)
+            new_hash = sha256(content)
+            new_etag = resp_headers.get("ETag")
+            new_lm = resp_headers.get("Last-Modified")
+            # Use Content-Length from response if available, else len(content)
+            remote_len = resp_headers.get("Content-Length")
+            new_len = int(remote_len) if remote_len else len(content)
+
+            changed = new_hash != stored_hash or new_etag != stored_etag
+
+            if not changed:
+                print(f"  [ok] hash+etag match")
+                skipped += 1
+            else:
+                hash_changed = "hash" if new_hash != stored_hash else ""
+                etag_changed = "etag" if new_etag != stored_etag else ""
+                diff = "+".join(filter(None, [hash_changed, etag_changed]))
+                print(f"  [reseed] {diff} updated")
+
+                if not dry_run:
+                    cur2 = conn.cursor()
+                    cur2.execute(
+                        """
+                        UPDATE dcp_chapter_registry
+                        SET content_hash=%s, url_etag=%s, url_content_length=%s,
+                            url_last_modified=%s, url_last_checked=%s, check_failures=0
+                        WHERE id=%s
+                        """,
+                        (new_hash, new_etag, new_len, new_lm, now, chapter_id),
+                    )
+                    conn.commit()
+                    cur2.close()
+                updated += 1
+
+        except Exception as exc:
+            print(f"  [ERROR] {exc}")
+            failed += 1
+
+        time.sleep(delay)
+
+    print(f"\n{'='*60}")
+    print(f"RESEED SUMMARY")
+    print(f"{'='*60}")
+    print(f"  Updated  : {updated}")
+    print(f"  Unchanged: {skipped}")
+    print(f"  Failed   : {failed}")
+    if dry_run:
+        print(f"  (dry-run — no DB writes)")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Weekly DCP chapter change monitor")
     parser.add_argument("--council", help="Filter to specific council")
     parser.add_argument("--dry-run", action="store_true", help="Report changes without writing to DB or R2")
     parser.add_argument("--force", action="store_true", help="Re-download all even if Content-Length unchanged")
     parser.add_argument("--reseed", action="store_true", help="Update council_url for all chapters from hub scrape (run once after CMS migration)")
+    parser.add_argument("--reseed-hashes", action="store_true", help="Re-download all chapters and update stored hashes/ETags without triggering extraction (run after CMS migration invalidates ETags)")
+    parser.add_argument("--delay", type=float, default=None, help="Override default inter-request delay in seconds (default: 2.0, reseed-hashes: 5.0)")
     args = parser.parse_args()
+
+    # Set default delay based on mode
+    if args.delay is not None:
+        _domain_delays.clear()  # will use args.delay as base
+        global DEFAULT_DELAY
+        DEFAULT_DELAY = args.delay
 
     s3 = boto3.client(
         "s3",
@@ -596,7 +812,16 @@ def main():
     print(f"DCP Chapter Monitor — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
     if args.dry_run:
         print("DRY RUN")
+    if args.reseed_hashes:
+        print("RESEED HASHES MODE — updating stored hashes/ETags, no extraction triggers")
     print("=" * 60)
+
+    if args.reseed_hashes:
+        try:
+            reseed_hashes(conn, args.council, args.dry_run, delay=args.delay or 5.0)
+        finally:
+            conn.close()
+        sys.exit(0)
 
     try:
         results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed)
