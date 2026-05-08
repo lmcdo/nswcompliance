@@ -448,99 +448,24 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
 
-        {/* --- Section 3: SEPP Design Standards --- */}
-        <Text style={s.sectionTitle}>3. Applicable SEPP Design Standards</Text>
+        {/* --- Section 3: Approval Pathway Comparison --- */}
+        <Text style={s.sectionTitle}>3. Approval Pathways</Text>
         <Text style={{ ...s.body, marginBottom: 10 }}>
-          The following standards apply to secondary dwellings approved as complying development
-          under SEPP Housing 2021 Schedule 3, Subdivision 4.
+          {pass
+            ? 'This property is eligible for the fast-track CDC pathway. You can also lodge a DA with council if you need more design flexibility.'
+            : 'This property is not eligible for CDC. A Development Application (DA) to council may still be possible — consult a town planner.'}
         </Text>
-
-        {/* Standards table */}
-        <View style={s.tableHeader}>
-          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Standard</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Requirement</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Clause</Text>
-        </View>
-        {[
-          { std: 'Maximum floor area', req: '60 m²', clause: 'SEPP Housing 2021 cl 4.18' },
-          { std: 'Rear boundary setback', req: 'Min 3 m', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Side boundary setback', req: 'Min 0.9 m (up to 8 m height), 1.5 m above', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Separation from principal dwelling', req: 'Min 3 m', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Maximum wall height', req: '5 m (or less if DCP applies)', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Maximum roof height', req: '8.5 m', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Private open space (secondary)', req: 'Min 24 m² with min 3 m dimension', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-          { std: 'Car parking', req: 'Not required (but must not reduce principal dwelling below 1 space)', clause: 'SEPP Housing 2021 Sch 3 Subdiv 4' },
-        ].map((row, i) => (
-          <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-            <Text style={{ ...s.tableCell, flex: 2 }}>{row.std}</Text>
-            <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.req}</Text>
-            <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>{row.clause}</Text>
-          </View>
-        ))}
-
-        <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
-          Your council DCP may impose additional controls on the DA pathway (not applicable to CDC).
-          These SEPP standards apply statewide. Verify site coverage, landscaping, and heritage controls separately.
-        </Text>
-
-        {/* --- Section 3b: DCP Secondary Dwelling Setbacks (paid only) --- */}
-        {data.is_paid === true && data.dcp_sd_setbacks && data.dcp_sd_setbacks.length > 0 && (
-          <>
-            <Text style={s.sectionTitle}>
-              3b. Council DCP Controls — Secondary Dwellings{data.lga_name ? ` (${data.lga_name})` : ''}
-            </Text>
-            <Text style={{ ...s.body, marginBottom: 8 }}>
-              The following controls are from{' '}
-              {data.dcp_url ? (
-                <Link src={data.dcp_url} style={{ color: TEAL }}>{data.dcp_name || 'the local DCP'}</Link>
-              ) : (
-                <Text>{data.dcp_name || 'the local DCP'}</Text>
-              )}
-              {' '}and apply specifically to secondary dwellings on the DA pathway.
-              These may differ from the statewide SEPP standards above.
-            </Text>
-            <View style={s.tableHeader}>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Control</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Requirement</Text>
-              <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Clause</Text>
-            </View>
-            {data.dcp_sd_setbacks.map((row, i) => (
-              <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                <Text style={{ ...s.tableCell, flex: 2 }}>{row.type}</Text>
-                <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.requirement}</Text>
-                <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>
-                  {row.clause}
-                </Text>
-              </View>
-            ))}
-            {data.dcp_sd_setbacks.some(r => r.notes) && (
-              <View style={{ marginTop: 4 }}>
-                {data.dcp_sd_setbacks.filter(r => r.notes).map((r, i) => (
-                  <Text key={i} style={{ fontSize: 7, color: GRAY_500, marginBottom: 2 }}>
-                    {r.type}: {r.notes}
-                  </Text>
-                ))}
-              </View>
-            )}
-            <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
-              DCP controls apply to the DA pathway only. The CDC pathway uses SEPP Housing 2021 standards exclusively.
-            </Text>
-          </>
-        )}
-
-        {/* --- Section 4: CDC vs DA Pathway --- */}
-        <Text style={s.sectionTitle}>4. Approval Pathway Comparison</Text>
         <View style={s.tableHeader}>
           <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Factor</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>CDC (Complying Development)</Text>
-          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>DA (Development Application)</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>CDC (fast-track)</Text>
+          <Text style={{ ...s.tableHeaderCell, flex: 2 }}>DA (council)</Text>
         </View>
         {[
           { factor: 'Approving body', cdc: 'Private certifier', da: 'Council' },
           { factor: 'Timeframe', cdc: '10–20 business days', da: '40–60 days (up to 90+)' },
-          { factor: 'Application fee', cdc: '~$1,000–$2,500', da: '~$500–$2,000 council + certifier' },
-          { factor: 'Design flexibility', cdc: 'Limited — must comply with all SEPP standards', da: 'Higher — council may exercise discretion' },
-          { factor: 'Max floor area', cdc: '60 m²', da: 'Subject to DCP (often 20–25% of principal dwelling)' },
+          { factor: 'Application fee', cdc: '~$1,000–$2,500', da: '~$500–$2,000 + certifier' },
+          { factor: 'Design flexibility', cdc: 'Must comply with all SEPP standards', da: 'Council may exercise discretion' },
+          { factor: 'Max floor area', cdc: '60 m²', da: 'Subject to DCP' },
           { factor: 'Heritage / flood lots', cdc: 'Excluded (cl 54–58)', da: 'Possible with specialist report' },
           { factor: 'Neighbour notification', cdc: 'Not required', da: 'Required — neighbours can object' },
         ].map((row, i) => (
@@ -550,6 +475,103 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             <Text style={{ ...s.tableCell, flex: 2 }}>{row.da}</Text>
           </View>
         ))}
+
+        {/* --- Section 4: Development Standards by Pathway --- */}
+        <Text style={s.sectionTitle}>
+          4. Development Standards{data.lga_name ? ` — ${data.lga_name}` : ''}
+        </Text>
+        <Text style={{ ...s.body, marginBottom: 10 }}>
+          {data.is_paid === true && data.dcp_sd_setbacks && data.dcp_sd_setbacks.length > 0
+            ? 'Side-by-side comparison of CDC standards (SEPP Housing 2021) and DA standards (your council DCP). CDC standards are statewide. DCP standards are specific to your council.'
+            : 'The following SEPP Housing 2021 standards apply to secondary dwellings on the CDC pathway. These are statewide — the same for every NSW address.'}
+        </Text>
+
+        {/* Combined comparison table (paid + DCP data) or SEPP-only table */}
+        {data.is_paid === true && data.dcp_sd_setbacks && data.dcp_sd_setbacks.length > 0 ? (() => {
+          const dcpMap: Record<string, { req: string; clause: string; notes: string }> = {};
+          for (const sb of data.dcp_sd_setbacks!) {
+            const key = sb.type.toLowerCase();
+            dcpMap[key] = { req: sb.requirement, clause: sb.clause, notes: sb.notes };
+          }
+          const rows = [
+            { control: 'Maximum floor area', cdc: '60 m²', dcpKey: 'max floor area' },
+            { control: 'Front setback', cdc: 'Not specified', dcpKey: 'front setback' },
+            { control: 'Rear setback', cdc: 'Min 3 m', dcpKey: 'rear setback' },
+            { control: 'Side setback', cdc: 'Min 0.9 m (1.5 m above 8 m)', dcpKey: 'side setback' },
+            { control: 'Separation from dwelling', cdc: 'Min 3 m', dcpKey: 'separation from dwelling' },
+            { control: 'Max wall height', cdc: '5 m', dcpKey: 'max height' },
+            { control: 'Max roof height', cdc: '8.5 m', dcpKey: 'max roof height' },
+            { control: 'Private open space', cdc: 'Min 24 m² (3 m dimension)', dcpKey: 'private open space' },
+            { control: 'Car parking', cdc: 'Not required', dcpKey: 'car parking' },
+            { control: 'Site coverage', cdc: 'Not specified', dcpKey: 'max site coverage' },
+            { control: 'Landscaped area', cdc: 'Not specified', dcpKey: 'min landscaped area' },
+          ];
+          return (
+            <>
+              <View style={s.tableHeader}>
+                <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Control</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2 }}>CDC (SEPP)</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2 }}>DA (Council DCP)</Text>
+              </View>
+              {rows.map((row, i) => {
+                const dcp = dcpMap[row.dcpKey];
+                if (!dcp && row.cdc === 'Not specified') return null;
+                return (
+                  <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                    <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.control}</Text>
+                    <Text style={{ ...s.tableCell, flex: 2, color: pass ? TEAL : GRAY_700 }}>{row.cdc}</Text>
+                    <Text style={{ ...s.tableCell, flex: 2 }}>{dcp ? dcp.req : '—'}</Text>
+                  </View>
+                );
+              })}
+              {data.dcp_sd_setbacks!.some(r => r.notes) && (
+                <View style={{ marginTop: 4 }}>
+                  {data.dcp_sd_setbacks!.filter(r => r.notes).map((r, i) => (
+                    <Text key={i} style={{ fontSize: 7, color: GRAY_500, marginBottom: 2 }}>
+                      {r.type}: {r.notes}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
+                CDC = SEPP Housing 2021 Sch 3 Subdiv 4 (statewide).
+                DA = {data.dcp_url ? '' : ''}{data.dcp_name || 'local DCP'} (council-specific).
+                {data.dcp_url && ' '}
+                {data.dcp_url && (
+                  <Link src={data.dcp_url} style={{ color: TEAL }}>View full DCP</Link>
+                )}
+              </Text>
+            </>
+          );
+        })() : (
+          <>
+            <View style={s.tableHeader}>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Standard</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>CDC Requirement</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Source</Text>
+            </View>
+            {[
+              { std: 'Maximum floor area', req: '60 m²', clause: 'cl 4.18' },
+              { std: 'Rear setback', req: 'Min 3 m', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Side setback', req: 'Min 0.9 m (1.5 m above 8 m)', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Separation from dwelling', req: 'Min 3 m', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Max wall height', req: '5 m', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Max roof height', req: '8.5 m', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Private open space', req: 'Min 24 m² (3 m dimension)', clause: 'Sch 3 Subdiv 4' },
+              { std: 'Car parking', req: 'Not required', clause: 'Sch 3 Subdiv 4' },
+            ].map((row, i) => (
+              <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                <Text style={{ ...s.tableCell, flex: 2 }}>{row.std}</Text>
+                <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.req}</Text>
+                <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>SEPP Housing 2021 {row.clause}</Text>
+              </View>
+            ))}
+            <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
+              SEPP Housing 2021 standards apply statewide on the CDC pathway.
+              Your council DCP may impose different controls on the DA pathway.
+            </Text>
+          </>
+        )}
 
         {/* Footer */}
         <PlotDetectFooter reportName="Granny Flat Eligibility Report" />
