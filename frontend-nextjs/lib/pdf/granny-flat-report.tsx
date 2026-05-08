@@ -22,6 +22,13 @@ import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './sha
 // Types
 // ---------------------------------------------------------------------------
 
+interface DCPSetbackEntry {
+  type: string;
+  requirement: string;
+  clause: string;
+  notes: string;
+}
+
 export interface GrannyFlatReportData {
   address: string;
   run_date: string;
@@ -43,6 +50,12 @@ export interface GrannyFlatReportData {
   // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
   tile_b64: string | null;
   logo_b64?: string | null;
+  // LGA + DCP secondary dwelling setbacks
+  lga_name?: string | null;
+  lga_slug?: string | null;
+  dcp_sd_setbacks?: DCPSetbackEntry[] | null;
+  dcp_name?: string | null;
+  dcp_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -469,6 +482,51 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           Your council DCP may impose additional controls on the DA pathway (not applicable to CDC).
           These SEPP standards apply statewide. Verify site coverage, landscaping, and heritage controls separately.
         </Text>
+
+        {/* --- Section 3b: DCP Secondary Dwelling Setbacks (paid only) --- */}
+        {data.is_paid === true && data.dcp_sd_setbacks && data.dcp_sd_setbacks.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>
+              3b. Council DCP Controls — Secondary Dwellings{data.lga_name ? ` (${data.lga_name})` : ''}
+            </Text>
+            <Text style={{ ...s.body, marginBottom: 8 }}>
+              The following controls are from{' '}
+              {data.dcp_url ? (
+                <Link src={data.dcp_url} style={{ color: TEAL }}>{data.dcp_name || 'the local DCP'}</Link>
+              ) : (
+                <Text>{data.dcp_name || 'the local DCP'}</Text>
+              )}
+              {' '}and apply specifically to secondary dwellings on the DA pathway.
+              These may differ from the statewide SEPP standards above.
+            </Text>
+            <View style={s.tableHeader}>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Control</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 2 }}>Requirement</Text>
+              <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Clause</Text>
+            </View>
+            {data.dcp_sd_setbacks.map((row, i) => (
+              <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                <Text style={{ ...s.tableCell, flex: 2 }}>{row.type}</Text>
+                <Text style={{ ...s.tableCellBold, flex: 2 }}>{row.requirement}</Text>
+                <Text style={{ ...s.tableCell, flex: 1.5, color: GRAY_500, fontSize: 7.5 }}>
+                  {row.clause}
+                </Text>
+              </View>
+            ))}
+            {data.dcp_sd_setbacks.some(r => r.notes) && (
+              <View style={{ marginTop: 4 }}>
+                {data.dcp_sd_setbacks.filter(r => r.notes).map((r, i) => (
+                  <Text key={i} style={{ fontSize: 7, color: GRAY_500, marginBottom: 2 }}>
+                    {r.type}: {r.notes}
+                  </Text>
+                ))}
+              </View>
+            )}
+            <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
+              DCP controls apply to the DA pathway only. The CDC pathway uses SEPP Housing 2021 standards exclusively.
+            </Text>
+          </>
+        )}
 
         {/* --- Section 4: CDC vs DA Pathway --- */}
         <Text style={s.sectionTitle}>4. Approval Pathway Comparison</Text>
