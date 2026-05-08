@@ -151,6 +151,7 @@ class SolarYieldOutput(BaseModel):
     is_commercial_scale: bool  # roof_area_m2 > 500 after clipping
     imagery_date: str
     coverage_available: bool
+    neighbour_max_height_m: Optional[float] = None  # LEP HOB for shadow cross-sell
 
 
 def _get_conn():
@@ -488,6 +489,40 @@ def _check_heritage(lat: float, lng: float) -> bool:
             conn.close()
 
 
+def _lookup_neighbour_hob(lat: float, lng: float) -> Optional[float]:
+    """
+    Look up the maximum building height (HOB) from spatial_overlays for this location.
+    Used as a cross-sell teaser: "neighbouring lots permit Xm buildings".
+    Returns None if no height data or query fails.
+    """
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT CAST(value AS float)
+                FROM spatial_overlays
+                WHERE layer_type = 'height'
+                  AND is_active = TRUE
+                  AND ST_Contains(
+                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                      )
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+            return float(row[0]) if row and row[0] else None
+    except Exception as e:
+        logger.warning(f"HOB lookup failed: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 @router.post("/solar-yield")
 def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
@@ -505,6 +540,7 @@ def run_solar_yield(request: SolarYieldRequest):
         raise HTTPException(status_code=500, detail="Failed to parse solar data")
 
     outputs.is_heritage = _check_heritage(request.lat, request.lng)
+    outputs.neighbour_max_height_m = _lookup_neighbour_hob(request.lat, request.lng)
 
     if not outputs.coverage_available:
         confidence = "low"

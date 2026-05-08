@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -223,10 +224,7 @@ function ReferralBox() {
 
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
-    <View style={s.footer} fixed>
-      <Text style={s.footerText}>Neighbour Development Threat Radar — plotdetect.com.au</Text>
-      <Text style={s.footerText}>{pageNum} / {total}</Text>
-    </View>
+    <PlotDetectFooter reportName="Threat Radar" pageNum={pageNum} total={total} />
   );
 }
 
@@ -237,7 +235,7 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportData }) {
   const apps = data.applications ?? [];
   const radius = data.radius_m ?? 500;
-  const totalPages = data.tile_b64 ? 2 : 1;
+  const totalPages = (data.tile_b64 ? 2 : 1) + 1; // +1 for About page
   // Split: first ~12 cards per page (approx — react-pdf handles wrapping)
 
   return (
@@ -263,6 +261,34 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
             in the last {data.window_days} days
           </Text>
         </View>
+
+        {/* A1: Plain-English interpretation */}
+        {data.is_paid === true && (() => {
+          if (apps.length === 0) {
+            return (
+              <WhatThisMeans>
+                No development applications were found near this property in the search window. This is a positive signal for amenity stability, but new applications can be lodged at any time.
+              </WhatThisMeans>
+            );
+          }
+          const topApp = [...apps].sort((a, b) =>
+            Number(b.NumberOfNewDwellings ?? 0) - Number(a.NumberOfNewDwellings ?? 0)
+          )[0];
+          const dwellings = Number(topApp.NumberOfNewDwellings ?? 0);
+          const dist = topApp._distance_m;
+          if (dwellings >= 10 && dist != null) {
+            return (
+              <WhatThisMeans>
+                {`There is significant development activity around this property. The highest-impact application is a ${dwellings}-dwelling development ${dist}m away. If approved, expect 12-18 months of construction noise and traffic. Your buyers agent should factor this into price negotiation.`}
+              </WhatThisMeans>
+            );
+          }
+          return (
+            <WhatThisMeans>
+              {`${apps.length} development application${apps.length !== 1 ? 's' : ''} found nearby. Review the details below to assess potential impact on amenity, privacy, and traffic during construction.`}
+            </WhatThisMeans>
+          );
+        })()}
 
         <View style={s.divider} />
 
@@ -446,6 +472,12 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
 
         <ReferralBox />
 
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'Buyers agent', url: 'https://www.rebaa.com.au/find-a-buyers-agent', urlDisplay: 'rebaa.com.au/find-a-buyers-agent' },
+          { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
+        ]} />
+
         <View style={[s.divider, { marginTop: 16 }]} />
         <Text style={[s.bodyText, { color: GRAY_500, fontSize: 7.5 }]}>
           Data: NSW ePlanning Portal (DA and CDC applications). Results are indicative only and
@@ -456,9 +488,15 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <Footer pageNum={1} total={totalPages} />
       </Page>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* PAGE 2: Aerial tile (optional)                                       */}
-      {/* ------------------------------------------------------------------ */}
+      {/* T4: About this report + tools list */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={2}
+        total={totalPages}
+        reportName="Threat Radar"
+      />
+
+      {/* Aerial tile (optional) */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
@@ -473,7 +511,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
-          <Footer pageNum={2} total={totalPages} />
+          <Footer pageNum={3} total={totalPages} />
         </Page>
       )}
 

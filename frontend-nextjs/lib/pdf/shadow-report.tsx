@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -212,10 +213,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
-    <View style={s.footer} fixed>
-      <Text style={s.footerText}>Construction Shadow Detector — plotdetect.com.au</Text>
-      <Text style={s.footerText}>{pageNum} / {total}</Text>
-    </View>
+    <PlotDetectFooter reportName="Shadow Detector" pageNum={pageNum} total={total} />
   );
 }
 
@@ -252,7 +250,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
     : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
 
-  const totalPages = data.tile_b64 ? 3 : 2;
+  const totalPages = (data.tile_b64 ? 3 : 2) + 1; // +1 for About page
 
   return (
     <Document title={`Shadow Report — ${data.address}`} author="PlotDetect">
@@ -273,6 +271,31 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         </View>
 
         <Text style={[s.bodyText, { marginBottom: 8 }]}>{summaryText}</Text>
+
+        {/* A1: Plain-English interpretation */}
+        {data.is_paid === true && (() => {
+          const worstPct = scenarios.reduce((max, sc) =>
+            sc.shadow_overlap_fraction != null ? Math.max(max, Math.round(sc.shadow_overlap_fraction * 100)) : max, 0);
+          if (!data.adg_compliant && !isNonResidential) {
+            return (
+              <WhatThisMeans>
+                {`A maximum-height building on an adjacent lot would shadow ${worstPct}% of this property during the worst-case scenario. If a DA is lodged for development to the north, you or your solicitor can lodge a formal objection during the notification period citing ADG Part 3F solar access requirements.`}
+              </WhatThisMeans>
+            );
+          }
+          if (overlapCount > 0) {
+            return (
+              <WhatThisMeans>
+                {`Some shadow impact is expected in ${overlapCount} of 5 scenarios, but it meets ADG solar access requirements. This is typical for urban lots and unlikely to be grounds for objection.`}
+              </WhatThisMeans>
+            );
+          }
+          return (
+            <WhatThisMeans>
+              A maximum-height building on an adjacent lot would not significantly shadow this property. This is a positive result for solar access and amenity.
+            </WhatThisMeans>
+          );
+        })()}
 
         {/* ADG non-compliance consequence — only when concern flagged */}
         {!data.adg_compliant && data.zone !== null && (
@@ -408,6 +431,30 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           );
         })()}
 
+        {/* Objection-ready paragraph — paid, only when ADG concern flagged */}
+        {data.is_paid === true && !data.adg_compliant && !isNonResidential && (() => {
+          const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
+          const worstPct = worstSc?.shadow_overlap_fraction != null
+            ? Math.round(worstSc.shadow_overlap_fraction * 100)
+            : null;
+          const worstLabel = data.worst_case_scenario
+            ? (SCENARIO_LABELS[data.worst_case_scenario] ?? data.worst_case_scenario)
+            : 'the worst-case scenario';
+          return (
+            <View style={{ backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 4, padding: 10, marginTop: 12, marginBottom: 8 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                Objection-ready paragraph
+              </Text>
+              <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.6, fontStyle: 'italic' }}>
+                {`"The proposed development at the adjacent lot would result in ${worstPct != null ? `${worstPct}%` : 'significant'} shadow coverage of ${data.address} at ${worstLabel}, based on the maximum permissible building height of ${data.height_m}m under the ${data.lep_name ?? 'applicable LEP'}. This exceeds the solar access threshold set out in the Apartment Design Guide (2015) Part 3F, which requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. This constitutes grounds for objection under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
+              </Text>
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
+                Copy this paragraph into your council DA objection submission during the notification period. Modify as needed for your specific circumstances.
+              </Text>
+            </View>
+          );
+        })()}
+
         {/* Warnings */}
         {data.warnings && data.warnings.length > 0 && (
           <View style={{ marginTop: 12 }}>
@@ -459,6 +506,12 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
 
         <ReferralBox />
 
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
+          { label: 'Legal advice (DA objections)', url: 'https://www.lawsociety.com.au/for-the-public/find-a-lawyer', urlDisplay: 'lawsociety.com.au/find-a-lawyer' },
+        ]} />
+
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>
           This is a worst-case envelope model — not a design-specific shadow study.
@@ -472,8 +525,16 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         <Footer pageNum={2} total={totalPages} />
       </Page>
 
+      {/* T4: About this report + tools list */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={3}
+        total={totalPages}
+        reportName="Shadow Detector"
+      />
+
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 3: Aerial tile (optional)                                       */}
+      {/* PAGE 4: Aerial tile (optional)                                       */}
       {/* ------------------------------------------------------------------ */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>

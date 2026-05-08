@@ -16,6 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -348,6 +349,36 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </Text>
         </View>
 
+        {/* A1: Plain-English interpretation */}
+        {data.is_paid === true && (() => {
+          if (pass && data.estimated_weekly_rent_aud != null) {
+            return (
+              <WhatThisMeans>
+                {`This lot qualifies for a secondary dwelling under the fast-track CDC pathway. You do not need council approval. Engage a private certifier for a pre-lodgement check (approximately $500), then a draftsperson for CDC-ready drawings (approximately $2,000-$5,000). Estimated rental income: $${data.estimated_weekly_rent_aud}/week.`}
+              </WhatThisMeans>
+            );
+          }
+          if (pass) {
+            return (
+              <WhatThisMeans>
+                This lot qualifies for a secondary dwelling under the fast-track CDC pathway. You do not need council approval. Engage a private certifier for a pre-lodgement check (approximately $500), then a draftsperson for CDC-ready drawings (approximately $2,000-$5,000).
+              </WhatThisMeans>
+            );
+          }
+          if (isMultiStructureBlock) {
+            return (
+              <WhatThisMeans>
+                Two or more secondary structures were detected on this lot. A town planner or private certifier needs to determine whether an existing structure is already classified as a secondary dwelling before the CDC pathway can be confirmed.
+              </WhatThisMeans>
+            );
+          }
+          return (
+            <WhatThisMeans>
+              This property does not meet CDC pathway requirements. A Development Application (DA) to council may still be possible — consult a town planner who can assess whether a variation or alternative pathway exists.
+            </WhatThisMeans>
+          );
+        })()}
+
         {/* --- Section 2: Income Potential --- */}
         {pass && (
           <>
@@ -396,10 +427,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         )}
 
         {/* Footer */}
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Granny Flat Eligibility Report" />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
@@ -466,10 +494,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         ))}
 
         {/* Footer */}
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Granny Flat Eligibility Report" />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
@@ -708,12 +733,23 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </Text>
         </View>
 
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'Private certifier', url: 'https://www.bpb.nsw.gov.au/find-certifier', urlDisplay: 'bpb.nsw.gov.au/find-certifier' },
+          { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
+        ]} />
+
         {/* Footer */}
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Granny Flat Eligibility Report" />
       </Page>
+
+      {/* T4: About this report + tools list */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={99}
+        total={99}
+        reportName="Granny Flat Eligibility Report"
+      />
     </Document>
   );
 }

@@ -16,6 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -342,6 +343,29 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           <Text style={s.calloutText}>{summary}</Text>
         </View>
 
+        {/* A1: Plain-English interpretation */}
+        {(() => {
+          if (hasRisk) {
+            return (
+              <WhatThisMeans>
+                {`Satellite imagery detected significant physical changes to this property. ${allDAs.length > 0 ? `${allDAs.length} development application${allDAs.length > 1 ? 's were' : ' was'} also found. ` : ''}Commission a site inspection to verify the nature and approval status of these changes before proceeding with any purchase or DA.`}
+              </WhatThisMeans>
+            );
+          }
+          if (hasFlags) {
+            return (
+              <WhatThisMeans>
+                Some activity was detected but no major concerns were identified. Review the details below and verify with council as part of standard pre-purchase due diligence.
+              </WhatThisMeans>
+            );
+          }
+          return (
+            <WhatThisMeans>
+              No red flags were found across satellite imagery, ePlanning Portal records, or heritage overlays. Standard pre-DA due diligence (s10.7 certificate, site inspection, planner consultation) is sufficient.
+            </WhatThisMeans>
+          );
+        })()}
+
         {/* ---- At a glance ---- */}
         <Text style={s.sectionTitle}>At a glance</Text>
         <View style={s.statRow}>
@@ -400,10 +424,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           ))}
         </View>
 
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Site History Report" />
       </Page>
 
       {/* ================================================================ */}
@@ -540,10 +561,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           </>
         )}
 
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Site History Report" />
       </Page>
 
       {/* ================================================================ */}
@@ -661,6 +679,13 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           relevant council and NSW Planning Portal before lodging a development application.
         </Text>
 
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
+          { label: 'Private certifier', url: 'https://www.bpb.nsw.gov.au/find-certifier', urlDisplay: 'bpb.nsw.gov.au/find-certifier' },
+          { label: 'Heritage consultant', url: 'https://australia.icomos.org/get-involved/find-a-heritage-professional/', urlDisplay: 'australia.icomos.org/find-a-heritage-professional' },
+        ]} />
+
         <View style={{ ...s.calloutTeal, marginTop: 16 }}>
           <Text style={{ ...s.calloutTitle, color: TEAL }}>More reports for this property</Text>
           <Text style={s.calloutText}>
@@ -669,11 +694,16 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           </Text>
         </View>
 
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
+        <PlotDetectFooter reportName="Site History Report" />
       </Page>
+
+      {/* T4: About this report + tools list */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={4}
+        total={4}
+        reportName="Site History Report"
+      />
     </Document>
   );
 }

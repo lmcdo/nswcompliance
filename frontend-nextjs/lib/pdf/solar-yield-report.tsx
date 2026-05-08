@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +47,7 @@ export interface SolarYieldReportData {
   // paid enhancements
   sensitivity: Array<{ feed_in_rate: number; annual_saving: number; payback_years: number | null }>;
   monthly_kwh: number[] | null;
+  neighbour_max_height_m?: number | null;
   is_paid?: boolean;
   // meta
   confidence: string;
@@ -191,10 +193,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
-    <View style={s.footer} fixed>
-      <Text style={s.footerText}>Solar Potential Assessment — plotdetect.com.au</Text>
-      <Text style={s.footerText}>{pageNum} / {total}</Text>
-    </View>
+    <PlotDetectFooter reportName="Solar Potential Assessment" pageNum={pageNum} total={total} />
   );
 }
 
@@ -204,7 +203,7 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 
 export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData }) {
   const gradeColors = GRADE_COLORS[data.solar_grade] ?? GRADE_COLORS.C;
-  const totalPages  = data.tile_b64 ? 3 : 2;
+  const totalPages  = (data.tile_b64 ? 3 : 2) + 1; // +1 for About page
 
   if (!data.coverage_available) {
     return (
@@ -246,6 +245,15 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           {data.solar_grade_reason} · {data.system_kw.toFixed(1)} kW system
           {data.is_heritage ? ' · Heritage area' : ''}
         </Text>
+
+        {/* A1: Plain-English interpretation */}
+        {data.is_paid === true && (
+          <WhatThisMeans>
+            {data.payback_years != null
+              ? `This roof is ${data.solar_grade === 'A' || data.solar_grade === 'B' ? 'well-suited' : 'suitable'} for solar. At current NSW retail rates, a ${data.system_kw.toFixed(1)} kW system would pay for itself in approximately ${data.payback_years.toFixed(1)} years. The next step is to get 2-3 quotes from CEC-accredited installers.`
+              : `This roof can support a ${data.system_kw.toFixed(1)} kW solar system producing approximately ${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh per year. Get 2-3 quotes from CEC-accredited installers for a site-specific assessment.`}
+          </WhatThisMeans>
+        )}
 
         <View style={s.divider} />
 
@@ -431,9 +439,33 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           );
         })()}
 
+        {/* HOB teaser + shadow cross-sell — paid */}
+        {data.is_paid === true && data.neighbour_max_height_m != null && data.neighbour_max_height_m > 0 && (
+          <View style={{
+            backgroundColor: '#fff7ed', borderRadius: 4, padding: 10,
+            marginTop: 8, borderWidth: 1, borderColor: '#fed7aa',
+          }}>
+            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#9a3412', marginBottom: 4 }}>
+              Future shading risk
+            </Text>
+            <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+              {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the applicable LEP. A building at this height to the north could reduce your solar yield by 20-40% during winter months.`}
+            </Text>
+            <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 4 }}>
+              Run a Shadow Detector check at plotdetect.com.au to assess the impact.
+            </Text>
+          </View>
+        )}
+
         <View style={s.divider} />
 
         <ReferralBox />
+
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'CEC accredited installer', url: 'https://www.cleanenergycouncil.org.au/consumers/find-an-installer', urlDisplay: 'cleanenergycouncil.org.au/find-an-installer' },
+          { label: 'Solar quotes comparison', url: 'https://www.solarquotes.com.au', urlDisplay: 'solarquotes.com.au' },
+        ]} />
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>
@@ -452,9 +484,15 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         <Footer pageNum={2} total={totalPages} />
       </Page>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* PAGE 3: Aerial tile (optional)                                       */}
-      {/* ------------------------------------------------------------------ */}
+      {/* T4: About this report + tools list */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={3}
+        total={totalPages}
+        reportName="Solar Potential Assessment"
+      />
+
+      {/* Aerial tile (optional) */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
@@ -469,7 +507,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
-          <Footer pageNum={3} total={totalPages} />
+          <Footer pageNum={4} total={totalPages} />
         </Page>
       )}
 

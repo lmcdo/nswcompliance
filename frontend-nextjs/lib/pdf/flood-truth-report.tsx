@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -225,12 +226,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
-    <View style={s.footer} fixed>
-      <Text style={s.footerText}>
-        Flood Truth Report — plotdetect.com.au
-      </Text>
-      <Text style={s.footerText}>{pageNum} / {total}</Text>
-    </View>
+    <PlotDetectFooter reportName="Flood Truth Report" pageNum={pageNum} total={total} />
   );
 }
 
@@ -244,7 +240,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
   const epiKey     = data.epi_flood_class ?? 'none';
   const epiLabel   = EPI_CLASS_META[epiKey]?.label ?? epiKey;
   const hasStudies = data.is_paid && (data.flood_studies ?? []).length > 0;
-  const totalPages = (data.tile_b64 ? 1 : 0) + (hasStudies ? 3 : 2);
+  // +1 for About page (T4)
+  const totalPages = (data.tile_b64 ? 1 : 0) + (hasStudies ? 3 : 2) + 1;
 
   return (
     <Document title={`Flood Truth Report — ${data.address}`} author="PlotDetect">
@@ -291,6 +288,39 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             )}
           </View>
         )}
+
+        {/* A1: Plain-English interpretation */}
+        {data.is_paid === true && (() => {
+          const depth1pct = (data.flood_studies ?? [])
+            .flatMap(s => s.design?.['1pct']?.depth_m != null ? [s.design['1pct'].depth_m] : []);
+          const maxDepth = depth1pct.length > 0 ? Math.max(...depth1pct) : null;
+          if (data.in_100yr_flood_zone === true && maxDepth != null) {
+            return (
+              <WhatThisMeans>
+                {`In a 1-in-100 year flood, modelled water depth at this site is approximately ${(maxDepth * 100).toFixed(0)}cm. ${maxDepth > 0.5 ? 'This is above floor level for most single-storey dwellings. ' : ''}Your conveyancer should request the Section 10.7(2) certificate from council ($53, approximately 5 business days) and a flood loading quote from your insurer before exchange.`}
+              </WhatThisMeans>
+            );
+          }
+          if (data.in_100yr_flood_zone === true) {
+            return (
+              <WhatThisMeans>
+                This property is within a mapped 1-in-100 year flood zone. Your conveyancer should request the Section 10.7(2) certificate from council ($53, approximately 5 business days) and a flood loading quote from your insurer before exchange.
+              </WhatThisMeans>
+            );
+          }
+          if (signal !== 'none') {
+            return (
+              <WhatThisMeans>
+                Flood indicators have been detected at this address from one or more data sources. While not in a mapped 1-in-100 year zone, you should request a Section 10.7 certificate from council to confirm the formal flood classification before exchange.
+              </WhatThisMeans>
+            );
+          }
+          return (
+            <WhatThisMeans>
+              No flood indicators were detected across the data sources checked. This is a positive signal, but a Section 10.7 certificate from council remains the authoritative confirmation for conveyancing purposes.
+            </WhatThisMeans>
+          );
+        })()}
 
         {/* Insurance implication note */}
         <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginTop: 6, marginBottom: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
@@ -633,6 +663,27 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
 
         <ReferralBox />
 
+        {/* A3: Referral directory links */}
+        <ReferralLinks links={[
+          { label: 'Section 10.7 certificate', url: 'https://www.planningportal.nsw.gov.au/spatialviewer', urlDisplay: 'Council website (via Planning Portal)' },
+          { label: 'Flood consultant', url: 'https://www.fma.com.au/find-a-member', urlDisplay: 'fma.com.au/find-a-member' },
+          { label: 'Conveyancer', url: 'https://www.aicnsw.com.au/find-a-conveyancer', urlDisplay: 'aicnsw.com.au/find-a-conveyancer' },
+        ]} />
+
+        {/* A4: Insurer/lender questionnaire — flood */}
+        {data.is_paid === true && (
+          <InsurerChecklist
+            title="Questions for your insurer or lender"
+            questions={[
+              'Does this property attract a flood loading on building and/or contents insurance?',
+              'What is the flood loading amount and how is it calculated?',
+              'Is the property in a flood exclusion zone for any cover type?',
+              'Has the property been subject to a flood insurance claim in the last 10 years?',
+              'Will the lender require a flood certificate before unconditional approval?',
+            ]}
+          />
+        )}
+
         <Text style={s.sectionTitle}>Important limitations</Text>
         <Text style={s.bodyText}>
           This report is an indicative cross-reference of publicly available flood data sources only.
@@ -662,6 +713,16 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
 
         <Footer pageNum={hasStudies ? 3 : 2} total={totalPages} />
       </Page>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* T4: About this report + tools list                                    */}
+      {/* ------------------------------------------------------------------ */}
+      <AboutPage
+        logo_b64={data.logo_b64}
+        pageNum={hasStudies ? 4 : 3}
+        total={totalPages}
+        reportName="Flood Truth Report"
+      />
 
       {/* ------------------------------------------------------------------ */}
       {/* Aerial tile page (optional)                                          */}
