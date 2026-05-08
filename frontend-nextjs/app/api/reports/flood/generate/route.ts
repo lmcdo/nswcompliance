@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
     run_date: String(raw.run_date),
     lat: lat ?? 0,
     lng: lng ?? 0,
+    lga_name: (raw.lga_name as string | null) ?? null,
     epi_flood_class: (raw.epi_flood_class as string | null) ?? null,
     epi_flood_label: (raw.epi_flood_label as string | null) ?? null,
     sar_flood_detected: raw.sar_flood_detected != null ? Boolean(raw.sar_flood_detected) : null,

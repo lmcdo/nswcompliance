@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
     lat: lat ?? 0,
     lng: lng ?? 0,
     zone: (raw.zone as string | null) ?? (rawOutputs.zone as string | null) ?? null,
+    lga_name: (rawOutputs.lga_name as string | null) ?? (raw.lga_name as string | null) ?? null,
     height_m: Number(rawOutputs.height_m ?? raw.height_m ?? 9),
     height_source: (rawOutputs.height_source as string | null) ?? null,
     lep_name: (rawOutputs.lep_name as string | null) ?? null,

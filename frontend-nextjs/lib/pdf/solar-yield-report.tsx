@@ -24,6 +24,7 @@ export interface SolarYieldReportData {
   run_date: string;
   lat: number;
   lng: number;
+  lga_name?: string | null;
   // outputs
   max_panels: number;
   max_panel_area_m2: number;
@@ -233,6 +234,9 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Solar Potential Assessment</Text>
         <Text style={s.subhead}>{data.address}</Text>
+        {data.lga_name && (
+          <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{data.lga_name} LGA</Text>
+        )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
         <ValidityNote runDate={data.run_date} />
 
@@ -449,7 +453,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
               Future shading risk
             </Text>
             <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-              {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the applicable LEP. A building at this height to the north could reduce your solar yield by 20-40% during winter months.`}
+              {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the ${data.lga_name ? `${data.lga_name} ` : ''}LEP. A building at this height to the north could reduce your solar yield by 20-40% during winter months.`}
             </Text>
             <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 4 }}>
               Run a Shadow Detector check at plotdetect.com.au to assess the impact.

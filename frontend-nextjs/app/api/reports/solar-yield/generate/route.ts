@@ -196,6 +196,8 @@ export async function POST(req: NextRequest) {
     sensitivity,
     monthly_kwh,
     is_paid,
+    neighbour_max_height_m: raw.neighbour_max_height_m != null ? Number(raw.neighbour_max_height_m) : null,
+    lga_name: (raw.lga_name as string | null) ?? null,
     // meta
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],

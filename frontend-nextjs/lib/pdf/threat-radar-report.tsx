@@ -248,6 +248,9 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Neighbour Development Threat Radar</Text>
         <Text style={s.subhead}>{data.address}</Text>
+        {data.council_name && (
+          <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{data.council_name} LGA</Text>
+        )}
         <Text style={s.dateText}>
           {data.council_name ?? 'NSW'} · last {data.window_days} days · within {radius} m
         </Text>

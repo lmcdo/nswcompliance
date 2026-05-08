@@ -50,6 +50,7 @@ export interface FloodReportData {
   run_date: string;
   lat: number;
   lng: number;
+  lga_name?: string | null;
   logo_b64?: string | null;
   // outputs
   epi_flood_class: string | null;
@@ -253,6 +254,9 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Flood Data Summary</Text>
         <Text style={s.subhead}>{data.address}</Text>
+        {data.lga_name && (
+          <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{data.lga_name} LGA</Text>
+        )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
         <ValidityNote runDate={data.run_date} />
 
