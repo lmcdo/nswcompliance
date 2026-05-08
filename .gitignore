@@ -326,6 +326,7 @@ dcp_*.txt
 .claude/instructions.md
 .claude/DQ*.md
 .claude/SYSTEMATIC*.md
+.claude/worktrees/
 
 # Obsidian vault config (local only)
 .claude/.obsidian/
