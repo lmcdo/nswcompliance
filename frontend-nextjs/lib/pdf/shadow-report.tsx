@@ -431,6 +431,30 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           );
         })()}
 
+        {/* Objection-ready paragraph — paid, only when ADG concern flagged */}
+        {data.is_paid === true && !data.adg_compliant && !isNonResidential && (() => {
+          const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
+          const worstPct = worstSc?.shadow_overlap_fraction != null
+            ? Math.round(worstSc.shadow_overlap_fraction * 100)
+            : null;
+          const worstLabel = data.worst_case_scenario
+            ? (SCENARIO_LABELS[data.worst_case_scenario] ?? data.worst_case_scenario)
+            : 'the worst-case scenario';
+          return (
+            <View style={{ backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 4, padding: 10, marginTop: 12, marginBottom: 8 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                Objection-ready paragraph
+              </Text>
+              <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.6, fontStyle: 'italic' }}>
+                {`"The proposed development at the adjacent lot would result in ${worstPct != null ? `${worstPct}%` : 'significant'} shadow coverage of ${data.address} at ${worstLabel}, based on the maximum permissible building height of ${data.height_m}m under the ${data.lep_name ?? 'applicable LEP'}. This exceeds the solar access threshold set out in the Apartment Design Guide (2015) Part 3F, which requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. This constitutes grounds for objection under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
+              </Text>
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
+                Copy this paragraph into your council DA objection submission during the notification period. Modify as needed for your specific circumstances.
+              </Text>
+            </View>
+          );
+        })()}
+
         {/* Warnings */}
         {data.warnings && data.warnings.length > 0 && (
           <View style={{ marginTop: 12 }}>

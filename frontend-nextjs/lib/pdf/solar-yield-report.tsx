@@ -47,6 +47,7 @@ export interface SolarYieldReportData {
   // paid enhancements
   sensitivity: Array<{ feed_in_rate: number; annual_saving: number; payback_years: number | null }>;
   monthly_kwh: number[] | null;
+  neighbour_max_height_m?: number | null;
   is_paid?: boolean;
   // meta
   confidence: string;
@@ -437,6 +438,24 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
             </View>
           );
         })()}
+
+        {/* HOB teaser + shadow cross-sell — paid */}
+        {data.is_paid === true && data.neighbour_max_height_m != null && data.neighbour_max_height_m > 0 && (
+          <View style={{
+            backgroundColor: '#fff7ed', borderRadius: 4, padding: 10,
+            marginTop: 8, borderWidth: 1, borderColor: '#fed7aa',
+          }}>
+            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#9a3412', marginBottom: 4 }}>
+              Future shading risk
+            </Text>
+            <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+              {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the applicable LEP. A building at this height to the north could reduce your solar yield by 20-40% during winter months.`}
+            </Text>
+            <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 4 }}>
+              Run a Shadow Detector check at plotdetect.com.au to assess the impact.
+            </Text>
+          </View>
+        )}
 
         <View style={s.divider} />
 
