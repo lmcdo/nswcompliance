@@ -92,10 +92,11 @@ jobs:
             echo "Review file generated. Download from artifacts and inspect before committing."
             echo "To commit: Actions -> DCP Commit Reviewed Provisions -> Run workflow"
             if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-              MSG="DCP Review ready\nDownload review file, inspect provisions, then run:\nActions -> DCP Commit Reviewed Provisions\n\nArtifact: ${RUN_URL}"
+              COMMIT_URL="https://github.com/${{ github.repository }}/actions/workflows/dcp-commit.yml"
+              MSG="DCP Review ready\n\n1. Download review: ${RUN_URL}\n2. Inspect provisions\n3. Commit: ${COMMIT_URL}\n\n(Select council, type CONFIRM)"
               curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                 -H "Content-Type: application/json" \
-                -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"${MSG}\"}"
+                -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"${MSG}\",\"disable_web_page_preview\":true}"
             fi
           else
             echo "Extraction failed with exit code $CODE."
