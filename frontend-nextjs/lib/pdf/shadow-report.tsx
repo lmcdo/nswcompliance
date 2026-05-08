@@ -36,6 +36,7 @@ export interface ShadowReportData {
   lat: number;
   lng: number;
   zone: string | null;
+  lga_name?: string | null;
   // outputs
   height_m: number;
   height_source: string | null;
@@ -262,6 +263,9 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Construction Shadow Detector</Text>
         <Text style={s.subhead}>{data.address}</Text>
+        {data.lga_name && (
+          <Text style={{ fontSize: 9, color: GRAY_500, marginBottom: 2 }}>{data.lga_name} LGA</Text>
+        )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
         <ValidityNote runDate={data.run_date} />
 
@@ -333,6 +337,13 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             </Text>
           </View>
         </View>
+
+        {/* LEP height context — explains where the modelled height comes from */}
+        {data.height_source !== 'default' && data.lep_name && (
+          <Text style={{ fontSize: 8, color: GRAY_500, marginTop: 4, marginBottom: 4, lineHeight: 1.4 }}>
+            {`The ${data.height_m}m height limit is set by the ${data.lep_name}. This is the maximum a neighbouring building could be approved to, and is the height used in all shadow scenarios below.`}
+          </Text>
+        )}
 
         {/* Height threshold callout — FREE, shown whenever height > 8 m */}
         {data.height_m > 8.0 && (
