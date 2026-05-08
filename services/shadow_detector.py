@@ -49,6 +49,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from services.lga_lookup import lookup_lga
+
 try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
@@ -395,10 +397,21 @@ def run_shadow(request: ShadowRequest):
         shadow_map, lot_geojson, request.lng, request.lat
     )
 
+    # Resolve LGA for council name on report
+    lga_info = {"lga_name": None, "lga_slug": None}
+    try:
+        _lga_conn = _get_conn()
+        lga_info = lookup_lga(request.lat, request.lng, _lga_conn)
+        _lga_conn.close()
+    except Exception:
+        pass
+
     outputs = {
         "height_m": height_m,
         "height_source": height_source,
         "lep_name": lep_name,
+        "lga_name": lga_info.get("lga_name"),
+        "lga_slug": lga_info.get("lga_slug"),
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
         "scenarios": scenarios,

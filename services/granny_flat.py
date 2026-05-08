@@ -43,6 +43,8 @@ import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from services.lga_lookup import lookup_lga
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -120,6 +122,100 @@ def _get_conn():
         password=os.environ.get("DB_PASSWORD", ""),
         port=int(os.environ.get("DB_PORT", 5432)),
     )
+
+
+# ---------------------------------------------------------------------------
+# DCP secondary dwelling setbacks
+# ---------------------------------------------------------------------------
+
+def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
+    """
+    Query dcp_setback_controls for secondary dwelling setbacks.
+    Returns {sd_setbacks, dcp_name, dcp_url} or None.
+    """
+    if not lga_slug:
+        return None
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT dev_type, control_type, value_min, value_max, unit,
+                   condition, source_text, section_ref, applicability
+            FROM dcp_setback_controls
+            WHERE lga = %s AND is_current = TRUE
+              AND (applicability = 'secondary_dwelling_specific'
+                   OR dev_type = 'secondary_dwelling')
+            ORDER BY
+                CASE control_type
+                    WHEN 'front_setback' THEN 0
+                    WHEN 'side_setback'  THEN 1
+                    WHEN 'rear_setback'  THEN 2
+                    WHEN 'max_height'    THEN 3
+                    ELSE 4
+                END,
+                value_min NULLS LAST
+            """,
+            (lga_slug,),
+        )
+        rows = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT COALESCE(council_url, council_page_url)
+            FROM dcp_chapter_registry
+            WHERE council = %s AND is_active = TRUE
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            (lga_slug,),
+        )
+        reg = cur.fetchone()
+        cur.close()
+    except Exception as e:
+        logger.warning(f"DCP setback lookup failed: {e}")
+        return None
+
+    if not rows:
+        return None
+
+    _CONTROL_LABELS = {
+        "front_setback": "Front setback",
+        "side_setback": "Side setback",
+        "rear_setback": "Rear setback",
+        "max_height": "Max height",
+        "wall_height": "Wall height",
+        "max_site_coverage": "Max site coverage",
+        "min_landscaped_area": "Min landscaped area",
+    }
+
+    sd_setbacks = []
+    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability in rows:
+        label = _CONTROL_LABELS.get(ctrl_type, ctrl_type.replace("_", " ").title())
+        if vmin is not None or vmax is not None:
+            parts = []
+            if vmin is not None:
+                parts.append(f"{vmin:g} m minimum")
+            if vmax is not None and vmax != vmin:
+                parts.append(f"{vmax:g} m maximum")
+            requirement = "; ".join(parts) if parts else f"{vmin or vmax:g} m"
+        else:
+            requirement = source_text or "Merit-based assessment — refer to DCP"
+
+        sd_setbacks.append({
+            "type": label,
+            "requirement": requirement,
+            "clause": section_ref or "",
+            "notes": condition or "",
+        })
+
+    dcp_name = lga_slug.replace("_", " ").title() + " DCP"
+    dcp_url = reg[0] if reg else None
+
+    return {
+        "sd_setbacks": sd_setbacks,
+        "dcp_name": dcp_name,
+        "dcp_url": dcp_url,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -935,9 +1031,23 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
 
     report_id = req.report_id or str(uuid.uuid4())
 
+    # --- LGA lookup + DCP secondary dwelling setbacks ---
+    lga_info = {"lga_name": None, "lga_slug": None, "has_dcp_setbacks": False}
+    dcp_sd_data: Optional[dict] = None
+
     conn = None
     try:
         conn = _get_conn()
+
+        # Resolve LGA from coordinates
+        lga_info = lookup_lga(req.lat, req.lng, conn, address=req.address)
+        if lga_info["has_dcp_setbacks"]:
+            dcp_sd_data = _fetch_sd_setbacks(conn, lga_info["lga_slug"])
+            if dcp_sd_data and dcp_sd_data["sd_setbacks"]:
+                data_sources.append(
+                    f"DCP secondary dwelling setbacks: {dcp_sd_data['dcp_name']}"
+                )
+
         with conn.cursor() as cur:
             # Carry tile_b64 forward from the detect outputs so the PDF can render
             # the aerial image. The detect step stores it in outputs JSONB; the
@@ -992,6 +1102,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "warnings": warnings,
                         "data_sources": data_sources,
                         "tile_b64": tile_b64,
+                        "lga_name": lga_info["lga_name"],
+                        "lga_slug": lga_info["lga_slug"],
+                        "dcp_sd_setbacks": dcp_sd_data["sd_setbacks"] if dcp_sd_data else None,
+                        "dcp_name": dcp_sd_data["dcp_name"] if dcp_sd_data else None,
+                        "dcp_url": dcp_sd_data["dcp_url"] if dcp_sd_data else None,
                     }),
                     confidence,
                     data_sources,

@@ -48,6 +48,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, model_validator
 
+from services.lga_lookup import lookup_lga
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -152,6 +154,8 @@ class SolarYieldOutput(BaseModel):
     imagery_date: str
     coverage_available: bool
     neighbour_max_height_m: Optional[float] = None  # LEP HOB for shadow cross-sell
+    lga_name: Optional[str] = None
+    lga_slug: Optional[str] = None
 
 
 def _get_conn():
@@ -541,6 +545,16 @@ def run_solar_yield(request: SolarYieldRequest):
 
     outputs.is_heritage = _check_heritage(request.lat, request.lng)
     outputs.neighbour_max_height_m = _lookup_neighbour_hob(request.lat, request.lng)
+
+    # Resolve LGA
+    try:
+        _lga_conn = _get_conn()
+        _lga = lookup_lga(request.lat, request.lng, _lga_conn)
+        outputs.lga_name = _lga.get("lga_name")
+        outputs.lga_slug = _lga.get("lga_slug")
+        _lga_conn.close()
+    except Exception:
+        pass
 
     if not outputs.coverage_available:
         confidence = "low"
