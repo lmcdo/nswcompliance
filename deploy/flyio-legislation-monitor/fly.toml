@@ -1,0 +1,11 @@
+app = "plotdetect-legislation-monitor"
+primary_region = "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# No HTTP service — this is a scheduled script, not a web server
+# Runs via `fly machine run` or scheduled via cron
+
+[env]
+  PYTHONUNBUFFERED = "1"

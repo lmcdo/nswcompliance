@@ -1,7 +1,9 @@
 name: DCP Chapter Extraction
 
 on:
-  # Auto-trigger after monitor detects changes — always runs in REVIEW mode.
+  # Auto-trigger after monitor completes — always runs in REVIEW mode.
+  # The monitor uses a matrix strategy (one job per council), so this
+  # triggers once the overall workflow completes (not per-matrix-job).
   # Generates a review artifact for human inspection. No DB writes.
   # To commit reviewed provisions to production, use dcp-commit.yml manually.
   workflow_run:
