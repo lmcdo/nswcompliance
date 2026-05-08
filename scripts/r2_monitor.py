@@ -300,6 +300,68 @@ def _update_instrument_currency(conn, council: str, dry_run: bool) -> None:
     cur.close()
 
 
+def _slugify(label: str) -> str:
+    """Convert a chapter label to a URL-safe slug for chapter_key."""
+    import re as _re
+    slug = label.lower().strip()
+    slug = _re.sub(r"[^a-z0-9]+", "-", slug)
+    return slug.strip("-")[:80]
+
+
+def _auto_register_chapter(
+    conn, council: str, council_chapters: list[dict], item: dict, hub_url: str | None,
+) -> None:
+    """Insert an auto-detected chapter with is_active=FALSE for later review.
+
+    Lightweight: no PDF download, no R2 upload. Just persists the discovery
+    so confirm_chapter.py can handle activation later.
+    """
+    label = item["label"]
+    url = item["url"]
+    slug = _slugify(label)
+
+    if not slug:
+        return
+
+    # Deduplicate: skip if this slug already exists for the council
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM dcp_chapter_registry WHERE council = %s AND chapter_key = %s",
+        (council, slug),
+    )
+    if cur.fetchone():
+        cur.close()
+        print(f"    [auto-reg] {slug} already in registry — skipping")
+        return
+
+    dcp_name = council_chapters[0].get("dcp_name", f"{council.title()} DCP")
+
+    cur.execute(
+        """
+        INSERT INTO dcp_chapter_registry (
+            council, dcp_name, doc_type, chapter_key, chapter_label,
+            council_url, council_page_url,
+            is_active, needs_extraction, registration_status,
+            check_failures, created_at, updated_at
+        ) VALUES (
+            %s, %s, 'dcp', %s, %s,
+            %s, %s,
+            FALSE, FALSE, 'auto_detected',
+            0, NOW(), NOW()
+        )
+        """,
+        (council, dcp_name, slug, label, url, hub_url),
+    )
+    conn.commit()
+    cur.close()
+    print(f"    [auto-reg] {slug} registered (inactive, pending review)")
+    send_telegram(
+        f"New DCP chapter detected [{council}]\n"
+        f"{label}\n{url}\n"
+        f"Review: python scripts/confirm_chapter.py --list"
+    )
+
+
 def run_monitor(
     council_filter: str | None,
     s3,
@@ -317,7 +379,7 @@ def run_monitor(
 
     # Fetch active chapters including hub page URL and expected count
     query = """
-        SELECT id, council, chapter_key, chapter_label, council_url,
+        SELECT id, council, dcp_name, chapter_key, chapter_label, council_url,
                council_page_url, hub_expected_count,
                r2_current_path, r2_version_label,
                content_hash, url_content_length, url_etag, check_failures,
@@ -422,13 +484,18 @@ def run_monitor(
                     send_telegram(msg)
                     results["hub_alerts"].append(msg)
 
-                # New/unmatched chapters — log to CI stdout only, no Telegram noise.
+                # New/unmatched chapters — auto-register as inactive for review.
                 # These are typically maps, appendices, amendment notices alongside
-                # provision chapters on the hub page. Add to registry manually if
-                # they turn out to be substantive provision chapters.
+                # provision chapters on the hub page.
                 for item in diff.added:
                     print(f"  [NEW] {item['label']}  {item['url']}")
                     results["hub_alerts"].append(f"new_chapter_on_hub: {council} — {item['label']}")
+                    if not dry_run:
+                        try:
+                            _auto_register_chapter(conn, council, council_chapters, item, hub_url)
+                        except Exception as exc:
+                            print(f"    [auto-reg ERROR] {exc}")
+                            conn.rollback()
 
                 # If reseed mode: update council_url for all matched chapters
                 if reseed and not dry_run:
