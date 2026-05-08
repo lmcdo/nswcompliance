@@ -2,17 +2,24 @@
 """
 Legislation Monitor
 ===================
-Weekly check of AustLII consolidated copies of NSW SEPPs and LEPs for
-"As at" date changes. AustLII receives PCO data weekly and publishes
-within 2 working days — provides ~7-day lag detection without Cloudflare.
+Weekly check of NSW planning instruments (SEPPs, LEPs) for version changes.
 
-When PCO API access is granted, swap austlii_url → legislation_url
-and update the fetch + parse logic to use the XML export endpoint.
+Primary source: PCO XML export (legislation.nsw.gov.au/export/week)
+  - Requires IP whitelisting (contact belinda.brown@pco.nsw.gov.au)
+  - Must run outside Sydney business hours
+  - Returns JSON list of all instruments updated in last 7 days
+
+Fallback source: AustLII consolidated copies (classic.austlii.edu.au)
+  - ~7-day lag vs legislation.nsw.gov.au
+  - Scrapes "As at DD Month YYYY" date from HTML
+  - Used when PCO endpoint is inaccessible (403, timeout, etc.)
 
 Usage:
     python scripts/legislation_monitor.py               # all active instruments
     python scripts/legislation_monitor.py --key sepp_housing_2021
     python scripts/legislation_monitor.py --dry-run
+    python scripts/legislation_monitor.py --source pco   # force PCO only
+    python scripts/legislation_monitor.py --source austlii  # force AustLII only
 
 Exit codes:
     0 = no changes
@@ -48,13 +55,6 @@ HEADERS = {
     "Accept": "text/html,*/*",
 }
 
-# AustLII consolidated regulation URLs for monitored instruments
-# classic.austlii.edu.au — clean 200, no Cloudflare
-AUSTLII_URLS: dict[str, str] = {
-    "sepp_housing_2021":         "https://classic.austlii.edu.au/au/legis/nsw/consol_reg/sepp2021448/",
-    "sepp_exempt_complying_2008": "https://classic.austlii.edu.au/au/legis/nsw/consol_reg/seppacdc2008721/",
-}
-
 # "As at DD Month YYYY" in the <PRE> block at the top of each AustLII page
 AS_AT_PATTERN = re.compile(r"As at\s+(\d{1,2}\s+\w+\s+\d{4})", re.IGNORECASE)
 
@@ -64,8 +64,9 @@ class InstrumentResult:
     instrument_key: str
     instrument_label: str
     changed: bool
-    new_as_at: str | None
+    new_version: str | None
     stored_version: str | None
+    source: str = ""  # 'pco' or 'austlii'
     error: str | None = None
 
 
@@ -84,133 +85,176 @@ def send_telegram(message: str) -> None:
         pass
 
 
+# ---------------------------------------------------------------------------
+# PCO source
+# ---------------------------------------------------------------------------
+
+def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
+    """Check instruments via PCO weekly export feed.
+
+    Returns dict of {instrument_key: new_version_string_or_None}.
+    Raises on access denied or connection error.
+    """
+    from pco_client import PCOAccessDenied, get_weekly_changes
+
+    changes = get_weekly_changes()
+    print(f"    PCO: {len(changes)} instruments changed this week")
+
+    # Build lookup: pco_instrument_id → instrument_key
+    pco_to_key = {}
+    for inst in instruments:
+        pco_id = inst.get("pco_instrument_id")
+        if pco_id:
+            pco_to_key[pco_id] = inst["instrument_key"]
+
+    results: dict[str, str | None] = {inst["instrument_key"]: None for inst in instruments}
+
+    for change in changes:
+        if change.instrument_id in pco_to_key:
+            key = pco_to_key[change.instrument_id]
+            # Use point_in_time as version string (matches AustLII "As at" concept)
+            version = change.point_in_time or change.last_updated or "updated"
+            results[key] = version
+            print(f"    PCO match: {key} → {version}")
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# AustLII fallback source
+# ---------------------------------------------------------------------------
+
 def fetch_as_at(url: str) -> str | None:
-    """
-    Fetch an AustLII consolidated regulation page and return the "As at" date string.
-    Returns None if not found.
-    Raises RuntimeError on non-200.
-    """
+    """Fetch an AustLII page and return the "As at" date string."""
     resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
     if resp.status_code == 429:
         time.sleep(10)
         resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
     if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code}: {url}")
+        raise RuntimeError(f"AustLII HTTP {resp.status_code}: {url}")
     m = AS_AT_PATTERN.search(resp.text)
     return m.group(1) if m else None
 
 
-def check_instrument(instrument: dict, dry_run: bool, conn) -> InstrumentResult:
+def check_via_austlii(instruments: list[dict]) -> dict[str, str | None]:
+    """Check instruments via AustLII consolidated copies.
+
+    Returns dict of {instrument_key: as_at_date_or_None}.
+    """
+    results: dict[str, str | None] = {}
+
+    for inst in instruments:
+        key = inst["instrument_key"]
+        austlii_url = inst.get("austlii_url")
+        if not austlii_url:
+            results[key] = None
+            continue
+
+        try:
+            as_at = fetch_as_at(austlii_url)
+            results[key] = as_at
+            print(f"    AustLII: {key} → {as_at or '(not found)'}")
+        except Exception as exc:
+            print(f"    AustLII error [{key}]: {exc}")
+            results[key] = None
+        time.sleep(2)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Core check logic
+# ---------------------------------------------------------------------------
+
+def check_instrument(
+    instrument: dict, new_version: str | None, source: str,
+    dry_run: bool, conn,
+) -> InstrumentResult:
+    """Compare detected version against stored version and update DB."""
     key = instrument["instrument_key"]
     label = instrument["instrument_label"]
     stored_version = instrument["current_version"]
     legislation_url = instrument["legislation_url"]
 
-    austlii_url = AUSTLII_URLS.get(key)
-    if not austlii_url:
-        # No AustLII URL mapped — skip with a note (e.g. LEPs, which are council-specific)
-        print(f"\n  {key} — no AustLII URL mapped, skipping")
+    if new_version is None:
+        # Source didn't return data for this instrument — not an error,
+        # just means no change detected (or instrument not in source's scope)
         return InstrumentResult(
             instrument_key=key, instrument_label=label,
-            changed=False, new_as_at=None,
-            stored_version=stored_version,
-            error="no AustLII URL mapped",
+            changed=False, new_version=None,
+            stored_version=stored_version, source=source,
         )
 
-    print(f"\n  {key}")
-    print(f"    AustLII: {austlii_url}")
+    changed = bool(
+        new_version and stored_version and new_version != stored_version
+    )
+    first_run = new_version and not stored_version
 
-    try:
-        new_as_at = fetch_as_at(austlii_url)
+    now = datetime.now(timezone.utc)
+    cur = conn.cursor()
 
-        print(f"    Stored version : {stored_version or '(none)'}")
-        print(f"    AustLII As at  : {new_as_at or '(not found)'}")
-
-        changed = bool(
-            new_as_at
-            and stored_version
-            and new_as_at != stored_version
-        )
-        # Also flag as changed if we now have a date and stored nothing before
-        first_run = new_as_at and not stored_version
-
-        now = datetime.now(timezone.utc)
-        cur = conn.cursor()
-
-        if changed:
-            print(f"    [CHANGED] {stored_version} → {new_as_at}")
-            if not dry_run:
-                cur.execute(
-                    """
-                    UPDATE instrument_registry
-                    SET current_version = %s, last_checked = %s,
-                        last_changed = %s, needs_review = TRUE,
-                        check_failures = 0
-                    WHERE instrument_key = %s
-                    """,
-                    (new_as_at, now, now, key),
-                )
-                conn.commit()
-        else:
-            status = "(first run — baseline set)" if first_run else "[unchanged]"
-            print(f"    {status}")
-            if not dry_run:
-                cur.execute(
-                    """
-                    UPDATE instrument_registry
-                    SET current_version = %s, last_checked = %s, check_failures = 0
-                    WHERE instrument_key = %s
-                    """,
-                    (new_as_at or stored_version, now, key),
-                )
-                # Update currency — confirmed current as of this check
-                cur.execute(
-                    """
-                    INSERT INTO instrument_currency
-                        (council, instrument_key, instrument_label, instrument_type,
-                         verified_at, version_label, source_url)
-                    VALUES (NULL, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (council, instrument_key) DO UPDATE
-                        SET verified_at   = EXCLUDED.verified_at,
-                            version_label = EXCLUDED.version_label,
-                            updated_at    = NOW()
-                    """,
-                    (
-                        key, label, instrument["instrument_type"],
-                        now, new_as_at or stored_version, legislation_url,
-                    ),
-                )
-                conn.commit()
-        cur.close()
-
-        return InstrumentResult(
-            instrument_key=key, instrument_label=label,
-            changed=changed, new_as_at=new_as_at,
-            stored_version=stored_version,
-        )
-
-    except Exception as exc:
-        print(f"    [ERROR] {exc}")
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE instrument_registry SET check_failures = check_failures + 1, "
-            "last_checked = %s WHERE instrument_key = %s",
-            (datetime.now(timezone.utc), key),
-        )
+    if changed:
+        print(f"  {key} [{source}]")
+        print(f"    [CHANGED] {stored_version} → {new_version}")
         if not dry_run:
+            cur.execute(
+                """
+                UPDATE instrument_registry
+                SET current_version = %s, last_checked = %s,
+                    last_changed = %s, needs_review = TRUE,
+                    check_failures = 0
+                WHERE instrument_key = %s
+                """,
+                (new_version, now, now, key),
+            )
             conn.commit()
-        cur.close()
-        return InstrumentResult(
-            instrument_key=key, instrument_label=label,
-            changed=False, new_as_at=None,
-            stored_version=stored_version, error=str(exc),
-        )
+    else:
+        status = "(first run — baseline set)" if first_run else "[unchanged]"
+        print(f"  {key} [{source}] {status}")
+        if not dry_run:
+            cur.execute(
+                """
+                UPDATE instrument_registry
+                SET current_version = %s, last_checked = %s, check_failures = 0
+                WHERE instrument_key = %s
+                """,
+                (new_version or stored_version, now, key),
+            )
+            # Update currency — confirmed current as of this check
+            cur.execute(
+                """
+                INSERT INTO instrument_currency
+                    (council, instrument_key, instrument_label, instrument_type,
+                     verified_at, version_label, source_url)
+                VALUES (NULL, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (council, instrument_key) DO UPDATE
+                    SET verified_at   = EXCLUDED.verified_at,
+                        version_label = EXCLUDED.version_label,
+                        updated_at    = NOW()
+                """,
+                (
+                    key, label, instrument["instrument_type"],
+                    now, new_version or stored_version, legislation_url,
+                ),
+            )
+            conn.commit()
+    cur.close()
+
+    return InstrumentResult(
+        instrument_key=key, instrument_label=label,
+        changed=changed, new_version=new_version,
+        stored_version=stored_version, source=source,
+    )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Weekly SEPP/LEP change monitor via AustLII")
+    parser = argparse.ArgumentParser(description="Weekly SEPP/LEP change monitor")
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
+    parser.add_argument(
+        "--source", choices=["auto", "pco", "austlii"], default="auto",
+        help="Force data source (default: auto — try PCO, fall back to AustLII)",
+    )
     args = parser.parse_args()
 
     conn = psycopg2.connect(DATABASE_URL)
@@ -219,11 +263,12 @@ def main():
     cur = conn.cursor()
     query = """
         SELECT instrument_key, instrument_label, instrument_type,
-               legislation_url, current_version
+               legislation_url, current_version,
+               pco_instrument_id, austlii_url
         FROM instrument_registry
         WHERE is_active = TRUE
     """
-    params = []
+    params: list = []
     if args.key:
         query += " AND instrument_key = %s"
         params.append(args.key)
@@ -235,29 +280,76 @@ def main():
 
     print("=" * 60)
     print(f"Legislation Monitor — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    print("Source: AustLII consolidated copies (classic.austlii.edu.au)")
-    print("Note: ~7-day lag vs legislation.nsw.gov.au")
     if args.dry_run:
         print("DRY RUN")
     print(f"Checking {len(instruments)} instruments...")
     print("=" * 60)
 
+    # Determine source and fetch version data
+    source_used = args.source
+    version_map: dict[str, str | None] = {}
+
+    if source_used in ("auto", "pco"):
+        try:
+            print("\n  Trying PCO weekly export...")
+            version_map = check_via_pco(instruments)
+            source_used = "pco"
+            print(f"  Source: PCO (legislation.nsw.gov.au)")
+        except Exception as exc:
+            if source_used == "pco":
+                # User forced PCO — don't fall back
+                print(f"\n  [ERROR] PCO failed: {exc}")
+                send_telegram(f"Legislation Monitor ERROR\nPCO access failed: {exc}")
+                conn.close()
+                sys.exit(1)
+            # Auto mode — fall back to AustLII
+            print(f"  PCO unavailable ({exc}), falling back to AustLII...")
+            source_used = "austlii"
+
+    if source_used == "austlii":
+        print(f"\n  Source: AustLII (classic.austlii.edu.au) — ~7-day lag")
+        version_map = check_via_austlii(instruments)
+
+    # Process results
+    print(f"\n{'='*60}")
     results = []
     for instrument in instruments:
-        result = check_instrument(instrument, args.dry_run, conn)
-        results.append(result)
-        time.sleep(2)
+        key = instrument["instrument_key"]
+        new_version = version_map.get(key)
+        try:
+            result = check_instrument(
+                instrument, new_version, source_used, args.dry_run, conn,
+            )
+            results.append(result)
+        except Exception as exc:
+            print(f"  {key} [ERROR] {exc}")
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE instrument_registry SET check_failures = check_failures + 1, "
+                "last_checked = %s WHERE instrument_key = %s",
+                (datetime.now(timezone.utc), key),
+            )
+            if not args.dry_run:
+                conn.commit()
+            cur.close()
+            results.append(InstrumentResult(
+                instrument_key=key, instrument_label=instrument["instrument_label"],
+                changed=False, new_version=None,
+                stored_version=instrument["current_version"],
+                source=source_used, error=str(exc),
+            ))
 
     conn.close()
 
-    real_results = [r for r in results if not r.error or r.error != "no AustLII URL mapped"]
     changed = [r for r in results if r.changed]
-    errors = [r for r in results if r.error and r.error != "no AustLII URL mapped"]
+    errors = [r for r in results if r.error]
+    checked = [r for r in results if not r.error]
 
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"  Checked  : {len(real_results)}")
+    print(f"  Source   : {source_used}")
+    print(f"  Checked  : {len(checked)}")
     print(f"  Changed  : {len(changed)}")
     print(f"  Errors   : {len(errors)}")
 
@@ -265,7 +357,7 @@ def main():
         for r in errors:
             print(f"  ERROR [{r.instrument_key}]: {r.error}")
         send_telegram(
-            "Legislation Monitor ERROR\n"
+            f"Legislation Monitor ERROR ({source_used})\n"
             + "\n".join(f"  {r.instrument_key}: {r.error}" for r in errors)
         )
 
@@ -275,11 +367,11 @@ def main():
             lines.append(
                 f"  {r.instrument_key}\n"
                 f"    Was: {r.stored_version or '(unknown)'}\n"
-                f"    Now: {r.new_as_at}"
+                f"    Now: {r.new_version}"
             )
         msg = (
-            f"LEGISLATION CHANGE DETECTED\n"
-            f"{len(changed)} instrument(s) updated on AustLII:\n\n"
+            f"LEGISLATION CHANGE DETECTED ({source_used})\n"
+            f"{len(changed)} instrument(s) updated:\n\n"
             + "\n\n".join(lines)
             + "\n\nVerify on legislation.nsw.gov.au before updating provisions."
             + "\nThen run: python scripts/update_instrument_provisions.py --key <key>"
@@ -292,9 +384,9 @@ def main():
         sys.exit(1)
 
     send_telegram(
-        f"Legislation Monitor: no changes ({len(real_results)} instruments checked via AustLII)"
+        f"Legislation Monitor: no changes ({len(checked)} instruments checked via {source_used})"
     )
-    print("\n  No changes. All instruments current on AustLII.")
+    print(f"\n  No changes. All instruments current.")
     sys.exit(0)
 
 
