@@ -101,7 +101,14 @@ Quick reference for what PlotDetect can and cannot do.
 - **Cannot answer:** "What changed in the 2024 LEP update?"
 - **Database has:** `version_count` column but not populated
 
-### 6. Complete Coverage
+### 6. Professional Email Capture
+- **Registration prompt** on assessment page — captures email + role (planner/certifier/architect/conveyancer/agent/developer)
+- **Non-blocking:** dismissable per session, not a login gate
+- **Demand signals:** records council name and address for prioritising DCP expansion
+- **Table:** `verify_interest` (email, role, council_name, address, source)
+- **Notification:** Resend email to info@plotdetect.com.au on each registration
+
+### 7. Complete Coverage
 - **Council coverage:** Marrickville (100%), Leichhardt (100%), Ashfield (partial)
 - **Missing:** 31 other Inner West LGA councils
 - **SEPP provisions:** Only 241 provisions (vs 47,818 DCP provisions)
