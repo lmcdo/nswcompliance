@@ -88,9 +88,8 @@ def lookup_lga(
                 """
                 SELECT lga_name FROM spatial_overlays
                 WHERE layer_type = 'height'
-                  AND is_active = TRUE
                   AND ST_Contains(
-                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        geom,
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)
                       )
                 LIMIT 1

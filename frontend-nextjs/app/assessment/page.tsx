@@ -17,6 +17,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
+import { VerifyRegistrationPrompt } from '@/components/compliance/VerifyRegistrationPrompt';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
@@ -469,6 +470,12 @@ export default function AssessmentPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Professional registration prompt */}
+                <VerifyRegistrationPrompt
+                  councilName={selectedProperty.constraints?.lga}
+                  address={selectedProperty.address}
+                />
 
                 {/* SEPP Tab Content */}
                 {viewMode === 'sepp' && (

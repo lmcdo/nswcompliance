@@ -427,6 +427,8 @@ scripts/
 !scripts/generate_conveyancing_report.py
 !scripts/add_new_chapter.py
 !scripts/audit_url_landscape.py
+!scripts/confirm_chapter.py
+!scripts/pco_client.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
