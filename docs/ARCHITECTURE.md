@@ -39,6 +39,7 @@ See full architectural details in the exploration agent output above.
 - `/api/satellite/pre-da-history` - Pre-DA Site History pipeline (ePlanning DAs + PCCs + Sentinel-2 NDVI/NDBI + heritage overlay)
 - `/api/reports/pre-da-history/generate` - Pre-DA Site History PDF generation (gated on `is_paid`)
 - `/api/stripe/checkout/pre-da-history` - Stripe checkout session for $49 Pre-DA report
+- `/api/verify-interest` - Professional email capture (assessment page registration prompt)
 
 ### Satellite Product Endpoints (Python backend)
 - `POST /pipeline/bushfire` - Bushfire Pre-Screen (RFS BFPL + PostGIS overlays + compliance)
