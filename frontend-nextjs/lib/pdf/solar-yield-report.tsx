@@ -263,35 +263,56 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
 
         {/* Financial ROI */}
         <Text style={s.sectionTitle}>Financial return</Text>
-        <View style={s.statGrid}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Annual savings</Text>
-            <Text style={s.statValue}>{fmt$(data.annual_saving_aud)}</Text>
-            <Text style={s.statSub}>at current NSW rates</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Payback period</Text>
-            <Text style={s.statValue}>
-              {data.payback_years ? `${data.payback_years.toFixed(1)} yrs` : '—'}
+        {data.is_paid === true ? (
+          <>
+            <View style={s.statGrid}>
+              <View style={s.statCard}>
+                <Text style={s.statLabel}>Annual savings</Text>
+                <Text style={s.statValue}>{fmt$(data.annual_saving_aud)}</Text>
+                <Text style={s.statSub}>at current NSW rates</Text>
+              </View>
+              <View style={s.statCard}>
+                <Text style={s.statLabel}>Payback period</Text>
+                <Text style={s.statValue}>
+                  {data.payback_years ? `${data.payback_years.toFixed(1)} yrs` : '—'}
+                </Text>
+                <Text style={s.statSub}>system cost {fmt$(data.system_cost_aud)}</Text>
+              </View>
+              <View style={s.statCard}>
+                <Text style={s.statLabel}>10-year return</Text>
+                <Text style={[s.statValue, {
+                  color: data.ten_year_return_aud >= 0 ? GREEN : RED,
+                }]}>
+                  {fmt$(data.ten_year_return_aud)}
+                </Text>
+                <Text style={s.statSub}>after install + inverter</Text>
+              </View>
+            </View>
+            <Text style={[s.bodyText, { fontSize: 7.5, color: GRAY_500 }]}>
+              Assumes 32¢/kWh retail (AER DMO 2025–26) · 6¢/kWh feed-in (AER benchmark) ·
+              30% self-consumption (ARENA/CSIRO) · $1,000/kW installed after STCs ·
+              inverter replacement $2,000 at year 10.
             </Text>
-            <Text style={s.statSub}>system cost {fmt$(data.system_cost_aud)}</Text>
+          </>
+        ) : (
+          <View style={s.statGrid}>
+            <View style={s.statCard}>
+              <Text style={s.statLabel}>Annual savings</Text>
+              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
+              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statLabel}>Payback period</Text>
+              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
+              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statLabel}>10-year return</Text>
+              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
+              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+            </View>
           </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>10-year return</Text>
-            <Text style={[s.statValue, {
-              color: data.ten_year_return_aud >= 0 ? GREEN : RED,
-            }]}>
-              {fmt$(data.ten_year_return_aud)}
-            </Text>
-            <Text style={s.statSub}>after install + inverter</Text>
-          </View>
-        </View>
-
-        <Text style={[s.bodyText, { fontSize: 7.5, color: GRAY_500 }]}>
-          Assumes 32¢/kWh retail (AER DMO 2025–26) · 6¢/kWh feed-in (AER benchmark) ·
-          30% self-consumption (ARENA/CSIRO) · $1,000/kW installed after STCs ·
-          inverter replacement $2,000 at year 10.
-        </Text>
+        )}
 
         <Footer pageNum={1} total={totalPages} />
       </Page>
@@ -307,13 +328,31 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         <View style={s.statGrid}>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Maximum panels</Text>
-            <Text style={s.statValue}>{data.max_panels}</Text>
-            <Text style={s.statSub}>{data.system_kw.toFixed(1)} kW system</Text>
+            {data.is_paid === true ? (
+              <>
+                <Text style={s.statValue}>{data.max_panels}</Text>
+                <Text style={s.statSub}>{data.system_kw.toFixed(1)} kW system</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Assessed</Text>
+                <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>In paid report</Text>
+              </>
+            )}
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Usable roof area</Text>
-            <Text style={s.statValue}>{data.max_panel_area_m2} m²</Text>
-            <Text style={s.statSub}>of {data.roof_area_m2} m² total</Text>
+            {data.is_paid === true ? (
+              <>
+                <Text style={s.statValue}>{data.max_panel_area_m2} m²</Text>
+                <Text style={s.statSub}>of {data.roof_area_m2} m² total</Text>
+              </>
+            ) : (
+              <>
+                <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Assessed</Text>
+                <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>In paid report</Text>
+              </>
+            )}
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Annual output</Text>
