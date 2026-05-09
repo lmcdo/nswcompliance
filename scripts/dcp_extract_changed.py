@@ -2150,41 +2150,47 @@ def main() -> None:
         print(f"\n  {failed} chapter(s) failed — retained needs_extraction=TRUE for retry.")
 
     # ── Quality gate ─────────────────────────────────────────────────────────
-    # Check data quality before wasting resources on enrichment.
+    # Non-fatal check — provisions are already committed at this point.
     # Gate thresholds: granularity ≥50%, text_quality ≥95%, duplicates ≥95%, pages ≥90%
     print(f"\n{'='*60}")
     print("QUALITY GATE")
     print(f"{'='*60}")
 
-    from scripts.dcp_quality_report import check_gate
-    gate_council = args.council or None
-    passed, failures = check_gate(council_filter=gate_council)
-    if not passed:
-        print("\n  Quality gate FAILED — skipping enrichment.")
-        for f in failures:
-            print(f"    • {f}")
-        print("\n  Fix data quality issues, then re-run extraction or run enrichment manually.")
-        sys.exit(1)
-    else:
-        print("\n  Quality gate PASSED — proceeding to enrichment.")
+    try:
+        from scripts.dcp_quality_report import check_gate
+        gate_council = args.council or None
+        passed, failures = check_gate(council_filter=gate_council)
+        if not passed:
+            print("\n  Quality gate FAILED (non-fatal — provisions already committed).")
+            for f in failures:
+                print(f"    • {f}")
+            print("\n  Fix data quality issues before relying on these provisions.")
+        else:
+            print("\n  Quality gate PASSED — proceeding to enrichment.")
+    except Exception as exc:
+        print(f"\n  Quality gate ERROR (non-fatal): {exc}")
+        passed = False
 
     # ── Enrichment pipeline ──────────────────────────────────────────────────
     # Run automatically after any successful extraction so new provisions are
     # fully enriched without needing a separate manual command.
     # Phase order is mandatory: actionability must run before layer/applicability
     # because those phases filter WHERE v2_is_actionable = TRUE.
-    print(f"\n{'='*60}")
-    print("ENRICHMENT PIPELINE")
-    print(f"{'='*60}")
+    if passed:
+        print(f"\n{'='*60}")
+        print("ENRICHMENT PIPELINE")
+        print(f"{'='*60}")
 
-    print("\n[1/3] Actionability classification...")
-    run_actionability_classification(batch_size=500)
+        print("\n[1/3] Actionability classification...")
+        run_actionability_classification(batch_size=500)
 
-    print("\n[2/3] Layer + topic tagging...")
-    run_layer_tagging(batch_size=500)
+        print("\n[2/3] Layer + topic tagging...")
+        run_layer_tagging(batch_size=500)
 
-    print("\n[3/3] Applicability tagging...")
-    run_applicability_tagging(batch_size=500)
+        print("\n[3/3] Applicability tagging...")
+        run_applicability_tagging(batch_size=500)
+    else:
+        print("\n  Skipping enrichment — quality gate did not pass.")
 
     sys.exit(2)
 
