@@ -5,15 +5,20 @@
 
 import { NextRequest } from 'next/server';
 
-const mockCreate = jest.fn();
-
 jest.mock('stripe', () => {
-  return jest.fn().mockImplementation(() => ({
-    checkout: { sessions: { create: mockCreate } },
-  }));
+  const create = jest.fn();
+  (globalThis as Record<string, unknown>).__stripeMockCreate = create;
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => ({
+      checkout: { sessions: { create } },
+    })),
+  };
 });
 
 import { POST } from '@/app/api/stripe/checkout/flood-truth/route';
+
+const mockCreate = (globalThis as Record<string, unknown>).__stripeMockCreate as jest.Mock;
 
 function makeReq(body: unknown): NextRequest {
   return new NextRequest('http://localhost/api/stripe/checkout/flood-truth', {
