@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
     return handleSatelliteReport(session, meta, 'solar-yield');
   }
 
+  if (meta.product === 'bushfire-report') {
+    return handleSatelliteReport(session, meta, 'bushfire');
+  }
+
   if (meta.product === 'granny-flat-analysis') {
     return handleGrannyFlatAnalysis(session, meta);
   }
@@ -293,7 +297,7 @@ async function handleGrannyFlatReport(
 // ---------------------------------------------------------------------------
 
 const SATELLITE_REPORT_META: Record<
-  'flood-truth' | 'shadow' | 'solar-yield',
+  'flood-truth' | 'shadow' | 'solar-yield' | 'bushfire',
   { generatePath: string; subject: string; bodyLine: string; filePrefix: string }
 > = {
   'flood-truth': {
@@ -314,12 +318,18 @@ const SATELLITE_REPORT_META: Record<
     bodyLine: 'Your Solar Yield Report is attached as a PDF. It includes system sizing, installed cost estimate, annual bill savings, payback period, and a monthly kWh breakdown.',
     filePrefix: 'solar-yield-report',
   },
+  'bushfire': {
+    generatePath: '/api/reports/bushfire/generate',
+    subject: 'Your Bushfire Pre-Screen Report',
+    bodyLine: 'Your Bushfire Pre-Screen Report is attached as a PDF. It includes your BFPL category, estimated BAL band, RFS referral requirements, AS 3959 construction standards, s4.14 referral triggers, cross-overlays, and consultant cost estimates.',
+    filePrefix: 'bushfire-report',
+  },
 };
 
 async function handleSatelliteReport(
   _session: Stripe.Checkout.Session,
   meta: Record<string, string>,
-  product: 'flood-truth' | 'shadow' | 'solar-yield'
+  product: 'flood-truth' | 'shadow' | 'solar-yield' | 'bushfire'
 ) {
   const { report_id, email } = meta;
   const cfg = SATELLITE_REPORT_META[product];

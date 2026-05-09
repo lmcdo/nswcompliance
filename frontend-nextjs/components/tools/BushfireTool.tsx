@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -88,6 +88,36 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<BushfireResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async (reportId: string, addr: string) => {
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/bushfire', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,8 +158,9 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
         no login required.
       </p>
       <p className="mt-2 text-sm text-gray-400">
-        Free. Shows BFPL category, estimated BAL band, RFS referral requirement, 10/50 vegetation
-        clearing entitlements, and any flood or heritage overlays at the site.
+        BFPL category, estimated BAL band, RFS referral requirement, and 10/50 vegetation
+        clearing entitlements. Full report includes AS 3959 construction standards,
+        referral triggers, cross-overlays, and consultant cost estimates.
       </p>
 
       <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
@@ -166,6 +197,18 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
       {state === 'complete' && result && (
         <>
           <BushfireCard result={result} />
+          {result.report_id ? (
+            paidReportId ? (
+              <BushfirePaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <BushfireLockedPreviewCard
+                result={result}
+                onUnlock={() => handleUnlock(result.report_id!, result.address)}
+                unlocking={unlocking}
+                error={unlockError}
+              />
+            )
+          ) : null}
           <ToolCrossSell currentTool="bushfire" address={result.address} />
         </>
       )}
@@ -364,6 +407,137 @@ function BushfireCard({ result }: { result: BushfireResult }) {
           obtain a bushfire assessment from a practitioner listed in the RFS directory.
         </p>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// BushfireLockedPreviewCard — blur-to-reveal paywall
+// ---------------------------------------------------------------------------
+
+function BushfireLockedPreviewCard({
+  result,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  result: BushfireResult;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const o = result.outputs;
+  const c = o.compliance;
+  const triggerCount = c.rfs_referral_triggers?.length ?? 0;
+  const overlayCount = c.cross_overlays?.length ?? 0;
+
+  const rows = [
+    { label: 'AS 3959 construction standards', preview: 'BAL-specific requirements' },
+    ...(triggerCount > 0 ? [{ label: 's4.14 referral triggers', preview: `${triggerCount} trigger${triggerCount !== 1 ? 's' : ''} identified` }] : []),
+    ...(overlayCount > 0 ? [{ label: 'Cross-overlay analysis', preview: `${overlayCount} overlay${overlayCount !== 1 ? 's' : ''} detected` }] : []),
+    ...(c.estimated_consultant_costs ? [{ label: 'Consultant cost estimate', preview: c.estimated_consultant_costs }] : []),
+    { label: 'Plain-English interpretation', preview: 'What this means for your project' },
+    { label: 'Full PDF report', preview: 'bushfire-report.pdf' },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">
+          {o.is_bushfire_prone
+            ? `${o.designation_category ?? 'Bushfire prone'} — see the full compliance breakdown`
+            : 'Full bushfire compliance report'}
+        </p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+          AS 3959 construction requirements for your BAL rating, referral triggers,
+          cross-overlays, and consultant cost estimates.
+        </p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Included in paid report
+        </p>
+        <div className="space-y-2">
+          {rows.map(({ label, preview }) => (
+            <div key={label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-gray-700">{label}</span>
+              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
+                {preview}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock full report — $29'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// BushfirePaidDownloadCTA — shown after Stripe payment success
+// ---------------------------------------------------------------------------
+
+function BushfirePaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/bushfire/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bushfire-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report \u2192'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }
