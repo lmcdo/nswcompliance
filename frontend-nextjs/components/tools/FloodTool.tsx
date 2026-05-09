@@ -241,6 +241,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
+          <FloodDataCoverage result={result} />
           {result.report_id ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
@@ -267,6 +268,135 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
 function formatFloodDate(iso?: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+}
+
+// ---------------------------------------------------------------------------
+// FloodDataCoverage — shows which data sources are available for this address
+// Builds trust before paywall by being transparent about coverage gaps
+// ---------------------------------------------------------------------------
+
+const COVERAGE_ITEMS: {
+  key: string;
+  label: string;
+  description: string;
+  check: (o: FloodOutputs) => boolean;
+  paidOnly?: boolean;
+}[] = [
+  {
+    key: 'epi',
+    label: 'Council flood overlay (EPI)',
+    description: 'Statutory flood planning layer from NSW EPI',
+    check: (o) => o.epi_flood_class != null,
+  },
+  {
+    key: 'ses',
+    label: 'Council flood study',
+    description: 'Detailed flood extent from local council study',
+    check: (o) => o.ses_in_flood_planning_area != null,
+  },
+  {
+    key: 'dea_wofs',
+    label: 'Satellite water history (DEA WOfS)',
+    description: 'Landsat surface water observations 1987–present',
+    check: (o) => o.dea_wofs_frequency_pct != null,
+  },
+  {
+    key: 'jrc',
+    label: 'Global water occurrence (JRC)',
+    description: '40-year satellite water detection — European Commission',
+    check: (o) => o.jrc_water_occurrence_pct != null,
+    paidOnly: true,
+  },
+  {
+    key: 'bom',
+    label: 'BOM river gauge',
+    description: 'Nearest Bureau of Meteorology flood gauge record',
+    check: (o) => o.bom_gauge_name != null,
+    paidOnly: true,
+  },
+  {
+    key: 'ems',
+    label: 'Copernicus EMS events',
+    description: 'EU satellite-detected flood activations near this location',
+    check: (o) => o.ems_flood_detected != null,
+    paidOnly: true,
+  },
+  {
+    key: 'sar',
+    label: 'SAR flood detection',
+    description: 'Sentinel-1 radar water extent analysis',
+    check: (o) => o.sar_flood_detected != null,
+    paidOnly: true,
+  },
+  {
+    key: 'hawkesbury',
+    label: 'Flood depth raster',
+    description: 'Modelled flood levels by AEP at this site',
+    check: (o) => o.hawkesbury_flood_level_100aep != null,
+    paidOnly: true,
+  },
+];
+
+function FloodDataCoverage({ result }: { result: FloodResult }) {
+  const o = result.outputs;
+  const available = COVERAGE_ITEMS.filter((item) => item.check(o));
+  const unavailable = COVERAGE_ITEMS.filter((item) => !item.check(o));
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">Data coverage for this address</h3>
+      <p className="text-xs text-gray-400 mb-4">
+        Flood data availability varies by location. Here&apos;s what our pipeline found for this property.
+      </p>
+
+      {available.length > 0 && (
+        <ul className="space-y-2 mb-4">
+          {available.map((item) => (
+            <li key={item.key} className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
+                ✓
+              </span>
+              <div>
+                <p className="text-sm text-gray-800">
+                  {item.label}
+                  {item.paidOnly && (
+                    <span className="ml-1.5 text-[10px] font-medium text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
+                      paid report
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400">{item.description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {unavailable.length > 0 && (
+        <>
+          <p className="text-xs font-medium text-gray-500 mb-2">Not available for this location</p>
+          <ul className="space-y-2">
+            {unavailable.map((item) => (
+              <li key={item.key} className="flex items-start gap-2 opacity-50">
+                <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-xs">
+                  —
+                </span>
+                <div>
+                  <p className="text-sm text-gray-500">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.description}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
+        {available.length} of {COVERAGE_ITEMS.length} data sources available.
+        Coverage depends on council flood study availability, licensing, and satellite observation windows.
+      </p>
+    </div>
+  );
 }
 
 function FloodLockedPreviewCard({
