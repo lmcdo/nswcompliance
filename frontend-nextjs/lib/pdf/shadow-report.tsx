@@ -14,10 +14,21 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+interface GeoJSONGeometry {
+  type: string;
+  coordinates: unknown[];
+}
+
+interface GeoJSONCollection {
+  type: 'FeatureCollection';
+  features: { type: 'Feature'; geometry: GeoJSONGeometry; properties?: Record<string, unknown> }[];
+}
 
 export interface ShadowScenario {
   scenario: string;
@@ -28,6 +39,8 @@ export interface ShadowScenario {
   shadow_overlap_fraction: number;
   shadow_direction_deg: number;
   overlaps_subject_lot: boolean;
+  shadow_on_lot?: GeoJSONCollection | null;
+  shadow_polygon?: GeoJSONCollection | null;
 }
 
 export interface ShadowReportData {
@@ -49,6 +62,8 @@ export interface ShadowReportData {
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  lot_polygon?: GeoJSONGeometry | null;
+  north_proxy_polygon?: GeoJSONGeometry | null;
   is_paid?: boolean;
   tile_b64: string | null;
   logo_b64?: string | null;
@@ -251,7 +266,12 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
     : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
 
-  const totalPages = (data.tile_b64 ? 3 : 2) + 1; // +1 for About page
+  const hasOverlay = data.tile_b64 && data.lot_polygon && data.is_paid === true;
+  const junScenarios = hasOverlay
+    ? scenarios.filter(sc => sc.scenario.startsWith('jun21'))
+    : [];
+  // Pages: cover+scenarios, methodology, about, aerial/overlay (3 maps side-by-side = 1 page)
+  const totalPages = 3 + (data.tile_b64 ? 1 : 0);
 
   return (
     <Document title={`Shadow Report — ${data.address}`} author="PlotDetect">
@@ -332,7 +352,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             </Text>
             <Text style={s.statSub}>
               {data.construction_change_score != null
-                ? `BSI Δ ${data.construction_change_score.toFixed(3)} · threshold 0.120`
+                ? `BSI change ${data.construction_change_score.toFixed(3)} · threshold 0.120`
                 : 'Sentinel-2 · past 90 days vs 12-month baseline'}
             </Text>
           </View>
@@ -371,42 +391,59 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           <Text style={[s.colCoverage, s.colHeaderText]}>Coverage</Text>
         </View>
 
-        {scenarios.map((sc) => {
-          const pct = sc.shadow_overlap_fraction != null
-            ? Math.round(sc.shadow_overlap_fraction * 100)
-            : null;
-          const pillColor = coveragePillColor(pct);
-          const isWorstCase = sc.scenario === data.worst_case_scenario;
-
+        {(() => {
+          const visibleScenarios = data.is_paid ? scenarios : scenarios.slice(0, 2);
+          const gatedCount = data.is_paid ? 0 : Math.max(0, scenarios.length - 2);
           return (
-            <View
-              key={sc.scenario}
-              style={[s.tableRow, isWorstCase
-                ? { backgroundColor: TEAL_LIGHT }
-                : {}
-              ]}
-            >
-              <Text style={s.colDate}>
-                {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
-                {isWorstCase ? ' ★' : ''}
-              </Text>
-              <Text style={s.colReach}>
-                {sc.shadow_length_m > 0 ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
-              </Text>
-              <Text style={s.colDir}>
-                {sc.shadow_direction_deg != null
-                  ? bearingToCompass(sc.shadow_direction_deg)
-                  : '—'}
-              </Text>
-              <Text style={[s.colCoverage, { color: pillColor.fg }]}>
-                {pct != null ? `${pct}%` : '—'}
-              </Text>
-            </View>
+            <>
+              {visibleScenarios.map((sc) => {
+                const pct = sc.shadow_overlap_fraction != null
+                  ? Math.round(sc.shadow_overlap_fraction * 100)
+                  : null;
+                const pillColor = coveragePillColor(pct);
+                const isWorstCase = sc.scenario === data.worst_case_scenario;
+
+                return (
+                  <View
+                    key={sc.scenario}
+                    style={[s.tableRow, isWorstCase
+                      ? { backgroundColor: TEAL_LIGHT }
+                      : {}
+                    ]}
+                  >
+                    <Text style={s.colDate}>
+                      {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
+                      {isWorstCase ? ' ★' : ''}
+                    </Text>
+                    <Text style={s.colReach}>
+                      {sc.shadow_length_m > 0 ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
+                    </Text>
+                    <Text style={s.colDir}>
+                      {sc.shadow_direction_deg != null
+                        ? bearingToCompass(sc.shadow_direction_deg)
+                        : '—'}
+                    </Text>
+                    <Text style={[s.colCoverage, { color: pillColor.fg }]}>
+                      {pct != null ? `${pct}%` : '—'}
+                    </Text>
+                  </View>
+                );
+              })}
+              {gatedCount > 0 && (
+                <View style={[s.tableRow, { backgroundColor: '#f9fafb', justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 8, color: TEAL, textAlign: 'center', width: '100%' }}>
+                    {`+ ${gatedCount} more scenarios in full report — plotdetect.com.au`}
+                  </Text>
+                </View>
+              )}
+            </>
           );
-        })}
+        })()}
 
         <Text style={[s.bodyText, { marginTop: 8, fontSize: 7.5, color: GRAY_500 }]}>
-          * worst-case scenario · Coverage = fraction of subject lot in shadow
+          {data.is_paid
+            ? '* worst-case scenario · Coverage = fraction of subject lot in shadow'
+            : 'Coverage = fraction of subject lot in shadow · Full report includes all 5 ADG test scenarios'}
         </Text>
 
         {/* Seasonal summary — paid */}
@@ -545,24 +582,68 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       />
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 4: Aerial tile (optional)                                       */}
+      {/* PAGE 4: Shadow diagrams or plain aerial (optional)                   */}
       {/* ------------------------------------------------------------------ */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
-          <Text style={s.sectionTitle}>Property aerial view</Text>
-          <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
-            NSW SIX Maps aerial imagery for context. Shadow polygons cannot be shown in a
-            static image — see the interactive tool at plotdetect.com.au for map view.
-          </Text>
-          <Image
-            src={`data:image/png;base64,${data.tile_b64}`}
-            style={{ width: '100%', borderRadius: 4 }}
-          />
+          {hasOverlay ? (
+            <>
+              <Text style={s.sectionTitle}>Shadow diagrams — 21 June (ADG test date)</Text>
+              <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
+                Teal outline = subject lot boundary. Orange fill = shadow cast by a maximum-height building ({data.height_m}m) on the adjacent lot to the north.
+              </Text>
+              {/* Legend */}
+              <View style={{ flexDirection: 'row', gap: 16, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 10, height: 10, backgroundColor: '#0d9488', opacity: 0.4, borderRadius: 1 }} />
+                  <Text style={{ fontSize: 7.5, color: GRAY_500 }}>Subject lot</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 10, height: 10, backgroundColor: '#f97316', opacity: 0.7, borderRadius: 1 }} />
+                  <Text style={{ fontSize: 7.5, color: GRAY_500 }}>Shadow on lot</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View style={{ width: 10, height: 10, borderWidth: 1, borderColor: '#6366f1', borderStyle: 'dashed', borderRadius: 1 }} />
+                  <Text style={{ fontSize: 7.5, color: GRAY_500 }}>Modelled building</Text>
+                </View>
+              </View>
+              {/* Render one diagram per Jun 21 scenario — constrain width to fit 3 on one page */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'space-between' }}>
+                {junScenarios.map((sc) => (
+                  <View key={sc.scenario} style={{ width: '31%' }}>
+                    <AerialWithOverlay
+                      tile_b64={data.tile_b64!}
+                      center={[data.lng, data.lat]}
+                      zoom="property"
+                      label={SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
+                      attribution=""
+                      layers={[
+                        { geojson: sc.shadow_on_lot, fill: '#f97316', fillOpacity: 0.55, stroke: '#ea580c', strokeWidth: 1 },
+                        { geojson: data.north_proxy_polygon, dasharray: '6,4', stroke: '#6366f1', strokeWidth: 1.5 },
+                        { geojson: data.lot_polygon, fill: '#0d9488', fillOpacity: 0.15, stroke: '#0d9488', strokeWidth: 2 },
+                      ]}
+                    />
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={s.sectionTitle}>Property aerial view</Text>
+              <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
+                10 cm resolution aerial imagery of the subject lot.
+              </Text>
+              <Image
+                src={`data:image/png;base64,${data.tile_b64}`}
+                style={{ width: '100%', borderRadius: 4 }}
+              />
+            </>
+          )}
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
-            © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
+            NSW SIX Maps (LPI_Imagery_Best) -- CC-BY 4.0 NSW Government
           </Text>
-          <Footer pageNum={3} total={totalPages} />
+          <Footer pageNum={4} total={totalPages} />
         </Page>
       )}
 

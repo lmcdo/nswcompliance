@@ -16,7 +16,8 @@ const NSW_LNG = { min: 140.5, max: 154.0 };
 
 // 'property': ~90m × 90m — lot-level, individual property visible clearly
 // 'neighbourhood': ~550m × 330m — street context, used by flood/shadow/solar/threat-radar
-const ZOOM_PRESETS = {
+// Exported so map-overlay.tsx can compute matching SVG viewports.
+export const ZOOM_PRESETS = {
   property:     { d_lng: 0.0005, d_lat: 0.0005, w: 512, h: 512 },
   neighbourhood:{ d_lng: 0.003,  d_lat: 0.0015, w: 600, h: 300 },
 };
