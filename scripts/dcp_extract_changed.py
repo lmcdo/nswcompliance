@@ -1176,7 +1176,7 @@ def resolve_document_id(cur, council: str, chapter_key: str, dcp_name: str) -> s
 def fetch_pending_chapters(cur, council_filter: str | None) -> list[dict]:
     query = """
         SELECT id, council, chapter_key, chapter_label,
-               r2_current_path, r2_version_label, dcp_name
+               r2_current_path, r2_version_label, dcp_name, content_hash
         FROM dcp_chapter_registry
         WHERE needs_extraction = TRUE
           AND is_active = TRUE
@@ -1823,10 +1823,12 @@ def extract_chapter(
                         last_extracted_at       = %s,
                         last_extracted_version  = %s,
                         page_start              = %s,
-                        page_end                = %s
+                        page_end                = %s,
+                        provisions_extracted_from_hash = %s
                     WHERE id = %s
                     """,
-                    (now, version, page_start, page_end, chapter_id),
+                    (now, version, page_start, page_end,
+                     chapter.get("content_hash"), chapter_id),
                 )
 
                 conn.commit()
