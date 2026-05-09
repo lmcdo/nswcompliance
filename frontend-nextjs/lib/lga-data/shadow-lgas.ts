@@ -282,6 +282,61 @@ export const SHADOW_LGAS: ShadowLgaData[] = [
       { q: 'Is shadow more important in Wingecarribee given the lower sunshine hours?', a: 'Yes. Wingecarribee receives around 2,350 sunshine hours per year -- the lowest of the LGAs in this analysis. Any shadow loss reduces an already lower solar resource. If solar panels are a priority, minimising shadow from neighbouring buildings is particularly important before installation.' },
     ],
   },
+  {
+    name: 'Campbelltown',
+    slug: 'campbelltown',
+    heritageCount: 116,
+    densityNote: 'Established suburban areas have moderate lot sizes, while new release estates with compact lots and 2-storey designs create shadow between neighbouring properties.',
+    faqs: [
+      { q: 'Is shadow a risk in Campbelltown?', a: 'Shadow risk in Campbelltown is low to moderate. Established suburbs have larger lots with good separation. In newer estates and growth areas like Menangle Park, compact lot widths with standard 2-storey designs create moderate shadow risk between neighbours.' },
+      { q: 'What causes shadow issues in Campbelltown?', a: 'In new estates, 2-storey dwellings on compact lots are the main source. In established suburbs, secondary dwelling additions and knockdown-rebuild projects replacing single-storey homes with 2-storey designs increase shadow on adjoining properties.' },
+      { q: 'Are new estates in Campbelltown subject to shadow controls?', a: 'Yes. Campbelltown DCP requires shadow diagrams for 2-storey dwellings and additions. Applicants must demonstrate solar access to north-facing windows and principal outdoor space of adjoining properties.' },
+    ],
+  },
+  {
+    name: 'Lane Cove',
+    slug: 'lane-cove',
+    heritageCount: 287,
+    densityNote: 'Medium-density transition near Lane Cove town centre creates shadow risk for established single-storey homes on adjacent streets.',
+    faqs: [
+      { q: 'Is shadow a risk in Lane Cove?', a: 'Shadow risk in Lane Cove is moderate. The LGA is transitioning to medium density near the town centre and along the Pacific Highway. New 3-4 storey apartment buildings can cast significant shadow on adjoining lower-density properties.' },
+      { q: 'What causes shadow issues in Lane Cove?', a: 'Medium-density apartment and townhouse development near Lane Cove town centre is the primary source. Properties near Lane Cove National Park have low built shadow risk due to adjacent open space.' },
+      { q: 'Does the medium-density transition affect shadow in Lane Cove?', a: 'Yes. Properties at the interface between R2 and R3/R4 zones are most at risk. A 3-4 storey building on a neighbouring R3 lot can significantly shadow an adjoining R2 property.' },
+    ],
+  },
+  {
+    name: 'Ryde',
+    slug: 'ryde',
+    heritageCount: 412,
+    densityNote: 'High-density development near Macquarie Park and Top Ryde creates shadow risk for established suburban homes in adjacent streets.',
+    faqs: [
+      { q: 'Is shadow a risk in Ryde?', a: 'Shadow risk in Ryde is moderate to high near Macquarie Park and Top Ryde, where high-density apartment development is ongoing. Established suburban areas further from centres have lower risk.' },
+      { q: 'What causes shadow issues in Ryde?', a: 'High-rise towers in Macquarie Park and medium-density development near Top Ryde are the main sources. In established suburbs, knockdown-rebuild projects and secondary dwelling additions also contribute.' },
+      { q: 'Can Macquarie Park towers affect shadow on nearby homes?', a: 'Yes. Towers can cast long winter shadows. Properties within 100-200m, particularly to the south, can experience reduced solar access. Check the DA register for proposed developments near your address.' },
+    ],
+  },
+  {
+    name: 'Blue Mountains',
+    slug: 'blue-mountains',
+    heritageCount: 489,
+    densityNote: 'Heritage village character with single-storey cottages, but steep terrain and mature canopy create natural shadow. New 2-storey builds on sloping lots are the main built shadow risk.',
+    faqs: [
+      { q: 'Is shadow a risk in the Blue Mountains?', a: 'Shadow risk from built development is low to moderate. Village character and heritage controls limit large-scale development. However, steep terrain and dense tree canopy create significant natural shadow, particularly on south-facing slopes in winter.' },
+      { q: 'What causes shadow issues in the Blue Mountains?', a: 'Terrain and tree canopy are the dominant shadow sources. Where built shadow occurs, it is typically from 2-storey dwellings on elevated lots. New builds replacing single-storey cottages with 2-storey designs also create localised impact.' },
+      { q: 'Does heritage village character limit shadow risk?', a: 'Partially. Heritage conservation areas in Leura, Katoomba, and Wentworth Falls restrict demolition and replacement with larger buildings. However, not all areas are heritage-protected.' },
+    ],
+  },
+  {
+    name: 'Shoalhaven',
+    slug: 'shoalhaven',
+    heritageCount: 387,
+    densityNote: 'Predominantly single-storey coastal and rural-residential character with low built shadow risk, but terrain shadow on hillside lots near Nowra and Berry.',
+    faqs: [
+      { q: 'Is shadow a risk in Shoalhaven?', a: 'Shadow risk in Shoalhaven is generally low. Single-storey homes on larger lots dominate. Some terrain shadow occurs on hillside lots near Nowra and Berry where sloping blocks create elevation differences between neighbours.' },
+      { q: 'What causes shadow issues in Shoalhaven?', a: 'Terrain is more significant than built form. In Nowra and Berry, sloping lots mean uphill properties can cast shadow on downslope neighbours. Secondary dwelling additions and 2-storey rebuilds on coastal village lots are the main built shadow sources.' },
+      { q: 'Does the coastal character limit shadow risk?', a: 'Yes. Most South Coast villages have low-density character with generous lot sizes and predominantly single-storey buildings.' },
+    ],
+  },
 ]
 
 export const SHADOW_LGA_SLUG_MAP: Record<string, ShadowLgaData> = Object.fromEntries(
