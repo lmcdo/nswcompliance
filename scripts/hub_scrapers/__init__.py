@@ -15,6 +15,7 @@ from .inner_west import scrape_inner_west, HubScrapeError
 from .city_of_sydney import scrape_city_of_sydney
 from .woollahra import scrape_woollahra
 from .canterbury_bankstown import scrape_canterbury_bankstown
+from .waverley import scrape_waverley
 
 # council slug (matches dcp_chapter_registry.council) → scraper function
 HUB_SCRAPERS: dict = {
@@ -28,6 +29,8 @@ HUB_SCRAPERS: dict = {
     "woollahra":             scrape_woollahra,
     # Canterbury Bankstown (SharePoint/Azure — api/publish?documentPath=base64)
     "canterbury_bankstown":  scrape_canterbury_bankstown,
+    # Waverley (Squiz Matrix — /media/documents/ + /__data/assets/)
+    "waverley":              scrape_waverley,
 }
 
 __all__ = ["HUB_SCRAPERS", "HubScrapeError"]
