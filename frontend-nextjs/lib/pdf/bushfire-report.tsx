@@ -14,7 +14,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -460,6 +460,20 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
           { label: 'RFS BAL assessor directory', url: 'https://www.rfs.nsw.gov.au/plan-and-prepare/building-in-a-bush-fire-area/find-a-practitioner', urlDisplay: 'rfs.nsw.gov.au/find-a-practitioner' },
           { label: 'FPA Australia', url: 'https://www.fpaa.com.au', urlDisplay: 'fpaa.com.au' },
         ]} />
+
+        {/* A4: Insurer/lender questionnaire — bushfire */}
+        {data.is_paid === true && (
+          <InsurerChecklist
+            title="Questions for your insurer or lender"
+            questions={[
+              'Does the BAL rating for this property affect my building and/or contents insurance premium?',
+              'Is the property in a bushfire exclusion zone for any cover type?',
+              'Does the insurer require a formal BAL assessment certificate before providing cover?',
+              'Are there vegetation management requirements that affect my cover or premium?',
+              'Will the lender require a bushfire assessment before unconditional finance approval?',
+            ]}
+          />
+        )}
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
 const AerialTile = dynamic(
   () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
@@ -760,6 +761,11 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           </div>
 
         </div>
+      )}
+
+      {/* Cross-sell — after result */}
+      {pageState === 'result' && eligibility && (
+        <ToolCrossSell currentTool="granny-flat" address={eligibility.address ?? address} />
       )}
 
       {/* Social proof — idle only */}

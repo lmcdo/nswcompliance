@@ -57,6 +57,7 @@ export interface PreDAHistoryReportData {
   wayback_ssim?: Record<string, number>;
   data_quality_note: string;
   logo_b64?: string | null;
+  is_paid?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,8 +344,8 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           <Text style={s.calloutText}>{summary}</Text>
         </View>
 
-        {/* A1: Plain-English interpretation */}
-        {(() => {
+        {/* A1: Plain-English interpretation — paid only */}
+        {data.is_paid === true && (() => {
           if (hasRisk) {
             return (
               <WhatThisMeans>
@@ -411,18 +412,29 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           </View>
         )}
 
-        {/* ---- Recommended next steps ---- */}
-        <Text style={s.sectionTitle}>Recommended next steps</Text>
-        <View style={{ marginBottom: 24 }}>
-          {recs.map((rec, i) => (
-            <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }} wrap={false}>
-              <Text style={{ ...s.body, fontFamily: 'Helvetica-Bold', marginRight: 6, color: TEAL }}>
-                {i + 1}.
-              </Text>
-              <Text style={s.body}>{rec}</Text>
+        {/* ---- Recommended next steps — paid only ---- */}
+        {data.is_paid === true ? (
+          <>
+            <Text style={s.sectionTitle}>Recommended next steps</Text>
+            <View style={{ marginBottom: 24 }}>
+              {recs.map((rec, i) => (
+                <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }} wrap={false}>
+                  <Text style={{ ...s.body, fontFamily: 'Helvetica-Bold', marginRight: 6, color: TEAL }}>
+                    {i + 1}.
+                  </Text>
+                  <Text style={s.body}>{rec}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        ) : (
+          <View style={{ ...s.calloutTeal, marginTop: 12 }}>
+            <Text style={{ ...s.calloutTitle, color: TEAL }}>{recs.length} tailored recommendations prepared</Text>
+            <Text style={{ fontSize: 8, color: TEAL }}>
+              Unlock the full report to see site-specific next steps based on detected changes and DA history.
+            </Text>
+          </View>
+        )}
 
         <PlotDetectFooter reportName="Site History Report" />
       </Page>
@@ -438,8 +450,8 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           weather effects) are filtered out so that only site-specific changes are flagged.
         </Text>
 
-        {/* Notable years — detailed cards */}
-        {notableYears.length > 0 && (
+        {/* Notable years — detailed cards (paid only) */}
+        {data.is_paid === true && notableYears.length > 0 && (
           <>
             {notableYears.map((entry) => {
               const ctExplain = changeTypeExplain(entry.change_type);
@@ -488,6 +500,16 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
             })}
           </>
         )}
+        {data.is_paid !== true && notableYears.length > 0 && (
+          <View style={{ ...s.calloutTeal, marginTop: 4 }}>
+            <Text style={{ ...s.calloutTitle, color: TEAL }}>
+              {notableYears.length} year{notableYears.length > 1 ? 's' : ''} with detected changes
+            </Text>
+            <Text style={{ fontSize: 8, color: TEAL }}>
+              Unlock the full report to see detailed analysis of each change — what was detected, change type, similarity scores, and matched DAs.
+            </Text>
+          </View>
+        )}
 
         {/* Stable years — single summary, not repeated rows */}
         {stableYears.length > 0 && (
@@ -534,8 +556,8 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           </View>
         ))}
 
-        {/* Wayback SSIM section */}
-        {data.wayback_ssim && Object.keys(data.wayback_ssim).length > 0 && (
+        {/* Wayback SSIM section — paid only */}
+        {data.is_paid === true && data.wayback_ssim && Object.keys(data.wayback_ssim).length > 0 && (
           <>
             <Text style={{ ...s.sectionTitle, marginTop: 20 }}>Aerial imagery comparison</Text>
             <Text style={{ ...s.body, marginBottom: 8 }}>
@@ -569,8 +591,8 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
       {/* ================================================================ */}
       <Page size="A4" style={s.page}>
 
-        {/* DA events detail */}
-        {allDAs.length > 0 && (
+        {/* DA events detail — paid only */}
+        {data.is_paid === true && allDAs.length > 0 && (
           <>
             <Text style={s.sectionTitle}>Development applications</Text>
             <Text style={{ ...s.body, marginBottom: 8 }}>
