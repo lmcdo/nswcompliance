@@ -1635,9 +1635,9 @@ def extract_chapter(
                 print(f"    Skipping DB commit for {chapter_key} — investigate before re-extracting.")
                 return False, None
 
-        if new_count < 2:
+        if new_count == 0:
             verdict = "WARN" if (dry_run or review) else "ABORT"
-            print(f"    [{verdict}] Only {new_count} sections extracted — likely empty or scanned PDF.")
+            print(f"    [{verdict}] No sections extracted — likely empty or scanned PDF.")
             if not dry_run and not review:
                 return False, None
 
