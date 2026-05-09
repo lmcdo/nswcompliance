@@ -6,9 +6,11 @@ interface Props {
   label?: string;
   apiPath: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Record<string, any>;
+  data?: Record<string, any>;
   /** HMAC token issued by the satellite route — required for server-side verification. */
   reportToken?: string;
+  /** When set, sends { report_id } at top level (Path A — paid report from DB). */
+  reportId?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export function DownloadPdfButton({
   apiPath,
   data,
   reportToken,
+  reportId,
 }: Props) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +36,11 @@ export function DownloadPdfButton({
       const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, report_token: reportToken }),
+        body: JSON.stringify(
+          reportId
+            ? { report_id: reportId }
+            : { data, report_token: reportToken }
+        ),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
