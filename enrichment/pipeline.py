@@ -36,7 +36,7 @@ ENRICHMENT_VERSION = "1.0.0"
 
 def get_connection():
     """Get database connection."""
-    return psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
+    return psycopg2.connect(os.getenv('DATABASE_URL') or os.getenv('SUPABASE_DB_URL'))
 
 
 def run_actionability_classification(
