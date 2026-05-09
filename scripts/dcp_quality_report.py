@@ -98,7 +98,7 @@ TOPIC_KEYWORDS = {
 
 
 def run_report(council_filter=None, section=None):
-    conn = psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
+    conn = psycopg2.connect(os.getenv('DATABASE_URL') or os.getenv('SUPABASE_DB_URL'))
     cur = conn.cursor()
 
     where = "WHERE is_current = true AND source_council IS NOT NULL"
