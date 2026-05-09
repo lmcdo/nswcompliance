@@ -398,6 +398,9 @@ scripts/
 !scripts/update_instrument_provisions.py
 !scripts/hub_scrapers/__init__.py
 !scripts/hub_scrapers/inner_west.py
+!scripts/hub_scrapers/city_of_sydney.py
+!scripts/hub_scrapers/woollahra.py
+!scripts/hub_scrapers/canterbury_bankstown.py
 !scripts/run_migration_007.py
 !scripts/run_migration_008.py
 !scripts/populate_waverley_registry.py
@@ -429,6 +432,7 @@ scripts/
 !scripts/audit_url_landscape.py
 !scripts/confirm_chapter.py
 !scripts/pco_client.py
+!scripts/dcp_quality_report.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
