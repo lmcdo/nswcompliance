@@ -80,7 +80,7 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Detailed report — highlighted */}
+          {/* Detailed reports — highlighted */}
           <div className="rounded-2xl border-2 border-teal-500 p-8 flex flex-col relative shadow-lg">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
               <span className="bg-teal-500 text-white text-xs font-semibold px-4 py-1 rounded-full">
@@ -89,25 +89,28 @@ export default function PricingPage() {
             </div>
             <div className="mb-6">
               <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-2">Homeowner — report</p>
-              <h2 className="text-2xl font-bold text-gray-900">Detailed report</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Detailed reports</h2>
               <p className="text-gray-500 text-sm mt-2">
-                Full CDC compliance checklist, setback calculations, and a shareable PDF.
+                Professional PDF with full analysis, compliance checklist, and actionable next steps.
               </p>
             </div>
-            <div className="text-4xl font-bold text-gray-900 mb-1">$29</div>
+            <div className="text-4xl font-bold text-gray-900 mb-1">$19–$49</div>
             <p className="text-sm text-gray-400 mb-8">Per property, one-off</p>
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
-                'Everything in free tools',
-                'CDC compliance checklist',
-                'Setback calculations vs DCP controls',
-                'Yield sensitivity analysis',
-                'Shareable PDF report',
-                'Email delivery within minutes',
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-2">
+                { text: 'Solar Yield — $19', sub: 'System sizing, payback, monthly kWh' },
+                { text: 'Shadow Analysis — $29', sub: 'Seasonal diagrams, ADG compliance' },
+                { text: 'Bushfire Pre-Screen — $29', sub: 'BAL band, AS 3959, RFS referral' },
+                { text: 'Flood Risk — $49', sub: 'Depth modelling, ARI bands, BOM history' },
+                { text: 'Granny Flat — $49', sub: 'CDC checklist, setbacks, yield analysis' },
+                { text: 'Site History — $49', sub: 'Satellite change detection, DA search' },
+              ].map(({ text, sub }) => (
+                <li key={text} className="flex items-start gap-2">
                   <Check />
-                  {item}
+                  <span>
+                    <span className="font-medium">{text}</span>
+                    <span className="block text-xs text-gray-400 mt-0.5">{sub}</span>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -169,8 +172,8 @@ export default function PricingPage() {
                 a: 'Yes. Every check runs live against the NSW Planning Portal and costs you nothing. No account, no credit card.',
               },
               {
-                q: 'What does the $29 report add?',
-                a: 'The free tool tells you yes or no. The report tells you exactly why — CDC compliance checklist, setback calculations against your council\'s DCP controls, and a shareable PDF you can send to a builder or certifier.',
+                q: 'What do the paid reports add?',
+                a: 'The free tool gives you the verdict. The paid report gives you the depth — full compliance checklists, setback calculations, yield sensitivity analysis, insurer checklists, and a shareable PDF you can send to a builder, certifier, or conveyancer. Prices range from $19 to $49 depending on the tool.',
               },
               {
                 q: 'How does the builder embed work?',
