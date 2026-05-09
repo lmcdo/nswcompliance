@@ -401,6 +401,7 @@ scripts/
 !scripts/hub_scrapers/city_of_sydney.py
 !scripts/hub_scrapers/woollahra.py
 !scripts/hub_scrapers/canterbury_bankstown.py
+!scripts/hub_scrapers/waverley.py
 !scripts/run_migration_007.py
 !scripts/run_migration_008.py
 !scripts/populate_waverley_registry.py
