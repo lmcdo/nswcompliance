@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -509,6 +509,16 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           { label: 'CEC accredited installer', url: 'https://www.cleanenergycouncil.org.au/consumers/find-an-installer', urlDisplay: 'cleanenergycouncil.org.au/find-an-installer' },
           { label: 'Solar quotes comparison', url: 'https://www.solarquotes.com.au', urlDisplay: 'solarquotes.com.au' },
         ]} />
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'Google Solar API', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
+            { source: 'BoM climate records', type: 'Cached dataset', currency: '30-year average' },
+            { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
+          ]} />
+        )}
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

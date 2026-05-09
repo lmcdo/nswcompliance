@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -838,6 +838,17 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           { label: 'Private certifier', url: 'https://www.bpb.nsw.gov.au/find-certifier', urlDisplay: 'bpb.nsw.gov.au/find-certifier' },
           { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
         ]} />
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'NSW Planning Portal (zones, overlays)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW SIX Maps (lot boundaries)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Fair Trading Rental Bond Data', type: 'Cached dataset', currency: 'Latest quarterly release' },
+            { source: 'SEPP (Housing) 2021', type: 'Legislative reference', currency: 'Current as at report date' },
+            { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
+          ]} />
+        )}
 
         {/* Footer */}
         <PlotDetectFooter reportName="Granny Flat Eligibility Report" />

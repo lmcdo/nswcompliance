@@ -14,7 +14,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -473,6 +473,16 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
               'Will the lender require a bushfire assessment before unconditional finance approval?',
             ]}
           />
+        )}
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'NSW RFS Bush Fire Prone Land Map', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Planning Portal (EPI overlays)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW DEM (ground elevation)', type: 'Cached raster', currency: 'LiDAR 2020–2023' },
+            { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
+          ]} />
         )}
 
         <Text style={s.sectionTitle}>Disclaimer</Text>

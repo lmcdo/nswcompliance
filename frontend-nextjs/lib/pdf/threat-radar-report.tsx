@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -481,10 +481,16 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
           { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
         ]} />
 
+        {/* A2: Data currency table */}
+        <DataCurrencyTable rows={[
+          { source: 'NSW ePlanning Portal (DA/CDC)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+          { source: 'NSW Planning Portal (zones)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+        ]} />
+
         <View style={[s.divider, { marginTop: 16 }]} />
         <Text style={[s.bodyText, { color: GRAY_500, fontSize: 7.5 }]}>
-          Data: NSW ePlanning Portal (DA and CDC applications). Results are indicative only and
-          may not include all applications. Consult council for a complete search.
+          Results are indicative only and may not include all applications.
+          Consult council for a complete search.
           Report generated {data.run_date} · plotdetect.com.au
         </Text>
 

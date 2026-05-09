@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -736,6 +736,20 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
               'Will the lender require a flood certificate before unconditional approval?',
             ]}
           />
+        )}
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'NSW EPI Flood Planning WFS', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'Council flood study (ARI grids)', type: 'Ingested raster', currency: data.flood_study_date ?? 'See study metadata' },
+            { source: 'Copernicus EMS activations', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'ESA Sentinel-1 SAR', type: 'Satellite imagery', currency: data.sar_analysis_date ?? 'Most recent pass' },
+            { source: 'JRC Global Surface Water', type: 'Cached raster', currency: 'Landsat 1984–2024' },
+            { source: 'DEA Water Observations (WOfS)', type: 'Cached raster', currency: 'Landsat 1987–2024' },
+            { source: 'BoM river gauge network', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW DEM (ground elevation)', type: 'Cached raster', currency: 'LiDAR 2020–2023' },
+          ]} />
         )}
 
         <Text style={s.sectionTitle}>Important limitations</Text>

@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -707,6 +707,16 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           { label: 'Private certifier', url: 'https://www.bpb.nsw.gov.au/find-certifier', urlDisplay: 'bpb.nsw.gov.au/find-certifier' },
           { label: 'Heritage consultant', url: 'https://australia.icomos.org/get-involved/find-a-heritage-professional/', urlDisplay: 'australia.icomos.org/find-a-heritage-professional' },
         ]} />
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'Sentinel-2 satellite imagery', type: 'Satellite imagery', currency: '2017–2024 composites' },
+            { source: 'NSW ePlanning Portal (DA/CC)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'Wayback Machine (Google)', type: 'Cached imagery', currency: 'Historical snapshots' },
+          ]} />
+        )}
 
         <View style={{ ...s.calloutTeal, marginTop: 16 }}>
           <Text style={{ ...s.calloutTitle, color: TEAL }}>More reports for this property</Text>
