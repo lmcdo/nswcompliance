@@ -2131,7 +2131,7 @@ def main() -> None:
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
         conn.close()
-        sys.exit(0)
+        sys.exit(2)  # exit 2 = review file written, triggers workflow quality gate
 
     conn.close()
 

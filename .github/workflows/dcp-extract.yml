@@ -79,6 +79,32 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Run quality gate
+        id: gate
+        if: steps.extract.outputs.exit_code == '2'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set +e
+          COUNCIL="${{ github.event.inputs.council }}"
+          if [ -n "$COUNCIL" ]; then
+            python scripts/dcp_quality_report.py --gate --council "$COUNCIL"
+          else
+            python scripts/dcp_quality_report.py --gate
+          fi
+          echo "gate_code=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Auto-commit if quality gate passes
+        if: steps.extract.outputs.exit_code == '2' && steps.gate.outputs.gate_code == '0' && github.event.inputs.council != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Quality gate PASSED — auto-triggering commit workflow for ${{ github.event.inputs.council }}"
+          gh workflow run dcp-commit.yml \
+            -f council="${{ github.event.inputs.council }}" \
+            -f confirmed="CONFIRM"
+
       - name: Report outcome
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -86,17 +112,35 @@ jobs:
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           CODE=${{ steps.extract.outputs.exit_code }}
+          GATE=${{ steps.gate.outputs.gate_code || 'skip' }}
+          COUNCIL="${{ github.event.inputs.council }}"
+
           if [ "$CODE" = "0" ]; then
             echo "Nothing to extract — no chapters with needs_extraction=TRUE."
           elif [ "$CODE" = "2" ]; then
-            echo "Review file generated. Download from artifacts and inspect before committing."
-            echo "To commit: Actions -> DCP Commit Reviewed Provisions -> Run workflow"
-            if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-              COMMIT_URL="https://github.com/${{ github.repository }}/actions/workflows/dcp-commit.yml"
-              MSG="DCP Review ready\n\n1. Download review: ${RUN_URL}\n2. Inspect provisions\n3. Commit: ${COMMIT_URL}\n\n(Select council, type CONFIRM)"
-              curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-                -H "Content-Type: application/json" \
-                -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"${MSG}\",\"disable_web_page_preview\":true}"
+            if [ "$GATE" = "0" ] && [ -n "$COUNCIL" ]; then
+              echo "Quality gate PASSED — auto-committed $COUNCIL."
+              if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+                MSG="DCP auto-committed [$COUNCIL]\n\nQuality gate passed. Provisions committed to production.\n\nReview: ${RUN_URL}"
+                curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"${MSG}\",\"disable_web_page_preview\":true}"
+              fi
+            else
+              REASON=""
+              if [ "$GATE" != "0" ] && [ "$GATE" != "skip" ]; then
+                REASON=" (quality gate failed)"
+              elif [ -z "$COUNCIL" ]; then
+                REASON=" (no council specified — multi-council runs require manual review)"
+              fi
+              echo "Manual review required${REASON}."
+              if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+                COMMIT_URL="https://github.com/${{ github.repository }}/actions/workflows/dcp-commit.yml"
+                MSG="DCP Review required${REASON}\n\n1. Download review: ${RUN_URL}\n2. Inspect provisions\n3. Commit: ${COMMIT_URL}\n\n(Select council, type CONFIRM)"
+                curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"${MSG}\",\"disable_web_page_preview\":true}"
+              fi
             fi
           else
             echo "Extraction failed with exit code $CODE."
