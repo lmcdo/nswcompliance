@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
       tile_b64,
       logo_b64,
+      is_paid: false, // Direct data path — defence-in-depth, no paid content
     };
     const slug = String(data.address).slice(0, 30).replace(/[^a-z0-9]/gi, '-').toLowerCase();
     filename = `granny-flat-report-${slug}.pdf`;

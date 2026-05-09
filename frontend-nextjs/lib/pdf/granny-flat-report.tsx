@@ -396,44 +396,64 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {pass && (
           <>
             <Text style={s.sectionTitle}>2. Income Potential</Text>
-            {data.estimated_weekly_rent_aud != null ? (
-              <>
-                <View style={s.statRow}>
-                  <View style={s.statBox}>
-                    <Text style={s.statLabel}>Est. weekly rent</Text>
-                    <Text style={s.statValue}>{fmtCurrency(data.estimated_weekly_rent_aud)}/wk</Text>
-                    <Text style={s.statSub}>NSW Fair Trading median</Text>
+            {data.is_paid === true ? (
+              data.estimated_weekly_rent_aud != null ? (
+                <>
+                  <View style={s.statRow}>
+                    <View style={s.statBox}>
+                      <Text style={s.statLabel}>Est. weekly rent</Text>
+                      <Text style={s.statValue}>{fmtCurrency(data.estimated_weekly_rent_aud)}/wk</Text>
+                      <Text style={s.statSub}>NSW Fair Trading median</Text>
+                    </View>
+                    <View style={s.statBox}>
+                      <Text style={s.statLabel}>Annual gross income</Text>
+                      <Text style={s.statValue}>
+                        {fmtCurrency(data.estimated_weekly_rent_aud * 52)}
+                      </Text>
+                      <Text style={s.statSub}>Before vacancy and costs</Text>
+                    </View>
+                    <View style={s.statBox}>
+                      <Text style={s.statLabel}>Gross yield (on build cost)</Text>
+                      <Text style={s.statValue}>
+                        {data.rental_yield_annual_pct != null ? `${data.rental_yield_annual_pct.toFixed(1)}%` : '—'}
+                      </Text>
+                      <Text style={s.statSub}>
+                        {fmtCurrency(data.assumed_build_cost_aud)} assumed build
+                      </Text>
+                    </View>
                   </View>
-                  <View style={s.statBox}>
-                    <Text style={s.statLabel}>Annual gross income</Text>
-                    <Text style={s.statValue}>
-                      {fmtCurrency(data.estimated_weekly_rent_aud * 52)}
-                    </Text>
-                    <Text style={s.statSub}>Before vacancy and costs</Text>
-                  </View>
-                  <View style={s.statBox}>
-                    <Text style={s.statLabel}>Gross yield (on build cost)</Text>
-                    <Text style={s.statValue}>
-                      {data.rental_yield_annual_pct != null ? `${data.rental_yield_annual_pct.toFixed(1)}%` : '—'}
-                    </Text>
-                    <Text style={s.statSub}>
-                      {fmtCurrency(data.assumed_build_cost_aud)} assumed build
-                    </Text>
-                  </View>
+                  <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
+                    Rent estimate based on NSW Fair Trading rental bond data for comparable 1-bedroom units.
+                    Yield is gross before vacancy, management fees, and maintenance. Net yield typically 1–2% lower.
+                  </Text>
+                </>
+              ) : (
+                <View style={{ ...s.calloutAmber, marginBottom: 4 }}>
+                  <Text style={{ ...s.calloutTitle, color: AMBER }}>Rental data not yet available for this postcode</Text>
+                  <Text style={s.calloutText}>
+                    NSW Fair Trading rental bond data has not yet been loaded for this area.
+                    The yield sensitivity table on page 3 uses benchmark rent assumptions — use those as a guide.
+                    Typical 1-bedroom granny flat rents in greater Sydney range from $300–$550/week depending on location and finish.
+                  </Text>
                 </View>
-                <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
-                  Rent estimate based on NSW Fair Trading rental bond data for comparable 1-bedroom units.
-                  Yield is gross before vacancy, management fees, and maintenance. Net yield typically 1–2% lower.
-                </Text>
-              </>
+              )
             ) : (
-              <View style={{ ...s.calloutAmber, marginBottom: 4 }}>
-                <Text style={{ ...s.calloutTitle, color: AMBER }}>Rental data not yet available for this postcode</Text>
-                <Text style={s.calloutText}>
-                  NSW Fair Trading rental bond data has not yet been loaded for this area.
-                  The yield sensitivity table on page 3 uses benchmark rent assumptions — use those as a guide.
-                  Typical 1-bedroom granny flat rents in greater Sydney range from $300–$550/week depending on location and finish.
-                </Text>
+              <View style={s.statRow}>
+                <View style={s.statBox}>
+                  <Text style={s.statLabel}>Est. weekly rent</Text>
+                  <Text style={{ fontSize: 9, color: GRAY_500, marginTop: 2 }}>Calculated</Text>
+                  <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+                </View>
+                <View style={s.statBox}>
+                  <Text style={s.statLabel}>Annual gross income</Text>
+                  <Text style={{ fontSize: 9, color: GRAY_500, marginTop: 2 }}>Calculated</Text>
+                  <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+                </View>
+                <View style={s.statBox}>
+                  <Text style={s.statLabel}>Gross yield</Text>
+                  <Text style={{ fontSize: 9, color: GRAY_500, marginTop: 2 }}>Calculated</Text>
+                  <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
+                </View>
               </View>
             )}
           </>
@@ -605,8 +625,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
 
-        {/* --- Section 5: Yield Sensitivity (pass only) --- */}
-        {pass && matrix && (
+        {/* --- Section 5: Yield Sensitivity (pass + paid only) --- */}
+        {pass && matrix && data.is_paid === true && (
           <>
             <Text style={s.sectionTitle}>5. Yield Sensitivity Analysis</Text>
             <Text style={{ ...s.body, marginBottom: 10 }}>
