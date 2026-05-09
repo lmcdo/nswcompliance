@@ -1833,6 +1833,27 @@ def extract_chapter(
                      chapter.get("content_hash"), chapter_id),
                 )
 
+                # Flag structured control rows for review when their source
+                # chapter has changed. This closes the gap where provision text
+                # gets re-extracted but dcp_setback_controls values don't.
+                if not first_extraction:
+                    cur.execute(
+                        """
+                        UPDATE dcp_setback_controls
+                        SET needs_review   = TRUE,
+                            review_reason  = 'chapter_pdf_changed',
+                            reviewed_at    = NULL
+                        WHERE lga               = %s
+                          AND source_chapter_key = %s
+                          AND is_current         = TRUE
+                          AND needs_review       = FALSE
+                        """,
+                        (council, chapter_key),
+                    )
+                    flagged = cur.rowcount
+                    if flagged > 0:
+                        print(f"    [CONTROLS] Flagged {flagged} dcp_setback_controls rows for review")
+
                 conn.commit()
 
             except Exception as exc:
