@@ -1520,7 +1520,9 @@ def extract_chapter(
                 return False, None
 
             # Sanity gate: require at least 1 section per 30 pages of PDF.
-            min_sections = max(2, extractor.page_count // 30)
+            # For short PDFs (≤30 pages), 1 section is legitimate (e.g. a
+            # single-topic chapter like Ku-ring-gai secondary dwellings).
+            min_sections = max(1, extractor.page_count // 30)
             if len(sections) < min_sections:
                 verdict = "WARN" if (dry_run or review) else "ABORT"
                 print(
