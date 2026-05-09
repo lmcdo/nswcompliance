@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   const today = new Date().toISOString().split('T')[0];
 
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 
@@ -119,6 +119,10 @@ export async function POST(req: NextRequest) {
       shadow_overlap_fraction: sc.shadow_overlap_fraction,
       shadow_direction_deg: sc.shadow_direction_deg,
       overlaps_subject_lot: sc.overlaps_subject_lot,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      shadow_on_lot: (sc as any).shadow_on_lot ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      shadow_polygon: (sc as any).shadow_polygon ?? null,
     })),
     construction_change_score: rawOutputs.construction_change_score != null
       ? Number(rawOutputs.construction_change_score) : null,
@@ -128,6 +132,8 @@ export async function POST(req: NextRequest) {
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
+    lot_polygon: (rawOutputs.lot_polygon as ShadowReportData['lot_polygon']) ?? null,
+    north_proxy_polygon: (rawOutputs.north_proxy_polygon as ShadowReportData['north_proxy_polygon']) ?? null,
     is_paid,
     tile_b64,
     logo_b64,
