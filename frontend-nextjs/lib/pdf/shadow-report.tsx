@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -559,6 +559,16 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
           { label: 'Legal advice (DA objections)', url: 'https://www.lawsociety.com.au/for-the-public/find-a-lawyer', urlDisplay: 'lawsociety.com.au/find-a-lawyer' },
         ]} />
+
+        {/* A2: Data currency table — paid only */}
+        {data.is_paid === true && (
+          <DataCurrencyTable rows={[
+            { source: 'NSW Planning Portal (height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
+            { source: 'NSW DEM (ground elevation)', type: 'Cached raster', currency: 'LiDAR 2020–2023' },
+            { source: 'Solar geometry (pysolar)', type: 'Computed', currency: 'Analytical model' },
+          ]} />
+        )}
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

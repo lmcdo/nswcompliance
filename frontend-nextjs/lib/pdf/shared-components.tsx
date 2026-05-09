@@ -3,7 +3,9 @@
  * - AboutPage: "About this report" + full tools list (T4)
  * - PlotDetectFooter: standardised footer with free-check URL (R4)
  * - WhatThisMeans: plain-English interpretation callout box (A1)
- * - DataCurrencyTable: structured data provenance table (A2, future)
+ * - DataCurrencyTable: structured data provenance table (A2)
+ * - QRBlock: QR code linking to shareable report URL (T5)
+ * - PreparedBy: white-label firm name on cover (T3)
  * - InsurerChecklist: actionable questions for insurer/lender (A4)
  * - ReferralLinks: professional referral directory links (A3)
  */
@@ -102,6 +104,23 @@ const ss = StyleSheet.create({
     marginRight: 6, marginTop: 1,
   },
   checkText: { flex: 1, fontSize: 8, color: GRAY_700, lineHeight: 1.5 },
+  // Data currency table
+  dcTable: { marginTop: 12, marginBottom: 8 },
+  dcHeaderRow: {
+    flexDirection: 'row', backgroundColor: GRAY_100, paddingVertical: 5, paddingHorizontal: 8,
+    borderTopLeftRadius: 3, borderTopRightRadius: 3,
+  },
+  dcRow: {
+    flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8,
+    borderBottom: `1 solid ${GRAY_100}`,
+  },
+  dcCellSource: { flex: 3, fontSize: 7.5, color: GRAY_700 },
+  dcCellType: { flex: 2, fontSize: 7.5, color: GRAY_700 },
+  dcCellCurrency: { flex: 2, fontSize: 7.5, color: GRAY_700 },
+  dcHeaderText: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: GRAY_500, textTransform: 'uppercase', letterSpacing: 0.5 },
+  // QR placeholder
+  qrBox: { alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  qrLabel: { fontSize: 7, color: GRAY_500, marginTop: 4 },
 });
 
 // ---------------------------------------------------------------------------
@@ -191,6 +210,68 @@ export function InsurerChecklist({
           <Text style={ss.checkText}>{q}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// A2: DataCurrencyTable — structured data provenance table
+// ---------------------------------------------------------------------------
+
+interface DataCurrencyRow {
+  source: string;
+  type: string;
+  currency: string;
+}
+
+export function DataCurrencyTable({ rows }: { rows: DataCurrencyRow[] }) {
+  return (
+    <View style={ss.dcTable}>
+      <Text style={ss.sectionTitle}>Data sources and currency</Text>
+      <View style={ss.dcHeaderRow}>
+        <Text style={{ ...ss.dcHeaderText, flex: 3 }}>Source</Text>
+        <Text style={{ ...ss.dcHeaderText, flex: 2 }}>Type</Text>
+        <Text style={{ ...ss.dcHeaderText, flex: 2 }}>Currency</Text>
+      </View>
+      {rows.map((row, i) => (
+        <View key={i} style={ss.dcRow}>
+          <Text style={ss.dcCellSource}>{row.source}</Text>
+          <Text style={ss.dcCellType}>{row.type}</Text>
+          <Text style={ss.dcCellCurrency}>{row.currency}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// T5: QRBlock — QR code linking to shareable report URL
+// ---------------------------------------------------------------------------
+
+export function QRBlock({ url, qr_b64 }: { url: string; qr_b64?: string | null }) {
+  if (!qr_b64) return null;
+  return (
+    <View style={ss.qrBox}>
+      <Image src={`data:image/png;base64,${qr_b64}`} style={{ width: 72, height: 72 }} />
+      <Text style={ss.qrLabel}>Scan to view this report online</Text>
+      <Link src={url}>
+        <Text style={{ fontSize: 7, color: TEAL, marginTop: 2 }}>{url}</Text>
+      </Link>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// T3: PreparedBy — white-label firm name on cover
+// ---------------------------------------------------------------------------
+
+export function PreparedBy({ firmName }: { firmName?: string | null }) {
+  if (!firmName) return null;
+  return (
+    <View style={{ marginTop: 8, marginBottom: 4 }}>
+      <Text style={{ fontSize: 8, color: GRAY_500 }}>
+        Prepared by: <Text style={{ fontFamily: 'Helvetica-Bold', color: GRAY_700 }}>{firmName}</Text> via PlotDetect
+      </Text>
     </View>
   );
 }
