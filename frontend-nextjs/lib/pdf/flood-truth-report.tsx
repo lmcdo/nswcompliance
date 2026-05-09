@@ -240,7 +240,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
   const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.none;
   const epiKey     = data.epi_flood_class ?? 'none';
   const epiLabel   = EPI_CLASS_META[epiKey]?.label ?? epiKey;
-  const hasStudies = data.is_paid && (data.flood_studies ?? []).length > 0;
+  const hasStudies = data.is_paid === true && (data.flood_studies ?? []).length > 0;
   // +1 for About page (T4)
   const totalPages = (data.tile_b64 ? 1 : 0) + (hasStudies ? 3 : 2) + 1;
 
@@ -358,23 +358,34 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           </View>
           <View style={s.card}>
             <Text style={s.cardLabel}>Copernicus EMS observed events</Text>
-            {data.ems_flood_detected === null ? (
-              <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Data not available</Text>
-            ) : data.ems_flood_detected && data.ems_activations?.length ? (
-              <>
-                {data.ems_activations.map((a) => (
-                  <View key={a.activation_id} style={{ marginBottom: 4 }}>
-                    <Text style={[s.cardSub, { fontFamily: 'Helvetica-Bold', color: RED }]}>
-                      {a.event_name}
-                    </Text>
-                    <Text style={s.cardSub}>{a.activation_id} · {a.event_date}</Text>
-                  </View>
-                ))}
-              </>
+            {data.is_paid === true ? (
+              data.ems_flood_detected === null ? (
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Data not available</Text>
+              ) : data.ems_flood_detected && data.ems_activations?.length ? (
+                <>
+                  {data.ems_activations.map((a) => (
+                    <View key={a.activation_id} style={{ marginBottom: 4 }}>
+                      <Text style={[s.cardSub, { fontFamily: 'Helvetica-Bold', color: RED }]}>
+                        {a.event_name}
+                      </Text>
+                      <Text style={s.cardSub}>{a.activation_id} · {a.event_date}</Text>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_700 }]}>
+                  No recorded events at this location
+                </Text>
+              )
             ) : (
-              <Text style={[s.cardValue, { fontSize: 9, color: GRAY_700 }]}>
-                No recorded events at this location
-              </Text>
+              <>
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
+                  {data.ems_flood_detected ? 'Events detected' : 'Checked'}
+                </Text>
+                <Text style={[s.cardSub, { color: TEAL }]}>
+                  Full event details in paid report
+                </Text>
+              </>
             )}
           </View>
         </View>
@@ -383,7 +394,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         <View style={s.row2}>
           <View style={s.card}>
             <Text style={s.cardLabel}>40-year surface water history</Text>
-            {(() => {
+            {data.is_paid === true ? (() => {
               const pct = data.dea_wofs_frequency_pct ?? data.jrc_water_occurrence_pct;
               const srcLabel = data.dea_wofs_frequency_pct != null
                 ? 'DEA WOfS · Landsat 1987–present'
@@ -409,27 +420,45 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
               ) : (
                 <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Not available</Text>
               );
-            })()}
+            })() : (
+              <>
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Data checked</Text>
+                <Text style={[s.cardSub, { color: TEAL }]}>
+                  Occurrence frequency in paid report
+                </Text>
+              </>
+            )}
           </View>
           <View style={s.card}>
             <Text style={s.cardLabel}>Nearest BOM river gauge</Text>
-            {data.bom_gauge_name ? (
-              <>
-                <Text style={[s.cardValue, { fontSize: 10 }]}>{data.bom_gauge_name}</Text>
-                <Text style={s.cardSub}>{data.bom_gauge_distance_km != null ? data.bom_gauge_distance_km.toFixed(1) : '?'} km from property</Text>
-                {data.bom_last_major_flood_date ? (
-                  <Text style={[s.cardSub, { color: RED, fontFamily: 'Helvetica-Bold' }]}>
-                    Last major flood: {data.bom_last_major_flood_date} — {data.bom_last_major_flood_peak_m != null ? data.bom_last_major_flood_peak_m.toFixed(2) : '?'}m peak
-                  </Text>
-                ) : (
-                  <Text style={s.cardSub}>No major flood recorded at this gauge since 2021</Text>
-                )}
-                <Text style={[s.cardSub, { color: GRAY_500 }]}>BOM WaterConnect · SOS2 API</Text>
-              </>
+            {data.is_paid === true ? (
+              data.bom_gauge_name ? (
+                <>
+                  <Text style={[s.cardValue, { fontSize: 10 }]}>{data.bom_gauge_name}</Text>
+                  <Text style={s.cardSub}>{data.bom_gauge_distance_km != null ? data.bom_gauge_distance_km.toFixed(1) : '?'} km from property</Text>
+                  {data.bom_last_major_flood_date ? (
+                    <Text style={[s.cardSub, { color: RED, fontFamily: 'Helvetica-Bold' }]}>
+                      Last major flood: {data.bom_last_major_flood_date} — {data.bom_last_major_flood_peak_m != null ? data.bom_last_major_flood_peak_m.toFixed(2) : '?'}m peak
+                    </Text>
+                  ) : (
+                    <Text style={s.cardSub}>No major flood recorded at this gauge since 2021</Text>
+                  )}
+                  <Text style={[s.cardSub, { color: GRAY_500 }]}>BOM WaterConnect · SOS2 API</Text>
+                </>
+              ) : (
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
+                  No BOM gauge within 75 km
+                </Text>
+              )
             ) : (
-              <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                No BOM gauge within 75 km
-              </Text>
+              <>
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
+                  {data.bom_gauge_name ? 'Gauge found' : 'No gauge in range'}
+                </Text>
+                <Text style={[s.cardSub, { color: TEAL }]}>
+                  Gauge data and flood history in paid report
+                </Text>
+              </>
             )}
           </View>
         </View>
@@ -459,7 +488,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           </View>
         )}
 
-        {/* Flood study raster results — free: 1pct teaser per study */}
+        {/* Flood study raster results — paid: full depth, free: study name + teaser */}
         {(data.flood_studies ?? []).map((study) => {
           const pct1 = study.design?.['1pct'];
           const hasDesign = pct1?.depth_m != null || pct1?.level_m_ahd != null;
@@ -468,34 +497,42 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           return (
             <View key={study.study_key} style={[s.card, { marginBottom: 8 }]}>
               <Text style={s.cardLabel}>{study.study_name} — {study.source}</Text>
-              {pct1?.depth_m != null && (
-                <Text style={s.cardValue}>
-                  {'1-in-100 yr flood depth: ' + pct1.depth_m.toFixed(2) + 'm'}
-                  {pct1.level_m_ahd != null ? ` (${pct1.level_m_ahd.toFixed(2)}m AHD)` : ''}
-                </Text>
-              )}
-              {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
-                <Text style={s.cardValue}>
-                  {'1-in-100 yr flood level: ' + pct1.level_m_ahd.toFixed(2) + 'm AHD'}
-                </Text>
-              )}
-              {historicalYears.length > 0 && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                  {historicalYears.map((yr) => {
-                    const ev = study.historical[yr];
-                    const evLabel = ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded';
-                    return (
-                      <Text key={yr} style={{ fontSize: 7, backgroundColor: AMBER_LIGHT, color: '#92400e', paddingVertical: 2, paddingHorizontal: 5, borderRadius: 3 }}>
-                        {yr}: {evLabel}
-                      </Text>
-                    );
-                  })}
-                </View>
-              )}
-              {data.is_paid !== true && (
-                <Text style={[s.cardSub, { color: GRAY_500, marginTop: 3 }]}>
-                  Full AEP depth table included in the paid report
-                </Text>
+              {data.is_paid === true ? (
+                <>
+                  {pct1?.depth_m != null && (
+                    <Text style={s.cardValue}>
+                      {'1-in-100 yr flood depth: ' + pct1.depth_m.toFixed(2) + 'm'}
+                      {pct1.level_m_ahd != null ? ` (${pct1.level_m_ahd.toFixed(2)}m AHD)` : ''}
+                    </Text>
+                  )}
+                  {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
+                    <Text style={s.cardValue}>
+                      {'1-in-100 yr flood level: ' + pct1.level_m_ahd.toFixed(2) + 'm AHD'}
+                    </Text>
+                  )}
+                  {historicalYears.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                      {historicalYears.map((yr) => {
+                        const ev = study.historical[yr];
+                        const evLabel = ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded';
+                        return (
+                          <Text key={yr} style={{ fontSize: 7, backgroundColor: AMBER_LIGHT, color: '#92400e', paddingVertical: 2, paddingHorizontal: 5, borderRadius: 3 }}>
+                            {yr}: {evLabel}
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
+                    {hasDesign ? 'Flood depth data available' : `${historicalYears.length} historical event${historicalYears.length !== 1 ? 's' : ''} recorded`}
+                  </Text>
+                  <Text style={[s.cardSub, { color: TEAL }]}>
+                    Depths, levels, and full AEP table in paid report — plotdetect.com.au
+                  </Text>
+                </>
               )}
             </View>
           );
@@ -505,14 +542,27 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         {data.sar_flood_detected !== null && (
           <View style={[s.card, { marginBottom: 12 }]}>
             <Text style={s.cardLabel}>Satellite SAR flood detection</Text>
-            <Text style={s.cardValue}>
-              {data.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
-              {data.sar_confidence ? ` — ${data.sar_confidence} confidence` : ''}
-            </Text>
-            <Text style={s.cardSub}>
-              Sentinel-1 RTC · Microsoft Planetary Computer
-              {data.sar_analysis_date ? ` · ${data.sar_analysis_date}` : ''}
-            </Text>
+            {data.is_paid === true ? (
+              <>
+                <Text style={s.cardValue}>
+                  {data.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
+                  {data.sar_confidence ? ` — ${data.sar_confidence} confidence` : ''}
+                </Text>
+                <Text style={s.cardSub}>
+                  Sentinel-1 RTC · Microsoft Planetary Computer
+                  {data.sar_analysis_date ? ` · ${data.sar_analysis_date}` : ''}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
+                  {data.sar_flood_detected ? 'Signal detected' : 'Checked'}
+                </Text>
+                <Text style={[s.cardSub, { color: TEAL }]}>
+                  SAR analysis details in paid report
+                </Text>
+              </>
+            )}
           </View>
         )}
 
