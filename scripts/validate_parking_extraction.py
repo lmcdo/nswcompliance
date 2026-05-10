@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Automated QA gate for DCP parking controls extraction.
+Automated QA gate for DCP controls extraction (parking + landscaping).
 
 12 checks covering coverage, plausibility, integrity, and cross-council
-outlier detection. Must pass before any parking extraction PR.
+outlier detection. Must pass before any extraction PR.
 
 Usage:
     python scripts/validate_parking_extraction.py          # full run
@@ -32,11 +32,18 @@ passed = 0
 failed = 0
 warnings = 0
 
-ALLOWED_UNITS = {
+PARKING_UNITS = {
     "spaces/dwelling", "spaces/bedroom", "spaces/room", "spaces/bed",
     "spaces/100m2_gfa", "visitor_spaces/dwelling", "spaces/commercial_premise",
     "spaces/unit", "spaces/10_beds", "spaces/employee",
 }
+
+LANDSCAPING_UNITS = {"%"}
+
+ALLOWED_UNITS = PARKING_UNITS | LANDSCAPING_UNITS
+
+PARKING_CONTROL_TYPES = {"car_parking"}
+LANDSCAPING_CONTROL_TYPES = {"landscaping_min", "deep_soil_min", "tree_canopy_min", "max_site_coverage"}
 
 ALLOWED_METHODS = {"mistral_ocr", "text_extraction", "manual"}
 
@@ -52,6 +59,7 @@ PLAUSIBLE_RANGES = {
     "spaces/unit":              (0, 3),
     "spaces/10_beds":           (0, 5),
     "spaces/employee":          (0, 2),
+    "%":                        (0, 100),
 }
 
 # Dev types that every council should have (or document SEPP deferral)
@@ -127,50 +135,58 @@ def main():
         lga_filter = "AND sc.lga = %s"
         params = (args.lga,)
 
-    # Fetch all parking rows
+    all_control_types = PARKING_CONTROL_TYPES | LANDSCAPING_CONTROL_TYPES
+
+    # Fetch all DCP control rows (parking + landscaping)
     cur.execute(f"""
         SELECT sc.*, cr.chapter_key AS registry_key
         FROM dcp_setback_controls sc
         LEFT JOIN dcp_chapter_registry cr
             ON sc.lga = cr.council
             AND sc.source_chapter_key = cr.chapter_key
-        WHERE sc.control_type = 'car_parking'
+        WHERE sc.control_type = ANY(%s)
           AND sc.is_current = TRUE
           {lga_filter}
         ORDER BY sc.lga, sc.dev_type
-    """, params)
+    """, (list(all_control_types), *params))
     rows = cur.fetchall()
 
     if not rows:
-        print("No parking rows found.")
+        print("No control rows found.")
         sys.exit(1)
 
-    lgas = sorted(set(r["lga"] for r in rows))
-    print(f"\nValidating {len(rows)} parking rows across {len(lgas)} LGAs\n")
+    parking_rows = [r for r in rows if r["control_type"] in PARKING_CONTROL_TYPES]
+    landscaping_rows = [r for r in rows if r["control_type"] in LANDSCAPING_CONTROL_TYPES]
 
-    # ── CHECK 1: Core dev-type coverage ──────────────────────────
-    print("--- Coverage Checks ---")
-    dev_types_by_lga = defaultdict(set)
-    for r in rows:
-        dev_types_by_lga[r["lga"]].add(r["dev_type"])
+    lgas = sorted(set(r["lga"] for r in rows))
+    parking_lgas = sorted(set(r["lga"] for r in parking_rows))
+    landscaping_lgas = sorted(set(r["lga"] for r in landscaping_rows))
+    print(f"\nValidating {len(rows)} rows ({len(parking_rows)} parking, "
+          f"{len(landscaping_rows)} landscaping) across {len(lgas)} LGAs\n")
+
+    # ── CHECK 1: Core dev-type coverage (parking only) ────────────
+    print("--- Parking Coverage Checks ---")
+    parking_dev_types_by_lga = defaultdict(set)
+    for r in parking_rows:
+        parking_dev_types_by_lga[r["lga"]].add(r["dev_type"])
 
     missing_core = {}
-    for lga in lgas:
+    for lga in parking_lgas:
         deferrals = SEPP_DEFERRALS.get(lga, set())
-        missing = CORE_DEV_TYPES - dev_types_by_lga[lga] - deferrals
+        missing = CORE_DEV_TYPES - parking_dev_types_by_lga[lga] - deferrals
         if missing:
             missing_core[lga] = missing
 
     check(
-        "1. Core dev-type coverage (dwelling_house + secondary_dwelling)",
+        "1. Core parking dev-type coverage (dwelling_house + secondary_dwelling)",
         not missing_core,
         f"Missing: {missing_core}" if missing_core else "",
     )
 
-    # ── CHECK 2: Dev-type symmetry ───────────────────────────────
+    # ── CHECK 2: Dev-type symmetry (parking) ──────────────────────
     asymmetric = {}
-    for lga in lgas:
-        dt = dev_types_by_lga[lga]
+    for lga in parking_lgas:
+        dt = parking_dev_types_by_lga[lga]
         if "dwelling_house" in dt and "dual_occupancy" not in dt:
             asymmetric.setdefault(lga, []).append("has dwelling_house but no dual_occupancy")
         if "multi_dwelling_housing" in dt and "residential_flat_building" not in dt:
@@ -249,11 +265,11 @@ def main():
                COALESCE(value_min::text, '') AS vmin,
                count(*) AS n
         FROM dcp_setback_controls
-        WHERE control_type = 'car_parking' AND is_current = TRUE
+        WHERE control_type = ANY(%s) AND is_current = TRUE
           {'AND lga = %s' if args.lga else ''}
         GROUP BY 1, 2, 3, 4, 5
         HAVING count(*) > 1
-    """, params)
+    """, (list(all_control_types), *params))
     dups = cur.fetchall()
     check(
         "8. No duplicate (lga, dev_type, condition, value_min) combos",
@@ -298,12 +314,13 @@ def main():
     if len(lgas) < 3:
         print("  SKIP: Need 3+ LGAs for outlier detection")
     else:
-        # Group by dev_type, compute stats
+        # Group by (dev_type, unit), compute stats
         import statistics
         values_by_dt: dict[str, list[tuple[str, float]]] = defaultdict(list)
         for r in rows:
-            if r.get("value_min") is not None and r["unit"] == "spaces/dwelling":
-                values_by_dt[r["dev_type"]].append((r["lga"], float(r["value_min"])))
+            if r.get("value_min") is not None and r["unit"] in ("spaces/dwelling", "%"):
+                key = f"{r['dev_type']}|{r['control_type']}"
+                values_by_dt[key].append((r["lga"], float(r["value_min"])))
 
         outlier_count = 0
         for dt, vals in sorted(values_by_dt.items()):
@@ -327,17 +344,16 @@ def main():
 
         check("11-12. No >3-sigma outliers", outlier_count == 0)
 
-    # ── Coverage Matrix ──────────────────────────────────────────
-    print("\n--- Coverage Matrix ---")
-    all_dev_types = sorted(set(r["dev_type"] for r in rows))
-    header = f"{'LGA':<25}" + "".join(f"{dt[:12]:>13}" for dt in all_dev_types)
+    # ── Parking Coverage Matrix ──────────────────────────────────
+    print("\n--- Parking Coverage Matrix ---")
+    all_parking_dev_types = sorted(set(r["dev_type"] for r in parking_rows))
+    header = f"{'LGA':<25}" + "".join(f"{dt[:12]:>13}" for dt in all_parking_dev_types)
     print(header)
     print("-" * len(header))
-    for lga in lgas:
-        dt_set = dev_types_by_lga[lga]
+    for lga in parking_lgas:
         row_str = f"{lga:<25}"
-        for dt in all_dev_types:
-            count = sum(1 for r in rows if r["lga"] == lga and r["dev_type"] == dt)
+        for dt in all_parking_dev_types:
+            count = sum(1 for r in parking_rows if r["lga"] == lga and r["dev_type"] == dt)
             if count > 0:
                 row_str += f"{count:>13}"
             elif dt in SEPP_DEFERRALS.get(lga, set()):
@@ -345,6 +361,20 @@ def main():
             else:
                 row_str += f"{'-':>13}"
         print(row_str)
+
+    # ── Landscaping Coverage Matrix ──────────────────────────────
+    if landscaping_rows:
+        print("\n--- Landscaping Coverage Matrix ---")
+        landscaping_ctl_types = sorted(set(r["control_type"] for r in landscaping_rows))
+        header = f"{'LGA':<25}" + "".join(f"{ct[:15]:>16}" for ct in landscaping_ctl_types)
+        print(header)
+        print("-" * len(header))
+        for lga in landscaping_lgas:
+            row_str = f"{lga:<25}"
+            for ct in landscaping_ctl_types:
+                count = sum(1 for r in landscaping_rows if r["lga"] == lga and r["control_type"] == ct)
+                row_str += f"{count:>16}" if count > 0 else f"{'-':>16}"
+            print(row_str)
 
     # ── Summary ──────────────────────────────────────────────────
     print(f"\n{'='*50}")
