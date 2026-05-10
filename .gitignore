@@ -434,6 +434,9 @@ scripts/
 !scripts/confirm_chapter.py
 !scripts/pco_client.py
 !scripts/dcp_quality_report.py
+!scripts/dcp_watchdog.py
+!scripts/backfill_source_chapter_key.py
+!scripts/verify_controls_monitoring.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
