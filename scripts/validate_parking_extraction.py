@@ -82,6 +82,9 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     "woollahra": {"secondary_dwelling"},
     # Blacktown DCP 2015 Table 6.1: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
     "blacktown": {"secondary_dwelling"},
+    # Inner West: 3 former DCPs, secondary dwellings included with principal dwelling parking
+    # (Marrickville: "1 per principal dwelling and secondary dwelling combined")
+    "inner_west": {"secondary_dwelling"},
 }
 
 
