@@ -460,6 +460,14 @@ scripts/
 !scripts/insert_northern_beaches_parking.py
 !scripts/insert_ku_ring_gai_landscaping.py
 !scripts/insert_woollahra_landscaping.py
+!scripts/insert_hornsby_landscaping.py
+!scripts/insert_cumberland_landscaping.py
+!scripts/insert_campbelltown_landscaping.py
+!scripts/insert_parramatta_landscaping.py
+!scripts/insert_canterbury_bankstown_landscaping.py
+!scripts/insert_bayside_landscaping.py
+!scripts/insert_liverpool_landscaping.py
+!scripts/insert_randwick_landscaping.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
