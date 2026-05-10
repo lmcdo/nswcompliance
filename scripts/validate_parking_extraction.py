@@ -85,6 +85,8 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     # Inner West: 3 former DCPs, secondary dwellings included with principal dwelling parking
     # (Marrickville: "1 per principal dwelling and secondary dwelling combined")
     "inner_west": {"secondary_dwelling"},
+    # Northern Beaches: Warringah DCP Appendix 1 does not list secondary_dwelling — SEPP Housing 2021 deferral
+    "northern_beaches": {"secondary_dwelling"},
 }
 
 

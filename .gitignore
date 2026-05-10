@@ -457,6 +457,7 @@ scripts/
 !scripts/insert_blacktown_parking.py
 !scripts/insert_parramatta_parking.py
 !scripts/insert_inner_west_parking.py
+!scripts/insert_northern_beaches_parking.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
