@@ -449,6 +449,8 @@ scripts/
 !scripts/hub_scrapers/cumberland.py
 !scripts/hub_scrapers/penrith.py
 !scripts/hub_scrapers/generic.py
+!scripts/insert_campbelltown_parking.py
+!scripts/insert_liverpool_parking.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
