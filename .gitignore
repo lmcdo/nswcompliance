@@ -458,6 +458,8 @@ scripts/
 !scripts/insert_parramatta_parking.py
 !scripts/insert_inner_west_parking.py
 !scripts/insert_northern_beaches_parking.py
+!scripts/insert_ku_ring_gai_landscaping.py
+!scripts/insert_woollahra_landscaping.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
