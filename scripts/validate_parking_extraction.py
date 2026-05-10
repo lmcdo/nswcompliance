@@ -89,6 +89,12 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     "northern_beaches": {"secondary_dwelling"},
 }
 
+# Councils excluded from DCP parking extraction entirely:
+# - city_of_sydney: parking rates set in Sydney LEP 2012 cl 7.5 (maximum rates
+#   by parking area), not in any DCP. No other metro council uses LEP for parking.
+#   Would need a separate lep_controls table to store correctly.
+EXCLUDED_COUNCILS = {"city_of_sydney"}
+
 
 def check(name, condition, detail=""):
     global passed, failed
