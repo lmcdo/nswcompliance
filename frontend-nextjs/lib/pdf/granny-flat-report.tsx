@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +56,9 @@ export interface GrannyFlatReportData {
   dcp_sd_setbacks?: DCPSetbackEntry[] | null;
   dcp_name?: string | null;
   dcp_url?: string | null;
+  qr_b64?: string | null;
+  firm_name?: string | null;
+  shareable_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,6 +292,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <Text style={s.coverTitle}>Granny Flat Eligibility Report</Text>
         <Text style={s.coverAddress}>{data.address}</Text>
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
+        <PreparedBy firmName={data.firm_name} />
         <ValidityNote runDate={data.run_date} />
 
         {/* Verdict badge */}
@@ -848,6 +852,10 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             { source: 'SEPP (Housing) 2021', type: 'Legislative reference', currency: 'Current as at report date' },
             { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
           ]} />
+        )}
+
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
         )}
 
         {/* Footer */}

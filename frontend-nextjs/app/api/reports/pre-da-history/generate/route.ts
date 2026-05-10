@@ -15,6 +15,7 @@ import {
   type PreDAHistoryReportData,
 } from '@/lib/pdf/pre-da-history-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
+import { generateQRBase64 } from '@/lib/pdf/qr';
 
 const getSupabase = () =>
   createServiceClient(
@@ -26,7 +27,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { report_id?: string; data?: unknown };
+  let body: { report_id?: string; data?: unknown; firm_name?: string };
   try {
     body = await req.json();
   } catch {
@@ -96,6 +97,13 @@ export async function POST(req: NextRequest) {
       logo_b64: getLogoBase64(),
       is_paid: true, // DB path = post-Stripe payment, always render paid sections
     };
+
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+    const shareable_url = `${origin}/reports/pre-da-history/${report_id}`;
+    data.shareable_url = shareable_url;
+    data.qr_b64 = await generateQRBase64(shareable_url);
+    data.firm_name = body.firm_name?.trim() || null;
+
     filename = `pre-da-history-${report_id.slice(0, 8)}.pdf`;
   }
 

@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -67,6 +67,9 @@ export interface ShadowReportData {
   is_paid?: boolean;
   tile_b64: string | null;
   logo_b64?: string | null;
+  qr_b64?: string | null;
+  firm_name?: string | null;
+  shareable_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +290,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           <Text style={{ fontSize: 9, color: GRAY_500, marginBottom: 2 }}>{data.lga_name} LGA</Text>
         )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <PreparedBy firmName={data.firm_name} />
         <ValidityNote runDate={data.run_date} />
 
         {/* ADG verdict badge */}
@@ -579,6 +583,10 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
           Data: {(data.data_sources ?? []).join(' · ')} · Report generated {data.run_date} · plotdetect.com.au
         </Text>
+
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
+        )}
 
         <Footer pageNum={2} total={totalPages} />
       </Page>

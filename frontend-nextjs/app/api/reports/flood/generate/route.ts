@@ -19,6 +19,7 @@ import {
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { verifyReport } from '@/lib/report-token';
+import { generateQRBase64 } from '@/lib/pdf/qr';
 import { createClient } from '@supabase/supabase-js';
 
 const getSupabase = () => createClient(
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   // Webhook calls all originate from the same Vercel internal IP; a 10/min bucket
   // would block PDF delivery above 10 concurrent paid reports.
 
-  let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string; firm_name?: string };
   try {
     body = await req.json();
   } catch {
@@ -90,9 +91,13 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  const [tile_b64, logo_b64] = await Promise.all([
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const shareable_url = body.report_id ? `${origin}/reports/flood/${body.report_id}` : null;
+
+  const [tile_b64, logo_b64, qr_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
+    shareable_url ? generateQRBase64(shareable_url) : Promise.resolve(null),
   ]);
 
   const data: FloodReportData = {
@@ -140,6 +145,9 @@ export async function POST(req: NextRequest) {
     is_paid,
     tile_b64,
     logo_b64,
+    qr_b64,
+    firm_name: body.firm_name?.trim() || null,
+    shareable_url,
   };
 
   let pdfBuffer: Buffer;

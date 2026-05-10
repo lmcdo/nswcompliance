@@ -17,6 +17,7 @@ import {
   type GrannyFlatReportData,
 } from '@/lib/pdf/granny-flat-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
+import { generateQRBase64 } from '@/lib/pdf/qr';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 
 // Use service role — this route is server-only, report_id is an unguessable UUID.
@@ -32,7 +33,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { report_id?: string; data?: unknown };
+  let body: { report_id?: string; data?: unknown; firm_name?: string };
   try {
     body = await req.json();
   } catch {
@@ -124,6 +125,13 @@ export async function POST(req: NextRequest) {
       logo_b64: getLogoBase64(),
       is_paid: true, // UUID access = sufficient guard; always render paid sections for DB-fetched reports
     };
+
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+    const shareable_url = `${origin}/reports/granny-flat/${report_id}`;
+    data.shareable_url = shareable_url;
+    data.qr_b64 = await generateQRBase64(shareable_url);
+    data.firm_name = body.firm_name?.trim() || null;
+
     filename = `granny-flat-report-${report_id.slice(0, 8)}.pdf`;
   }
 

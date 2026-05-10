@@ -236,7 +236,7 @@ async function handleGrannyFlatReport(
     const pdfRes = await fetch(`${baseUrl}/api/reports/granny-flat/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ report_id }),
+      body: JSON.stringify({ report_id, firm_name: meta.firm_name || undefined }),
     });
 
     if (!pdfRes.ok) {
@@ -346,7 +346,7 @@ async function handleSatelliteReport(
     const pdfRes = await fetch(`${baseUrl}${cfg.generatePath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ report_id }),
+      body: JSON.stringify({ report_id, firm_name: meta.firm_name || undefined }),
     });
 
     if (!pdfRes.ok) {
@@ -410,7 +410,7 @@ async function handlePreDAHistoryReport(
     const pdfRes = await fetch(`${baseUrl}/api/reports/pre-da-history/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ report_id }),
+      body: JSON.stringify({ report_id, firm_name: meta.firm_name || undefined }),
     });
 
     if (!pdfRes.ok) {

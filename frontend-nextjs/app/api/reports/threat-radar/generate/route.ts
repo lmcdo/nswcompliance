@@ -16,13 +16,14 @@ import {
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { verifyReport } from '@/lib/report-token';
+import { generateQRBase64 } from '@/lib/pdf/qr';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 // No rate limit — route is guarded by HMAC (verifyReport). Threat radar has no DB path.
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string; firm_name?: string };
   try {
     body = await req.json();
   } catch {
@@ -71,6 +72,8 @@ export async function POST(req: NextRequest) {
     is_paid,
     tile_b64,
     logo_b64,
+    firm_name: body.firm_name?.trim() || null,
+    // Threat radar has no DB-backed report page, so no shareable URL or QR
   };
 
   let pdfBuffer: Buffer;

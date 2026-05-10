@@ -14,7 +14,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,6 +63,9 @@ export interface BushfireReportData {
   is_paid?: boolean;
   tile_b64: string | null;
   logo_b64?: string | null;
+  qr_b64?: string | null;
+  firm_name?: string | null;
+  shareable_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +189,7 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
         <Text style={s.h1}>Bushfire Pre-Screen Report</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <PreparedBy firmName={data.firm_name} />
 
         <Text style={{ fontSize: 7.5, color: GRAY_500, fontStyle: 'italic', marginBottom: 20 }}>
           Data valid as of {data.run_date}. RFS Bush Fire Prone Land maps are updated periodically. Re-run before development lodgement.
@@ -495,6 +499,10 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
           Data: {data.data_sources.join(' - ')} - Report generated {data.run_date} - plotdetect.com.au
         </Text>
+
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
+        )}
 
         <Footer pageNum={2} total={totalPages} />
       </Page>
