@@ -441,6 +441,10 @@ scripts/
 !scripts/insert_penrith_parking.py
 !scripts/insert_cumberland_parking.py
 !scripts/insert_bayside_parking.py
+!scripts/insert_hornsby_parking.py
+!scripts/insert_randwick_parking.py
+!scripts/insert_georges_river_parking.py
+!scripts/insert_sutherland_parking.py
 !scripts/validate_parking_extraction.py
 !scripts/hub_scrapers/cumberland.py
 !scripts/hub_scrapers/penrith.py

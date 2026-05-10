@@ -66,6 +66,12 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     # Penrith DCP 2014 Table C10.2 does not list secondary_dwelling
     # Secondary dwellings covered by SEPP Housing 2021
     "penrith": {"secondary_dwelling"},
+    # Randwick DCP 2013 Table 1 does not list secondary_dwelling
+    "randwick": {"secondary_dwelling"},
+    # Georges River DCP 2021 Table 3: "N/A for secondary dwellings"
+    "georges_river": {"secondary_dwelling"},
+    # Sutherland DCP 2015 Table 1: "No requirement" for secondary dwellings
+    "sutherland_shire": {"secondary_dwelling"},
 }
 
 
