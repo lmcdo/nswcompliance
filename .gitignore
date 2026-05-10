@@ -475,6 +475,11 @@ scripts/
 !scripts/check_zone_coverage.py
 !scripts/manual_verify.py
 !scripts/register_orphan_chapters.py
+!scripts/insert_georges_river_landscaping.py
+!scripts/insert_sutherland_shire_landscaping.py
+!scripts/insert_waverley_landscaping.py
+!scripts/insert_inner_west_landscaping.py
+!scripts/insert_northern_beaches_landscaping.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
