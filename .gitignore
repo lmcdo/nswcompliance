@@ -437,6 +437,7 @@ scripts/
 !scripts/dcp_watchdog.py
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
+!scripts/insert_cb_parking.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
