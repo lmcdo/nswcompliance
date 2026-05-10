@@ -438,6 +438,26 @@ scripts/
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
 !scripts/insert_cb_parking.py
+!scripts/insert_penrith_parking.py
+!scripts/insert_cumberland_parking.py
+!scripts/insert_bayside_parking.py
+!scripts/insert_hornsby_parking.py
+!scripts/insert_randwick_parking.py
+!scripts/insert_georges_river_parking.py
+!scripts/insert_sutherland_parking.py
+!scripts/validate_parking_extraction.py
+!scripts/hub_scrapers/cumberland.py
+!scripts/hub_scrapers/penrith.py
+!scripts/hub_scrapers/generic.py
+!scripts/insert_campbelltown_parking.py
+!scripts/insert_liverpool_parking.py
+!scripts/insert_waverley_parking.py
+!scripts/insert_woollahra_parking.py
+!scripts/insert_ku_ring_gai_parking.py
+!scripts/insert_blacktown_parking.py
+!scripts/insert_parramatta_parking.py
+!scripts/insert_inner_west_parking.py
+!scripts/insert_northern_beaches_parking.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

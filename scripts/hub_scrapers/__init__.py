@@ -16,6 +16,13 @@ from .city_of_sydney import scrape_city_of_sydney
 from .woollahra import scrape_woollahra
 from .canterbury_bankstown import scrape_canterbury_bankstown
 from .waverley import scrape_waverley
+from .cumberland import scrape_cumberland
+from .penrith import scrape_penrith
+from .generic import (
+    scrape_blacktown, scrape_campbelltown, scrape_liverpool,
+    scrape_hornsby, scrape_parramatta, scrape_northern_beaches,
+    scrape_randwick, scrape_sutherland, scrape_bayside, scrape_georges_river,
+)
 
 # council slug (matches dcp_chapter_registry.council) → scraper function
 HUB_SCRAPERS: dict = {
@@ -31,6 +38,21 @@ HUB_SCRAPERS: dict = {
     "canterbury_bankstown":  scrape_canterbury_bankstown,
     # Waverley (Squiz Matrix — /media/documents/ + /__data/assets/)
     "waverley":              scrape_waverley,
+    # Cumberland (Drupal — /sites/default/files/inline-files/)
+    "cumberland":            scrape_cumberland,
+    # Penrith (standard CMS — /images/)
+    "penrith":               scrape_penrith,
+    # Generic scraper councils (browser-like headers for bot protection)
+    "blacktown":             scrape_blacktown,
+    "campbelltown":          scrape_campbelltown,
+    "liverpool":             scrape_liverpool,
+    "hornsby":               scrape_hornsby,
+    "parramatta":            scrape_parramatta,
+    "northern_beaches":      scrape_northern_beaches,
+    "randwick":              scrape_randwick,
+    "sutherland":            scrape_sutherland,
+    "bayside":               scrape_bayside,
+    "georges_river":         scrape_georges_river,
 }
 
 __all__ = ["HUB_SCRAPERS", "HubScrapeError"]
