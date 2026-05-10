@@ -18,12 +18,14 @@ export async function POST(req: NextRequest) {
   let report_id: string | undefined;
   let address: string | undefined;
   let email: string | undefined;
+  let firm_name: string | undefined;
 
   try {
     const body = await req.json();
     report_id = body?.report_id?.trim();
     address   = body?.address?.trim();
     email     = body?.email?.trim() || undefined;
+    firm_name = body?.firm_name?.trim() || undefined;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
       mode: 'payment',
       ...(email ? { customer_email: email } : {}),
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { report_id, address, product: 'shadow-report' },
+      metadata: { report_id, address, product: 'shadow-report', ...(firm_name ? { firm_name } : {}) },
       success_url: `${origin}/reports/shadow?payment=success&report_id=${report_id}&address=${encodeURIComponent(address)}`,
       cancel_url:  `${origin}/reports/shadow?payment=cancelled`,
     });

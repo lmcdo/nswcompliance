@@ -18,6 +18,7 @@ import {
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { verifyReport } from '@/lib/report-token';
+import { generateQRBase64 } from '@/lib/pdf/qr';
 import { createClient } from '@supabase/supabase-js';
 
 const getSupabase = () => createClient(
@@ -29,7 +30,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown; report_token?: string; report_id?: string };
+  let body: { data?: unknown; report_token?: string; report_id?: string; firm_name?: string };
   try {
     body = await req.json();
   } catch {
@@ -87,9 +88,13 @@ export async function POST(req: NextRequest) {
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
   const today = new Date().toISOString().split('T')[0];
 
-  const [tile_b64, logo_b64] = await Promise.all([
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const shareable_url = body.report_id ? `${origin}/reports/bushfire/${body.report_id}` : null;
+
+  const [tile_b64, logo_b64, qr_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
+    shareable_url ? generateQRBase64(shareable_url) : Promise.resolve(null),
   ]);
 
   const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
@@ -130,6 +135,9 @@ export async function POST(req: NextRequest) {
     is_paid,
     tile_b64,
     logo_b64,
+    qr_b64,
+    firm_name: body.firm_name?.trim() || null,
+    shareable_url,
   };
 
   let pdfBuffer: Buffer;

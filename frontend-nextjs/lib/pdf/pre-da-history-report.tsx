@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,6 +58,9 @@ export interface PreDAHistoryReportData {
   data_quality_note: string;
   logo_b64?: string | null;
   is_paid?: boolean;
+  qr_b64?: string | null;
+  firm_name?: string | null;
+  shareable_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,6 +330,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         <Text style={s.coverTitle}>Site History Report</Text>
         <Text style={s.coverAddress}>{data.address}</Text>
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
+        <PreparedBy firmName={data.firm_name} />
         {data.council && <Text style={s.coverSubtitle}>{data.council}</Text>}
         <Text style={{ fontSize: 8, color: GRAY_500, marginBottom: 4 }}>
           Coordinates: {data.lat.toFixed(5)}, {data.lon.toFixed(5)}
@@ -725,6 +729,10 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
             {' '} — flood risk, bushfire pre-screen, shadow impact, solar yield, and granny flat eligibility for any NSW address.
           </Text>
         </View>
+
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
+        )}
 
         <PlotDetectFooter reportName="Site History Report" />
       </Page>

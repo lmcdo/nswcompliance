@@ -23,12 +23,14 @@ export async function POST(req: NextRequest) {
   let job_id: string | undefined;
   let address: string | undefined;
   let email: string | undefined;
+  let firm_name: string | undefined;
 
   try {
     const body = await req.json();
     job_id = body?.job_id?.trim();
     address = body?.address?.trim();
     email = body?.email?.trim() || undefined;
+    firm_name = body?.firm_name?.trim() || undefined;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
         address,
         email: email ?? '',
         product: 'granny-flat-analysis',
+        ...(firm_name ? { firm_name } : {}),
       },
       success_url: `${origin}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}${email ? `&email=${encodeURIComponent(email)}` : ''}`,
       cancel_url: `${origin}/granny-flat?payment=cancelled&address=${encodeURIComponent(address)}`,

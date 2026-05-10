@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +56,9 @@ export interface ThreatRadarReportData {
   radius_m?: number;
   is_paid?: boolean;
   tile_b64: string | null;
+  qr_b64?: string | null;
+  firm_name?: string | null;
+  shareable_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +257,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <Text style={s.dateText}>
           {data.council_name ?? 'NSW'} · last {data.window_days} days · within {radius} m
         </Text>
+        <PreparedBy firmName={data.firm_name} />
         <ValidityNote runDate={data.run_date} />
 
         {/* Summary stat — row layout avoids react-pdf large-font line-height bug */}
@@ -493,6 +497,10 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
           Consult council for a complete search.
           Report generated {data.run_date} · plotdetect.com.au
         </Text>
+
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
+        )}
 
         <Footer pageNum={1} total={totalPages} />
       </Page>

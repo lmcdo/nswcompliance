@@ -19,11 +19,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   let report_id: string | undefined;
   let email: string | undefined;
+  let firm_name: string | undefined;
 
   try {
     const body = await req.json();
     report_id = body?.report_id?.trim();
     email = body?.email?.trim();
+    firm_name = body?.firm_name?.trim() || undefined;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -53,6 +55,7 @@ export async function POST(req: NextRequest) {
           report_id,
           email,
           product: 'pre-da-history-report',
+          ...(firm_name ? { firm_name } : {}),
         },
         success_url: `${origin}/reports/pre-da-history?payment=success&report_id=${report_id}`,
         cancel_url: `${origin}/reports/pre-da-history?payment=cancelled`,
