@@ -76,6 +76,10 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     "campbelltown": {"secondary_dwelling"},
     # Liverpool DCP 2008 Table 13: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
     "liverpool": {"secondary_dwelling"},
+    # Waverley DCP 2022 Table 4: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
+    "waverley": {"secondary_dwelling"},
+    # Woollahra DCP 2015 Table 1: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
+    "woollahra": {"secondary_dwelling"},
 }
 
 
