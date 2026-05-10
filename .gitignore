@@ -453,6 +453,9 @@ scripts/
 !scripts/insert_liverpool_parking.py
 !scripts/insert_waverley_parking.py
 !scripts/insert_woollahra_parking.py
+!scripts/insert_ku_ring_gai_parking.py
+!scripts/insert_blacktown_parking.py
+!scripts/insert_parramatta_parking.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

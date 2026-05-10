@@ -80,6 +80,8 @@ SEPP_DEFERRALS: dict[str, set[str]] = {
     "waverley": {"secondary_dwelling"},
     # Woollahra DCP 2015 Table 1: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
     "woollahra": {"secondary_dwelling"},
+    # Blacktown DCP 2015 Table 6.1: no secondary_dwelling rate listed — SEPP Housing 2021 deferral
+    "blacktown": {"secondary_dwelling"},
 }
 
 
