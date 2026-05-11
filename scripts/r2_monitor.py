@@ -308,20 +308,64 @@ def _slugify(label: str) -> str:
     return slug.strip("-")[:80]
 
 
+# ── Chapter classification ──────────────────────────────────────────────────
+import re as _re
+
+_CLASSIFY_RULES: list[tuple[str, str]] = [
+    # Order matters: first match wins. Most specific patterns first.
+    (r"(^sheet\s+\d|map$|map\s|frontage.+map|height.+map|setback.+map|"
+     r"signage.+map|lane.+map|link.+map|priority.+map|stormwater.+map|"
+     r"trading.+map|open\s+space.+map|colonnades.+map|contributions.+map|"
+     r"sound\s+management$|domain\s+setback)", "spatial"),
+    (r"^repealed", "repealed"),
+    (r"(^table\s+of\s+contents|^preliminary|^document\s+information|"
+     r"^section\s+1\s.*preliminary)", "inert"),
+    (r"(guide\b|manual\b|character\s+statement|waste\s+design)", "guide"),
+    (r"(^chapter\s+[A-Za-z]?\d|^part\s+\d|^section\s+\d)", "text"),
+]
+
+_CLASSIFY_COMPILED = [(_re.compile(pat, _re.IGNORECASE), cat) for pat, cat in _CLASSIFY_RULES]
+
+
+def classify_chapter(label: str) -> str:
+    """Classify a chapter label into a category.
+
+    Returns one of: spatial, repealed, inert, guide, text, unknown.
+    Conservative — ambiguous labels return 'unknown' for manual review.
+    """
+    for pattern, category in _CLASSIFY_COMPILED:
+        if pattern.search(label.strip()):
+            return category
+    return "unknown"
+
+
+# Categories that are auto-handled (no pending review needed)
+_AUTO_HANDLE = {
+    "spatial":  {"registration_status": "confirmed", "is_active": True,  "is_spatial": True,  "is_inert": False},
+    "repealed": {"registration_status": "rejected",  "is_active": False, "is_spatial": False, "is_inert": False},
+    "inert":    {"registration_status": "confirmed", "is_active": True,  "is_spatial": False, "is_inert": True},
+}
+
+
 def _auto_register_chapter(
     conn, council: str, council_chapters: list[dict], item: dict, hub_url: str | None,
-) -> None:
-    """Insert an auto-detected chapter with is_active=FALSE for later review.
+) -> dict:
+    """Insert an auto-detected chapter, classifying it on insert.
 
-    Lightweight: no PDF download, no R2 upload. Just persists the discovery
-    so confirm_chapter.py can handle activation later.
+    Auto-handled categories (spatial, repealed, inert) go straight to their
+    final state. Text/guide/unknown stay as auto_detected for manual review.
+
+    Returns {"category": str, "action": "registered"|"auto_handled"|"skipped"}
+    for digest aggregation. Never sends individual Telegram messages.
     """
     label = item["label"]
     url = item["url"]
     slug = _slugify(label)
 
     if not slug:
-        return
+        return {"category": "unknown", "action": "skipped"}
+
+    category = classify_chapter(label)
 
     # Deduplicate: skip if this slug already exists for the council
     cur = conn.cursor()
@@ -332,34 +376,149 @@ def _auto_register_chapter(
     if cur.fetchone():
         cur.close()
         print(f"    [auto-reg] {slug} already in registry — skipping")
-        return
+        return {"category": category, "action": "skipped"}
 
     dcp_name = council_chapters[0].get("dcp_name", f"{council.title()} DCP")
 
-    cur.execute(
-        """
-        INSERT INTO dcp_chapter_registry (
-            council, dcp_name, doc_type, chapter_key, chapter_label,
-            council_url, council_page_url,
-            is_active, needs_extraction, registration_status,
-            check_failures, created_at, updated_at
-        ) VALUES (
-            %s, %s, 'dcp', %s, %s,
-            %s, %s,
-            FALSE, FALSE, 'auto_detected',
-            0, NOW(), NOW()
+    auto = _AUTO_HANDLE.get(category)
+    if auto:
+        # Auto-handle: insert directly into final state
+        cur.execute(
+            """
+            INSERT INTO dcp_chapter_registry (
+                council, dcp_name, doc_type, chapter_key, chapter_label,
+                council_url, council_page_url,
+                is_active, is_spatial, is_inert,
+                needs_extraction, registration_status, detected_category,
+                check_failures, created_at, updated_at
+            ) VALUES (
+                %s, %s, 'dcp', %s, %s,
+                %s, %s,
+                %s, %s, %s,
+                FALSE, %s, %s,
+                0, NOW(), NOW()
+            )
+            """,
+            (
+                council, dcp_name, slug, label, url, hub_url,
+                auto["is_active"], auto["is_spatial"], auto["is_inert"],
+                auto["registration_status"], category,
+            ),
         )
-        """,
-        (council, dcp_name, slug, label, url, hub_url),
+        conn.commit()
+        cur.close()
+        print(f"    [auto-{category}] {slug}")
+        return {"category": category, "action": "auto_handled"}
+    else:
+        # Pending review: text, guide, unknown
+        cur.execute(
+            """
+            INSERT INTO dcp_chapter_registry (
+                council, dcp_name, doc_type, chapter_key, chapter_label,
+                council_url, council_page_url,
+                is_active, needs_extraction, registration_status, detected_category,
+                check_failures, created_at, updated_at
+            ) VALUES (
+                %s, %s, 'dcp', %s, %s,
+                %s, %s,
+                FALSE, FALSE, 'auto_detected', %s,
+                0, NOW(), NOW()
+            )
+            """,
+            (council, dcp_name, slug, label, url, hub_url, category),
+        )
+        conn.commit()
+        cur.close()
+        print(f"    [pending-{category}] {slug}")
+        return {"category": category, "action": "registered"}
+
+
+def _send_discovery_digest(
+    council: str,
+    discovered_count: int,
+    previous_count: int | None,
+    registration_results: list[dict],
+    hub_alerts: list[str],
+) -> None:
+    """Send a single Telegram digest for all discoveries on a council.
+
+    Format designed for copy-paste into Claude — structured, parseable,
+    actionable.
+    """
+    if not registration_results and not hub_alerts:
+        return
+
+    # Aggregate by category and action
+    by_cat: dict[str, dict[str, int]] = {}
+    for r in registration_results:
+        cat = r["category"]
+        action = r["action"]
+        by_cat.setdefault(cat, {"registered": 0, "auto_handled": 0, "skipped": 0})
+        by_cat[cat][action] += 1
+
+    pending_count = sum(
+        c["registered"] for c in by_cat.values()
     )
-    conn.commit()
-    cur.close()
-    print(f"    [auto-reg] {slug} registered (inactive, pending review)")
-    send_telegram(
-        f"New DCP chapter detected [{council}]\n"
-        f"{label}\n{url}\n"
-        f"Review: python scripts/confirm_chapter.py --list"
+    auto_count = sum(
+        c["auto_handled"] for c in by_cat.values()
     )
+    skipped_count = sum(
+        c["skipped"] for c in by_cat.values()
+    )
+
+    # Only send if there's something actionable
+    new_total = pending_count + auto_count
+    if new_total == 0 and not hub_alerts:
+        return
+
+    lines = [f"DCP Discovery [{council}]"]
+
+    # Hub PDF count delta
+    if previous_count is not None:
+        delta = discovered_count - previous_count
+        if delta != 0:
+            sign = "+" if delta > 0 else ""
+            lines.append(f"Hub: {discovered_count} PDFs ({sign}{delta} since last run)")
+        else:
+            lines.append(f"Hub: {discovered_count} PDFs (unchanged)")
+    else:
+        lines.append(f"Hub: {discovered_count} PDFs (first scan)")
+
+    # Category breakdown
+    if new_total > 0:
+        parts = []
+        for cat in ["text", "guide", "unknown", "spatial", "repealed", "inert"]:
+            if cat not in by_cat:
+                continue
+            counts = by_cat[cat]
+            n = counts["registered"] + counts["auto_handled"]
+            if n == 0:
+                continue
+            if cat in _AUTO_HANDLE:
+                parts.append(f"{n} {cat} (auto)")
+            else:
+                parts.append(f"{n} {cat}")
+        lines.append("New: " + ", ".join(parts))
+
+    # Anomaly flags
+    total_new = pending_count + auto_count
+    if total_new > 30:
+        spatial_n = by_cat.get("spatial", {}).get("auto_handled", 0)
+        unknown_n = by_cat.get("unknown", {}).get("registered", 0)
+        if spatial_n == 0 and total_new > 30:
+            lines.append("! 0 spatial — unusual for a large DCP, check classification")
+        if total_new > 0 and unknown_n / max(total_new, 1) > 0.3:
+            lines.append(f"! {unknown_n} unknown ({unknown_n*100//max(total_new,1)}%) — may need new patterns")
+
+    # URL migrations / removals from hub_alerts
+    for alert in hub_alerts:
+        lines.append(alert)
+
+    # Action line
+    if pending_count > 0:
+        lines.append(f"Review: confirm_chapter.py --list --council {council}")
+
+    send_telegram("\n".join(lines))
 
 
 def run_monitor(
@@ -380,7 +539,7 @@ def run_monitor(
     # Fetch active chapters including hub page URL and expected count
     query = """
         SELECT id, council, dcp_name, chapter_key, chapter_label, council_url,
-               council_page_url, hub_expected_count,
+               council_page_url, hub_expected_count, hub_last_pdf_count,
                r2_current_path, r2_version_label,
                content_hash, url_content_length, url_etag, check_failures,
                COALESCE(is_spatial, FALSE) AS is_spatial,
@@ -420,6 +579,7 @@ def run_monitor(
     for council, council_chapters in by_council.items():
         hub_url = council_chapters[0].get("council_page_url")
         hub_expected = council_chapters[0].get("hub_expected_count")
+        hub_last_count = council_chapters[0].get("hub_last_pdf_count")
         scraper = HUB_SCRAPERS.get(council)
 
         # ── Hub scrape (if scraper registered and hub URL available) ───────────
@@ -433,7 +593,8 @@ def run_monitor(
             }
             try:
                 discovered = scraper(hub_url, expected_keys, expected_labels=expected_labels)
-                print(f"  Hub returned {len(discovered)} PDF links (expected ~{hub_expected})")
+                previous_count = council_chapters[0].get("hub_last_pdf_count")
+                print(f"  Hub returned {len(discovered)} PDF links (previous: {previous_count or 'first scan'})")
 
                 diff = diff_urls(discovered, council_chapters, hub_expected)
 
@@ -448,6 +609,10 @@ def run_monitor(
                     results["hub_alerts"].append(msg)
                     results["failed"] += len(council_chapters)
                     continue
+
+                # Collect digest items for this council
+                council_hub_alerts = []
+                registration_results = []
 
                 # URL migrations — update registry and proceed to hash check
                 for key, old_url, new_url in diff.url_migrated:
@@ -464,14 +629,11 @@ def run_monitor(
                     for ch in council_chapters:
                         if ch["chapter_key"] == key:
                             ch["council_url"] = new_url
-                    send_telegram(f"DCP URL migration [{council}/{key}]\n{old_url}\n→ {new_url}")
+                    council_hub_alerts.append(f"URL migrated: {key}")
                     results["hub_alerts"].append(f"URL migration: {council}/{key}")
 
                 # Removed chapters
                 for key in diff.removed:
-                    # Inert chapters (cover/ToC) can't always be matched by label alone
-                    # (hub uses generic "Cover page" for all part covers).  Suppress the
-                    # alert — they have no extractable provisions and we don't need to act.
                     chapter_is_inert = next(
                         (ch.get("is_inert", False) for ch in council_chapters if ch["chapter_key"] == key),
                         False,
@@ -479,23 +641,38 @@ def run_monitor(
                     if chapter_is_inert:
                         print(f"  [INERT-REMOVED] {key} — not matched on hub, inert chapter, no alert")
                         continue
-                    msg = f"DCP chapter removed from hub [{council}/{key}] — verify before disabling"
                     print(f"  [REMOVED] {key}")
-                    send_telegram(msg)
-                    results["hub_alerts"].append(msg)
+                    council_hub_alerts.append(f"Removed from hub: {key}")
+                    results["hub_alerts"].append(f"removed: {council}/{key}")
 
-                # New/unmatched chapters — auto-register as inactive for review.
-                # These are typically maps, appendices, amendment notices alongside
-                # provision chapters on the hub page.
+                # New/unmatched chapters — classify and auto-handle where possible.
                 for item in diff.added:
                     print(f"  [NEW] {item['label']}  {item['url']}")
-                    results["hub_alerts"].append(f"new_chapter_on_hub: {council} — {item['label']}")
                     if not dry_run:
                         try:
-                            _auto_register_chapter(conn, council, council_chapters, item, hub_url)
+                            reg_result = _auto_register_chapter(conn, council, council_chapters, item, hub_url)
+                            registration_results.append(reg_result)
                         except Exception as exc:
                             print(f"    [auto-reg ERROR] {exc}")
                             conn.rollback()
+
+                # Update hub_last_pdf_count for delta tracking
+                if not dry_run:
+                    cur2 = conn.cursor()
+                    cur2.execute(
+                        """UPDATE dcp_chapter_registry
+                           SET hub_last_pdf_count = %s
+                           WHERE council = %s AND council_page_url IS NOT NULL AND is_active = TRUE""",
+                        (len(discovered), council),
+                    )
+                    conn.commit()
+                    cur2.close()
+
+                # Send single digest for this council (replaces per-chapter Telegram)
+                _send_discovery_digest(
+                    council, len(discovered), previous_count,
+                    registration_results, council_hub_alerts,
+                )
 
                 # If reseed mode: update council_url for all matched chapters
                 if reseed and not dry_run:

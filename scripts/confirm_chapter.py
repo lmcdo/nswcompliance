@@ -10,11 +10,15 @@ This CLI lets you review them and either:
 
 Usage:
     python scripts/confirm_chapter.py --list
+    python scripts/confirm_chapter.py --list --council woollahra
+    python scripts/confirm_chapter.py --list --show-all
     python scripts/confirm_chapter.py --confirm <id> [--extract]
     python scripts/confirm_chapter.py --confirm <id> --spatial
     python scripts/confirm_chapter.py --confirm <id> --inert
     python scripts/confirm_chapter.py --reject <id>
-    python scripts/confirm_chapter.py --reject-all
+    python scripts/confirm_chapter.py --reject-all [--council <council>]
+    python scripts/confirm_chapter.py --reject-repealed [--council <council>]
+    python scripts/confirm_chapter.py --confirm-category <cat> --council <council> [--extract|--spatial|--inert]
 
 Exit codes:
     0 = success
@@ -75,19 +79,95 @@ def send_telegram(message: str) -> None:
         pass
 
 
-def list_pending(conn) -> list[dict]:
-    """List all auto-detected chapters pending review."""
+def list_pending(conn, council_filter: str | None = None, show_all: bool = False) -> list[dict]:
+    """List chapters pending review, grouped by category."""
     cur = conn.cursor()
-    cur.execute("""
-        SELECT id, council, chapter_key, chapter_label, council_url, created_at
-        FROM dcp_chapter_registry
-        WHERE registration_status = 'auto_detected'
-        ORDER BY council, created_at
-    """)
+
+    if show_all:
+        query = """
+            SELECT id, council, chapter_key, chapter_label, council_url, created_at,
+                   registration_status, detected_category
+            FROM dcp_chapter_registry
+            WHERE detected_category IS NOT NULL
+        """
+    else:
+        query = """
+            SELECT id, council, chapter_key, chapter_label, council_url, created_at,
+                   registration_status, detected_category
+            FROM dcp_chapter_registry
+            WHERE registration_status = 'auto_detected'
+        """
+
+    params = []
+    if council_filter:
+        query += " AND council = %s"
+        params.append(council_filter)
+    query += " ORDER BY council, detected_category, chapter_label"
+
+    cur.execute(query, params)
     cols = [d[0] for d in cur.description]
     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
     cur.close()
     return rows
+
+
+def _print_grouped(rows: list[dict], show_all: bool = False) -> None:
+    """Print rows grouped by council then category."""
+    if not rows:
+        print("No chapters found.")
+        return
+
+    # Group by council
+    by_council: dict[str, list[dict]] = {}
+    for r in rows:
+        by_council.setdefault(r["council"], []).append(r)
+
+    for council, council_rows in sorted(by_council.items()):
+        # Group by category
+        by_cat: dict[str, list[dict]] = {}
+        for r in council_rows:
+            cat = r.get("detected_category") or "uncategorized"
+            by_cat.setdefault(cat, []).append(r)
+
+        pending = sum(1 for r in council_rows if r["registration_status"] == "auto_detected")
+        auto_handled = sum(1 for r in council_rows if r["registration_status"] != "auto_detected")
+
+        if show_all:
+            print(f"\n{council} — {pending} pending, {auto_handled} auto-handled")
+        else:
+            print(f"\n{council} — {pending} pending")
+
+        for cat in ["text", "guide", "unknown", "spatial", "repealed", "inert", "uncategorized"]:
+            items = by_cat.get(cat, [])
+            if not items:
+                continue
+
+            status_suffix = ""
+            if show_all:
+                statuses = set(r["registration_status"] for r in items)
+                status_suffix = f" [{', '.join(statuses)}]"
+
+            print(f"\n  {cat.upper()} ({len(items)}){status_suffix}:")
+            for r in items:
+                age = (datetime.now(timezone.utc) - r["created_at"].replace(tzinfo=timezone.utc)).days
+                label_display = r["chapter_label"][:60]
+                if show_all and r["registration_status"] != "auto_detected":
+                    print(f"    ID {r['id']:>5}  {label_display}  [{r['registration_status']}]")
+                else:
+                    print(f"    ID {r['id']:>5}  {label_display}")
+
+    print()
+    pending_total = sum(1 for r in rows if r["registration_status"] == "auto_detected")
+    if pending_total > 0:
+        print(f"Total pending: {pending_total}")
+        print()
+        print("Actions:")
+        print("  confirm_chapter.py --confirm <ID> --extract    # confirm for extraction")
+        print("  confirm_chapter.py --confirm <ID> --spatial    # confirm as spatial (hash-track only)")
+        print("  confirm_chapter.py --confirm <ID> --inert      # confirm as inert (silent tracking)")
+        print("  confirm_chapter.py --reject <ID>               # reject single chapter")
+        print("  confirm_chapter.py --reject-all --council X    # reject all pending for council")
+        print("  confirm_chapter.py --confirm-category text --council X --extract  # batch confirm")
 
 
 def confirm_chapter(
@@ -228,6 +308,51 @@ def confirm_chapter(
     return 0
 
 
+def confirm_category(
+    conn, category: str, council: str, extract: bool, spatial: bool, inert: bool,
+) -> int:
+    """Batch confirm all auto_detected chapters of a given category for a council."""
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT id, chapter_key, chapter_label
+           FROM dcp_chapter_registry
+           WHERE registration_status = 'auto_detected'
+             AND detected_category = %s
+             AND council = %s
+           ORDER BY chapter_key""",
+        (category, council),
+    )
+    rows = cur.fetchall()
+    cur.close()
+
+    if not rows:
+        print(f"No auto_detected {category} chapters for {council}")
+        return 0
+
+    print(f"Batch confirming {len(rows)} {category} chapters for {council}...")
+    succeeded = 0
+    failed = 0
+
+    for row_id, key, label in rows:
+        print(f"\n--- {key} ---")
+        result = confirm_chapter(conn, row_id, extract, spatial, inert)
+        if result == 0:
+            succeeded += 1
+        else:
+            failed += 1
+            print(f"  FAILED — stopping batch to avoid partial state")
+            break
+        time.sleep(2)  # Rate limit between downloads
+
+    print(f"\nBatch confirm: {succeeded}/{len(rows)} succeeded, {failed} failed")
+    if failed > 0:
+        remaining = len(rows) - succeeded - failed
+        if remaining > 0:
+            print(f"{remaining} chapters not attempted — re-run to continue")
+        return 1
+    return 0
+
+
 def reject_chapter(conn, chapter_id: int) -> int:
     """Mark a chapter as rejected."""
     cur = conn.cursor()
@@ -245,16 +370,46 @@ def reject_chapter(conn, chapter_id: int) -> int:
     return 0
 
 
-def reject_all(conn) -> int:
-    """Reject all auto-detected chapters."""
+def reject_all(conn, council_filter: str | None = None) -> int:
+    """Reject all auto-detected chapters, optionally filtered by council."""
     cur = conn.cursor()
-    cur.execute(
-        "UPDATE dcp_chapter_registry SET registration_status = 'rejected', updated_at = NOW() WHERE registration_status = 'auto_detected' RETURNING id"
-    )
+    if council_filter:
+        cur.execute(
+            "UPDATE dcp_chapter_registry SET registration_status = 'rejected', updated_at = NOW() WHERE registration_status = 'auto_detected' AND council = %s RETURNING id",
+            (council_filter,),
+        )
+    else:
+        cur.execute(
+            "UPDATE dcp_chapter_registry SET registration_status = 'rejected', updated_at = NOW() WHERE registration_status = 'auto_detected' RETURNING id"
+        )
     count = cur.rowcount
     conn.commit()
     cur.close()
-    print(f"Rejected {count} auto-detected chapter(s)")
+    scope = f" for {council_filter}" if council_filter else ""
+    print(f"Rejected {count} auto-detected chapter(s){scope}")
+    return 0
+
+
+def reject_repealed(conn, council_filter: str | None = None) -> int:
+    """Reject all auto-detected chapters classified as repealed."""
+    cur = conn.cursor()
+    query = """
+        UPDATE dcp_chapter_registry
+        SET registration_status = 'rejected', updated_at = NOW()
+        WHERE registration_status = 'auto_detected'
+          AND detected_category = 'repealed'
+    """
+    params = []
+    if council_filter:
+        query += " AND council = %s"
+        params.append(council_filter)
+    query += " RETURNING id"
+    cur.execute(query, params)
+    count = cur.rowcount
+    conn.commit()
+    cur.close()
+    scope = f" for {council_filter}" if council_filter else ""
+    print(f"Rejected {count} repealed chapter(s){scope}")
     return 0
 
 
@@ -265,7 +420,11 @@ def main() -> int:
     group.add_argument("--confirm", type=int, metavar="ID", help="Confirm chapter by ID")
     group.add_argument("--reject", type=int, metavar="ID", help="Reject chapter by ID")
     group.add_argument("--reject-all", action="store_true", help="Reject all auto-detected chapters")
+    group.add_argument("--reject-repealed", action="store_true", help="Reject all repealed chapters")
+    group.add_argument("--confirm-category", metavar="CAT", help="Batch confirm all chapters of a category (text, guide, unknown)")
 
+    parser.add_argument("--council", help="Filter to specific council")
+    parser.add_argument("--show-all", action="store_true", help="Show auto-handled chapters too (spatial, repealed, inert)")
     parser.add_argument("--extract", action="store_true", help="Queue for provision extraction")
     parser.add_argument("--spatial", action="store_true", help="Spatial/map doc — track but don't extract")
     parser.add_argument("--inert", action="store_true", help="Cover/ToC — silent tracking only")
@@ -275,26 +434,27 @@ def main() -> int:
     conn.autocommit = False
 
     if args.list:
-        rows = list_pending(conn)
+        rows = list_pending(conn, args.council, args.show_all)
         conn.close()
         if not rows:
-            print("No auto-detected chapters pending review.")
+            print("No chapters found.")
             return 0
-        print(f"\n{len(rows)} auto-detected chapter(s) pending review:\n")
-        for r in rows:
-            age = (datetime.now(timezone.utc) - r["created_at"].replace(tzinfo=timezone.utc)).days
-            print(f"  ID {r['id']:>5}  {r['council']:<20}  {r['chapter_label'][:50]}")
-            print(f"          {r['council_url']}")
-            print(f"          detected {age}d ago")
-            print()
-        print("Actions:")
-        print("  python scripts/confirm_chapter.py --confirm <ID> --extract")
-        print("  python scripts/confirm_chapter.py --confirm <ID> --spatial")
-        print("  python scripts/confirm_chapter.py --reject <ID>")
+        _print_grouped(rows, args.show_all)
         return 0
 
     if args.confirm:
         result = confirm_chapter(conn, args.confirm, args.extract, args.spatial, args.inert)
+        conn.close()
+        return result
+
+    if args.confirm_category:
+        if not args.council:
+            print("ERROR: --confirm-category requires --council")
+            return 1
+        result = confirm_category(
+            conn, args.confirm_category, args.council,
+            args.extract, args.spatial, args.inert,
+        )
         conn.close()
         return result
 
@@ -304,7 +464,12 @@ def main() -> int:
         return result
 
     if args.reject_all:
-        result = reject_all(conn)
+        result = reject_all(conn, args.council)
+        conn.close()
+        return result
+
+    if args.reject_repealed:
+        result = reject_repealed(conn, args.council)
         conn.close()
         return result
 
