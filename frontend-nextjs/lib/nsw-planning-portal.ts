@@ -295,6 +295,83 @@ export interface StrataInfo {
   strataUnit: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// ePlanning MapServer Layer Registry
+// ---------------------------------------------------------------------------
+// All ePlanning layer IDs in one place. When DPE republishes a service and
+// shifts layer IDs, update here — the watchdog (scripts/dcp_watchdog.py)
+// health-checks these IDs weekly and alerts on drift.
+//
+// `geometryType`: 'point' for area layers (centroid query is fine),
+//                 'polygon' for corridor/linear layers (need lot boundary).
+// `expectField`:  field the watchdog checks to verify the layer hasn't moved.
+
+const EPLANNING_BASE = 'https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning';
+
+export const EPLANNING_LAYERS = {
+  // Phase 1: Correctness — exclusion gates
+  lowMidRiseExclusion:    { service: 'Planning_Portal_SEPP',              id: 776, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  complyingExclusion:     { service: 'Planning_Portal_SEPP',              id: 92,  expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  exemptExclusion:        { service: 'Planning_Portal_SEPP',              id: 93,  expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  dualOccProhibition:     { service: 'Planning_Portal_Local_Provisions',  id: 452, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+
+  // Phase 2: New data
+  floodPlanningMap:       { service: 'Planning_Portal_Hazard',            id: 230, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  contributionPlan:       { service: 'Planning_Portal_Development_Control', id: 219, expectField: 'PLAN_NAME', geometryType: 'point' as const },
+  specialInfrastructure:  { service: 'Planning_Portal_Development_Control', id: 218, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  sunAccessProtection:    { service: 'Planning_Portal_Local_Provisions',  id: 572, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  sunPlaneProtection:     { service: 'Planning_Portal_Local_Provisions',  id: 573, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+
+  // Phase 3: Enrichment
+  deferredTOD:            { service: 'Planning_Portal_SEPP',              id: 765, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  townCentres:            { service: 'Planning_Portal_SEPP',              id: 766, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  metroCorridorProtection:{ service: 'Planning_Portal_SEPP',              id: 745, expectField: 'LAY_CLASS', geometryType: 'polygon' as const },
+  shortTermRental:        { service: 'Planning_Portal_SEPP',              id: 160, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+
+  // Phase 4: Environmental
+  landslideRisk:          { service: 'Planning_Portal_Hazard',            id: 232, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  groundwaterVulnerability:{ service: 'Planning_Portal_Protection',       id: 237, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  obstacleLimitationSurface:{ service: 'Planning_Portal_Protection',     id: 239, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+  allowableClearing:      { service: 'Planning_Portal_SEPP',              id: 289, expectField: 'LAY_CLASS', geometryType: 'point' as const },
+} as const;
+
+/**
+ * Build a point query URL for an ePlanning layer.
+ */
+export function ePlanningPointQuery(
+  layerKey: keyof typeof EPLANNING_LAYERS,
+  lon: number,
+  lat: number,
+  outFields = '*',
+): string {
+  const layer = EPLANNING_LAYERS[layerKey];
+  return (
+    `${EPLANNING_BASE}/${layer.service}/MapServer/${layer.id}/query?` +
+    `geometry=${lon},${lat}&geometryType=esriGeometryPoint&` +
+    `spatialRel=esriSpatialRelIntersects&outFields=${outFields}&` +
+    `returnGeometry=false&f=json&inSR=4283`
+  );
+}
+
+/**
+ * Build a polygon query URL for an ePlanning layer (for corridor/linear features).
+ * `rings` should be the lot boundary rings in WGS84 (EPSG:4283).
+ */
+export function ePlanningPolygonQuery(
+  layerKey: keyof typeof EPLANNING_LAYERS,
+  rings: number[][][],
+  outFields = '*',
+): string {
+  const layer = EPLANNING_LAYERS[layerKey];
+  const geometry = JSON.stringify({ rings, spatialReference: { wkid: 4283 } });
+  return (
+    `${EPLANNING_BASE}/${layer.service}/MapServer/${layer.id}/query?` +
+    `geometry=${encodeURIComponent(geometry)}&geometryType=esriGeometryPolygon&` +
+    `spatialRel=esriSpatialRelIntersects&outFields=${outFields}&` +
+    `returnGeometry=false&f=json&inSR=4283`
+  );
+}
+
 export class NSWPlanningPortalService {
  private static BASE_URL = 'https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi';
  private static VALUATION_URL = 'https://maps.six.nsw.gov.au/arcgis/rest/services/public/Valuation/MapServer/5/query';
