@@ -17,6 +17,7 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +33,8 @@ interface DCPSetbackEntry {
 export interface GrannyFlatReportData {
   address: string;
   run_date: string;
+  lat?: number;
+  lng?: number;
   // inputs
   lot_area_m2: number | null;
   main_dwelling_area_m2: number | null;
@@ -48,6 +51,7 @@ export interface GrannyFlatReportData {
   data_sources: string[];
   is_paid?: boolean;
   // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
+  lot_polygon?: { type: string; coordinates: number[][][] } | null;
   tile_b64: string | null;
   logo_b64?: string | null;
   // LGA + DCP secondary dwelling setbacks
@@ -610,13 +614,14 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           <Text style={{ ...s.body, color: GRAY_500, marginBottom: 10 }}>
             10 cm resolution aerial imagery of the subject lot.
           </Text>
-          <Image
-            src={`data:image/png;base64,${data.tile_b64}`}
-            style={{ width: '100%', borderRadius: 4 }}
+          <AerialWithOverlay
+            tile_b64={data.tile_b64}
+            center={[data.lng ?? 0, data.lat ?? 0]}
+            zoom="property"
+            layers={data.lot_polygon ? [
+              { geojson: data.lot_polygon, fill: '#0d9488', fillOpacity: 0.15, stroke: '#0d9488', strokeWidth: 2 },
+            ] : []}
           />
-          <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
-            NSW SIX Maps 10 cm imagery — CC-BY 4.0 NSW Government
-          </Text>
           <View style={s.footer} fixed>
             <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
             <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
