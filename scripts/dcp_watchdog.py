@@ -166,9 +166,70 @@ if unlinked:
     for lga, n in unlinked:
         print(f"  [{lga}] {n} rows — no source_chapter_key")
 
+# ── Check 4: ePlanning MapServer layer ID health check ──────────────────────
+# Verifies that each registered ePlanning layer still exists and returns the
+# expected field. Catches silent DPE republishes that shift layer IDs.
+
+EPLANNING_BASE = "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning"
+
+# Test point: Sydney CBD (-33.8688, 151.2093) — should intersect most state-wide layers.
+# For layers that only cover specific areas, we check field existence, not feature count.
+TEST_POINT = "151.2093,-33.8688"
+
+EPLANNING_LAYERS = [
+    # (label, service, layer_id, expected_field)
+    ("Low/Mid-Rise Housing Exclusion", "Planning_Portal_SEPP", 776, "LAY_CLASS"),
+    ("Complying Local Exclusion", "Planning_Portal_SEPP", 92, "LAY_CLASS"),
+    ("Exempt Local Exclusion", "Planning_Portal_SEPP", 93, "LAY_CLASS"),
+    ("Dual Occupancy Prohibition", "Planning_Portal_Local_Provisions", 452, "LAY_CLASS"),
+    ("Flood Planning Map", "Planning_Portal_Hazard", 230, "LAY_CLASS"),
+    ("Infrastructure Contribution Plan", "Planning_Portal_Development_Control", 219, "PLAN_NAME"),
+    ("Sun Access Protection", "Planning_Portal_Local_Provisions", 572, "LAY_CLASS"),
+    ("Accelerated TOD (existing)", "Planning_Portal_SEPP", 759, "LAY_CLASS"),
+]
+
+eplanning_issues = []
+print(f"\nePLANNING LAYER HEALTH CHECK ({len(EPLANNING_LAYERS)} layers)")
+for label, service, layer_id, expect_field in EPLANNING_LAYERS:
+    url = (
+        f"{EPLANNING_BASE}/{service}/MapServer/{layer_id}"
+        f"?f=json"
+    )
+    try:
+        resp = requests.get(url, timeout=15)
+        if resp.status_code != 200:
+            eplanning_issues.append(f"  {label} ({service}/{layer_id}): HTTP {resp.status_code}")
+            print(f"  FAIL [{label}] HTTP {resp.status_code}")
+            continue
+        data = resp.json()
+        if "error" in data:
+            eplanning_issues.append(f"  {label} ({service}/{layer_id}): {data['error'].get('message', 'unknown error')}")
+            print(f"  FAIL [{label}] {data['error'].get('message', 'unknown')}")
+            continue
+        # Verify expected field exists in the layer schema
+        field_names = [f["name"] for f in data.get("fields", [])]
+        if expect_field not in field_names:
+            eplanning_issues.append(
+                f"  {label} ({service}/{layer_id}): expected field '{expect_field}' not found. "
+                f"Fields: {', '.join(field_names[:5])}"
+            )
+            print(f"  DRIFT [{label}] field '{expect_field}' missing — layer ID may have shifted")
+        else:
+            print(f"  OK [{label}] {service}/{layer_id}")
+    except Exception as exc:
+        eplanning_issues.append(f"  {label} ({service}/{layer_id}): {exc}")
+        print(f"  ERROR [{label}] {exc}")
+
+if eplanning_issues:
+    issues.append(
+        f"{len(eplanning_issues)} ePlanning layer(s) failed health check:\n"
+        + "\n".join(eplanning_issues)
+    )
+
+# ── Final report ───────────────────────────────────────────────────────────
 if issues:
     send_telegram("DCP Watchdog alert\n\n" + "\n\n".join(issues))
     sys.exit(1)
 else:
-    print("Watchdog: all clear.")
+    print("\nWatchdog: all clear.")
     sys.exit(0)

@@ -152,12 +152,22 @@ def fetch_as_at_playwright(url: str) -> str | None:
     )
     page = ctx.new_page()
     page.goto(url, timeout=45000)
-    page.wait_for_selector("pre", timeout=45000)
+    # Wait for actual AustLII content, not a generic HTML tag.
+    # "As at" appears in the legislation header — if Cloudflare blocks us
+    # or AustLII redesigns, this selector will timeout instead of matching junk.
+    page.wait_for_selector("text=As at", timeout=45000)
     html = page.content()
     ctx.close()
 
     m = AS_AT_PATTERN.search(html)
-    return m.group(1) if m else None
+    if not m:
+        # Canary: Playwright loaded the page but the pattern didn't match.
+        # This means AustLII changed their format — alert, don't silently return None.
+        raise RuntimeError(
+            f"Playwright loaded page but 'As at' pattern not found — "
+            f"AustLII may have changed format: {url}"
+        )
+    return m.group(1)
 
 
 def fetch_as_at(url: str) -> str | None:
@@ -352,6 +362,7 @@ def main():
                 sys.exit(1)
             # Auto mode — fall back to AustLII
             print(f"  PCO unavailable ({exc}), falling back to AustLII...")
+            print(f"  [REMINDER] Chase PCO IP whitelisting: belinda.brown@pco.nsw.gov.au, IP 149.28.176.81")
             source_used = "austlii"
 
     if source_used == "austlii":
