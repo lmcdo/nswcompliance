@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
 
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 

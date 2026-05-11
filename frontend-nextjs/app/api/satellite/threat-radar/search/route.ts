@@ -9,9 +9,10 @@ import {
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
 
-const WINDOW_DAYS = 90;
-// Bounding box pre-filter: ±0.005° ≈ 500m at Sydney latitudes
-const BBOX_DELTA = 0.005;
+const WINDOW_DAYS = 180;
+// Bounding box pre-filter: ±0.006° ≈ 560m lat / 500m lng at Sydney latitudes
+// Slightly larger than RADIUS_M to avoid clipping edge cases before haversine post-filter
+const BBOX_DELTA = 0.006;
 const RADIUS_M = 500;
 
 // DA Supabase — same project as map-viewer-restructured (nsw-planning-etl populates it)
