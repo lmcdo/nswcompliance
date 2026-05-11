@@ -124,29 +124,75 @@ def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
 # AustLII fallback source
 # ---------------------------------------------------------------------------
 
+_PLAYWRIGHT_BROWSER = None
+
+
+def _get_playwright_browser():
+    """Lazy-init a shared Playwright browser for the process."""
+    global _PLAYWRIGHT_BROWSER
+    if _PLAYWRIGHT_BROWSER is None:
+        from playwright.sync_api import sync_playwright
+        pw = sync_playwright().start()
+        _PLAYWRIGHT_BROWSER = pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+    return _PLAYWRIGHT_BROWSER
+
+
+def fetch_as_at_playwright(url: str) -> str | None:
+    """Fetch an AustLII page via Playwright to solve Cloudflare challenges."""
+    browser = _get_playwright_browser()
+    ctx = browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/125.0.0.0 Safari/537.36"
+        ),
+    )
+    page = ctx.new_page()
+    page.goto(url, timeout=45000)
+    page.wait_for_selector("pre", timeout=45000)
+    html = page.content()
+    ctx.close()
+
+    m = AS_AT_PATTERN.search(html)
+    return m.group(1) if m else None
+
+
 def fetch_as_at(url: str) -> str | None:
-    """Fetch an AustLII page and return the "As at" date string."""
+    """Fetch an AustLII page and return the "As at" date string.
+
+    Tries plain HTTP first. On 403 (Cloudflare challenge), falls back
+    to Playwright with a headless browser.
+    """
     resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
     if resp.status_code == 429:
         time.sleep(10)
         resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
+    if resp.status_code == 403:
+        print(f"    HTTP 403 — using Playwright to solve Cloudflare challenge...")
+        return fetch_as_at_playwright(url)
     if resp.status_code != 200:
         raise RuntimeError(f"AustLII HTTP {resp.status_code}: {url}")
     m = AS_AT_PATTERN.search(resp.text)
     return m.group(1) if m else None
 
 
-def check_via_austlii(instruments: list[dict]) -> dict[str, str | None]:
+def check_via_austlii(instruments: list[dict]) -> tuple[dict[str, str | None], list[str]]:
     """Check instruments via AustLII consolidated copies.
 
-    Returns dict of {instrument_key: as_at_date_or_None}.
+    Returns (version_map, fetch_errors) where fetch_errors is a list of
+    error strings for instruments that could not be checked at all.
     """
     results: dict[str, str | None] = {}
+    fetch_errors: list[str] = []
 
     for inst in instruments:
         key = inst["instrument_key"]
         austlii_url = inst.get("austlii_url")
         if not austlii_url:
+            print(f"    {key} — no AustLII URL mapped, skipping")
             results[key] = None
             continue
 
@@ -155,11 +201,12 @@ def check_via_austlii(instruments: list[dict]) -> dict[str, str | None]:
             results[key] = as_at
             print(f"    AustLII: {key} → {as_at or '(not found)'}")
         except Exception as exc:
-            print(f"    AustLII error [{key}]: {exc}")
+            print(f"    [ERROR] {key}: {exc}")
             results[key] = None
+            fetch_errors.append(f"{key}: {exc}")
         time.sleep(2)
 
-    return results
+    return results, fetch_errors
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +335,7 @@ def main():
     # Determine source and fetch version data
     source_used = args.source
     version_map: dict[str, str | None] = {}
+    source_fetch_errors: list[str] = []
 
     if source_used in ("auto", "pco"):
         try:
@@ -308,7 +356,7 @@ def main():
 
     if source_used == "austlii":
         print(f"\n  Source: AustLII (classic.austlii.edu.au) — ~7-day lag")
-        version_map = check_via_austlii(instruments)
+        version_map, source_fetch_errors = check_via_austlii(instruments)
 
     # Process results
     print(f"\n{'='*60}")
@@ -345,20 +393,33 @@ def main():
     errors = [r for r in results if r.error]
     checked = [r for r in results if not r.error]
 
+    # Count instruments with AustLII URLs that failed at the fetch level
+    total_fetch_errors = len(source_fetch_errors)
+
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"  Source   : {source_used}")
-    print(f"  Checked  : {len(checked)}")
-    print(f"  Changed  : {len(changed)}")
-    print(f"  Errors   : {len(errors)}")
+    print(f"  Source       : {source_used}")
+    print(f"  Checked      : {len(checked)}")
+    print(f"  Changed      : {len(changed)}")
+    print(f"  DB errors    : {len(errors)}")
+    print(f"  Fetch errors : {total_fetch_errors}")
+
+    if source_fetch_errors:
+        for err in source_fetch_errors:
+            print(f"  FETCH ERROR: {err}")
 
     if errors:
         for r in errors:
             print(f"  ERROR [{r.instrument_key}]: {r.error}")
+
+    all_errors = errors or source_fetch_errors
+    if all_errors:
+        error_lines = [f"  {r.instrument_key}: {r.error}" for r in errors]
+        error_lines += [f"  {e}" for e in source_fetch_errors]
         send_telegram(
             f"Legislation Monitor ERROR ({source_used})\n"
-            + "\n".join(f"  {r.instrument_key}: {r.error}" for r in errors)
+            + "\n".join(error_lines)
         )
 
     if changed:
@@ -380,7 +441,9 @@ def main():
         send_telegram(msg)
         sys.exit(2)
 
-    if errors and not changed:
+    if all_errors and not changed:
+        # Don't report success when instruments couldn't be checked
+        print(f"\n  ERROR: {total_fetch_errors} instrument(s) could not be verified.")
         sys.exit(1)
 
     send_telegram(

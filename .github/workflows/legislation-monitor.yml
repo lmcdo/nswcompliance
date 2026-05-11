@@ -2,9 +2,7 @@ name: Legislation Monitor
 
 on:
   schedule:
-    # Every Monday 08:00 UTC (offset from DCP monitor at 07:00)
-    # Polls AustLII consolidated copies — ~7-day lag vs legislation.nsw.gov.au
-    # Replace with legislation.nsw.gov.au XML export once PCO API access granted
+    # Every Monday 08:00 UTC (18:00 AEST)
     - cron: "0 8 * * 1"
   workflow_dispatch:
 
@@ -18,12 +16,15 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "pip"
           cache-dependency-path: scripts/requirements-monitor.txt
 
       - name: Install dependencies
-        run: pip install -r scripts/requirements-monitor.txt
+        run: |
+          pip install -r scripts/requirements-monitor.txt
+          pip install playwright
+          playwright install chromium --with-deps
 
       - name: Run legislation monitor
         env:
