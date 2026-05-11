@@ -269,6 +269,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
     (data.confirmed_structure_count ?? 0) >= 3 &&
     data.warnings?.some((w) => w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'));
   const matrix = pass ? yieldMatrix(data.max_floor_area_m2) : null;
+  const totalPages = 4 + (data.tile_b64 ? 1 : 0);
   const formattedDate = (() => {
     try {
       return new Date(data.run_date).toLocaleDateString('en-AU', {
@@ -870,8 +871,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
       {/* T4: About this report + tools list */}
       <AboutPage
         logo_b64={data.logo_b64}
-        pageNum={99}
-        total={99}
+        pageNum={totalPages}
+        total={totalPages}
         reportName="Granny Flat Eligibility Report"
       />
     </Document>
