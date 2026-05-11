@@ -209,6 +209,7 @@ export async function POST(req: NextRequest) {
     // meta
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
+    lot_polygon: (raw.lot_polygon as SolarYieldReportData['lot_polygon']) ?? null,
     tile_b64,
     logo_b64,
     qr_b64,

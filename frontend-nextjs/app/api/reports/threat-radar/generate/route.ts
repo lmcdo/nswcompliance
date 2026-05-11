@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     applications,
     window_days: typeof raw.window_days === 'number' ? raw.window_days : 90,
     radius_m,
+    lot_polygon: (raw.lot_polygon as ThreatRadarReportData['lot_polygon']) ?? null,
     is_paid,
     tile_b64,
     logo_b64,

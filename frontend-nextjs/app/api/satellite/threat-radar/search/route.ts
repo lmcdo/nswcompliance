@@ -8,6 +8,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
+import { esriRingsToGeoJSON } from '@/lib/geo-utils';
 
 const WINDOW_DAYS = 180;
 // Bounding box pre-filter: ±0.006° ≈ 560m lat / 500m lng at Sydney latitudes
@@ -315,6 +316,10 @@ export async function POST(request: NextRequest) {
     lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
   }
 
+  const lot_polygon = propData.lotGeometry?.rings?.length
+    ? esriRingsToGeoJSON(propData.lotGeometry.rings)
+    : null;
+
   if (!lat || !lng) {
     return NextResponse.json(
       { error: 'Could not determine coordinates for this address' },
@@ -367,5 +372,6 @@ export async function POST(request: NextRequest) {
     radius_m: RADIUS_M,
     report_token,
     lga_stats: lgaStats,
+    lot_polygon,
   });
 }

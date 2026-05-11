@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
     is_paid,
+    lot_polygon: (raw.lot_polygon as FloodReportData['lot_polygon']) ?? null,
     tile_b64,
     logo_b64,
     qr_b64,
