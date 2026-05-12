@@ -132,7 +132,8 @@ export async function POST(req: NextRequest) {
     if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
       return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
     }
-    is_paid = false;
+    const isAdmin = process.env.ADMIN_SECRET && req.headers.get('x-admin-key') === process.env.ADMIN_SECRET;
+    is_paid = !!(isAdmin && body.is_paid === true);
   }
 
   const lat = typeof raw.lat === 'number' ? raw.lat : null;

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       wayback_ssim: (raw.wayback_ssim as Record<string, number>) ?? {},
       data_quality_note: String(raw.data_quality_note ?? ''),
       logo_b64: getLogoBase64(),
-      is_paid: false, // Direct data path — defence-in-depth, no paid content
+      is_paid: !!(process.env.ADMIN_SECRET && req.headers.get('x-admin-key') === process.env.ADMIN_SECRET && (body as Record<string, unknown>).is_paid === true),
     };
     const slug = String(data.address).slice(0, 30).replace(/[^a-z0-9]/gi, '-').toLowerCase();
     filename = `pre-da-history-${slug}.pdf`;
