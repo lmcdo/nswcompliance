@@ -10,6 +10,7 @@ import re
 import sys
 import os
 import argparse
+from datetime import datetime, timezone
 import requests
 from bs4 import BeautifulSoup
 
@@ -209,13 +210,16 @@ def main():
                 cur.execute(upsert_sql, (zone_code, zone_name, args.lga, slug, 'prohibited'))
                 inserted += 1
 
-    # Update zone coverage
+    # Update zone coverage with provenance
+    now = datetime.now(timezone.utc)
+    source_url = f"https://legislation.nsw.gov.au/view/whole/html/inforce/current/{args.epi}"
     for zone_code in zones:
         cur.execute("""
-            INSERT INTO lep_zone_coverage (zone, lga, is_complete)
-            VALUES (%s, %s, true)
-            ON CONFLICT (zone, lga) DO UPDATE SET is_complete = true
-        """, (zone_code, args.lga))
+            INSERT INTO lep_zone_coverage (zone, lga, is_complete, scraped_at, source_url)
+            VALUES (%s, %s, true, %s, %s)
+            ON CONFLICT (zone, lga) DO UPDATE SET
+                is_complete = true, scraped_at = EXCLUDED.scraped_at, source_url = EXCLUDED.source_url
+        """, (zone_code, args.lga, now, source_url))
 
     conn.commit()
     print(f"  Inserted {inserted} rows, updated {len(zones)} zone coverage entries")

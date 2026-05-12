@@ -43,6 +43,8 @@ export function LandUseZoningCard({
   const [permitted, setPermitted] = useState<string[]>([]);
   const [prohibited, setProhibited] = useState<string[]>([]);
   const [covered, setCovered] = useState(false);
+  const [scrapedAt, setScrapedAt] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
   const [permittedExpanded, setPermittedExpanded] = useState(false);
   const [prohibitedExpanded, setProhibitedExpanded] = useState(false);
@@ -53,9 +55,11 @@ export function LandUseZoningCard({
     setLoading(true);
     fetch(`/api/lep/permissibility?zone=${encodeURIComponent(zone)}&lga=${encodeURIComponent(lga)}`)
       .then(r => r.json())
-      .then((data: { covered: boolean; entries: PermissibilityEntry[] }) => {
+      .then((data: { covered: boolean; scraped_at?: string; source_url?: string; entries: PermissibilityEntry[] }) => {
         if (data.covered && data.entries.length > 0) {
           setCovered(true);
+          setScrapedAt(data.scraped_at ?? null);
+          setSourceUrl(data.source_url ?? null);
           const ex: string[] = [];
           const perm: string[] = [];
           const proh: string[] = [];
@@ -247,11 +251,31 @@ export function LandUseZoningCard({
           </div>
         )}
 
-        {/* Info note */}
+        {/* Provenance */}
         {covered && (
           <div className="mt-3 bg-amber-50 rounded p-2 border border-amber-200">
             <p className="text-xs text-amber-800">
-              Land use permissibility sourced from the LEP Land Use Table. Some uses may require additional approvals — check the full LEP for conditions.
+              Sourced from {epiName || 'LEP'} Land Use Table via{' '}
+              {sourceUrl ? (
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">
+                  legislation.nsw.gov.au
+                </a>
+              ) : (
+                'legislation.nsw.gov.au'
+              )}
+              {scrapedAt && (() => {
+                const d = new Date(scrapedAt);
+                const daysSince = Math.floor((Date.now() - d.getTime()) / 86400000);
+                return (
+                  <>
+                    {' · '}
+                    <span className={daysSince > 90 ? 'font-semibold text-red-700' : ''}>
+                      {d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                    {daysSince > 90 && ' — data may be stale, re-scrape recommended'}
+                  </>
+                );
+              })()}
             </p>
           </div>
         )}
