@@ -33,7 +33,13 @@ export function LandUseZoningCard({
   // The NSW standard instrument LEP format is consistent across all councils:
   //   "Permitted without consent: A, B, C  Permitted with consent: D, E, F  Prohibited: G, H"
   // Falls back to legislation link only if zoneFull is not available.
-  function parseZoneUses(text: string): { permitted: string[]; prohibited: string[]; fromLEP: true } {
+  function parseZoneUses(text: string): { permitted: string[]; prohibited: string[]; fromLEP: boolean } {
+    // Only parse if the text actually contains land use categories
+    const hasUseCategories = /Permitted\s+(without|with)\s+consent/i.test(text) || /Prohibited[:\s]/i.test(text);
+    if (!hasUseCategories) {
+      return { permitted: [], prohibited: [], fromLEP: false };
+    }
+
     const splitItems = (raw: string) =>
       raw.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 0 && s !== 'Nil');
 
@@ -50,7 +56,7 @@ export function LandUseZoningCard({
 
   const { permitted, prohibited, fromLEP } = zoneFull
     ? parseZoneUses(zoneFull)
-    : { permitted: [] as string[], prohibited: [] as string[], fromLEP: false as const };
+    : { permitted: [] as string[], prohibited: [] as string[], fromLEP: false };
 
   const [permittedExpanded, setPermittedExpanded] = useState(false);
   const [prohibitedExpanded, setProhibitedExpanded] = useState(false);
