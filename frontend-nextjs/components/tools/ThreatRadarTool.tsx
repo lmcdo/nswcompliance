@@ -5,6 +5,7 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
 interface Application {
   PlanningPortalApplicationNumber?: string;
@@ -312,6 +313,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
               product="threat-radar"
               copy="Email me this result →"
             />
+            <ToolCrossSell currentTool="threat-radar" address={address} />
           </>
         )}
 
@@ -889,6 +891,7 @@ function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; counc
         </div>
         <span className="shrink-0 text-indigo-600 text-base">→</span>
       </a>
+
     </div>
   );
 }
