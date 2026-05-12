@@ -30,6 +30,10 @@ const COUNCIL_TO_LGA: Record<string, string[]> = {
 const LGA_NAME_TO_SLUG: Record<string, string> = {
   city_of_parramatta: 'parramatta',
   sydney: 'city_of_sydney',
+  the_hills_shire: 'the_hills',
+  city_of_canada_bay: 'canada_bay',
+  city_of_ryde: 'ryde',
+  strathfield_municipal: 'strathfield',
 };
 
 function getLgaSlugs(council: string): string[] {

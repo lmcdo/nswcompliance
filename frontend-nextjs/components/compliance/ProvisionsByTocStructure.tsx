@@ -492,6 +492,13 @@ export function ProvisionsByTocStructure({
     penrith: 'Penrith DCP 2014',
     randwick: 'Randwick DCP 2013',
     sutherland_shire: 'Sutherland Shire DCP 2015',
+    ryde: 'Ryde DCP 2014',
+    strathfield: 'Strathfield DCP 2005',
+    the_hills: 'The Hills DCP 2012',
+    camden: 'Camden DCP 2019',
+    canada_bay: 'Canada Bay DCP',
+    burwood: 'Burwood DCP',
+    fairfield: 'Fairfield City Wide DCP 2024',
   };
 
   // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)

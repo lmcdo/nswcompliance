@@ -45,6 +45,10 @@ const LGA_NAME_TO_SLUG: Record<string, string> = {
   'city of parramatta': 'parramatta',
   'sydney': 'city_of_sydney',
   'city of sydney': 'city_of_sydney',
+  'the hills shire': 'the_hills',
+  'city of canada bay': 'canada_bay',
+  'city of ryde': 'ryde',
+  'strathfield municipal': 'strathfield',
 };
 
 function normalizeLgaSlug(name: string): string {
