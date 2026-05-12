@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -111,21 +111,48 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
-  // Listen for hero address input — submit directly after state update flushes
+  // Listen for hero address input — run the check directly with the address
+  // from the event (don't rely on React state flushing before submit)
+  const runCheck = useCallback(async (addr: string) => {
+    if (!addr.trim()) return;
+    setState('running');
+    setResult(null);
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/satellite/flood', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Flood analysis failed');
+      setResult(json);
+      setState('complete');
+      posthog.capture('tool_run', {
+        tool: 'flood-truth',
+        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+        embed_ref: embedRef ?? null,
+        lga_slug: lgaSlug ?? null,
+        result: json.outputs?.flood_signal ?? null,
+      });
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
+      setState('error');
+    }
+  }, [embedRef, lgaSlug]);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const addr = (e as CustomEvent).detail?.address;
       if (addr) {
         setAddress(addr);
-        // Allow React to flush the state update before submitting
-        setTimeout(() => formRef.current?.requestSubmit(), 0);
+        runCheck(addr);
       }
     };
     window.addEventListener('landing-search', handler);
     return () => window.removeEventListener('landing-search', handler);
-  }, []);
+  }, [runCheck]);
 
   // Read URL params on mount: ?address= (auto-run) and ?payment=success (download CTA)
   useEffect(() => {
@@ -135,7 +162,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     const addrParam = params.get('address')?.trim();
     if (addrParam && !params.get('payment')) {
       setAddress(addrParam);
-      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      runCheck(addrParam);
       window.history.replaceState({}, '', window.location.pathname);
     }
 
@@ -144,7 +171,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       if (rid) setPaidReportId(rid);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [runCheck]);
 
   const handleUnlock = async (reportId: string, addr: string) => {
     setUnlocking(true);
@@ -164,39 +191,14 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim()) return;
-    setState('running');
-    setResult(null);
-    setErrorMsg('');
-
-    try {
-      const res = await fetch('/api/satellite/flood', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Flood analysis failed');
-      setResult(json);
-      setState('complete');
-      posthog.capture('tool_run', {
-        tool: 'flood-truth',
-        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
-        embed_ref: embedRef ?? null,
-        lga_slug: lgaSlug ?? null,
-        result: json.outputs?.flood_signal ?? null,
-      });
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
-      setState('error');
-    }
+    runCheck(address);
   };
 
   return (
     <div className="mb-8">
-      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
