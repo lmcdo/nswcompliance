@@ -101,6 +101,7 @@ cur.execute("""
     FROM dcp_setback_controls
     WHERE is_current = TRUE
       AND source_chapter_key IS NULL
+      AND section_ref NOT IN ('LEP', 'ADG', 'various')
     GROUP BY lga
     ORDER BY lga
 """)
