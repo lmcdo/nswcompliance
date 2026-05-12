@@ -4,7 +4,10 @@ import { query } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 function normalizeLga(raw: string): string {
-  return raw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  // Handle hyphenated names like "Canterbury-Bankstown", "Ku-Ring-Gai"
+  return raw.split(' ').map(word =>
+    word.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('-')
+  ).join(' ');
 }
 
 /**
@@ -31,12 +34,12 @@ export async function GET(request: NextRequest) {
   try {
     // Safety gate: only return data when coverage is confirmed complete
     const coverageResult = await query(
-      `SELECT is_complete FROM lep_zone_coverage WHERE zone = $1 AND lga = $2`,
+      `SELECT is_complete, scraped_at, source_url FROM lep_zone_coverage WHERE zone = $1 AND lga = $2`,
       [zone, lga]
     );
 
-    const covered =
-      coverageResult.rows.length > 0 && coverageResult.rows[0].is_complete === true;
+    const row = coverageResult.rows[0];
+    const covered = row?.is_complete === true;
 
     if (!covered) {
       return NextResponse.json({ covered: false, zone, lga, entries: [] });
@@ -54,6 +57,8 @@ export async function GET(request: NextRequest) {
       covered: true,
       zone,
       lga,
+      scraped_at: row.scraped_at,
+      source_url: row.source_url,
       entries: result.rows,
     });
   } catch (error) {

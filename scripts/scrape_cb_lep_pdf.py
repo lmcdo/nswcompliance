@@ -12,6 +12,7 @@ import re
 import os
 import sys
 import argparse
+from datetime import datetime, timezone
 import fitz  # PyMuPDF
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -163,12 +164,15 @@ def main():
                 cur.execute(upsert_sql, (zone_code, zone_name, LGA, slug, 'prohibited'))
                 inserted += 1
 
+    now = datetime.now(timezone.utc)
+    source_url = "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2023-0252"
     for zone_code in zones:
         cur.execute("""
-            INSERT INTO lep_zone_coverage (zone, lga, is_complete)
-            VALUES (%s, %s, true)
-            ON CONFLICT (zone, lga) DO UPDATE SET is_complete = true
-        """, (zone_code, LGA))
+            INSERT INTO lep_zone_coverage (zone, lga, is_complete, scraped_at, source_url)
+            VALUES (%s, %s, true, %s, %s)
+            ON CONFLICT (zone, lga) DO UPDATE SET
+                is_complete = true, scraped_at = EXCLUDED.scraped_at, source_url = EXCLUDED.source_url
+        """, (zone_code, LGA, now, source_url))
 
     conn.commit()
     print(f"  Inserted {inserted} rows, updated {len(zones)} zone coverage entries")
