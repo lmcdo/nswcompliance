@@ -73,7 +73,7 @@ export function LepControls({
         <LandUseZoningCard
           zone={constraints.zone}
           zoneDescription={constraints.zoneDescription ?? undefined}
-          zoneFull={zoneResult?.['Land Use']}
+          lga={constraints.lga ?? undefined}
           legislationUrl={zoneResult?.['legislationUrl']}
           epiName={zoneResult?.['EPI Name']}
           amendment={zoneResult?.['Amendment']}
@@ -585,6 +585,7 @@ export function LepControls({
           heritageSignificance={constraints.heritageSignificance}
           heritageLegislationUrl={constraints.heritageLegislationUrl}
           formerCouncil={formerCouncil}
+          lga={constraints.lga ?? undefined}
         />
       ) : (
         <NotApplicableCard

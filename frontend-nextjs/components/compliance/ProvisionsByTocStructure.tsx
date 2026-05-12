@@ -34,6 +34,7 @@ import { deriveQuestionnaireTopics, deriveQuestionnaireDevTypeExclusions, type W
 import { autoPopulateWorksScopeFromLep, type LepPermissibilityEntry } from '@/lib/see/lepScope';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
+import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
 import type { SetbackReference } from '@/app/api/setbacks/reference/route';
@@ -474,6 +475,30 @@ export function ProvisionsByTocStructure({
     leichhardt: 'Leichhardt DCP 2013',
     ashfield: 'Ashfield Comprehensive DCP 2016',
     marrickville: 'Marrickville DCP 2011',
+    waverley: 'Waverley DCP 2012',
+    woollahra: 'Woollahra DCP 2015',
+    ku_ring_gai: 'Ku-ring-gai DCP',
+    city_of_sydney: 'City of Sydney DCP 2012',
+    bayside: 'Bayside DCP 2023',
+    blacktown: 'Blacktown DCP 2015',
+    campbelltown: 'Campbelltown DCP 2018',
+    canterbury_bankstown: 'Canterbury Bankstown DCP 2023',
+    cumberland: 'Cumberland DCP 2021',
+    georges_river: 'Georges River DCP 2022',
+    hornsby: 'Hornsby DCP 2013',
+    liverpool: 'Liverpool DCP 2008',
+    northern_beaches: 'Northern Beaches DCP 2022',
+    parramatta: 'Parramatta DCP 2023',
+    penrith: 'Penrith DCP 2014',
+    randwick: 'Randwick DCP 2013',
+    sutherland_shire: 'Sutherland Shire DCP 2015',
+    ryde: 'Ryde DCP 2014',
+    strathfield: 'Strathfield DCP 2005',
+    the_hills: 'The Hills DCP 2012',
+    camden: 'Camden DCP 2019',
+    canada_bay: 'Canada Bay DCP',
+    burwood: 'Burwood DCP',
+    fairfield: 'Fairfield City Wide DCP 2024',
   };
 
   // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)
@@ -1487,12 +1512,16 @@ export function ProvisionsByTocStructure({
   }
 
   // No DCP data — council processed but returned empty. Show register-interest UI.
+  // No DCP provision text — show structured controls if available, otherwise interest form.
   if (!data?.data?.by_toc || Object.keys(tocStructure).length === 0) {
     return (
-      <DCPInterestForm
-        councilName={lga || formerCouncil || 'your council'}
-        address={address || ''}
-      />
+      <div className="space-y-4">
+        <DcpStructuredControls formerCouncil={formerCouncil} />
+        <DCPInterestForm
+          councilName={lga || formerCouncil || 'your council'}
+          address={address || ''}
+        />
+      </div>
     );
   }
 
@@ -1877,6 +1906,9 @@ export function ProvisionsByTocStructure({
           </p>
         </div>
       )}
+
+      {/* Structured DCP controls — extracted numeric values (setbacks, parking, landscaping etc.) */}
+      <DcpStructuredControls formerCouncil={formerCouncil} />
 
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 

@@ -468,6 +468,10 @@ scripts/
 !scripts/insert_bayside_landscaping.py
 !scripts/insert_liverpool_landscaping.py
 !scripts/insert_randwick_landscaping.py
+!scripts/scrape_lep_land_use.py
+!scripts/batch_lep_scrape.py
+!scripts/scrape_cb_lep_pdf.py
+!scripts/check_zone_coverage.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
@@ -520,3 +524,4 @@ data/bushfire/
 # Leigh presentation deck (binary)
 leigh-verify.pdf
 data/dcps/
+data/lep-html/
