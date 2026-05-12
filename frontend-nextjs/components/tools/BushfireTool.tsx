@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { BushfireResultCard, type BushfireResult } from '@/components/tools/BushfireResultCard';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -13,44 +13,9 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<BushfireResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
-  const pendingAddress = useRef<string | null>(null);
 
-  // Listen for hero address input
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const addr = (e as CustomEvent).detail?.address;
-      if (addr) {
-        pendingAddress.current = addr;
-        setAddress(addr);
-      }
-    };
-    window.addEventListener('landing-search', handler);
-    return () => window.removeEventListener('landing-search', handler);
-  }, []);
-
-  // Read ?address= from URL on mount (e.g. from property profile page)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const addrParam = params.get('address')?.trim();
-    if (addrParam) {
-      pendingAddress.current = addrParam;
-      setAddress(addrParam);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  // Submit once address state has committed from pending
-  useEffect(() => {
-    if (pendingAddress.current && address === pendingAddress.current) {
-      pendingAddress.current = null;
-      formRef.current?.requestSubmit();
-    }
-  }, [address]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address.trim()) return;
+  const runCheck = useCallback(async (addr: string) => {
+    if (!addr.trim()) return;
     setState('running');
     setResult(null);
     setErrorMsg('');
@@ -59,7 +24,7 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
       const res = await fetch('/api/satellite/bushfire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address: addr }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Bushfire check failed');
@@ -76,11 +41,38 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
       setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
       setState('error');
     }
+  }, [embedRef, lgaSlug]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        runCheck(addr);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, [runCheck]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      runCheck(addrParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [runCheck]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runCheck(address);
   };
 
   return (
     <div>
-      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}

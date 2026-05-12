@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
@@ -158,42 +158,15 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState('');
   const [subscribeError, setSubscribeError] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
 
-  // Listen for hero address input — submit directly after state update flushes
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const addr = (e as CustomEvent).detail?.address;
-      if (addr) {
-        setAddress(addr);
-        setTimeout(() => formRef.current?.requestSubmit(), 0);
-      }
-    };
-    window.addEventListener('landing-search', handler);
-    return () => window.removeEventListener('landing-search', handler);
-  }, []);
-
-  // Read ?address= from URL on mount (e.g. from property profile page)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const addrParam = params.get('address')?.trim();
-    if (addrParam) {
-      setAddress(addrParam);
-      setTimeout(() => formRef.current?.requestSubmit(), 0);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address.trim()) return;
-
+  const runCheck = useCallback(async (addr: string) => {
+    if (!addr.trim()) return;
     setSearchState('searching');
     setSearchResult(null);
     setSearchError('');
 
     posthog?.capture('threat_radar_search', {
-      address,
+      address: addr,
       lga_slug: lgaSlug,
       source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
       embed_ref: embedRef ?? null,
@@ -203,14 +176,14 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
       const res = await fetch('/api/satellite/threat-radar/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: address.trim() }),
+        body: JSON.stringify({ address: addr.trim() }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Search failed');
       setSearchResult(json);
       setSearchState('done');
       posthog?.capture('threat_radar_search_complete', {
-        address,
+        address: addr,
         lga_slug: lgaSlug,
         application_count: json.applications?.length ?? 0,
         council_name: json.council_name,
@@ -219,8 +192,35 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setSearchError(msg);
       setSearchState('error');
-      posthog?.capture('threat_radar_search_error', { address, lga_slug: lgaSlug, error: msg });
+      posthog?.capture('threat_radar_search_error', { address: addr, lga_slug: lgaSlug, error: msg });
     }
+  }, [embedRef, lgaSlug]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        runCheck(addr);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, [runCheck]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      runCheck(addrParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [runCheck]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    runCheck(address);
   };
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -262,7 +262,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
     <div>
       <div className="space-y-6">
         {/* Address + search */}
-        <form ref={formRef} id="tool-input" onSubmit={handleSearch} className="space-y-3">
+        <form id="tool-input" onSubmit={handleSearch} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
             <AddressAutocomplete

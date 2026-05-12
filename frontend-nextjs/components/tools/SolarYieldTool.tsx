@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -116,29 +116,65 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
 
-  // Listen for hero address input — submit directly after state update flushes
+  const runCheck = useCallback(async (addr: string) => {
+    if (!addr.trim()) return;
+    setInputAddress(addr.trim());
+    setState('running');
+    setReport(null);
+    setErrorMsg('');
+    setIneligible(null);
+
+    try {
+      const res = await fetch('/api/satellite/solar-yield', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        if (json.ineligible) {
+          setIneligible({ error: json.error, evidence: json.evidence, evidence_label: json.evidence_label });
+          setState('ineligible');
+          return;
+        }
+        throw new Error(json.error || 'Failed to run report');
+      }
+      setReport(json.data);
+      setState('complete');
+      posthog.capture('tool_run', {
+        tool: 'solar-yield',
+        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+        embed_ref: embedRef ?? null,
+        lga_slug: lgaSlug ?? null,
+        result: json.data?.outputs?.coverage_available ? 'coverage_available' : 'no_coverage',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setErrorMsg(msg);
+      setState('error');
+    }
+  }, [embedRef, lgaSlug]);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const addr = (e as CustomEvent).detail?.address;
       if (addr) {
         setAddress(addr);
-        setTimeout(() => formRef.current?.requestSubmit(), 0);
+        runCheck(addr);
       }
     };
     window.addEventListener('landing-search', handler);
     return () => window.removeEventListener('landing-search', handler);
-  }, []);
+  }, [runCheck]);
 
-  // Read URL params on mount: ?address= (auto-run) and ?payment=success (download CTA)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
     const addrParam = params.get('address')?.trim();
     if (addrParam && !params.get('payment')) {
       setAddress(addrParam);
-      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      runCheck(addrParam);
       window.history.replaceState({}, '', window.location.pathname);
     }
 
@@ -147,7 +183,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
       if (rid) setPaidReportId(rid);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [runCheck]);
 
   const handleUnlock = async () => {
     if (!report?.report_id || !report?.address) return;
@@ -168,53 +204,14 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim()) return;
-
-    setInputAddress(address.trim());
-    setState('running');
-    setReport(null);
-    setErrorMsg('');
-    setIneligible(null);
-
-    try {
-      const res = await fetch('/api/satellite/solar-yield', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        if (json.ineligible) {
-          setIneligible({ error: json.error, evidence: json.evidence, evidence_label: json.evidence_label });
-          setState('ineligible');
-          return;
-        }
-        throw new Error(json.error || 'Failed to run report');
-      }
-
-      setReport(json.data);
-      setState('complete');
-      posthog.capture('tool_run', {
-        tool: 'solar-yield',
-        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
-        embed_ref: embedRef ?? null,
-        lga_slug: lgaSlug ?? null,
-        result: json.data?.outputs?.coverage_available ? 'coverage_available' : 'no_coverage',
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setErrorMsg(msg);
-      setState('error');
-    }
+    runCheck(address);
   };
 
   return (
     <div className="mb-8">
-      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
+      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
