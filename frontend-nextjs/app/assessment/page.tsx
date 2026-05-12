@@ -40,6 +40,19 @@ const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
   ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
   : null;
 
+// LGA display names that differ from their slug form
+const LGA_NAME_TO_SLUG: Record<string, string> = {
+  'city of parramatta': 'parramatta',
+  'sydney': 'city_of_sydney',
+  'city of sydney': 'city_of_sydney',
+};
+
+function normalizeLgaSlug(name: string): string {
+  const lower = name.toLowerCase().trim();
+  if (LGA_NAME_TO_SLUG[lower]) return LGA_NAME_TO_SLUG[lower];
+  return lower.replace(/[-\s]+/g, '_').replace(/[^a-z0-9_]/g, '');
+}
+
 function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string | undefined): boolean {
   if (!DCP_ENABLED) return false;
   if (!ENABLED_LGAS) return true; // no restriction — show all
@@ -48,7 +61,7 @@ function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string 
   // Also check LGA slug — handles ENABLED_LGAS=['inner_west'] enabling all former councils
   // of that LGA (leichhardt, marrickville, ashfield) without listing each explicitly.
   if (lga) {
-    const lgaSlug = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const lgaSlug = normalizeLgaSlug(lga);
     return ENABLED_LGAS.some(key => lgaSlug === key || lgaSlug.startsWith(key + '_') || lgaSlug.startsWith(key));
   }
   return false;
@@ -524,7 +537,7 @@ export default function AssessmentPage() {
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
                         lga={selectedProperty.constraints?.lga}
-                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                        formerCouncil={selectedProperty.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty.constraints?.lga || '')}
                         zone={selectedProperty.constraints?.zone}
                         heritage={selectedProperty.heritage?.isHeritage || false}
                         hcaName={heritageClass.isConservationArea
