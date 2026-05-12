@@ -32,9 +32,12 @@ export function LepControls({
   lotArea,
   strataInfo,
 }: LepControlsProps) {
-  const lepName = constraints?.lga 
-    ? `${constraints.lga} Local Environmental Plan 2022` 
-    : 'Local Environmental Plan';
+  // Extract layer metadata for LEP name
+  const landZoningLayerForName = planningLayers?.find(
+    (layer) => layer.layerName === 'Land Zoning Map'
+  );
+  const lepName = landZoningLayerForName?.results?.[0]?.['EPI Name']
+    || (constraints?.lga ? `${constraints.lga} Local Environmental Plan` : 'Local Environmental Plan');
 
   // Extract layer metadata for child cards
   const landZoningLayer = planningLayers?.find(
@@ -585,7 +588,7 @@ export function LepControls({
           heritageSignificance={constraints.heritageSignificance}
           heritageLegislationUrl={constraints.heritageLegislationUrl}
           formerCouncil={formerCouncil}
-          lga={constraints.lga ?? undefined}
+          lga={lepName}
         />
       ) : (
         <NotApplicableCard

@@ -115,8 +115,8 @@ export function HeritageProvisionsCard({
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
           {isHCA
-            ? `Heritage Conservation Area identified under the ${lga || 'local'} LEP. DCP heritage controls are in ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
-            : `Heritage-listed property identified under the ${lga || 'local'} LEP. General heritage controls apply from ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || lga || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
+            ? `Heritage Conservation Area identified under the ${lga || 'Local Environmental Plan'}. DCP heritage controls are in ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
+            : `Heritage-listed property identified under the ${lga || 'Local Environmental Plan'}. General heritage controls apply from ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
           }
         </p>
       </CardHeader>
