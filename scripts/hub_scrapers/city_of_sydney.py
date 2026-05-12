@@ -45,7 +45,10 @@ def scrape_city_of_sydney(
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
 
-        if not href.lower().endswith(".pdf"):
+        # Strip query params before extension check — City of Sydney appends
+        # ?download=true to PDF hrefs, which breaks .endswith(".pdf").
+        href_path = href.split("?")[0]
+        if not href_path.lower().endswith(".pdf"):
             continue
 
         # City of Sydney uses /-/media/ pattern for DCP documents
