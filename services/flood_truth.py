@@ -70,8 +70,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pyproj import Transformer
 
-from services.lga_lookup import lookup_lga
-
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -1398,15 +1396,6 @@ def run_flood(req: FloodRequest):
         studies = f_studies.result()
         dem  = f_dem.result()
 
-    # Resolve LGA for council name on report cover
-    lga_info = {"lga_name": None, "lga_slug": None}
-    try:
-        lga_conn = _get_conn()
-        lga_info = lookup_lga(req.lat, req.lng, lga_conn, address=req.address)
-        lga_conn.close()
-    except Exception as e:
-        logger.warning(f"LGA lookup failed (non-fatal): {e}")
-
     internal_outputs = {
         "wet_seasons_checked": 0,
         "flood_event_count": None,
@@ -1415,8 +1404,6 @@ def run_flood(req: FloodRequest):
         "sar_confidence": None,
         "sar_analysis_date": None,
         **epi, **ems, **jrc, **bom, **ses, **wofs, **studies, **dem,
-        "lga_name": lga_info.get("lga_name"),
-        "lga_slug": lga_info.get("lga_slug"),
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 

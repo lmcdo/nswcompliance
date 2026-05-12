@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
-import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
 interface Application {
   PlanningPortalApplicationNumber?: string;
@@ -21,16 +20,7 @@ interface Application {
   CostOfDevelopment?: number | string;
   NumberOfNewDwellings?: number | string;
   CouncilName?: string;
-  Latitude?: number | string;
-  Longitude?: number | string;
   _distance_m?: number | null;
-  NumberOfStoreys?: number | string | null;
-  DemolitionDwellings?: number | string | null;
-  SubdivisionProposedFlag?: string | null;
-  EpiVariationProposedFlag?: string | null;
-  AccompaniedByVpaFlag?: string | null;
-  DevelopmentSubjectToSicFlag?: string | null;
-  DevelopmentCategory?: string | null;
 }
 
 interface SearchResult {
@@ -48,10 +38,6 @@ interface SearchResult {
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
 type SubscribeState = 'idle' | 'subscribing' | 'subscribed';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatDate(iso?: string) {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -64,92 +50,6 @@ function formatCost(val?: number | string) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
 }
 
-/** NSW ePlanning flags are "Yes"/"No"/null strings, not booleans. "No" is truthy in JS. */
-function isYesFlag(val?: string | null): boolean {
-  return val?.toString().toLowerCase().startsWith('y') === true;
-}
-
-// ---------------------------------------------------------------------------
-// Analytics — mirrors threat-radar-report.tsx calcPressureScore/pressureLabel
-// ---------------------------------------------------------------------------
-
-interface Stats {
-  totalApps: number;
-  totalCost: number;
-  newDwellings: number;
-  demolishedDwellings: number;
-  netDwellingChange: number;
-  approvedCount: number;
-  approvalRate: number;
-  epiVariationCount: number;
-  devTypeBreakdown: Record<string, number>;
-  pressureScore: number;
-  pressureLabel: string;
-  pressureColor: string;
-}
-
-function computeStats(apps: Application[]): Stats {
-  let totalCost = 0;
-  let newDwellings = 0;
-  let demolishedDwellings = 0;
-  let approvedCount = 0;
-  let epiVariationCount = 0;
-  const devTypes: Record<string, number> = {};
-
-  // Pressure score — same algorithm as threat-radar-report.tsx:145-155
-  let pressureTotal = 0;
-
-  for (const app of apps) {
-    const cost = Number(app.CostOfDevelopment) || 0;
-    totalCost += cost;
-
-    const dw = Number(app.NumberOfNewDwellings) || 0;
-    newDwellings += dw;
-    demolishedDwellings += Number(app.DemolitionDwellings) || 0;
-
-    const status = (app.Status ?? '').toLowerCase();
-    if (status.includes('approved') || status.includes('determined')) approvedCount++;
-
-    if (isYesFlag(app.EpiVariationProposedFlag)) epiVariationCount++;
-
-    const devType = app.DevelopmentType || 'Other';
-    devTypes[devType] = (devTypes[devType] || 0) + 1;
-
-    // Pressure scoring
-    const base = (app._distance_m ?? 999) < 100 ? 3 : (app._distance_m ?? 999) < 250 ? 2 : 1;
-    const scale = dw >= 10 ? 2 : dw >= 4 ? 1.5 : 1;
-    pressureTotal += base * scale;
-  }
-
-  const pressureScore = apps.length === 0 ? 0 : Math.min(10, Math.max(1, Math.round(pressureTotal)));
-
-  let pressureLabel: string;
-  let pressureColor: string;
-  if (pressureScore >= 8) { pressureLabel = 'Intense'; pressureColor = 'bg-red-500'; }
-  else if (pressureScore >= 5) { pressureLabel = 'High'; pressureColor = 'bg-orange-500'; }
-  else if (pressureScore >= 3) { pressureLabel = 'Moderate'; pressureColor = 'bg-yellow-500'; }
-  else { pressureLabel = 'Low'; pressureColor = 'bg-green-500'; }
-
-  return {
-    totalApps: apps.length,
-    totalCost,
-    newDwellings,
-    demolishedDwellings,
-    netDwellingChange: newDwellings - demolishedDwellings,
-    approvedCount,
-    approvalRate: apps.length === 0 ? 0 : Math.round((approvedCount / apps.length) * 100),
-    epiVariationCount,
-    devTypeBreakdown: devTypes,
-    pressureScore,
-    pressureLabel,
-    pressureColor,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
 export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
@@ -158,6 +58,31 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState('');
   const [subscribeError, setSubscribeError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Listen for hero address input — submit directly after state update flushes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Read ?address= from URL on mount (e.g. from property profile page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,17 +159,10 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   };
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Neighbour Development Threat Radar</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          See current DA and CDC activity across your council area. Subscribe for weekly email alerts when new applications are lodged.
-        </p>
-      </div>
-
+    <div>
       <div className="space-y-6">
         {/* Address + search */}
-        <form onSubmit={handleSearch} className="space-y-3">
+        <form ref={formRef} id="tool-input" onSubmit={handleSearch} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
             <AddressAutocomplete
@@ -295,7 +213,6 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
               product="threat-radar"
               copy="Email me this result →"
             />
-            <ToolCrossSell currentTool="threat-radar" address={address} />
           </>
         )}
 
@@ -351,245 +268,6 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
 }
 
 const FREE_RESULTS_LIMIT = 3;
-
-// ---------------------------------------------------------------------------
-// SummaryStatsBanner — aggregate stats above paywall
-// ---------------------------------------------------------------------------
-
-function SummaryStatsBanner({ stats }: { stats: Stats }) {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{stats.totalApps}</p>
-        <p className="text-xs text-gray-500">Applications</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{formatCost(stats.totalCost) ?? '$0'}</p>
-        <p className="text-xs text-gray-500">Construction value</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className={`text-lg font-bold ${stats.netDwellingChange >= 0 ? 'text-teal-700' : 'text-red-600'}`}>
-          {stats.netDwellingChange >= 0 ? '+' : ''}{stats.netDwellingChange}
-        </p>
-        <p className="text-xs text-gray-500">Net dwellings</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{stats.approvalRate}%</p>
-        <p className="text-xs text-gray-500">Approved</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
-        <p className="text-lg font-bold text-amber-600">{stats.epiVariationCount}</p>
-        <p className="text-xs text-gray-500">EPI variations</p>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// DevelopmentPressureMeter — gauge bar
-// ---------------------------------------------------------------------------
-
-function DevelopmentPressureMeter({ stats }: { stats: Stats }) {
-  const pct = Math.min(100, (stats.pressureScore / 10) * 100);
-  return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-medium text-gray-700">Development Pressure</p>
-        <span className="text-sm font-bold text-gray-900">{stats.pressureScore}/10 — {stats.pressureLabel}</span>
-      </div>
-      <div className="h-3 rounded-full bg-gray-200 overflow-hidden">
-        <div className={`h-full rounded-full ${stats.pressureColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs text-gray-400 mt-1.5">
-        Based on application count, proximity, and proposed dwellings
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// NetDwellingCallout
-// ---------------------------------------------------------------------------
-
-function NetDwellingCallout({ stats }: { stats: Stats }) {
-  if (stats.newDwellings === 0 && stats.demolishedDwellings === 0) return null;
-  const sign = stats.netDwellingChange >= 0 ? '+' : '';
-  return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-      <p className="text-sm text-blue-900">
-        Your neighbourhood is adding <strong>{stats.newDwellings}</strong> dwelling{stats.newDwellings !== 1 ? 's' : ''}{' '}
-        {stats.demolishedDwellings > 0 && (
-          <>and demolishing <strong>{stats.demolishedDwellings}</strong></>
-        )}{' '}
-        — net <strong>{sign}{stats.netDwellingChange}</strong> homes within 500m
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// WhatsBeingBuiltBreakdown
-// ---------------------------------------------------------------------------
-
-function WhatsBeingBuiltBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
-  const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
-  if (entries.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-500 mb-1.5">What&apos;s being built</p>
-      <div className="flex flex-wrap gap-2">
-        {entries.map(([type, count]) => (
-          <span key={type} className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-700">
-            {count} {type}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// MiniProximityMap — pure SVG, no mapping library
-// ---------------------------------------------------------------------------
-
-const MAP_SIZE = 300;
-const MAP_PAD = 20;
-const MIN_BBOX_SPAN = 0.002; // ~200m, prevents divide-by-zero
-const MAX_MAP_DOTS = 50;
-
-function MiniProximityMap({ centerLat, centerLng, apps }: { centerLat: number; centerLng: number; apps: Application[] }) {
-  const validApps = apps
-    .filter((a) => a.Latitude != null && a.Longitude != null && Number(a.Latitude) !== 0 && Number(a.Longitude) !== 0)
-    .slice(0, MAX_MAP_DOTS);
-
-  if (validApps.length === 0) return null;
-
-  const allLats = [centerLat, ...validApps.map((a) => Number(a.Latitude))];
-  const allLngs = [centerLng, ...validApps.map((a) => Number(a.Longitude))];
-
-  let minLat = Math.min(...allLats);
-  let maxLat = Math.max(...allLats);
-  let minLng = Math.min(...allLngs);
-  let maxLng = Math.max(...allLngs);
-
-  // Enforce minimum span to prevent degenerate bbox
-  if (maxLat - minLat < MIN_BBOX_SPAN) {
-    const mid = (maxLat + minLat) / 2;
-    minLat = mid - MIN_BBOX_SPAN / 2;
-    maxLat = mid + MIN_BBOX_SPAN / 2;
-  }
-  if (maxLng - minLng < MIN_BBOX_SPAN) {
-    const mid = (maxLng + minLng) / 2;
-    minLng = mid - MIN_BBOX_SPAN / 2;
-    maxLng = mid + MIN_BBOX_SPAN / 2;
-  }
-
-  // Add 15% padding
-  const latPad = (maxLat - minLat) * 0.15;
-  const lngPad = (maxLng - minLng) * 0.15;
-  minLat -= latPad; maxLat += latPad;
-  minLng -= lngPad; maxLng += lngPad;
-
-  const toX = (lng: number) => MAP_PAD + ((lng - minLng) / (maxLng - minLng)) * (MAP_SIZE - 2 * MAP_PAD);
-  const toY = (lat: number) => MAP_PAD + ((maxLat - lat) / (maxLat - minLat)) * (MAP_SIZE - 2 * MAP_PAD);
-
-  const cx = toX(centerLng);
-  const cy = toY(centerLat);
-
-  // 500m radius in pixels — approximate 500m as degrees latitude
-  const radiusDeg = 500 / 111320;
-  const radiusPx = (radiusDeg / (maxLat - minLat)) * (MAP_SIZE - 2 * MAP_PAD);
-
-  return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <p className="text-xs font-medium text-gray-500 mb-2">Proximity map</p>
-      <svg viewBox={`0 0 ${MAP_SIZE} ${MAP_SIZE}`} className="w-full max-w-[300px] mx-auto" role="img" aria-label="Proximity map showing nearby applications">
-        {/* 500m radius circle */}
-        <circle cx={cx} cy={cy} r={radiusPx} fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 3" opacity="0.6" />
-
-        {/* Application dots */}
-        {validApps.map((app, i) => {
-          const x = toX(Number(app.Longitude));
-          const y = toY(Number(app.Latitude));
-          const cost = Number(app.CostOfDevelopment) || 0;
-          const r = Math.max(4, Math.min(14, Math.sqrt(cost / 100000) * 2));
-          const isDA = app.ApplicationType === 'DA';
-          const isFree = i < FREE_RESULTS_LIMIT;
-          return (
-            <circle
-              key={i}
-              cx={x}
-              cy={y}
-              r={r}
-              fill={isDA ? '#f59e0b' : '#a855f7'}
-              opacity="0.7"
-              stroke="white"
-              strokeWidth="1"
-            >
-              {isFree && (
-                <title>{app.PlanningPortalApplicationNumber ?? 'App'} — {app._distance_m ?? '?'}m</title>
-              )}
-            </circle>
-          );
-        })}
-
-        {/* Center property */}
-        <circle cx={cx} cy={cy} r="7" fill="#0d9488" stroke="white" strokeWidth="2" />
-        <text x={cx} y={cy - 12} textAnchor="middle" fontSize="10" fill="#0d9488" fontWeight="bold">You</text>
-
-        {/* Legend */}
-        <circle cx={MAP_SIZE - 80} cy={MAP_SIZE - 20} r="5" fill="#f59e0b" />
-        <text x={MAP_SIZE - 72} y={MAP_SIZE - 16} fontSize="9" fill="#6b7280">DA</text>
-        <circle cx={MAP_SIZE - 48} cy={MAP_SIZE - 20} r="5" fill="#a855f7" />
-        <text x={MAP_SIZE - 40} y={MAP_SIZE - 16} fontSize="9" fill="#6b7280">CDC</text>
-      </svg>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ThreatBadges — colored pills for each card
-// ---------------------------------------------------------------------------
-
-function ThreatBadges({ app }: { app: Application }) {
-  const badges: { label: string; cls: string }[] = [];
-
-  if (isYesFlag(app.EpiVariationProposedFlag)) {
-    badges.push({ label: 'Seeks EPI variation', cls: 'bg-amber-50 text-amber-700 border-amber-200' });
-  }
-  if (isYesFlag(app.AccompaniedByVpaFlag)) {
-    badges.push({ label: 'VPA attached', cls: 'bg-purple-50 text-purple-700 border-purple-200' });
-  }
-  if (
-    (app.DevelopmentCategory && app.DevelopmentCategory.toLowerCase().includes('state')) ||
-    isYesFlag(app.DevelopmentSubjectToSicFlag)
-  ) {
-    badges.push({ label: 'State significant', cls: 'bg-red-50 text-red-700 border-red-200' });
-  }
-  if (isYesFlag(app.SubdivisionProposedFlag)) {
-    badges.push({ label: 'Subdivision', cls: 'bg-orange-50 text-orange-700 border-orange-200' });
-  }
-  const storeys = Number(app.NumberOfStoreys);
-  if (storeys > 0) {
-    badges.push({ label: `${storeys} storey${storeys !== 1 ? 's' : ''}`, cls: 'bg-gray-100 text-gray-600 border-gray-200' });
-  }
-  const demo = Number(app.DemolitionDwellings);
-  if (demo > 0) {
-    badges.push({ label: 'Demolition', cls: 'bg-white text-red-600 border-red-300' });
-  }
-
-  if (badges.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {badges.map((b) => (
-        <span key={b.label} className={`text-xs font-medium px-2 py-0.5 rounded-full border ${b.cls}`}>
-          {b.label}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // MonitorPreviewCard — forward-anxiety subscription gate
@@ -672,10 +350,6 @@ function MonitorPreviewCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// SearchResults — intelligence dashboard
-// ---------------------------------------------------------------------------
-
 function SearchResults({
   result,
   onReset,
@@ -694,7 +368,6 @@ function SearchResults({
   subscribeError: string;
 }) {
   const apps = result.applications ?? [];
-  const stats = useMemo(() => computeStats(apps), [apps]);
 
   return (
     <div className="space-y-3">
@@ -713,21 +386,28 @@ function SearchResults({
               No DA or CDC applications lodged within 500m in the last {result.window_days} days.
             </p>
           </div>
-          <CrossLinks lat={result.lat} lng={result.lng} councilName={result.council_name} />
+          <a
+            href={`https://map.plotdetect.com.au?lat=${result.lat}&lng=${result.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors"
+          >
+            <div>
+              <p className="text-sm font-medium text-teal-900">
+                Explore the full DA map for {result.council_name}
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                See all applications across the LGA · map.plotdetect.com.au
+              </p>
+            </div>
+            <span className="shrink-0 text-teal-600 text-base">→</span>
+          </a>
         </div>
       ) : (
         <>
-          {/* Above-paywall intelligence dashboard */}
-          <SummaryStatsBanner stats={stats} />
-          <DevelopmentPressureMeter stats={stats} />
-          <NetDwellingCallout stats={stats} />
-          <WhatsBeingBuiltBreakdown breakdown={stats.devTypeBreakdown} />
-          <MiniProximityMap centerLat={result.lat} centerLng={result.lng} apps={apps} />
-
           <p className="text-sm font-medium text-gray-700">
             {apps.length} application{apps.length !== 1 ? 's' : ''} found nearby
           </p>
-
           {apps.map((app, i) => {
             const appNum = app.PlanningPortalApplicationNumber ?? app.ApplicationNumber ?? '—';
             const type = app.ApplicationType ?? app.DevelopmentType ?? 'DA';
@@ -769,9 +449,6 @@ function SearchResults({
                     )}
                   </div>
 
-                  {/* Threat badges */}
-                  <ThreatBadges app={app} />
-
                   {app.ApplicationDescription && (
                     <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
                   )}
@@ -800,18 +477,6 @@ function SearchResults({
                       <span className="text-xs text-gray-400">{app.LotDescription}</span>
                     )}
                   </div>
-
-                  {/* Planning Portal link — free cards only */}
-                  {!isBlurred && (
-                    <a
-                      href="https://www.planningportal.nsw.gov.au/datracking"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-xs text-teal-600 hover:text-teal-700 hover:underline"
-                    >
-                      View on Planning Portal →
-                    </a>
-                  )}
                 </div>
               </React.Fragment>
             );
@@ -827,53 +492,24 @@ function SearchResults({
               subscribeError={subscribeError}
             />
           )}
-          <CrossLinks lat={result.lat} lng={result.lng} councilName={result.council_name} />
+          <a
+            href={`https://map.plotdetect.com.au?lat=${result.lat}&lng=${result.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors mt-2"
+          >
+            <div>
+              <p className="text-sm font-medium text-teal-900">
+                Explore the full DA map for {result.council_name}
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                Filter by cost, keywords, and development type · map.plotdetect.com.au
+              </p>
+            </div>
+            <span className="shrink-0 text-teal-600 text-base">→</span>
+          </a>
         </>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// CrossLinks — map + charts
-// ---------------------------------------------------------------------------
-
-function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; councilName: string }) {
-  return (
-    <div className="space-y-2 mt-2">
-      <a
-        href={`https://map.plotdetect.com.au?lat=${lat}&lng=${lng}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors"
-      >
-        <div>
-          <p className="text-sm font-medium text-teal-900">
-            Explore the full DA map for {councilName}
-          </p>
-          <p className="text-xs text-teal-700 mt-0.5">
-            Filter by cost, keywords, and development type · map.plotdetect.com.au
-          </p>
-        </div>
-        <span className="shrink-0 text-teal-600 text-base">→</span>
-      </a>
-      <a
-        href="https://charts.plotdetect.com.au"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 hover:bg-indigo-100 transition-colors"
-      >
-        <div>
-          <p className="text-sm font-medium text-indigo-900">
-            DA analytics for {councilName}
-          </p>
-          <p className="text-xs text-indigo-700 mt-0.5">
-            Cost trends, approval rates, and development type breakdowns · charts.plotdetect.com.au
-          </p>
-        </div>
-        <span className="shrink-0 text-indigo-600 text-base">→</span>
-      </a>
-
     </div>
   );
 }

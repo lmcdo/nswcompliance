@@ -22,10 +22,38 @@ export const ZOOM_PRESETS = {
   neighbourhood:{ d_lng: 0.003,  d_lat: 0.0015, w: 600, h: 300 },
 };
 
+interface GeoJSONPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+/**
+ * Compute a bbox from a GeoJSON polygon's extent, with padding.
+ * Returns [minLng, minLat, maxLng, maxLat].
+ */
+function bboxFromPolygon(polygon: GeoJSONPolygon, paddingFraction = 0.3): { minX: number; minY: number; maxX: number; maxY: number } {
+  const coords = polygon.coordinates[0];
+  const lngs = coords.map(c => c[0]);
+  const lats = coords.map(c => c[1]);
+  const rawMinX = Math.min(...lngs);
+  const rawMaxX = Math.max(...lngs);
+  const rawMinY = Math.min(...lats);
+  const rawMaxY = Math.max(...lats);
+  const padX = (rawMaxX - rawMinX) * paddingFraction;
+  const padY = (rawMaxY - rawMinY) * paddingFraction;
+  return {
+    minX: rawMinX - padX,
+    minY: rawMinY - padY,
+    maxX: rawMaxX + padX,
+    maxY: rawMaxY + padY,
+  };
+}
+
 export async function fetchAerialTileBase64(
   lat: number,
   lng: number,
   zoom: 'property' | 'neighbourhood' = 'neighbourhood',
+  lotPolygon?: GeoJSONPolygon | null,
 ): Promise<string | null> {
   if (
     !isFinite(lat) || !isFinite(lng) ||
@@ -33,11 +61,34 @@ export async function fetchAerialTileBase64(
     lng < NSW_LNG.min || lng > NSW_LNG.max
   ) return null;
 
-  const { d_lng, d_lat, w, h } = ZOOM_PRESETS[zoom];
-  const minX = (lng - d_lng).toFixed(6);
-  const minY = (lat - d_lat).toFixed(6);
-  const maxX = (lng + d_lng).toFixed(6);
-  const maxY = (lat + d_lat).toFixed(6);
+  let minX: string, minY: string, maxX: string, maxY: string;
+  let w: number, h: number;
+
+  if (lotPolygon && lotPolygon.coordinates?.[0]?.length >= 3) {
+    // Zoom to lot boundary with padding
+    const bbox = bboxFromPolygon(lotPolygon);
+    minX = bbox.minX.toFixed(6);
+    minY = bbox.minY.toFixed(6);
+    maxX = bbox.maxX.toFixed(6);
+    maxY = bbox.maxY.toFixed(6);
+    // Use square-ish output sized to the lot's aspect ratio
+    const dLng = bbox.maxX - bbox.minX;
+    const dLat = bbox.maxY - bbox.minY;
+    const aspect = dLng / dLat;
+    h = 512;
+    w = Math.round(h * aspect);
+    // Clamp width to reasonable range
+    w = Math.max(256, Math.min(1024, w));
+  } else {
+    // Fallback to fixed preset centred on lat/lng
+    const preset = ZOOM_PRESETS[zoom];
+    minX = (lng - preset.d_lng).toFixed(6);
+    minY = (lat - preset.d_lat).toFixed(6);
+    maxX = (lng + preset.d_lng).toFixed(6);
+    maxY = (lat + preset.d_lat).toFixed(6);
+    w = preset.w;
+    h = preset.h;
+  }
 
   const params = new URLSearchParams({
     bbox: `${minX},${minY},${maxX},${maxY}`,
