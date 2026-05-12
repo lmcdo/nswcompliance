@@ -82,9 +82,12 @@ def parse_land_use_tables(html: str) -> dict:
         section = text[start:end]
 
         # Extract the three categories
-        without_consent = extract_uses(section, r'Permitted without consent[\s:]*\n(.*?)(?=Permitted with consent|$)')
+        # End markers: next zone heading, or sections that follow the Land Use Table
+        end_marker = r'(?=Permitted with consent|$)'
+        end_marker_prohibited = r'(?=Zone\s+[A-Z]|Part\s+\d|Schedule\s+\d|Division\s+\d|Exempt and complying|Principal development standards|$)'
+        without_consent = extract_uses(section, r'Permitted without consent[\s:]*\n(.*?)' + end_marker)
         with_consent = extract_uses(section, r'Permitted with consent[\s:]*\n(.*?)(?=Prohibited|$)')
-        prohibited = extract_uses(section, r'Prohibited[\s:]*\n(.*?)(?=Zone\s+[A-Z]|$)')
+        prohibited = extract_uses(section, r'Prohibited[\s:]*\n(.*?)' + end_marker_prohibited)
 
         if without_consent or with_consent or prohibited:
             zones[zone_code] = {
