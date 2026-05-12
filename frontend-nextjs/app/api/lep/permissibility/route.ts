@@ -4,7 +4,10 @@ import { query } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 function normalizeLga(raw: string): string {
-  return raw.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  // Handle hyphenated names like "Canterbury-Bankstown", "Ku-Ring-Gai"
+  return raw.split(' ').map(word =>
+    word.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('-')
+  ).join(' ');
 }
 
 /**

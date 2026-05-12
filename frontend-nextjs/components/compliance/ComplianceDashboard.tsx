@@ -1246,6 +1246,7 @@ export function ComplianceDashboard({
               <LandUseZoningCard
                 zone={propertyData.constraints.zone}
                 zoneDescription={propertyData.constraints.zoneDescription ?? undefined}
+                lga={propertyData.constraints.lga ?? undefined}
                 legislationUrl={zoneResult?.['legislationUrl']}
                 epiName={zoneResult?.['EPI Name']}
                 amendment={zoneResult?.['Amendment']}
