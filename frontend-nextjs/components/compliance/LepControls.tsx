@@ -585,6 +585,7 @@ export function LepControls({
           heritageSignificance={constraints.heritageSignificance}
           heritageLegislationUrl={constraints.heritageLegislationUrl}
           formerCouncil={formerCouncil}
+          lga={constraints.lga ?? undefined}
         />
       ) : (
         <NotApplicableCard
