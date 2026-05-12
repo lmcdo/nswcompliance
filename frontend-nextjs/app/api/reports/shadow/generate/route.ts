@@ -95,16 +95,17 @@ export async function POST(req: NextRequest) {
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
   const today = new Date().toISOString().split('T')[0];
 
+  const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
+  const lotPoly = (rawOutputs.lot_polygon as { type: 'Polygon'; coordinates: number[][][] } | null) ?? null;
+
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
   const shareable_url = body.report_id ? `${origin}/reports/shadow/${body.report_id}` : null;
 
   const [tile_b64, logo_b64, qr_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property', lotPoly) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
     shareable_url ? generateQRBase64(shareable_url) : Promise.resolve(null),
   ]);
-
-  const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
 
   const data: ShadowReportData = {
     address: String(raw.address),

@@ -88,13 +88,17 @@ export async function POST(request: NextRequest) {
   }
 
   const report_id = crypto.randomUUID();
+  // Preserve lot geometry for PDF map rendering (EPSG:3857 rings)
+  const lot_geometry = propData.lotGeometry?.rings?.[0]?.length
+    ? { rings: propData.lotGeometry.rings }
+    : null;
 
   let pythonResp: Response;
   try {
     pythonResp = await fetch(`${PYTHON_API}/pipeline/bushfire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, prop_id, lat, lng, report_id }),
+      body: JSON.stringify({ address, prop_id, lat, lng, report_id, lot_geometry }),
       signal: AbortSignal.timeout(55_000),
     });
   } catch (err) {

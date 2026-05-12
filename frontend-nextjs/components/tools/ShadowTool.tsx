@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -9,6 +9,11 @@ import { posthog } from '@/components/providers/PostHogProvider';
 const ShadowMap = dynamic(
   () => import('@/components/reports/ShadowMap').then(m => m.ShadowMap),
   { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded" /> }
+);
+
+const AerialTile = dynamic(
+  () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
+  { ssr: false, loading: () => <div className="w-full bg-gray-100 animate-pulse" style={{ height: 220 }} /> }
 );
 
 interface GeoJSONGeometry {
@@ -92,9 +97,32 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
+  // Listen for hero address input — submit directly after state update flushes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Read URL params on mount: ?address= (auto-run) and ?payment=success (download CTA)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    const addrParam = params.get('address')?.trim();
+    if (addrParam && !params.get('payment')) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     if (params.get('payment') === 'success') {
       const rid = params.get('report_id')?.trim();
       if (rid) setPaidReportId(rid);
@@ -165,18 +193,8 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
   };
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Construction Shadow Detector</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Models the shadow a maximum-height building on an adjacent lot could cast across
-          five key dates. Under the Apartment Design Guide (ADG), neighbouring properties
-          must receive at least 2 hours of direct sunlight between 9 am and 3 pm on
-          21 June (winter solstice).
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
+    <div>
+      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
@@ -205,6 +223,10 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">
           {errorMsg}
         </div>
+      )}
+
+      {paidReportId && state !== 'complete' && (
+        <ShadowPaidDownloadCTA reportId={paidReportId} />
       )}
 
       {state === 'complete' && result && (
@@ -509,6 +531,13 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
         Shadow modelled from the north lot boundary at max permitted height. Geometric model — not derived from satellite imagery. Aerial imagery © Esri.
       </p>
+
+      {/* Aerial satellite view with lot boundary */}
+      {o.lot_polygon && o.lot_polygon.type === 'Polygon' && (
+        <div style={{ height: 220 }}>
+          <AerialTile lat={result.lat} lng={result.lng} lotPolygon={o.lot_polygon as { type: 'Polygon'; coordinates: number[][][] }} />
+        </div>
+      )}
 
       {/* Warnings */}
       {result.warnings && result.warnings.length > 0 && (

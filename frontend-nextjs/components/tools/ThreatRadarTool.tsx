@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
@@ -158,6 +158,31 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState('');
   const [subscribeError, setSubscribeError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Listen for hero address input — submit directly after state update flushes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Read ?address= from URL on mount (e.g. from property profile page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,17 +259,10 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   };
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Neighbour Development Threat Radar</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          See current DA and CDC activity across your council area. Subscribe for weekly email alerts when new applications are lodged.
-        </p>
-      </div>
-
+    <div>
       <div className="space-y-6">
         {/* Address + search */}
-        <form onSubmit={handleSearch} className="space-y-3">
+        <form ref={formRef} id="tool-input" onSubmit={handleSearch} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
             <AddressAutocomplete

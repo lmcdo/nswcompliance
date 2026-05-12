@@ -28,18 +28,30 @@ See full architectural details in the exploration agent output above.
 **Quick Win:** 1 day to add basic synthesis
 **Full Solution:** 7-10 days for comprehensive answer with citations
 
+### Property Profile Hub
+- `/property?address=...` — lightweight property profile page (zone, height, FSR, heritage, flood, lot polygon, aerial map)
+- `/api/property/profile?address=...` — backend: Planning Portal layerintersect (zone, height, FSR, heritage) + valuation + lot geometry only (no satellite pipelines)
+- Homepage address input routes here; tool cards on the profile link to `/reports/{tool}?address=...` for auto-run
+
 ### Key Endpoints
 - `/api/ai/chat` - AI chat entry point
 - `/api/provisions/for-property` - 4-layer DCP filtering
 - `/api/permissibility/check` - LEP land use
 - `/api/capacity/calculate` - Height/FSR/setbacks
 - `/api/procedural` - CDC vs DA guidance
+- `/api/satellite/bushfire` - Bushfire Pre-Screen pipeline (RFS BFPL + lot geometry passthrough)
+- `/api/reports/bushfire/generate` - Bushfire PDF report (composite aerial + BFPL overlay + lot boundary + neighbour context)
 - `/api/satellite/flood` - Flood Truth pipeline (EPI + SAR + EMS + JRC + BOM + raster studies + DEM)
 - `/api/reports/flood/generate` - Flood Truth PDF report generation
 - `/api/satellite/pre-da-history` - Pre-DA Site History pipeline (ePlanning DAs + PCCs + Sentinel-2 NDVI/NDBI + heritage overlay)
 - `/api/reports/pre-da-history/generate` - Pre-DA Site History PDF generation (gated on `is_paid`)
 - `/api/stripe/checkout/pre-da-history` - Stripe checkout session for $49 Pre-DA report
 - `/api/verify-interest` - Professional email capture (assessment page registration prompt)
+
+### Aerial Imagery
+- Browser: `AerialTile` component uses NSW SIX Maps (CC-BY 4.0, no API key, free)
+- PDFs: `lib/pdf/aerial-tile.ts` uses NSW SIX Maps export endpoint. Auto-zooms to lot polygon when available.
+- `/api/satellite/aerial-tile` (Google Static Maps proxy) — **removed** (was dead code, no consumer)
 
 ### Satellite Product Endpoints (Python backend)
 - `POST /pipeline/bushfire` - Bushfire Pre-Screen (RFS BFPL + PostGIS overlays + compliance)
@@ -65,6 +77,4 @@ See full architectural details in the exploration agent output above.
 4. **Precinct** (Part 9) - Location-filtered
 
 See full architecture map in Explore agent output (task ID: a5c6979).
-
-
 

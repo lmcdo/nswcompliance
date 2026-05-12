@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -111,9 +111,34 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
+  // Listen for hero address input — submit directly after state update flushes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        // Allow React to flush the state update before submitting
+        setTimeout(() => formRef.current?.requestSubmit(), 0);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, []);
+
+  // Read URL params on mount: ?address= (auto-run) and ?payment=success (download CTA)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Auto-run if address provided via URL (e.g. from property profile page)
+    const addrParam = params.get('address')?.trim();
+    if (addrParam && !params.get('payment')) {
+      setAddress(addrParam);
+      setTimeout(() => formRef.current?.requestSubmit(), 0);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     if (params.get('payment') === 'success') {
       const rid = params.get('report_id')?.trim();
       if (rid) setPaidReportId(rid);
@@ -171,43 +196,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
 
   return (
     <div className="mb-8">
-      <h1 className="text-2xl font-bold text-gray-900">Flood Data Summary</h1>
-      <p className="mt-1.5 text-sm text-gray-500">
-        Check your property&rsquo;s statutory flood status and council flood study exposure.
-        The NSW EPI statutory overlay check covers the full state. Council flood study
-        boundaries (FPA polygons) cover Sydney metro, Hunter, Illawarra, Northern Rivers,
-        and 40+ regional NSW councils &mdash; 71 LGAs total.
-      </p>
-      <details className="mt-1.5 group">
-        <summary className="text-xs text-teal-600 cursor-pointer hover:text-teal-700 list-none">
-          <span className="group-open:hidden">See all covered councils ↓</span>
-          <span className="hidden group-open:inline">Hide covered councils ↑</span>
-        </summary>
-        <div className="mt-2 text-xs text-gray-500 leading-relaxed">
-          <span className="font-medium text-gray-600">Sydney metro — </span>
-          Inner West, Parramatta, Canterbury-Bankstown, Georges River, Woollahra, Sutherland Shire,
-          Ryde, Cumberland, Campbelltown, Randwick, Waverley, Canada Bay, Bayside, Sydney.{' '}
-          <span className="font-medium text-gray-600">Hunter &amp; Coast — </span>
-          Hawkesbury, Lake Macquarie, Maitland, Shoalhaven, MidCoast, Dungog, Singleton.{' '}
-          <span className="font-medium text-gray-600">Northern Rivers — </span>
-          Tweed, Byron, Lismore, Ballina, Kyogle.{' '}
-          <span className="font-medium text-gray-600">Regional NSW — </span>
-          Bathurst Regional, Blayney, Cabonne, Clarence Valley, Coolamon, Cootamundra-Gundagai,
-          Cowra, Dubbo Regional, Edward River, Federation, Forbes, Gilgandra, Goulburn Mulwaree,
-          Gunnedah, Hilltops, Hornsby, Junee, Kyogle, Lachlan, Leeton, Lithgow, Liverpool Plains,
-          Mid-Western Regional, Murray River, Narrabri, Narrandera, Narromine, Orange, Port
-          Macquarie-Hastings, Queanbeyan-Palerang, Singleton, Snowy Monaro, Snowy Valleys, Tamworth
-          Regional, Temora, Upper Lachlan, Uralla, Walcha, Warrumbungle, Weddin, Wentworth,
-          Wingecarribee, Wollongong, Yass Valley.
-        </div>
-      </details>
-      <p className="mt-2 text-sm text-gray-400">
-        Free results show your EPI flood zone, council flood study classification, and satellite water
-        history. The $49 report adds BOM gauge flood event history, 40-year JRC surface water data,
-        Copernicus EMS observed flood events, and a source-cited PDF for conveyancers and lenders.
-      </p>
-
-      <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
+      <form ref={formRef} id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
         <AddressAutocomplete
           value={address}
           onChange={setAddress}
@@ -236,6 +225,11 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">
           {errorMsg}
         </div>
+      )}
+
+      {/* Payment return — show download CTA even without result in state */}
+      {paidReportId && state !== 'complete' && (
+        <FloodPaidDownloadCTA reportId={paidReportId} />
       )}
 
       {state === 'complete' && result && (
