@@ -19,10 +19,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function ShadowPage() {
+interface Props {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function ShadowPage({ searchParams }: Props) {
+  const params = await searchParams
+  const hasAddress = !!params.address
+
   return (
     <div>
-      <ProductLandingV2 product="shadow" />
+      {!hasAddress && <ProductLandingV2 product="shadow" />}
       <div className="max-w-2xl mx-auto px-4">
         <ShadowTool />
       </div>

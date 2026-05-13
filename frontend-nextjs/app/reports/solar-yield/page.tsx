@@ -19,10 +19,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function SolarYieldPage() {
+interface Props {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}
+
+export default async function SolarYieldPage({ searchParams }: Props) {
+  const params = await searchParams
+  const hasAddress = !!params.address
+
   return (
     <div>
-      <ProductLandingV2 product="solar" />
+      {!hasAddress && <ProductLandingV2 product="solar" />}
       <div className="max-w-2xl mx-auto px-4">
         <SolarYieldTool />
       </div>

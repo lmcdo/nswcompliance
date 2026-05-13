@@ -473,6 +473,13 @@ def run_bushfire(req: BushfireRequest):
             # Merge with defaults so cached blobs from older code versions still have all fields
             compliance_merged = {**_DEFAULT_OUTPUTS["compliance"], **(raw.get("compliance") or {})}
             merged = {**_DEFAULT_OUTPUTS, **raw, "compliance": compliance_merged}
+            # Write a row for the new report_id so PDF generation can find it
+            _write_report(
+                req.report_id, req.address, req.lat, req.lng,
+                req.prop_id, {"lat": req.lat, "lng": req.lng},
+                raw, cached["confidence"],
+                cached["data_sources"] or [_DATA_SOURCE_RFS],
+            )
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
