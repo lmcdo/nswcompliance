@@ -173,3 +173,24 @@ def scrape_bayside(hub_url, expected_keys, timeout=30, expected_labels=None):
 
 def scrape_georges_river(hub_url, expected_keys, timeout=30, expected_labels=None):
     return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "georges-river")
+
+def scrape_burwood(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "burwood")
+
+def scrape_camden(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "camden")
+
+def scrape_canada_bay(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "canada-bay")
+
+def scrape_fairfield(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "fairfield")
+
+def scrape_ryde(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "ryde")
+
+def scrape_strathfield(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "strathfield")
+
+def scrape_the_hills(hub_url, expected_keys, timeout=30, expected_labels=None):
+    return scrape_generic(hub_url, expected_keys, timeout, expected_labels, "the-hills")

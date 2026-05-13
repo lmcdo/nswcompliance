@@ -22,6 +22,8 @@ from .generic import (
     scrape_blacktown, scrape_campbelltown, scrape_liverpool,
     scrape_hornsby, scrape_parramatta, scrape_northern_beaches,
     scrape_randwick, scrape_sutherland, scrape_bayside, scrape_georges_river,
+    scrape_burwood, scrape_camden, scrape_canada_bay, scrape_fairfield,
+    scrape_ryde, scrape_strathfield, scrape_the_hills,
 )
 
 # council slug (matches dcp_chapter_registry.council) → scraper function
@@ -53,6 +55,15 @@ HUB_SCRAPERS: dict = {
     "sutherland":            scrape_sutherland,
     "bayside":               scrape_bayside,
     "georges_river":         scrape_georges_river,
+    # New LGAs (May 2026)
+    "burwood":               scrape_burwood,
+    "camden":                scrape_camden,
+    "canada_bay":            scrape_canada_bay,
+    "fairfield":             scrape_fairfield,
+    "ryde":                  scrape_ryde,
+    "strathfield":           scrape_strathfield,
+    "the_hills":             scrape_the_hills,
+    "the_hills_shire":       scrape_the_hills,
 }
 
 __all__ = ["HUB_SCRAPERS", "HubScrapeError"]
