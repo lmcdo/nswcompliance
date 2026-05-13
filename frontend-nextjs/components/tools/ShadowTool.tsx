@@ -457,7 +457,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   const o = result.outputs;
   const scenarios = o.scenarios ?? [];
 
-  const [activeScenario, setActiveScenario] = useState<string>(
+  const [activeScenario] = useState<string>(
     o.worst_case_scenario ?? 'jun21_12pm'
   );
 
@@ -467,58 +467,154 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   }, [activeScenario, scenarios]);
 
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
+  const worstScenario = scenarios.find(s => s.scenario === o.worst_case_scenario);
 
   const isNonResidential =
     result.zone != null &&
     NON_RESIDENTIAL_ZONE_PREFIXES.some(p => result.zone!.toUpperCase().startsWith(p));
 
-  const adgColor = isNonResidential
-    ? 'text-gray-600 bg-gray-100'
+  const badgeColor = isNonResidential
+    ? 'bg-gray-100 text-gray-600'
     : o.adg_compliant
-    ? 'text-green-700 bg-green-100'
-    : 'text-red-700 bg-red-100';
+    ? 'bg-green-100 text-green-800'
+    : 'bg-red-100 text-red-800';
 
-  const adgLabel = isNonResidential
-    ? 'ADG — indicative only'
+  const badgeLabel = isNonResidential
+    ? 'Indicative only'
     : o.adg_compliant
     ? 'ADG compliant'
     : 'ADG concern';
 
   const summaryText = isNonResidential
-    ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
-      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
+    ? 'ADG solar access requirements apply to residential apartment buildings only. This result is indicative for non-residential zones.'
     : o.adg_compliant
-    ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements are met.`
-      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
-    : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
+    ? 'Based on the worst-case model, this property meets the ADG 2-hour solar access requirement on 21 June (winter solstice).'
+    : 'This property may not meet the ADG 2-hour solar access requirement on 21 June. If a neighbour lodges a DA for a tall building, this is the evidence you need to object.';
+
+  // Build findings
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // ADG compliance
+  if (isNonResidential) {
+    findings.push({
+      label: 'NSW Apartment Design Guide — Part 3F',
+      value: 'Non-residential zone — ADG not applicable',
+      detail: 'The ADG solar access test applies to residential apartment development. This zone is non-residential, so this result is informational only.',
+      severity: 'green',
+    });
+  } else if (o.adg_compliant) {
+    findings.push({
+      label: 'NSW Apartment Design Guide — Part 3F',
+      value: 'Meets 2-hour solar access requirement',
+      detail: 'Even if your neighbour builds to the maximum permitted height, your property would still receive at least 2 hours of direct sunlight between 9 am and 3 pm on 21 June (the worst day of the year for shadows).',
+      severity: 'green',
+    });
+  } else {
+    findings.push({
+      label: 'NSW Apartment Design Guide — Part 3F',
+      value: 'May not meet 2-hour solar access requirement',
+      detail: 'If a neighbour builds to maximum permitted height, your property could lose the 2 hours of winter sunlight required under the ADG. This is grounds for objection if a DA is lodged.',
+      severity: 'red',
+    });
+  }
+
+  // Shadow overlap count
+  if (overlapCount === 0) {
+    findings.push({
+      label: 'Shadow overlap analysis (5 ADG scenarios)',
+      value: 'No shadow reaches your lot',
+      detail: 'Across all 5 test scenarios (winter solstice morning, midday, afternoon + equinox + summer), a maximum-height building to the north would not cast shadow onto your property.',
+      severity: 'green',
+    });
+  } else {
+    findings.push({
+      label: 'Shadow overlap analysis (5 ADG scenarios)',
+      value: `Shadow overlaps your lot in ${overlapCount} of 5 scenarios`,
+      detail: overlapCount >= 3
+        ? 'Shadow reaches your property in the majority of test scenarios. This would affect winter sunlight, garden usability, and potentially solar panel output.'
+        : 'Shadow reaches your property in some test scenarios. The map below shows the worst case.',
+      severity: overlapCount >= 3 ? 'red' : 'amber',
+    });
+  }
+
+  // Worst-case shadow length
+  if (worstScenario) {
+    const len = worstScenario.shadow_length_m;
+    const dir = bearingToCompass(worstScenario.shadow_direction_deg);
+    const overlapPct = worstScenario.shadow_overlap_fraction != null
+      ? Math.round(worstScenario.shadow_overlap_fraction * 100)
+      : null;
+
+    findings.push({
+      label: `Worst case — ${SCENARIO_LABELS[worstScenario.scenario] ?? worstScenario.scenario}`,
+      value: `${len.toFixed(0)}m shadow cast ${dir}${overlapPct != null ? ` — ${overlapPct}% of lot covered` : ''}`,
+      detail: len > 20
+        ? 'At this length, the shadow would extend well beyond your immediate boundary. This is the scenario to reference if objecting to a neighbour\'s DA.'
+        : 'A relatively short shadow. The impact on your property would be limited to the area nearest the boundary.',
+      severity: len > 20 ? 'red' : len > 10 ? 'amber' : 'green',
+    });
+  }
+
+  // Building height used
+  findings.push({
+    label: o.height_source === 'planning_portal' ? 'NSW Planning Portal — LEP height of building map'
+      : o.height_source === 'spatial_overlays' ? 'Spatial overlays — height of building'
+      : o.height_source === 'regulatory_provisions' ? 'DCP regulatory provisions'
+      : 'Default assumption',
+    value: `${o.height_m}m maximum building height modelled`,
+    detail: o.height_source === 'default'
+      ? 'No specific height control found for this site — the model used a default assumption. The actual permitted height may differ; check your local LEP.'
+      : 'This is the maximum building height permitted under the planning controls. The shadow model assumes a building at this full height on the neighbouring lot.',
+    severity: o.height_source === 'default' ? 'amber' : 'green',
+  });
+
+  // Construction activity
+  if (o.construction_change_detected) {
+    findings.push({
+      label: 'Sentinel-2 satellite change detection',
+      value: 'Construction activity detected nearby',
+      detail: 'Satellite imagery shows recent ground disturbance near this property — likely demolition, excavation, or site clearing. This could mean a new building is going up next door. Check your council\'s DA tracker.',
+      severity: 'red',
+    });
+  }
+
+  const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+    <div className="bg-white rounded-xl border border-gray-200">
 
       {/* Header */}
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date ? formatAustralianDate(result.run_date) : ''}</p>
-          </div>
-          <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${adgColor}`}>
-            {adgLabel}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h2 className="font-semibold text-gray-900 text-base">{result.address}</h2>
+          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${badgeColor}`}>
+            {badgeLabel}
           </span>
         </div>
-        <p className="text-sm text-gray-600 mt-3 leading-relaxed">{summaryText}</p>
+        <p className="text-sm text-gray-600">{summaryText}</p>
+      </div>
+
+      {/* Findings */}
+      <div className="border-t border-gray-100 divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
+            </div>
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Map */}
-      <div className="relative" style={{ height: 280 }}>
+      <div className="relative border-t border-gray-100" style={{ height: 280 }}>
         <ShadowMap
           center={[result.lng, result.lat]}
           lotPolygon={o.lot_polygon ?? null}
           shadowOnLot={activeShadowOnLot}
         />
-        {/* North arrow */}
         <div className="absolute bottom-3 left-3 bg-black/60 text-white rounded-full w-8 h-8 flex flex-col items-center justify-center gap-0 select-none">
           <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
             <path d="M5 1 L5 11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
@@ -526,89 +622,46 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           </svg>
           <span className="text-[9px] font-bold leading-none">N</span>
         </div>
-
-        {/* Scenario label overlay */}
         <div className="absolute bottom-3 left-12 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
           {SCENARIO_LABELS[activeScenario] ?? activeScenario}
         </div>
-        {/* Legend */}
         <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1.5 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-teal-500 opacity-70 shrink-0" />
-            <span className="text-gray-700">Subject lot</span>
+            <span className="text-gray-700">Your lot</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-orange-400 opacity-80 shrink-0" />
-            <span className="text-gray-700">Shadow on lot</span>
+            <span className="text-gray-700">Shadow on your lot</span>
           </div>
         </div>
       </div>
-      <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
-        Shadow modelled from the north lot boundary at max permitted height. Geometric model — not derived from satellite imagery. Aerial imagery © Esri.
+      <p className="px-5 py-2 text-xs text-gray-400 border-t border-gray-100">
+        Worst-case shadow from a maximum-height building on the northern boundary. Geometric model — not satellite imagery.
       </p>
 
-      {/* Aerial satellite view with lot boundary */}
+      {/* Aerial view */}
       {o.lot_polygon && o.lot_polygon.type === 'Polygon' && (
-        <div style={{ height: 220 }}>
+        <div className="border-t border-gray-100" style={{ height: 220 }}>
           <AerialTile lat={result.lat} lng={result.lng} lotPolygon={o.lot_polygon as { type: 'Polygon'; coordinates: number[][][] }} />
         </div>
       )}
 
       {/* Warnings */}
       {result.warnings && result.warnings.length > 0 && (
-        <div className="px-6 py-4 bg-amber-50 space-y-1">
+        <div className="px-5 py-3 bg-amber-50 border-t border-amber-100">
           {result.warnings.map((w, i) => (
-            <p key={i} className="text-xs text-amber-800">{w}</p>
+            <p key={i} className="text-xs text-amber-700">{w}</p>
           ))}
         </div>
       )}
 
-      {/* Methodology */}
-      <details className="group">
-        <summary className="px-6 py-4 cursor-pointer list-none flex items-center justify-between text-xs text-gray-400 hover:text-gray-600 transition-colors">
-          <span>How this is calculated</span>
-          <span className="group-open:rotate-180 transition-transform">▾</span>
-        </summary>
-        <div className="px-6 pb-5 space-y-2 text-xs text-gray-500 leading-relaxed border-t border-gray-50">
-          <p>
-            <span className="font-medium text-gray-600">Authority.</span>{' '}
-            Test dates and times follow the NSW Apartment Design Guide (Department of Planning, Housing and Infrastructure, 2015),
-            Part 3F — Solar and Daylight Access. The critical test is 21 June (winter solstice), when shadows are longest.
-          </p>
-          <p>
-            <span className="font-medium text-gray-600">Solar position.</span>{' '}
-            Sun azimuth and altitude are calculated using the NREL Solar Position Algorithm
-            (Reda &amp; Andreas, 2004) — the international standard used by solar engineers and
-            shadow consultants. Verified for Sydney&apos;s latitude (Southern Hemisphere).
-          </p>
-          <p>
-            <span className="font-medium text-gray-600">Building height and footprint.</span>{' '}
-            The model assumes the maximum permissible building height under the applicable
-            Local Environmental Plan (LEP). The northern neighbour&apos;s footprint is
-            approximated using the subject lot&apos;s own cadastral boundary, offset one
-            lot-depth northward — a conservative symmetric proxy for suburban and terrace
-            lots. Where a road lies to the north, the actual nearest building would be
-            further away, meaning real shadow impact would be less than modelled.
-            Actual development may be smaller or differently positioned.
-          </p>
-          <p>
-            <span className="font-medium text-gray-600">Construction activity.</span>{' '}
-            Detected using the Bare Soil Index (BSI) — a spectral formula applied to
-            Sentinel-2 satellite imagery that measures exposed bare earth. A change score
-            above 0.120 between recent scenes (&lt;90 days) and a 12-month baseline indicates
-            likely demolition, excavation, or site clearing.
-          </p>
-          <p>
-            <span className="font-medium text-gray-600">Limitation.</span>{' '}
-            This is a worst-case envelope model, not a design-specific assessment.
-            A formal shadow impact assessment prepared by a qualified town planner or
-            architect is required for Development Application (DA) submission.
-          </p>
-          <p className="text-gray-400">
-            Data sources: {(result.data_sources ?? []).join(' · ')}
-          </p>
-        </div>
-      </details>
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-gray-100">
+        <p className="text-xs text-gray-400">
+          Screening tool — not a formal shadow impact assessment. A qualified town planner or architect must prepare shadow diagrams for DA submission.
+        </p>
+      </div>
     </div>
   );
 }
