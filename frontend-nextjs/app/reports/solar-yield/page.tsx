@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { SolarYieldTool } from '@/components/tools/SolarYieldTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
+import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
   title: 'Rooftop Solar Yield Estimate — canibuildit.com.au',
@@ -29,7 +30,7 @@ export default async function SolarYieldPage({ searchParams }: Props) {
 
   return (
     <div>
-      {!hasAddress && <ProductLandingV2 product="solar" />}
+      {!hasAddress && <LandingVisibility><ProductLandingV2 product="solar" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <SolarYieldTool />
       </div>

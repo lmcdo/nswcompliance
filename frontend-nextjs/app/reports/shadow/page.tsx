@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ShadowTool } from '@/components/tools/ShadowTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
+import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
   title: 'Shadow Risk Analyser — canibuildit.com.au',
@@ -29,7 +30,7 @@ export default async function ShadowPage({ searchParams }: Props) {
 
   return (
     <div>
-      {!hasAddress && <ProductLandingV2 product="shadow" />}
+      {!hasAddress && <LandingVisibility><ProductLandingV2 product="shadow" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <ShadowTool />
       </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { PreDAHistoryTool } from '@/components/tools/PreDAHistoryTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
+import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
   title: 'Pre-DA Site History Report — canibuildit.com.au',
@@ -29,7 +30,7 @@ export default async function PreDAHistoryPage({ searchParams }: Props) {
 
   return (
     <div>
-      {!hasAddress && <ProductLandingV2 product="pre-da" />}
+      {!hasAddress && <LandingVisibility><ProductLandingV2 product="pre-da" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <PreDAHistoryTool />
       </div>
