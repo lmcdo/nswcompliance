@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,6 +69,7 @@ const TEAL_LIGHT  = '#f0fdfa';
 const AMBER       = '#d97706';
 const AMBER_LIGHT = '#fffbeb';
 const GREEN       = '#16a34a';
+const GREEN_LIGHT = '#f0fdf4';
 const RED         = '#dc2626';
 const GRAY_900    = '#111827';
 const GRAY_700    = '#374151';
@@ -77,11 +78,17 @@ const GRAY_300    = '#d1d5db';
 const GRAY_100    = '#f3f4f6';
 
 const GRADE_COLORS: Record<string, { bg: string; fg: string }> = {
-  A: { bg: '#ecfdf5', fg: GREEN  },
+  A: { bg: '#ecfdf5', fg: GREEN },
   B: { bg: TEAL_LIGHT, fg: TEAL },
   C: { bg: '#fefce8', fg: '#ca8a04' },
-  D: { bg: '#fff7ed', fg: AMBER  },
-  F: { bg: '#fef2f2', fg: RED    },
+  D: { bg: '#fff7ed', fg: AMBER },
+  F: { bg: '#fef2f2', fg: RED },
+};
+
+const SEVERITY_COLORS = {
+  green: GREEN,
+  amber: AMBER,
+  red: RED,
 };
 
 // ---------------------------------------------------------------------------
@@ -99,33 +106,25 @@ const s = StyleSheet.create({
     lineHeight: 1.4,
   },
   logo:      { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
-  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 32 },
   logoImg:   { width: 18, height: 18 },
-  h1:        { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
-  subhead:   { fontSize: 12, color: GRAY_700, marginBottom: 4 },
-  dateText:  { fontSize: 9, color: GRAY_500, marginBottom: 32 },
+  h1:        { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 6 },
+  subhead:   { fontSize: 11, color: GRAY_700, marginBottom: 3 },
+  dateText:  { fontSize: 9, color: GRAY_500, marginBottom: 16 },
   sectionTitle: {
     fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_500,
     textTransform: 'uppercase', letterSpacing: 0.8,
-    marginTop: 20, marginBottom: 8,
+    marginTop: 16, marginBottom: 8,
   },
-  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 14 },
+  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 12 },
   bodyText: { fontSize: 8.5, color: GRAY_700, lineHeight: 1.5, marginBottom: 6 },
   // Grade badge
   gradeBadge: {
-    width: 60, height: 60, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+    width: 50, height: 50, borderRadius: 6,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
-  gradeLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  gradeLetter: { fontSize: 30, fontFamily: 'Helvetica-Bold', lineHeight: 1 },
-  // Stats grid
-  statGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: {
-    flex: 1, backgroundColor: GRAY_100, borderRadius: 4, padding: 10,
-  },
-  statLabel: { fontSize: 7, color: GRAY_500, marginBottom: 3 },
-  statValue: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
-  statSub:   { fontSize: 7.5, color: GRAY_700, marginTop: 2 },
+  gradeLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  gradeLetter: { fontSize: 26, fontFamily: 'Helvetica-Bold', lineHeight: 1 },
   // ROI table
   roiRow: {
     flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`,
@@ -133,12 +132,54 @@ const s = StyleSheet.create({
   },
   roiLabel: { flex: 2, fontSize: 8.5, color: GRAY_700 },
   roiValue: { flex: 1, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900, textAlign: 'right' },
-  footer: {
-    position: 'absolute', bottom: 28, left: 48, right: 48,
-    flexDirection: 'row', justifyContent: 'space-between',
-  },
-  footerText: { fontSize: 7, color: GRAY_500 },
 });
+
+// ---------------------------------------------------------------------------
+// Finding row (matches frontend pattern)
+// ---------------------------------------------------------------------------
+
+interface Finding {
+  label: string;
+  value: string;
+  detail: string;
+  severity: 'green' | 'amber' | 'red';
+}
+
+function FindingRow({ finding }: { finding: Finding }) {
+  const dotColor = SEVERITY_COLORS[finding.severity];
+  return (
+    <View style={{ paddingVertical: 8, borderBottom: `1 solid ${GRAY_100}` }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dotColor }} />
+        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: GRAY_900 }}>
+          {finding.value}
+        </Text>
+      </View>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5, marginLeft: 13, marginBottom: 2 }}>
+        {finding.detail}
+      </Text>
+      <Text style={{ fontSize: 6.5, color: GRAY_500, marginLeft: 13 }}>
+        {finding.label}
+      </Text>
+    </View>
+  );
+}
+
+function PaidSectionHeader({ title }: { title: string }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: TEAL_LIGHT, borderRadius: 3,
+      paddingVertical: 5, paddingHorizontal: 8,
+      marginTop: 16, marginBottom: 8,
+      borderWidth: 1, borderColor: '#99f6e4',
+    }}>
+      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {title}
+      </Text>
+    </View>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -163,27 +204,6 @@ function azimuthLabel(deg: number): string {
   return 'NW';
 }
 
-function ValidityNote({ runDate }: { runDate: string }) {
-  return (
-    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Google Solar imagery is updated periodically — re-run this report if more than 12 months have passed or if significant works have occurred on the property.'}
-    </Text>
-  );
-}
-
-function ReferralBox() {
-  return (
-    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
-      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
-        Get professional advice
-      </Text>
-      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-        An accredited solar installer (Clean Energy Council) can provide a site-specific design and quote. CEC accreditation is required to access the Small-scale Technology Certificate (STC) rebate, which typically reduces system cost by $2,000-$4,000.
-      </Text>
-    </View>
-  );
-}
-
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -202,12 +222,110 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Build findings (mirrors ReportCard logic from SolarYieldTool.tsx)
+// ---------------------------------------------------------------------------
+
+function buildFindings(data: SolarYieldReportData): Finding[] {
+  const findings: Finding[] = [];
+
+  // Solar grade
+  const gradeDetail: Record<string, string> = {
+    A: 'This roof has excellent solar potential. North-facing with ideal pitch and strong sunshine hours — an installer would consider this a premium site.',
+    B: 'Good solar potential. Minor compromises in orientation or pitch, but still a strong candidate for solar. Most installers would recommend proceeding.',
+    C: 'Moderate solar potential. The roof geometry or orientation reduces output compared to ideal. Still viable, but payback period will be longer.',
+    D: 'Below-average solar potential. Significant orientation or pitch issues will reduce output. Consider whether the investment makes sense at current panel prices.',
+    F: 'Poor solar potential. The roof geometry makes solar panels unlikely to deliver a reasonable return. A ground-mounted system or different roof face may be worth exploring.',
+  };
+
+  findings.push({
+    label: 'Solar suitability assessment',
+    value: `Grade ${data.solar_grade} — ${data.solar_grade_reason.toLowerCase()}`,
+    detail: gradeDetail[data.solar_grade] ?? gradeDetail.C,
+    severity: data.solar_grade <= 'B' ? 'green' : data.solar_grade === 'C' ? 'amber' : 'red',
+  });
+
+  // Roof orientation
+  const northDev = Math.min(data.best_azimuth_deg, 360 - data.best_azimuth_deg);
+  if (northDev <= 30) {
+    findings.push({
+      label: 'Google Solar API — roof geometry',
+      value: `${azimuthLabel(data.best_azimuth_deg)}-facing at ${data.best_pitch_deg}° pitch`,
+      detail: 'North-facing is ideal for solar in the Southern Hemisphere. Your panels will capture maximum sunlight throughout the day, especially in winter when the sun is lower.',
+      severity: 'green',
+    });
+  } else if (northDev <= 90) {
+    findings.push({
+      label: 'Google Solar API — roof geometry',
+      value: `${azimuthLabel(data.best_azimuth_deg)}-facing at ${data.best_pitch_deg}° pitch`,
+      detail: northDev <= 60
+        ? 'Partially north-facing. You\'ll lose some output compared to true north, but this is still a viable orientation. East-facing generates more in the morning, west in the afternoon.'
+        : 'East or west-facing roof. You\'ll generate around 15–20% less than a north-facing roof. Still viable, but factor the lower yield into your payback calculations.',
+      severity: 'amber',
+    });
+  } else {
+    findings.push({
+      label: 'Google Solar API — roof geometry',
+      value: `${azimuthLabel(data.best_azimuth_deg)}-facing at ${data.best_pitch_deg}° pitch`,
+      detail: 'South-facing is the least productive orientation in the Southern Hemisphere. Output could be 30–40% lower than north-facing. Consider panels on a different roof face if available.',
+      severity: 'red',
+    });
+  }
+
+  // Annual output + dollar estimate
+  const annualDollar = Math.round(data.annual_kwh_estimate * 0.32);
+  findings.push({
+    label: 'Google Solar building analysis',
+    value: `${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr from ${data.system_kw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${data.max_panels} panels (${data.max_panel_area_m2} m² of ${data.roof_area_m2} m² total roof area). At current retail rates, this output is worth roughly $${annualDollar.toLocaleString('en-AU')}/yr before feed-in adjustments.`,
+    severity: data.annual_kwh_estimate > 5000 ? 'green' : data.annual_kwh_estimate > 2000 ? 'amber' : 'red',
+  });
+
+  // Sunshine hours
+  findings.push({
+    label: 'Bureau of Meteorology — solar exposure data',
+    value: `${data.sunshine_hours_per_year.toLocaleString('en-AU')} sunshine hours per year`,
+    detail: data.sunshine_hours_per_year >= 1700
+      ? 'Above-average sunshine for NSW. Your panels will perform at or above nameplate capacity for much of the year.'
+      : data.sunshine_hours_per_year >= 1500
+      ? 'Typical sunshine hours for Sydney metro. Standard solar yield assumptions apply.'
+      : 'Below-average sunshine hours. This could be due to local shading, coastal cloud, or valley fog. Factor this into your installer\'s yield estimate.',
+    severity: data.sunshine_hours_per_year >= 1700 ? 'green' : data.sunshine_hours_per_year >= 1300 ? 'amber' : 'red',
+  });
+
+  // Heritage
+  if (data.is_heritage) {
+    findings.push({
+      label: 'Heritage overlay (LEP cl 5.10)',
+      value: 'Heritage item or conservation area',
+      detail: 'Solar panels visible from a public place may require council approval. Panels on rear or concealed roof faces are generally approvable — street-facing primary facades are often refused. Check with council before signing an installer contract.',
+      severity: 'amber',
+    });
+  }
+
+  // Commercial scale
+  if (data.is_commercial_scale) {
+    findings.push({
+      label: 'Roof scale classification',
+      value: `Large-scale roof — ${data.roof_area_m2.toLocaleString('en-AU')} m²`,
+      detail: 'This is a commercial-scale roof. Results reflect panels within this lot boundary only. For multi-tenancy or strata sites, get a commercial energy assessment — residential quotes won\'t cover the full opportunity.',
+      severity: 'amber',
+    });
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // Document
 // ---------------------------------------------------------------------------
 
 export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData }) {
   const gradeColors = GRADE_COLORS[data.solar_grade] ?? GRADE_COLORS.C;
-  const totalPages  = (data.tile_b64 ? 3 : 2) + 1; // +1 for About page
+  const isPaid      = data.is_paid === true;
+  const hasTile     = !!data.tile_b64;
+
+  // Pages: 1 (cover+findings) + 1 (paid detail OR advice) + 1 (about) + 1? (aerial)
+  const totalPages = 1 + 1 + 1 + (hasTile ? 1 : 0);
 
   if (!data.coverage_available) {
     return (
@@ -227,295 +345,228 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
     );
   }
 
+  const findings = buildFindings(data);
+
+  let pageCounter = 0;
+  const nextPage = () => ++pageCounter;
+
   return (
     <Document title={`Solar Assessment — ${data.address}`} author="PlotDetect">
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 1: Cover + Grade + Financial ROI                               */}
+      {/* PAGE 1: Cover + Grade + Findings                                    */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Solar Potential Assessment</Text>
         <Text style={s.subhead}>{data.address}</Text>
         {data.lga_name && (
-          <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{data.lga_name} LGA</Text>
+          <Text style={{ fontSize: 9, color: GRAY_500, marginBottom: 2 }}>{data.lga_name} LGA</Text>
         )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
         <PreparedBy firmName={data.firm_name} />
-        <ValidityNote runDate={data.run_date} />
 
-        {/* Grade badge */}
-        <View style={[s.gradeBadge, { backgroundColor: gradeColors.bg }]}>
-          <Text style={[s.gradeLabel, { color: gradeColors.fg }]}>Grade</Text>
-          <Text style={[s.gradeLetter, { color: gradeColors.fg }]}>{data.solar_grade}</Text>
+        {/* Grade badge + system summary */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <View style={[s.gradeBadge, { backgroundColor: gradeColors.bg }]}>
+            <Text style={[s.gradeLabel, { color: gradeColors.fg }]}>Grade</Text>
+            <Text style={[s.gradeLetter, { color: gradeColors.fg }]}>{data.solar_grade}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
+              {data.solar_grade_reason}
+            </Text>
+            <Text style={{ fontSize: 8.5, color: GRAY_700 }}>
+              {data.system_kw.toFixed(1)} kW system · {data.max_panels} panels · {Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr
+            </Text>
+          </View>
         </View>
-        <Text style={[s.bodyText, { marginBottom: 16 }]}>
-          {data.solar_grade_reason} · {data.system_kw.toFixed(1)} kW system
-          {data.is_heritage ? ' · Heritage area' : ''}
+
+        {/* Key findings */}
+        <Text style={s.sectionTitle}>Key findings</Text>
+        {findings.map((f) => (
+          <FindingRow key={f.label} finding={f} />
+        ))}
+
+        {/* Data sources */}
+        <View style={{ marginTop: 10 }}>
+          <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 4 }}>
+            Data sources: {data.data_sources.join(' · ')}
+          </Text>
+        </View>
+
+        <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+          {'Data valid as of ' + data.run_date + '. Re-run if more than 12 months have passed or if significant works have occurred.'}
         </Text>
 
-        {/* A1: Plain-English interpretation */}
-        {data.is_paid === true && (
-          <WhatThisMeans>
-            {data.payback_years != null
-              ? `This roof is ${data.solar_grade === 'A' || data.solar_grade === 'B' ? 'well-suited' : 'suitable'} for solar. At current NSW retail rates, a ${data.system_kw.toFixed(1)} kW system would pay for itself in approximately ${data.payback_years.toFixed(1)} years. The next step is to get 2-3 quotes from CEC-accredited installers.`
-              : `This roof can support a ${data.system_kw.toFixed(1)} kW solar system producing approximately ${Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')} kWh per year. Get 2-3 quotes from CEC-accredited installers for a site-specific assessment.`}
-          </WhatThisMeans>
-        )}
-
-        <View style={s.divider} />
-
-        {/* Financial ROI */}
-        <Text style={s.sectionTitle}>Financial return</Text>
-        {data.is_paid === true ? (
-          <>
-            <View style={s.statGrid}>
-              <View style={s.statCard}>
-                <Text style={s.statLabel}>Annual savings</Text>
-                <Text style={s.statValue}>{fmt$(data.annual_saving_aud)}</Text>
-                <Text style={s.statSub}>at current NSW rates</Text>
-              </View>
-              <View style={s.statCard}>
-                <Text style={s.statLabel}>Payback period</Text>
-                <Text style={s.statValue}>
-                  {data.payback_years ? `${data.payback_years.toFixed(1)} yrs` : '—'}
-                </Text>
-                <Text style={s.statSub}>system cost {fmt$(data.system_cost_aud)}</Text>
-              </View>
-              <View style={s.statCard}>
-                <Text style={s.statLabel}>10-year return</Text>
-                <Text style={[s.statValue, {
-                  color: data.ten_year_return_aud >= 0 ? GREEN : RED,
-                }]}>
-                  {fmt$(data.ten_year_return_aud)}
-                </Text>
-                <Text style={s.statSub}>after install + inverter</Text>
-              </View>
-            </View>
-            <Text style={[s.bodyText, { fontSize: 7.5, color: GRAY_500 }]}>
-              Assumes 32¢/kWh retail (AER DMO 2025–26) · 6¢/kWh feed-in (AER benchmark) ·
-              30% self-consumption (ARENA/CSIRO) · $1,000/kW installed after STCs ·
-              inverter replacement $2,000 at year 10.
-            </Text>
-          </>
-        ) : (
-          <View style={s.statGrid}>
-            <View style={s.statCard}>
-              <Text style={s.statLabel}>Annual savings</Text>
-              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
-              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
-            </View>
-            <View style={s.statCard}>
-              <Text style={s.statLabel}>Payback period</Text>
-              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
-              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
-            </View>
-            <View style={s.statCard}>
-              <Text style={s.statLabel}>10-year return</Text>
-              <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Calculated</Text>
-              <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>Full figures in paid report</Text>
-            </View>
-          </View>
-        )}
-
-        <Footer pageNum={1} total={totalPages} />
+        <Footer pageNum={nextPage()} total={totalPages} />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 2: Roof specs + Disclaimer                                      */}
+      {/* PAGE 2: Financial detail (paid) + Sensitivity + Monthly + Advice     */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
 
-        {/* Roof and system */}
-        <Text style={s.sectionTitle}>Roof and system specifications</Text>
-        <View style={s.statGrid}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Maximum panels</Text>
-            {data.is_paid === true ? (
-              <>
-                <Text style={s.statValue}>{data.max_panels}</Text>
-                <Text style={s.statSub}>{data.system_kw.toFixed(1)} kW system</Text>
-              </>
-            ) : (
-              <>
-                <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Assessed</Text>
-                <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>In paid report</Text>
-              </>
-            )}
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Usable roof area</Text>
-            {data.is_paid === true ? (
-              <>
-                <Text style={s.statValue}>{data.max_panel_area_m2} m²</Text>
-                <Text style={s.statSub}>of {data.roof_area_m2} m² total</Text>
-              </>
-            ) : (
-              <>
-                <Text style={[s.statValue, { fontSize: 9, color: GRAY_500 }]}>Assessed</Text>
-                <Text style={{ fontSize: 7.5, color: TEAL, marginTop: 2 }}>In paid report</Text>
-              </>
-            )}
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Annual output</Text>
-            <Text style={s.statValue}>{Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')}</Text>
-            <Text style={s.statSub}>kWh/year</Text>
-          </View>
-        </View>
-        <View style={s.statGrid}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Best orientation</Text>
-            <Text style={[s.statValue, { fontSize: 12 }]}>
-              {azimuthLabel(data.best_azimuth_deg)} · {data.best_pitch_deg}° pitch
-            </Text>
-            <Text style={s.statSub}>{Math.round(data.sunshine_hours_per_year).toLocaleString('en-AU')} hr/yr sunshine</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Imagery date</Text>
-            <Text style={[s.statValue, { fontSize: 11 }]}>
-              {data.imagery_date !== 'unknown' ? data.imagery_date : 'Unknown'}
-            </Text>
-            <Text style={s.statSub}>Google Solar API</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Confidence</Text>
-            <Text style={[s.statValue, { fontSize: 12, textTransform: 'capitalize' }]}>
-              {data.confidence}
-            </Text>
-          </View>
-        </View>
+        {/* Financial ROI — paid gets full numbers, free gets teaser */}
+        {isPaid ? (
+          <>
+            <PaidSectionHeader title="Financial return — detailed data" />
 
-        {/* Heritage notice */}
-        {data.is_heritage && (
-          <View style={{
-            backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
-            paddingVertical: 8, paddingHorizontal: 10, marginBottom: 12, borderRadius: 2,
-          }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
-              Heritage item or conservation area
-            </Text>
-            <Text style={{ fontSize: 8, color: GRAY_700 }}>
-              Solar panels visible from a public place may require council approval under LEP
-              cl 5.10. Panels on rear or concealed roof faces are generally approvable.
-            </Text>
-          </View>
-        )}
-
-        {/* Commercial scale notice */}
-        {data.is_commercial_scale && (
-          <View style={{
-            backgroundColor: '#f0f9ff', borderLeft: `3 solid #0284c7`,
-            paddingVertical: 8, paddingHorizontal: 10, marginBottom: 12, borderRadius: 2,
-          }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
-              Large-scale roof detected
-            </Text>
-            <Text style={{ fontSize: 8, color: GRAY_700 }}>
-              {`Roof area: ${data.roof_area_m2.toLocaleString('en-AU')} m\u00B2. Results reflect panels within this lot boundary only. Financial figures assume a single-occupant system. A commercial energy assessment is recommended for multi-tenancy or strata sites.`}
-            </Text>
-          </View>
-        )}
-
-        {/* Payback sensitivity — paid */}
-        {data.is_paid === true && data.sensitivity && data.sensitivity.length > 0 && (
-          <View style={{ marginTop: 8 }}>
-            <Text style={s.sectionTitle}>Payback sensitivity — feed-in rate scenarios</Text>
-            {/* Header */}
-            <View style={[s.roiRow, { borderBottom: `1 solid ${GRAY_300}` }]}>
-              <Text style={[s.roiLabel, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Feed-in rate (¢/kWh)</Text>
-              <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Annual saving</Text>
-              <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Payback</Text>
+            {/* ROI table */}
+            <View style={s.roiRow}>
+              <Text style={s.roiLabel}>Annual savings (at current NSW rates)</Text>
+              <Text style={[s.roiValue, { color: GREEN }]}>{fmt$(data.annual_saving_aud)}</Text>
             </View>
-            {data.sensitivity.map((row) => {
-              const isCurrent = row.feed_in_rate === 0.06;
-              return (
-                <View key={row.feed_in_rate} style={[s.roiRow, isCurrent ? { backgroundColor: TEAL_LIGHT } : {}]}>
-                  <Text style={[s.roiLabel, isCurrent ? { fontFamily: 'Helvetica-Bold' } : {}]}>
-                    {(row.feed_in_rate * 100).toFixed(0)}c{isCurrent ? ' (current AER benchmark)' : ''}
-                  </Text>
-                  <Text style={[s.roiValue, isCurrent ? { color: GREEN } : {}]}>{fmt$(row.annual_saving)}</Text>
-                  <Text style={s.roiValue}>{row.payback_years != null ? `${row.payback_years.toFixed(1)} yrs` : '—'}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )}
+            <View style={s.roiRow}>
+              <Text style={s.roiLabel}>Estimated system cost (after STCs)</Text>
+              <Text style={s.roiValue}>{fmt$(data.system_cost_aud)}</Text>
+            </View>
+            <View style={s.roiRow}>
+              <Text style={s.roiLabel}>Payback period</Text>
+              <Text style={s.roiValue}>{data.payback_years ? `${data.payback_years.toFixed(1)} years` : '—'}</Text>
+            </View>
+            <View style={[s.roiRow, { borderBottom: `2 solid ${GRAY_300}` }]}>
+              <Text style={[s.roiLabel, { fontFamily: 'Helvetica-Bold' }]}>10-year net return</Text>
+              <Text style={[s.roiValue, { color: data.ten_year_return_aud >= 0 ? GREEN : RED, fontSize: 10 }]}>
+                {fmt$(data.ten_year_return_aud)}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4, marginBottom: 12 }}>
+              Assumes 32¢/kWh retail (AER DMO 2025–26) · 6¢/kWh feed-in (AER benchmark) ·
+              30% self-consumption (ARENA/CSIRO) · $1,000/kW installed after STCs ·
+              inverter replacement $2,000 at year 10.
+            </Text>
 
-        {/* Monthly output — paid */}
-        {data.is_paid === true && data.monthly_kwh && data.monthly_kwh.length === 12 && (
-          <View style={{ marginTop: 16 }}>
-            <Text style={s.sectionTitle}>Estimated monthly output (kWh)</Text>
-            {[0, 1].map((half) => (
-              <View key={half} style={{ flexDirection: 'row', gap: 4, marginBottom: 4 }}>
-                {MONTH_NAMES.slice(half * 6, half * 6 + 6).map((month, i) => {
-                  const idx = half * 6 + i;
-                  const val = data.monthly_kwh![idx];
+            {/* Payback sensitivity table */}
+            {data.sensitivity && data.sensitivity.length > 0 && (
+              <View style={{ marginTop: 4 }}>
+                <Text style={s.sectionTitle}>Payback sensitivity — feed-in rate scenarios</Text>
+                <View style={[s.roiRow, { borderBottom: `1 solid ${GRAY_300}` }]}>
+                  <Text style={[s.roiLabel, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Feed-in rate</Text>
+                  <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Annual saving</Text>
+                  <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Payback</Text>
+                </View>
+                {data.sensitivity.map((row) => {
+                  const isCurrent = row.feed_in_rate === 0.06;
                   return (
-                    <View key={month} style={{ flex: 1, backgroundColor: GRAY_100, borderRadius: 3, padding: 5, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 7, color: GRAY_500 }}>{month}</Text>
-                      <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: TEAL, marginTop: 2 }}>{val}</Text>
+                    <View key={row.feed_in_rate} style={[s.roiRow, isCurrent ? { backgroundColor: TEAL_LIGHT } : {}]}>
+                      <Text style={[s.roiLabel, isCurrent ? { fontFamily: 'Helvetica-Bold' } : {}]}>
+                        {(row.feed_in_rate * 100).toFixed(0)}¢/kWh{isCurrent ? ' (current AER benchmark)' : ''}
+                      </Text>
+                      <Text style={[s.roiValue, isCurrent ? { color: GREEN } : {}]}>{fmt$(row.annual_saving)}</Text>
+                      <Text style={s.roiValue}>{row.payback_years != null ? `${row.payback_years.toFixed(1)} yrs` : '—'}</Text>
                     </View>
                   );
                 })}
               </View>
-            ))}
-          </View>
-        )}
+            )}
 
-        {/* Battery upgrade callout — PAID */}
-        {data.is_paid === true && (() => {
-          // With battery: 80% self-consumed at retail, 20% exported at feed-in
-          const batteryAnnualSaving = data.annual_kwh_estimate * (0.80 * 0.32 + 0.20 * 0.06);
-          const batteryPayback = batteryAnnualSaving > 0
-            ? (data.system_cost_aud + 12000) / batteryAnnualSaving
-            : null;
-          return (
-            <View style={{
-              backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10,
-              marginTop: 8, borderWidth: 1, borderColor: '#99f6e4',
-            }}>
-              <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
-                Battery storage upgrade
+            {/* Monthly output */}
+            {data.monthly_kwh && data.monthly_kwh.length === 12 && (
+              <View style={{ marginTop: 12 }}>
+                <Text style={s.sectionTitle}>Estimated monthly output (kWh)</Text>
+                {[0, 1].map((half) => (
+                  <View key={half} style={{ flexDirection: 'row', gap: 4, marginBottom: 4 }}>
+                    {MONTH_NAMES.slice(half * 6, half * 6 + 6).map((month, i) => {
+                      const idx = half * 6 + i;
+                      const val = data.monthly_kwh![idx];
+                      return (
+                        <View key={month} style={{ flex: 1, backgroundColor: GRAY_100, borderRadius: 3, padding: 5, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 7, color: GRAY_500 }}>{month}</Text>
+                          <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: TEAL, marginTop: 2 }}>{val}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Battery upgrade callout */}
+            {(() => {
+              const batteryAnnualSaving = data.annual_kwh_estimate * (0.80 * 0.32 + 0.20 * 0.06);
+              const batteryPayback = batteryAnnualSaving > 0
+                ? (data.system_cost_aud + 12000) / batteryAnnualSaving
+                : null;
+              return (
+                <View style={{
+                  backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10,
+                  marginTop: 12, borderWidth: 1, borderColor: '#99f6e4',
+                }}>
+                  <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+                    Battery storage upgrade
+                  </Text>
+                  <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                    {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback: approximately ${batteryPayback != null ? batteryPayback.toFixed(1) : 'N/A'} years. Battery storage also provides grid independence during outages.`}
+                  </Text>
+                </View>
+              );
+            })()}
+
+            {/* Future shading risk */}
+            {data.neighbour_max_height_m != null && data.neighbour_max_height_m > 0 && (
+              <View style={{
+                backgroundColor: '#fff7ed', borderRadius: 4, padding: 10,
+                marginTop: 8, borderWidth: 1, borderColor: '#fed7aa',
+              }}>
+                <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#9a3412', marginBottom: 4 }}>
+                  Future shading risk
+                </Text>
+                <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                  {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the ${data.lga_name ? `${data.lga_name} ` : ''}LEP. A building at this height to the north could reduce your solar yield by 20–40% during winter months.`}
+                </Text>
+                <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 4 }}>
+                  Run a Shadow Detector check at plotdetect.com.au to assess the impact.
+                </Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={s.sectionTitle}>Financial return</Text>
+            <View style={{ backgroundColor: GRAY_100, borderRadius: 4, padding: 12, marginBottom: 12 }}>
+              <Text style={{ fontSize: 9, color: GRAY_700, marginBottom: 6 }}>
+                The paid report includes:
               </Text>
-              <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-                {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback reduces to approximately ${batteryPayback != null ? batteryPayback.toFixed(1) : 'N/A'} years. Battery storage also provides grid independence during outages.`}
+              {[
+                'Annual savings at current NSW retail rates',
+                'System cost estimate (after STC rebate)',
+                'Payback period calculation',
+                '10-year net return analysis',
+                'Feed-in rate sensitivity table (4 scenarios)',
+                'Monthly kWh output breakdown',
+                'Battery storage upgrade analysis',
+                'Future shading risk assessment',
+              ].map((item) => (
+                <View key={item} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 }}>
+                  <Text style={{ fontSize: 8, color: TEAL, marginRight: 4 }}>•</Text>
+                  <Text style={{ fontSize: 8, color: GRAY_700 }}>{item}</Text>
+                </View>
+              ))}
+              <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 6 }}>
+                Unlock at plotdetect.com.au — $19
               </Text>
             </View>
-          );
-        })()}
-
-        {/* HOB teaser + shadow cross-sell — paid */}
-        {data.is_paid === true && data.neighbour_max_height_m != null && data.neighbour_max_height_m > 0 && (
-          <View style={{
-            backgroundColor: '#fff7ed', borderRadius: 4, padding: 10,
-            marginTop: 8, borderWidth: 1, borderColor: '#fed7aa',
-          }}>
-            <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#9a3412', marginBottom: 4 }}>
-              Future shading risk
-            </Text>
-            <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-              {`Neighbouring lots permit buildings up to ${data.neighbour_max_height_m}m under the ${data.lga_name ? `${data.lga_name} ` : ''}LEP. A building at this height to the north could reduce your solar yield by 20-40% during winter months.`}
-            </Text>
-            <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 4 }}>
-              Run a Shadow Detector check at plotdetect.com.au to assess the impact.
-            </Text>
-          </View>
+          </>
         )}
 
-        <View style={s.divider} />
+        {/* Referral + data currency */}
+        <View style={{ backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10, marginTop: 8, borderWidth: 1, borderColor: '#99f6e4' }}>
+          <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+            Next steps
+          </Text>
+          <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+            Get 2–3 quotes from CEC-accredited installers. CEC accreditation is required to access the STC rebate, which typically reduces system cost by $2,000–$4,000.
+          </Text>
+        </View>
 
-        <ReferralBox />
-
-        {/* A3: Referral directory links */}
         <ReferralLinks links={[
           { label: 'CEC accredited installer', url: 'https://www.cleanenergycouncil.org.au/consumers/find-an-installer', urlDisplay: 'cleanenergycouncil.org.au/find-an-installer' },
           { label: 'Solar quotes comparison', url: 'https://www.solarquotes.com.au', urlDisplay: 'solarquotes.com.au' },
         ]} />
 
-        {/* A2: Data currency table — paid only */}
-        {data.is_paid === true && (
+        {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'Google Solar API', type: 'Live API query', currency: `Queried ${data.run_date}` },
             { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
@@ -524,37 +575,33 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           ]} />
         )}
 
-        <Text style={s.sectionTitle}>Disclaimer</Text>
+        {data.qr_b64 && data.shareable_url && (
+          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
+        )}
+
+        <Text style={[s.sectionTitle, { marginTop: 8 }]}>Disclaimer</Text>
         <Text style={s.bodyText}>
           This report contains indicative estimates only and does not constitute financial
           or energy advice. Actual savings depend on household consumption patterns, tariff
           structure, system orientation, shading, and future energy prices.
         </Text>
-        <Text style={s.bodyText}>
-          Solar installation on heritage items or within Heritage Conservation Areas may
-          require council approval. Consult a heritage consultant before proceeding.
-        </Text>
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
-          Data: {data.data_sources.join(' · ')} · Report generated {data.run_date} · plotdetect.com.au
+          Report generated by PlotDetect · plotdetect.com.au · {data.run_date}
         </Text>
 
-        {data.qr_b64 && data.shareable_url && (
-          <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
-        )}
-
-        <Footer pageNum={2} total={totalPages} />
+        <Footer pageNum={nextPage()} total={totalPages} />
       </Page>
 
-      {/* T4: About this report + tools list */}
+      {/* About page */}
       <AboutPage
         logo_b64={data.logo_b64}
-        pageNum={3}
+        pageNum={nextPage()}
         total={totalPages}
         reportName="Solar Potential Assessment"
       />
 
       {/* Aerial tile (optional) */}
-      {data.tile_b64 && (
+      {hasTile && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
@@ -568,7 +615,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
-          <Footer pageNum={4} total={totalPages} />
+          <Footer pageNum={nextPage()} total={totalPages} />
         </Page>
       )}
 
