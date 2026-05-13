@@ -107,6 +107,9 @@ export async function fetchAerialTileBase64(
     const ct = res.headers.get('content-type') ?? '';
     if (!ct.includes('image')) return null;
     const buf = await res.arrayBuffer();
+    // Reject very small images (< 5KB) — these are typically blank/checkerboard
+    // "no data" tiles from the MapServer when imagery isn't available
+    if (buf.byteLength < 5000) return null;
     return Buffer.from(buf).toString('base64');
   } catch {
     return null;

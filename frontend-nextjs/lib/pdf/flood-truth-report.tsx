@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable } from './shared-components';
+import { PlotDetectFooter, AboutPage, ReferralLinks, InsurerChecklist, DataCurrencyTable } from './shared-components';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,7 +100,7 @@ export interface FloodReportData {
 }
 
 // ---------------------------------------------------------------------------
-// Palette (shared with granny-flat-report)
+// Palette
 // ---------------------------------------------------------------------------
 
 const TEAL       = '#0f766e';
@@ -117,13 +117,12 @@ const GRAY_700   = '#374151';
 const GRAY_500   = '#6b7280';
 const GRAY_300   = '#d1d5db';
 const GRAY_100   = '#f3f4f6';
-const WHITE      = '#ffffff';
 
-const SIGNAL_META: Record<string, { label: string; bg: string; color: string }> = {
-  none:     { label: 'No flood indicators detected', bg: GREEN_LIGHT,  color: GREEN  },
-  low:      { label: 'Low flood signal',             bg: AMBER_LIGHT,  color: AMBER  },
-  moderate: { label: 'Moderate flood signal',        bg: ORANGE_LIGHT, color: ORANGE },
-  elevated: { label: 'Elevated flood signal',        bg: RED_LIGHT,    color: RED    },
+const SIGNAL_META: Record<string, { label: string; sublabel: string; bg: string; color: string }> = {
+  none:     { label: 'No flood indicators detected', sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records', bg: GREEN_LIGHT, color: GREEN },
+  low:      { label: 'Low flood signal', sublabel: 'Property is within a statutory flood zone — no observed inundation events on record', bg: AMBER_LIGHT, color: AMBER },
+  moderate: { label: 'Moderate flood signal', sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing', bg: ORANGE_LIGHT, color: ORANGE },
+  elevated: { label: 'Elevated flood signal', sublabel: 'Multiple independent sources confirm flood exposure — professional flood assessment recommended', bg: RED_LIGHT, color: RED },
 };
 
 const EPI_CLASS_META: Record<string, { label: string }> = {
@@ -132,6 +131,12 @@ const EPI_CLASS_META: Record<string, { label: string }> = {
   low_flood_risk:      { label: 'Low flood risk zone' },
   flood_planning_area: { label: 'Flood planning area' },
   none:                { label: 'Not in statutory flood overlay' },
+};
+
+const SEVERITY_COLORS = {
+  green: GREEN,
+  amber: AMBER,
+  red: RED,
 };
 
 // ---------------------------------------------------------------------------
@@ -144,78 +149,90 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: GRAY_900,
     paddingTop: 48,
-    paddingBottom: 48,
+    paddingBottom: 56,
     paddingHorizontal: 48,
     lineHeight: 1.4,
   },
   logo:     { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
-  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 32 },
   logoImg:  { width: 18, height: 18 },
-  h1:       { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
-  subhead:  { fontSize: 12, color: GRAY_700, marginBottom: 4 },
-  dateText: { fontSize: 9, color: GRAY_500, marginBottom: 48 },
+  h1:       { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 6 },
+  subhead:  { fontSize: 11, color: GRAY_700, marginBottom: 3 },
+  dateText: { fontSize: 9, color: GRAY_500, marginBottom: 16 },
   badge: {
     paddingVertical: 5, paddingHorizontal: 12,
-    borderRadius: 4, alignSelf: 'flex-start', marginBottom: 24,
+    borderRadius: 4, alignSelf: 'flex-start', marginBottom: 6,
   },
   badgeText: { fontSize: 11, fontFamily: 'Helvetica-Bold' },
+  badgeSub:  { fontSize: 8, marginTop: 2 },
   sectionTitle: {
     fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_500,
     textTransform: 'uppercase', letterSpacing: 0.8,
-    marginTop: 20, marginBottom: 8,
+    marginTop: 16, marginBottom: 8,
   },
-  row2: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  card: {
-    flex: 1, backgroundColor: GRAY_100, borderRadius: 4,
-    padding: 10,
-  },
-  cardLabel: { fontSize: 7, color: GRAY_500, marginBottom: 3 },
-  cardValue: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
-  cardSub:   { fontSize: 7.5, color: GRAY_700, marginTop: 2 },
-  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 14 },
+  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 12 },
   bodyText: { fontSize: 8.5, color: GRAY_700, lineHeight: 1.5, marginBottom: 6 },
-  warningBox: {
-    backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
-    paddingVertical: 8, paddingHorizontal: 10, marginBottom: 8, borderRadius: 2,
-  },
-  warningText: { fontSize: 8, color: GRAY_700 },
   footer: {
     position: 'absolute', bottom: 28, left: 48, right: 48,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
   footerText: { fontSize: 7, color: GRAY_500 },
-  sourceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  sourcePill: {
-    backgroundColor: GRAY_100, borderRadius: 3,
-    paddingVertical: 2, paddingHorizontal: 5,
-    fontSize: 7, color: GRAY_700,
-  },
 });
 
 // ---------------------------------------------------------------------------
-// Helper: page number
+// Findings row (matches frontend pattern)
 // ---------------------------------------------------------------------------
 
-function ValidityNote({ runDate }: { runDate: string }) {
-  return (
-    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Flood data is updated periodically — re-run this report if more than 12 months have passed or before exchange of contracts.'}
-    </Text>
-  );
+interface Finding {
+  label: string;
+  value: string;
+  detail: string;
+  severity: 'green' | 'amber' | 'red';
 }
 
-function ReferralBox() {
+function FindingRow({ finding }: { finding: Finding }) {
+  const dotColor = SEVERITY_COLORS[finding.severity];
   return (
-    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
-      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
-        Get professional advice
+    <View style={{ paddingVertical: 8, borderBottom: `1 solid ${GRAY_100}` }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dotColor }} />
+        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: GRAY_900 }}>
+          {finding.value}
+        </Text>
+      </View>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5, marginLeft: 13, marginBottom: 2 }}>
+        {finding.detail}
       </Text>
-      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-        A licensed flood consultant can assess whether this flood classification triggers mandatory disclosure under the Conveyancing (Sale of Land) Regulation 2022. A conveyancer can advise on the impact on contract terms and negotiate appropriate special conditions.
+      <Text style={{ fontSize: 6.5, color: GRAY_500, marginLeft: 13 }}>
+        {finding.label}
       </Text>
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Paid section header
+// ---------------------------------------------------------------------------
+
+function PaidSectionHeader({ title }: { title: string }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: '#f0fdfa', borderRadius: 3,
+      paddingVertical: 5, paddingHorizontal: 8,
+      marginTop: 16, marginBottom: 8,
+      borderWidth: 1, borderColor: '#99f6e4',
+    }}>
+      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
@@ -235,366 +252,267 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Build findings from data (mirrors FloodCard logic)
+// ---------------------------------------------------------------------------
+
+function buildFindings(data: FloodReportData): Finding[] {
+  const findings: Finding[] = [];
+  const epiKey = data.epi_flood_class ?? 'none';
+  const epiLabel = EPI_CLASS_META[epiKey]?.label ?? epiKey;
+
+  // 1. Government flood overlay
+  if (epiKey === 'none') {
+    findings.push({
+      label: 'NSW EPI Flood WFS',
+      value: 'Not mapped as flood-prone',
+      detail: 'This property is not in a gazetted flood zone under NSW planning instruments. Lenders and insurers typically don\'t flag properties outside this overlay.',
+      severity: 'green',
+    });
+  } else {
+    findings.push({
+      label: 'NSW EPI Flood WFS',
+      value: epiLabel,
+      detail: 'This property is inside a gazetted flood zone. Your lender\'s valuer will note this, and insurers will price flood loading into your premium.',
+      severity: 'red',
+    });
+  }
+
+  // 2. 100yr flood zone
+  if (data.in_100yr_flood_zone === true) {
+    const depth1pct = (data.flood_studies ?? [])
+      .flatMap(s => s.design?.['1pct']?.depth_m != null ? [s.design['1pct'].depth_m] : []);
+    const maxDepth = depth1pct.length > 0 ? Math.max(...depth1pct) : null;
+    findings.push({
+      label: 'Council flood study raster',
+      value: maxDepth != null
+        ? `Within 1-in-100yr flood zone — ${(maxDepth * 100).toFixed(0)}cm depth`
+        : 'Within 1-in-100 year flood zone',
+      detail: maxDepth != null && maxDepth > 0.5
+        ? 'Modelled flood depth exceeds typical floor level for single-storey dwellings. Request a Section 10.7(2) certificate from council ($53) and a flood loading quote from your insurer before exchange.'
+        : 'Council flood modelling confirms this site is within the 1-in-100 year flood extent. Obtain a Section 10.7(2) certificate before exchange.',
+      severity: 'red',
+    });
+  } else if (data.in_100yr_flood_zone === false) {
+    findings.push({
+      label: 'Council flood study raster',
+      value: 'Not in 1-in-100 year flood zone',
+      detail: 'Flood modelling does not place this property within the 1% AEP flood extent. Ground elevation provides additional clearance from modelled levels.',
+      severity: 'green',
+    });
+  }
+
+  // 3. Ground elevation
+  if (data.ground_elevation_m_ahd != null) {
+    findings.push({
+      label: 'NSW 5m DEM',
+      value: `Ground elevation: ${data.ground_elevation_m_ahd.toFixed(1)}m AHD`,
+      detail: 'Australian Height Datum elevation at this site. Compare with flood levels in the AEP table — the difference is the depth of water you\'d see during that event.',
+      severity: 'green',
+    });
+  }
+
+  // 4. Satellite water history (DEA WOfS / JRC)
+  const waterPct = data.dea_wofs_frequency_pct ?? data.jrc_water_occurrence_pct;
+  const waterSource = data.dea_wofs_frequency_pct != null
+    ? 'DEA WOfS · Landsat 1987–present'
+    : `JRC Global Surface Water · Landsat 1984–${data.jrc_data_year ?? 2021}`;
+  if (waterPct != null) {
+    if (waterPct === 0) {
+      findings.push({
+        label: waterSource,
+        value: 'No surface water detected since 1987',
+        detail: 'Across 37 years of Landsat satellite passes, no surface water has been observed at this location. Strong independent signal of low flood exposure.',
+        severity: 'green',
+      });
+    } else if (waterPct < 5) {
+      findings.push({
+        label: waterSource,
+        value: `Water detected in ${waterPct.toFixed(1)}% of satellite passes`,
+        detail: 'Satellites have detected surface water here on rare occasions. Could indicate localised ponding or proximity to a waterway that occasionally overtops.',
+        severity: 'amber',
+      });
+    } else {
+      findings.push({
+        label: waterSource,
+        value: `Water detected in ${waterPct.toFixed(1)}% of satellite passes`,
+        detail: 'Satellites regularly detect surface water at this location. This is a strong independent signal of recurring flood exposure.',
+        severity: 'red',
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Build paid-only findings
+// ---------------------------------------------------------------------------
+
+function buildPaidFindings(data: FloodReportData): Finding[] {
+  const findings: Finding[] = [];
+
+  // EMS activations
+  if (data.ems_flood_detected === true && data.ems_activations?.length) {
+    const events = data.ems_activations;
+    findings.push({
+      label: 'Copernicus EMS activations',
+      value: `${events.length} observed flood event${events.length > 1 ? 's' : ''} on record`,
+      detail: events.map(a => `${a.event_name} (${a.event_date})`).join('; '),
+      severity: 'red',
+    });
+  } else if (data.ems_flood_detected === false) {
+    findings.push({
+      label: 'Copernicus EMS activations',
+      value: 'No observed flood events at this location',
+      detail: 'Copernicus Emergency Management Service has not recorded a flood activation at this property since records began.',
+      severity: 'green',
+    });
+  }
+
+  // SAR radar
+  if (data.sar_flood_detected !== null) {
+    findings.push({
+      label: `Sentinel-1 SAR${data.sar_analysis_date ? ` · ${data.sar_analysis_date}` : ''}`,
+      value: data.sar_flood_detected
+        ? `Flood signal detected${data.sar_confidence ? ` — ${data.sar_confidence} confidence` : ''}`
+        : 'No flood signal detected',
+      detail: data.sar_flood_detected
+        ? 'Synthetic Aperture Radar detected standing water at this location during the most recent satellite pass. SAR can see through cloud cover.'
+        : 'No standing water detected by SAR imagery. SAR can detect flood inundation even during cloud cover and at night.',
+      severity: data.sar_flood_detected ? 'red' : 'green',
+    });
+  }
+
+  // BOM gauge
+  if (data.bom_gauge_name) {
+    const distStr = data.bom_gauge_distance_km != null ? data.bom_gauge_distance_km.toFixed(1) : '?';
+    if (data.bom_last_major_flood_date) {
+      findings.push({
+        label: `BOM WaterConnect · ${data.bom_gauge_name} (${distStr}km)`,
+        value: `Last major flood: ${data.bom_last_major_flood_date} — ${data.bom_last_major_flood_peak_m?.toFixed(2) ?? '?'}m peak`,
+        detail: 'The nearest river gauge recorded a major flood event. If the gauge is within 5km and the property is in the same floodplain, expect similar inundation risk.',
+        severity: 'red',
+      });
+    } else {
+      findings.push({
+        label: `BOM WaterConnect · ${data.bom_gauge_name} (${distStr}km)`,
+        value: 'No major flood recorded since 2021',
+        detail: 'The nearest BOM river gauge has not recorded a major flood event in the monitoring period. This doesn\'t rule out older events.',
+        severity: 'green',
+      });
+    }
+  }
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // Document
 // ---------------------------------------------------------------------------
 
 export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
   const signal     = data.flood_signal ?? 'none';
   const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.none;
-  const epiKey     = data.epi_flood_class ?? 'none';
-  const epiLabel   = EPI_CLASS_META[epiKey]?.label ?? epiKey;
-  const hasStudies = data.is_paid === true && (data.flood_studies ?? []).length > 0;
-  // +1 for About page (T4)
-  const totalPages = (data.tile_b64 ? 1 : 0) + (hasStudies ? 3 : 2) + 1;
+  const isPaid     = data.is_paid === true;
+  const hasStudies = isPaid && (data.flood_studies ?? []).length > 0;
+  const hasTile    = !!data.tile_b64;
+
+  // Page count: 1 (cover) + 1? (AEP tables) + 1 (advice) + 1 (about) + 1? (aerial)
+  const totalPages = 1 + (hasStudies ? 1 : 0) + 1 + 1 + (hasTile ? 1 : 0);
+
+  const freeFindings = buildFindings(data);
+  const paidFindings = isPaid ? buildPaidFindings(data) : [];
+
+  let pageCounter = 0;
+  const nextPage = () => ++pageCounter;
 
   return (
     <Document title={`Flood Truth Report — ${data.address}`} author="PlotDetect">
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 1: Cover + Signal + Data grid                                  */}
+      {/* PAGE 1: Cover + Signal + Findings                                   */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
+
+        {/* Title block */}
         <Text style={s.h1}>Flood Data Summary</Text>
         <Text style={s.subhead}>{data.address}</Text>
         {data.lga_name && (
-          <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{data.lga_name} LGA</Text>
+          <Text style={{ fontSize: 9, color: GRAY_500, marginBottom: 2 }}>{data.lga_name} LGA</Text>
         )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
-        <ValidityNote runDate={data.run_date} />
 
-        {/* Signal badge */}
+        {/* Signal badge + sublabel */}
         <View style={[s.badge, { backgroundColor: signalMeta.bg }]}>
           <Text style={[s.badgeText, { color: signalMeta.color }]}>
             {signalMeta.label}
           </Text>
         </View>
-
-        {/* 100yr flood zone headline */}
-        {data.in_100yr_flood_zone === true && (
-          <View style={{ backgroundColor: RED_LIGHT, borderLeft: `3 solid ${RED}`, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderRadius: 2 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: RED }}>
-              Within 1-in-100 year flood zone
-            </Text>
-            {data.ground_elevation_m_ahd != null && (
-              <Text style={{ fontSize: 8, color: GRAY_700, marginTop: 3 }}>
-                Ground elevation: {data.ground_elevation_m_ahd.toFixed(1)}m AHD
-              </Text>
-            )}
-          </View>
-        )}
-        {data.in_100yr_flood_zone === false && (
-          <View style={{ backgroundColor: GREEN_LIGHT, borderLeft: `3 solid ${GREEN}`, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 10, borderRadius: 2 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: GREEN }}>
-              Not in 1-in-100 year flood zone
-            </Text>
-            {data.ground_elevation_m_ahd != null && (
-              <Text style={{ fontSize: 8, color: GRAY_700, marginTop: 3 }}>
-                Ground elevation: {data.ground_elevation_m_ahd.toFixed(1)}m AHD
-              </Text>
-            )}
-          </View>
-        )}
-
-        {/* A1: Plain-English interpretation */}
-        {data.is_paid === true && (() => {
-          const depth1pct = (data.flood_studies ?? [])
-            .flatMap(s => s.design?.['1pct']?.depth_m != null ? [s.design['1pct'].depth_m] : []);
-          const maxDepth = depth1pct.length > 0 ? Math.max(...depth1pct) : null;
-          if (data.in_100yr_flood_zone === true && maxDepth != null) {
-            return (
-              <WhatThisMeans>
-                {`In a 1-in-100 year flood, modelled water depth at this site is approximately ${(maxDepth * 100).toFixed(0)}cm. ${maxDepth > 0.5 ? 'This is above floor level for most single-storey dwellings. ' : ''}Your conveyancer should request the Section 10.7(2) certificate from council ($53, approximately 5 business days) and a flood loading quote from your insurer before exchange.`}
-              </WhatThisMeans>
-            );
-          }
-          if (data.in_100yr_flood_zone === true) {
-            return (
-              <WhatThisMeans>
-                This property is within a mapped 1-in-100 year flood zone. Your conveyancer should request the Section 10.7(2) certificate from council ($53, approximately 5 business days) and a flood loading quote from your insurer before exchange.
-              </WhatThisMeans>
-            );
-          }
-          if (signal !== 'none') {
-            return (
-              <WhatThisMeans>
-                Flood indicators have been detected at this address from one or more data sources. While not in a mapped 1-in-100 year zone, you should request a Section 10.7 certificate from council to confirm the formal flood classification before exchange.
-              </WhatThisMeans>
-            );
-          }
-          return (
-            <WhatThisMeans>
-              No flood indicators were detected across the data sources checked. This is a positive signal, but a Section 10.7 certificate from council remains the authoritative confirmation for conveyancing purposes.
-            </WhatThisMeans>
-          );
-        })()}
-
-        {/* Insurance implication note */}
-        <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginTop: 6, marginBottom: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
-          <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
-            Properties in a Flood Planning Area typically attract higher building and contents insurance premiums. Request a flood loading quote from your insurer before proceeding with purchase or finance.
-          </Text>
-        </View>
-
-        <Text style={s.bodyText}>
-          Cross-referenced across {data.data_sources.length} independent data sources.
-          A formal Section 10.7 certificate from council is required for legal flood status.
+        <Text style={{ fontSize: 8, color: GRAY_700, marginBottom: 12, lineHeight: 1.5 }}>
+          {signalMeta.sublabel}
         </Text>
 
-        <View style={s.divider} />
-
-        {/* Row 1: EPI overlay + EMS events */}
-        <Text style={s.sectionTitle}>Statutory and observed flood data</Text>
-        <View style={s.row2}>
-          <View style={s.card}>
-            <Text style={s.cardLabel}>Council flood overlay</Text>
-            <Text style={s.cardValue}>{epiLabel}</Text>
-            <Text style={s.cardSub}>
-              NSW EPI Flood WFS · {data.data_currency !== 'unknown' ? data.data_currency : 'date unavailable'}
+        {/* Insurance implication — always shown */}
+        {signal !== 'none' && (
+          <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fcd34d' }}>
+            <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
+              Properties with flood indicators typically attract higher building and contents insurance premiums. Request a flood loading quote from your insurer before proceeding with purchase or finance.
             </Text>
-            {/* Flood study provenance — FREE */}
-            {data.flood_study_name && (
-              <Text style={[s.cardSub, { color: GRAY_500, marginTop: 4 }]}>
-                {`Source: ${data.flood_study_name}${data.flood_study_date ? ` (effective ${data.flood_study_date})` : ''}. Flood planning controls derive from this study.`}
-              </Text>
-            )}
-          </View>
-          <View style={s.card}>
-            <Text style={s.cardLabel}>Copernicus EMS observed events</Text>
-            {data.is_paid === true ? (
-              data.ems_flood_detected === null ? (
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Data not available</Text>
-              ) : data.ems_flood_detected && data.ems_activations?.length ? (
-                <>
-                  {data.ems_activations.map((a) => (
-                    <View key={a.activation_id} style={{ marginBottom: 4 }}>
-                      <Text style={[s.cardSub, { fontFamily: 'Helvetica-Bold', color: RED }]}>
-                        {a.event_name}
-                      </Text>
-                      <Text style={s.cardSub}>{a.activation_id} · {a.event_date}</Text>
-                    </View>
-                  ))}
-                </>
-              ) : (
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_700 }]}>
-                  No recorded events at this location
-                </Text>
-              )
-            ) : (
-              <>
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                  {data.ems_flood_detected ? 'Events detected' : 'Checked'}
-                </Text>
-                <Text style={[s.cardSub, { color: TEAL }]}>
-                  Full event details in paid report
-                </Text>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Row 2: JRC + BOM */}
-        <View style={s.row2}>
-          <View style={s.card}>
-            <Text style={s.cardLabel}>40-year surface water history</Text>
-            {data.is_paid === true ? (() => {
-              const pct = data.dea_wofs_frequency_pct ?? data.jrc_water_occurrence_pct;
-              const srcLabel = data.dea_wofs_frequency_pct != null
-                ? 'DEA WOfS · Landsat 1987–present'
-                : `JRC Global Surface Water · Landsat 1984–${data.jrc_data_year ?? 2021}`;
-              return pct != null ? (
-                <>
-                  <Text style={s.cardValue}>
-                    {pct.toFixed(1)}% of observations
-                  </Text>
-                  <Text style={s.cardSub}>
-                    {pct === 0
-                      ? 'No surface water observed'
-                      : pct < 5
-                      ? 'Rare — episodic inundation only'
-                      : pct < 15
-                      ? 'Occasional — periodic inundation'
-                      : pct < 40
-                      ? 'Frequent — seasonal or recurring inundation'
-                      : 'Persistent — regular or permanent surface water'}
-                  </Text>
-                  <Text style={[s.cardSub, { color: GRAY_500 }]}>{srcLabel}</Text>
-                </>
-              ) : (
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Not available</Text>
-              );
-            })() : (
-              <>
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Data checked</Text>
-                <Text style={[s.cardSub, { color: TEAL }]}>
-                  Occurrence frequency in paid report
-                </Text>
-              </>
-            )}
-          </View>
-          <View style={s.card}>
-            <Text style={s.cardLabel}>Nearest BOM river gauge</Text>
-            {data.is_paid === true ? (
-              data.bom_gauge_name ? (
-                <>
-                  <Text style={[s.cardValue, { fontSize: 10 }]}>{data.bom_gauge_name}</Text>
-                  <Text style={s.cardSub}>{data.bom_gauge_distance_km != null ? data.bom_gauge_distance_km.toFixed(1) : '?'} km from property</Text>
-                  {data.bom_last_major_flood_date ? (
-                    <Text style={[s.cardSub, { color: RED, fontFamily: 'Helvetica-Bold' }]}>
-                      Last major flood: {data.bom_last_major_flood_date} — {data.bom_last_major_flood_peak_m != null ? data.bom_last_major_flood_peak_m.toFixed(2) : '?'}m peak
-                    </Text>
-                  ) : (
-                    <Text style={s.cardSub}>No major flood recorded at this gauge since 2021</Text>
-                  )}
-                  <Text style={[s.cardSub, { color: GRAY_500 }]}>BOM WaterConnect · SOS2 API</Text>
-                </>
-              ) : (
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                  No BOM gauge within 75 km
-                </Text>
-              )
-            ) : (
-              <>
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                  {data.bom_gauge_name ? 'Gauge found' : 'No gauge in range'}
-                </Text>
-                <Text style={[s.cardSub, { color: TEAL }]}>
-                  Gauge data and flood history in paid report
-                </Text>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* BoM flood event history table — PAID (up to 3 events) */}
-        {data.is_paid === true && data.bom_flood_history && data.bom_flood_history.length > 0 && (
-          <View style={{ marginBottom: 12 }}>
-            <Text style={s.sectionTitle}>BOM flood event history</Text>
-            {/* Header */}
-            <View style={{
-              flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`,
-              paddingVertical: 4,
-            }}>
-              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Date</Text>
-              <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Peak height</Text>
-              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>ARI category</Text>
-            </View>
-            {data.bom_flood_history.slice(0, 3).map((event, i) => (
-              <View key={i} style={{
-                flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5,
-              }}>
-                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700 }}>{event.date}</Text>
-                <Text style={{ flex: 1.5, fontSize: 8.5, color: RED, fontFamily: 'Helvetica-Bold', textAlign: 'right' }}>{event.peak_m} m</Text>
-                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700, textAlign: 'right' }}>{event.ari_category}</Text>
-              </View>
-            ))}
           </View>
         )}
 
-        {/* Flood study raster results — paid: full depth, free: study name + teaser */}
-        {(data.flood_studies ?? []).map((study) => {
-          const pct1 = study.design?.['1pct'];
-          const hasDesign = pct1?.depth_m != null || pct1?.level_m_ahd != null;
-          const historicalYears = Object.keys(study.historical ?? {}).sort();
-          if (!hasDesign && historicalYears.length === 0) return null;
-          return (
-            <View key={study.study_key} style={[s.card, { marginBottom: 8 }]}>
-              <Text style={s.cardLabel}>{study.study_name} — {study.source}</Text>
-              {data.is_paid === true ? (
-                <>
-                  {pct1?.depth_m != null && (
-                    <Text style={s.cardValue}>
-                      {'1-in-100 yr flood depth: ' + pct1.depth_m.toFixed(2) + 'm'}
-                      {pct1.level_m_ahd != null ? ` (${pct1.level_m_ahd.toFixed(2)}m AHD)` : ''}
-                    </Text>
-                  )}
-                  {pct1?.depth_m == null && pct1?.level_m_ahd != null && (
-                    <Text style={s.cardValue}>
-                      {'1-in-100 yr flood level: ' + pct1.level_m_ahd.toFixed(2) + 'm AHD'}
-                    </Text>
-                  )}
-                  {historicalYears.length > 0 && (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                      {historicalYears.map((yr) => {
-                        const ev = study.historical[yr];
-                        const evLabel = ev?.depth_m != null ? `${ev.depth_m}m deep` : ev?.level_m_ahd != null ? `${ev.level_m_ahd}m AHD` : 'flooded';
-                        return (
-                          <Text key={yr} style={{ fontSize: 7, backgroundColor: AMBER_LIGHT, color: '#92400e', paddingVertical: 2, paddingHorizontal: 5, borderRadius: 3 }}>
-                            {yr}: {evLabel}
-                          </Text>
-                        );
-                      })}
-                    </View>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                    {hasDesign ? 'Flood depth data available' : `${historicalYears.length} historical event${historicalYears.length !== 1 ? 's' : ''} recorded`}
-                  </Text>
-                  <Text style={[s.cardSub, { color: TEAL }]}>
-                    Depths, levels, and full AEP table in paid report — plotdetect.com.au
-                  </Text>
-                </>
-              )}
-            </View>
-          );
-        })}
+        {/* Free findings */}
+        <Text style={s.sectionTitle}>Key findings</Text>
+        {freeFindings.map((f) => (
+          <FindingRow key={f.label} finding={f} />
+        ))}
 
-        {/* SAR row */}
-        {data.sar_flood_detected !== null && (
-          <View style={[s.card, { marginBottom: 12 }]}>
-            <Text style={s.cardLabel}>Satellite SAR flood detection</Text>
-            {data.is_paid === true ? (
-              <>
-                <Text style={s.cardValue}>
-                  {data.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
-                  {data.sar_confidence ? ` — ${data.sar_confidence} confidence` : ''}
-                </Text>
-                <Text style={s.cardSub}>
-                  Sentinel-1 RTC · Microsoft Planetary Computer
-                  {data.sar_analysis_date ? ` · ${data.sar_analysis_date}` : ''}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>
-                  {data.sar_flood_detected ? 'Signal detected' : 'Checked'}
-                </Text>
-                <Text style={[s.cardSub, { color: TEAL }]}>
-                  SAR analysis details in paid report
-                </Text>
-              </>
-            )}
-          </View>
-        )}
-
-        {/* Warnings */}
-        {(data.s1_gap_warning || (data.warnings && data.warnings.length > 0)) && (
+        {/* Paid findings — visually differentiated */}
+        {isPaid && paidFindings.length > 0 && (
           <>
-            {data.s1_gap_warning && (
-              <View style={s.warningBox}>
-                <Text style={s.warningText}>{data.s1_gap_warning}</Text>
-              </View>
-            )}
-            {data.warnings?.map((w, i) => (
-              <View key={i} style={s.warningBox}>
-                <Text style={s.warningText}>{w}</Text>
-              </View>
+            <PaidSectionHeader title="Detailed data — paid report" />
+            {paidFindings.map((f) => (
+              <FindingRow key={f.label} finding={f} />
             ))}
           </>
         )}
 
-        <View style={s.divider} />
+        {/* Warnings */}
+        {(data.s1_gap_warning || (data.warnings && data.warnings.length > 0)) && (
+          <View style={{ marginTop: 8 }}>
+            {data.s1_gap_warning && (
+              <View style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, paddingVertical: 6, paddingHorizontal: 8, marginBottom: 4, borderRadius: 2 }}>
+                <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{data.s1_gap_warning}</Text>
+              </View>
+            )}
+            {data.warnings?.map((w, i) => (
+              <View key={i} style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, paddingVertical: 6, paddingHorizontal: 8, marginBottom: 4, borderRadius: 2 }}>
+                <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{w}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
-        <Text style={s.sectionTitle}>Data sources</Text>
-        <View style={s.sourceRow}>
-          {data.data_sources.map((src) => (
-            <Text key={src} style={s.sourcePill}>{src}</Text>
-          ))}
+        {/* Data sources pills */}
+        <View style={{ marginTop: 10 }}>
+          <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 4 }}>
+            Cross-referenced across {data.data_sources.length} independent data sources
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+            {data.data_sources.map((src) => (
+              <Text key={src} style={{ backgroundColor: GRAY_100, borderRadius: 3, paddingVertical: 2, paddingHorizontal: 5, fontSize: 6.5, color: GRAY_700 }}>
+                {src}
+              </Text>
+            ))}
+          </View>
         </View>
 
-        <Footer pageNum={1} total={totalPages} />
+        <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 8, fontStyle: 'italic' }}>
+          {'Data valid as of ' + data.run_date + '. Re-run this report if more than 12 months have passed or before exchange of contracts.'}
+        </Text>
+
+        <Footer pageNum={nextPage()} total={totalPages} />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
@@ -616,7 +534,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         return (
           <Page size="A4" style={s.page}>
             <LogoRow logo_b64={data.logo_b64} />
-            <Text style={s.sectionTitle}>Flood depth and level by AEP event</Text>
+            <PaidSectionHeader title="Flood depth and level by AEP event" />
             {data.ground_elevation_m_ahd != null && (
               <Text style={[s.bodyText, { marginBottom: 10 }]}>
                 Ground elevation at this site: {data.ground_elevation_m_ahd.toFixed(1)}m AHD (NSW 5m DEM).
@@ -631,7 +549,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
               const hasDepth = designKeys.some((k) => study.design[k]?.depth_m != null);
               return (
                 <View key={study.study_key} style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 6 }}>
+                  <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 4 }}>
                     {study.study_name}
                   </Text>
                   <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 6 }}>
@@ -707,28 +625,54 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
               );
             })}
 
-            <Footer pageNum={2} total={totalPages} />
+            {/* BOM flood event history table */}
+            {data.bom_flood_history && data.bom_flood_history.length > 0 && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={s.sectionTitle}>BOM gauge flood event history</Text>
+                <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                  <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Date</Text>
+                  <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Peak height</Text>
+                  <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>ARI category</Text>
+                </View>
+                {data.bom_flood_history.slice(0, 5).map((event, i) => (
+                  <View key={i} style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5 }}>
+                    <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700 }}>{event.date}</Text>
+                    <Text style={{ flex: 1.5, fontSize: 8.5, color: RED, fontFamily: 'Helvetica-Bold', textAlign: 'right' }}>{event.peak_m} m</Text>
+                    <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700, textAlign: 'right' }}>{event.ari_category}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Footer pageNum={nextPage()} total={totalPages} />
           </Page>
         );
       })()}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Disclaimer page                                                      */}
+      {/* Advice + Referrals + Data Currency page                              */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
 
-        <ReferralBox />
+        {/* Professional referrals */}
+        <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#99f6e4' }}>
+          <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+            Next steps
+          </Text>
+          <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+            A licensed flood consultant can assess whether this flood classification triggers mandatory disclosure under the Conveyancing (Sale of Land) Regulation 2022. A conveyancer can advise on the impact on contract terms and negotiate appropriate special conditions.
+          </Text>
+        </View>
 
-        {/* A3: Referral directory links */}
         <ReferralLinks links={[
           { label: 'Section 10.7 certificate', url: 'https://www.planningportal.nsw.gov.au/spatialviewer', urlDisplay: 'Council website (via Planning Portal)' },
           { label: 'Flood consultant', url: 'https://www.fma.com.au/find-a-member', urlDisplay: 'fma.com.au/find-a-member' },
           { label: 'Conveyancer', url: 'https://www.aicnsw.com.au/find-a-conveyancer', urlDisplay: 'aicnsw.com.au/find-a-conveyancer' },
         ]} />
 
-        {/* A4: Insurer/lender questionnaire — flood */}
-        {data.is_paid === true && (
+        {/* Insurer checklist — paid only */}
+        {isPaid && (
           <InsurerChecklist
             title="Questions for your insurer or lender"
             questions={[
@@ -741,8 +685,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           />
         )}
 
-        {/* A2: Data currency table — paid only */}
-        {data.is_paid === true && (
+        {/* Data currency table — paid only */}
+        {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'NSW EPI Flood Planning WFS', type: 'Live API query', currency: `Queried ${data.run_date}` },
             { source: 'Council flood study (ARI grids)', type: 'Ingested raster', currency: data.flood_study_date ?? 'See study metadata' },
@@ -755,7 +699,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           ]} />
         )}
 
-        <Text style={s.sectionTitle}>Important limitations</Text>
+        {/* Disclaimer */}
+        <Text style={[s.sectionTitle, { marginTop: 12 }]}>Important limitations</Text>
         <Text style={s.bodyText}>
           This report is an indicative cross-reference of publicly available flood data sources only.
           It does not constitute a formal Section 10.7 Planning Certificate, a flood engineering
@@ -766,39 +711,27 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           purposes requires a formal flood study or certificate issued by council under the
           Environmental Planning and Assessment Act 1979.
         </Text>
-        <Text style={s.bodyText}>
-          The Sentinel-1B satellite was non-operational December 2021 – March 2025 due to a
-          gyroscope failure. SAR observations during this period have gaps. Sentinel-1C launched
-          in March 2025 restores coverage.
-        </Text>
-        <Text style={s.bodyText}>
-          JRC Global Surface Water data uses Landsat imagery from 1984 to present at 30m
-          resolution. DEA Water Observations (WOfS) uses Landsat imagery from 1987 to present
-          at 25m resolution (Australian Government, CC BY 4.0). Both datasets classify surface
-          water from satellite observations; small or ephemeral water bodies below detection
-          threshold may not be captured.
-        </Text>
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
           Report generated by PlotDetect · plotdetect.com.au · {data.run_date}
         </Text>
 
-        <Footer pageNum={hasStudies ? 3 : 2} total={totalPages} />
+        <Footer pageNum={nextPage()} total={totalPages} />
       </Page>
 
       {/* ------------------------------------------------------------------ */}
-      {/* T4: About this report + tools list                                    */}
+      {/* About page                                                           */}
       {/* ------------------------------------------------------------------ */}
       <AboutPage
         logo_b64={data.logo_b64}
-        pageNum={hasStudies ? 4 : 3}
+        pageNum={nextPage()}
         total={totalPages}
         reportName="Flood Truth Report"
       />
 
       {/* ------------------------------------------------------------------ */}
-      {/* Aerial tile page (optional)                                          */}
+      {/* Aerial tile page (only if tile is valid)                             */}
       {/* ------------------------------------------------------------------ */}
-      {data.tile_b64 && (
+      {hasTile && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
@@ -812,7 +745,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
-          <Footer pageNum={totalPages} total={totalPages} />
+          <Footer pageNum={nextPage()} total={totalPages} />
         </Page>
       )}
 
