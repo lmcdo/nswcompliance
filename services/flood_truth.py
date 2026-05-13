@@ -1365,6 +1365,12 @@ def run_flood(req: FloodRequest):
             )
             cached = cur.fetchone()
         if cached:
+            # Write a row for the new report_id so PDF generation can find it
+            _write_report(
+                req.report_id, req.address, req.lat, req.lng,
+                req.prop_id, {"lat": req.lat, "lng": req.lng},
+                cached["outputs"] or {},
+            )
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
