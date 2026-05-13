@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
   let address: string | undefined;
   let email: string | undefined;
   let firm_name: string | undefined;
-
   try {
     const body = await req.json();
     job_id = body?.job_id?.trim();

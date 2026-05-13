@@ -65,6 +65,11 @@ interface ConfirmResult {
   data_sources: string[];
   warnings: string[];
   eplanning_history?: EplanningHistory;
+  // Present when loading a completed report directly (no detectResult available)
+  lat?: number;
+  lng?: number;
+  lga_name?: string;
+  tile_b64?: string;
 }
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
@@ -161,6 +166,12 @@ function GrannyFlatPageInner() {
       const res = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
       const json = await res.json();
       if (json.status === 'error') throw new Error(json.error || 'Detection failed.');
+      if (json.status === 'completed') {
+        // Report already confirmed — jump straight to result
+        setFinalResult(json.data);
+        setState('complete');
+        return;
+      }
       if (json.status === 'detected') {
         const d = json.data;
         setDetectResult(d);
@@ -374,15 +385,6 @@ function GrannyFlatPageInner() {
     await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email);
   };
 
-  // Auto-confirm after payment return — skip the confirmation step entirely
-  const autoConfirmedRef = useRef(false);
-  useEffect(() => {
-    if (isPaid && state === 'confirming' && detectResult && !autoConfirmedRef.current) {
-      autoConfirmedRef.current = true;
-      runConfirm(detectResult, confirmedCount, null, postcode, email);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, detectResult]);
 
   const isRunning = state === 'detecting';
 
@@ -549,8 +551,8 @@ function GrannyFlatPageInner() {
             <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 flex items-center gap-3">
               <span className="text-teal-600 font-bold text-lg">✓</span>
               <div>
-                <p className="text-sm font-semibold text-teal-900">Payment confirmed</p>
-                <p className="text-xs text-teal-700">One more step — confirm the structure count below to unlock your full analysis and PDF download.</p>
+                <p className="text-sm font-semibold text-teal-900">Payment confirmed — generating your feasibility report</p>
+                <p className="text-xs text-teal-700">Our AI detected structures on your lot. Confirm the count below to complete your analysis.</p>
               </div>
             </div>
           )}
@@ -597,6 +599,27 @@ function GrannyFlatPageInner() {
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
           <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+
+          {/* Satellite image + structure bounding boxes */}
+          {detectResult ? (
+            <StructureMap
+              lat={detectResult.lat}
+              lng={detectResult.lng}
+              tile_bbox={detectResult.tile_bbox}
+              tile_width={detectResult.tile_width}
+              tile_height={detectResult.tile_height}
+              structures={detectResult.detected_structures}
+              lot_polygon_wgs84={detectResult.lot_polygon_wgs84}
+              licence={detectResult.tile_licence}
+            />
+          ) : finalResult.lat != null && finalResult.lng != null ? (
+            <StructureMap
+              lat={finalResult.lat}
+              lng={finalResult.lng}
+              structures={[]}
+              licence="NSW Government — Six Maps LPI Imagery (CC-BY 4.0)"
+            />
+          ) : null}
           {/* Check another address — shown immediately after result, before other content */}
           <div className="text-center">
             <button
@@ -1590,7 +1613,7 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
                 : 'bg-red-100 text-red-800'
             }`}
           >
-            {result.granny_flat_buildable ? 'Eligible ✓' : 'Not eligible'}
+            {result.granny_flat_buildable ? 'Eligible' : 'Not eligible'}
           </span>
         </div>
       </div>

@@ -129,14 +129,14 @@ function LockedPreviewCard({
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
       <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-        <p className="text-sm font-semibold text-gray-900">Full property analysis</p>
-        <p className="text-xs text-gray-400 mt-0.5">AI satellite scan · personalised financials · council planning controls</p>
+        <p className="text-sm font-semibold text-gray-900">Your Granny Flat Feasibility Report</p>
+        <p className="text-xs text-gray-400 mt-0.5">Personalised rental yield · build ROI · council setbacks · AI satellite structure map</p>
       </div>
       <div className="px-5 py-4 space-y-3">
         {rows.map(({ label, preview }) => (
           <div key={label} className="flex items-center justify-between gap-4">
             <span className="text-sm text-gray-500 shrink-0">{label}</span>
-            <span className="text-sm font-medium text-gray-200 blur-sm select-none pointer-events-none" aria-hidden="true">
+            <span className="text-sm font-medium text-gray-500 blur-sm select-none pointer-events-none" aria-hidden="true">
               {preview}
             </span>
           </div>
@@ -155,11 +155,62 @@ function LockedPreviewCard({
           disabled={unlocking || !email.trim()}
           className="w-full py-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-60 transition-colors"
         >
-          {unlocking ? 'Starting analysis…' : 'Unlock full analysis — $49'}
+          {unlocking ? 'Starting analysis…' : 'Get your feasibility report — $49'}
         </button>
         <p className="text-xs text-gray-400 text-center">
-          Results shown here and emailed · PDF included
+          Rental yield estimate · build ROI · DCP setbacks · AI structure map · PDF report
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FreePaidComparison — two-column free vs paid feature list
+// ---------------------------------------------------------------------------
+
+const FREE_ITEMS = [
+  'SEPP Housing 2021 eligibility check',
+  'Lot area, zoning, heritage, flood, biodiversity, acid sulfate',
+  'LEP planning controls (height, FSR, min lot size)',
+  'Nearby secondary dwelling approvals',
+  'Shareable result link',
+];
+
+const PAID_ITEMS = [
+  'Personalised rental income estimate',
+  'Yield on build cost + break-even projection',
+  'DCP setbacks and controls for your council',
+  'AI satellite structure map of your lot',
+  'PDF report — share with your planner or bank',
+];
+
+function FreePaidComparison() {
+  return (
+    <div className="mt-4 bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {FREE_ITEMS.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {PAID_ITEMS.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -439,12 +490,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${eligibility.sepp_eligible ? 'text-teal-800' : 'text-gray-800'}`}>
                   {eligibility.sepp_eligible
-                    ? `${formatLotArea(eligibility.lot_area_m2)} — meets the SEPP Housing 2021 minimum for a secondary dwelling`
+                    ? `${formatLotArea(eligibility.lot_area_m2)} — eligible for a granny flat under SEPP Housing 2021`
                     : deriveIneligibleReason(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
                 </p>
                 {eligibility.sepp_eligible && (
-                  <p className="text-sm text-teal-700 mt-1 font-medium">
-                    Estimated rental income: $280–$340/week
+                  <p className="text-xs text-gray-500 mt-1">
+                    This property passes all SEPP Housing 2021 spatial checks. Get a full feasibility report to see rental yield, build ROI, and council setbacks.
                   </p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
@@ -466,11 +517,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </button>
           </div>
 
-          {/* Check breakdown */}
-          {eligibility.checks && (
+          {/* Check breakdown — 6 spatial + 1 pending structure check */}
+          {eligibility.checks && (() => {
+            const passCount = Object.values(eligibility.checks!).filter(v => v === 'pass').length;
+            const failCount = Object.values(eligibility.checks!).filter(v => v === 'fail').length;
+            return (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">Eligibility checks</h3>
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {failCount > 0
+                    ? 'Eligibility checks'
+                    : `${passCount} of ${passCount} checks passed`}
+                </h3>
                 {eligibility.lga_name && (
                   <span className="text-xs text-gray-400">{eligibility.lga_name}</span>
                 )}
@@ -519,7 +577,27 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 )}
               </div>
             </div>
-          )}
+            );
+          })()}
+
+          {/* Eligible: LockedPreviewCard + FreePaidComparison | Ineligible: yield teaser */}
+          {eligibility.sepp_eligible ? (
+            <>
+              {errorMsg && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+                  <p className="text-sm text-red-700">{errorMsg}</p>
+                </div>
+              )}
+              <LockedPreviewCard
+                lga_name={eligibility.lga_name}
+                onUnlock={handleUnlock}
+                unlocking={unlocking}
+                email={email}
+                onEmailChange={setEmail}
+              />
+              <FreePaidComparison />
+            </>
+          ) : null}
 
           {/* SEPP Housing 2021 — CDC design standards */}
           {eligibility.sepp_eligible && (
@@ -577,23 +655,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </div>
           )}
 
-          {/* Eligible: LockedPreviewCard | Ineligible: yield teaser + "what to change" */}
-          {eligibility.sepp_eligible ? (
-            <>
-              {errorMsg && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
-                  <p className="text-sm text-red-700">{errorMsg}</p>
-                </div>
-              )}
-              <LockedPreviewCard
-                lga_name={eligibility.lga_name}
-                onUnlock={handleUnlock}
-                unlocking={unlocking}
-                email={email}
-                onEmailChange={setEmail}
-              />
-            </>
-          ) : (
+          {/* Ineligible: yield teaser + "what to change" */}
+          {!eligibility.sepp_eligible && (
             <>
               {/* Interactive yield calculator — ineligible teaser ("if this lot qualified") */}
               {(() => {
