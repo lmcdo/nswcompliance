@@ -506,6 +506,37 @@ function ThreatFindings({ stats, apps }: { stats: Stats; apps: Application[] }) 
   );
 }
 
+function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {free.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {paid.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // MiniProximityMap — pure SVG, no mapping library
 // ---------------------------------------------------------------------------
@@ -777,6 +808,22 @@ function SearchResults({
         <>
           {/* Findings */}
           <ThreatFindings stats={stats} apps={apps} />
+          <FreePaidComparison
+            free={[
+              'Development pressure score',
+              'Application count + construction value',
+              'Net dwelling change analysis',
+              'EPI variation warnings',
+              `First ${FREE_RESULTS_LIMIT} application details`,
+              'Proximity map',
+            ]}
+            paid={[
+              'All application details (unblurred)',
+              'Weekly new DA/CDC email alerts',
+              'Monitoring within 200m of your address',
+              'Cancel anytime — $9.99/month',
+            ]}
+          />
           <MiniProximityMap centerLat={result.lat} centerLng={result.lng} apps={apps} />
 
           {apps.map((app, i) => {

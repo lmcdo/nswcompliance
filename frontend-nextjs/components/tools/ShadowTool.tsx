@@ -247,6 +247,22 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
       {state === 'complete' && result && (
         <>
           <ShadowCard result={result} />
+          <FreePaidComparison
+            free={[
+              'ADG solar access compliance check',
+              'Shadow overlap across 5 scenarios',
+              'Worst-case shadow length + direction',
+              'Construction activity detection',
+              'Shadow map with lot boundary',
+            ]}
+            paid={[
+              'All 5 scenario shadow diagrams',
+              'Shadow overlap percentages per scenario',
+              'Objection-ready paragraph for council',
+              'Construction change detection detail',
+              'Full PDF report for DA submission',
+            ]}
+          />
           {result.report_id ? (
             paidReportId ? (
               <ShadowPaidDownloadCTA reportId={paidReportId} />
@@ -262,6 +278,37 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
           <ToolCrossSell currentTool="shadow-detector" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
+  return (
+    <div className="mt-4 bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {free.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {paid.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

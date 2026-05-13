@@ -260,6 +260,21 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
+          <FreePaidComparison
+            free={[
+              'Government flood overlay (EPI)',
+              'Council flood study extent',
+              'Satellite water history (DEA WOfS)',
+            ]}
+            paid={[
+              '1-in-100 year flood depth (AHD)',
+              'BOM river gauge — last major flood',
+              'Copernicus EMS historical events',
+              'SAR radar flood detection',
+              '40-year water occurrence (JRC)',
+              'Full PDF report with source citations',
+            ]}
+          />
           {result.report_id ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
@@ -286,6 +301,37 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
 function formatFloodDate(iso?: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+}
+
+function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
+  return (
+    <div className="mt-4 bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {free.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {paid.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function FloodLockedPreviewCard({

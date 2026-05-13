@@ -304,6 +304,25 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
       {state === 'complete' && report && (
         <>
           <ReportCard report={report} />
+          {report.outputs.coverage_available && (
+            <FreePaidComparison
+              free={[
+                'Solar suitability grade (A–F)',
+                'Roof orientation + pitch analysis',
+                'Annual kWh output estimate',
+                'Sunshine hours assessment',
+                'Heritage overlay check',
+              ]}
+              paid={[
+                'Annual electricity savings ($)',
+                'Payback period calculation',
+                'System size + panel count',
+                'Installed cost estimate',
+                'Feed-in tariff contribution',
+                'Full PDF report for installer quotes',
+              ]}
+            />
+          )}
           {report.outputs.coverage_available && report.report_id ? (
             paidReportId ? (
               <PaidDownloadCTA reportId={paidReportId} />
@@ -546,6 +565,37 @@ function CoverageInterestForm({ address, lat, lng }: { address: string; lat: num
       {status === 'error' && (
         <p className="text-xs text-red-600 mt-1">Something went wrong. Please try again.</p>
       )}
+    </div>
+  );
+}
+
+function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
+  return (
+    <div className="mt-4 bg-white rounded-xl border border-gray-200 p-5">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {free.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {paid.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

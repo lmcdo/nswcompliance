@@ -340,6 +340,23 @@ function PreDAHistoryToolInner() {
           {/* Findings */}
           <SiteHistoryFindings result={result} validYears={validYears} notableYears={notableYears} allDaRefs={allDaPans} />
 
+          <FreePaidComparison
+            free={[
+              'Satellite change detection (8 years)',
+              'DA record cross-reference',
+              'Heritage overlay check',
+              'Year-by-year timeline table',
+            ]}
+            paid={[
+              'Full annotated timeline with methodology',
+              'DA event detail + application numbers',
+              'Heritage assessment narrative',
+              'Source citations for conveyancer',
+              'Disclaimer + limitations section',
+              'PDF report for your records',
+            ]}
+          />
+
           {/* Timeline table */}
           <div className="mb-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">Year-by-year satellite timeline</h2>
@@ -436,6 +453,37 @@ function PreDAHistoryToolInner() {
           <ToolCrossSell currentTool="pre-da-history" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
+          <ul className="space-y-2">
+            {free.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
+          <ul className="space-y-2">
+            {paid.map((item) => (
+              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
+                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
