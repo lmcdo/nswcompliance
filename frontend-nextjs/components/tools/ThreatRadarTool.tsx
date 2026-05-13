@@ -383,96 +383,123 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
 
 const FREE_RESULTS_LIMIT = 3;
 
+const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
+
 // ---------------------------------------------------------------------------
-// SummaryStatsBanner — aggregate stats above paywall
+// ThreatFindings — findings + detail pattern
 // ---------------------------------------------------------------------------
 
-function SummaryStatsBanner({ stats }: { stats: Stats }) {
+function ThreatFindings({ stats, apps }: { stats: Stats; apps: Application[] }) {
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // Development pressure
+  if (stats.pressureScore >= 8) {
+    findings.push({
+      label: 'Development pressure index',
+      value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
+      detail: 'Very high development activity near your property. Multiple applications close by with significant dwelling numbers. Expect construction noise, traffic disruption, and potential changes to your street character.',
+      severity: 'red',
+    });
+  } else if (stats.pressureScore >= 5) {
+    findings.push({
+      label: 'Development pressure index',
+      value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
+      detail: 'Significant development activity in your area. Several applications are in progress nearby. Worth monitoring — new buildings can affect parking, sunlight, and property values.',
+      severity: 'amber',
+    });
+  } else if (stats.pressureScore >= 3) {
+    findings.push({
+      label: 'Development pressure index',
+      value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
+      detail: 'Some development activity nearby, but nothing unusual for a suburban area. Keep an eye on any applications within 100m of your property.',
+      severity: 'amber',
+    });
+  } else {
+    findings.push({
+      label: 'Development pressure index',
+      value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
+      detail: 'Minimal development activity near your property. Your neighbourhood is relatively quiet right now.',
+      severity: 'green',
+    });
+  }
+
+  // Application count + value
+  findings.push({
+    label: 'NSW ePlanning Portal — DA/CDC search (500m radius)',
+    value: `${stats.totalApps} application${stats.totalApps !== 1 ? 's' : ''} — ${formatCost(stats.totalCost) ?? '$0'} total construction value`,
+    detail: stats.totalCost > 5000000
+      ? 'Substantial construction investment near you. High-value applications often mean larger buildings, longer construction timelines, and more impact on neighbours.'
+      : stats.totalCost > 1000000
+      ? 'Moderate construction investment. A mix of residential and commercial works is typical for this level of activity.'
+      : 'Relatively low construction value. Most applications are likely minor renovations or additions.',
+    severity: stats.totalCost > 5000000 ? 'red' : stats.totalCost > 1000000 ? 'amber' : 'green',
+  });
+
+  // Net dwelling change
+  if (stats.newDwellings > 0 || stats.demolishedDwellings > 0) {
+    const sign = stats.netDwellingChange >= 0 ? '+' : '';
+    findings.push({
+      label: 'Dwelling density analysis',
+      value: `${sign}${stats.netDwellingChange} net dwellings within 500m`,
+      detail: stats.netDwellingChange > 10
+        ? `${stats.newDwellings} new dwellings proposed${stats.demolishedDwellings > 0 ? `, ${stats.demolishedDwellings} being demolished` : ''}. Your neighbourhood is densifying significantly — expect more traffic, parking pressure, and potential shadow/privacy impacts.`
+        : stats.netDwellingChange > 0
+        ? `${stats.newDwellings} new dwellings proposed${stats.demolishedDwellings > 0 ? `, ${stats.demolishedDwellings} being demolished` : ''}. Moderate densification — typical for established suburbs with good transport links.`
+        : `${stats.demolishedDwellings} dwellings being demolished, ${stats.newDwellings} being built. The neighbourhood composition is changing.`,
+      severity: stats.netDwellingChange > 10 ? 'red' : stats.netDwellingChange > 0 ? 'amber' : 'green',
+    });
+  }
+
+  // EPI variations
+  if (stats.epiVariationCount > 0) {
+    findings.push({
+      label: 'Environmental Planning Instrument variations',
+      value: `${stats.epiVariationCount} application${stats.epiVariationCount !== 1 ? 's' : ''} seeking to vary planning rules`,
+      detail: 'These developers are asking council to bend the rules — requesting exceptions to height limits, setbacks, or floor space ratios. If approved, they set precedents that future applicants will cite. Consider lodging an objection if any are near your property.',
+      severity: 'red',
+    });
+  }
+
+  // What's being built
+  const devEntries = Object.entries(stats.devTypeBreakdown).sort((a, b) => b[1] - a[1]);
+  if (devEntries.length > 0) {
+    const topTypes = devEntries.slice(0, 3).map(([type, count]) => `${count} ${type}`).join(', ');
+    const hasMultiDwelling = devEntries.some(([type]) =>
+      type.toLowerCase().includes('multi') || type.toLowerCase().includes('residential flat')
+    );
+    findings.push({
+      label: 'Development type breakdown',
+      value: topTypes,
+      detail: hasMultiDwelling
+        ? 'Multi-dwelling and apartment projects are in the mix. These tend to have the biggest impact on neighbours — shadow, overlooking, traffic, and parking.'
+        : 'Mostly single-dwelling or minor works. Impact on your property is likely to be limited unless an application is directly adjacent.',
+      severity: hasMultiDwelling ? 'amber' : 'green',
+    });
+  }
+
+  // Close applications
+  const closeApps = apps.filter(a => (a._distance_m ?? 999) < 100);
+  if (closeApps.length > 0) {
+    findings.push({
+      label: 'Proximity alert',
+      value: `${closeApps.length} application${closeApps.length !== 1 ? 's' : ''} within 100m of your property`,
+      detail: 'Applications this close can directly affect your sunlight, privacy, noise levels, and street parking. You have the right to lodge an objection during the public exhibition period — check the individual DA details below.',
+      severity: 'red',
+    });
+  }
+
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{stats.totalApps}</p>
-        <p className="text-xs text-gray-500">Applications</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{formatCost(stats.totalCost) ?? '$0'}</p>
-        <p className="text-xs text-gray-500">Construction value</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className={`text-lg font-bold ${stats.netDwellingChange >= 0 ? 'text-teal-700' : 'text-red-600'}`}>
-          {stats.netDwellingChange >= 0 ? '+' : ''}{stats.netDwellingChange}
-        </p>
-        <p className="text-xs text-gray-500">Net dwellings</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center">
-        <p className="text-lg font-bold text-teal-700">{stats.approvalRate}%</p>
-        <p className="text-xs text-gray-500">Approved</p>
-      </div>
-      <div className="bg-gray-50 rounded-lg p-3 text-center col-span-2 sm:col-span-1">
-        <p className="text-lg font-bold text-amber-600">{stats.epiVariationCount}</p>
-        <p className="text-xs text-gray-500">EPI variations</p>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// DevelopmentPressureMeter — gauge bar
-// ---------------------------------------------------------------------------
-
-function DevelopmentPressureMeter({ stats }: { stats: Stats }) {
-  const pct = Math.min(100, (stats.pressureScore / 10) * 100);
-  return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-medium text-gray-700">Development Pressure</p>
-        <span className="text-sm font-bold text-gray-900">{stats.pressureScore}/10 — {stats.pressureLabel}</span>
-      </div>
-      <div className="h-3 rounded-full bg-gray-200 overflow-hidden">
-        <div className={`h-full rounded-full ${stats.pressureColor} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs text-gray-400 mt-1.5">
-        Based on application count, proximity, and proposed dwellings
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// NetDwellingCallout
-// ---------------------------------------------------------------------------
-
-function NetDwellingCallout({ stats }: { stats: Stats }) {
-  if (stats.newDwellings === 0 && stats.demolishedDwellings === 0) return null;
-  const sign = stats.netDwellingChange >= 0 ? '+' : '';
-  return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-      <p className="text-sm text-blue-900">
-        Your neighbourhood is adding <strong>{stats.newDwellings}</strong> dwelling{stats.newDwellings !== 1 ? 's' : ''}{' '}
-        {stats.demolishedDwellings > 0 && (
-          <>and demolishing <strong>{stats.demolishedDwellings}</strong></>
-        )}{' '}
-        — net <strong>{sign}{stats.netDwellingChange}</strong> homes within 500m
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// WhatsBeingBuiltBreakdown
-// ---------------------------------------------------------------------------
-
-function WhatsBeingBuiltBreakdown({ breakdown }: { breakdown: Record<string, number> }) {
-  const entries = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
-  if (entries.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-500 mb-1.5">What&apos;s being built</p>
-      <div className="flex flex-wrap gap-2">
-        {entries.map(([type, count]) => (
-          <span key={type} className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-700">
-            {count} {type}
-          </span>
+    <div className="bg-white rounded-xl border border-gray-200 mb-3">
+      <div className="divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
+            </div>
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
+          </div>
         ))}
       </div>
     </div>
@@ -748,16 +775,9 @@ function SearchResults({
         </div>
       ) : (
         <>
-          {/* Above-paywall intelligence dashboard */}
-          <SummaryStatsBanner stats={stats} />
-          <DevelopmentPressureMeter stats={stats} />
-          <NetDwellingCallout stats={stats} />
-          <WhatsBeingBuiltBreakdown breakdown={stats.devTypeBreakdown} />
+          {/* Findings */}
+          <ThreatFindings stats={stats} apps={apps} />
           <MiniProximityMap centerLat={result.lat} centerLng={result.lng} apps={apps} />
-
-          <p className="text-sm font-medium text-gray-700">
-            {apps.length} application{apps.length !== 1 ? 's' : ''} found nearby
-          </p>
 
           {apps.map((app, i) => {
             const appNum = app.PlanningPortalApplicationNumber ?? app.ApplicationNumber ?? '—';
