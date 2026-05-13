@@ -84,11 +84,11 @@ needs_review = cur.fetchall()
 cur.execute("""
     SELECT lga, dev_type, extraction_method,
            count(*) as rows,
-           max(COALESCE(reviewed_at, created_at)) as last_verified
+           max(COALESCE(last_verified_at, reviewed_at, created_at)) as last_verified
     FROM dcp_setback_controls
     WHERE is_current = TRUE
       AND needs_review = FALSE
-      AND COALESCE(reviewed_at, created_at) < NOW() - INTERVAL '180 days'
+      AND COALESCE(last_verified_at, reviewed_at, created_at) < NOW() - INTERVAL '180 days'
     GROUP BY lga, dev_type, extraction_method
     ORDER BY last_verified
 """)
@@ -96,12 +96,13 @@ stale_setbacks = cur.fetchall()
 
 # ── Check 3c: Control rows with no source_chapter_key (unlinked) ─────────────
 # These rows can't be flagged by the change-triggered path — blind spot.
+# Exclude _external_* sentinel keys (ADG/LEP/various references,
+# not monitorable via DCP chapter registry). Only flag genuinely NULL rows.
 cur.execute("""
     SELECT lga, count(*) as rows
     FROM dcp_setback_controls
     WHERE is_current = TRUE
       AND source_chapter_key IS NULL
-      AND section_ref NOT IN ('LEP', 'ADG', 'various')
     GROUP BY lga
     ORDER BY lga
 """)
@@ -115,11 +116,21 @@ issues = []
 # ── Report ───────────────────────────────────────────────────────────────────
 
 if stuck:
+    now = datetime.now(timezone.utc)
+    critical = [(c, k, d) for c, k, d in stuck if (now - d).total_seconds() > 48 * 3600]
     chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d in stuck)
-    issues.append(f"{len(stuck)} chapters stuck (needs_extraction=TRUE >25h):\n{chapter_list}")
-    print(f"STUCK CHAPTERS: {len(stuck)}")
+    severity = "CRITICAL — >48h" if critical else "needs_extraction=TRUE >25h"
+    issues.append(f"{len(stuck)} chapters stuck ({severity}):\n{chapter_list}")
+    if critical:
+        issues.append(
+            f"  ⚠ {len(critical)} chapters stuck >48h — stale data may be served. "
+            f"Run: python scripts/dcp_extract_changed.py"
+        )
+    print(f"STUCK CHAPTERS: {len(stuck)} ({len(critical)} critical >48h)")
     for c, k, d in stuck:
-        print(f"  [{c}] {k} — changed {d}")
+        age_h = (now - d).total_seconds() / 3600
+        tag = " [CRITICAL]" if age_h > 48 else ""
+        print(f"  [{c}] {k} — changed {d} ({age_h:.0f}h ago){tag}")
 
 if failing:
     fail_list = "\n".join(f"  [{c}/{k}] {f} failures" for c, k, f, _ in failing)

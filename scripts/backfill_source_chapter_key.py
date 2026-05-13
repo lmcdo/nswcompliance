@@ -106,6 +106,37 @@ LGA_CHAPTER_MAP: dict[str, list[tuple[str, str]]] = {
         ("s4.6", "part-d2-residential"),
         ("penrith-dcp", "part-d2-residential"),
     ],
+    # New LGAs added May 2026 — PDF-based extraction
+    "burwood": [
+        ("burwood-part4-residential", "part-4-residential"),
+    ],
+    "camden": [
+        ("camden-part4-residential", "part-4-residential"),
+    ],
+    "canada_bay": [
+        ("canada-bay-part-e-single", "part-e-single-dwellings"),
+    ],
+    "fairfield": [
+        ("fairfield-ch5-dwelling", "chapter-5-dwelling-houses"),
+    ],
+    "ryde": [
+        ("ryde-part3.3-dwelling", "part-3-3-dwelling-houses"),
+    ],
+    "strathfield": [
+        ("strathfield-part-a-dwelling", "part-a-dwelling-houses"),
+    ],
+    "the_hills": [
+        ("hills-shire-part-b-section2", "part-b-section-2-residential"),
+    ],
+}
+
+# Sentinel chapter keys for explanation rows that reference external instruments
+# (ADG, LEP) rather than DCP chapters. These are not monitorable via the DCP
+# chapter registry but should not be flagged as blind spots by the watchdog.
+EXTERNAL_INSTRUMENT_MAP: dict[str, str] = {
+    "ADG": "_external_adg",
+    "LEP": "_external_lep",
+    "various": "_external_various",
 }
 
 
@@ -113,6 +144,9 @@ def match_chapter_key(lga: str, section_ref: str | None) -> str | None:
     """Find the chapter_key for a given (lga, section_ref)."""
     if not section_ref:
         return None
+    # Check external instrument sentinels first (ADG, LEP, various)
+    if section_ref in EXTERNAL_INSTRUMENT_MAP:
+        return EXTERNAL_INSTRUMENT_MAP[section_ref]
     prefixes = LGA_CHAPTER_MAP.get(lga, [])
     for prefix, chapter_key in prefixes:
         if section_ref.startswith(prefix):

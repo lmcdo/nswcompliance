@@ -103,6 +103,17 @@ jobs:
           - northern_beaches
           - parramatta
           - penrith
+          - bayside
+          - georges_river
+          - randwick
+          - sutherland_shire
+          - burwood
+          - camden
+          - canada_bay
+          - fairfield
+          - ryde
+          - strathfield
+          - the_hills
       fail-fast: false
       max-parallel: 3
 

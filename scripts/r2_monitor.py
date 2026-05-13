@@ -760,6 +760,12 @@ def run_monitor(
                         "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
                         (now, chapter_id),
                     )
+                    # Mark linked control rows as verified current
+                    cur.execute(
+                        "UPDATE dcp_setback_controls SET last_verified_at=%s "
+                        "WHERE source_chapter_key=%s AND lga=%s AND is_current=TRUE",
+                        (now, key, ch_council),
+                    )
                     if not dry_run:
                         conn.commit()
                     results["unchanged"] += 1
@@ -792,6 +798,12 @@ def run_monitor(
                         WHERE id=%s
                         """,
                         (now, new_len, new_etag, new_lm, chapter_id),
+                    )
+                    # Mark linked control rows as verified current
+                    cur.execute(
+                        "UPDATE dcp_setback_controls SET last_verified_at=%s "
+                        "WHERE source_chapter_key=%s AND lga=%s AND is_current=TRUE",
+                        (now, key, ch_council),
                     )
                     if not dry_run:
                         conn.commit()
