@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
 import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
@@ -100,6 +100,12 @@ const SCENARIO_LABELS: Record<string, string> = {
   dec21_12pm: '21 Dec — 12:00 pm (summer)',
 };
 
+const SEVERITY_COLORS = {
+  green: GREEN,
+  amber: AMBER,
+  red: RED,
+};
+
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
@@ -115,39 +121,25 @@ const s = StyleSheet.create({
     lineHeight: 1.4,
   },
   logo:      { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
-  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 32 },
   logoImg:   { width: 18, height: 18 },
-  h1:        { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
-  subhead:   { fontSize: 12, color: GRAY_700, marginBottom: 4 },
-  dateText:  { fontSize: 9, color: GRAY_500, marginBottom: 32 },
+  h1:        { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 6 },
+  subhead:   { fontSize: 11, color: GRAY_700, marginBottom: 3 },
+  dateText:  { fontSize: 9, color: GRAY_500, marginBottom: 16 },
   sectionTitle: {
     fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_500,
     textTransform: 'uppercase', letterSpacing: 0.8,
-    marginTop: 20, marginBottom: 8,
+    marginTop: 16, marginBottom: 8,
   },
-  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 14 },
+  divider: { borderBottom: `1 solid ${GRAY_300}`, marginVertical: 12 },
   bodyText: { fontSize: 8.5, color: GRAY_700, lineHeight: 1.5, marginBottom: 6 },
-  // ADG badge
-  adgBadge: {
-    paddingVertical: 5, paddingHorizontal: 12,
-    borderRadius: 4, alignSelf: 'flex-start', marginBottom: 16,
-  },
-  adgText: { fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  // Stats
-  statGrid: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: {
-    flex: 1, backgroundColor: GRAY_100, borderRadius: 4, padding: 10,
-  },
-  statLabel: { fontSize: 7, color: GRAY_500, marginBottom: 3 },
-  statValue: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
-  statSub:   { fontSize: 7.5, color: GRAY_700, marginTop: 2 },
   // Scenarios table
   tableHeader: {
     flexDirection: 'row', paddingVertical: 5,
     borderBottom: `1 solid ${GRAY_300}`,
   },
   tableRow: {
-    flexDirection: 'row', paddingVertical: 7,
+    flexDirection: 'row', paddingVertical: 6,
     borderBottom: `1 solid ${GRAY_300}`,
   },
   colDate:     { flex: 3, fontSize: 8.5, color: GRAY_700 },
@@ -155,12 +147,54 @@ const s = StyleSheet.create({
   colDir:      { flex: 0.8, fontSize: 8.5, color: GRAY_700, textAlign: 'right' },
   colCoverage: { flex: 1.2, fontSize: 8.5, textAlign: 'right' },
   colHeaderText: { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
-  footer: {
-    position: 'absolute', bottom: 28, left: 48, right: 48,
-    flexDirection: 'row', justifyContent: 'space-between',
-  },
-  footerText: { fontSize: 7, color: GRAY_500 },
 });
+
+// ---------------------------------------------------------------------------
+// Finding row
+// ---------------------------------------------------------------------------
+
+interface Finding {
+  label: string;
+  value: string;
+  detail: string;
+  severity: 'green' | 'amber' | 'red';
+}
+
+function FindingRow({ finding }: { finding: Finding }) {
+  const dotColor = SEVERITY_COLORS[finding.severity];
+  return (
+    <View style={{ paddingVertical: 8, borderBottom: `1 solid ${GRAY_100}` }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: dotColor }} />
+        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: GRAY_900 }}>
+          {finding.value}
+        </Text>
+      </View>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5, marginLeft: 13, marginBottom: 2 }}>
+        {finding.detail}
+      </Text>
+      <Text style={{ fontSize: 6.5, color: GRAY_500, marginLeft: 13 }}>
+        {finding.label}
+      </Text>
+    </View>
+  );
+}
+
+function PaidSectionHeader({ title }: { title: string }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: TEAL_LIGHT, borderRadius: 3,
+      paddingVertical: 5, paddingHorizontal: 8,
+      marginTop: 16, marginBottom: 8,
+      borderWidth: 1, borderColor: '#99f6e4',
+    }}>
+      <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {title}
+      </Text>
+    </View>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -171,52 +205,12 @@ function bearingToCompass(deg: number): string {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-function seasonalSummary(scenarios: ShadowScenario[]) {
-  const winter = scenarios.filter(sc => sc.scenario.startsWith('jun21_'));
-  const spring = scenarios.filter(sc => sc.scenario === 'sep21_12pm');
-  const summer = scenarios.filter(sc => sc.scenario === 'dec21_12pm');
-
-  function worstPct(group: ShadowScenario[]) {
-    const vals = group
-      .map(sc => sc.shadow_overlap_fraction != null ? Math.round(sc.shadow_overlap_fraction * 100) : null)
-      .filter((v): v is number => v !== null);
-    return vals.length ? Math.max(...vals) : null;
-  }
-
-  return [
-    { season: 'Winter (21 Jun)', pct: worstPct(winter) },
-    { season: 'Spring (21 Sep)', pct: worstPct(spring) },
-    { season: 'Summer (21 Dec)', pct: worstPct(summer) },
-  ];
-}
-
 function coveragePillColor(pct: number | null): { bg: string; fg: string } {
   if (pct == null) return { bg: GRAY_100, fg: GRAY_500 };
   if (pct >= 70) return { bg: RED_LIGHT,   fg: RED    };
   if (pct >= 40) return { bg: AMBER_LIGHT, fg: AMBER  };
   if (pct >  0)  return { bg: '#fefce8',   fg: '#ca8a04' };
   return { bg: GRAY_100, fg: GRAY_500 };
-}
-
-function ValidityNote({ runDate }: { runDate: string }) {
-  return (
-    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. LEP height limits are amended periodically — re-run this report if the applicable LEP has been updated or before lodging a DA objection.'}
-    </Text>
-  );
-}
-
-function ReferralBox() {
-  return (
-    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
-      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
-        Get professional advice
-      </Text>
-      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-        A registered town planner can advise on lodging a formal objection or requesting independent shadow modelling as part of a DA response. A solicitor can advise on rights during the neighbour notification period.
-      </Text>
-    </View>
-  );
 }
 
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
@@ -237,50 +231,125 @@ function Footer({ pageNum, total }: { pageNum: number; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Build findings
+// ---------------------------------------------------------------------------
+
+function buildFindings(data: ShadowReportData): Finding[] {
+  const findings: Finding[] = [];
+  const scenarios = data.scenarios ?? [];
+  const overlapCount = scenarios.filter(sc => sc.overlaps_subject_lot).length;
+  const isNonRes = data.zone != null &&
+    NON_RESIDENTIAL_PREFIXES.some(p => data.zone!.toUpperCase().startsWith(p));
+
+  // ADG compliance
+  if (isNonRes) {
+    findings.push({
+      label: 'ADG Part 3F solar access test',
+      value: 'ADG — indicative only (non-residential zone)',
+      detail: 'ADG solar access requirements apply to residential apartment buildings only. This property is in a non-residential zone, so the result is indicative.',
+      severity: overlapCount === 0 ? 'green' : 'amber',
+    });
+  } else if (data.adg_compliant) {
+    findings.push({
+      label: 'ADG Part 3F solar access test',
+      value: overlapCount === 0 ? 'ADG compliant — no shadow overlap' : `ADG compliant — ${overlapCount} of 5 scenarios with shadow`,
+      detail: overlapCount === 0
+        ? 'A maximum-height building on an adjacent lot would not significantly shadow this property across any test scenario. ADG solar access requirements are met.'
+        : 'Some shadow impact is expected but the ADG 2-hour solar access requirement (9am–3pm on 21 June) is still met. This is typical for urban lots and unlikely to be grounds for objection.',
+      severity: overlapCount === 0 ? 'green' : 'amber',
+    });
+  } else {
+    findings.push({
+      label: 'ADG Part 3F solar access test',
+      value: `ADG concern — ${overlapCount} of 5 scenarios with significant shadow`,
+      detail: 'A maximum-height building on an adjacent lot may not meet the ADG 2-hour solar access requirement on 21 June. If a DA is lodged, you can lodge a formal objection during the notification period.',
+      severity: 'red',
+    });
+  }
+
+  // Building height
+  if (data.height_source === 'default') {
+    findings.push({
+      label: 'LEP height of buildings control',
+      value: `${data.height_m}m — default (no HOB control found)`,
+      detail: 'No building height control was found in the applicable LEP. A 9m default has been used, which is the typical height limit for low-density residential zones.',
+      severity: 'amber',
+    });
+  } else {
+    findings.push({
+      label: `${data.lep_name ?? 'Local Environmental Plan'} — height of buildings`,
+      value: `Maximum building height: ${data.height_m}m`,
+      detail: `This is the maximum height a neighbouring building could be approved to. All shadow scenarios use this height.${data.height_m > 8 ? ' At this height, a Development Application is required (exceeds 8m CDC limit), triggering mandatory neighbour notification.' : ''}`,
+      severity: data.height_m > 8 ? 'amber' : 'green',
+    });
+  }
+
+  // Shadow overlap count
+  const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
+  const worstPct = worstSc?.shadow_overlap_fraction != null
+    ? Math.round(worstSc.shadow_overlap_fraction * 100)
+    : null;
+  if (overlapCount > 0 && worstPct != null) {
+    findings.push({
+      label: `Worst case: ${SCENARIO_LABELS[data.worst_case_scenario] ?? data.worst_case_scenario}`,
+      value: `${worstPct}% of lot in shadow at worst case`,
+      detail: worstPct >= 50
+        ? 'More than half the lot would be in shadow during the worst-case scenario. This level of overshadowing significantly impacts solar access and outdoor amenity.'
+        : worstPct >= 20
+        ? 'Substantial shadow impact during the worst-case scenario. This exceeds the ADG Part 3F threshold of 20% coverage of neighbouring open space at 12pm on 21 June.'
+        : 'Minor shadow impact during the worst case. This is within typical urban limits and unlikely to trigger an ADG non-compliance.',
+      severity: worstPct >= 50 ? 'red' : worstPct >= 20 ? 'amber' : 'green',
+    });
+  } else if (overlapCount === 0) {
+    findings.push({
+      label: 'Shadow analysis — 5 ADG test scenarios',
+      value: 'No shadow overlap detected',
+      detail: 'A maximum-height building on an adjacent lot would not cast shadow onto this property in any of the 5 test scenarios. This is a strong result for solar access.',
+      severity: 'green',
+    });
+  }
+
+  // Construction activity
+  findings.push({
+    label: `Sentinel-2 BSI change detection${data.construction_change_score != null ? ` · score ${data.construction_change_score.toFixed(3)}` : ''}`,
+    value: data.construction_change_detected ? 'Construction activity detected on adjacent lot' : 'No construction activity detected',
+    detail: data.construction_change_detected
+      ? 'Satellite imagery shows recent site clearing, demolition, or excavation on the adjacent lot. A development may already be underway — check the ePlanning Portal for lodged DAs.'
+      : 'No significant ground disturbance detected on adjacent lots in the past 90 days compared to the 12-month baseline.',
+    severity: data.construction_change_detected ? 'red' : 'green',
+  });
+
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
 // Document
 // ---------------------------------------------------------------------------
 
 export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
   const scenarios = data.scenarios ?? [];
-  const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
-  const isNonResidential =
-    data.zone != null &&
+  const isPaid = data.is_paid === true;
+  const isNonRes = data.zone != null &&
     NON_RESIDENTIAL_PREFIXES.some(p => data.zone!.toUpperCase().startsWith(p));
-
-  const adgColor = isNonResidential
-    ? { bg: GRAY_100,    fg: GRAY_700 }
-    : data.adg_compliant
-    ? { bg: GREEN_LIGHT, fg: GREEN }
-    : { bg: RED_LIGHT,   fg: RED   };
-
-  const adgLabel = isNonResidential
-    ? 'ADG — indicative only'
-    : data.adg_compliant
-    ? 'ADG compliant'
-    : 'ADG concern';
-
-  const summaryText = isNonResidential
-    ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
-      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
-    : data.adg_compliant
-    ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements are met.`
-      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
-    : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
-
-  const hasOverlay = data.tile_b64 && data.lot_polygon && data.is_paid === true;
+  const hasTile = !!data.tile_b64;
+  const hasOverlay = hasTile && data.lot_polygon && isPaid;
   const junScenarios = hasOverlay
     ? scenarios.filter(sc => sc.scenario.startsWith('jun21'))
     : [];
-  // Pages: cover+scenarios, methodology, about, aerial/overlay (3 maps side-by-side = 1 page)
-  const totalPages = 3 + (data.tile_b64 ? 1 : 0);
+
+  // Pages: cover+findings, detail+advice, about, aerial/overlay
+  const totalPages = 1 + 1 + 1 + (hasTile ? 1 : 0);
+
+  const findings = buildFindings(data);
+
+  let pageCounter = 0;
+  const nextPage = () => ++pageCounter;
 
   return (
     <Document title={`Shadow Report — ${data.address}`} author="PlotDetect">
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 1: Cover + ADG verdict + Scenarios table                       */}
+      {/* PAGE 1: Cover + Findings + Scenario table                           */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
@@ -291,130 +360,33 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         )}
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
         <PreparedBy firmName={data.firm_name} />
-        <ValidityNote runDate={data.run_date} />
 
-        {/* ADG verdict badge */}
-        <View style={[s.adgBadge, { backgroundColor: adgColor.bg }]}>
-          <Text style={[s.adgText, { color: adgColor.fg }]}>{adgLabel}</Text>
-        </View>
+        {/* Key findings */}
+        <Text style={s.sectionTitle}>Key findings</Text>
+        {findings.map((f) => (
+          <FindingRow key={f.label} finding={f} />
+        ))}
 
-        <Text style={[s.bodyText, { marginBottom: 8 }]}>{summaryText}</Text>
-
-        {/* A1: Plain-English interpretation */}
-        {data.is_paid === true && (() => {
-          const worstPct = scenarios.reduce((max, sc) =>
-            sc.shadow_overlap_fraction != null ? Math.max(max, Math.round(sc.shadow_overlap_fraction * 100)) : max, 0);
-          if (!data.adg_compliant && !isNonResidential) {
-            return (
-              <WhatThisMeans>
-                {`A maximum-height building on an adjacent lot would shadow ${worstPct}% of this property during the worst-case scenario. If a DA is lodged for development to the north, you or your solicitor can lodge a formal objection during the notification period citing ADG Part 3F solar access requirements.`}
-              </WhatThisMeans>
-            );
-          }
-          if (overlapCount > 0) {
-            return (
-              <WhatThisMeans>
-                {`Some shadow impact is expected in ${overlapCount} of 5 scenarios, but it meets ADG solar access requirements. This is typical for urban lots and unlikely to be grounds for objection.`}
-              </WhatThisMeans>
-            );
-          }
-          return (
-            <WhatThisMeans>
-              A maximum-height building on an adjacent lot would not significantly shadow this property. This is a positive result for solar access and amenity.
-            </WhatThisMeans>
-          );
-        })()}
-
-        {/* ADG non-compliance consequence — only when concern flagged */}
-        {!data.adg_compliant && data.zone !== null && (
-          <View style={{ backgroundColor: '#fff7ed', borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa' }}>
-            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
-              ADG 2015 Part 3D sets a minimum 3-hour solar access requirement for living areas. Overshadowing of this extent may constitute grounds for formal objection during the DA neighbour notification period. Council is not required to approve a DA that fails the ADG solar access test.
-            </Text>
-          </View>
-        )}
-
-        <View style={s.divider} />
-
-        {/* Stats */}
-        <Text style={s.sectionTitle}>Key parameters</Text>
-        <View style={s.statGrid}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Max building height modelled</Text>
-            <Text style={s.statValue}>{data.height_m} m</Text>
-            <Text style={s.statSub}>{data.lep_name ?? 'Local Environmental Plan'}</Text>
-            {data.height_source === 'default' && (
-              <Text style={[s.statSub, { color: AMBER }]}>
-                No HOB control found — 9 m default used
-              </Text>
-            )}
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>Construction activity</Text>
-            <Text style={[s.statValue, { fontSize: 12 }]}>
-              {data.construction_change_detected ? 'Detected' : 'None detected'}
-            </Text>
-            <Text style={s.statSub}>
-              {data.construction_change_score != null
-                ? `BSI change ${data.construction_change_score.toFixed(3)} · threshold 0.120`
-                : 'Sentinel-2 · past 90 days vs 12-month baseline'}
-            </Text>
-          </View>
-        </View>
-
-        {/* LEP height context — explains where the modelled height comes from */}
-        {data.height_source !== 'default' && data.lep_name && (
-          <Text style={{ fontSize: 8, color: GRAY_500, marginTop: 4, marginBottom: 4, lineHeight: 1.4 }}>
-            {`The ${data.height_m}m height limit is set by the ${data.lep_name}. This is the maximum a neighbouring building could be approved to, and is the height used in all shadow scenarios below.`}
-          </Text>
-        )}
-
-        {/* Height threshold callout — FREE, shown whenever height > 8 m */}
-        {data.height_m > 8.0 && (
-          <View style={{
-            backgroundColor: '#fff7ed', borderRadius: 4, padding: 8,
-            marginTop: 8, marginBottom: 4,
-            borderWidth: 1, borderColor: '#fed7aa',
-          }}>
-            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
-              {`At ${data.height_m} m, this building exceeds the 8 m CDC height limit. A Development Application to council is required, which triggers mandatory neighbour notification and the right to lodge a formal objection.`}
-            </Text>
-          </View>
-        )}
-
-        <View style={s.divider} />
-
-        {/* Scenarios table */}
-        <Text style={s.sectionTitle}>Shadow impact by scenario (ADG test dates)</Text>
-
-        {/* Table header */}
+        {/* Scenario table */}
+        <Text style={[s.sectionTitle, { marginTop: 12 }]}>Shadow impact by scenario (ADG test dates)</Text>
         <View style={s.tableHeader}>
           <Text style={[s.colDate, s.colHeaderText]}>Date and time</Text>
           <Text style={[s.colReach, s.colHeaderText]}>Reach</Text>
           <Text style={[s.colDir, s.colHeaderText]}>Direction</Text>
           <Text style={[s.colCoverage, s.colHeaderText]}>Coverage</Text>
         </View>
-
         {(() => {
-          const visibleScenarios = data.is_paid ? scenarios : scenarios.slice(0, 2);
-          const gatedCount = data.is_paid ? 0 : Math.max(0, scenarios.length - 2);
+          const visibleScenarios = isPaid ? scenarios : scenarios.slice(0, 2);
+          const gatedCount = isPaid ? 0 : Math.max(0, scenarios.length - 2);
           return (
             <>
               {visibleScenarios.map((sc) => {
                 const pct = sc.shadow_overlap_fraction != null
-                  ? Math.round(sc.shadow_overlap_fraction * 100)
-                  : null;
+                  ? Math.round(sc.shadow_overlap_fraction * 100) : null;
                 const pillColor = coveragePillColor(pct);
                 const isWorstCase = sc.scenario === data.worst_case_scenario;
-
                 return (
-                  <View
-                    key={sc.scenario}
-                    style={[s.tableRow, isWorstCase
-                      ? { backgroundColor: TEAL_LIGHT }
-                      : {}
-                    ]}
-                  >
+                  <View key={sc.scenario} style={[s.tableRow, isWorstCase ? { backgroundColor: TEAL_LIGHT } : {}]}>
                     <Text style={s.colDate}>
                       {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
                       {isWorstCase ? ' ★' : ''}
@@ -423,9 +395,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                       {sc.shadow_length_m > 0 ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
                     </Text>
                     <Text style={s.colDir}>
-                      {sc.shadow_direction_deg != null
-                        ? bearingToCompass(sc.shadow_direction_deg)
-                        : '—'}
+                      {sc.shadow_direction_deg != null ? bearingToCompass(sc.shadow_direction_deg) : '—'}
                     </Text>
                     <Text style={[s.colCoverage, { color: pillColor.fg }]}>
                       {pct != null ? `${pct}%` : '—'}
@@ -444,20 +414,56 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           );
         })()}
 
-        <Text style={[s.bodyText, { marginTop: 8, fontSize: 7.5, color: GRAY_500 }]}>
-          {data.is_paid
-            ? '* worst-case scenario · Coverage = fraction of subject lot in shadow'
+        <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
+          {isPaid
+            ? '★ worst-case scenario · Coverage = fraction of subject lot in shadow'
             : 'Coverage = fraction of subject lot in shadow · Full report includes all 5 ADG test scenarios'}
         </Text>
 
+        {/* Warnings */}
+        {data.warnings && data.warnings.length > 0 && (
+          <View style={{ marginTop: 8 }}>
+            {data.warnings.map((w, i) => (
+              <View key={i} style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, paddingVertical: 6, paddingHorizontal: 8, marginBottom: 4, borderRadius: 2 }}>
+                <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{w}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 8, fontStyle: 'italic' }}>
+          {'Data valid as of ' + data.run_date + '. Re-run if the applicable LEP has been updated or before lodging a DA objection.'}
+        </Text>
+
+        <Footer pageNum={nextPage()} total={totalPages} />
+      </Page>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* PAGE 2: Paid detail + Advice + Methodology                          */}
+      {/* ------------------------------------------------------------------ */}
+      <Page size="A4" style={s.page}>
+        <LogoRow logo_b64={data.logo_b64} />
+
         {/* Seasonal summary — paid */}
-        {data.is_paid === true && (() => {
-          const seasons = seasonalSummary(scenarios);
+        {isPaid && (() => {
+          const winter = scenarios.filter(sc => sc.scenario.startsWith('jun21_'));
+          const spring = scenarios.filter(sc => sc.scenario === 'sep21_12pm');
+          const summer = scenarios.filter(sc => sc.scenario === 'dec21_12pm');
+          function worstPct(group: ShadowScenario[]) {
+            const vals = group
+              .map(sc => sc.shadow_overlap_fraction != null ? Math.round(sc.shadow_overlap_fraction * 100) : null)
+              .filter((v): v is number => v !== null);
+            return vals.length ? Math.max(...vals) : null;
+          }
+          const seasons = [
+            { season: 'Winter (21 Jun)', pct: worstPct(winter) },
+            { season: 'Spring (21 Sep)', pct: worstPct(spring) },
+            { season: 'Summer (21 Dec)', pct: worstPct(summer) },
+          ];
           return (
-            <View style={{ marginTop: 16 }}>
-              <Text style={s.sectionTitle}>Seasonal shadow summary</Text>
-              {/* Header */}
-              <View style={[s.tableHeader]}>
+            <>
+              <PaidSectionHeader title="Seasonal shadow analysis — paid data" />
+              <View style={s.tableHeader}>
                 <Text style={[{ flex: 3 }, s.colHeaderText]}>Season</Text>
                 <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Worst coverage</Text>
                 <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Flag</Text>
@@ -476,24 +482,22 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                   </View>
                 );
               })}
-              <Text style={[s.bodyText, { marginTop: 4, fontSize: 7.5, color: GRAY_500 }]}>
-                ADG Part 3F threshold: no more than 20% of a neighbouring open space in shadow at 12pm on 21 June.
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+                ADG Part 3F threshold: no more than 20% of neighbouring open space in shadow at 12pm on 21 June.
               </Text>
-            </View>
+            </>
           );
         })()}
 
-        {/* Objection-ready paragraph — paid, only when ADG concern flagged */}
-        {data.is_paid === true && !data.adg_compliant && !isNonResidential && (() => {
+        {/* Objection-ready paragraph — paid, only when ADG concern */}
+        {isPaid && !data.adg_compliant && !isNonRes && (() => {
           const worstSc = scenarios.find(sc => sc.scenario === data.worst_case_scenario);
           const worstPct = worstSc?.shadow_overlap_fraction != null
-            ? Math.round(worstSc.shadow_overlap_fraction * 100)
-            : null;
+            ? Math.round(worstSc.shadow_overlap_fraction * 100) : null;
           const worstLabel = data.worst_case_scenario
-            ? (SCENARIO_LABELS[data.worst_case_scenario] ?? data.worst_case_scenario)
-            : 'the worst-case scenario';
+            ? (SCENARIO_LABELS[data.worst_case_scenario] ?? data.worst_case_scenario) : 'the worst-case scenario';
           return (
-            <View style={{ backgroundColor: '#f0fdfa', borderWidth: 1, borderColor: '#99f6e4', borderRadius: 4, padding: 10, marginTop: 12, marginBottom: 8 }}>
+            <View style={{ backgroundColor: TEAL_LIGHT, borderWidth: 1, borderColor: '#99f6e4', borderRadius: 4, padding: 10, marginTop: 12, marginBottom: 8 }}>
               <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: TEAL, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
                 Objection-ready paragraph
               </Text>
@@ -501,71 +505,54 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                 {`"The proposed development at the adjacent lot would result in ${worstPct != null ? `${worstPct}%` : 'significant'} shadow coverage of ${data.address} at ${worstLabel}, based on the maximum permissible building height of ${data.height_m}m under the ${data.lep_name ?? 'applicable LEP'}. This exceeds the solar access threshold set out in the Apartment Design Guide (2015) Part 3F, which requires a minimum of 2 hours of direct sunlight to living areas between 9am and 3pm on 21 June. This constitutes grounds for objection under Section 4.15(1)(a)(iii) of the Environmental Planning and Assessment Act 1979."`}
               </Text>
               <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
-                Copy this paragraph into your council DA objection submission during the notification period. Modify as needed for your specific circumstances.
+                Copy this into your council DA objection submission during the notification period.
               </Text>
             </View>
           );
         })()}
 
-        {/* Warnings */}
-        {data.warnings && data.warnings.length > 0 && (
-          <View style={{ marginTop: 12 }}>
-            {data.warnings.map((w, i) => (
-              <View key={i} style={{
-                backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
-                paddingVertical: 6, paddingHorizontal: 8, marginBottom: 6, borderRadius: 2,
-              }}>
-                <Text style={{ fontSize: 8, color: GRAY_700 }}>{w}</Text>
+        {/* Free upsell */}
+        {!isPaid && (
+          <View style={{ backgroundColor: GRAY_100, borderRadius: 4, padding: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 9, color: GRAY_700, marginBottom: 6 }}>
+              The paid report includes:
+            </Text>
+            {[
+              'All 5 ADG test scenarios (free shows 2)',
+              'Seasonal shadow summary with ADG thresholds',
+              'Shadow diagram overlays on aerial imagery',
+              'Objection-ready paragraph (if ADG non-compliant)',
+              'Data currency and methodology details',
+            ].map((item) => (
+              <View key={item} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 }}>
+                <Text style={{ fontSize: 8, color: TEAL, marginRight: 4 }}>•</Text>
+                <Text style={{ fontSize: 8, color: GRAY_700 }}>{item}</Text>
               </View>
             ))}
+            <Text style={{ fontSize: 8, color: TEAL, fontFamily: 'Helvetica-Bold', marginTop: 6 }}>
+              Unlock at plotdetect.com.au — $29
+            </Text>
           </View>
         )}
 
-        <Footer pageNum={1} total={totalPages} />
-      </Page>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* PAGE 2: Methodology + Disclaimer                                     */}
-      {/* ------------------------------------------------------------------ */}
-      <Page size="A4" style={s.page}>
-        <LogoRow logo_b64={data.logo_b64} />
-
-        <Text style={s.sectionTitle}>Methodology</Text>
-        <Text style={s.bodyText}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Authority. </Text>
-          Test dates follow the NSW Apartment Design Guide (DPHI, 2015), Part 3F — Solar and
-          Daylight Access. The critical test is 21 June (winter solstice), when shadows are longest.
-        </Text>
-        <Text style={s.bodyText}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Solar position. </Text>
-          Sun azimuth and altitude are calculated using the NREL Solar Position Algorithm
-          (Reda and Andreas, 2004). Verified for Southern Hemisphere latitudes.
-        </Text>
-        <Text style={s.bodyText}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Building height. </Text>
-          The model uses the maximum permissible building height from the applicable LEP.
-          The northern neighbour footprint is approximated using the subject lot boundary
-          offset one lot-depth northward — a conservative worst-case proxy.
-        </Text>
-        <Text style={s.bodyText}>
-          <Text style={{ fontFamily: 'Helvetica-Bold' }}>Construction activity. </Text>
-          Detected using the Bare Soil Index (BSI) applied to Sentinel-2 imagery.
-          A BSI change score above 0.120 between recent scenes and the 12-month baseline
-          indicates demolition, excavation, or site clearing.
-        </Text>
-
         <View style={s.divider} />
 
-        <ReferralBox />
+        {/* Referrals */}
+        <View style={{ backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#99f6e4' }}>
+          <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+            Next steps
+          </Text>
+          <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+            A registered town planner can advise on lodging a formal objection or requesting independent shadow modelling as part of a DA response. A solicitor can advise on rights during the neighbour notification period.
+          </Text>
+        </View>
 
-        {/* A3: Referral directory links */}
         <ReferralLinks links={[
           { label: 'Town planner', url: 'https://www.planning.org.au/find-a-planner', urlDisplay: 'planning.org.au/find-a-planner' },
           { label: 'Legal advice (DA objections)', url: 'https://www.lawsociety.com.au/for-the-public/find-a-lawyer', urlDisplay: 'lawsociety.com.au/find-a-lawyer' },
         ]} />
 
-        {/* A2: Data currency table — paid only */}
-        {data.is_paid === true && (
+        {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'NSW Planning Portal (height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
             { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
@@ -574,35 +561,41 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           ]} />
         )}
 
-        <Text style={s.sectionTitle}>Disclaimer</Text>
+        {/* Methodology — compact */}
+        <Text style={s.sectionTitle}>Methodology</Text>
+        <Text style={s.bodyText}>
+          Shadow geometry computed using NREL Solar Position Algorithm for ADG test dates (21 Jun, 21 Sep, 21 Dec). Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
+        </Text>
+
+        <Text style={[s.sectionTitle, { marginTop: 4 }]}>Disclaimer</Text>
         <Text style={s.bodyText}>
           This is a worst-case envelope model — not a design-specific shadow study.
           A formal shadow impact assessment by a qualified town planner or architect is
-          required for DA submission under the Environmental Planning and Assessment Act 1979.
+          required for DA submission.
         </Text>
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
-          Data: {(data.data_sources ?? []).join(' · ')} · Report generated {data.run_date} · plotdetect.com.au
+          Report generated by PlotDetect · plotdetect.com.au · {data.run_date}
         </Text>
 
         {data.qr_b64 && data.shareable_url && (
           <QRBlock url={data.shareable_url} qr_b64={data.qr_b64} />
         )}
 
-        <Footer pageNum={2} total={totalPages} />
+        <Footer pageNum={nextPage()} total={totalPages} />
       </Page>
 
-      {/* T4: About this report + tools list */}
+      {/* About page */}
       <AboutPage
         logo_b64={data.logo_b64}
-        pageNum={3}
+        pageNum={nextPage()}
         total={totalPages}
         reportName="Shadow Detector"
       />
 
       {/* ------------------------------------------------------------------ */}
-      {/* PAGE 4: Shadow diagrams or plain aerial (optional)                   */}
+      {/* Shadow diagrams or plain aerial (optional)                           */}
       {/* ------------------------------------------------------------------ */}
-      {data.tile_b64 && (
+      {hasTile && (
         <Page size="A4" style={s.page}>
           <LogoRow logo_b64={data.logo_b64} />
           {hasOverlay ? (
@@ -611,7 +604,6 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
               <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
                 Teal outline = subject lot boundary. Orange fill = shadow cast by a maximum-height building ({data.height_m}m) on the adjacent lot to the north.
               </Text>
-              {/* Legend */}
               <View style={{ flexDirection: 'row', gap: 16, marginBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <View style={{ width: 10, height: 10, backgroundColor: '#0d9488', opacity: 0.4, borderRadius: 1 }} />
@@ -626,7 +618,6 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
                   <Text style={{ fontSize: 7.5, color: GRAY_500 }}>Modelled building</Text>
                 </View>
               </View>
-              {/* Render one diagram per Jun 21 scenario — constrain width to fit 3 on one page */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'space-between' }}>
                 {junScenarios.map((sc) => (
                   <View key={sc.scenario} style={{ width: '31%' }}>
@@ -650,7 +641,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             <>
               <Text style={s.sectionTitle}>Property aerial view</Text>
               <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
-                10 cm resolution aerial imagery of the subject lot.
+                NSW SIX Maps aerial imagery for context.
               </Text>
               <Image
                 src={`data:image/png;base64,${data.tile_b64}`}
@@ -659,9 +650,9 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             </>
           )}
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
-            NSW SIX Maps (LPI_Imagery_Best) -- CC-BY 4.0 NSW Government
+            NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government
           </Text>
-          <Footer pageNum={4} total={totalPages} />
+          <Footer pageNum={nextPage()} total={totalPages} />
         </Page>
       )}
 
