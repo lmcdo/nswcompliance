@@ -900,9 +900,9 @@ function SearchResults({
                   </div>
 
                   {/* Planning Portal link — free cards only */}
-                  {!isBlurred && (
+                  {!isBlurred && appNum !== '—' && (
                     <a
-                      href="https://www.planningportal.nsw.gov.au/datracking"
+                      href={`https://www.planningportal.nsw.gov.au/map?search=${encodeURIComponent(appNum)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block text-xs text-teal-600 hover:text-teal-700 hover:underline"
