@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { HomeHero } from '@/components/home/HomeHero';
 
 const BUYING = [
   {
@@ -197,18 +196,49 @@ export default function HomePage() {
             <Link href="/how-it-works" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
               How it works
             </Link>
-            <Link
-              href="#hero-search"
-              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              Check a property
-            </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <HomeHero />
+      {/* Hero — no search bar, direct intent routing */}
+      <section className="px-6 pt-20 pb-16 max-w-3xl mx-auto text-center">
+        <div className="mb-6 flex justify-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-1.5 text-sm font-medium text-teal-700">
+            <span className="w-2 h-2 rounded-full bg-teal-500" />
+            Seven free checks for any NSW address
+          </div>
+        </div>
+
+        <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-gray-900 mb-4">
+          What should you know{' '}
+          <span className="text-teal-600">before you buy, build, or insure?</span>
+        </h1>
+
+        <p className="text-gray-500 text-lg mb-10 max-w-xl mx-auto">
+          Live government data, satellite imagery, and Bureau of Meteorology records. Pick a tool below, enter any NSW address, and get results in seconds.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link href="/reports/flood" className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors">
+            Flood Risk Check
+          </Link>
+          <Link href="/reports/bushfire" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Bushfire Pre-Screen
+          </Link>
+          <Link href="/reports/granny-flat" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Granny Flat Checker
+          </Link>
+          <Link href="/reports/threat-radar" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Threat Radar
+          </Link>
+          <Link href="/reports/shadow" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Shadow Detector
+          </Link>
+          <Link href="/reports/solar-yield" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Solar Yield
+          </Link>
+        </div>
+      </section>
 
       {/* Data sources strip */}
       <section className="border-y border-gray-100 bg-gray-50 py-8 px-6">
