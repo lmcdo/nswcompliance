@@ -348,91 +348,134 @@ function ReportCard({ report }: { report: ReportData }) {
   const systemKw = (o.max_panels * PANEL_WATTS) / 1000;
   const grade    = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
 
+  // Build findings
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // Solar suitability grade
+  const gradeDetail: Record<string, string> = {
+    A: 'This roof has excellent solar potential. North-facing with ideal pitch and strong sunshine hours — an installer would consider this a premium site.',
+    B: 'Good solar potential. Minor compromises in orientation or pitch, but still a strong candidate for solar. Most installers would recommend proceeding.',
+    C: 'Moderate solar potential. The roof geometry or orientation reduces output compared to ideal. Still viable, but payback period will be longer — get multiple installer quotes.',
+    D: 'Below-average solar potential. Significant orientation or pitch issues will reduce output. Consider whether the investment makes sense at current panel prices.',
+    F: 'Poor solar potential. The roof geometry makes solar panels unlikely to deliver a reasonable return. A ground-mounted system or different roof face may be worth exploring.',
+  };
+
+  findings.push({
+    label: 'Solar suitability assessment',
+    value: `Grade ${grade.grade} — ${grade.reason.toLowerCase()}`,
+    detail: gradeDetail[grade.grade] ?? gradeDetail.C,
+    severity: grade.grade <= 'B' ? 'green' : grade.grade === 'C' ? 'amber' : 'red',
+  });
+
+  // Roof orientation
+  const northDev = Math.min(o.best_azimuth_deg, 360 - o.best_azimuth_deg);
+  if (northDev <= 30) {
+    findings.push({
+      label: 'Roof orientation analysis',
+      value: `${azimuthLabel(o.best_azimuth_deg)}-facing at ${o.best_pitch_deg}° pitch`,
+      detail: 'North-facing is ideal for solar in the Southern Hemisphere. Your panels will capture maximum sunlight throughout the day, especially in winter when the sun is lower.',
+      severity: 'green',
+    });
+  } else if (northDev <= 90) {
+    findings.push({
+      label: 'Roof orientation analysis',
+      value: `${azimuthLabel(o.best_azimuth_deg)}-facing at ${o.best_pitch_deg}° pitch`,
+      detail: northDev <= 60
+        ? 'Partially north-facing. You\'ll lose some output compared to true north, but this is still a viable orientation for solar. East-facing generates more in the morning, west in the afternoon.'
+        : 'East or west-facing roof. You\'ll generate around 15–20% less than a north-facing roof. Still viable, but factor the lower yield into your payback calculations.',
+      severity: 'amber',
+    });
+  } else {
+    findings.push({
+      label: 'Roof orientation analysis',
+      value: `${azimuthLabel(o.best_azimuth_deg)}-facing at ${o.best_pitch_deg}° pitch`,
+      detail: 'South-facing is the least productive orientation in the Southern Hemisphere. Output could be 30–40% lower than north-facing. Consider panels on a different roof face if available.',
+      severity: 'red',
+    });
+  }
+
+  // Annual output
+  findings.push({
+    label: 'Google Solar building analysis',
+    value: `${Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr from ${systemKw.toFixed(1)} kW system`,
+    detail: `Your roof can fit ${o.max_panels} panels (${o.roof_area_m2.toLocaleString('en-AU')} m² usable area). At current retail rates, this output is worth roughly $${Math.round(o.annual_kwh_estimate * RETAIL_RATE).toLocaleString('en-AU')}/yr before feed-in adjustments.`,
+    severity: o.annual_kwh_estimate > 5000 ? 'green' : o.annual_kwh_estimate > 2000 ? 'amber' : 'red',
+  });
+
+  // Sunshine hours
+  findings.push({
+    label: 'Bureau of Meteorology — solar exposure data',
+    value: `${o.sunshine_hours_per_year.toLocaleString('en-AU')} sunshine hours per year`,
+    detail: o.sunshine_hours_per_year >= 1700
+      ? 'Above-average sunshine for NSW. Your panels will perform at or above nameplate capacity for much of the year.'
+      : o.sunshine_hours_per_year >= 1500
+      ? 'Typical sunshine hours for Sydney metro. Standard solar yield assumptions apply.'
+      : 'Below-average sunshine hours. This could be due to local shading, coastal cloud, or valley fog. Factor this into your installer\'s yield estimate.',
+    severity: o.sunshine_hours_per_year >= 1700 ? 'green' : o.sunshine_hours_per_year >= 1300 ? 'amber' : 'red',
+  });
+
+  // Heritage
+  if (o.is_heritage) {
+    findings.push({
+      label: 'Heritage overlay (LEP cl 5.10)',
+      value: 'Heritage item or conservation area',
+      detail: 'Solar panels visible from a public place may require council approval. Panels on rear or concealed roof faces are generally approvable — street-facing primary facades are often refused. Check with council before signing an installer contract.',
+      severity: 'amber',
+    });
+  }
+
+  // Commercial scale
+  if (o.is_commercial_scale) {
+    findings.push({
+      label: 'Roof scale classification',
+      value: `Large-scale roof — ${o.roof_area_m2.toLocaleString('en-AU')} m²`,
+      detail: 'This is a commercial-scale roof. Results reflect panels within this lot boundary only. For multi-tenancy or strata sites, get a commercial energy assessment — residential installer quotes won\'t cover the full opportunity.',
+      severity: 'amber',
+    });
+  }
+
+  const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+    <div className="bg-white rounded-xl border border-gray-200">
 
       {/* Header */}
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-semibold text-gray-900">{report.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Run {report.run_date}
-              {o.imagery_date !== 'unknown' && ` · Imagery ${o.imagery_date}`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {o.is_heritage && (
-              <span className="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
-                Heritage area
-              </span>
-            )}
-            <div className={`flex flex-col items-center px-3 py-2 rounded-lg ${grade.colour}`}>
-              <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60 leading-none mb-1">Suitability</span>
-              <span className="text-xl font-bold leading-none">{grade.grade}</span>
-            </div>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h2 className="font-semibold text-gray-900 text-base">{report.address}</h2>
+          <div className={`flex flex-col items-center px-3 py-2 rounded-lg shrink-0 ${grade.colour}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60 leading-none mb-1">Suitability</span>
+            <span className="text-xl font-bold leading-none">{grade.grade}</span>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          {grade.reason} · {systemKw.toFixed(1)} kW system
+        <p className="text-sm text-gray-600">
+          {grade.reason} — {systemKw.toFixed(1)} kW system potential across {o.max_panels} panels.
         </p>
-        <p className="text-xs text-gray-400 mt-1">
-          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
-        </p>
+      </div>
+
+      {/* Findings */}
+      <div className="border-t border-gray-100 divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
+            </div>
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Aerial tile */}
-      <div style={{ height: 220 }}>
-        <AerialTile lat={report.lat} lng={report.lng} lotPolygon={o.coverage_available ? report.lot_polygon : null} />
+      <div className="border-t border-gray-100" style={{ height: 220 }}>
+        <AerialTile lat={report.lat} lng={report.lng} lotPolygon={report.lot_polygon} />
       </div>
-
-      {/* Free tier summary — orientation + kWh only, no $ figures */}
-      <div className="p-6">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
-            <p className="font-medium text-gray-800">{azimuthLabel(o.best_azimuth_deg)} · {o.best_pitch_deg}° pitch</p>
-            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr sun</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Annual output estimate</p>
-            <p className="font-medium text-gray-800">{Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr</p>
-            <p className="text-xs text-gray-400">full roof potential</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Commercial scale notice */}
-      {o.is_commercial_scale && (
-        <div className="px-6 py-4 bg-sky-50 text-xs text-sky-800">
-          Large-scale roof detected ({o.roof_area_m2.toLocaleString('en-AU')} m²). Results reflect
-          panels within this lot boundary only. A commercial energy assessment is recommended
-          for multi-tenancy or strata sites.
-        </div>
-      )}
-
-      {/* Heritage warning */}
-      {o.is_heritage && (
-        <div className="px-6 py-4 bg-amber-50 text-xs text-amber-800 space-y-1">
-          <p className="font-medium">Heritage item or conservation area</p>
-          <p>
-            Solar panels visible from a public place on a heritage item or within a Heritage Conservation Area
-            may require council approval under your LEP (cl 5.10). Panels on rear or concealed roof faces
-            are generally approvable — panels on the street-facing primary facade are often refused.
-            Confirm with council or a heritage consultant before proceeding.
-          </p>
-        </div>
-      )}
 
       {/* Footer */}
-      <div className="px-6 py-4">
+      <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
-          Data: {report.data_sources.join(' · ')} · Google Maps Static API
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Solar potential assessment only. Financial figures are indicative estimates, not financial advice.
-          Actual savings depend on household consumption, tariff structure, and system performance.
-          Not a substitute for a professional energy or financial assessment.
+          Screening tool — not financial advice. Actual savings depend on consumption, tariff, and system performance. Get installer quotes before committing.
         </p>
       </div>
     </div>
