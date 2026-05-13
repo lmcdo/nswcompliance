@@ -6,9 +6,14 @@ export function LandingVisibility({ children }: { children: React.ReactNode }) {
   const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
-    const handler = () => setHidden(true)
-    window.addEventListener("landing-search", handler)
-    return () => window.removeEventListener("landing-search", handler)
+    const hide = () => setHidden(true)
+    const show = () => setHidden(false)
+    window.addEventListener("landing-search", hide)
+    window.addEventListener("landing-reset", show)
+    return () => {
+      window.removeEventListener("landing-search", hide)
+      window.removeEventListener("landing-reset", show)
+    }
   }, [])
 
   if (hidden) return null

@@ -209,24 +209,49 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
     runCheck(address);
   };
 
+  const handleReset = () => {
+    setAddress('');
+    setInputAddress('');
+    setState('idle');
+    setReport(null);
+    setErrorMsg('');
+    setIneligible(null);
+    setPaidReportId(null);
+    setUnlocking(false);
+    setUnlockError('');
+    window.dispatchEvent(new CustomEvent('landing-reset'));
+  };
+
   return (
     <div className="mb-8">
-      <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
-        <AddressAutocomplete
-          value={address}
-          onChange={setAddress}
-          onSelect={(addr) => setAddress(addr)}
-          className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-          disabled={state === 'running'}
-        />
-        <button
-          type="submit"
-          disabled={state === 'running' || !address.trim()}
-          className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {state === 'running' ? 'Running...' : 'Run Report'}
-        </button>
-      </form>
+      {state === 'idle' || state === 'error' ? (
+        <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
+          <AddressAutocomplete
+            value={address}
+            onChange={setAddress}
+            onSelect={(addr) => setAddress(addr)}
+            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            disabled={!address.trim()}
+            className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Run Report
+          </button>
+        </form>
+      ) : (
+        <div className="mb-6">
+          <p className="text-sm text-gray-500">{inputAddress || address}</p>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="text-sm text-teal-600 hover:text-teal-700 font-medium mt-1"
+          >
+            Search new address
+          </button>
+        </div>
+      )}
 
       {state === 'running' && (
         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
