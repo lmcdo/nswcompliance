@@ -43,37 +43,29 @@ export interface BushfireResult {
 const FIRE_SIGNAL_META: Record<string, { label: string; sublabel: string; badge: string }> = {
   none: {
     label: 'Not bushfire prone',
-    sublabel: 'This property is not mapped as bushfire prone land under the NSW RFS Bush Fire Prone Land Map',
+    sublabel: 'This property is not on the NSW RFS Bush Fire Prone Land Map. No bushfire construction requirements apply.',
     badge: 'bg-green-100 text-green-800',
   },
   low: {
-    label: 'Low fire signal',
-    sublabel: 'Bushfire prone — Vegetation Buffer or Category 3. BAL assessment required before development.',
+    label: 'Low bushfire risk',
+    sublabel: 'This property is on bushfire prone land but in a lower-risk category. You\'ll need a BAL assessment before building, but construction costs are unlikely to be significant.',
     badge: 'bg-yellow-100 text-yellow-800',
   },
   moderate: {
-    label: 'Moderate fire signal',
-    sublabel: 'Vegetation Category 2. Estimated BAL-29. RFS referral required for new development.',
+    label: 'Moderate bushfire risk',
+    sublabel: 'This property requires bushfire-rated construction. Your builder will need to meet AS 3959 standards, and RFS must sign off on any new development.',
     badge: 'bg-orange-100 text-orange-800',
   },
   elevated: {
-    label: 'Elevated fire signal',
-    sublabel: 'Vegetation Category 1 — highest risk. Estimated BAL-40 to BAL-FZ. DA pathway mandatory.',
+    label: 'High bushfire risk',
+    sublabel: 'This property is in the highest bushfire risk category. Construction costs will be significantly higher, and you cannot use the fast-track CDC approval pathway.',
     badge: 'bg-red-100 text-red-800',
   },
   unavailable: {
-    label: 'RFS data unavailable',
-    sublabel: 'Could not query the NSW RFS Bush Fire Prone Land Map. Check the RFS portal directly.',
+    label: 'Data unavailable',
+    sublabel: 'We couldn\'t query the NSW RFS Bush Fire Prone Land Map for this address. Check the RFS portal directly or contact your council.',
     badge: 'bg-gray-100 text-gray-600',
   },
-}
-
-const BAL_COLOR: Record<string, string> = {
-  'BAL-LOW': 'bg-green-50 text-green-700',
-  'BAL-12.5': 'bg-yellow-50 text-yellow-700',
-  'BAL-19': 'bg-yellow-50 text-yellow-700',
-  'BAL-29': 'bg-orange-50 text-orange-700',
-  'BAL-40 to BAL-FZ': 'bg-red-50 text-red-700',
 }
 
 export function BushfireResultCard({ result }: { result: BushfireResult }) {
@@ -81,143 +73,166 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
   const signal = o.fire_signal ?? 'unavailable'
   const signalMeta = FIRE_SIGNAL_META[signal] ?? FIRE_SIGNAL_META.unavailable
   const c = o.compliance
-  const sourceCount = (result.data_sources ?? []).length
+
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = []
+
+  // BFPL designation
+  if (o.is_bushfire_prone === null) {
+    findings.push({
+      label: 'NSW RFS Bush Fire Prone Land Map',
+      value: 'Data unavailable',
+      detail: 'Could not determine bushfire prone land status. This doesn\'t mean the property is safe — contact the local council or check the RFS portal directly.',
+      severity: 'amber',
+    })
+  } else if (o.is_bushfire_prone) {
+    findings.push({
+      label: 'NSW RFS Bush Fire Prone Land Map',
+      value: o.designation_category ?? 'Bushfire prone land',
+      detail: 'This property is officially mapped as bushfire prone. Your insurer will load your premium, and any building work must comply with bushfire construction standards (AS 3959).',
+      severity: signal === 'elevated' ? 'red' : 'amber',
+    })
+  } else {
+    findings.push({
+      label: 'NSW RFS Bush Fire Prone Land Map',
+      value: 'Not bushfire prone',
+      detail: 'This property is not mapped as bushfire prone land. No bushfire-specific construction standards or RFS referrals are required.',
+      severity: 'green',
+    })
+  }
+
+  // BAL band
+  if (o.estimated_bal_band) {
+    const isHigh = o.estimated_bal_band === 'BAL-40 to BAL-FZ'
+    const isMid = o.estimated_bal_band === 'BAL-29'
+    const isLow = o.estimated_bal_band === 'BAL-LOW'
+
+    let balDetail: string
+    if (isHigh) {
+      balDetail = 'At this BAL level, construction costs increase substantially — fire-rated windows, non-combustible cladding, and ember protection are all mandatory. You cannot use the fast-track CDC pathway; a full DA with RFS referral is required.'
+    } else if (isMid) {
+      balDetail = 'Your builder will need to use bushfire-rated materials and construction methods under AS 3959. Budget for 10–20% higher build costs compared to a non-bushfire site. A formal BAL assessment is required before approval.'
+    } else if (isLow) {
+      balDetail = 'BAL-LOW means no special bushfire construction requirements apply. Standard building materials and methods are acceptable.'
+    } else {
+      balDetail = 'A formal BAL assessment by a qualified practitioner will confirm the exact rating. Your builder and certifier both need this before construction can start.'
+    }
+
+    findings.push({
+      label: 'Estimated Bushfire Attack Level (BAL)',
+      value: o.estimated_bal_band,
+      detail: balDetail,
+      severity: isHigh ? 'red' : isLow ? 'green' : 'amber',
+    })
+  }
+
+  // RFS referral
+  if (c?.rfs_referral_required === true) {
+    findings.push({
+      label: 'RFS referral (s4.14 EP&A Act)',
+      value: 'Required for any new development',
+      detail: 'The Rural Fire Service must be consulted on your DA. This adds 4–6 weeks to the approval timeline. Your architect or planner should factor this into the project schedule.',
+      severity: 'red',
+    })
+  } else if (c?.rfs_referral_required === false) {
+    findings.push({
+      label: 'RFS referral',
+      value: 'Not required',
+      detail: 'No Rural Fire Service consultation needed for development at this property.',
+      severity: 'green',
+    })
+  }
+
+  // CDC pathway
+  if (c?.cdc_pathway_available === true) {
+    findings.push({
+      label: 'Fast-track approval (CDC)',
+      value: 'Available',
+      detail: 'You can use the Complying Development Certificate pathway for standard builds — faster and cheaper than a full DA. Your private certifier can issue approval without council involvement.',
+      severity: 'green',
+    })
+  } else if (c?.cdc_pathway_available === false) {
+    findings.push({
+      label: 'Fast-track approval (CDC)',
+      value: 'Not available — DA required',
+      detail: 'The bushfire risk level at this site means you must go through the full Development Application process with council. CDCs are only available for properties at BAL-29 or below.',
+      severity: 'red',
+    })
+  }
+
+  // 10/50 clearing
+  if (c?.clearing_10_50_entitled === true) {
+    findings.push({
+      label: '10/50 vegetation clearing',
+      value: 'Entitled to clear',
+      detail: 'You can clear trees within 10m and managed vegetation within 50m of your home without council approval. This is a significant maintenance benefit on bushfire prone land.',
+      severity: 'green',
+    })
+  } else if (c?.clearing_10_50_entitled === false) {
+    findings.push({
+      label: '10/50 vegetation clearing',
+      value: 'Does not apply',
+      detail: c?.clearing_10_50_exceptions
+        ? `Clearing entitlement is excluded at this site. ${c.clearing_10_50_exceptions}`
+        : 'The 10/50 clearing entitlement does not apply to this property. You\'ll need separate approval to clear vegetation near the dwelling.',
+      severity: 'amber',
+    })
+  }
+
+  // Cross-overlays
+  if (c?.cross_overlays && c.cross_overlays.length > 0) {
+    for (const overlay of c.cross_overlays) {
+      findings.push({
+        label: `${overlay.source}`,
+        value: `${overlay.type.charAt(0).toUpperCase() + overlay.type.slice(1)} overlay — ${overlay.value}`,
+        detail: 'Additional planning overlay at this site. This may affect what you can build and how approvals are assessed — check with your planner.',
+        severity: 'amber',
+      })
+    }
+  }
+
+  const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 mb-6">
-      {/* Header */}
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Run {result.run_date} &middot; {sourceCount} data source{sourceCount !== 1 ? 's' : ''} &middot; {result.confidence} confidence
-            </p>
-          </div>
-          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${signalMeta.badge}`}>
+    <div className="bg-white rounded-xl border border-gray-200 mb-6">
+      {/* Header — signal badge + address */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h2 className="font-semibold text-gray-900 text-base">{result.address}</h2>
+          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${signalMeta.badge}`}>
             {signalMeta.label}
           </span>
         </div>
-        <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Indicative pre-screen only. A formal BAL assessment by a qualified practitioner is
-          required before development on bushfire prone land.
-        </p>
+        <p className="text-sm text-gray-600">{signalMeta.sublabel}</p>
       </div>
 
-      {/* BFPL designation + BAL band */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">BFPL category</p>
-          {o.is_bushfire_prone === null ? (
-            <p className="text-sm text-gray-400">Unavailable</p>
-          ) : o.is_bushfire_prone ? (
-            <>
-              <p className="text-sm font-medium text-gray-900">
-                {o.designation_category ?? 'Bushfire prone'}
-              </p>
-              {o.designation_guideline && (
-                <p className="text-xs text-gray-400 mt-0.5">{o.designation_guideline}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm font-medium text-green-700">Not bushfire prone</p>
-          )}
-          <p className="text-xs text-gray-400 mt-1">
-            NSW RFS &middot;{' '}
-            {o.data_currency !== 'unknown' && o.data_currency !== 'query_failed'
-              ? `as at ${o.data_currency}`
-              : 'date unavailable'}
-          </p>
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Estimated BAL band</p>
-          {o.estimated_bal_band ? (
-            <>
-              <span className={`inline-block text-sm font-medium px-2 py-0.5 rounded mb-1 ${BAL_COLOR[o.estimated_bal_band] ?? 'bg-gray-50 text-gray-700'}`}>
-                {o.estimated_bal_band}
-              </span>
-              <p className="text-xs text-gray-400">
-                {o.bal_assessment_likely_required
-                  ? 'Formal BAL assessment required before development'
-                  : 'No bushfire construction standards apply'}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Not applicable</p>
-          )}
-        </div>
-      </div>
-
-      {/* Development implications */}
-      {o.is_bushfire_prone && c && (
-        <div className="p-6 space-y-4">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Development implications
-          </p>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-400 mb-1">RFS referral required</p>
-              <p className={`text-sm font-medium ${c.rfs_referral_required ? 'text-red-700' : c.rfs_referral_required === false ? 'text-green-700' : 'text-gray-500'}`}>
-                {c.rfs_referral_required === null
-                  ? '\u2014'
-                  : c.rfs_referral_required
-                  ? 'Yes \u2014 s4.14 EP&A Act'
-                  : 'No'}
-              </p>
+      {/* Findings — value + explanation */}
+      <div className="border-t border-gray-100 divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-1">CDC pathway</p>
-              <p className={`text-sm font-medium ${c.cdc_pathway_available === false ? 'text-red-700' : c.cdc_pathway_available ? 'text-green-700' : 'text-gray-500'}`}>
-                {c.cdc_pathway_available === null
-                  ? '\u2014'
-                  : c.cdc_pathway_available
-                  ? 'Available (BAL \u2264 29)'
-                  : 'DA required'}
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
           </div>
+        ))}
+      </div>
 
-          {c.rfs_referral_triggers && c.rfs_referral_triggers.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-400 mb-1">s4.14 referral triggers</p>
-              <ul className="space-y-1">
-                {c.rfs_referral_triggers.map((trigger, i) => (
-                  <li key={i} className="text-xs text-gray-600 flex gap-2">
-                    <span className="shrink-0 text-gray-300">&middot;</span>
-                    <span>{trigger}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {/* Consultant costs + BAL assessor link */}
+      {o.is_bushfire_prone && (c?.estimated_consultant_costs || o.bal_assessor_directory_url) && (
+        <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
+          {c?.estimated_consultant_costs && (
+            <p className="text-xs text-gray-600 mb-2">
+              <span className="font-medium">Estimated consultant costs:</span> {c.estimated_consultant_costs}
+            </p>
           )}
-
-          {c.clearing_10_50_entitled !== null && (
-            <div>
-              <p className="text-xs text-gray-400 mb-1">10/50 vegetation clearing</p>
-              <p className="text-sm font-medium text-gray-900">
-                {c.clearing_10_50_entitled ? 'Entitlement applies' : 'Does not apply'}
-              </p>
-              {c.clearing_10_50_exceptions && (
-                <p className="text-xs text-gray-500 mt-0.5">{c.clearing_10_50_exceptions}</p>
-              )}
-            </div>
-          )}
-
-          {c.estimated_consultant_costs && (
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Estimated consultant costs</p>
-              <p className="text-sm text-gray-700">{c.estimated_consultant_costs}</p>
-            </div>
-          )}
-
           {o.bal_assessor_directory_url && (
             <a
               href={o.bal_assessor_directory_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs text-teal-600 hover:text-teal-700 underline"
+              className="text-xs text-teal-600 hover:text-teal-700 underline"
             >
               Find a qualified BAL assessor (RFS directory) &rarr;
             </a>
@@ -225,26 +240,9 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
         </div>
       )}
 
-      {/* Cross-overlays */}
-      {c?.cross_overlays && c.cross_overlays.length > 0 && (
-        <div className="p-6">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-            Additional overlays at this site
-          </p>
-          <div className="space-y-2">
-            {c.cross_overlays.map((overlay, i) => (
-              <div key={i} className="flex items-center justify-between gap-4 text-sm">
-                <span className="capitalize text-gray-700">{overlay.type} overlay</span>
-                <span className="text-xs text-gray-500">{overlay.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Legislation link */}
       {c?.legislation_url && (
-        <div className="px-6 py-4 bg-gray-50">
+        <div className="px-5 py-3 border-t border-gray-100">
           <a
             href={c.legislation_url}
             target="_blank"
@@ -257,13 +255,10 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
       )}
 
       {/* Footer */}
-      <div className="px-6 py-4">
+      <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
-          Sources: {(result.data_sources ?? []).join(' \u00b7 ')}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Indicative pre-screen only. Not a formal BAL assessment. For development applications:
-          obtain a bushfire assessment from a practitioner listed in the RFS directory.
+          Screening tool — not a formal BAL assessment. Obtain a bushfire assessment from a practitioner
+          listed in the RFS directory before development on bushfire prone land.
         </p>
       </div>
     </div>
