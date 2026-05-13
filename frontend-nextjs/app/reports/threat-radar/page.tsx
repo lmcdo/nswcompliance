@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ThreatRadarTool } from '@/components/tools/ThreatRadarTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
+import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
   title: 'Neighbour Development Threat Radar — canibuildit.com.au',
@@ -29,7 +30,7 @@ export default async function ThreatRadarPage({ searchParams }: Props) {
 
   return (
     <div>
-      {!hasAddress && <ProductLandingV2 product="threat-radar" />}
+      {!hasAddress && <LandingVisibility><ProductLandingV2 product="threat-radar" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <ThreatRadarTool />
       </div>

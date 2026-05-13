@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { BushfireTool } from '@/components/tools/BushfireTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
+import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
   title: 'Bushfire Pre-Screen — canibuildit.com.au',
@@ -29,7 +30,7 @@ export default async function BushfirePage({ searchParams }: Props) {
 
   return (
     <div>
-      {!hasAddress && <ProductLandingV2 product="bushfire" />}
+      {!hasAddress && <LandingVisibility><ProductLandingV2 product="bushfire" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <BushfireTool />
       </div>
