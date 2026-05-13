@@ -345,17 +345,17 @@ function ShadowLockedPreviewCard({
     (a, b) => SCENARIO_ORDER.indexOf(a.scenario) - SCENARIO_ORDER.indexOf(b.scenario)
   );
   const teaserScenarios = sortedScenarios.slice(0, 2);
-  const blurredCount = Math.max(0, sortedScenarios.length - 2);
-
   const alarmHeadline = !o.adg_compliant
     ? `ADG concern — shadow impact on ${overlapCount} of 5 test scenarios`
     : overlapCount > 0
     ? `Shadow impact on ${overlapCount} of 5 scenarios — get the diagrams for your records`
-    : 'Shadow analysis complete — get the council-ready documentation';
+    : 'No shadow concern detected — save the full analysis for your records';
 
   const alarmDetail = !o.adg_compliant
     ? 'This property may not meet the ADG 2-hour solar access requirement on 21 June. The full report has the scenario diagrams and objection paragraph you need.'
-    : 'The full report includes hourly shadow diagrams and a ready-to-paste objection paragraph for your council submission.';
+    : overlapCount > 0
+    ? 'The full report includes hourly shadow diagrams and a ready-to-paste objection paragraph for your council submission.'
+    : 'The full report documents that no shadow impact was found — useful evidence if a future DA is lodged nearby.';
 
   return (
     <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
@@ -365,16 +365,6 @@ function ShadowLockedPreviewCard({
       </div>
 
       <div className="bg-white px-5 pt-4 pb-3 space-y-4">
-        {/* Construction detection — blurred */}
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Construction detected nearby
-          </p>
-          <span className="blur-sm select-none pointer-events-none text-sm font-medium text-gray-900">
-            {o.construction_change_detected ? 'Yes — recent activity detected' : 'No recent construction activity'}
-          </span>
-        </div>
-
         {/* Worst-case overlap — blurred */}
         <div>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -400,32 +390,34 @@ function ShadowLockedPreviewCard({
                 </span>
               </div>
             ))}
-            {/* Blurred remaining rows */}
-            {Array.from({ length: blurredCount }).map((_, i) => (
-              <div key={`blur-${i}`} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
+            {/* Blurred remaining rows — use real scenario labels, blur real values */}
+            {sortedScenarios.slice(2).map((s) => (
+              <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
                 <span className="blur-sm select-none pointer-events-none text-gray-600">
-                  {SCENARIO_LABELS[SCENARIO_ORDER[2 + i]] ?? `Scenario ${3 + i}`}
+                  {SCENARIO_LABELS[s.scenario] ?? s.scenario}
                 </span>
                 <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
-                  {14 + i * 3}m shadow · {i === 0 ? 'overlaps lot' : 'clear'}
+                  {s.shadow_length_m.toFixed(0)}m shadow{s.overlaps_subject_lot ? ' · overlaps lot' : ''}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Objection paragraph — fully blurred block */}
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Objection-ready paragraph
-          </p>
-          <p className="blur-sm select-none pointer-events-none text-sm text-gray-700 leading-relaxed">
-            Shadow modelling conducted in accordance with NSW Apartment Design Guide Part 3F
-            indicates that a maximum-height building on the northern boundary would cast a shadow
-            over {Math.round((worstScenario?.shadow_overlap_fraction ?? 0.3) * 100)}% of the subject
-            lot at 21 June 12pm, which does not comply with the 2-hour solar access requirement.
-          </p>
-        </div>
+        {/* Objection paragraph — blurred, only shown when there's actual shadow impact */}
+        {overlapCount > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Objection-ready paragraph
+            </p>
+            <p className="blur-sm select-none pointer-events-none text-sm text-gray-700 leading-relaxed">
+              Shadow modelling conducted in accordance with NSW Apartment Design Guide Part 3F
+              indicates that a maximum-height building on the northern boundary would cast a shadow
+              over {Math.round((worstScenario?.shadow_overlap_fraction ?? 0) * 100)}% of the subject
+              lot at 21 June 12pm, which {o.adg_compliant ? 'is within' : 'does not comply with'} the 2-hour solar access requirement.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="bg-white px-5 pb-5 pt-2">
@@ -639,6 +631,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           </span>
         </div>
         <p className="text-sm text-gray-600">{summaryText}</p>
+        <p className="text-xs text-gray-400 mt-2">
+          The Apartment Design Guide (ADG) Part 3F requires residential apartments to receive at least 2 hours of direct sunlight between 9 am and 3 pm on 21 June — the worst day of the year for overshadowing.
+        </p>
       </div>
 
       {/* Findings */}
@@ -694,6 +689,15 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         </div>
       )}
 
+      {/* ADG zone note */}
+      {isNonResidential && (
+        <div className="px-5 py-3 bg-blue-50 border-t border-blue-100">
+          <p className="text-xs text-blue-700">
+            ADG solar access requirements apply to residential apartment buildings only. This property is zoned {result.zone} — the ADG result is indicative only.
+          </p>
+        </div>
+      )}
+
       {/* Warnings */}
       {result.warnings && result.warnings.length > 0 && (
         <div className="px-5 py-3 bg-amber-50 border-t border-amber-100">
@@ -702,6 +706,20 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           ))}
         </div>
       )}
+
+      {/* How this works — transparency */}
+      <details className="border-t border-gray-100 group">
+        <summary className="px-5 py-3 text-xs text-gray-400 cursor-pointer hover:text-gray-600 select-none">
+          How this model works
+        </summary>
+        <div className="px-5 pb-4 text-xs text-gray-400 space-y-1.5">
+          <p>1. We find your lot boundary from the NSW Planning Portal cadastre.</p>
+          <p>2. A hypothetical building is placed on the lot immediately to the north of yours, at the maximum height permitted by the LEP ({o.height_m}m).</p>
+          <p>3. Shadow is computed geometrically using solar position for each of the 5 ADG test scenarios (winter solstice 9am/12pm/3pm, equinox noon, summer noon).</p>
+          <p>4. We check whether the shadow polygon overlaps your lot boundary.</p>
+          <p className="pt-1 text-gray-500 font-medium">This model considers a hypothetical new building only — it does not account for shadow from existing structures, trees, or infrastructure (e.g. overpasses, bridges).</p>
+        </div>
+      </details>
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-gray-100">
