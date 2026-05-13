@@ -337,61 +337,8 @@ function PreDAHistoryToolInner() {
       {/* Results */}
       {state === 'complete' && result && (
         <>
-          {/* Summary stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Years analysed</p>
-              <p className="text-2xl font-bold text-gray-900">{validYears.length}/8</p>
-              <p className="text-xs text-gray-400 mt-1">2017–2024</p>
-            </div>
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Notable years</p>
-              <p className={`text-2xl font-bold ${notableYears.length > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                {notableYears.length}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {notableYears.length === 0 ? 'No changes detected' : 'Year(s) with detected change'}
-              </p>
-            </div>
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">DA events found</p>
-              <p className="text-2xl font-bold text-gray-900">{allDaPans.length}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {allDaPans.length > 0 ? allDaPans[0] : 'None matched'}
-              </p>
-            </div>
-          </div>
-
-          {/* Interpretation summary */}
-          <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed">
-            <p className="font-semibold text-slate-900 mb-1">What this means</p>
-            {notableYears.length === 0 && allDaPans.length === 0 && (
-              <p>No significant physical changes detected on this lot between 2017 and 2024. No development applications found on record. This is a clean site history — low risk of unapproved works or undisclosed changes.</p>
-            )}
-            {notableYears.length === 0 && allDaPans.length > 0 && (
-              <p>No significant physical changes detected by satellite, but {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. The approved works may have been minor or not yet constructed.</p>
-            )}
-            {notableYears.length > 0 && allDaPans.length > 0 && (
-              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} — and {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. Cross-reference the DA details with the satellite timeline to check whether all changes were approved.</p>
-            )}
-            {notableYears.length > 0 && allDaPans.length === 0 && (
-              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} but no development applications found on record. This may indicate unapproved works, natural events, or works predating the ePlanning Portal (pre-2021).</p>
-            )}
-          </div>
-
-          {/* Heritage flag */}
-          <div className={`mb-4 p-4 rounded-lg text-sm ${
-            result.heritage_flag
-              ? 'bg-amber-50 border border-amber-200 text-amber-800'
-              : 'bg-green-50 border border-green-200 text-green-800'
-          }`}>
-            <span className="font-semibold">
-              {result.heritage_flag ? 'Heritage overlay detected' : 'No heritage overlay detected'}
-            </span>
-            {result.heritage_note && (
-              <p className="mt-1 text-xs">{result.heritage_note}</p>
-            )}
-          </div>
+          {/* Findings */}
+          <SiteHistoryFindings result={result} validYears={validYears} notableYears={notableYears} allDaRefs={allDaPans} />
 
           {/* Timeline table */}
           <div className="mb-6">
@@ -489,6 +436,114 @@ function PreDAHistoryToolInner() {
           <ToolCrossSell currentTool="pre-da-history" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SiteHistoryFindings — findings + detail pattern
+// ---------------------------------------------------------------------------
+
+const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
+
+function SiteHistoryFindings({
+  result,
+  validYears,
+  notableYears,
+  allDaRefs,
+}: {
+  result: PipelineResult;
+  validYears: TimelineEntry[];
+  notableYears: TimelineEntry[];
+  allDaRefs: string[];
+}) {
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // Satellite change detection
+  if (notableYears.length === 0) {
+    findings.push({
+      label: `Sentinel-2 satellite analysis — ${validYears.length} years (2017–2024)`,
+      value: 'No significant physical changes detected',
+      detail: 'Across 8 years of satellite imagery, no demolition, construction, or major ground disturbance was detected on this lot. This is a clean result — low risk of undisclosed or unapproved works.',
+      severity: 'green',
+    });
+  } else {
+    const majorYears = notableYears.filter(y => y.level === 'major');
+    const yearList = notableYears.map(y => y.year).join(', ');
+    findings.push({
+      label: `Sentinel-2 satellite analysis — ${validYears.length} years (2017–2024)`,
+      value: `Physical change detected in ${yearList}`,
+      detail: majorYears.length > 0
+        ? `Major ground disturbance detected — likely demolition, construction, or significant earthworks. Your conveyancer should verify whether these changes were approved and properly certified.`
+        : `Minor to moderate changes detected — could be renovations, landscaping, or outbuilding additions. Worth checking whether council approval was obtained, especially if not disclosed in the contract.`,
+      severity: majorYears.length > 0 ? 'red' : 'amber',
+    });
+  }
+
+  // DA events
+  if (allDaRefs.length === 0) {
+    findings.push({
+      label: 'NSW ePlanning Portal — DA records',
+      value: 'No development applications found',
+      detail: notableYears.length > 0
+        ? 'Satellite detected physical changes but no DAs are on record. This could mean unapproved works, works predating the ePlanning Portal (pre-2021), or exempt/complying development that doesn\'t require a DA.'
+        : 'No DAs lodged for this property in the ePlanning Portal. This is consistent with the clean satellite result.',
+      severity: notableYears.length > 0 ? 'red' : 'green',
+    });
+  } else {
+    findings.push({
+      label: 'NSW ePlanning Portal — DA records',
+      value: `${allDaRefs.length} development application${allDaRefs.length !== 1 ? 's' : ''} found`,
+      detail: notableYears.length > 0
+        ? `DA records exist for this property. Cross-reference the satellite timeline below to check whether all detected changes align with approved applications.`
+        : `DA records exist but no significant physical changes were detected by satellite. The approved works may have been minor, internal, or not yet constructed.`,
+      severity: 'amber',
+    });
+  }
+
+  // Heritage
+  if (result.heritage_flag) {
+    findings.push({
+      label: 'Heritage overlay',
+      value: 'Heritage item or conservation area',
+      detail: result.heritage_note
+        ? `${result.heritage_note}. Any modifications to this property — past or planned — may require heritage approval under your LEP. Unapproved works on heritage items can result in orders to restore at the owner\'s cost.`
+        : 'This property is within a heritage overlay. Any modifications may require heritage approval. If satellite detected changes, verify they were heritage-approved — restoration orders are expensive.',
+      severity: 'amber',
+    });
+  } else {
+    findings.push({
+      label: 'Heritage overlay',
+      value: 'Not heritage listed',
+      detail: 'This property is not within a heritage conservation area or individually listed. No heritage-specific approval requirements apply.',
+      severity: 'green',
+    });
+  }
+
+  // Data coverage
+  if (validYears.length < 6) {
+    findings.push({
+      label: 'Satellite data coverage',
+      value: `${validYears.length} of 8 years had usable imagery`,
+      detail: 'Some years had cloud cover or missing satellite passes. Changes during gaps would not be detected. The timeline table below shows which years have data.',
+      severity: 'amber',
+    });
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 mb-6">
+      <div className="divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
+            </div>
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
