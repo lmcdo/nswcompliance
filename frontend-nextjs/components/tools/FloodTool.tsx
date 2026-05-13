@@ -260,7 +260,6 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          <FloodDataCoverage result={result} />
           {result.report_id ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
@@ -287,135 +286,6 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
 function formatFloodDate(iso?: string | null): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
-}
-
-// ---------------------------------------------------------------------------
-// FloodDataCoverage — shows which data sources are available for this address
-// Builds trust before paywall by being transparent about coverage gaps
-// ---------------------------------------------------------------------------
-
-const COVERAGE_ITEMS: {
-  key: string;
-  label: string;
-  description: string;
-  check: (o: FloodOutputs) => boolean;
-  paidOnly?: boolean;
-}[] = [
-  {
-    key: 'epi',
-    label: 'Council flood overlay (EPI)',
-    description: 'Statutory flood planning layer from NSW EPI',
-    check: (o) => o.epi_flood_class != null,
-  },
-  {
-    key: 'ses',
-    label: 'Council flood study',
-    description: 'Detailed flood extent from local council study',
-    check: (o) => o.ses_in_flood_planning_area != null,
-  },
-  {
-    key: 'dea_wofs',
-    label: 'Satellite water history (DEA WOfS)',
-    description: 'Landsat surface water observations 1987–present',
-    check: (o) => o.dea_wofs_frequency_pct != null,
-  },
-  {
-    key: 'jrc',
-    label: 'Global water occurrence (JRC)',
-    description: '40-year satellite water detection — European Commission',
-    check: (o) => o.jrc_water_occurrence_pct != null,
-    paidOnly: true,
-  },
-  {
-    key: 'bom',
-    label: 'BOM river gauge',
-    description: 'Nearest Bureau of Meteorology flood gauge record',
-    check: (o) => o.bom_gauge_name != null,
-    paidOnly: true,
-  },
-  {
-    key: 'ems',
-    label: 'Copernicus EMS events',
-    description: 'EU satellite-detected flood activations near this location',
-    check: (o) => o.ems_flood_detected != null,
-    paidOnly: true,
-  },
-  {
-    key: 'sar',
-    label: 'SAR flood detection',
-    description: 'Sentinel-1 radar water extent analysis',
-    check: (o) => o.sar_flood_detected != null,
-    paidOnly: true,
-  },
-  {
-    key: 'hawkesbury',
-    label: 'Flood depth raster',
-    description: 'Modelled flood levels by AEP at this site',
-    check: (o) => o.hawkesbury_flood_level_100aep != null,
-    paidOnly: true,
-  },
-];
-
-function FloodDataCoverage({ result }: { result: FloodResult }) {
-  const o = result.outputs;
-  const available = COVERAGE_ITEMS.filter((item) => item.check(o));
-  const unavailable = COVERAGE_ITEMS.filter((item) => !item.check(o));
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="text-sm font-semibold text-gray-900 mb-1">Data coverage for this address</h3>
-      <p className="text-xs text-gray-400 mb-4">
-        Flood data availability varies by location. Here&apos;s what our pipeline found for this property.
-      </p>
-
-      {available.length > 0 && (
-        <ul className="space-y-2 mb-4">
-          {available.map((item) => (
-            <li key={item.key} className="flex items-start gap-2">
-              <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
-                ✓
-              </span>
-              <div>
-                <p className="text-sm text-gray-800">
-                  {item.label}
-                  {item.paidOnly && (
-                    <span className="ml-1.5 text-[10px] font-medium text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
-                      paid report
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-400">{item.description}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {unavailable.length > 0 && (
-        <>
-          <p className="text-xs font-medium text-gray-500 mb-2">Not available for this location</p>
-          <ul className="space-y-2">
-            {unavailable.map((item) => (
-              <li key={item.key} className="flex items-start gap-2 opacity-50">
-                <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-xs">
-                  —
-                </span>
-                <div>
-                  <p className="text-sm text-gray-500">{item.label}</p>
-                  <p className="text-xs text-gray-400">{item.description}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
-        {available.length} of {COVERAGE_ITEMS.length} data sources available.
-        Coverage depends on council flood study availability, licensing, and satellite observation windows.
-      </p>
-    </div>
-  );
 }
 
 function FloodLockedPreviewCard({
@@ -606,130 +476,125 @@ function FloodCard({ result }: { result: FloodResult }) {
   const signalMeta = FLOOD_SIGNAL_META[signal] ?? FLOOD_SIGNAL_META.none;
   const epiClass   = o.epi_flood_class ?? 'none';
   const epiMeta    = EPI_CLASS_META[epiClass] ?? { label: epiClass, color: 'bg-gray-50 text-gray-700' };
-  const sourceCount = (result.data_sources ?? []).length;
+
+  // Build findings with explanations
+  const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
+
+  // Government flood overlay
+  if (epiClass === 'none') {
+    findings.push({
+      label: 'Government flood overlay',
+      value: 'Not mapped as flood-prone',
+      detail: 'This property is not in a gazetted flood zone under the NSW planning instruments. Lenders and insurers typically don\'t flag properties outside this overlay.',
+      severity: 'green',
+    });
+  } else {
+    findings.push({
+      label: 'Government flood overlay',
+      value: epiMeta.label,
+      detail: 'This property is inside a gazetted flood zone. Your lender\'s valuer will note this, and insurers will price flood loading into your premium.',
+      severity: 'red',
+    });
+  }
+
+  // Council flood study
+  if (o.ses_in_flood_planning_area === true) {
+    const studyLabel = o.ses_flood_class ?? 'In flood extent';
+    findings.push({
+      label: 'Council flood study',
+      value: studyLabel,
+      detail: `Council\'s own flood modelling places this property inside the flood extent. This is the data conveyancers reference in Section 10.7 certificates.`,
+      severity: 'red',
+    });
+  } else if (o.ses_in_flood_planning_area === false) {
+    findings.push({
+      label: 'Council flood study',
+      value: 'Outside mapped flood extent',
+      detail: 'The council flood model does not show this property within the flood planning area.',
+      severity: 'green',
+    });
+  }
+
+  // Satellite water history
+  if (o.dea_wofs_frequency_pct != null) {
+    const pct = o.dea_wofs_frequency_pct;
+    if (pct === 0) {
+      findings.push({
+        label: 'Satellite water history',
+        value: 'No water detected since 1987',
+        detail: 'Across 37 years of Landsat satellite passes, no surface water has been observed at this location.',
+        severity: 'green',
+      });
+    } else if (pct < 5) {
+      findings.push({
+        label: 'Satellite water history',
+        value: `Water detected in ${pct.toFixed(1)}% of satellite passes`,
+        detail: 'Satellites have detected surface water here on rare occasions since 1987. This could indicate localised ponding or proximity to a waterway that occasionally overtops.',
+        severity: 'amber',
+      });
+    } else {
+      findings.push({
+        label: 'Satellite water history',
+        value: `Water detected in ${pct.toFixed(1)}% of satellite passes`,
+        detail: 'Satellites regularly detect surface water at this location. This is a strong independent signal of recurring flood exposure.',
+        severity: 'red',
+      });
+    }
+  }
+
+  // Hawkesbury raster
+  if (o.hawkesbury_flood_level_100aep != null) {
+    findings.push({
+      label: '1-in-100 year flood level',
+      value: `${o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD`,
+      detail: 'This is the modelled water level at this site during a 1% annual chance flood. Your insurer and lender both use this number.',
+      severity: 'red',
+    });
+  }
+
+  const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-
-      {/* Header — flood signal as primary indicator */}
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date} · {sourceCount} data sources</p>
-          </div>
-          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${signalMeta.badge}`}>
+    <div className="bg-white rounded-xl border border-gray-200">
+      {/* Header — signal badge + address */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <h2 className="font-semibold text-gray-900 text-base">{result.address}</h2>
+          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${signalMeta.badge}`}>
             {signalMeta.label}
           </span>
         </div>
-        <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Screening tool only — not a legal flood determination.
-          A Section 10.7(2) or (5) certificate from council is required for flood status in conveyancing.
-        </p>
+        <p className="text-sm text-gray-600">{signalMeta.sublabel}</p>
       </div>
 
-      {/* Free tier: council overlay + satellite water history */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
-          <p className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${epiMeta.color} mb-1`}>
-            {epiMeta.label}
-          </p>
-          <p className="text-xs text-gray-400">
-            NSW EPI Flood WFS · data as at {o.data_currency !== 'unknown' ? o.data_currency : 'date unavailable'}
-          </p>
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Satellite water history (DEA WOfS)</p>
-          {o.dea_wofs_frequency_pct != null ? (
-            <>
-              <p className="text-sm font-medium text-gray-900">{o.dea_wofs_frequency_pct.toFixed(1)}% of observations</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {o.dea_wofs_frequency_pct === 0
-                  ? 'No surface water detected — Landsat 1987–present'
-                  : o.dea_wofs_frequency_pct < 5
-                  ? 'Rare inundation — Landsat 1987–present'
-                  : o.dea_wofs_frequency_pct < 15
-                  ? 'Occasional inundation — Landsat 1987–present'
-                  : 'Frequent inundation — Landsat 1987–present'}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Not available for this location</p>
-          )}
-        </div>
-      </div>
-
-      {/* SES / council flood study — shown when spatial_overlays has flood data for this LGA */}
-      {o.ses_in_flood_planning_area !== null && (
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Council flood study overlay</p>
-          {o.ses_in_flood_planning_area ? (
-            <>
-              {/* Multiple AEP tiers — show as tag list when available */}
-              {o.ses_aep_tiers && o.ses_aep_tiers.length > 1 ? (
-                <div className="flex flex-wrap gap-1.5 mb-1">
-                  {o.ses_aep_tiers.map((tier) => (
-                    <span key={tier} className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
-                      {tier}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <div className="mb-1">
-                  <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
-                    {o.ses_flood_class ? `In flood extent — ${o.ses_flood_class}` : 'In flood extent'}
-                  </span>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="mb-1">
-              <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">
-                Outside mapped flood extent
-              </span>
+      {/* Findings — value + explanation */}
+      <div className="border-t border-gray-100 divide-y divide-gray-50">
+        {findings.map(({ label, value, detail, severity }) => (
+          <div key={label} className="px-5 py-4">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${sevColor[severity]}`} />
+              <span className="text-sm font-medium text-gray-900">{value}</span>
             </div>
-          )}
-          <p className="text-xs text-gray-400">
-            {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
-            {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
-          </p>
-        </div>
-      )}
+            <p className="text-xs text-gray-500 ml-5 leading-relaxed">{detail}</p>
+            <p className="text-[11px] text-gray-400 ml-5 mt-1">{label}</p>
+          </div>
+        ))}
+      </div>
 
-      {/* Hawkesbury raster — 100AEP teaser (free tier hook) */}
-      {o.hawkesbury_flood_level_100aep != null && (
-        <div className="p-6 border-t border-gray-100">
-          <p className="text-xs text-gray-400 mb-1">Hawkesbury FRMSP 2025 — flood level at this site</p>
-          <p className="text-sm font-semibold text-gray-800">
-            1-in-100 yr flood level: {o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Full AEP table (2yr – PMF) included in the paid report
-            {o.hawkesbury_flood_study ? ` · ${o.hawkesbury_flood_study}` : ''}
-          </p>
-        </div>
-      )}
-
-      {/* Warnings — always shown */}
-      {(o.s1_gap_warning || result.warnings?.length) && (
-        <div className="px-6 py-4 bg-amber-50 space-y-1">
-          {o.s1_gap_warning && <p className="text-xs text-amber-800">{o.s1_gap_warning}</p>}
+      {/* Warnings — compact */}
+      {(o.s1_gap_warning || (result.warnings && result.warnings.length > 0)) && (
+        <div className="px-5 py-3 bg-amber-50 border-t border-amber-100">
+          {o.s1_gap_warning && <p className="text-xs text-amber-700">{o.s1_gap_warning}</p>}
           {result.warnings?.map((w, i) => (
-            <p key={i} className="text-xs text-amber-800">{w}</p>
+            <p key={i} className="text-xs text-amber-700">{w}</p>
           ))}
         </div>
       )}
 
       {/* Footer */}
-      <div className="px-6 py-4">
+      <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
-          Sources: {(result.data_sources ?? []).join(' · ')}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Indicative only. For conveyancing, development, or insurance: obtain a Section 10.7
-          certificate from council or a report from a qualified flood engineer.
+          Screening tool — not a legal flood determination. Obtain a Section 10.7 certificate from council for conveyancing.
         </p>
       </div>
     </div>
