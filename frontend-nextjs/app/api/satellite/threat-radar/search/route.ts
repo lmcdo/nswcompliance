@@ -102,8 +102,7 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       .select(
         'planning_portal_id,council_name,address,description,application_status,determination_date,' +
         'cost_of_development,latitude,longitude,development_type,submission_date,number_of_new_dwellings,' +
-        'number_of_storeys,number_of_demolition_dwellings,subdivision_proposed_flag,' +
-        'epi_variation_proposed_flag,accompanied_by_vpa_flag,development_subject_to_sic_flag,development_category',
+        'number_of_storeys,number_of_demolition_dwellings',
       )
       .gte('submission_date', since)
       .gte('latitude', minLat).lte('latitude', maxLat)
@@ -164,11 +163,11 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       _distance_m: Math.round(dist),
       NumberOfStoreys: row.number_of_storeys ?? null,
       DemolitionDwellings: row.number_of_demolition_dwellings ?? null,
-      SubdivisionProposedFlag: row.subdivision_proposed_flag ?? null,
-      EpiVariationProposedFlag: row.epi_variation_proposed_flag ?? null,
-      AccompaniedByVpaFlag: row.accompanied_by_vpa_flag ?? null,
-      DevelopmentSubjectToSicFlag: row.development_subject_to_sic_flag ?? null,
-      DevelopmentCategory: row.development_category ?? null,
+      SubdivisionProposedFlag: null,
+      EpiVariationProposedFlag: null,
+      AccompaniedByVpaFlag: null,
+      DevelopmentSubjectToSicFlag: null,
+      DevelopmentCategory: null,
     });
   }
 
