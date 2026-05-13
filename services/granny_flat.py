@@ -605,7 +605,7 @@ def _compute_confidence(
     Returns (confidence, reason) tuple.
 
     high:   AI and user agree on structure count AND rent data present.
-            "AI detected N structures, you confirmed N — counts agree."
+            "AI detected N structures on this lot."
     medium: AI and user disagree on count, OR rent data missing.
     low:    samgeo not validated (pre-spike).
     """
@@ -621,15 +621,14 @@ def _compute_confidence(
     if counts_agree and rent_available:
         return (
             "high",
-            f"AI detected {samgeo_count} structure{'s' if samgeo_count != 1 else ''}, "
-            f"you confirmed {confirmed_count} — counts agree. "
+            f"AI detected {samgeo_count} structure{'s' if samgeo_count != 1 else ''} on this lot. "
             "Rent estimate sourced from NSW Fair Trading bond data."
         )
 
     if not counts_agree and samgeo_count is not None:
         reason = (
             f"AI detected {samgeo_count} structure{'s' if samgeo_count != 1 else ''} "
-            f"but you confirmed {confirmed_count}. "
+            f"but {confirmed_count} {'was' if confirmed_count == 1 else 'were'} confirmed. "
         )
     else:
         reason = "Structure count entered manually (aerial detection not available). "

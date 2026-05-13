@@ -503,7 +503,7 @@ export async function POST(request: NextRequest) {
       const rent: number | null = result.estimated_weekly_rent_aud ?? null;
       const reportAddress: string = result.address ?? address ?? '';
       const addressParam = encodeURIComponent(reportAddress);
-      const reportUrl = `https://canibuildit.com.au/reports/granny-flat?address=${addressParam}`;
+      const reportUrl = `https://canibuildit.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
 
       const verdictColor = eligible ? '#0f766e' : '#dc2626';
       const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
@@ -546,8 +546,8 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/satellite/granny-flat?jobId=<uuid>
- * Poll granny_flat_reports for detect result.
- * Returns { status: 'pending' } or { status: 'detected', data: detectResult }
+ * Poll granny_flat_reports for detect result or completed report.
+ * Returns { status: 'pending' | 'detected' | 'completed' | 'error' }
  */
 export async function GET(request: NextRequest) {
   const jobId = request.nextUrl.searchParams.get('jobId');
@@ -557,7 +557,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await getSupabase()
     .from('granny_flat_reports')
-    .select('confidence, outputs')
+    .select('confidence, outputs, address, lat, lng')
     .eq('id', jobId)
     .single();
 
@@ -570,9 +570,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: 'error', error: msg });
   }
 
-  if (data.confidence !== 'pending_confirm' || !data.outputs) {
-    return NextResponse.json({ status: 'pending' });
+  if (data.confidence === 'pending_confirm' && data.outputs) {
+    return NextResponse.json({ status: 'detected', data: data.outputs });
   }
 
-  return NextResponse.json({ status: 'detected', data: data.outputs });
+  // Completed report (confidence = high/medium/low) — return final result
+  if (data.confidence && data.confidence !== 'pending_confirm' && data.outputs) {
+    return NextResponse.json({
+      status: 'completed',
+      data: {
+        report_id: jobId,
+        address: data.address,
+        lat: data.lat,
+        lng: data.lng,
+        ...(data.outputs as Record<string, unknown>),
+      },
+    });
+  }
+
+  return NextResponse.json({ status: 'pending' });
 }
