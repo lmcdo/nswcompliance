@@ -7,6 +7,7 @@ import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas'
 import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas'
 import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
 import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
+import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -76,6 +77,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }))
 
+  const conveyancingPages = CONVEYANCING_LGAS.map(lga => ({
+    url: `${base}/conveyancing/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
+  }))
+
   const planningControlsPages = VERIFY_LGAS.map(lga => ({
     url: `${base}/planning-controls/${lga.slug}`,
     lastModified: now,
@@ -88,5 +96,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/browse`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.7 },
     ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages,
     ...shadowPages, ...bushfirePages, ...preDaHistoryPages, ...planningControlsPages,
+    ...conveyancingPages,
   ]
 }

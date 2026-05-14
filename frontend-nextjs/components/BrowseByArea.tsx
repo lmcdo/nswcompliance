@@ -11,6 +11,7 @@ const TOOLS = [
   { label: 'Shadow', prefix: '/shadow' },
   { label: 'Bushfire', prefix: '/bushfire' },
   { label: 'Planning Controls', prefix: '/planning-controls' },
+  { label: 'Conveyancing', prefix: '/conveyancing' },
 ] as const;
 
 const REGIONS = [
