@@ -360,11 +360,12 @@ def _upload_to_r2(pdf_path: str, report_id: str) -> Optional[str]:
     """Upload PDF to Cloudflare R2 and return public URL."""
     try:
         import boto3
-        r2_endpoint = os.getenv("R2_ENDPOINT")
+        r2_account = os.getenv("R2_ACCOUNT_ID", "")
         r2_access = os.getenv("R2_ACCESS_KEY_ID")
         r2_secret = os.getenv("R2_SECRET_ACCESS_KEY")
-        r2_bucket = os.getenv("R2_BUCKET", "plotdetect-reports")
-        r2_public = os.getenv("R2_PUBLIC_URL", "")
+        r2_bucket = os.getenv("R2_BUCKET_NAME") or os.getenv("R2_BUCKET", "plotdetect-reports")
+        r2_public = os.getenv("R2_PUBLIC_URL", "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev")
+        r2_endpoint = os.getenv("R2_ENDPOINT") or (f"https://{r2_account}.r2.cloudflarestorage.com" if r2_account else "")
 
         if not all([r2_endpoint, r2_access, r2_secret]):
             logger.warning("R2 credentials not configured — returning local path")
