@@ -30,7 +30,7 @@ export default function PricingPage() {
         <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
           canibuildit<span className="text-teal-600">.com.au</span>
         </Link>
-        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/reports" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
           Try the tools →
         </Link>
       </nav>
@@ -62,9 +62,12 @@ export default function PricingPage() {
               {[
                 'Granny Flat eligibility check',
                 'Flood risk (LEP flood control lot)',
+                'Nearby development radar',
+                'Bushfire pre-screen',
+                'Conveyancing planning disclosure',
                 'Solar yield estimate',
                 'Shadow path analysis',
-                'Nearby development radar',
+                'Pre-DA site history',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <Check />
@@ -73,7 +76,7 @@ export default function PricingPage() {
               ))}
             </ul>
             <Link
-              href="/granny-flat"
+              href="/reports"
               className="block text-center py-3 px-6 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Start checking
@@ -104,6 +107,7 @@ export default function PricingPage() {
                 { text: 'Flood Risk — $49', sub: 'Depth modelling, ARI bands, BOM history' },
                 { text: 'Granny Flat — $49', sub: 'CDC checklist, setbacks, yield analysis' },
                 { text: 'Site History — $49', sub: 'Satellite change detection, DA search' },
+                { text: 'Conveyancing — $49', sub: 'LEP controls, overlays, DCP setbacks, heritage' },
               ].map(({ text, sub }) => (
                 <li key={text} className="flex items-start gap-2">
                   <Check />
@@ -115,7 +119,7 @@ export default function PricingPage() {
               ))}
             </ul>
             <Link
-              href="/granny-flat"
+              href="/reports"
               className="block text-center py-3 px-6 bg-teal-600 text-white rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors"
             >
               Run free check first →

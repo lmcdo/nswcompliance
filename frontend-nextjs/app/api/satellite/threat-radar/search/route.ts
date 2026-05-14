@@ -187,7 +187,8 @@ async function queryLgaStats(councilName: string) {
       .from('development_applications')
       .select('application_status,determination_date,lodgement_date,cost_of_development,development_type')
       .eq('council_name', councilName)
-      .gte('lodgement_date', since);
+      .gte('lodgement_date', since)
+      .limit(5000);
 
     if (error || !data) return null;
 
@@ -201,7 +202,7 @@ async function queryLgaStats(councilName: string) {
     for (const row of data) {
       total++;
       const status = (row.application_status ?? '').toLowerCase();
-      if (status.includes('approved') || status.includes('determined')) approved++;
+      if (status.includes('approved') || (status.includes('determined') && !status.includes('undetermined'))) approved++;
 
       const cost = Number(row.cost_of_development) || 0;
       totalCost += cost;
@@ -209,7 +210,7 @@ async function queryLgaStats(councilName: string) {
       if (row.lodgement_date && row.determination_date) {
         const lodged = new Date(row.lodgement_date).getTime();
         const determined = new Date(row.determination_date).getTime();
-        if (determined > lodged) {
+        if (determined >= lodged) {
           detTimeSum += (determined - lodged) / 86_400_000;
           detTimeCount++;
         }
@@ -241,7 +242,8 @@ async function queryLgaStats(councilName: string) {
       top_development_types: topDevTypes,
       period_months: 12,
     };
-  } catch {
+  } catch (err) {
+    console.error('[threat-radar] LGA stats query failed:', err);
     return null;
   }
 }
@@ -250,7 +252,7 @@ async function queryLgaStats(councilName: string) {
  * POST /api/satellite/threat-radar/search
  * Body: { address: string }
  *
- * Returns DA/CDC applications within 500m of the address (last 90 days),
+ * Returns DA/CDC applications within 500m of the address (last 180 days),
  * sourced from the ETL Supabase (populated daily by nsw-planning-etl GH Actions).
  * Sorted closest first.
  */
@@ -338,11 +340,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Run nearby apps + LGA aggregate stats in parallel
-  const [applications, lgaStats] = await Promise.all([
-    queryNearbyApplications(lat, lng),
-    council_name ? queryLgaStats(council_name) : Promise.resolve(null),
-  ]);
+  // Run nearby apps + LGA aggregate stats in parallel (both non-fatal)
+  let applications: Application[] = [];
+  let lgaStats: Awaited<ReturnType<typeof queryLgaStats>> = null;
+  try {
+    [applications, lgaStats] = await Promise.all([
+      queryNearbyApplications(lat, lng),
+      council_name ? queryLgaStats(council_name) : Promise.resolve(null),
+    ]);
+  } catch (err) {
+    console.error('[threat-radar] DA query failed:', err);
+    // Return empty results rather than 500
+  }
   const run_date = new Date().toISOString().slice(0, 10);
   const report_token = signReport(lat, lng, address, run_date);
 

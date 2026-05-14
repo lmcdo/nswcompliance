@@ -142,8 +142,8 @@ def run_conveyancing(req: ConveyancingRequest):
         with ThreadPoolExecutor(max_workers=2) as pool:
             f_controls = pool.submit(lambda: parse_controls(get_raw_controls(resolved_prop_id)))
             f_valuation = pool.submit(get_valuation, resolved_prop_id)
-            controls = f_controls.result()
-            valuation = f_valuation.result()
+            controls = f_controls.result(timeout=50)
+            valuation = f_valuation.result(timeout=50)
     else:
         controls = parse_controls([])
 
@@ -151,8 +151,8 @@ def run_conveyancing(req: ConveyancingRequest):
     with ThreadPoolExecutor(max_workers=2) as pool:
         f_overlays = pool.submit(get_unique_overlays, lat, lng, lot_wkt)
         f_strata = pool.submit(detect_strata, req.address, lat, lng)
-        unique_overlays, covered_layers, proximity_m = f_overlays.result()
-        strata_info = f_strata.result()
+        unique_overlays, covered_layers, proximity_m = f_overlays.result(timeout=50)
+        strata_info = f_strata.result(timeout=50)
 
     # PostGIS fallbacks — use spatial data when Planning Portal returned nothing
     ov_by_type = {o["layer_type"]: o for o in unique_overlays}
@@ -290,6 +290,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     postgis_heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
     db_url = os.getenv("DATABASE_URL")
     if db_url:
+        conn = None
         try:
             conn = psycopg2.connect(db_url)
             key_sites_clause = controls.get("key_sites_clause")
@@ -300,9 +301,11 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             if dcp_former_council:
                 dcp_setbacks_db = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
             postgis_heritage = fetch_heritage_postgis(conn, req.lat, req.lng, lot_wkt=lot_wkt)
-            conn.close()
         except Exception as e:
             logger.warning(f"DB pre-fetch failed: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     # Merge PostGIS heritage
     if postgis_heritage["hca"]:

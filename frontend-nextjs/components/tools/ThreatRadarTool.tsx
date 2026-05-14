@@ -48,7 +48,7 @@ interface SearchResult {
   lat: number;
   lng: number;
   run_date?: string;
-  council_name: string;
+  council_name: string | null;
   applications: Application[];
   window_days: number;
   report_token?: string;
@@ -118,7 +118,7 @@ function computeStats(apps: Application[]): Stats {
     demolishedDwellings += Number(app.DemolitionDwellings) || 0;
 
     const status = (app.Status ?? '').toLowerCase();
-    if (status.includes('approved') || status.includes('determined')) approvedCount++;
+    if (status.includes('approved') || (status.includes('determined') && !status.includes('undetermined'))) approvedCount++;
 
     if (isYesFlag(app.EpiVariationProposedFlag)) epiVariationCount++;
 
@@ -791,7 +791,7 @@ function SearchResults({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">
-          {result.council_name} · last {result.window_days} days
+          {result.council_name ?? 'Unknown LGA'} · last {result.window_days} days
         </p>
         <button onClick={onReset} className="text-xs text-teal-600 hover:text-teal-700 underline">New search</button>
       </div>
@@ -928,16 +928,16 @@ function SearchResults({
 // LgaStatsPanel — LGA-wide aggregate stats
 // ---------------------------------------------------------------------------
 
-function LgaStatsPanel({ stats, councilName }: { stats: LgaStats; councilName: string }) {
+function LgaStatsPanel({ stats, councilName }: { stats: LgaStats; councilName: string | null }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-        {councilName} — last {stats.period_months} months
+        {councilName ?? 'LGA'} — last {stats.period_months} months (DAs only)
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div>
           <p className="text-xs text-gray-400">Total applications</p>
-          <p className="text-lg font-semibold text-gray-900">{stats.total_applications.toLocaleString()}</p>
+          <p className="text-lg font-semibold text-gray-900">{stats.total_applications.toLocaleString('en-AU')}</p>
         </div>
         {stats.approval_rate != null && (
           <div>
@@ -955,7 +955,9 @@ function LgaStatsPanel({ stats, councilName }: { stats: LgaStats; councilName: s
           <div>
             <p className="text-xs text-gray-400">Total construction</p>
             <p className="text-lg font-semibold text-gray-900">
-              ${(stats.total_construction_value / 1_000_000).toFixed(0)}M
+              {stats.total_construction_value >= 1_000_000
+                ? `$${(stats.total_construction_value / 1_000_000).toFixed(1)}M`
+                : `$${Math.round(stats.total_construction_value / 1_000).toLocaleString('en-AU')}K`}
             </p>
           </div>
         )}
@@ -980,11 +982,11 @@ function LgaStatsPanel({ stats, councilName }: { stats: LgaStats; councilName: s
 // CrossLinks — map + charts
 // ---------------------------------------------------------------------------
 
-function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; councilName: string }) {
+function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; councilName: string | null }) {
   return (
     <div className="space-y-2">
       <a
-        href={`https://map.plotdetect.com.au?lat=${lat}&lng=${lng}`}
+        href={`https://map.plotdetect.com.au?lat=${lat}&lng=${lng}&zoom=16`}
         target="_blank"
         rel="noopener noreferrer"
         className="block rounded-xl border-2 border-teal-300 bg-teal-50 px-5 py-4 hover:bg-teal-100 hover:border-teal-400 transition-colors"
@@ -995,7 +997,7 @@ function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; counc
               Explore on interactive map
             </p>
             <p className="text-xs text-teal-700 mt-0.5">
-              Pan, zoom, filter by cost, keywords, and development type — every DA and CDC in {councilName}
+              Pan, zoom, filter by cost, keywords, and development type — every DA and CDC in {councilName ?? 'your area'}
             </p>
           </div>
           <span className="shrink-0 text-teal-600 text-lg font-bold">→</span>
@@ -1012,7 +1014,7 @@ function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; counc
             See LGA trends and analytics
           </p>
           <p className="text-xs text-indigo-700 mt-0.5">
-            Cost trends, approval rates, and development type breakdowns for {councilName}
+            Cost trends, approval rates, and development type breakdowns for {councilName ?? 'your area'}
           </p>
         </div>
         <span className="shrink-0 text-indigo-600 text-base">→</span>

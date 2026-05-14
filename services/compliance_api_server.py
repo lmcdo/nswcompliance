@@ -151,6 +151,8 @@ async def root():
             "POST /pipeline/granny-flat/detect": "Satellite: Granny Flat — detect structures",
             "POST /pipeline/granny-flat/confirm": "Satellite: Granny Flat — confirm and calculate yield",
             "POST /pipeline/bushfire": "Satellite: Bushfire Pre-Screen — RFS BFPL + PostGIS overlays",
+            "POST /pipeline/conveyancing": "Satellite: Conveyancing Planning Disclosure — LEP controls, overlays, feasibility",
+            "POST /pipeline/conveyancing/pdf": "Satellite: Conveyancing — generate full PDF report (paid tier)",
             "GET /health": "Health check",
             "GET /docs": "API documentation"
         }
