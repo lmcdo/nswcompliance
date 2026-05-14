@@ -24,6 +24,9 @@ rasterio==1.4.3
 planetary-computer==1.0.0
 xmltodict==0.14.2
 
+# Conveyancing PDF generation
+reportlab==4.4.3
+
 # nsw_imagery.py (Granny Flat aerial tiles)
 Pillow==11.3.0
 opencv-python-headless==4.10.0.84

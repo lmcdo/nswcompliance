@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/reports/flood', label: 'Flood Truth' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
   { href: '/reports/pre-da-history', label: 'Site History' },
+  { href: '/reports/bushfire', label: 'Bushfire' },
   { href: '/reports/conveyancing', label: 'Conveyancing' },
 ];
 
@@ -37,7 +38,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
               canibuildit<span className="text-teal-600">.com.au</span>
             </span>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 overflow-x-auto">
             {NAV_ITEMS.map(({ href, label }) => (
               <Link
                 key={href}

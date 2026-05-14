@@ -38,7 +38,8 @@ interface ConveyancingOutputs {
     source?: string;
     parent_has_strata?: boolean;
     plan_label?: string;
-  };
+    plan_type?: string | null;
+  } | null;
   valuation: {
     lot_area_m2: number | null;
     land_value: number | null;
@@ -90,6 +91,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
 
   const runCheck = useCallback(async (addr: string) => {
     if (!addr.trim()) return;
@@ -132,10 +134,22 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     const addrParam = params.get('address')?.trim();
     if (addrParam && !params.get('payment')) {
       setAddress(addrParam);
       runCheck(addrParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      // Re-run analysis so user sees results alongside download CTA
+      if (addrParam) {
+        setAddress(addrParam);
+        runCheck(addrParam);
+      }
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [runCheck]);
@@ -227,6 +241,17 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </button>
           </div>
 
+          {/* Paid download CTA — shown after Stripe redirect */}
+          {paidReportId && result && (
+            <ConveyancingPaidDownloadCTA
+              reportId={paidReportId}
+              address={result.address}
+              lat={result.lat}
+              lng={result.lng}
+              propId={result.prop_id ? String(result.prop_id) : undefined}
+            />
+          )}
+
           {/* LEP Controls summary */}
           <Section title="LEP Planning Controls">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -262,15 +287,17 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           </Section>
 
           {/* Title type */}
-          <Section title="Title Type">
-            <div className={`p-3 rounded-lg text-sm ${result.outputs.strata_info.is_strata ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
-              {result.outputs.strata_info.is_strata ? (
-                <span>Strata title {result.outputs.strata_info.strata_plan ? `(${result.outputs.strata_info.strata_plan})` : ''} &mdash; secondary dwelling and subdivision not applicable</span>
-              ) : (
-                <span>Torrens title {result.outputs.strata_info.plan_label ? `(${result.outputs.strata_info.plan_label})` : ''}</span>
-              )}
-            </div>
-          </Section>
+          {result.outputs.strata_info && (
+            <Section title="Title Type">
+              <div className={`p-3 rounded-lg text-sm ${result.outputs.strata_info.is_strata ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
+                {result.outputs.strata_info.is_strata ? (
+                  <span>Strata title {result.outputs.strata_info.strata_plan ? `(${result.outputs.strata_info.strata_plan})` : ''} &mdash; secondary dwelling and subdivision not applicable</span>
+                ) : (
+                  <span>Torrens title {result.outputs.strata_info.plan_label ? `(${result.outputs.strata_info.plan_label})` : ''}</span>
+                )}
+              </div>
+            </Section>
+          )}
 
           {/* Heritage */}
           {(result.outputs.heritage_items.length > 0 || result.outputs.heritage_hca.length > 0) && (
@@ -445,7 +472,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           </div>
 
           {/* Cross-sell */}
-          <ToolCrossSell currentTool="flood-truth" address={result.address} />
+          <ToolCrossSell currentTool="conveyancing" address={result.address} />
         </div>
       )}
     </div>
@@ -480,9 +507,78 @@ function Flag({ type, text }: { type: 'ok' | 'warn' | 'alert'; text: string }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// ConveyancingPaidDownloadCTA — shown after Stripe payment=success redirect
+// ---------------------------------------------------------------------------
+
+function ConveyancingPaidDownloadCTA({
+  reportId,
+  address,
+  lat,
+  lng,
+  propId,
+}: {
+  reportId: string;
+  address: string;
+  lat: number;
+  lng: number;
+  propId?: string;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [dlError, setDlError] = useState('');
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/conveyancing/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, address, lat, lng, prop_id: propId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const json = await res.json();
+      if (!json.pdf_url) throw new Error('No PDF URL returned');
+      setPdfUrl(json.pdf_url);
+      window.open(json.pdf_url, '_blank');
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">Click below to generate and download the full PDF report.</p>
+      {pdfUrl ? (
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 text-center transition-colors"
+        >
+          Open PDF report →
+        </a>
+      ) : (
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {generating ? 'Generating PDF...' : 'Generate and download PDF →'}
+        </button>
+      )}
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
+    </div>
+  );
+}
+
 function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Free instant check</p>
         <ul className="space-y-1.5">

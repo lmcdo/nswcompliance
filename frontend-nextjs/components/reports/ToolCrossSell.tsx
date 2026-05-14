@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history' | 'bushfire';
+type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history' | 'bushfire' | 'conveyancing';
 
 interface Card {
   title: string;
@@ -60,6 +60,12 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
     href: `/reports/bushfire?address=${encodeURIComponent(address)}`,
     label: 'Check bushfire risk →',
   }),
+  'conveyancing': (address) => ({
+    title: 'Conveyancing Planning Disclosure',
+    body: 'LEP controls, spatial overlays, valuation, heritage, and development feasibility for due diligence.',
+    href: `/reports/conveyancing?address=${encodeURIComponent(address)}`,
+    label: 'Check planning disclosure →',
+  }),
 };
 
 // Relevance order per tool — granny flat income angle always first when applicable
@@ -71,6 +77,7 @@ const ORDER: Record<ToolKey, ToolKey[]> = {
   'granny-flat':      ['flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield', 'pre-da-history'],
   'pre-da-history':   ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
   'bushfire':         ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
+  'conveyancing':     ['granny-flat', 'flood-truth', 'threat-radar', 'bushfire', 'shadow-detector'],
 };
 
 export function ToolCrossSell({
