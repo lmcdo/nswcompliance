@@ -143,6 +143,16 @@ export interface PlanningConstraints {
 
  // Planning instruments that apply to this property (from Land Application Map layer)
  landApplicationInstruments?: Array<{ type: string; name: string }> | null;
+
+ // ePlanning Phase 1: Exclusion gates (true = excluded, false = not excluded, null = could not determine)
+ lowMidRiseExcluded?: boolean | null;
+ complyingExcluded?: boolean | null;
+ exemptExcluded?: boolean | null;
+ dualOccProhibited?: {
+   prohibited: boolean;
+   epiName?: string;
+   lgaName?: string;
+ } | null;
 }
 
 /**
@@ -1141,12 +1151,14 @@ export class NSWPlanningPortalService {
  let contaminatedLandData: any = null;
  let drinkingWaterData: any = null;
  let coastalData: any = null;
+ let seppExclusionData: { lowMidRise: boolean | null; complying: boolean | null; exempt: boolean | null } | null = null;
+ let dualOccData: { prohibited: boolean; epiName?: string; lgaName?: string } | null = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
 
-   [todLayers, roadClassifications, anefData, bushfireData, mineSubsidenceData, contaminatedLandData, drinkingWaterData, coastalData] = await Promise.all([
+   [todLayers, roadClassifications, anefData, bushfireData, mineSubsidenceData, contaminatedLandData, drinkingWaterData, coastalData, seppExclusionData, dualOccData] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
      // ANEF (Aircraft Noise) - Using NSW Planning Portal Protection Layer 2
@@ -1213,7 +1225,27 @@ export class NSWPlanningPortalService {
        fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/6/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Environment Area' : null).catch(() => null),
        fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Littoral Rainforests' : null).catch(() => null),
      ]).then(results => results.filter(Boolean))
-       .catch(() => [])
+       .catch(() => []),
+     // ePlanning Phase 1: SEPP exclusion layers (776, 92, 93) — batch as 3 parallel fetches to same service
+     Promise.all([
+       fetch(ePlanningPointQuery('lowMidRiseExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
+       fetch(ePlanningPointQuery('complyingExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
+       fetch(ePlanningPointQuery('exemptExclusion', lon, lat, 'LAY_CLASS')).then(r => r.json()).then(d => (!d.error && Array.isArray(d.features)) ? d.features.length > 0 : null).catch(() => null),
+     ]).then(([lowMidRise, complying, exempt]) => ({
+       lowMidRise,
+       complying,
+       exempt,
+     })).catch(() => null),
+     // ePlanning Phase 1: Dual occupancy prohibition (layer 452)
+     fetch(ePlanningPointQuery('dualOccProhibition', lon, lat, 'LAY_CLASS,EPI_NAME,LGA_NAME'))
+       .then(r => r.json())
+       .then(d => {
+         if (d.error || !Array.isArray(d.features)) return null;
+         if (d.features.length === 0) return { prohibited: false };
+         const attrs = d.features[0].attributes;
+         return { prohibited: true, epiName: attrs.EPI_NAME, lgaName: attrs.LGA_NAME };
+       })
+       .catch(() => null),
    ]);
  }
 
@@ -1260,6 +1292,16 @@ export class NSWPlanningPortalService {
      inCoastalArea: true,
      zones: coastalData
    };
+ }
+
+ // ePlanning Phase 1: exclusion gates
+ if (seppExclusionData) {
+   constraints.lowMidRiseExcluded = seppExclusionData.lowMidRise;
+   constraints.complyingExcluded = seppExclusionData.complying;
+   constraints.exemptExcluded = seppExclusionData.exempt;
+ }
+ if (dualOccData) {
+   constraints.dualOccProhibited = dualOccData;
  }
 
  // Step 4: Clean up the address from search result
