@@ -381,7 +381,6 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   );
 }
 
-const FREE_RESULTS_LIMIT = 3;
 
 const sevColor = { green: 'bg-green-500', amber: 'bg-amber-400', red: 'bg-red-500' };
 
@@ -603,7 +602,6 @@ function MiniProximityMap({ centerLat, centerLng, apps }: { centerLat: number; c
           const cost = Number(app.CostOfDevelopment) || 0;
           const r = Math.max(4, Math.min(14, Math.sqrt(cost / 100000) * 2));
           const isDA = app.ApplicationType === 'DA';
-          const isFree = i < FREE_RESULTS_LIMIT;
           return (
             <circle
               key={i}
@@ -615,9 +613,7 @@ function MiniProximityMap({ centerLat, centerLng, apps }: { centerLat: number; c
               stroke="white"
               strokeWidth="1"
             >
-              {isFree && (
-                <title>{app.PlanningPortalApplicationNumber ?? 'App'} — {app._distance_m ?? '?'}m</title>
-              )}
+              <title>{app.PlanningPortalApplicationNumber ?? 'App'} — {app._distance_m ?? '?'}m</title>
             </circle>
           );
         })}
@@ -685,14 +681,12 @@ function ThreatBadges({ app }: { app: Application }) {
 // ---------------------------------------------------------------------------
 
 function MonitorPreviewCard({
-  hiddenCount,
   email,
   onEmailChange,
   onSubscribe,
   subscribeState,
   subscribeError,
 }: {
-  hiddenCount: number;
   email: string;
   onEmailChange: (v: string) => void;
   onSubscribe: (e: React.FormEvent) => void;
@@ -703,9 +697,7 @@ function MonitorPreviewCard({
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5 space-y-3" data-testid="monitor-preview-card">
       <div>
         <p className="text-sm font-semibold text-teal-900">
-          {hiddenCount > 0
-            ? `${hiddenCount} more application${hiddenCount !== 1 ? 's' : ''} below — subscribe to see all weekly updates`
-            : 'What you\'d miss next week'}
+          Weekly DA monitoring — $9.99/month
         </p>
         <p className="text-xs text-teal-700 mt-1 leading-relaxed">
           New DAs are lodged every week near most addresses.
@@ -814,13 +806,13 @@ function SearchResults({
               'Application count + construction value',
               'Net dwelling change analysis',
               'EPI variation warnings',
-              `First ${FREE_RESULTS_LIMIT} application details`,
+              'All DA and CDC details',
               'Proximity map',
             ]}
             paid={[
-              'All application details (unblurred)',
               'Weekly new DA/CDC email alerts',
               'Monitoring within 200m of your address',
+              'Notified when new applications lodge nearby',
               'Cancel anytime — $9.99/month',
             ]}
           />
@@ -836,95 +828,76 @@ function SearchResults({
               ? Number(app.NumberOfNewDwellings)
               : null;
 
-            const isBlurred = i >= FREE_RESULTS_LIMIT;
-
             return (
-              <React.Fragment key={i}>
-                {/* Inject MonitorPreviewCard between result FREE_RESULTS_LIMIT-1 and FREE_RESULTS_LIMIT */}
-                {i === FREE_RESULTS_LIMIT && (
-                  <MonitorPreviewCard
-                    hiddenCount={apps.length - FREE_RESULTS_LIMIT}
-                    email={email}
-                    onEmailChange={onEmailChange}
-                    onSubscribe={onSubscribe}
-                    subscribeState={subscribeState}
-                    subscribeError={subscribeError}
-                  />
-                )}
-                <div
-                  className={`border border-gray-200 rounded-xl p-4 bg-white space-y-2${isBlurred ? ' blur-sm select-none pointer-events-none' : ''}`}
-                  aria-hidden={isBlurred}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{appNum}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{type}</p>
-                    </div>
-                    {app._distance_m != null && (
-                      <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-                        {app._distance_m}m away
-                      </span>
-                    )}
+              <div
+                key={i}
+                className="border border-gray-200 rounded-xl p-4 bg-white space-y-2"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{appNum}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{type}</p>
                   </div>
-
-                  {/* Threat badges */}
-                  <ThreatBadges app={app} />
-
-                  {app.ApplicationDescription && (
-                    <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
-                  )}
-
-                  {app.PropertyAddress && (
-                    <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
-                  )}
-
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    {app.Status && (
-                      <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
-                    )}
-                    {lodged && (
-                      <span className="text-xs text-gray-400">Lodged {lodged}</span>
-                    )}
-                    {determined && (
-                      <span className="text-xs text-gray-400">Determined {determined}</span>
-                    )}
-                    {cost && (
-                      <span className="text-xs text-gray-400">Cost {cost}</span>
-                    )}
-                    {dwellings && (
-                      <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
-                    )}
-                    {app.LotDescription && (
-                      <span className="text-xs text-gray-400">{app.LotDescription}</span>
-                    )}
-                  </div>
-
-                  {/* Planning Portal link — free cards only */}
-                  {!isBlurred && appNum !== '—' && (
-                    <a
-                      href={`https://www.planningportal.nsw.gov.au/map?search=${encodeURIComponent(appNum)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-xs text-teal-600 hover:text-teal-700 hover:underline"
-                    >
-                      View on Planning Portal →
-                    </a>
+                  {app._distance_m != null && (
+                    <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                      {app._distance_m}m away
+                    </span>
                   )}
                 </div>
-              </React.Fragment>
+
+                {/* Threat badges */}
+                <ThreatBadges app={app} />
+
+                {app.ApplicationDescription && (
+                  <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
+                )}
+
+                {app.PropertyAddress && (
+                  <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
+                )}
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {app.Status && (
+                    <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
+                  )}
+                  {lodged && (
+                    <span className="text-xs text-gray-400">Lodged {lodged}</span>
+                  )}
+                  {determined && (
+                    <span className="text-xs text-gray-400">Determined {determined}</span>
+                  )}
+                  {cost && (
+                    <span className="text-xs text-gray-400">Cost {cost}</span>
+                  )}
+                  {dwellings && (
+                    <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
+                  )}
+                  {app.LotDescription && (
+                    <span className="text-xs text-gray-400">{app.LotDescription}</span>
+                  )}
+                </div>
+
+                {appNum !== '—' && (
+                  <a
+                    href={`https://www.planningportal.nsw.gov.au/map?search=${encodeURIComponent(appNum)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs text-teal-600 hover:text-teal-700 hover:underline"
+                  >
+                    View on Planning Portal →
+                  </a>
+                )}
+              </div>
             );
           })}
-          {/* If fewer than FREE_RESULTS_LIMIT results, show card after all results */}
-          {apps.length <= FREE_RESULTS_LIMIT && (
-            <MonitorPreviewCard
-              hiddenCount={0}
-              email={email}
-              onEmailChange={onEmailChange}
-              onSubscribe={onSubscribe}
-              subscribeState={subscribeState}
-              subscribeError={subscribeError}
-            />
-          )}
+          {/* Subscribe CTA after all results */}
+          <MonitorPreviewCard
+            email={email}
+            onEmailChange={onEmailChange}
+            onSubscribe={onSubscribe}
+            subscribeState={subscribeState}
+            subscribeError={subscribeError}
+          />
           <CrossLinks lat={result.lat} lng={result.lng} councilName={result.council_name} />
         </>
       )}
