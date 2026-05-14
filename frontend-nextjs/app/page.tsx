@@ -34,6 +34,13 @@ const BUYING = [
 
 const BUILDING = [
   {
+    title: 'Planning Controls',
+    detail: 'Full SEPP, LEP, and DCP controls for your property — setbacks, parking, height, landscaping with clause citations.',
+    href: '/assessment',
+    badge: 'Free',
+    icon: '📐',
+  },
+  {
     title: 'Granny Flat Checker',
     detail: 'SEPP eligibility, satellite structure detection, and $280–$340/week rental yield estimate.',
     href: '/reports/granny-flat',
@@ -157,7 +164,7 @@ export default function HomePage() {
         <div className="mb-6 flex justify-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-1.5 text-sm font-medium text-teal-700">
             <span className="w-2 h-2 rounded-full bg-teal-500" />
-            Eight free checks for any NSW address
+            Nine free checks for any NSW address
           </div>
         </div>
 
@@ -191,6 +198,9 @@ export default function HomePage() {
           </Link>
           <Link href="/reports/conveyancing" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
             Conveyancing Disclosure
+          </Link>
+          <Link href="/assessment" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Planning Controls
           </Link>
         </div>
       </section>
@@ -246,7 +256,7 @@ export default function HomePage() {
             <p className="text-sm text-gray-500 mb-5">
               Check what&apos;s possible, what&apos;s planned nearby, and whether your build will create objections.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {BUILDING.map((t) => <ToolCard key={t.href + '-build'} {...t} />)}
             </div>
           </div>

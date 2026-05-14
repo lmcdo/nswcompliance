@@ -12,7 +12,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Can I Build It? — Free NSW Planning Tools',
-  description: 'Eight NSW planning tools: granny flat eligibility, flood risk, solar yield, shadow analysis, nearby development radar, bushfire pre-screen, conveyancing disclosure, and pre-DA site history. Real answers from live Planning Portal data.',
+  description: 'Nine NSW planning tools: planning controls assessment, granny flat eligibility, flood risk, solar yield, shadow analysis, nearby development radar, bushfire pre-screen, conveyancing disclosure, and pre-DA site history. Real answers from live Planning Portal data.',
   keywords: 'NSW planning, granny flat check, flood risk NSW, solar yield, secondary dwelling, SEPP Housing 2021, can I build a granny flat',
   icons: {
     icon: '/plotdetect-logo.png',
