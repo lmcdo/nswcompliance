@@ -18,12 +18,18 @@ export async function POST(req: NextRequest) {
   let report_id: string | undefined;
   let address: string | undefined;
   let email: string | undefined;
+  let lat: string | undefined;
+  let lng: string | undefined;
+  let prop_id: string | undefined;
 
   try {
     const body = await req.json();
     report_id = body?.report_id?.trim();
     address   = body?.address?.trim();
     email     = body?.email?.trim() || undefined;
+    lat       = body?.lat != null ? String(body.lat) : undefined;
+    lng       = body?.lng != null ? String(body.lng) : undefined;
+    prop_id   = body?.prop_id != null ? String(body.prop_id) : undefined;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -45,7 +51,12 @@ export async function POST(req: NextRequest) {
       allow_promotion_codes: true,
       ...(email ? { customer_email: email } : {}),
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { report_id, address, product: 'conveyancing-report' },
+      metadata: {
+        report_id, address, product: 'conveyancing-report',
+        ...(lat ? { lat } : {}),
+        ...(lng ? { lng } : {}),
+        ...(prop_id ? { prop_id } : {}),
+      },
       success_url: `${origin}/reports/conveyancing?payment=success&report_id=${report_id}&address=${encodeURIComponent(address)}`,
       cancel_url:  `${origin}/reports/conveyancing?payment=cancelled`,
     });
