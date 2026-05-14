@@ -47,6 +47,7 @@ interface EligibilityResult {
     flood: CheckResult;
     biodiversity: CheckResult;
     acid_sulfate: CheckResult;
+    dual_occ_prohibition?: CheckResult;
   };
 }
 
@@ -174,7 +175,7 @@ function LockedPreviewCard({
 
 const FREE_ITEMS = [
   'SEPP Housing 2021 eligibility check',
-  'Lot area, zoning, heritage, flood, biodiversity, acid sulfate',
+  'Lot area, zoning, heritage, flood, biodiversity, acid sulfate, dual occ prohibition',
   'LEP planning controls (height, FSR, min lot size)',
   'Nearby secondary dwelling approvals',
   'Shareable result link',
@@ -551,6 +552,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                     { key: 'flood', label: 'Flood control lot', detail: 'Statutory flood overlay' },
                     { key: 'biodiversity', label: 'Biodiversity values', detail: 'Biodiversity values map' },
                     { key: 'acid_sulfate', label: 'Acid sulfate soils', detail: 'Class 1 & 2 soils' },
+                    { key: 'dual_occ_prohibition', label: 'Dual occupancy prohibition', detail: 'LEP prohibition map' },
                   ] as { key: keyof NonNullable<EligibilityResult['checks']>; label: string; detail: string }[]
                 ).map(({ key, label, detail }) => {
                   const status = eligibility.checks![key];
@@ -823,6 +825,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             <p><span className="text-gray-500">Flood control lot</span> — SEPP (Housing) 2021 cl 58: complying development must not be carried out on flood storage areas, floodways, flow paths, high hazard areas, or high risk areas as certified by council or hydraulic engineer. Spatial data: 12 LGAs — shown as unknown outside coverage.</p>
             <p><span className="text-gray-500">Biodiversity</span> — SEPP (Exempt and Complying Development Codes) 2008 cl 1.19(1) excludes land mapped on the NSW Biodiversity Values Map (Biodiversity Conservation Act 2016). Spatial data: NSW Biodiversity Values Map (DCCEEW).</p>
             <p><span className="text-gray-500">Acid sulfate soils</span> — SEPP (Exempt and Complying Development Codes) 2008 cl 1.19(1) excludes Class 1 and Class 2 acid sulfate soils; DA pathway: {eligibility.epi_name ?? 'applicable LEP'} cl 7.1 (Standard Instrument).</p>
+            <p><span className="text-gray-500">Dual occupancy prohibition</span> — Some LEPs prohibit dual occupancy development on specific lots (e.g. Parramatta LEP 2023). Sourced from NSW ePlanning MapServer Local Provisions layer 452.</p>
             <p className="pt-1 border-t border-gray-100 mt-2">DCP setback, height, floor space ratio, and landscaping controls not assessed here. This check is indicative only — verify with a qualified town planner before lodging a DA or CDC.</p>
             <p className="mt-1 text-gray-400">{DATA_PROVENANCE.granny_flat}</p>
           </div>
@@ -847,6 +850,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               { label: 'Flood control lots', detail: 'Statutory flood overlay check' },
               { label: 'Biodiversity', detail: 'Biodiversity values map exclusions' },
               { label: 'Acid sulfate soils', detail: 'Class 1 & 2 soil exclusions' },
+              { label: 'Dual occupancy prohibition', detail: 'LEP prohibition map check' },
             ].map(({ label, detail }) => (
               <div key={label} className="rounded-lg bg-gray-50 p-4">
                 <p className="text-sm font-medium text-gray-700">{label}</p>

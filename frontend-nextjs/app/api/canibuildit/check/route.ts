@@ -300,6 +300,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // 5b. ePlanning Phase 1: Dual occupancy prohibition (layer 452)
+  let dualOccProhibited = false;
+  let dualOccQueryRan = false;
+  if (centroidLng !== null && centroidLat !== null) {
+    try {
+      const dualOccRes = await fetch(
+        `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Local_Provisions/MapServer/452/query?` +
+        `geometry=${centroidLng},${centroidLat}&geometryType=esriGeometryPoint&` +
+        `spatialRel=esriSpatialRelIntersects&outFields=LAY_CLASS&returnGeometry=false&f=json&inSR=4283`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      if (dualOccRes.ok) {
+        const dualOccData = await dualOccRes.json();
+        if (!dualOccData.error && Array.isArray(dualOccData.features)) {
+          dualOccProhibited = dualOccData.features.length > 0;
+          dualOccQueryRan = true;
+        }
+      }
+    } catch {
+      // dualOccQueryRan stays false — check shows 'unknown' not false 'pass'
+    }
+  }
+
   // 6. Evaluate all checks
   const checks: {
     lot_area: CheckResult;
@@ -308,6 +331,7 @@ export async function POST(req: NextRequest) {
     flood: CheckResult;
     biodiversity: CheckResult;
     acid_sulfate: CheckResult;
+    dual_occ_prohibition: CheckResult;
   } = {
     lot_area: lotArea === null ? 'unknown' : lotArea >= SEPP_MIN_M2 ? 'pass' : 'fail',
     zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail',
@@ -317,10 +341,12 @@ export async function POST(req: NextRequest) {
     // biodiversity/acid_sulfate: state-wide — no rows = pass, but only if query actually ran
     biodiversity: overlayTypes.has('biodiversity') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
     acid_sulfate: overlayTypes.has('acid_sulfate') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
+    // dual occ prohibition: pass only if query ran and returned no features; unknown if query failed or no centroid
+    dual_occ_prohibition: !dualOccQueryRan ? 'unknown' : dualOccProhibited ? 'fail' : 'pass',
   };
 
   // First hard fail in priority order sets the ineligible reason
-  const CHECK_ORDER: (keyof typeof checks)[] = ['lot_area', 'zone', 'heritage', 'flood', 'biodiversity', 'acid_sulfate'];
+  const CHECK_ORDER: (keyof typeof checks)[] = ['lot_area', 'zone', 'heritage', 'flood', 'biodiversity', 'acid_sulfate', 'dual_occ_prohibition'];
   const CHECK_LABELS: Record<keyof typeof checks, string> = {
     lot_area: `Lot area ${lotArea ? Math.round(lotArea) + ' m²' : 'unknown'} — minimum 450 m² required under SEPP Housing 2021`,
     zone: `Zone ${zone ?? 'unknown'} is not permitted for secondary dwellings under SEPP Housing 2021 (permitted: R1, R2, R3, R4, R5/RU5)`,
@@ -328,6 +354,7 @@ export async function POST(req: NextRequest) {
     flood: 'Property is within a flood control lot — secondary dwellings are excluded under SEPP Housing 2021',
     biodiversity: 'Property is within a biodiversity values area — secondary dwellings are excluded under SEPP Housing 2021',
     acid_sulfate: 'Property is within an acid sulfate soils area — secondary dwellings are excluded under SEPP Housing 2021',
+    dual_occ_prohibition: 'Property is in a dual occupancy development prohibition area under the local LEP — secondary dwellings may not be permitted',
   };
 
   const firstFail = CHECK_ORDER.find(k => checks[k] === 'fail');

@@ -226,7 +226,27 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
       }
     }
 
-    // Note: Some checks need external data we don't have
+    // === CHECK 9: Complying Development exclusion area (ePlanning SEPP layer 92) ===
+    checksPerformed.push('Complying development exclusion area');
+    if (constraints?.complyingExcluded === true) {
+      exclusions.push({
+        reason: 'In a Complying Development exclusion area',
+        constraint: 'complying_exclusion',
+        severity: 'definite',
+        source: 'NSW ePlanning MapServer (SEPP Exempt & Complying Codes 2008)'
+      });
+    }
+
+    // === CHECK 10: Dual occupancy prohibition (ePlanning Local Provisions layer 452) ===
+    checksPerformed.push('Dual occupancy prohibition');
+    if (constraints?.dualOccProhibited?.prohibited === true) {
+      exclusions.push({
+        reason: 'Dual occupancy development is prohibited',
+        constraint: 'dual_occ_prohibition',
+        severity: 'definite',
+        source: constraints.dualOccProhibited.epiName || 'NSW ePlanning MapServer'
+      });
+    }
 
     // Determine final eligibility
     const definiteExclusions = exclusions.filter(e => e.severity === 'definite');
