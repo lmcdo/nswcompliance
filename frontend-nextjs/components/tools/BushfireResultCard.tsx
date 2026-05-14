@@ -1,5 +1,7 @@
 'use client'
 
+import { DATA_PROVENANCE } from '@/lib/disclaimers'
+
 interface BushfireCompliance {
   state_legislation: string | null
   rfs_referral_required: boolean | null
@@ -259,6 +261,9 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
         <p className="text-xs text-gray-400">
           Screening tool — not a formal BAL assessment. Obtain a bushfire assessment from a practitioner
           listed in the RFS directory before development on bushfire prone land.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {DATA_PROVENANCE.bushfire}
         </p>
       </div>
     </div>

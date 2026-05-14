@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -463,6 +465,7 @@ function FloodLockedPreviewCard({
         <p className="text-xs text-gray-400 text-center mt-2">
           Paid once. PDF delivered to your email after checkout.
         </p>
+        <PaymentTermsNotice />
       </div>
     </div>
   );
@@ -641,6 +644,9 @@ function FloodCard({ result }: { result: FloodResult }) {
       <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
           Screening tool — not a legal flood determination. Obtain a Section 10.7 certificate from council for conveyancing.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {DATA_PROVENANCE.flood}
         </p>
       </div>
     </div>

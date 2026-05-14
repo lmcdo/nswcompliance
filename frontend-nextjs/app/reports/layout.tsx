@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { REPORTS_LAYOUT_FOOTER } from '@/lib/disclaimers';
 
 export const metadata: Metadata = {
   title: 'NSW Property Intelligence — canibuildit.com.au',
@@ -66,7 +67,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
         </div>
         <div className="max-w-5xl mx-auto px-6 pb-6">
           <p className="text-xs text-gray-300">
-            Results are indicative only and do not constitute planning advice. Always consult a registered town planner or certifier before making any planning or property decision.
+            {REPORTS_LAYOUT_FOOTER}
           </p>
         </div>
       </footer>

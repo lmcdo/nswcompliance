@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
 // ---------------------------------------------------------------------------
@@ -431,6 +433,7 @@ function PreDAHistoryToolInner() {
                 {checkoutLoading ? 'Loading...' : 'Buy PDF — $49'}
               </button>
             </div>
+            <PaymentTermsNotice />
           </div>
 
           {/* Run another */}
@@ -448,6 +451,11 @@ function PreDAHistoryToolInner() {
               Run another analysis
             </button>
           </div>
+
+          {/* Data provenance */}
+          <p className="text-xs text-gray-400 text-center mt-4">
+            {DATA_PROVENANCE.pre_da_history}
+          </p>
 
           {/* Cross-sell */}
           <ToolCrossSell currentTool="pre-da-history" address={result.address} />

@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -371,6 +373,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
             {subscribeError && (
               <p className="text-xs text-red-600 mt-2">{subscribeError}</p>
             )}
+            <PaymentTermsNotice />
           </div>
         ) : (
           <div className="bg-green-50 border border-green-200 rounded-xl p-5">
@@ -384,7 +387,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
         )}
 
         <p className="text-xs text-gray-400 text-center">
-          DA and CDC data sourced from NSW ePlanning Portal.
+          {DATA_PROVENANCE.threat_radar}
         </p>
       </div>
     </div>
@@ -759,6 +762,7 @@ function MonitorPreviewCard({
         </button>
       </form>
       {subscribeError && <p className="text-xs text-red-600">{subscribeError}</p>}
+      <PaymentTermsNotice />
     </div>
   );
 }

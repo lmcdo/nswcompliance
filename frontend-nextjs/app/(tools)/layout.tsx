@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { TOOLS_LAYOUT_FOOTER } from '@/lib/disclaimers';
 
 const TOOLS = [
   { label: 'Flood Risk', href: '/reports/flood', emoji: '🌊' },
@@ -166,7 +167,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
 
         <div className="max-w-5xl mx-auto px-6 pb-8 border-t border-gray-50 pt-6">
           <p className="text-xs text-gray-300">
-            © 2026 canibuildit.com.au — NSW planning data only. Results are indicative and do not constitute planning advice. Confirm with a registered certifier or town planner.
+            {TOOLS_LAYOUT_FOOTER}
           </p>
         </div>
       </footer>

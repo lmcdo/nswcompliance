@@ -2,6 +2,7 @@
 
 import { DownloadPdfButton } from './DownloadPdfButton';
 import { ToolCrossSell } from './ToolCrossSell';
+import { SHARED_REPORT_DISCLAIMER } from '@/lib/disclaimers';
 
 const PRODUCT_LABELS: Record<string, string> = {
   flood: 'Flood Truth Report',
@@ -120,9 +121,8 @@ export function SharedReportPage({
 
       {/* Disclaimer */}
       <p className="text-xs text-gray-400 text-center mt-8 mb-4">
-        This report is indicative only and does not constitute planning, legal, or financial advice.
-        Always consult a qualified professional before making decisions.
-        Report ID: {reportId.slice(0, 8)}
+        {SHARED_REPORT_DISCLAIMER}
+        {' '}Report ID: {reportId.slice(0, 8)}
       </p>
     </div>
   );

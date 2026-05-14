@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface FeasibilityItem {
@@ -457,6 +459,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
               {unlockError && (
                 <p className="text-sm text-red-600">{unlockError}</p>
               )}
+              <PaymentTermsNotice />
             </div>
           </div>
 
@@ -468,6 +471,9 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             <p className="text-xs text-gray-400 mt-1">
               Results are indicative only and do not constitute planning or legal advice.
               Always engage a registered town planner or conveyancer.
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {DATA_PROVENANCE.conveyancing}
             </p>
           </div>
 
