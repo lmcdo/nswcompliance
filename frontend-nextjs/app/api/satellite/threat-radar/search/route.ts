@@ -175,6 +175,78 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
 }
 
 /**
+ * LGA-wide aggregate stats (last 12 months) — approval rate, avg determination
+ * time, top development types.  Non-fatal: returns null on any error.
+ */
+async function queryLgaStats(councilName: string) {
+  try {
+    const supabase = getDaSupabase();
+    const since = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+
+    const { data, error } = await supabase
+      .from('development_applications')
+      .select('application_status,determination_date,lodgement_date,cost_of_development,development_type')
+      .eq('council_name', councilName)
+      .gte('lodgement_date', since);
+
+    if (error || !data) return null;
+
+    let total = 0;
+    let approved = 0;
+    let totalCost = 0;
+    let detTimeSum = 0;
+    let detTimeCount = 0;
+    const devTypes: Record<string, number> = {};
+
+    for (const row of data) {
+      total++;
+      const status = (row.application_status ?? '').toLowerCase();
+      if (status.includes('approved') || status.includes('determined')) approved++;
+
+      const cost = Number(row.cost_of_development) || 0;
+      totalCost += cost;
+
+      if (row.lodgement_date && row.determination_date) {
+        const lodged = new Date(row.lodgement_date).getTime();
+        const determined = new Date(row.determination_date).getTime();
+        if (determined > lodged) {
+          detTimeSum += (determined - lodged) / 86_400_000;
+          detTimeCount++;
+        }
+      }
+
+      // Parse dev type JSON array
+      const dtRaw = row.development_type;
+      if (dtRaw) {
+        try {
+          const arr = JSON.parse(dtRaw) as Array<{ DevelopmentType?: string }>;
+          for (const d of arr) {
+            const t = d.DevelopmentType;
+            if (t) devTypes[t] = (devTypes[t] || 0) + 1;
+          }
+        } catch { /* not JSON */ }
+      }
+    }
+
+    const topDevTypes = Object.entries(devTypes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([type, count]) => ({ type, count }));
+
+    return {
+      total_applications: total,
+      approval_rate: total > 0 ? Math.round((approved / total) * 100) : null,
+      avg_determination_days: detTimeCount > 0 ? Math.round(detTimeSum / detTimeCount) : null,
+      total_construction_value: totalCost,
+      top_development_types: topDevTypes,
+      period_months: 12,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * POST /api/satellite/threat-radar/search
  * Body: { address: string }
  *
@@ -266,7 +338,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const applications = await queryNearbyApplications(lat, lng);
+  // Run nearby apps + LGA aggregate stats in parallel
+  const [applications, lgaStats] = await Promise.all([
+    queryNearbyApplications(lat, lng),
+    council_name ? queryLgaStats(council_name) : Promise.resolve(null),
+  ]);
   const run_date = new Date().toISOString().slice(0, 10);
   const report_token = signReport(lat, lng, address, run_date);
 
@@ -281,5 +357,6 @@ export async function POST(request: NextRequest) {
     window_days: WINDOW_DAYS,
     radius_m: RADIUS_M,
     report_token,
+    lga_stats: lgaStats,
   });
 }
