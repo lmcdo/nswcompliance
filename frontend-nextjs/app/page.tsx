@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrowseByArea } from '@/components/BrowseByArea';
 
 const BUYING = [
   {
@@ -62,62 +63,6 @@ const YIELD = [
     href: '/reports/granny-flat',
     badge: 'Free + $49 report',
     icon: '🏠',
-  },
-];
-
-const REGIONS = [
-  {
-    region: 'Greater Sydney — Inner & East',
-    lgas: [
-      { name: 'Inner West', slug: 'inner-west' },
-      { name: 'Bayside', slug: 'bayside' },
-      { name: 'Randwick', slug: 'randwick' },
-      { name: 'Waverley', slug: 'waverley' },
-      { name: 'Woollahra', slug: 'woollahra' },
-    ],
-  },
-  {
-    region: 'Greater Sydney — North',
-    lgas: [
-      { name: 'Northern Beaches', slug: 'northern-beaches' },
-      { name: 'Ku-ring-gai', slug: 'ku-ring-gai' },
-      { name: 'Hornsby', slug: 'hornsby' },
-      { name: 'Lane Cove', slug: 'lane-cove' },
-      { name: 'Ryde', slug: 'ryde' },
-    ],
-  },
-  {
-    region: 'Greater Sydney — West',
-    lgas: [
-      { name: 'Parramatta', slug: 'parramatta' },
-      { name: 'Blacktown', slug: 'blacktown' },
-      { name: 'The Hills Shire', slug: 'the-hills-shire' },
-      { name: 'Penrith', slug: 'penrith' },
-      { name: 'Hawkesbury', slug: 'hawkesbury' },
-    ],
-  },
-  {
-    region: 'Greater Sydney — South & Southwest',
-    lgas: [
-      { name: 'Campbelltown', slug: 'campbelltown' },
-      { name: 'Camden', slug: 'camden' },
-      { name: 'Liverpool', slug: 'liverpool' },
-      { name: 'Sutherland Shire', slug: 'sutherland-shire' },
-      { name: 'Georges River', slug: 'georges-river' },
-      { name: 'Canterbury-Bankstown', slug: 'canterbury-bankstown' },
-    ],
-  },
-  {
-    region: 'Regional NSW',
-    lgas: [
-      { name: 'Wollongong', slug: 'wollongong' },
-      { name: 'Wingecarribee', slug: 'wingecarribee' },
-      { name: 'Clarence Valley', slug: 'clarence-valley' },
-      { name: 'Yass Valley', slug: 'yass-valley' },
-      { name: 'Bathurst Regional', slug: 'bathurst-regional' },
-      { name: 'Tamworth Regional', slug: 'tamworth-regional' },
-      { name: 'Forbes', slug: 'forbes' },
-    ],
   },
 ];
 
@@ -345,37 +290,7 @@ export default function HomePage() {
       </section>
 
       {/* Browse by area */}
-      <section id="browse-by-area" className="py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by council area</h2>
-          <p className="text-sm text-gray-500 mb-8">
-            Select an LGA to see all available tools for that council area.
-          </p>
-
-          <div className="space-y-8">
-            {REGIONS.map(({ region, lgas }) => (
-              <div key={region}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">{region}</p>
-                <div className="flex flex-wrap gap-2">
-                  {lgas.map(({ name, slug }) => (
-                    <Link
-                      key={slug}
-                      href={`/granny-flat/${slug}`}
-                      className="text-sm px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:border-teal-400 hover:text-teal-700 transition-colors"
-                    >
-                      {name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="mt-8 text-xs text-gray-400">
-            Each page includes granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts for that council area.
-          </p>
-        </div>
-      </section>
+      <BrowseByArea />
 
       {/* Data source footer strip */}
       <section className="border-t border-gray-100 bg-gray-50 py-8 px-6">

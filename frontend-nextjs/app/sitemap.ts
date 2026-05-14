@@ -4,6 +4,8 @@ import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas'
 import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
 import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas'
 import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas'
+import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas'
+import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -57,5 +59,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.85,
   }))
 
-  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages, ...shadowPages]
+  const bushfirePages = BUSHFIRE_LGAS.map(lga => ({
+    url: `${base}/bushfire/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
+  }))
+
+  const preDaHistoryPages = PRE_DA_HISTORY_LGAS.map(lga => ({
+    url: `${base}/pre-da-history/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }))
+
+  return [
+    ...staticPages,
+    { url: `${base}/browse`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.7 },
+    ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages,
+    ...shadowPages, ...bushfirePages, ...preDaHistoryPages,
+  ]
 }
