@@ -32,6 +32,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/solar-potential`, priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/shadow`,          priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/threat-radar`,    priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/reports/conveyancing`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: now },
     { url: `${base}/pricing`,         priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/partner`,         priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },

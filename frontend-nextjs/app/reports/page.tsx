@@ -57,6 +57,14 @@ const TOOLS = [
       'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation.',
     badge: '$19',
   },
+  {
+    href: '/reports/conveyancing',
+    title: 'Conveyancing Planning Disclosure',
+    tagline: 'Everything your conveyancer should check — instantly.',
+    description:
+      'LEP controls, environmental overlays, heritage status, SEPP overlays, development feasibility screening, and DCP setback controls from live government data.',
+    badge: 'Free + $49',
+  },
 ];
 
 export default function ReportsLanding() {
@@ -68,7 +76,7 @@ export default function ReportsLanding() {
           Know exactly what your property can do
         </h1>
         <p className="mt-2 text-gray-500 max-w-xl">
-          Seven data-driven property intelligence tools for NSW — from flood depth to granny flat yield. No consultants, no waiting rooms.
+          Eight data-driven property intelligence tools for NSW — from flood depth to conveyancing disclosure. No consultants, no waiting rooms.
         </p>
       </div>
 

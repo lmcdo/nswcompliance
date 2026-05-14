@@ -27,10 +27,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy service code + startup scripts
 COPY services/ ./services/
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
+COPY scripts/generate_conveyancing_report.py ./scripts/generate_conveyancing_report.py
+COPY scripts/conveyancing_db.py ./scripts/conveyancing_db.py
 
 # compliance_api_server.py imports enhanced_compliance_api without 'services.' prefix
 # (it runs locally from services/), so add services/ to PYTHONPATH as well
-ENV PYTHONPATH=/app:/app/services
+ENV PYTHONPATH=/app:/app/services:/app/scripts
 
 # Hawkesbury rasters downloaded to /tmp at startup (writable, persists for container lifetime)
 ENV HAWKESBURY_RASTER_DIR=/tmp/hawkesbury_rasters
