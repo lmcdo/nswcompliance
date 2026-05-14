@@ -154,6 +154,37 @@ TOD_NOTE = (
     "Confirm applicable uplift and precinct type with the current SEPP Housing maps."
 )
 
+COASTAL_LAND_APP_NOTE = (
+    "Coastal Land Application Area — this property is within a mapped coastal management "
+    "area under SEPP (Resilience and Hazards) 2021. Development consent may require a "
+    "coastal management assessment. Source: NSW Government SEPP R&H 2021 mapping."
+)
+COASTAL_WETLANDS_NOTE = (
+    "Coastal Wetlands — this property is within or adjacent to a mapped coastal wetland "
+    "under SEPP (Resilience and Hazards) 2021. Development within the proximity area "
+    "requires assessment of potential impacts on the wetland. Source: NSW SEPP R&H 2021."
+)
+LITTORAL_RAINFOREST_NOTE = (
+    "Littoral Rainforest — this property is within or adjacent to mapped littoral "
+    "rainforest under SEPP (Resilience and Hazards) 2021. Development may require "
+    "ecological assessment. Source: NSW SEPP R&H 2021."
+)
+COASTAL_ENV_AREA_NOTE = (
+    "Coastal Environment Area — this property is within a mapped coastal environment "
+    "area under SEPP (Resilience and Hazards) 2021. Development must demonstrate it "
+    "will not adversely impact the coastal environment. Source: NSW SEPP R&H 2021."
+)
+COASTAL_USE_AREA_NOTE = (
+    "Coastal Use Area — this property is within a mapped coastal use area under SEPP "
+    "(Resilience and Hazards) 2021. Development must maintain public access and amenity "
+    "of the coast. Source: NSW SEPP R&H 2021."
+)
+FIRE_HISTORY_NOTE = (
+    "NPWS Fire History — this property has been affected by recorded fire events. "
+    "Historical fire frequency is an indicator of ongoing bushfire risk beyond the "
+    "current BFPL mapping. Source: NSW NPWS Fire History dataset."
+)
+
 CLASSIFIED_ROAD_NOTE = (
     "Classified Road Frontage — a statutory minimum setback of 9 metres applies to any "
     "dwelling house or attached development on a boundary with a classified road "
@@ -920,11 +951,15 @@ def parse_controls(raw: list[dict]) -> dict:
 # PostGIS — unique overlays (NOT in portal layerintersect)
 # ---------------------------------------------------------------------------
 
-POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "acid_sulfate", "lot_size", "bushfire", "anef"}
+POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "acid_sulfate", "lot_size", "bushfire", "anef",
+                         "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
+                         "coastal_environment_area", "coastal_use_area", "fire_history"}
 
 # Layers ingested globally (bbox or filter_mode='all') — one 'ALL' coverage row, no per-LGA rows.
 # covered_layers for these is determined by the 'ALL' row, not per-LGA rows.
-GLOBAL_INGEST_LAYERS = frozenset({"bushfire", "anef"})
+GLOBAL_INGEST_LAYERS = frozenset({"bushfire", "anef",
+                                  "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
+                                  "coastal_environment_area", "coastal_use_area", "fire_history"})
 POSTGIS_NOTES = {
     "biodiversity": BIO_NOTE,
     "riparian": RIPARIAN_NOTE,
@@ -936,6 +971,12 @@ POSTGIS_NOTES = {
     "bushfire": BUSHFIRE_NOTE_DEFAULT,
     "anef": ANEF_NOTE,
     "tod_precinct": TOD_NOTE,
+    "coastal_land_application": COASTAL_LAND_APP_NOTE,
+    "coastal_wetlands": COASTAL_WETLANDS_NOTE,
+    "littoral_rainforest": LITTORAL_RAINFOREST_NOTE,
+    "coastal_environment_area": COASTAL_ENV_AREA_NOTE,
+    "coastal_use_area": COASTAL_USE_AREA_NOTE,
+    "fire_history": FIRE_HISTORY_NOTE,
 }
 
 
@@ -1933,6 +1974,12 @@ def generate_pdf(
         "tod_accelerated":         "TOD accelerated precinct — increased FSR/height",
         "tod_deferred":            "TOD deferred precinct — future uplift likely",
         "key_sites":               "Key site — site-specific LEP clause applies",
+        "coastal_land_application": "Coastal management area — SEPP R&H 2021",
+        "coastal_wetlands":        "Coastal wetland or proximity area — SEPP R&H 2021",
+        "littoral_rainforest":     "Littoral rainforest or proximity area — SEPP R&H 2021",
+        "coastal_environment_area": "Coastal environment area — SEPP R&H 2021",
+        "coastal_use_area":        "Coastal use area — SEPP R&H 2021",
+        "fire_history":            "Historical fire events recorded at this location",
     }
     # EPI-confirmed layers: absence from layerintersect = confirmed clear (not just missing data)
     _EPI_CONFIRMED: dict[str, str] = {
@@ -2698,7 +2745,7 @@ def generate_pdf(
     if no_constraints:
         story.append(Paragraph(
             "No acid sulfate soils, biodiversity, riparian, wetland, landslide, flood, bushfire, "
-            "or aircraft noise overlays identified at this location.",
+            "aircraft noise, coastal hazard, or fire history overlays identified at this location.",
             ss["body"]
         ))
 

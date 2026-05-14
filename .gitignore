@@ -526,3 +526,6 @@ data/bushfire/
 leigh-verify.pdf
 data/dcps/
 data/lep-html/
+
+# Climate risk intelligence — reference PDFs (future product, not compliance engine core)
+climate_risk_intel/
