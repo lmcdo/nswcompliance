@@ -118,9 +118,33 @@ export const PRIVACY_PATH = '/privacy';
 // Data currency
 // ---------------------------------------------------------------------------
 
-/** Shown alongside data currency indicators. */
+/** Shown alongside data currency indicators (assessment/Verify page). */
 export const DATA_CURRENCY_NOTE =
   'Verified = last confirmed match to source. Not a guarantee of currency. Always check council and legislation.nsw.gov.au before issuing advice.';
+
+/**
+ * Data provenance lines for interactive tool footers.
+ * Describes source + update cadence rather than a query date,
+ * so users don't perceive normal API lag as staleness.
+ */
+export const DATA_PROVENANCE = {
+  flood:
+    'Data sourced live from NSW Planning Portal and PostGIS spatial overlays. Satellite rasters updated annually. Not a formal certificate.',
+  solar:
+    'Solar data from Google Solar API, queried live. Tariff and rebate assumptions may not reflect your retailer. Not a formal quote.',
+  shadow:
+    'Building height from NSW Planning Portal (live). Shadow geometry computed at request time. Not a formal shadow impact assessment.',
+  bushfire:
+    'Bush Fire Prone Land mapping from NSW RFS (updated by RFS). Spatial overlays updated monthly. Not a formal BAL assessment.',
+  threat_radar:
+    'DA and CDC data sourced live from NSW ePlanning Portal. Application details may lag lodgement by 1\u20133 business days.',
+  conveyancing:
+    'Data sourced live from NSW Planning Portal, PostGIS spatial overlays, and NSW Valuer General. Spatial overlays updated monthly.',
+  granny_flat:
+    'Data sourced live from NSW Planning Portal. Spatial overlays (flood, heritage, biodiversity, acid sulfate) updated monthly.',
+  pre_da_history:
+    'Satellite imagery from Sentinel-2 (annual snapshots 2017\u20132024). DA data from NSW ePlanning Portal, queried live.',
+} as const;
 
 /** Generic "report generated" line for PDF footers. */
 export function pdfGeneratedLine(runDate: string): string {

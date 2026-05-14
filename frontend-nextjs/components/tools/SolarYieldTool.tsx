@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
@@ -496,6 +497,9 @@ function ReportCard({ report }: { report: ReportData }) {
       <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
           Screening tool — not financial advice. Actual savings depend on consumption, tariff, and system performance. Get installer quotes before committing.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {DATA_PROVENANCE.solar}
         </p>
       </div>
     </div>

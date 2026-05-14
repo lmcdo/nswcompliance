@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
@@ -727,6 +728,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <div className="px-5 py-3 border-t border-gray-100">
         <p className="text-xs text-gray-400">
           Screening tool — not a formal shadow impact assessment. A qualified town planner or architect must prepare shadow diagrams for DA submission.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          {DATA_PROVENANCE.shadow}
         </p>
       </div>
     </div>
