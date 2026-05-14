@@ -429,6 +429,7 @@ scripts/
 !scripts/ingest_flood_studies.py
 !scripts/validate_flood_e2e.py
 !scripts/generate_conveyancing_report.py
+!scripts/conveyancing_db.py
 !scripts/add_new_chapter.py
 !scripts/audit_url_landscape.py
 !scripts/confirm_chapter.py
