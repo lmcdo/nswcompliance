@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
 // ---------------------------------------------------------------------------
@@ -431,6 +432,7 @@ function PreDAHistoryToolInner() {
                 {checkoutLoading ? 'Loading...' : 'Buy PDF — $49'}
               </button>
             </div>
+            <PaymentTermsNotice />
           </div>
 
           {/* Run another */}

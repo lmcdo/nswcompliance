@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -463,6 +464,7 @@ function FloodLockedPreviewCard({
         <p className="text-xs text-gray-400 text-center mt-2">
           Paid once. PDF delivered to your email after checkout.
         </p>
+        <PaymentTermsNotice />
       </div>
     </div>
   );

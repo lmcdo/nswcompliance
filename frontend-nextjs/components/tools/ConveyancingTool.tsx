@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface FeasibilityItem {
@@ -457,6 +458,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
               {unlockError && (
                 <p className="text-sm text-red-600">{unlockError}</p>
               )}
+              <PaymentTermsNotice />
             </div>
           </div>
 

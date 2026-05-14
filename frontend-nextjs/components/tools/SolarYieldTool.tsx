@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
@@ -682,6 +683,7 @@ function SolarLockedPreviewCard({
         <p className="text-xs text-gray-400 text-center mt-2">
           Paid once. PDF delivered to your email after checkout.
         </p>
+        <PaymentTermsNotice />
       </div>
     </div>
   );

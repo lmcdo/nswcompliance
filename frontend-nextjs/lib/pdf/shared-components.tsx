@@ -19,6 +19,7 @@ import {
   Link,
   StyleSheet,
 } from '@react-pdf/renderer';
+import { ABOUT_PAGE_DISCLAIMER } from '../disclaimers';
 
 // ---------------------------------------------------------------------------
 // Palette (matches existing reports)
@@ -342,9 +343,7 @@ export function AboutPage({
         and reproducible.
       </Text>
       <Text style={ss.body}>
-        PlotDetect reports are designed to complement — not replace — formal certificates,
-        professional advice, and council searches. Always verify critical findings with a qualified
-        professional before making financial or legal decisions.
+        {ABOUT_PAGE_DISCLAIMER}
       </Text>
 
       <View style={ss.divider} />

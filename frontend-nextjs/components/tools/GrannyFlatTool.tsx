@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
@@ -160,6 +161,7 @@ function LockedPreviewCard({
         <p className="text-xs text-gray-400 text-center">
           Rental yield estimate · build ROI · DCP setbacks · AI structure map · PDF report
         </p>
+        <PaymentTermsNotice />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PaymentTermsNotice } from './PaymentTermsNotice';
 
 interface PaywallGateProps {
   tool: 'flood-truth' | 'shadow' | 'solar-yield';
@@ -133,6 +134,7 @@ export function PaywallGate({
           <p className="text-xs text-gray-400 text-center">
             Paid once. PDF delivered to your email. {address && `For: ${address}`}
           </p>
+          <PaymentTermsNotice />
         </form>
       </div>
     </div>
