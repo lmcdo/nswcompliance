@@ -23,6 +23,13 @@ const BUYING = [
     badge: '$49 report',
     icon: '📡',
   },
+  {
+    title: 'Conveyancing Disclosure',
+    detail: 'LEP controls, overlays, heritage, SEPP, development feasibility — the planning check your conveyancer should do.',
+    href: '/reports/conveyancing',
+    badge: 'Free + $49 report',
+    icon: '📋',
+  },
 ];
 
 const BUILDING = [
@@ -150,7 +157,7 @@ export default function HomePage() {
         <div className="mb-6 flex justify-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-1.5 text-sm font-medium text-teal-700">
             <span className="w-2 h-2 rounded-full bg-teal-500" />
-            Seven free checks for any NSW address
+            Eight free checks for any NSW address
           </div>
         </div>
 
@@ -181,6 +188,9 @@ export default function HomePage() {
           </Link>
           <Link href="/reports/solar-yield" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
             Solar Yield
+          </Link>
+          <Link href="/reports/conveyancing" className="px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all">
+            Conveyancing Disclosure
           </Link>
         </div>
       </section>
@@ -225,7 +235,7 @@ export default function HomePage() {
             <p className="text-sm text-gray-500 mb-5">
               Your conveyancer will ask for flood and bushfire status. Get the data before they do.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {BUYING.map((t) => <ToolCard key={t.href} {...t} />)}
             </div>
           </div>

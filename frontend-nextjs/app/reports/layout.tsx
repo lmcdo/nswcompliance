@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/reports/flood', label: 'Flood Truth' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
   { href: '/reports/pre-da-history', label: 'Site History' },
+  { href: '/reports/conveyancing', label: 'Conveyancing' },
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {

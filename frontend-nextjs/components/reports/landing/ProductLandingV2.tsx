@@ -12,6 +12,7 @@ import { solarConfig } from "./data/solar"
 import { threatRadarConfig } from "./data/threat-radar"
 import { preDAConfig } from "./data/pre-da"
 import { bushfireConfig } from "./data/bushfire"
+import { conveyancingConfig } from "./data/conveyancing"
 
 const configs: Record<string, ProductLandingConfig> = {
   flood: floodConfig,
@@ -20,6 +21,7 @@ const configs: Record<string, ProductLandingConfig> = {
   "threat-radar": threatRadarConfig,
   "pre-da": preDAConfig,
   bushfire: bushfireConfig,
+  conveyancing: conveyancingConfig,
 }
 
 interface ProductLandingV2Props {

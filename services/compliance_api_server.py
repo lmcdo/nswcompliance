@@ -23,6 +23,7 @@ try:
     from services.rss_proxy import router as rss_proxy_router
     from services.pre_da_history import router as pre_da_history_router
     from services.bushfire_prescreen import router as bushfire_router
+    from services.conveyancing import router as conveyancing_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -34,6 +35,7 @@ except ImportError:
     from rss_proxy import router as rss_proxy_router
     from pre_da_history import router as pre_da_history_router
     from bushfire_prescreen import router as bushfire_router
+    from conveyancing import router as conveyancing_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -65,6 +67,7 @@ app.include_router(drawdown_verify_router)
 app.include_router(rss_proxy_router)
 app.include_router(pre_da_history_router)
 app.include_router(bushfire_router)
+app.include_router(conveyancing_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()
