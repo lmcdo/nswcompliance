@@ -33,6 +33,15 @@ interface Application {
   DevelopmentCategory?: string | null;
 }
 
+interface LgaStats {
+  total_applications: number;
+  approval_rate: number | null;
+  avg_determination_days: number | null;
+  total_construction_value: number;
+  top_development_types: { type: string; count: number }[];
+  period_months: number;
+}
+
 interface SearchResult {
   address: string;
   prop_id: string;
@@ -43,6 +52,7 @@ interface SearchResult {
   applications: Application[];
   window_days: number;
   report_token?: string;
+  lga_stats?: LgaStats | null;
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
@@ -800,6 +810,15 @@ function SearchResults({
         <>
           {/* Findings */}
           <ThreatFindings stats={stats} apps={apps} />
+
+          {/* LGA-wide stats */}
+          {result.lga_stats && (
+            <LgaStatsPanel stats={result.lga_stats} councilName={result.council_name} />
+          )}
+
+          {/* Interactive map + analytics links — prominent placement */}
+          <CrossLinks lat={result.lat} lng={result.lng} councilName={result.council_name} />
+
           <FreePaidComparison
             free={[
               'Development pressure score',
@@ -808,6 +827,7 @@ function SearchResults({
               'EPI variation warnings',
               'All DA and CDC details',
               'Proximity map',
+              'LGA-wide approval rate and trends',
             ]}
             paid={[
               'Weekly new DA/CDC email alerts',
@@ -898,8 +918,59 @@ function SearchResults({
             subscribeState={subscribeState}
             subscribeError={subscribeError}
           />
-          <CrossLinks lat={result.lat} lng={result.lng} councilName={result.council_name} />
         </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LgaStatsPanel — LGA-wide aggregate stats
+// ---------------------------------------------------------------------------
+
+function LgaStatsPanel({ stats, councilName }: { stats: LgaStats; councilName: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+        {councilName} — last {stats.period_months} months
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+        <div>
+          <p className="text-xs text-gray-400">Total applications</p>
+          <p className="text-lg font-semibold text-gray-900">{stats.total_applications.toLocaleString()}</p>
+        </div>
+        {stats.approval_rate != null && (
+          <div>
+            <p className="text-xs text-gray-400">Approval rate</p>
+            <p className="text-lg font-semibold text-gray-900">{stats.approval_rate}%</p>
+          </div>
+        )}
+        {stats.avg_determination_days != null && (
+          <div>
+            <p className="text-xs text-gray-400">Avg determination</p>
+            <p className="text-lg font-semibold text-gray-900">{stats.avg_determination_days} days</p>
+          </div>
+        )}
+        {stats.total_construction_value > 0 && (
+          <div>
+            <p className="text-xs text-gray-400">Total construction</p>
+            <p className="text-lg font-semibold text-gray-900">
+              ${(stats.total_construction_value / 1_000_000).toFixed(0)}M
+            </p>
+          </div>
+        )}
+      </div>
+      {stats.top_development_types.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-400 mb-2">Most common development types</p>
+          <div className="flex flex-wrap gap-1.5">
+            {stats.top_development_types.map(({ type, count }) => (
+              <span key={type} className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                {type} ({count})
+              </span>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -911,22 +982,24 @@ function SearchResults({
 
 function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; councilName: string }) {
   return (
-    <div className="space-y-2 mt-2">
+    <div className="space-y-2">
       <a
         href={`https://map.plotdetect.com.au?lat=${lat}&lng=${lng}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors"
+        className="block rounded-xl border-2 border-teal-300 bg-teal-50 px-5 py-4 hover:bg-teal-100 hover:border-teal-400 transition-colors"
       >
-        <div>
-          <p className="text-sm font-medium text-teal-900">
-            Explore the full DA map for {councilName}
-          </p>
-          <p className="text-xs text-teal-700 mt-0.5">
-            Filter by cost, keywords, and development type · map.plotdetect.com.au
-          </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-teal-900">
+              Explore on interactive map
+            </p>
+            <p className="text-xs text-teal-700 mt-0.5">
+              Pan, zoom, filter by cost, keywords, and development type — every DA and CDC in {councilName}
+            </p>
+          </div>
+          <span className="shrink-0 text-teal-600 text-lg font-bold">→</span>
         </div>
-        <span className="shrink-0 text-teal-600 text-base">→</span>
       </a>
       <a
         href="https://charts.plotdetect.com.au"
@@ -936,15 +1009,14 @@ function CrossLinks({ lat, lng, councilName }: { lat: number; lng: number; counc
       >
         <div>
           <p className="text-sm font-medium text-indigo-900">
-            DA analytics for {councilName}
+            See LGA trends and analytics
           </p>
           <p className="text-xs text-indigo-700 mt-0.5">
-            Cost trends, approval rates, and development type breakdowns · charts.plotdetect.com.au
+            Cost trends, approval rates, and development type breakdowns for {councilName}
           </p>
         </div>
         <span className="shrink-0 text-indigo-600 text-base">→</span>
       </a>
-
     </div>
   );
 }
