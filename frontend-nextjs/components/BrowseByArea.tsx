@@ -17,11 +17,15 @@ const REGIONS = [
   {
     region: 'Greater Sydney \u2014 Inner & East',
     lgas: [
+      { name: 'City of Sydney', slug: 'city-of-sydney' },
       { name: 'Inner West', slug: 'inner-west' },
       { name: 'Bayside', slug: 'bayside' },
       { name: 'Randwick', slug: 'randwick' },
       { name: 'Waverley', slug: 'waverley' },
       { name: 'Woollahra', slug: 'woollahra' },
+      { name: 'Canada Bay', slug: 'canada-bay' },
+      { name: 'Burwood', slug: 'burwood' },
+      { name: 'Strathfield', slug: 'strathfield' },
     ],
   },
   {
@@ -42,6 +46,8 @@ const REGIONS = [
       { name: 'The Hills Shire', slug: 'the-hills-shire' },
       { name: 'Penrith', slug: 'penrith' },
       { name: 'Hawkesbury', slug: 'hawkesbury' },
+      { name: 'Cumberland', slug: 'cumberland' },
+      { name: 'Fairfield', slug: 'fairfield' },
     ],
   },
   {

@@ -65,6 +65,50 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
       { q: 'What parking requirements apply in Woollahra?', a: 'Parking requirements come from the Woollahra DCP and vary by development type and proximity to transport. Residential parking rates are typically 1-2 spaces per dwelling depending on unit size.' },
     ],
   },
+  {
+    name: 'City of Sydney',
+    slug: 'city-of-sydney',
+    hasDcpData: true,
+    relatedSlugs: ['inner-west', 'bayside', 'woollahra', 'randwick'],
+    faqs: [
+      { q: 'What planning controls apply in the City of Sydney?', a: 'City of Sydney properties are governed by the Sydney LEP 2012 and Sydney DCP 2012. Controls cover height, FSR, setbacks, parking, design excellence, heritage, and active frontage requirements. The CBD and surrounds have some of NSW\'s most detailed planning controls.' },
+      { q: 'What design excellence requirements apply in the City of Sydney?', a: 'Buildings over a certain height in the City of Sydney require a design excellence process including a competitive design alternatives process. Requirements vary by precinct and building height.' },
+      { q: 'What heritage controls apply in the City of Sydney?', a: 'The City of Sydney has extensive heritage conservation areas across Surry Hills, Paddington, Pyrmont, Glebe, and The Rocks. Heritage items and HCAs are mapped in the LEP with detailed DCP controls for each area.' },
+    ],
+  },
+  {
+    name: 'Canada Bay',
+    slug: 'canada-bay',
+    hasDcpData: true,
+    relatedSlugs: ['inner-west', 'burwood', 'strathfield', 'ryde'],
+    faqs: [
+      { q: 'What planning controls apply in Canada Bay?', a: 'Canada Bay properties are governed by the Canada Bay LEP 2013 and Canada Bay DCP. Controls cover height, FSR, setbacks, parking, landscaping, and foreshore areas along the Parramatta River.' },
+      { q: 'What foreshore controls apply in Canada Bay?', a: 'Properties near the Parramatta River foreshore are subject to foreshore building line controls. These restrict development within a setback from the foreshore boundary and may include design requirements.' },
+      { q: 'What setback requirements apply in Canada Bay?', a: 'Setback requirements come from the Canada Bay DCP and vary by zone and lot width. The tool shows the specific front, side, and rear setback controls for your property.' },
+    ],
+  },
+  {
+    name: 'Burwood',
+    slug: 'burwood',
+    hasDcpData: true,
+    relatedSlugs: ['inner-west', 'canada-bay', 'strathfield', 'canterbury-bankstown'],
+    faqs: [
+      { q: 'What planning controls apply in Burwood?', a: 'Burwood properties are governed by the Burwood LEP 2012 and Burwood DCP. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Burwood town centre has specific design and density controls.' },
+      { q: 'What setback requirements apply in Burwood?', a: 'Setback requirements come from the Burwood DCP and vary by zone and lot width. Typical residential front setbacks apply across most areas. The tool shows the specific controls for your address.' },
+      { q: 'What parking requirements apply in Burwood?', a: 'Parking rates come from the Burwood DCP and vary by development type and proximity to Burwood station. Reduced rates may apply in the town centre.' },
+    ],
+  },
+  {
+    name: 'Strathfield',
+    slug: 'strathfield',
+    hasDcpData: true,
+    relatedSlugs: ['burwood', 'canada-bay', 'canterbury-bankstown', 'inner-west'],
+    faqs: [
+      { q: 'What planning controls apply in Strathfield?', a: 'Strathfield properties are governed by the Strathfield LEP 2012 and Strathfield DCP. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Strathfield has strict tree preservation controls.' },
+      { q: 'What heritage controls apply in Strathfield?', a: 'Strathfield has heritage items and heritage conservation areas, particularly in the established residential streets around Strathfield station. Heritage items are listed in the LEP.' },
+      { q: 'What setback requirements apply in Strathfield?', a: 'Setback requirements come from the Strathfield DCP and vary by zone. The tool shows the specific front, side, and rear setback controls for your property with DCP clause references.' },
+    ],
+  },
   // ── Greater Sydney — North ─────────────────────────────────────────
   {
     name: 'Northern Beaches',
@@ -153,6 +197,28 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
       { q: 'What planning controls apply in The Hills Shire?', a: 'The Hills Shire properties are governed by The Hills LEP 2019 and The Hills DCP. Controls cover height, FSR, setbacks, parking, landscaping, and environmental management. New release areas have specific precinct plans.' },
       { q: 'What controls apply in the Hills new release areas?', a: 'New release areas like Box Hill, North Kellyville, and Balmoral Road have precinct-specific controls covering lot size, setbacks, and infrastructure contributions that differ from established areas.' },
       { q: 'What heritage controls apply in The Hills?', a: 'The Hills Shire has heritage items mainly in older village centres like Rouse Hill and Castle Hill. Heritage items and HCAs are listed in the LEP. The tool shows whether your property is heritage-affected.' },
+    ],
+  },
+  {
+    name: 'Cumberland',
+    slug: 'cumberland',
+    hasDcpData: true,
+    relatedSlugs: ['parramatta', 'canterbury-bankstown', 'fairfield', 'blacktown'],
+    faqs: [
+      { q: 'What planning controls apply in Cumberland?', a: 'Cumberland properties are governed by the Cumberland LEP 2021 and Cumberland DCP. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Cumberland was formed from Auburn, Holroyd, and parts of Parramatta.' },
+      { q: 'Do different parts of Cumberland have different controls?', a: 'Cumberland was formed from Auburn, Holroyd, and parts of Parramatta councils. Some precinct-specific controls from the former councils still apply in different areas. The tool identifies which controls apply to your address.' },
+      { q: 'What setback requirements apply in Cumberland?', a: 'Setback requirements come from the Cumberland DCP and vary by zone and lot width. The tool shows the specific front, side, and rear setback controls for your property.' },
+    ],
+  },
+  {
+    name: 'Fairfield',
+    slug: 'fairfield',
+    hasDcpData: true,
+    relatedSlugs: ['liverpool', 'cumberland', 'canterbury-bankstown', 'penrith'],
+    faqs: [
+      { q: 'What planning controls apply in Fairfield?', a: 'Fairfield properties are governed by the Fairfield LEP 2013 and Fairfield DCP. Controls cover height, FSR, setbacks, parking, landscaping, and flood. Parts of Fairfield near the Prospect Creek and Georges River have flood controls.' },
+      { q: 'What flood controls apply in Fairfield?', a: 'Properties near Prospect Creek and the Georges River are subject to flood planning controls. These affect permissible development, floor levels, and site design. The tool shows applicable flood overlays.' },
+      { q: 'What parking requirements apply in Fairfield?', a: 'Parking rates come from the Fairfield DCP and vary by development type. Standard residential rates apply across most areas. The tool shows the exact parking requirements for your address.' },
     ],
   },
   {
