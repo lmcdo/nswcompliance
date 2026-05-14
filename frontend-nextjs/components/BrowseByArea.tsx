@@ -10,6 +10,7 @@ const TOOLS = [
   { label: 'Solar', prefix: '/solar-potential' },
   { label: 'Shadow', prefix: '/shadow' },
   { label: 'Bushfire', prefix: '/bushfire' },
+  { label: 'Planning Controls', prefix: '/planning-controls' },
 ] as const;
 
 const REGIONS = [

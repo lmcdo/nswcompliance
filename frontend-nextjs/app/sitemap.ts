@@ -6,6 +6,7 @@ import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas'
 import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas'
 import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas'
 import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
+import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -32,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/solar-potential`, priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/shadow`,          priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/threat-radar`,    priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/assessment`,       priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/reports/conveyancing`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: now },
     { url: `${base}/pricing`,         priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
@@ -74,10 +76,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }))
 
+  const planningControlsPages = VERIFY_LGAS.map(lga => ({
+    url: `${base}/planning-controls/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
+  }))
+
   return [
     ...staticPages,
     { url: `${base}/browse`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.7 },
     ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages,
-    ...shadowPages, ...bushfirePages, ...preDaHistoryPages,
+    ...shadowPages, ...bushfirePages, ...preDaHistoryPages, ...planningControlsPages,
   ]
 }
