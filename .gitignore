@@ -473,6 +473,8 @@ scripts/
 !scripts/batch_lep_scrape.py
 !scripts/scrape_cb_lep_pdf.py
 !scripts/check_zone_coverage.py
+!scripts/manual_verify.py
+!scripts/register_orphan_chapters.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

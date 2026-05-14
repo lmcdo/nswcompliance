@@ -574,6 +574,7 @@ def run_monitor(
         "failed": 0,
         "skipped_no_url": 0,
         "hub_alerts": [],
+        "waf_blocked": [],
     }
 
     for council, council_chapters in by_council.items():
@@ -892,6 +893,12 @@ def run_monitor(
                     conn.commit()
                 council_failed += 1
                 results["failed"] += 1
+                results["waf_blocked"].append({
+                    "council": ch_council,
+                    "chapter_key": key,
+                    "label": label,
+                    "url": url,
+                })
 
             except Exception as exc:
                 print(f"    [ERROR] {exc}")
@@ -1104,6 +1111,26 @@ def main():
     warnings = sanity_check(results, results["checked"] + results["unchanged"])
     for w in warnings:
         print(f"\n  {w}")
+
+    # ── WAF-blocked digest ──────────────────────────────────────────────────
+    n_waf = len(results["waf_blocked"])
+    if n_waf > 0:
+        waf_by_council: dict[str, list[dict]] = {}
+        for w in results["waf_blocked"]:
+            waf_by_council.setdefault(w["council"], []).append(w)
+        lines = []
+        for waf_council, items in sorted(waf_by_council.items()):
+            lines.append(f"\n  [{waf_council}] ({len(items)} chapters)")
+            for item in items:
+                lines.append(f"    {item['chapter_key']}")
+                lines.append(f"    {item['url']}")
+        waf_detail = "\n".join(lines)
+        send_telegram(
+            f"DCP Monitor: {n_waf} chapter(s) WAF-blocked — manual download required\n"
+            f"{waf_detail}\n\n"
+            f"Open URLs in browser to check for changes.\n"
+            f"If changed: python scripts/manual_verify.py --council X --chapter Y --file path.pdf"
+        )
 
     # ── Telegram notifications ───────────────────────────────────────────────
     # Always notify so we have proof the pipeline ran (or didn't run cleanly).
