@@ -8,22 +8,14 @@ interface DCPInterestFormProps {
   address: string;
 }
 
-/** Councils with full DCP provision text (TOC browser, page images, topic filters) */
-const TIER1_COUNCILS = [
-  'Inner West (Ashfield, Marrickville, Leichhardt)',
-  'Ku-ring-gai',
-  'Waverley',
-  'Woollahra',
-  'City of Sydney',
-];
-
 /** Councils with structured numeric controls (setbacks, parking, landscaping, height) */
-const TIER2_COUNCILS = [
+const STRUCTURED_CONTROLS_COUNCILS = [
   'Bayside', 'Blacktown', 'Burwood', 'Camden', 'Campbelltown',
   'Canada Bay', 'Canterbury-Bankstown', 'Cumberland', 'Fairfield',
-  'Georges River', 'Hornsby', 'Liverpool', 'Northern Beaches',
-  'Parramatta', 'Penrith', 'Randwick', 'Ryde', 'Strathfield',
-  'Sutherland Shire', 'The Hills Shire',
+  'Georges River', 'Hornsby', 'Inner West', 'Ku-ring-gai',
+  'Liverpool', 'Northern Beaches', 'Parramatta', 'Penrith',
+  'Randwick', 'Ryde', 'Strathfield', 'Sutherland Shire',
+  'The Hills Shire', 'Waverley', 'Woollahra',
 ];
 
 export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) {
@@ -113,39 +105,35 @@ export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) 
 
         {showCoverage && (
           <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
-            {/* Tier 1 */}
+            {/* Full structured DCP */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-teal-500" />
                 <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Full DCP provisions
+                  Full structured DCP
                 </span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
-                Complete provision text with TOC browser, PDF page images, and topic filters.
+                Complete provision text with TOC browser, PDF page images, topic filters, and precinct-specific controls.
               </p>
-              <div className="flex flex-wrap gap-1.5">
-                {TIER1_COUNCILS.map(c => (
-                  <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-                    {c}
-                  </span>
-                ))}
-              </div>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                Inner West (Ashfield, Marrickville, Leichhardt)
+              </span>
             </div>
 
-            {/* Tier 2 */}
+            {/* Numeric controls */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
                 <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Structured numeric controls
+                  Numeric DCP controls
                 </span>
               </div>
               <p className="text-xs text-gray-500 mb-2">
                 Setbacks, parking rates, landscaping, height, and site coverage with DCP clause citations.
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {TIER2_COUNCILS.map(c => (
+                {STRUCTURED_CONTROLS_COUNCILS.map(c => (
                   <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                     {c}
                   </span>
