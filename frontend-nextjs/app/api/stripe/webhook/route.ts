@@ -80,6 +80,10 @@ export async function POST(req: NextRequest) {
     return handleSatelliteReport(session, meta, 'bushfire');
   }
 
+  if (meta.product === 'conveyancing-report') {
+    return handleConveyancingReport(session, meta);
+  }
+
   if (meta.product === 'granny-flat-analysis') {
     return handleGrannyFlatAnalysis(session, meta);
   }
@@ -384,6 +388,102 @@ async function handleSatelliteReport(
     });
   } catch (err) {
     console.error(`[stripe/webhook] ${product} Resend email error:`, err);
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Conveyancing Planning Disclosure — generate PDF via Railway, email attachment
+// ---------------------------------------------------------------------------
+
+async function handleConveyancingReport(
+  session: Stripe.Checkout.Session,
+  meta: Record<string, string>
+) {
+  const { report_id, address, lat, lng, prop_id } = meta;
+  const email = session.customer_details?.email || meta.email;
+
+  if (!report_id || !address || !email) {
+    console.error('[stripe/webhook] conveyancing missing metadata:', { report_id, address, email });
+    return NextResponse.json({ received: true });
+  }
+
+  if (!lat || !lng) {
+    console.error('[stripe/webhook] conveyancing missing lat/lng — cannot generate PDF');
+    return NextResponse.json({ received: true });
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+
+  // Generate PDF via Railway (returns { pdf_url })
+  let pdfUrl: string;
+  try {
+    const genRes = await fetch(`${baseUrl}/api/reports/conveyancing/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report_id,
+        address,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        prop_id: prop_id || null,
+      }),
+    });
+
+    if (!genRes.ok) {
+      const errBody = await genRes.json().catch(() => ({}));
+      throw new Error(`PDF generation failed: ${genRes.status} — ${JSON.stringify(errBody)}`);
+    }
+
+    const genResult = await genRes.json();
+    pdfUrl = genResult.pdf_url;
+  } catch (err) {
+    console.error('[stripe/webhook] conveyancing PDF generation error:', err);
+    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
+  }
+
+  // Fetch PDF from R2 to attach to email
+  let pdfBuffer: Buffer;
+  try {
+    const pdfRes = await fetch(pdfUrl);
+    if (!pdfRes.ok) throw new Error(`Failed to fetch PDF from R2: ${pdfRes.status}`);
+    pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  } catch (err) {
+    console.error('[stripe/webhook] conveyancing R2 fetch error:', err);
+    // Still return 200 — PDF exists at R2 URL, customer can use manual download
+    return NextResponse.json({ received: true });
+  }
+
+  const filename = `conveyancing-report-${report_id.slice(0, 8)}.pdf`;
+
+  try {
+    await resend.emails.send({
+      from: 'Can I Build It <info@plotdetect.com.au>',
+      replyTo: 'hello@canibuildit.com.au',
+      to: [email],
+      subject: 'Your Conveyancing Planning Disclosure Report',
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your report is attached.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your Conveyancing Planning Disclosure Report for ${address} is attached as a PDF.
+            It includes LEP controls, spatial overlays, valuation, heritage, SEPP overlays,
+            development feasibility, and nearby DA activity with full data source citations.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            You can share this with your conveyancer, solicitor, or buyers agent.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+          </p>
+        </div>
+      `,
+      attachments: [{ filename, content: pdfBuffer }],
+    });
+  } catch (err) {
+    console.error('[stripe/webhook] conveyancing Resend email error:', err);
   }
 
   return NextResponse.json({ received: true });
