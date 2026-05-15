@@ -102,9 +102,9 @@ export default function ClimateRiskPage() {
           What you get: sample assessment
         </h2>
         <p className="text-sm text-gray-500 mb-6 max-w-2xl">
-          This is a real output for a property in the Hawkesbury — one of the most
-          multi-hazard-exposed regions in NSW. Every number comes from a government
-          dataset. Nothing is estimated or approximated.
+          This is a real output for a specific property near Windsor, Hawkesbury LGA
+          — one of the most multi-hazard-exposed regions in NSW. Every number comes
+          from a government dataset. Nothing is estimated or approximated.
         </p>
 
         {/* Score header */}
@@ -118,7 +118,7 @@ export default function ClimateRiskPage() {
               <p className="text-sm text-red-600 mt-1 font-medium">Very High</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500">Hawkesbury LGA, NSW</p>
+              <p className="text-xs text-gray-500">Near Windsor, Hawkesbury LGA</p>
               <p className="text-xs text-gray-400 mt-0.5">Methodology v1.0</p>
             </div>
           </div>
