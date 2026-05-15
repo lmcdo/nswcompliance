@@ -96,6 +96,316 @@ export default function ClimateRiskPage() {
         </div>
       </section>
 
+      {/* Sample output */}
+      <section className="max-w-4xl mx-auto px-6 pb-16">
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          What you get: sample assessment
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 max-w-2xl">
+          This is a real output for a property in the Hawkesbury — one of the most
+          multi-hazard-exposed regions in NSW. Every number comes from a government
+          dataset. Nothing is estimated or approximated.
+        </p>
+
+        {/* Score header */}
+        <div className="rounded-xl border border-gray-200 overflow-hidden mb-6">
+          <div className="bg-red-50 border-b border-red-100 px-6 py-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-red-600 uppercase tracking-wide mb-1">
+                Composite Climate Risk Score
+              </p>
+              <p className="text-4xl font-bold text-red-700">67 <span className="text-lg font-semibold text-red-500">/ 100</span></p>
+              <p className="text-sm text-red-600 mt-1 font-medium">Very High</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Hawkesbury LGA, NSW</p>
+              <p className="text-xs text-gray-400 mt-0.5">Methodology v1.0</p>
+            </div>
+          </div>
+
+          {/* Per-hazard breakdown */}
+          <div className="divide-y divide-gray-100">
+            {/* Flood */}
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-gray-900">Flood</span>
+                </div>
+                <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
+                  20 / 20
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                Property is within a flood planning area (EPI overlay). The Hawkesbury-Nepean
+                is one of the highest flood-risk catchments in Australia — 90,000+ people
+                live below the probable maximum flood level.
+              </p>
+              <p className="text-xs text-gray-400 ml-6 mt-1">
+                Source: NSW Planning Portal EPI Flood layers
+              </p>
+            </div>
+
+            {/* Bushfire */}
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-600" />
+                  <span className="text-sm font-medium text-gray-900">Bushfire</span>
+                </div>
+                <span className="text-xs font-mono bg-orange-50 text-orange-700 px-2 py-0.5 rounded">
+                  20 / 20
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                Bush Fire Prone Land — the property is within an area mapped by the NSW Rural
+                Fire Service. Construction must comply with AS 3959 and may require a formal
+                BAL assessment before DA lodgement.
+              </p>
+              <p className="text-xs text-gray-400 ml-6 mt-1">
+                Source: NSW RFS Bushfire Prone Land Map
+              </p>
+            </div>
+
+            {/* Fire History */}
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <TreePine className="w-4 h-4 text-green-700" />
+                  <span className="text-sm font-medium text-gray-900">Fire History</span>
+                </div>
+                <span className="text-xs font-mono bg-amber-50 text-amber-700 px-2 py-0.5 rounded">
+                  12 / 20
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                2 recorded fire events at this location. Areas with repeated burn history face
+                higher risk of future fire — vegetation regrowth creates fuel loads that
+                accumulate over 5-10 year cycles.
+              </p>
+              <p className="text-xs text-gray-400 ml-6 mt-1">
+                Source: NSW National Parks &amp; Wildlife Service fire history dataset
+              </p>
+            </div>
+
+            {/* Heat Trajectory */}
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm font-medium text-gray-900">Heat Trajectory</span>
+                </div>
+                <span className="text-xs font-mono bg-red-50 text-red-700 px-2 py-0.5 rounded">
+                  18 / 20
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                Days over 35°C projected to increase from 14/yr to 52/yr by 2090 under high
+                emissions (SSP3-7.0). Western Sydney is one of the fastest-heating regions in
+                the country — Penrith already records the highest urban temperatures in Australia.
+              </p>
+              <div className="ml-6 mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400">Baseline</p>
+                  <p className="text-sm font-semibold text-gray-900">14 days/yr</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400">2050</p>
+                  <p className="text-sm font-semibold text-amber-700">28 days/yr</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400">2070</p>
+                  <p className="text-sm font-semibold text-orange-700">39 days/yr</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400">2090</p>
+                  <p className="text-sm font-semibold text-red-700">52 days/yr</p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 ml-6 mt-2">
+                Source: NARCliM 2.0 (AdaptNSW), ACCESS-ESM1.5, SSP3-7.0, 4km resolution
+              </p>
+            </div>
+
+            {/* Coastal */}
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Waves className="w-4 h-4 text-cyan-600" />
+                  <span className="text-sm font-medium text-gray-900">Coastal</span>
+                </div>
+                <span className="text-xs font-mono bg-green-50 text-green-700 px-2 py-0.5 rounded">
+                  0 / 20
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                Not within any SEPP (Resilience and Hazards) 2021 coastal hazard zone.
+                Inland properties are not exposed to coastal erosion or tidal inundation —
+                but may still face riverine flood risk (assessed separately above).
+              </p>
+              <p className="text-xs text-gray-400 ml-6 mt-1">
+                Source: SEPP (Resilience and Hazards) 2021 coastal management layers
+              </p>
+            </div>
+          </div>
+
+          {/* Interaction bonuses */}
+          <div className="border-t border-gray-200 bg-amber-50 px-6 py-4">
+            <p className="text-xs font-medium text-amber-700 uppercase tracking-wide mb-2">
+              Compound hazard interactions detected
+            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Bushfire + Fire History — repeated burn = higher structural risk</span>
+                <span className="font-mono text-amber-700 text-xs">+5</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Bushfire + Heat — rising temperatures dry vegetation, increasing fire intensity</span>
+                <span className="font-mono text-amber-700 text-xs">+5</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Flood + Heat — extreme heat drives intense convective storms</span>
+                <span className="font-mono text-amber-700 text-xs">+3</span>
+              </div>
+            </div>
+            <p className="text-xs text-amber-600 mt-3">
+              Climate impacts are cascading and compounding across systems (IPCC AR6, high confidence).
+              Properties exposed to multiple hazards face disproportionate risk — a bushfire-prone
+              property in a heating region is not simply &ldquo;bushfire + heat&rdquo; but a fundamentally
+              different risk profile.
+            </p>
+          </div>
+        </div>
+
+        {/* Additional climate projections */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="rounded-xl border border-gray-200 p-5">
+            <Thermometer className="w-4 h-4 text-red-500 mb-2" />
+            <p className="text-sm font-medium text-gray-900 mb-1">Mean Temperature Change</p>
+            <p className="text-2xl font-bold text-red-600">+2.1°C</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Projected increase in mean near-surface temperature by 2090 under SSP3-7.0.
+              This shifts the entire distribution — what is currently a &ldquo;hot year&rdquo;
+              becomes the new average.
+            </p>
+            <p className="text-xs text-gray-400 mt-2">NARCliM 2.0 · ACCESS-ESM1.5 · 4km grid</p>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 p-5">
+            <Droplets className="w-4 h-4 text-blue-500 mb-2" />
+            <p className="text-sm font-medium text-gray-900 mb-1">Precipitation Trend</p>
+            <p className="text-2xl font-bold text-amber-600">-0.3 mm/day</p>
+            <p className="text-xs text-gray-500 mt-1">
+              A drying trend means less frequent rainfall — but when rain does come, it tends
+              to be more intense. This paradox increases both drought and flash flood risk
+              simultaneously.
+            </p>
+            <p className="text-xs text-gray-400 mt-2">NARCliM 2.0 · ACCESS-ESM1.5 · 4km grid</p>
+          </div>
+        </div>
+
+        {/* How to read the score */}
+        <div className="rounded-xl border border-gray-200 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">How to read this score</h3>
+          <div className="grid grid-cols-5 gap-2 mb-4">
+            {[
+              { band: 'Low', range: '1–20', color: 'bg-green-100 text-green-800' },
+              { band: 'Moderate', range: '21–40', color: 'bg-yellow-100 text-yellow-800' },
+              { band: 'High', range: '41–60', color: 'bg-orange-100 text-orange-800' },
+              { band: 'Very High', range: '61–80', color: 'bg-red-100 text-red-800' },
+              { band: 'Extreme', range: '81–100', color: 'bg-red-200 text-red-900' },
+            ].map(({ band, range, color }) => (
+              <div key={band} className={`rounded-lg px-2 py-1.5 text-center ${color}`}>
+                <p className="text-xs font-semibold">{band}</p>
+                <p className="text-xs">{range}</p>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              <strong className="text-gray-900">Equal weighting (V1):</strong> each hazard contributes
+              up to 20 points. This is a deliberate simplifying assumption — we do not claim flood risk
+              is &ldquo;equal&rdquo; to heat risk. V2 will weight by projected loss severity using APRA
+              and ICA actuarial data.
+            </p>
+            <p>
+              <strong className="text-gray-900">Deterministic:</strong> the same address always produces
+              the same score. There is no AI interpretation, no machine learning model, no probabilistic
+              element. The score is a direct function of which government spatial layers intersect the
+              property and the NARCliM projection at the nearest 4km grid cell.
+            </p>
+            <p>
+              <strong className="text-gray-900">Not a prediction:</strong> the score measures hazard
+              <em> exposure</em>, not the probability of loss. A score of 67 means the property is
+              exposed to multiple overlapping climate hazards — not that there is a 67% chance of
+              damage. Property-specific factors (construction type, floor height, vegetation management)
+              are not included.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* The numbers behind the score */}
+      <section className="border-y border-gray-100 bg-gray-50 py-12 px-6">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Why these hazards matter — the national picture
+          </h2>
+          <p className="text-sm text-gray-500 mb-6 max-w-2xl">
+            These are not PlotDetect numbers. They are from APRA, the Insurance Council of Australia,
+            and the IPCC — the institutions that set prudential standards and measure catastrophe losses.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              {
+                stat: '+240%',
+                label: 'Projected flood loss increase by 2050',
+                detail: 'Flood is the most climate-sensitive weather peril. 50% of all losses are concentrated in just 10% of regions.',
+                source: 'APRA Mind the Gap 2026, p.14',
+              },
+              {
+                stat: '1 in 4',
+                label: 'Households uninsured by 2050',
+                detail: 'Up from 1 in 7 today. That is roughly 40,000 households losing home insurance coverage every year.',
+                source: 'APRA Mind the Gap 2026, p.4',
+              },
+              {
+                stat: '$16B',
+                label: 'Annual weather losses by 2050',
+                detail: 'Up from $7B today under current policies. A 129% increase in national weather-related losses in 26 years.',
+                source: 'APRA Mind the Gap 2026, p.4',
+              },
+              {
+                stat: '7.2%',
+                label: 'Annual home insurance premium growth',
+                detail: 'Versus wage growth of 3.1%. Premiums are rising more than twice as fast as incomes — and NSW levies add ~18% on top.',
+                source: 'APRA Mind the Gap 2026, p.7',
+              },
+              {
+                stat: '$164–226B',
+                label: 'Coastal infrastructure exposed to 1.1m SLR',
+                detail: 'Including 187,000–274,000 residential buildings and 27,000–35,000km of roads.',
+                source: 'IPCC AR6 WGII Ch11, Table Box 11.6.2',
+              },
+              {
+                stat: '77%',
+                label: 'Severe flood risk properties uninsured',
+                detail: '186,000 of the 242,000 highest-risk residential dwellings currently lack flood insurance.',
+                source: 'ICA Catastrophe Resilience 2024-25, p.3',
+              },
+            ].map(({ stat, label, detail, source }) => (
+              <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
+                <p className="text-2xl font-bold text-gray-900 mb-1">{stat}</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">{label}</p>
+                <p className="text-xs text-gray-500 leading-relaxed">{detail}</p>
+                <p className="text-xs text-gray-400 mt-2">{source}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Why it matters */}
       <section className="bg-slate-900 text-white py-16 px-6">
         <div className="max-w-3xl mx-auto">
@@ -136,7 +446,7 @@ export default function ClimateRiskPage() {
             <h3 className="text-lg font-bold text-gray-900 mb-2">Climate Risk Score</h3>
             <p className="text-2xl font-bold text-teal-600 mb-2">Free</p>
             <p className="text-sm text-gray-500 leading-relaxed">
-              Composite score out of 10 for any NSW address. Five hazard categories with
+              Composite score out of 100 for any NSW address. Five hazard categories with
               compound interaction analysis. Deterministic — same address always produces
               the same score.
             </p>
