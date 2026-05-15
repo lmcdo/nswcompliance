@@ -5,6 +5,16 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ClimateRiskResultCard, type ClimateRiskResult } from '@/components/tools/ClimateRiskResultCard';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const CLIMATE_STEPS: TransparencyStep[] = [
+  { label: 'Checking flood overlays…',                   ms: 0 },
+  { label: 'Querying bushfire prone land data…',          ms: 1500 },
+  { label: 'Scanning coastal erosion hazard lines…',      ms: 3000 },
+  { label: 'Loading NARCliM 2.0 climate projections…',    ms: 5000 },
+  { label: 'Checking fire history (NPWS)…',               ms: 7000 },
+  { label: 'Computing composite risk score…',             ms: 9000 },
+];
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
@@ -107,12 +117,13 @@ export function ClimateRiskTool() {
       )}
 
       {state === 'running' && (
-        <div className="flex items-center gap-3 py-12 justify-center text-gray-500 text-sm">
-          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Querying spatial overlays and climate projections...
+        <div className="py-6">
+          <OperationalTransparency
+            steps={CLIMATE_STEPS}
+            active={state === 'running'}
+            address={address}
+            note="Usually completes in 10–15 seconds."
+          />
         </div>
       )}
 

@@ -7,6 +7,14 @@ import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const SOLAR_STEPS: TransparencyStep[] = [
+  { label: 'Detecting roof geometry from satellite imagery…', ms: 0 },
+  { label: 'Calculating optimal panel layout…',              ms: 2000 },
+  { label: 'Modelling annual solar irradiance…',             ms: 4000 },
+  { label: 'Estimating energy yield and savings…',           ms: 7000 },
+];
 
 const AerialTile = dynamic(
   () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
@@ -255,13 +263,12 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
         </div>
       )}
 
-      {state === 'running' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Analysing roof geometry...</p>
-          <p className="text-xs text-gray-400 mt-1">Usually completes in 5–10 seconds.</p>
-        </div>
-      )}
+      <OperationalTransparency
+        steps={SOLAR_STEPS}
+        active={state === 'running'}
+        address={address}
+        note="Usually completes in 5–10 seconds."
+      />
 
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">

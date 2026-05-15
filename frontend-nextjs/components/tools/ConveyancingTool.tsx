@@ -6,6 +6,16 @@ import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const CONVEYANCING_STEPS: TransparencyStep[] = [
+  { label: 'Querying NSW Planning Portal…',           ms: 0 },
+  { label: 'Loading spatial overlays and zoning…',    ms: 2000 },
+  { label: 'Checking heritage registers…',            ms: 5000 },
+  { label: 'Reading environmental planning layers…',  ms: 8000 },
+  { label: 'Pulling valuation and lot dimensions…',   ms: 12000 },
+  { label: 'Assembling disclosure data…',             ms: 16000 },
+];
 
 interface FeasibilityItem {
   question: string;
@@ -216,12 +226,13 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
       )}
 
       {state === 'running' && (
-        <div className="text-center py-16">
-          <div className="inline-block w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm text-gray-500">
-            Querying NSW Planning Portal, spatial overlays, and valuation data...
-          </p>
-          <p className="text-xs text-gray-400 mt-1">This usually takes 10-20 seconds</p>
+        <div className="py-8">
+          <OperationalTransparency
+            steps={CONVEYANCING_STEPS}
+            active={state === 'running'}
+            address={address}
+            note="This usually takes 10–20 seconds."
+          />
         </div>
       )}
 

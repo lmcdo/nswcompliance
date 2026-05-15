@@ -7,6 +7,15 @@ import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const GRANNY_FLAT_STEPS: TransparencyStep[] = [
+  { label: 'Checking zoning and lot dimensions…',            ms: 0 },
+  { label: 'Assessing minimum lot size requirements…',       ms: 1500 },
+  { label: 'Checking dual occupancy provisions…',            ms: 3000 },
+  { label: 'Reviewing DCP setback and landscaping rules…',   ms: 5000 },
+  { label: 'Evaluating CDC pathway eligibility…',            ms: 7000 },
+];
 
 const AerialTile = dynamic(
   () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
@@ -447,15 +456,13 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
 
       {/* Loading — quick check */}
       {pageState === 'loading' && (
-        <div className="mt-10 text-center">
-          <div className="inline-flex items-center gap-3 text-gray-500">
-            <svg className="animate-spin h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            <span className="text-base">Checking planning rules for {address}…</span>
-          </div>
-          <p className="mt-3 text-sm text-gray-400">Usually takes 2–3 seconds</p>
+        <div className="mt-6">
+          <OperationalTransparency
+            steps={GRANNY_FLAT_STEPS}
+            active={pageState === 'loading'}
+            address={address}
+            note="Usually takes 2–5 seconds."
+          />
         </div>
       )}
 

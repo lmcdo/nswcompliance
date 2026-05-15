@@ -7,6 +7,15 @@ import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const SHADOW_STEPS: TransparencyStep[] = [
+  { label: 'Calculating sun angles across 5 ADG scenarios…', ms: 0 },
+  { label: 'Modelling shadow envelopes for each scenario…',  ms: 3000 },
+  { label: 'Measuring shadow impact on neighbouring lots…',   ms: 8000 },
+  { label: 'Checking ADG solar access compliance…',          ms: 14000 },
+  { label: 'Generating shadow diagrams…',                    ms: 20000 },
+];
 
 const ShadowMap = dynamic(
   () => import('@/components/reports/ShadowMap').then(m => m.ShadowMap),
@@ -228,13 +237,12 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         </div>
       )}
 
-      {state === 'running' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Running shadow model across 5 ADG scenarios...</p>
-          <p className="text-xs text-gray-400 mt-1">This takes 15–30 seconds.</p>
-        </div>
-      )}
+      <OperationalTransparency
+        steps={SHADOW_STEPS}
+        active={state === 'running'}
+        address={address}
+        note="This takes 15–30 seconds."
+      />
 
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">

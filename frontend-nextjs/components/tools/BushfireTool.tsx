@@ -5,6 +5,15 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { BushfireResultCard, type BushfireResult } from '@/components/tools/BushfireResultCard';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const BUSHFIRE_STEPS: TransparencyStep[] = [
+  { label: 'Querying RFS bushfire prone land map…',      ms: 0 },
+  { label: 'Checking vegetation category…',              ms: 2000 },
+  { label: 'Estimating BAL band from setback distance…', ms: 4000 },
+  { label: 'Assessing 10/50 vegetation clearing rules…', ms: 7000 },
+  { label: 'Checking CDC pathway eligibility…',          ms: 10000 },
+];
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
@@ -109,13 +118,12 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
         </div>
       )}
 
-      {state === 'running' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Querying NSW RFS bushfire prone land data...</p>
-          <p className="text-xs text-gray-400 mt-1">RFS BFPL map &middot; PostGIS zone overlays. Allow 5&ndash;15 seconds.</p>
-        </div>
-      )}
+      <OperationalTransparency
+        steps={BUSHFIRE_STEPS}
+        active={state === 'running'}
+        address={address}
+        note="Allow 5–15 seconds."
+      />
 
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">
