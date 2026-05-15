@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Pricing — canibuildit.com.au',
-  description: 'Free NSW planning tools for everyone. Detailed reports for homeowners. Embed program for builders.',
+  title: 'Pricing — PlotDetect',
+  description: 'Free NSW property intelligence tools. Professional reports from $19. Monitoring from $9/month.',
 };
 
 function Check() {
@@ -14,60 +16,45 @@ function Check() {
   );
 }
 
-function Cross() {
-  return (
-    <svg className="w-4 h-4 text-slate-300 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
-
 export default function PricingPage() {
   return (
     <main className="min-h-screen bg-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-gray-100">
-        <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
-          canibuildit<span className="text-teal-600">.com.au</span>
-        </Link>
-        <Link href="/reports" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          Try the tools →
-        </Link>
-      </nav>
+      <SiteNav maxWidth="max-w-6xl" />
 
       {/* Header */}
       <section className="pt-16 pb-12 px-6 text-center max-w-2xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-900 mb-3">Simple pricing</h1>
         <p className="text-gray-500 text-lg">
-          The tools are free. Pay only when you want more depth.
+          Free checks reveal risk. Paid reports resolve it.
         </p>
       </section>
 
       {/* Three columns */}
-      <section className="px-6 pb-20 max-w-5xl mx-auto">
+      <section className="px-6 pb-16 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          {/* Homeowner */}
+          {/* Free tools */}
           <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Homeowner</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Everyone</p>
               <h2 className="text-2xl font-bold text-gray-900">Free tools</h2>
               <p className="text-gray-500 text-sm mt-2">
-                Run any check as many times as you like. No account required.
+                No account, no credit card. Run any check as many times as you like.
               </p>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">$0</div>
             <p className="text-sm text-gray-400 mb-8">Always free</p>
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
-                'Granny Flat eligibility check',
-                'Flood risk (LEP flood control lot)',
-                'Nearby development radar',
-                'Bushfire pre-screen',
+                'Flood risk check (LEP overlay + depth where available)',
+                'Bushfire pre-screen (BFPL + BAL band)',
                 'Conveyancing planning disclosure',
-                'Solar yield estimate',
+                'Granny flat eligibility check',
+                'Neighbour Threat Radar (DAs within 500m)',
                 'Shadow path analysis',
-                'Pre-DA site history',
+                'Solar yield estimate',
+                'Pre-DA site history (changes detected)',
+                'Verify — full compliance engine (SEPP/LEP/DCP)',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <Check />
@@ -83,7 +70,7 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Detailed reports — highlighted */}
+          {/* Reports — highlighted */}
           <div className="rounded-2xl border-2 border-teal-500 p-8 flex flex-col relative shadow-lg">
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
               <span className="bg-teal-500 text-white text-xs font-semibold px-4 py-1 rounded-full">
@@ -91,23 +78,23 @@ export default function PricingPage() {
               </span>
             </div>
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-2">Homeowner — report</p>
-              <h2 className="text-2xl font-bold text-gray-900">Detailed reports</h2>
+              <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-2">One-off purchase</p>
+              <h2 className="text-2xl font-bold text-gray-900">Reports</h2>
               <p className="text-gray-500 text-sm mt-2">
-                Professional PDF with full analysis, compliance checklist, and actionable next steps.
+                Professional PDF with full analysis and actionable next steps. One address, one purchase.
               </p>
             </div>
             <div className="text-4xl font-bold text-gray-900 mb-1">$19–$49</div>
-            <p className="text-sm text-gray-400 mb-8">Per property, one-off</p>
+            <p className="text-sm text-gray-400 mb-8">Per property</p>
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
                 { text: 'Solar Yield — $19', sub: 'System sizing, payback, monthly kWh' },
                 { text: 'Shadow Analysis — $29', sub: 'Seasonal diagrams, ADG compliance' },
-                { text: 'Bushfire Pre-Screen — $29', sub: 'BAL band, AS 3959, RFS referral' },
-                { text: 'Flood Risk — $49', sub: 'Depth modelling, ARI bands, BOM history' },
+                { text: 'Bushfire — $29', sub: 'BAL band, AS 3959, RFS referral guidance' },
+                { text: 'Flood Risk — $49', sub: 'Depth modelling, ARI bands, BoM history' },
                 { text: 'Granny Flat — $49', sub: 'CDC checklist, setbacks, yield analysis' },
                 { text: 'Site History — $49', sub: 'Satellite change detection, DA search' },
-                { text: 'Conveyancing — $49', sub: 'LEP controls, overlays, DCP setbacks, heritage' },
+                { text: 'Conveyancing — $49', sub: 'LEP, overlays, DCP setbacks, heritage' },
               ].map(({ text, sub }) => (
                 <li key={text} className="flex items-start gap-2">
                   <Check />
@@ -126,46 +113,70 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Builder embed */}
+          {/* Monitoring + Bundle */}
           <div className="rounded-2xl border border-gray-200 p-8 flex flex-col">
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Builder / Agent</p>
-              <h2 className="text-2xl font-bold text-gray-900">Embed program</h2>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Ongoing</p>
+              <h2 className="text-2xl font-bold text-gray-900">Monitoring</h2>
               <p className="text-gray-500 text-sm mt-2">
-                Add any tool to your own website. Qualified homeowners come to you.
+                Weekly DA alerts for properties you care about. Cancel anytime.
               </p>
             </div>
-            <div className="text-4xl font-bold text-gray-900 mb-1">Free</div>
-            <p className="text-sm text-gray-400 mb-8">to start — Partner plan $99/mo</p>
+            <div className="text-4xl font-bold text-gray-900 mb-1">$9/mo</div>
+            <p className="text-sm text-gray-400 mb-8">Per property</p>
             <ul className="space-y-3 text-sm text-gray-700 mb-8 flex-1">
               {[
-                { text: 'Embed any tool on your site', included: true },
-                { text: 'Unbranded widget (white-label)', included: false },
-                { text: 'Lead capture for eligible results', included: false },
-                { text: 'Monthly lead report', included: false },
-                { text: 'Priority support', included: false },
-              ].map(({ text, included }) => (
-                <li key={text} className="flex items-start gap-2">
-                  {included ? <Check /> : <Cross />}
-                  <span className={included ? '' : 'text-gray-400'}>{text}</span>
+                'Weekly email alerts for new DAs within 200m',
+                'Monthly digest summary',
+                'Cancel anytime via Stripe portal',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <Check />
+                  {item}
                 </li>
               ))}
-              <li className="text-xs text-gray-400 pt-2 italic">
-                Cross/tick shows free vs Partner plan
-              </li>
             </ul>
-            <a
-              href="mailto:hello@canibuildit.com.au?subject=Embed%20program%20enquiry"
-              className="block text-center py-3 px-6 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
-            >
-              Get the embed code
-            </a>
+
+            <div className="border-t border-gray-100 pt-6 mt-auto">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Save with a bundle</p>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="font-bold text-gray-900">$149</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  All 7 standard reports for one address. Save up to $145.
+                </p>
+              </div>
+            </div>
           </div>
 
         </div>
       </section>
 
-      {/* FAQ strip */}
+      {/* Climate Risk — coming */}
+      <section className="px-6 pb-16 max-w-5xl mx-auto">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">Coming soon</p>
+              <h3 className="text-lg font-bold text-gray-900">Climate Risk Report — $99</h3>
+              <p className="text-sm text-gray-500 mt-1 max-w-lg">
+                NARCliM 2.0 climate projections, compound hazard scoring, and trajectory analysis.
+                Available after PlotDetect Pty Ltd incorporation and professional indemnity insurance.
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                The free Climate Risk Score (composite rating) is available now for any NSW address.
+              </p>
+            </div>
+            <a
+              href="mailto:hello@plotdetect.com.au?subject=Climate%20Risk%20Report%20interest"
+              className="shrink-0 inline-block px-5 py-2.5 border border-slate-300 text-sm font-medium text-slate-700 rounded-lg hover:bg-white transition-colors"
+            >
+              Register interest
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
       <section className="bg-slate-50 border-t border-slate-100 py-16 px-6">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-8 text-center">Common questions</h2>
@@ -173,15 +184,19 @@ export default function PricingPage() {
             {[
               {
                 q: 'Are the free tools really free?',
-                a: 'Yes. Every check runs live against the NSW Planning Portal and costs you nothing. No account, no credit card.',
+                a: 'Yes. Every check runs live against NSW Government data and costs you nothing. No account, no credit card. Free forever.',
               },
               {
                 q: 'What do the paid reports add?',
-                a: 'The free tool gives you the verdict. The paid report gives you the depth — full compliance checklists, setback calculations, yield sensitivity analysis, insurer checklists, and a shareable PDF you can send to a builder, certifier, or conveyancer. Prices range from $19 to $49 depending on the tool.',
+                a: 'The free check gives you the verdict. The paid report gives you the depth — full compliance checklists, setback calculations, yield analysis, and a shareable PDF you can send to a builder, certifier, or conveyancer.',
               },
               {
-                q: 'How does the builder embed work?',
-                a: 'You paste one line of HTML onto your website. Visitors can check their address without leaving your site. Eligible results show your contact details. Free to start — the Partner plan adds lead capture and white-labelling.',
+                q: 'Can I use this as a conveyancer or buyers agent?',
+                a: 'Yes. Reports are one-off purchases — pass them through as a disbursement. For professional pricing and volume discounts, contact us.',
+              },
+              {
+                q: 'What is the bundle?',
+                a: 'All 7 standard reports (solar, shadow, bushfire, flood, granny flat, site history, conveyancing) for one address at $149 instead of $293. Useful for pre-auction due diligence.',
               },
               {
                 q: 'Is this planning advice?',
@@ -197,12 +212,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#0b1628] py-8 px-6 text-center">
-        <p className="text-sm text-slate-600">
-          © 2026 canibuildit.com.au — NSW planning intelligence for property owners and builders.
-        </p>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

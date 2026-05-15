@@ -4,18 +4,18 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
-  title: 'Flood Risk Check — canibuildit.com.au',
+  title: 'Flood Risk Check — PlotDetect',
   description: 'Is this NSW property in a flood zone? Cross-referenced flood assessment from government overlays, satellite imagery, river gauges, and council flood models — free for any address.',
   openGraph: {
     title: 'NSW Flood Risk Check — Free for any address',
     description: 'Government overlays, satellite detection, river gauges, and council flood model depths — cross-referenced for any NSW address. No login required.',
-    url: 'https://canibuildit.com.au/reports/flood',
-    siteName: 'canibuildit.com.au',
+    url: 'https://plotdetect.com.au/reports/flood',
+    siteName: 'plotdetect.com.au',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NSW Flood Risk Check — canibuildit.com.au',
+    title: 'NSW Flood Risk Check — PlotDetect',
     description: 'Flood depth and planning implications for any NSW address. Free, instant.',
   },
 }

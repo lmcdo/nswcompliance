@@ -9,7 +9,7 @@ import { BUSHFIRE_LGA_SLUG_MAP } from '@/lib/lga-data/bushfire-lgas';
 import { PRE_DA_HISTORY_LGA_SLUG_MAP } from '@/lib/lga-data/pre-da-history-lgas';
 
 export const metadata: Metadata = {
-  title: 'Browse NSW Planning Tools by Council Area — canibuildit.com.au',
+  title: 'Browse NSW Planning Tools by Council Area — PlotDetect',
   description:
     'Find granny flat eligibility, flood risk, solar yield, shadow analysis, DA monitoring, bushfire screening, and site history tools for every NSW council area.',
 };

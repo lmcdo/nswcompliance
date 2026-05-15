@@ -503,7 +503,7 @@ export async function POST(request: NextRequest) {
       const rent: number | null = result.estimated_weekly_rent_aud ?? null;
       const reportAddress: string = result.address ?? address ?? '';
       const addressParam = encodeURIComponent(reportAddress);
-      const reportUrl = `https://canibuildit.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
+      const reportUrl = `https://plotdetect.com.au/reports/granny-flat?jobId=${detect_id}&address=${addressParam}`;
 
       const verdictColor = eligible ? '#0f766e' : '#dc2626';
       const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
             </a>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
             <p style="color: #999; font-size: 12px; margin: 0;">
-              Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+              Can I Build It? &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
             </p>
           </div>
         `,

@@ -31,7 +31,7 @@ export const DATA_ACCURACY =
 
 /** Footer text for the (tools) layout — includes copyright. */
 export const TOOLS_LAYOUT_FOOTER =
-  `\u00A9 ${new Date().getFullYear()} canibuildit.com.au \u2014 NSW planning data only. ${INDICATIVE_ONLY} ${VERIFY_WITH_CERTIFIER}`;
+  `\u00A9 ${new Date().getFullYear()} PlotDetect \u2014 NSW planning data only. ${INDICATIVE_ONLY} ${VERIFY_WITH_CERTIFIER}`;
 
 /** Footer text for the /reports layout. */
 export const REPORTS_LAYOUT_FOOTER =

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { REPORTS_LAYOUT_FOOTER } from '@/lib/disclaimers';
 
 export const metadata: Metadata = {
-  title: 'NSW Property Intelligence — canibuildit.com.au',
+  title: 'NSW Property Intelligence — PlotDetect',
   description: 'NSW property intelligence reports: granny flat eligibility, flood risk, solar yield, shadow analysis, DA activity.',
 };
 
@@ -36,7 +36,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-semibold text-gray-900 text-base tracking-tight">
-              canibuildit<span className="text-teal-600">.com.au</span>
+              Plot<span className="text-teal-600">Detect</span>
             </span>
           </Link>
           <nav className="flex items-center gap-1 overflow-x-auto">
@@ -55,7 +55,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
       <main className="max-w-5xl mx-auto px-6 py-10">{children}</main>
       <footer className="border-t border-gray-100 mt-16">
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
-          <span>© 2026 canibuildit.com.au — NSW planning intelligence</span>
+          <span>© 2026 PlotDetect — NSW property intelligence</span>
           <div className="flex flex-wrap gap-4">
             <Link href="/#browse-by-area" className="hover:text-gray-600 transition-colors">Browse by area</Link>
             <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>

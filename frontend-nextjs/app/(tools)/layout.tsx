@@ -49,7 +49,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-gray-100 relative z-20">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="font-bold text-gray-900 text-base tracking-tight">
-            canibuildit<span className="text-teal-600">.com.au</span>
+            Plot<span className="text-teal-600">Detect</span>
           </Link>
 
           <nav className="flex items-center gap-5">
@@ -105,7 +105,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
             <p className="font-bold text-gray-900 text-sm tracking-tight mb-2">
-              canibuildit<span className="text-teal-600">.com.au</span>
+              Plot<span className="text-teal-600">Detect</span>
             </p>
             <p className="text-xs text-gray-400 leading-relaxed mb-3">
               NSW planning intelligence for property owners and investors.

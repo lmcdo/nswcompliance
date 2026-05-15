@@ -10,7 +10,7 @@ import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://canibuildit.com.au'
+  const base = 'https://plotdetect.com.au'
   const now = new Date()
 
   const floodPages = FLOOD_LGAS.map(lga => ({
@@ -40,6 +40,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/partner`,         priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/contact`,         priority: 0.5,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/climate-risk`,    priority: 0.9,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/about`,           priority: 0.5,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/for/conveyancers`, priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/for/builders`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/for/councils`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
   ]
 
   const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({

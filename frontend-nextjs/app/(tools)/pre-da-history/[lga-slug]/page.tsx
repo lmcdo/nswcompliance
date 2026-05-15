@@ -23,13 +23,13 @@ export function generateMetadata(
     openGraph: {
       title: `Pre-DA Site History in ${lga.name} — Free NSW Property Check`,
       description: `Satellite change detection + DA history for any ${lga.name} address. Unapproved works, vegetation clearing, flood/fire events. No login required.`,
-      url: `https://canibuildit.com.au/pre-da-history/${lga.slug}`,
-      siteName: 'canibuildit.com.au',
+      url: `https://plotdetect.com.au/pre-da-history/${lga.slug}`,
+      siteName: 'plotdetect.com.au',
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `Pre-DA Site History in ${lga.name} — canibuildit.com.au`,
+      title: `Pre-DA Site History in ${lga.name} — PlotDetect`,
       description: `Satellite change detection + DA history for any ${lga.name} address. Free, instant.`,
     },
   }

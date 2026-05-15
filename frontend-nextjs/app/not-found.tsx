@@ -13,7 +13,7 @@ export default function NotFound() {
     <main className="min-h-screen bg-[#0b1628] text-white flex flex-col items-center justify-center px-6 text-center">
       {/* Logo */}
       <Link href="/" className="text-lg font-bold tracking-tight mb-16 opacity-60 hover:opacity-100 transition-opacity">
-        canibuildit<span className="text-[#00d9b8]">.com.au</span>
+        Plot<span className="text-[#00d9b8]">Detect</span>
       </Link>
 
       {/* Error */}

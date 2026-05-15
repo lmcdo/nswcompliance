@@ -11,9 +11,9 @@ import { PostHogProvider } from '@/components/providers/PostHogProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Can I Build It? — Free NSW Planning Tools',
-  description: 'Nine NSW planning tools: planning controls assessment, granny flat eligibility, flood risk, solar yield, shadow analysis, nearby development radar, bushfire pre-screen, conveyancing disclosure, and pre-DA site history. Real answers from live Planning Portal data.',
-  keywords: 'NSW planning, granny flat check, flood risk NSW, solar yield, secondary dwelling, SEPP Housing 2021, can I build a granny flat',
+  title: 'PlotDetect — NSW Property Intelligence',
+  description: 'Property hazard checks, planning controls, climate risk scoring, and compliance verification for any NSW address. Flood depth, bushfire BAL, DCP provisions, and satellite analysis from live government data.',
+  keywords: 'NSW property intelligence, flood risk NSW, bushfire BAL, climate risk, planning controls, DCP provisions, granny flat eligibility, property compliance',
   icons: {
     icon: '/plotdetect-logo.png',
     apple: '/plotdetect-logo.png',

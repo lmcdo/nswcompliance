@@ -4,18 +4,18 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
-  title: 'Pre-DA Site History Report — canibuildit.com.au',
+  title: 'Pre-DA Site History Report — PlotDetect',
   description: 'What happened on this land before you got here? Satellite change detection, DA history, heritage overlay, and flood/fire annotations for any NSW address.',
   openGraph: {
     title: 'Pre-DA Site History — Satellite change detection for any NSW address',
     description: 'Eight years of satellite imagery analysed for physical changes, cross-referenced with DA records, heritage overlays, and natural disaster events. Free to run.',
-    url: 'https://canibuildit.com.au/reports/pre-da-history',
-    siteName: 'canibuildit.com.au',
+    url: 'https://plotdetect.com.au/reports/pre-da-history',
+    siteName: 'plotdetect.com.au',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Pre-DA Site History — canibuildit.com.au',
+    title: 'Pre-DA Site History — PlotDetect',
     description: 'Satellite change detection + DA history for any NSW address. Free, instant.',
   },
 }

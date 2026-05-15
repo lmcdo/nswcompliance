@@ -4,18 +4,18 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
-  title: 'Conveyancing Planning Disclosure — canibuildit.com.au',
+  title: 'Conveyancing Planning Disclosure — PlotDetect',
   description: 'Instant planning disclosure for any NSW property. LEP controls, environmental overlays, heritage status, SEPP overlays, development feasibility, and DCP setbacks — from live government data.',
   openGraph: {
     title: 'NSW Conveyancing Planning Disclosure — Live Government Data',
     description: 'LEP zone, height, FSR, environmental overlays, heritage, SEPP overlays, development feasibility, and DCP setback controls — queried live from the NSW Planning Portal for any address.',
-    url: 'https://canibuildit.com.au/reports/conveyancing',
-    siteName: 'canibuildit.com.au',
+    url: 'https://plotdetect.com.au/reports/conveyancing',
+    siteName: 'plotdetect.com.au',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NSW Conveyancing Planning Disclosure — canibuildit.com.au',
+    title: 'NSW Conveyancing Planning Disclosure — PlotDetect',
     description: 'Planning due diligence for any NSW property. Free instant check, $49 full PDF report.',
   },
 }

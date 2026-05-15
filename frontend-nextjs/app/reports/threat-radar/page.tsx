@@ -4,18 +4,18 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
-  title: 'Neighbour Development Threat Radar — canibuildit.com.au',
+  title: 'Neighbour Development Threat Radar — PlotDetect',
   description: 'See active development applications and CDCs within 500m of any NSW address. Subscribe for weekly alerts when new applications are lodged.',
   openGraph: {
     title: 'What\'s being built near you in NSW?',
     description: 'Active DAs and CDCs within 500m of your address. Free check + $9.99/month monitoring alerts.',
-    url: 'https://canibuildit.com.au/reports/threat-radar',
-    siteName: 'canibuildit.com.au',
+    url: 'https://plotdetect.com.au/reports/threat-radar',
+    siteName: 'plotdetect.com.au',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Neighbour Development Threat Radar — canibuildit.com.au',
+    title: 'Neighbour Development Threat Radar — PlotDetect',
     description: 'Scan for active development applications within 500m of any NSW address. Free.',
   },
 }

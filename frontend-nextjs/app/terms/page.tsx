@@ -1,22 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — canibuildit.com.au',
-  description: 'Terms governing your use of canibuildit.com.au property intelligence tools.',
+  title: 'Terms of Service — PlotDetect',
+  description: 'Terms governing your use of PlotDetect property intelligence tools.',
 };
 
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-white">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-3xl mx-auto border-b border-gray-100">
-        <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
-          canibuildit<span className="text-teal-600">.com.au</span>
-        </Link>
-        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          Try the tools →
-        </Link>
-      </nav>
+      <SiteNav />
 
       <article className="max-w-3xl mx-auto px-6 py-14 prose prose-sm prose-gray">
         <h1>Terms of Service</h1>
@@ -24,14 +19,14 @@ export default function TermsPage() {
 
         <h2>1. Acceptance</h2>
         <p>
-          By using canibuildit.com.au (&ldquo;the Service&rdquo;), you agree to these terms. If you
+          By using plotdetect.com.au (&ldquo;the Service&rdquo;), you agree to these terms. If you
           do not agree, do not use the Service. These terms are governed by the laws of New South
           Wales, Australia.
         </p>
 
         <h2>2. What the Service provides</h2>
         <p>
-          canibuildit.com.au provides indicative property intelligence reports based on publicly
+          PlotDetect provides indicative property intelligence reports based on publicly
           available NSW planning data, satellite imagery, and spatial datasets. Reports cover:
         </p>
         <ul>
@@ -122,15 +117,7 @@ export default function TermsPage() {
         </p>
       </article>
 
-      <footer className="border-t border-gray-100 py-6 px-6">
-        <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
-          <Link href="/" className="hover:text-gray-600">Home</Link>
-          <Link href="/how-it-works" className="hover:text-gray-600">How it works</Link>
-          <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-          <Link href="/contact" className="hover:text-gray-600">Contact</Link>
-          <Link href="/privacy" className="hover:text-gray-600">Privacy</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

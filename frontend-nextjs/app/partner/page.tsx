@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Embed Program — canibuildit.com.au',
+  title: 'Embed Program — PlotDetect',
   description: 'Add free NSW property intelligence tools to your website. Granny flat, flood, solar, and DA activity checks for your clients.',
 };
 
@@ -55,14 +57,7 @@ const BORDER: Record<string, string> = {
 export default function PartnerPage() {
   return (
     <main className="min-h-screen bg-white">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-3xl mx-auto border-b border-gray-100">
-        <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
-          canibuildit<span className="text-teal-600">.com.au</span>
-        </Link>
-        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          Try the tools →
-        </Link>
-      </nav>
+      <SiteNav />
 
       <div className="max-w-3xl mx-auto px-6 py-14">
         {/* Header */}
@@ -132,12 +127,12 @@ export default function PartnerPage() {
                 <p className="text-xs font-medium text-gray-500 mb-1.5">Copy this snippet:</p>
                 <pre className="bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-700 overflow-x-auto leading-relaxed whitespace-pre-wrap break-all">
 {`<iframe
-  src="https://canibuildit.com.au/embed/${tool.slug}?ref=YOUR_REF"
+  src="https://plotdetect.com.au/embed/${tool.slug}?ref=YOUR_REF"
   width="100%"
   height="600"
   frameborder="0"
   style="border-radius: 12px; border: 1px solid #e5e7eb;"
-  title="${tool.name} — canibuildit.com.au"
+  title="${tool.name} — PlotDetect"
 ></iframe>`}
                 </pre>
                 <p className="text-xs text-gray-400 mt-1.5">
@@ -195,15 +190,7 @@ export default function PartnerPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-100 py-6 px-6">
-        <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
-          <Link href="/" className="hover:text-gray-600">Home</Link>
-          <Link href="/how-it-works" className="hover:text-gray-600">How it works</Link>
-          <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-          <Link href="/privacy" className="hover:text-gray-600">Privacy</Link>
-          <Link href="/terms" className="hover:text-gray-600">Terms</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

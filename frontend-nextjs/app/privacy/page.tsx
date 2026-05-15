@@ -1,22 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — canibuildit.com.au',
-  description: 'How canibuildit.com.au collects, uses, and protects your personal information.',
+  title: 'Privacy Policy — PlotDetect',
+  description: 'How PlotDetect collects, uses, and protects your personal information.',
 };
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-white">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-3xl mx-auto border-b border-gray-100">
-        <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
-          canibuildit<span className="text-teal-600">.com.au</span>
-        </Link>
-        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          Try the tools →
-        </Link>
-      </nav>
+      <SiteNav />
 
       <article className="max-w-3xl mx-auto px-6 py-14 prose prose-sm prose-gray">
         <h1>Privacy Policy</h1>
@@ -24,7 +19,7 @@ export default function PrivacyPage() {
 
         <h2>Who we are</h2>
         <p>
-          canibuildit.com.au is operated by PlotDetect (ABN pending), an Australian property intelligence
+          plotdetect.com.au is operated by PlotDetect (ABN pending), an Australian property intelligence
           service. This policy explains what personal information we collect, why we collect it, and how
           we use it.
         </p>
@@ -114,15 +109,7 @@ export default function PrivacyPage() {
         </p>
       </article>
 
-      <footer className="border-t border-gray-100 py-6 px-6">
-        <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
-          <Link href="/" className="hover:text-gray-600">Home</Link>
-          <Link href="/how-it-works" className="hover:text-gray-600">How it works</Link>
-          <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-          <Link href="/contact" className="hover:text-gray-600">Contact</Link>
-          <Link href="/terms" className="hover:text-gray-600">Terms</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

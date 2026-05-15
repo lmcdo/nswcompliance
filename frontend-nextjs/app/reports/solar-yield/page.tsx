@@ -4,18 +4,18 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
 
 export const metadata: Metadata = {
-  title: 'Rooftop Solar Yield Estimate — canibuildit.com.au',
+  title: 'Rooftop Solar Yield Estimate — PlotDetect',
   description: 'How much solar can this NSW roof generate? Satellite-derived roof geometry and local irradiance data for an estimated annual kWh yield — free for any address.',
   openGraph: {
     title: 'Rooftop Solar Yield — Free for any NSW address',
     description: 'Satellite roof geometry + local irradiance = your estimated annual yield. Takes 60 seconds.',
-    url: 'https://canibuildit.com.au/reports/solar-yield',
-    siteName: 'canibuildit.com.au',
+    url: 'https://plotdetect.com.au/reports/solar-yield',
+    siteName: 'plotdetect.com.au',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Rooftop Solar Yield Estimate — canibuildit.com.au',
+    title: 'Rooftop Solar Yield Estimate — PlotDetect',
     description: 'Annual solar yield estimate for any NSW address. Free, instant.',
   },
 }

@@ -7,7 +7,7 @@ export default function PropertyLayout({ children }: { children: React.ReactNode
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <span className="font-semibold text-gray-900 text-base tracking-tight">
-              canibuildit<span className="text-teal-600">.com.au</span>
+              Plot<span className="text-teal-600">Detect</span>
             </span>
           </Link>
           <nav className="flex items-center gap-4">
