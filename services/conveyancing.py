@@ -48,6 +48,7 @@ Response contract (free tier — /pipeline/conveyancing):
   "data_sources": list[str]
 }
 """
+import json
 import logging
 import os
 import sys
@@ -185,6 +186,26 @@ def run_conveyancing(req: ConveyancingRequest):
     if dcp_former_council:
         data_sources.append("PlotDetect DCP controls database")
 
+    # Cache pipeline results so the PDF endpoint can reuse them
+    if req.report_id:
+        _save_pipeline_cache(req.report_id, {
+            "address": req.address,
+            "lat": lat,
+            "lng": lng,
+            "prop_id": resolved_prop_id,
+            "lot_wkt": lot_wkt,
+            "controls": controls,
+            "valuation": valuation,
+            "unique_overlays": unique_overlays,
+            "covered_layers": list(covered_layers),
+            "proximity_m": proximity_m,
+            "strata_info": strata_info,
+            "headroom": headroom,
+            "feasibility": feasibility,
+            "dcp_former_council": dcp_former_council,
+            "council_name": council_name,
+        })
+
     return {
         "address": req.address,
         "lat": lat,
@@ -237,54 +258,75 @@ def run_conveyancing(req: ConveyancingRequest):
 def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     """
     Generate the full conveyancing PDF report (paid tier).
-    Returns R2 URL for the generated PDF.
+    Loads cached free-tier pipeline results when available, then fetches
+    PDF-exclusive extras (DAs, DCP setbacks, LEP clauses, heritage, shadow).
+    Falls back to a full pipeline run if cache is missing.
     """
     import psycopg2
-    from generate_conveyancing_report import (
-        generate_pdf,
-    )
+    import re
+    import tempfile
+    from generate_conveyancing_report import generate_pdf
 
-    # Re-run the full pipeline with all data for PDF
-    resolved_prop_id = int(req.prop_id) if req.prop_id else None
-    lot_wkt = None
+    cached = _load_pipeline_cache(req.report_id)
 
-    if not resolved_prop_id:
-        resolved_prop_id, _, _, lot_wkt = resolve_address(req.address)
+    if cached:
+        # ---------- cache hit: unpack free-tier results ----------
+        resolved_prop_id = cached.get("prop_id")
+        if resolved_prop_id is not None:
+            resolved_prop_id = int(resolved_prop_id)
+        lot_wkt = cached.get("lot_wkt")
+        controls = cached.get("controls") or {}
+        valuation = cached.get("valuation") or {}
+        unique_overlays = cached.get("unique_overlays") or []
+        covered_layers = cached.get("covered_layers") or []
+        proximity_m = cached.get("proximity_m")
+        strata_info = cached.get("strata_info") or {"is_strata": False}
+        headroom = cached.get("headroom") or {}
+        feasibility = cached.get("feasibility") or []
+        dcp_former_council = cached.get("dcp_former_council")
+        council_name = cached.get("council_name")
+    else:
+        # ---------- cache miss: full pipeline re-run ----------
+        logger.info(f"Cache miss for {req.report_id} — running full pipeline")
+        resolved_prop_id = int(req.prop_id) if req.prop_id else None
+        lot_wkt = None
 
-    controls = {}
-    valuation = {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
-    if resolved_prop_id:
-        raw = get_raw_controls(resolved_prop_id)
-        controls = parse_controls(raw)
-        valuation = get_valuation(resolved_prop_id)
+        if not resolved_prop_id:
+            resolved_prop_id, _, _, lot_wkt = resolve_address(req.address)
 
-    unique_overlays, covered_layers, proximity_m = get_unique_overlays(req.lat, req.lng, lot_wkt)
-    strata_info = detect_strata(req.address, req.lat, req.lng)
+        controls = {}
+        valuation = {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+        if resolved_prop_id:
+            controls = parse_controls(get_raw_controls(resolved_prop_id))
+            valuation = get_valuation(resolved_prop_id)
 
-    # PostGIS fallbacks
-    ov_by_type = {o["layer_type"]: o for o in unique_overlays}
-    if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
-        controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
-    if not controls.get("lot_size") and "lot_size" in ov_by_type:
-        controls["lot_size"] = ov_by_type["lot_size"].get("value")
-        controls["lot_size_units"] = "m\u00b2"
+        unique_overlays, covered_layers, proximity_m = get_unique_overlays(req.lat, req.lng, lot_wkt)
+        strata_info = detect_strata(req.address, req.lat, req.lng)
 
-    headroom = calc_development_headroom(controls, valuation)
-    feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata_info["is_strata"])
+        # PostGIS fallbacks
+        ov_by_type = {o["layer_type"]: o for o in unique_overlays}
+        if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
+            controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
+        if not controls.get("lot_size") and "lot_size" in ov_by_type:
+            controls["lot_size"] = ov_by_type["lot_size"].get("value")
+            controls["lot_size_units"] = "m\u00b2"
 
-    zone_epi = controls.get("zone_epi", "")
-    raw_council = _council_from_zone_epi(zone_epi)
-    council_name = _normalise_council(raw_council) if raw_council else None
+        headroom = calc_development_headroom(controls, valuation)
+        feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata_info["is_strata"])
+
+        zone_epi = controls.get("zone_epi", "")
+        raw_council = _council_from_zone_epi(zone_epi)
+        council_name = _normalise_council(raw_council) if raw_council else None
+        dcp_former_council = detect_former_council(req.address, zone_epi)
+
+    # ---------- PDF-exclusive data (always fetched fresh) ----------
     das = []
     if council_name:
         try:
             das = get_nearby_das(req.lat, req.lng, council_name=council_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"DA fetch for PDF failed: {e}")
 
-    dcp_former_council = detect_former_council(req.address, zone_epi)
-
-    # DB pre-fetch
     lep_clauses = []
     dcp_setbacks_db = None
     postgis_heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
@@ -320,7 +362,6 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     # Shadow
     shadow_result = None
     if resolved_prop_id:
-        import re
         lep_height = None
         raw_h = controls.get("height")
         if raw_h:
@@ -329,8 +370,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 lep_height = float(m.group(1))
         shadow_result = get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
 
-    # Generate PDF to temp file
-    import tempfile
+    # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")
     generate_pdf(
         pdf_path, req.address, req.lat, req.lng, controls, valuation,
@@ -360,11 +400,12 @@ def _upload_to_r2(pdf_path: str, report_id: str) -> Optional[str]:
     """Upload PDF to Cloudflare R2 and return public URL."""
     try:
         import boto3
-        r2_endpoint = os.getenv("R2_ENDPOINT")
+        r2_account = os.getenv("R2_ACCOUNT_ID", "")
         r2_access = os.getenv("R2_ACCESS_KEY_ID")
         r2_secret = os.getenv("R2_SECRET_ACCESS_KEY")
-        r2_bucket = os.getenv("R2_BUCKET", "plotdetect-reports")
-        r2_public = os.getenv("R2_PUBLIC_URL", "")
+        r2_bucket = os.getenv("R2_BUCKET_NAME") or os.getenv("R2_BUCKET", "plotdetect-reports")
+        r2_public = os.getenv("R2_PUBLIC_URL", "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev")
+        r2_endpoint = os.getenv("R2_ENDPOINT") or (f"https://{r2_account}.r2.cloudflarestorage.com" if r2_account else "")
 
         if not all([r2_endpoint, r2_access, r2_secret]):
             logger.warning("R2 credentials not configured — returning local path")
@@ -385,6 +426,58 @@ def _upload_to_r2(pdf_path: str, report_id: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"R2 upload failed: {e}")
         return None
+
+
+def _save_pipeline_cache(report_id: str, data: dict) -> None:
+    """Save free-tier pipeline results so the PDF endpoint can skip re-fetching."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url or not report_id:
+        return
+    import psycopg2
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO conveyancing_cache (report_id, pipeline_data, created_at)
+                   VALUES (%s, %s, NOW())
+                   ON CONFLICT (report_id)
+                   DO UPDATE SET pipeline_data = EXCLUDED.pipeline_data,
+                                 created_at = NOW()""",
+                (report_id, json.dumps(data, default=str)),
+            )
+        conn.commit()
+    except Exception as e:
+        logger.warning(f"Failed to save pipeline cache: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+def _load_pipeline_cache(report_id: str) -> Optional[dict]:
+    """Load cached free-tier pipeline results. Returns None on miss or error."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url or not report_id:
+        return None
+    import psycopg2
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pipeline_data FROM conveyancing_cache WHERE report_id = %s",
+                (report_id,),
+            )
+            row = cur.fetchone()
+        if row and row[0]:
+            return row[0] if isinstance(row[0], dict) else json.loads(row[0])
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to load pipeline cache: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
 
 
 def _compute_confidence(controls: dict, overlays: list, valuation: dict) -> str:

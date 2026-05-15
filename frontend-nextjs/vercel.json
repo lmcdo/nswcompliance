@@ -16,6 +16,9 @@
     },
     "app/api/satellite/threat-radar/run-checks/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/reports/conveyancing/generate/route.ts": {
+      "maxDuration": 60
     }
   },
   "env": {
