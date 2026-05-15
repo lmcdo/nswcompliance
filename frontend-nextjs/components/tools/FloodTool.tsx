@@ -6,6 +6,16 @@ import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
+
+const FLOOD_STEPS: TransparencyStep[] = [
+  { label: 'Checking EPI flood overlays…',              ms: 0 },
+  { label: 'Querying council flood studies…',            ms: 2000 },
+  { label: 'Scanning Copernicus EMS satellite history…', ms: 5000 },
+  { label: 'Checking JRC 40-year surface water record…', ms: 9000 },
+  { label: 'Reading BOM gauge data…',                   ms: 14000 },
+  { label: 'Assembling risk assessment…',               ms: 20000 },
+];
 
 interface EmsActivation {
   activation_id: string;
@@ -240,13 +250,12 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         </div>
       )}
 
-      {state === 'running' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Querying flood data sources...</p>
-          <p className="text-xs text-gray-400 mt-1">EPI overlay · Council flood studies · Copernicus EMS · JRC 40-year satellite history · BOM gauge. Allow 15–30 seconds.</p>
-        </div>
-      )}
+      <OperationalTransparency
+        steps={FLOOD_STEPS}
+        active={state === 'running'}
+        address={address}
+        note="Allow 15–30 seconds."
+      />
 
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">

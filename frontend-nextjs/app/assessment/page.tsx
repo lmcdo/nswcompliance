@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/assessment/core/ui/tooltip';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
 import { VerifyRegistrationPrompt } from '@/components/compliance/VerifyRegistrationPrompt';
@@ -452,7 +453,17 @@ export default function AssessmentPage() {
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">SEPP</span>
+                      <span className="flex items-center justify-center gap-1 text-base font-bold">
+                        SEPP
+                        <Tooltip>
+                          <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <HelpCircle className={`w-3.5 h-3.5 ${viewMode === 'sepp' ? 'text-purple-200' : 'text-purple-400'}`} />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={8} className="max-w-[260px]">
+                            State Environmental Planning Policies — NSW-wide rules that override local controls. Covers housing codes, exempt development, infrastructure, and environmental protections.
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'sepp' ? 'text-purple-100' : 'text-purple-400'}`}>State Planning Policies</span>
                     </button>
                     <button
@@ -467,7 +478,17 @@ export default function AssessmentPage() {
                           : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">Planning Controls</span>
+                      <span className="flex items-center justify-center gap-1 text-base font-bold">
+                        Planning Controls
+                        <Tooltip>
+                          <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <HelpCircle className={`w-3.5 h-3.5 ${viewMode === 'lep' ? 'text-blue-200' : 'text-blue-400'}`} />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={8} className="max-w-[260px]">
+                            Local Environmental Plan (LEP) — your council&apos;s zoning, height limits, floor space ratio, heritage listings, and minimum lot sizes. These are the legally enforceable development standards.
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-blue-100' : 'text-blue-400'}`}>Zone & Development Standards</span>
                     </button>
                     <button
@@ -482,7 +503,17 @@ export default function AssessmentPage() {
                           : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
                       }`}
                     >
-                      <span className="block text-base font-bold">DCP</span>
+                      <span className="flex items-center justify-center gap-1 text-base font-bold">
+                        DCP
+                        <Tooltip>
+                          <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <HelpCircle className={`w-3.5 h-3.5 ${viewMode === 'dcp' ? 'text-teal-200' : 'text-teal-500'}`} />
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={8} className="max-w-[260px]">
+                            Development Control Plan — detailed council guidelines for setbacks, parking, landscaping, building design, and precinct-specific rules. Advisory but expected in DA submissions.
+                          </TooltipContent>
+                        </Tooltip>
+                      </span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-teal-600'}`}>Council Controls</span>
                     </button>
                   </div>
