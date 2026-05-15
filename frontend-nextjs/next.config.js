@@ -6,26 +6,24 @@ const nextConfig = {
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
  async redirects() {
    return [
-     // www.canibuildit.com.au → canibuildit.com.au (Maps API key restriction)
+     // Legacy domains → plotdetect.com.au
      {
        source: '/:path*',
        has: [{ type: 'host', value: 'www.canibuildit.com.au' }],
-       destination: 'https://canibuildit.com.au/:path*',
+       destination: 'https://plotdetect.com.au/:path*',
        permanent: true,
      },
-     // whatcanibuildhere.com.au → canibuildit.com.au
+     {
+       source: '/:path*',
+       has: [{ type: 'host', value: 'canibuildit.com.au' }],
+       destination: 'https://plotdetect.com.au/:path*',
+       permanent: true,
+     },
      {
        source: '/:path*',
        has: [{ type: 'host', value: 'whatcanibuildhere.com.au' }],
-       destination: 'https://canibuildit.com.au/:path*',
-       permanent: false,
-     },
-     // plotdetect.com.au root → canibuildit.com.au (fallback if DNS ever points here)
-     {
-       source: '/',
-       has: [{ type: 'host', value: 'plotdetect.com.au' }],
-       destination: 'https://canibuildit.com.au',
-       permanent: false,
+       destination: 'https://plotdetect.com.au/:path*',
+       permanent: true,
      },
      // Clean distribution URLs — for builder emails, QR cards, social links
      // Note: /granny-flat is now the tool itself — no redirect needed
@@ -33,6 +31,8 @@ const nextConfig = {
      { source: '/solar-yield', destination: '/reports/solar-yield', permanent: false },
      { source: '/shadow-check', destination: '/reports/shadow', permanent: false },
      { source: '/threat-radar', destination: '/reports/threat-radar', permanent: false },
+     // /partner retired — embed program moved to /for/builders
+     { source: '/partner', destination: '/for/builders', permanent: true },
    ];
  },
  async rewrites() {

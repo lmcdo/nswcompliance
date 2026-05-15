@@ -47,7 +47,7 @@ export default function ContactPage() {
                 hello@plotdetect.com.au
               </a>
               <Link
-                href="/partner"
+                href="/for/builders"
                 className="text-sm text-teal-700 underline underline-offset-2 hover:text-teal-900 transition-colors"
               >
                 See embed details →

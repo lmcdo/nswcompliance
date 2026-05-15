@@ -150,7 +150,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
               {[
                 { label: 'How it works', href: '/how-it-works' },
                 { label: 'Pricing', href: '/pricing' },
-                { label: 'Embed program', href: '/partner' },
+                { label: 'Embed program', href: '/for/builders' },
                 { label: 'Contact', href: '/contact' },
                 { label: 'Privacy', href: '/privacy' },
                 { label: 'Terms', href: '/terms' },

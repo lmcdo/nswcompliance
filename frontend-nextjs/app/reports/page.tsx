@@ -47,7 +47,7 @@ const TOOLS = [
     tagline: 'Will a new build block your sun?',
     description:
       'Shadow modelled from the maximum-height building envelope across the five ADG solar access test dates used by NSW planning panels.',
-    badge: '$29',
+    badge: '$39',
   },
   {
     href: '/reports/solar-yield',
@@ -55,7 +55,7 @@ const TOOLS = [
     tagline: 'How much could solar earn on this roof?',
     description:
       'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation.',
-    badge: '$19',
+    badge: '$39',
   },
   {
     href: '/reports/conveyancing',

@@ -57,10 +57,9 @@ export default async function ReportsLayout({ children }: { children: React.Reac
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
           <span>© 2026 PlotDetect — NSW property intelligence</span>
           <div className="flex flex-wrap gap-4">
-            <Link href="/#browse-by-area" className="hover:text-gray-600 transition-colors">Browse by area</Link>
             <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>
             <Link href="/pricing" className="hover:text-gray-600 transition-colors">Pricing</Link>
-            <Link href="/partner" className="hover:text-gray-600 transition-colors">Embed program</Link>
+            <Link href="/for/builders" className="hover:text-gray-600 transition-colors">Embed program</Link>
             <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
           </div>

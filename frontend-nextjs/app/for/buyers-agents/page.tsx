@@ -90,7 +90,7 @@ export default function BuyersAgentsPage() {
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-2xl font-bold text-gray-900">$19–$49</p>
+              <p className="text-2xl font-bold text-gray-900">$39–$49</p>
               <p className="text-sm text-gray-500 mt-1">Per property report</p>
               <p className="text-xs text-gray-400 mt-2">
                 Professional PDF with full analysis. Pass through as a disbursement.

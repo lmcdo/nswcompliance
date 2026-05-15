@@ -149,7 +149,7 @@ export default function PartnerPage() {
           {[
             {
               q: 'Is the embed free?',
-              a: 'Yes. All five tools are free to embed. You pay nothing. Your visitors pay nothing for the basic check. Paid reports ($29–$49) are optional upgrades.',
+              a: 'Yes. All five tools are free to embed. You pay nothing. Your visitors pay nothing for the basic check. Paid reports ($39–$49) are optional upgrades.',
             },
             {
               q: 'Do I need a developer?',

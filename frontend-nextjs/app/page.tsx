@@ -23,7 +23,7 @@ const TOOLS = [
     href: '/reports/bushfire',
     title: 'Bushfire Pre-Screen',
     tagline: 'Bush Fire Prone Land status, BAL band estimate, and CDC pathway.',
-    badge: 'Free + $29',
+    badge: 'Free + $39',
     icon: Flame,
     iconColor: 'text-orange-600',
   },
@@ -55,7 +55,7 @@ const TOOLS = [
     href: '/reports/shadow',
     title: 'Shadow Risk Analyser',
     tagline: 'Shadow modelled from the maximum-height building envelope on ADG solar access test dates.',
-    badge: '$29',
+    badge: '$39',
     icon: Moon,
     iconColor: 'text-slate-600',
   },
@@ -63,7 +63,7 @@ const TOOLS = [
     href: '/reports/solar-yield',
     title: 'Rooftop Solar Yield',
     tagline: 'Roof geometry, orientation, and estimated annual generation from satellite and BoM data.',
-    badge: '$19',
+    badge: '$39',
     icon: Sun,
     iconColor: 'text-amber-500',
   },
@@ -108,7 +108,7 @@ export default function HomePage() {
         </h1>
         <p className="text-gray-500 text-lg mb-10 max-w-xl mx-auto">
           Flood depth, bushfire risk, planning controls, and climate projections
-          for any NSW address. Free instant checks. Professional reports from $19.
+          for any NSW address. Free instant checks. Professional reports from $39.
         </p>
         <div className="flex flex-wrap justify-center gap-2.5">
           {TOOLS.slice(0, 5).map(({ href, title, icon: Icon, iconColor }) => (
@@ -373,7 +373,7 @@ export default function HomePage() {
               {
                 title: 'Builders & Planners',
                 description: 'Compliance checking with Verify. Free embed program for your website.',
-                href: '/partner',
+                href: '/for/builders',
                 cta: 'Embed program',
               },
             ].map(({ title, description, href, cta }) => (
