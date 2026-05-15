@@ -523,8 +523,12 @@ reviews/
 # Large GIS data files — ingested into PostGIS, not stored in repo
 data/hawkesbury_flood/
 data/bushfire/
+data/narclim/
 
 # Leigh presentation deck (binary)
 leigh-verify.pdf
 data/dcps/
 data/lep-html/
+
+# Climate risk intelligence — reference PDFs (future product, not compliance engine core)
+climate_risk_intel/

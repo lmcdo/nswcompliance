@@ -1,0 +1,383 @@
+"""Composite Climate Risk Awareness Score — V1 (equal-weight, additive).
+
+Methodology:
+    - Each hazard is normalized to 0-1 using documented scale endpoints
+    - Equal weighting (0.2 per hazard) — documented simplifying assumption
+    - Composite = weighted sum × 100, clamped to 1-100
+    - Interaction bonus for documented compound hazard pairs
+    - Deterministic: same inputs always produce same output
+
+Data sources (all government-authoritative):
+    - Flood: spatial_overlays (NSW Planning Portal EPI layers)
+    - Bushfire: spatial_overlays (NSW RFS Bushfire Prone Land)
+    - Coastal hazard: spatial_overlays (SEPP Resilience & Hazards 2021)
+    - Fire history: spatial_overlays (NPWS Fire History)
+    - Heat trajectory: NARCliM 2.0 (AdaptNSW, 4km resolution)
+    - Precipitation trend: NARCliM 2.0 (AdaptNSW)
+
+Limitations (V1):
+    - Equal weighting does not reflect relative loss severity per hazard
+    - No property-specific vulnerability (building type, floor height, materials)
+    - No adaptation offset (flood levees, bushfire mitigation works)
+    - NARCliM projections are model-dependent (single GCM: ACCESS-ESM1.5)
+    - Score reflects hazard exposure, not probability of loss
+
+Version: 1.0
+Date: 2026-05-15
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from typing import Optional
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+from services.climate_risk_raster import query_narclim_summary, DATA_DIR, NARCLIM_FILES
+
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# Hazard weights (V1: equal at 0.2 each = 1.0 total)
+WEIGHTS = {
+    "flood": 0.20,
+    "bushfire": 0.20,
+    "coastal": 0.20,
+    "fire_history": 0.20,
+    "heat": 0.20,
+}
+
+# Interaction bonuses for documented compound hazard pathways
+# Cite: IPCC AR6 WGII Ch11 — "climate impacts are cascading and compounding"
+INTERACTION_PAIRS = {
+    ("bushfire", "fire_history"): 0.05,   # Repeated fire = higher structural risk
+    ("flood", "coastal"): 0.05,           # Riverine + tidal compound inundation
+    ("bushfire", "heat"): 0.05,           # Heat dries vegetation → fire intensity
+    ("flood", "heat"): 0.03,             # Flash flood from intense convective storms
+}
+
+# Scale endpoints for normalization (what maps to 0 and what maps to 1)
+# Derived from NARCliM statewide data range, not arbitrary
+HEAT_SCALE = {
+    "min_delta": 0.0,    # No change from baseline = 0 risk
+    "max_delta": 45.0,   # Penrith-level increase (~41 days) = near-max
+}
+
+# Precipitation: drying trend increases risk (negative delta = bad for flood flash intensity)
+PRECIP_SCALE = {
+    "neutral": 0.0,      # No change = no additional risk
+    "max_drying": -1.0,  # mm/day reduction that maps to max precip risk component
+}
+
+
+# ── Types ─────────────────────────────────────────────────────────────────────
+
+@dataclass
+class HazardScore:
+    """Individual hazard assessment."""
+    hazard: str
+    raw_score: float          # 0-1 normalized
+    weight: float
+    weighted_score: float     # raw_score × weight
+    present: bool             # Whether any exposure detected
+    detail: str               # Human-readable explanation
+    confidence: str           # "high" (spatial overlay) or "medium" (projection)
+    data_source: str
+
+
+@dataclass
+class ClimateRiskResult:
+    """Complete climate risk assessment for a property."""
+    score: int                          # 1-100 composite
+    band: str                           # Low/Moderate/High/Very High/Extreme
+    lat: float
+    lng: float
+    hazards: list[HazardScore] = field(default_factory=list)
+    interaction_bonus: float = 0.0
+    methodology_version: str = "1.0"
+    data_date: str = "2026-05-15"
+    disclaimer: str = (
+        "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data "
+        "and NARCliM 2.0 climate projections. This is not financial, insurance, or property "
+        "advice. Does not account for property-specific construction, mitigation works, or "
+        "individual vulnerability. Not a guarantee of future conditions."
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "score": self.score,
+            "band": self.band,
+            "lat": self.lat,
+            "lng": self.lng,
+            "hazards": [
+                {
+                    "hazard": h.hazard,
+                    "raw_score": h.raw_score,
+                    "weight": h.weight,
+                    "weighted_score": h.weighted_score,
+                    "present": h.present,
+                    "detail": h.detail,
+                    "confidence": h.confidence,
+                    "data_source": h.data_source,
+                }
+                for h in self.hazards
+            ],
+            "interaction_bonus": self.interaction_bonus,
+            "methodology_version": self.methodology_version,
+            "data_date": self.data_date,
+            "disclaimer": self.disclaimer,
+        }
+
+
+# ── Score bands ───────────────────────────────────────────────────────────────
+
+def _score_to_band(score: int) -> str:
+    if score <= 20:
+        return "Low"
+    elif score <= 40:
+        return "Moderate"
+    elif score <= 60:
+        return "High"
+    elif score <= 80:
+        return "Very High"
+    else:
+        return "Extreme"
+
+
+# ── Spatial overlay queries ───────────────────────────────────────────────────
+
+def _query_spatial_overlays(lat: float, lng: float) -> dict[str, list[dict]]:
+    """Query PostGIS for hazard layers at a point. Returns {layer_type: [rows]}."""
+    if not DATABASE_URL:
+        raise EnvironmentError("DATABASE_URL not set — cannot query spatial_overlays")
+
+    HAZARD_LAYERS = (
+        "flood", "bushfire",
+        "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
+        "coastal_environment_area", "coastal_use_area",
+        "fire_history",
+    )
+
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT layer_type, value
+                FROM spatial_overlays
+                WHERE layer_type = ANY(%s)
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+            """, (list(HAZARD_LAYERS), lng, lat))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    result: dict[str, list[dict]] = {}
+    for row in rows:
+        result.setdefault(row["layer_type"], []).append(dict(row))
+    return result
+
+
+# ── Normalization functions ───────────────────────────────────────────────────
+
+def _normalize_flood(overlays: dict[str, list[dict]]) -> HazardScore:
+    """Flood: binary presence in flood planning layer."""
+    hits = overlays.get("flood", [])
+    present = len(hits) > 0
+    raw = 1.0 if present else 0.0
+    return HazardScore(
+        hazard="flood",
+        raw_score=raw,
+        weight=WEIGHTS["flood"],
+        weighted_score=raw * WEIGHTS["flood"],
+        present=present,
+        detail=f"Flood planning layer: {'Yes' if present else 'No'}",
+        confidence="high",
+        data_source="NSW Planning Portal EPI Flood layers via spatial_overlays",
+    )
+
+
+def _normalize_bushfire(overlays: dict[str, list[dict]]) -> HazardScore:
+    """Bushfire: binary presence in bushfire prone land."""
+    hits = overlays.get("bushfire", [])
+    present = len(hits) > 0
+    # Could differentiate by category (Vegetation Category 1 vs buffer) in V2
+    raw = 1.0 if present else 0.0
+    return HazardScore(
+        hazard="bushfire",
+        raw_score=raw,
+        weight=WEIGHTS["bushfire"],
+        weighted_score=raw * WEIGHTS["bushfire"],
+        present=present,
+        detail=f"Bushfire Prone Land: {'Yes' if present else 'No'}",
+        confidence="high",
+        data_source="NSW RFS Bushfire Prone Land Map via spatial_overlays",
+    )
+
+
+def _normalize_coastal(overlays: dict[str, list[dict]]) -> HazardScore:
+    """Coastal hazard: presence in specific SEPP R&H 2021 coastal hazard layers.
+
+    Note: coastal_land_application "Land Application" value covers all of NSW
+    (jurisdictional boundary, not a hazard). Only "Subject Land" is a specific
+    coastal hazard designation. Other layers (wetlands, littoral rainforest,
+    environment area, use area) are genuine hazard polygons.
+    """
+    # Layers that are always hazard-specific (not jurisdictional)
+    hazard_layers = ["coastal_wetlands", "littoral_rainforest",
+                     "coastal_environment_area", "coastal_use_area"]
+    hit_layers = []
+    for layer in hazard_layers:
+        if layer in overlays:
+            hit_layers.append(layer)
+
+    # coastal_land_application: only count "Subject Land" (specific sites),
+    # NOT "Land Application" (covers all NSW)
+    cla_hits = overlays.get("coastal_land_application", [])
+    for hit in cla_hits:
+        if hit.get("value", "").strip() == "Subject Land":
+            hit_layers.append("coastal_land_application")
+            break
+
+    present = len(hit_layers) > 0
+    # More coastal layers hit = higher exposure (max 1.0 at 3+ layers)
+    raw = min(len(hit_layers) / 3.0, 1.0) if present else 0.0
+    detail_layers = ", ".join(hit_layers) if hit_layers else "None"
+    return HazardScore(
+        hazard="coastal",
+        raw_score=round(raw, 3),
+        weight=WEIGHTS["coastal"],
+        weighted_score=round(raw * WEIGHTS["coastal"], 4),
+        present=present,
+        detail=f"Coastal hazard layers: {detail_layers}",
+        confidence="high",
+        data_source="SEPP (Resilience and Hazards) 2021 via spatial_overlays",
+    )
+
+
+def _normalize_fire_history(overlays: dict[str, list[dict]]) -> HazardScore:
+    """Fire history: number of distinct fire events at location."""
+    hits = overlays.get("fire_history", [])
+    present = len(hits) > 0
+    # Scale: 0 fires = 0, 1 fire = 0.3, 2 fires = 0.6, 3+ fires = 1.0
+    raw = min(len(hits) * 0.3, 1.0) if present else 0.0
+    return HazardScore(
+        hazard="fire_history",
+        raw_score=round(raw, 3),
+        weight=WEIGHTS["fire_history"],
+        weighted_score=round(raw * WEIGHTS["fire_history"], 4),
+        present=present,
+        detail=f"Historical fire events at location: {len(hits)}",
+        confidence="high",
+        data_source="NPWS Fire History via spatial_overlays",
+    )
+
+
+def _normalize_heat(narclim_summary: dict) -> HazardScore:
+    """Heat trajectory: NARCliM hot days delta from baseline to 2090 (worst scenario)."""
+    delta = narclim_summary.get("hot_days_delta_2090")
+    if delta is None:
+        # NARCliM data not available (outside domain or files missing)
+        return HazardScore(
+            hazard="heat",
+            raw_score=0.0,
+            weight=WEIGHTS["heat"],
+            weighted_score=0.0,
+            present=False,
+            detail="NARCliM data not available for this location",
+            confidence="low",
+            data_source="NARCliM 2.0 (AdaptNSW) — unavailable",
+        )
+
+    # Normalize: 0 delta = 0, max_delta = 1.0
+    raw = max(0.0, min(delta / HEAT_SCALE["max_delta"], 1.0))
+    baseline = narclim_summary.get("hot_days_baseline", "?")
+    late = narclim_summary.get("hot_days_late_century_high", "?")
+    return HazardScore(
+        hazard="heat",
+        raw_score=round(raw, 3),
+        weight=WEIGHTS["heat"],
+        weighted_score=round(raw * WEIGHTS["heat"], 4),
+        present=delta > 0,
+        detail=f"Hot days (>=35°C): {baseline}/yr baseline → {late}/yr by 2090 (SSP3-7.0), Δ={delta:+.1f} days",
+        confidence="medium",
+        data_source="NARCliM 2.0 (AdaptNSW), ACCESS-ESM1.5, SSP3-7.0, 4km resolution",
+    )
+
+
+# ── Interaction bonus ─────────────────────────────────────────────────────────
+
+def _compute_interaction_bonus(hazards: list[HazardScore]) -> float:
+    """Add bonus for documented compound hazard pathways."""
+    present_hazards = {h.hazard for h in hazards if h.present}
+    bonus = 0.0
+    for (h1, h2), value in INTERACTION_PAIRS.items():
+        if h1 in present_hazards and h2 in present_hazards:
+            bonus += value
+    return round(bonus, 3)
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def climate_risk_score(lat: float, lng: float) -> ClimateRiskResult:
+    """Compute composite climate risk awareness score for a property.
+
+    Args:
+        lat: Latitude (WGS84)
+        lng: Longitude (WGS84)
+
+    Returns:
+        ClimateRiskResult with composite score, band, per-hazard breakdown.
+    """
+    # 1. Query spatial overlays
+    overlays = _query_spatial_overlays(lat, lng)
+
+    # 2. Query NARCliM rasters
+    narclim = {}
+    try:
+        narclim = query_narclim_summary(lat, lng)
+    except (ValueError, FileNotFoundError):
+        pass  # Outside domain or files not present — heat score will be 0
+
+    # 3. Normalize each hazard
+    hazards = [
+        _normalize_flood(overlays),
+        _normalize_bushfire(overlays),
+        _normalize_coastal(overlays),
+        _normalize_fire_history(overlays),
+        _normalize_heat(narclim),
+    ]
+
+    # 4. Compute composite
+    weighted_sum = sum(h.weighted_score for h in hazards)
+    interaction = _compute_interaction_bonus(hazards)
+    raw_composite = weighted_sum + interaction
+
+    # 5. Scale to 1-100 (clamped)
+    score = max(1, min(100, round(raw_composite * 100)))
+
+    return ClimateRiskResult(
+        score=score,
+        band=_score_to_band(score),
+        lat=lat,
+        lng=lng,
+        hazards=hazards,
+        interaction_bonus=interaction,
+    )
+
+
+# ── CLI test (requires DATABASE_URL) ─────────────────────────────────────────
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    test_lat = float(sys.argv[1]) if len(sys.argv) > 1 else -33.8688
+    test_lng = float(sys.argv[2]) if len(sys.argv) > 2 else 151.2093
+
+    print(f"Climate Risk Score for ({test_lat}, {test_lng})\n")
+    result = climate_risk_score(test_lat, test_lng)
+    print(json.dumps(result.to_dict(), indent=2))

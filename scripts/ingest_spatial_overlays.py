@@ -137,6 +137,42 @@ LAYER_CONFIG = {
         "value_field": "LAY_CLASS",
         "filter_mode": "all",
     },
+    # ── Climate risk layers ──────────────────────────────────────────────
+    # SEPP (Resilience and Hazards) 2021 — coastal hazard layers
+    # No LGA_NAME field — statewide polygons, use filter_mode "all"
+    # oid_batch=True because complex coastal geometries cause ArcGIS 500s
+    # on offset pagination at ~3000 features.
+    "coastal_land_application": {
+        "service": "SEPP_Resilience_and_Hazards_2021", "layer_id": 1,
+        "value_field": "LAY_CLASS",
+        "filter_mode": "all", "oid_batch": True, "page_size": 100, "db_chunk": 25,
+    },
+    "coastal_wetlands": {
+        "service": "SEPP_Resilience_and_Hazards_2021", "layer_id": 3,
+        "value_field": "LABEL",
+        "filter_mode": "all", "oid_batch": True, "page_size": 100, "db_chunk": 25,
+    },
+    "littoral_rainforest": {
+        "service": "SEPP_Resilience_and_Hazards_2021", "layer_id": 4,
+        "value_field": "LABEL",
+        "filter_mode": "all", "oid_batch": True, "page_size": 100, "db_chunk": 25,
+    },
+    "coastal_environment_area": {
+        "service": "SEPP_Resilience_and_Hazards_2021", "layer_id": 6,
+        "value_field": "LABEL",
+        "filter_mode": "all", "oid_batch": True, "page_size": 100, "db_chunk": 25,
+    },
+    "coastal_use_area": {
+        "service": "SEPP_Resilience_and_Hazards_2021", "layer_id": 7,
+        "value_field": "LABEL",
+        "filter_mode": "all", "oid_batch": True, "page_size": 100, "db_chunk": 25,
+    },
+    # NPWS Fire History — statewide, 37588 features (simpler geometries, offset pagination OK)
+    "fire_history": {
+        "base": "Fire", "service": "NPWS_Fire_History", "layer_id": 0,
+        "value_field": "Label",
+        "filter_mode": "all",
+    },
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -283,6 +319,7 @@ def fetch_page(service: str, layer_id: int, where: str, offset: int, base: str =
 
 
 def fetch_page_by_oids(service: str, layer_id: int, oids: list[int], base: str = "Planning") -> dict:
+    import time
     base_url = BASE_URLS.get(base, BASE_URLS["Planning"])
     url = f"{base_url}/{service}/MapServer/{layer_id}/query"
     params = {
@@ -291,9 +328,23 @@ def fetch_page_by_oids(service: str, layer_id: int, oids: list[int], base: str =
         "outFields": "*",
         "f": "geojson",
     }
-    r = requests.get(url, params=params, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    for attempt in range(3):
+        try:
+            r = requests.get(url, params=params, timeout=90)
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
+            wait = 15 * (attempt + 1)
+            print(f"    [warn] {type(e).__name__} OID batch (attempt {attempt+1}/3) — retrying in {wait}s ...")
+            time.sleep(wait)
+            continue
+        if r.status_code == 500:
+            wait = 10 * (attempt + 1)
+            print(f"    [warn] 500 from ArcGIS OID batch (attempt {attempt+1}/3) — retrying in {wait}s ...")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()
+    print(f"    [skip] failed after 3 retries — skipping OID batch ({len(oids)} oids)")
+    return {"features": []}
 
 
 def parse_currency_date(val) -> date | None:
@@ -461,20 +512,24 @@ def ingest_layer(
     label = f"bbox={bbox}" if use_bbox else f"where={where!r}"
     print(f"  Fetching {layer_type} layer (service={service}, layer={layer_id}, {label}) ...")
 
-    # For bbox layers, ArcGIS 500s on offset pagination — use OID-range batching instead
+    # For bbox and large "all" layers, ArcGIS 500s on offset pagination —
+    # use OID-range batching instead
+    page_size = config.get("page_size", 500)
     oid_batches: list[list[int]] | None = None
-    if use_bbox:
+    if use_bbox or (filter_mode == "all" and config.get("oid_batch", False)):
         base_url = BASE_URLS.get(base, BASE_URLS["Planning"])
         url = f"{base_url}/{service}/MapServer/{layer_id}/query"
-        oid_resp = requests.get(url, params={
-            "geometry": bbox, "geometryType": "esriGeometryEnvelope",
-            "inSR": "4283", "spatialRel": "esriSpatialRelIntersects",
-            "where": "1=1", "returnIdsOnly": "true", "f": "json",
-        }, timeout=60)
+        oid_params: dict = {"where": "1=1", "returnIdsOnly": "true", "f": "json"}
+        if use_bbox:
+            oid_params.update({
+                "geometry": bbox, "geometryType": "esriGeometryEnvelope",
+                "inSR": "4283", "spatialRel": "esriSpatialRelIntersects",
+            })
+        oid_resp = requests.get(url, params=oid_params, timeout=60)
         oid_resp.raise_for_status()
         all_oids = sorted(oid_resp.json().get("objectIds") or [])
-        print(f"    {len(all_oids)} OIDs retrieved, batching in 500s ...")
-        oid_batches = [all_oids[i:i+500] for i in range(0, len(all_oids), 500)]
+        print(f"    {len(all_oids)} OIDs retrieved, batching in {page_size}s ...")
+        oid_batches = [all_oids[i:i+page_size] for i in range(0, len(all_oids), page_size)]
 
     batch_iter = iter(oid_batches) if oid_batches else None
 
@@ -529,22 +584,27 @@ def ingest_layer(
             ))
 
         if rows and not dry_run:
-            execute_values(
-                cur,
-                """
-                INSERT INTO spatial_overlays
-                    (instrument_key, lga_name, layer_type, value, value_numeric, currency_date, source_oid, geom, synced_at)
-                VALUES %s
-                ON CONFLICT (instrument_key, layer_type, source_oid) DO UPDATE
-                    SET value = EXCLUDED.value,
-                        value_numeric = EXCLUDED.value_numeric,
-                        currency_date = EXCLUDED.currency_date,
-                        geom = EXCLUDED.geom,
-                        synced_at = now()
-                """,
-                rows,
-                template="(%s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4326)), now())",
-            )
+            # Write in sub-batches to avoid Supabase statement-size limits
+            # on layers with very large geometries (coastal wetlands, etc.)
+            db_chunk = config.get("db_chunk", len(rows))
+            for i in range(0, len(rows), db_chunk):
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO spatial_overlays
+                        (instrument_key, lga_name, layer_type, value, value_numeric, currency_date, source_oid, geom, synced_at)
+                    VALUES %s
+                    ON CONFLICT (instrument_key, layer_type, source_oid) DO UPDATE
+                        SET value = EXCLUDED.value,
+                            value_numeric = EXCLUDED.value_numeric,
+                            currency_date = EXCLUDED.currency_date,
+                            geom = EXCLUDED.geom,
+                            synced_at = now()
+                    """,
+                    rows[i:i+db_chunk],
+                    template="(%s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4326)), now())",
+                )
+                cur.connection.commit()
 
         total += len(rows)
         print(f"    batch/offset={offset} -> {len(rows)} features (total so far: {total})")
