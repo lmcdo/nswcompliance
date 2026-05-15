@@ -135,6 +135,11 @@ def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
 # ---------------------------------------------------------------------------
 
 
+class DownloadTriggeredError(Exception):
+    """Raised when legislation.nsw.gov.au serves a download instead of HTML."""
+    pass
+
+
 def check_via_nsw_legislation(
     instruments: list[dict],
 ) -> tuple[dict[str, str | None], list[str]]:
@@ -162,6 +167,16 @@ def check_via_nsw_legislation(
             version = _fetch_nsw_legislation_version(browser, url)
             results[key] = version
             print(f"    NSW Legislation: {key} → {version or '(not found)'}")
+        except DownloadTriggeredError:
+            print(f"    [DOWNLOAD] {key}: page serves download, not HTML")
+            results[key] = None
+            fetch_errors.append(f"{key}: download triggered (manual check needed)")
+            send_telegram(
+                f"Legislation Monitor: {key} triggers download\n"
+                f"  URL: {url}\n"
+                f"  EPI ID may be wrong — check legislation.nsw.gov.au manually\n"
+                f"  and update instrument_registry.legislation_url"
+            )
         except Exception as exc:
             print(f"    [ERROR] {key}: {exc}")
             results[key] = None
@@ -179,15 +194,25 @@ def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/125.0.0.0 Safari/537.36"
         ),
+        accept_downloads=True,
     )
     page = ctx.new_page()
     try:
-        page.goto(url, timeout=45000, wait_until="domcontentloaded")
+        resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
+        if resp and resp.status == 404:
+            raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
         # Wait for page to render — look for the legislation title or body content
         page.wait_for_selector("h1, .legislation-title, #content", timeout=15000)
         # Give JS a moment to render version info
         time.sleep(2)
         html = page.content()
+    except Exception as exc:
+        if "Download is starting" in str(exc):
+            raise DownloadTriggeredError(
+                f"Page triggers download instead of rendering HTML — "
+                f"manual check needed: {url}"
+            ) from exc
+        raise
     finally:
         ctx.close()
 
