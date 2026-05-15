@@ -8,7 +8,7 @@ export function SiteFooter() {
         <Link href="/reports" className="hover:text-gray-600 transition-colors">Tools</Link>
         <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>
         <Link href="/pricing" className="hover:text-gray-600 transition-colors">Pricing</Link>
-        <Link href="/partner" className="hover:text-gray-600 transition-colors">Embed program</Link>
+        <Link href="/for/builders" className="hover:text-gray-600 transition-colors">Embed program</Link>
         <Link href="/contact" className="hover:text-gray-600 transition-colors">Contact</Link>
         <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
         <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>

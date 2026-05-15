@@ -38,7 +38,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/reports/conveyancing`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: now },
     { url: `${base}/pricing`,         priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/partner`,         priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/contact`,         priority: 0.5,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/climate-risk`,    priority: 0.9,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/about`,           priority: 0.5,  changeFrequency: 'monthly' as const, lastModified: now },
