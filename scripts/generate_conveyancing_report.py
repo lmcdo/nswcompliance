@@ -990,7 +990,14 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
                 (lng, lat),
             )
         rows = cur.fetchall()
-        results = [{"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]} for r in rows]
+        # Dedup: overlapping polygons can return the same (layer_type, value, instrument) twice
+        seen = set()
+        results = []
+        for r in rows:
+            key = (r[0], r[1], r[2])
+            if key not in seen:
+                seen.add(key)
+                results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
 
         # Classified road: any land_reservation with "Classified Road" value within 30m
         # (property point may sit just inside the lot, road reservation is adjacent)
