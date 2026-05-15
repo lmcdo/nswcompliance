@@ -951,15 +951,17 @@ def parse_controls(raw: list[dict]) -> dict:
 # PostGIS — unique overlays (NOT in portal layerintersect)
 # ---------------------------------------------------------------------------
 
-POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "acid_sulfate", "lot_size", "bushfire", "anef",
-                         "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
-                         "coastal_environment_area", "coastal_use_area", "fire_history"}
+_CLIMATE_LAYERS = {"coastal_land_application", "coastal_wetlands", "littoral_rainforest",
+                   "coastal_environment_area", "coastal_use_area", "fire_history"}
+_CLIMATE_ENABLED = os.environ.get("CLIMATE_LAYERS_ENABLED", "false").lower() in ("1", "true", "yes")
+
+POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "acid_sulfate", "lot_size", "bushfire", "anef"}
+if _CLIMATE_ENABLED:
+    POSTGIS_UNIQUE_LAYERS |= _CLIMATE_LAYERS
 
 # Layers ingested globally (bbox or filter_mode='all') — one 'ALL' coverage row, no per-LGA rows.
 # covered_layers for these is determined by the 'ALL' row, not per-LGA rows.
-GLOBAL_INGEST_LAYERS = frozenset({"bushfire", "anef",
-                                  "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
-                                  "coastal_environment_area", "coastal_use_area", "fire_history"})
+GLOBAL_INGEST_LAYERS = frozenset({"bushfire", "anef"} | (_CLIMATE_LAYERS if _CLIMATE_ENABLED else set()))
 POSTGIS_NOTES = {
     "biodiversity": BIO_NOTE,
     "riparian": RIPARIAN_NOTE,

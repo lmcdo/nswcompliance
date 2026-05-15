@@ -28,11 +28,21 @@ NARCLIM_FILES: dict[str, dict[str, str]] = {
         "ssp245": "TXge35_ssp245_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
         "ssp370": "TXge35_ssp370_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
     },
-    # Precipitation will be added when download completes:
-    # "pr": {
-    #     "ssp245": "pr_ssp245_...",
-    #     "ssp370": "pr_ssp370_...",
-    # },
+    "prAdjust": {
+        "ssp245": "prAdjust_ssp245_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
+        "ssp370": "prAdjust_ssp370_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
+    },
+    "tas": {
+        "ssp245": "tas_ssp245_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
+        "ssp370": "tas_ssp370_ACCESS-ESM1-5_NARCliM2-0-WRF412R5_NARCliM2-0-SEAus-04i.nc",
+    },
+}
+
+# Unit conversions applied after extraction (raw NetCDF units → human-readable)
+UNIT_CONVERSIONS: dict[str, dict] = {
+    "prAdjust": {"factor": 86400.0, "display_units": "mm/day", "description": "kg/m²/s → mm/day"},
+    "tas": {"offset": -273.15, "display_units": "°C", "description": "Kelvin → Celsius"},
+    # TXge35 is already in days — no conversion needed
 }
 
 # Time periods for extraction (year ranges → slice indices computed from time axis)
@@ -121,6 +131,14 @@ def _extract_time_periods(
     if hasattr(data, "mask"):
         data = np.where(data.mask, np.nan, data.data)
 
+    # Apply unit conversion if defined
+    conv = UNIT_CONVERSIONS.get(var_name)
+    if conv:
+        if "factor" in conv:
+            data = data * conv["factor"]
+        if "offset" in conv:
+            data = data + conv["offset"]
+
     periods: list[PeriodProjection] = []
     for period_name, (y_start, y_end) in TIME_PERIODS.items():
         mask = (years >= y_start) & (years <= y_end)
@@ -195,7 +213,8 @@ def query_narclim(lat: float, lng: float, variables: list[str] | None = None) ->
 
                 var_obj = ds.variables[var_code]
                 long_name = getattr(var_obj, "long_name", var_code)
-                units = getattr(var_obj, "units", "")
+                conv = UNIT_CONVERSIONS.get(var_code)
+                units = conv["display_units"] if conv else getattr(var_obj, "units", "")
 
                 periods = _extract_time_periods(ds, var_code, lat_idx, lon_idx)
                 scenarios_data.append(ScenarioResult(
@@ -223,49 +242,41 @@ def query_narclim(lat: float, lng: float, variables: list[str] | None = None) ->
 def query_narclim_summary(lat: float, lng: float) -> dict:
     """Simplified query returning key metrics for climate risk scoring.
 
-    Returns a flat dict with the most decision-relevant numbers:
-    - hot_days_baseline: current annual days >=35C
-    - hot_days_2050_mid: projected under SSP2-4.5
-    - hot_days_2050_high: projected under SSP3-7.0
-    - hot_days_2090_mid: late-century SSP2-4.5
-    - hot_days_2090_high: late-century SSP3-7.0
-    - hot_days_delta_2050: change from baseline (worst scenario)
-    - hot_days_delta_2090: change from baseline (worst scenario)
+    Returns a flat dict with the most decision-relevant numbers per variable:
+    - hot_days_*: annual days >=35C (TXge35)
+    - precip_*: mean daily precipitation in mm/day (prAdjust)
+    - temp_*: mean near-surface temperature in °C (tas)
+    - *_delta_2050 / *_delta_2090: change from baseline (worst scenario)
     """
-    results = query_narclim(lat, lng, variables=["TXge35"])
+    results = query_narclim(lat, lng)
     if not results:
         return {}
 
-    txge35 = results[0]
     summary: dict = {
-        "grid_distance_km": txge35["grid_distance_km"],
+        "grid_distance_km": results[0]["grid_distance_km"],
     }
 
-    # Extract per-scenario/period values
-    for sc in txge35["scenarios"]:
-        scenario_suffix = "mid" if sc["scenario"] == "ssp245" else "high"
-        for p in sc["periods"]:
-            key = f"hot_days_{p['period']}_{scenario_suffix}"
-            summary[key] = p["mean"]
+    VAR_PREFIXES = {"TXge35": "hot_days", "prAdjust": "precip", "tas": "temp"}
 
-    # Compute deltas from baseline (use whichever scenario has baseline data)
-    baseline = summary.get("hot_days_baseline_mid") or summary.get("hot_days_baseline_high")
-    if baseline is not None:
-        summary["hot_days_baseline"] = baseline
-        mid_2050 = summary.get("hot_days_mid_century_mid")
-        high_2050 = summary.get("hot_days_mid_century_high")
-        mid_2090 = summary.get("hot_days_late_century_mid")
-        high_2090 = summary.get("hot_days_late_century_high")
+    for var_result in results:
+        prefix = VAR_PREFIXES.get(var_result["variable"], var_result["variable"])
 
-        if high_2050 is not None:
-            summary["hot_days_delta_2050"] = round(high_2050 - baseline, 2)
-        elif mid_2050 is not None:
-            summary["hot_days_delta_2050"] = round(mid_2050 - baseline, 2)
+        for sc in var_result["scenarios"]:
+            scenario_suffix = "mid" if sc["scenario"] == "ssp245" else "high"
+            for p in sc["periods"]:
+                key = f"{prefix}_{p['period']}_{scenario_suffix}"
+                summary[key] = p["mean"]
 
-        if high_2090 is not None:
-            summary["hot_days_delta_2090"] = round(high_2090 - baseline, 2)
-        elif mid_2090 is not None:
-            summary["hot_days_delta_2090"] = round(mid_2090 - baseline, 2)
+        # Compute deltas from baseline (use whichever scenario has baseline data)
+        baseline = summary.get(f"{prefix}_baseline_mid") or summary.get(f"{prefix}_baseline_high")
+        if baseline is not None:
+            summary[f"{prefix}_baseline"] = baseline
+            for horizon, period_key in [("2050", "mid_century"), ("2090", "late_century")]:
+                high_val = summary.get(f"{prefix}_{period_key}_high")
+                mid_val = summary.get(f"{prefix}_{period_key}_mid")
+                val = high_val if high_val is not None else mid_val
+                if val is not None:
+                    summary[f"{prefix}_delta_{horizon}"] = round(val - baseline, 2)
 
     return summary
 
