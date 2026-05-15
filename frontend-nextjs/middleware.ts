@@ -48,6 +48,8 @@ const PRODUCTION_ORIGINS = [
   'https://plotdetect.com',
   'https://www.plotdetect.com',
   'https://plotdetect.vercel.app',
+  'https://plotdetect.com.au',
+  'https://www.plotdetect.com.au',
   'https://canibuildit.com.au',
   'https://www.canibuildit.com.au',
   'https://whatcanibuildhere.com.au',
@@ -124,7 +126,7 @@ export async function middleware(request: NextRequest) {
 
   // ============================================================================
   // HOSTNAME ROUTING — serve correct app per domain
-  // Both canibuildit.com.au and verify.plotdetect.com.au point to the same
+  // Both plotdetect.com.au and verify.plotdetect.com.au point to the same
   // Next.js build. Rewrite root requests to the right section.
   // ============================================================================
   // x-forwarded-host is more reliable than host when behind Cloudflare + Vercel

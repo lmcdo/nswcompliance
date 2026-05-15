@@ -6,11 +6,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-// Domains that are authorised to embed canibuildit tools.
+// Domains that are authorised to embed PlotDetect tools.
 // When the partner program launches, registered domains are added here.
 // For now: own domains always allowed; unknown domains are logged but not blocked
 // (blocking would break the outreach program before partners are registered).
 const AUTHORISED_EMBED_DOMAINS = [
+  'plotdetect.com.au',
+  'www.plotdetect.com.au',
   'canibuildit.com.au',
   'www.canibuildit.com.au',
   'plotdetect.com',

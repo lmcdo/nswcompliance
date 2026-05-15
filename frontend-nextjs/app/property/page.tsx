@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { PropertyProfile } from '@/components/home/PropertyProfile';
 
 export const metadata: Metadata = {
-  title: 'Property Profile — canibuildit.com.au',
+  title: 'Property Profile — PlotDetect',
   description: 'Instant property profile for any NSW address — zoning, height limits, heritage, flood status, and lot dimensions from government data.',
 };
 

@@ -23,13 +23,13 @@ export function generateMetadata(
     openGraph: {
       title: `Bushfire Risk in ${lga.name} — Free NSW Property Check`,
       description: `Check bush fire prone land status, BAL band, and RFS referral requirements for any ${lga.name} address. No login required.`,
-      url: `https://canibuildit.com.au/bushfire/${lga.slug}`,
-      siteName: 'canibuildit.com.au',
+      url: `https://plotdetect.com.au/bushfire/${lga.slug}`,
+      siteName: 'plotdetect.com.au',
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
-      title: `Bushfire Risk in ${lga.name} — canibuildit.com.au`,
+      title: `Bushfire Risk in ${lga.name} — PlotDetect`,
       description: `BFPL category and BAL band for any ${lga.name} address. Free, instant.`,
     },
   }

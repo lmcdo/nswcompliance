@@ -108,7 +108,7 @@ async function handleThreatRadarMonitor(
   }
 
   // Activate monitoring by calling the existing threat-radar subscribe endpoint
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
   try {
     await fetch(`${baseUrl}/api/satellite/threat-radar`, {
       method: 'POST',
@@ -123,8 +123,8 @@ async function handleThreatRadarMonitor(
   // Send confirmation email
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: 'Threat Radar monitoring activated',
       html: `
@@ -141,7 +141,7 @@ async function handleThreatRadarMonitor(
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,
@@ -175,13 +175,13 @@ async function handleGrannyFlatAnalysis(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
   const resultsUrl = `${baseUrl}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`;
 
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: 'Your granny flat analysis — view your results',
       html: `
@@ -208,7 +208,7 @@ async function handleGrannyFlatAnalysis(
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,
@@ -235,7 +235,7 @@ async function handleGrannyFlatReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -260,8 +260,8 @@ async function handleGrannyFlatReport(
 
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: 'Your Granny Flat Eligibility Report',
       html: `
@@ -279,7 +279,7 @@ async function handleGrannyFlatReport(
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,
@@ -345,7 +345,7 @@ async function handleSatelliteReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
   let pdfBuffer: Buffer;
 
   try {
@@ -370,8 +370,8 @@ async function handleSatelliteReport(
 
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: cfg.subject,
       html: `
@@ -380,7 +380,7 @@ async function handleSatelliteReport(
           <p style="color: #555; font-size: 14px; line-height: 1.6;">${cfg.bodyLine}</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,
@@ -414,7 +414,7 @@ async function handleConveyancingReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
 
   // Generate PDF via Railway (returns { pdf_url })
   let pdfUrl: string;
@@ -459,8 +459,8 @@ async function handleConveyancingReport(
 
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: 'Your Conveyancing Planning Disclosure Report',
       html: `
@@ -476,7 +476,7 @@ async function handleConveyancingReport(
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,
@@ -504,7 +504,7 @@ async function handlePreDAHistoryReport(
     return NextResponse.json({ received: true });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
 
   // Mark as paid before generating PDF (generate route gates on is_paid)
   const supabase = createServiceClient(
@@ -540,8 +540,8 @@ async function handlePreDAHistoryReport(
 
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      replyTo: 'hello@plotdetect.com.au',
       to: [email],
       subject: 'Your Pre-DA Site History Report',
       html: `
@@ -559,7 +559,7 @@ async function handlePreDAHistoryReport(
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            PlotDetect &middot; <a href="https://plotdetect.com.au" style="color: #0d9488;">plotdetect.com.au</a>
           </p>
         </div>
       `,

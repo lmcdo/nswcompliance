@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
 
   const lotPoly = (raw.lot_polygon as { type: 'Polygon'; coordinates: number[][][] } | null) ?? null;
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://canibuildit.com.au';
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
   const shareable_url = body.report_id ? `${origin}/reports/solar-yield/${body.report_id}` : null;
 
   const [tile_b64, logo_b64, qr_b64] = await Promise.all([

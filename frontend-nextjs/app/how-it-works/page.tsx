@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SiteNav } from '@/components/marketing/SiteNav';
+import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 export const metadata: Metadata = {
-  title: 'How It Works — canibuildit.com.au',
-  description: 'Where canibuildit.com.au data comes from, how it is processed, and what the results mean.',
+  title: 'How It Works — PlotDetect',
+  description: 'Where PlotDetect data comes from, how it is processed, and what the results mean.',
 };
 
 const TOOLS = [
@@ -76,24 +78,53 @@ const TOOLS = [
     cadence: 'DA data is refreshed daily from the NSW ePlanning Portal. There is typically a 24–48 hour lag from lodgement to appearance in results.',
     limitations: 'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500m for the free check; monitoring alerts cover 200m.',
   },
+  {
+    name: 'Bushfire Pre-Screen',
+    href: '/reports/bushfire',
+    sources: [
+      { name: 'NSW Rural Fire Service (BFPL dataset)', use: 'Bush Fire Prone Land classification — Category 1, 2, 3 and vegetation buffer zones' },
+      { name: 'NSW Planning Portal', use: 'SEPP overlays and property lot data' },
+      { name: 'NSW Spatial Services', use: 'Property boundary and geocoding' },
+    ],
+    cadence: 'RFS BFPL dataset is updated annually. Planning overlay data is queried live.',
+    limitations: 'BAL band estimation is indicative and based on vegetation proximity, not a formal AS 3959 assessment. A certified BAL report from an accredited practitioner is required for DA lodgement in bushfire-prone areas.',
+  },
+  {
+    name: 'Conveyancing Planning Disclosure',
+    href: '/reports/conveyancing',
+    sources: [
+      { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, FSR, height, heritage, environmental overlays, LEP provisions' },
+      { name: 'PostGIS spatial database', use: 'DCP setback controls, parking rates, and landscaping standards for 28 LGAs' },
+      { name: 'NSW Rural Fire Service', use: 'Bushfire-prone land status' },
+      { name: 'NSW Flood Data Service', use: 'Flood control lot status from LEP overlays' },
+    ],
+    cadence: 'Planning portal data is queried live. DCP provisions are updated when new LGAs are onboarded or instruments are amended.',
+    limitations: 'DCP setback controls are available for 28 LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.',
+  },
+  {
+    name: 'Climate Risk Score',
+    href: '/climate-risk',
+    sources: [
+      { name: 'NARCliM 2.0', use: 'Regional climate projections — temperature and precipitation change to 2099 under SSP2.45 and SSP3.70 scenarios' },
+      { name: 'NSW Rural Fire Service', use: 'Bush Fire Prone Land classification' },
+      { name: 'NSW Planning Portal', use: 'EPI flood overlay data' },
+      { name: 'SEPP (Resilience and Hazards) 2021', use: 'Coastal management zone mapping' },
+      { name: 'NPWS fire history dataset', use: 'Historical fire scar polygons' },
+    ],
+    cadence: 'NARCliM projections are static (model outputs do not change). RFS and flood data are queried live. Fire history is updated when NPWS publishes new data.',
+    limitations: 'The composite score is deterministic and based on publicly available hazard datasets. It does not account for property-level factors (construction type, elevation within lot, vegetation management). The Climate Risk Report (with full NARCliM trajectories) is not yet available — pending incorporation and professional indemnity insurance.',
+  },
 ];
 
 export default function HowItWorksPage() {
   return (
     <main className="min-h-screen bg-white">
-      <nav className="flex items-center justify-between px-6 py-4 max-w-3xl mx-auto border-b border-gray-100">
-        <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
-          canibuildit<span className="text-teal-600">.com.au</span>
-        </Link>
-        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          Try the tools →
-        </Link>
-      </nav>
+      <SiteNav />
 
       <div className="max-w-3xl mx-auto px-6 py-14">
         <h1 className="text-3xl font-bold text-gray-900 mb-3">How it works</h1>
         <p className="text-gray-500 text-base mb-12 max-w-xl">
-          Every result on canibuildit.com.au comes from live government data sources and satellite
+          Every result on plotdetect.com.au comes from live government data sources and satellite
           imagery — not static PDFs or manually maintained databases. Here&apos;s exactly where each
           tool gets its data, how often it updates, and what the limitations are.
         </p>
@@ -149,16 +180,7 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      <footer className="border-t border-gray-100 py-6 px-6">
-        <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
-          <Link href="/" className="hover:text-gray-600">Home</Link>
-          <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-          <Link href="/partner" className="hover:text-gray-600">Embed program</Link>
-          <Link href="/contact" className="hover:text-gray-600">Contact</Link>
-          <Link href="/privacy" className="hover:text-gray-600">Privacy</Link>
-          <Link href="/terms" className="hover:text-gray-600">Terms</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
