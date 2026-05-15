@@ -1,0 +1,145 @@
+{
+  "_meta": {
+    "description": "Climate risk statistics extracted from authoritative sources. Used for composite score weighting, PDF report annotations, and product copy.",
+    "last_updated": "2026-05-15",
+    "extraction_method": "Manual extraction from source PDFs in climate_risk_intel/"
+  },
+
+  "score_weights": {
+    "_description": "Key ratios and multipliers for Phase 4 composite climate risk score weighting",
+
+    "flood_loss_increase_pct_cps": 240,
+    "flood_loss_increase_pct_dts": null,
+    "flood_loss_source": "APRA Mind the Gap 2026, p.14",
+    "flood_loss_context": "Flood is the most climate-sensitive peril with losses projected to increase by ~240% under Current Policies Scenario by 2050",
+
+    "all_peril_loss_increase_pct_cps": 140,
+    "all_peril_loss_increase_pct_dts": 84,
+    "all_peril_loss_source": "APRA Mind the Gap 2026, p.13",
+
+    "flood_concentration_top10pct": 0.50,
+    "flood_concentration_source": "APRA Mind the Gap 2026, p.14",
+    "flood_concentration_context": "50% of all flood losses projected to occur in just 10% of regions",
+
+    "flood_uninsured_severe_risk_pct": 0.77,
+    "flood_uninsured_source": "ICA estimate cited in APRA Mind the Gap 2026, p.14",
+    "flood_uninsured_context": "77% of homes facing severe to extreme flood risk are not insured for flood",
+
+    "coastal_infrastructure_exposure_aud_b_low": 164,
+    "coastal_infrastructure_exposure_aud_b_high": 226,
+    "coastal_slr_scenario_m": 1.1,
+    "coastal_residential_buildings_low": 187000,
+    "coastal_residential_buildings_high": 274000,
+    "coastal_commercial_buildings_low": 5800,
+    "coastal_commercial_buildings_high": 8600,
+    "coastal_roads_km_low": 27000,
+    "coastal_roads_km_high": 35000,
+    "coastal_source": "IPCC AR6 WGII Chapter 11, Table Box 11.6.2 (DCCEE 2011; Steffen et al. 2019)",
+
+    "bushfire_2019_20_cost_aud_b": 8,
+    "bushfire_source": "IPCC AR6 WGII Chapter 11, p.38",
+
+    "annual_disaster_cost_aud_b": 18.2,
+    "annual_disaster_cost_period": "2007-2016",
+    "annual_disaster_cost_breakdown": {
+      "floods_b": 8.8,
+      "cyclones_b": 3.1,
+      "hail_b": 2.9,
+      "storms_b": 2.3,
+      "fires_b": 1.1
+    },
+    "annual_disaster_cost_source": "Deloitte 2017a, cited in IPCC AR6 WGII Chapter 11, p.38"
+  },
+
+  "annotations": {
+    "_description": "Citable statistics for PDF report sections, with exact source references",
+
+    "flood": {
+      "headline": "Flood losses projected to increase 240% by 2050 under current policies",
+      "detail": "Flood is the most climate-sensitive weather peril. 50% of all losses concentrated in just 10% of regions. 77% of homes facing severe-to-extreme flood risk currently lack flood insurance.",
+      "source": "APRA Mind the Gap: Insurance Climate Vulnerability Assessment 2026",
+      "page": "14"
+    },
+    "insurance_gap": {
+      "headline": "1 in 7 households uninsured today, rising to 1 in 4 by 2050",
+      "detail": "Around 15% of Australian households (1.4 million) currently face high insurance affordability pressure. By 2050, ~25% may be without home insurance — an additional 1 million households. Equivalent to ~40,000 households losing coverage per year.",
+      "source": "APRA Mind the Gap: Insurance Climate Vulnerability Assessment 2026",
+      "page": "4, 11"
+    },
+    "premium_growth": {
+      "headline": "Home insurance premiums rising 7.2% annually vs wages at 3.1%",
+      "detail": "Between 2010 and 2025, Australian home insurance premiums rose by an annual average of 7.2%, while wages grew by 3.1%. Taxes and levies add ~21% nationally (higher in NSW due to ESL at ~18%).",
+      "source": "APRA Mind the Gap: Insurance Climate Vulnerability Assessment 2026",
+      "page": "7"
+    },
+    "weather_losses": {
+      "headline": "National weather losses: $7B today → $16B by 2050",
+      "detail": "Expected national weather losses increasing from less than $7 billion annually in 2024 to over $16 billion annually in 2050 under the Current Policies Scenario.",
+      "source": "APRA Mind the Gap: Insurance Climate Vulnerability Assessment 2026",
+      "page": "4"
+    },
+    "coastal": {
+      "headline": "$164-226 billion in coastal infrastructure exposed to 1.1m sea level rise",
+      "detail": "With 1.1m SLR: 187,000-274,000 residential buildings, 5,800-8,600 commercial buildings, 27,000-35,000km roads and 1,200-1,500km rail exposed. 111% rise in inundation cost from 2020 to 2100.",
+      "source": "IPCC AR6 WGII Chapter 11, Table Box 11.6.2",
+      "page": "42"
+    },
+    "bushfire": {
+      "headline": "2019-20 bushfires: $8B+ cost, 5.8-8.1M hectares burned",
+      "detail": "33 direct deaths, 429 smoke-related deaths, $2.3B insured losses, $3.6B tourism/agriculture losses, $1.95B health costs. Climate impacts are cascading and compounding (high confidence).",
+      "source": "IPCC AR6 WGII Chapter 11; ICA Catastrophe Resilience 2024-25",
+      "page": "IPCC p.38"
+    },
+    "catastrophe_season_2024_25": {
+      "headline": "$1.97B insured losses from declared extreme weather events in 2024-25",
+      "detail": "154,100 claims, $13K average claim. 25% decrease from prior year ($2.61B). Five-year total ~$22.5B insured extreme weather costs, a 67% jump from the previous five-year period.",
+      "source": "ICA Catastrophe Resilience Report 2024-25",
+      "page": "8"
+    },
+    "flood_properties_at_risk": {
+      "headline": "1.36 million properties at flood risk, 298,000 at severe-to-extreme risk",
+      "detail": "242,000 residential dwellings with highest flood risk. ICA estimates 186,000 of these not insured for flood. Rebuilding just 10% would cost >$9 billion.",
+      "source": "ICA Catastrophe Resilience Report 2024-25",
+      "page": "3, 6"
+    },
+    "heat": {
+      "headline": "Days over 35°C projected to increase 80-350% by 2090",
+      "detail": "Unprecedented extreme temperatures as high as 50°C in Sydney possible with 2.0°C global warming. Heat-related deaths in Sydney/Melbourne/Brisbane: 142/year (1971-2020) → 300-600/year (2031-2080).",
+      "source": "IPCC AR6 WGII Chapter 11 Australasia",
+      "page": "Various"
+    },
+    "compound_risk": {
+      "headline": "Climate impacts are cascading and compounding across systems (high confidence)",
+      "detail": "Complex connections generating new types of risks, exacerbating existing stressors and constraining adaptation options. Multi-hazard interaction (flood + heat + fire + drought) creates compounding recovery costs.",
+      "source": "IPCC AR6 WGII Fact Sheet Australasia",
+      "page": "1"
+    }
+  },
+
+  "headlines": {
+    "_description": "Flat key-value pairs for product copy and marketing materials",
+
+    "uninsured_current": "1 in 7",
+    "uninsured_2050": "1 in 4",
+    "uninsured_additional_households": 1000000,
+    "annual_weather_losses_2024_b": 7,
+    "annual_weather_losses_2050_b": 16,
+    "flood_loss_increase_pct": 240,
+    "premium_growth_annual_pct": 7.2,
+    "wage_growth_annual_pct": 3.1,
+    "coastal_exposure_aud_b": "164-226",
+    "coastal_residential_buildings": "187,000-274,000",
+    "flood_properties_at_risk": 1360000,
+    "flood_properties_severe_risk": 298000,
+    "flood_uninsured_severe_pct": 77,
+    "catastrophe_5yr_total_b": 22.5,
+    "catastrophe_5yr_increase_pct": 67,
+    "bushfire_2019_20_cost_b": 8,
+    "extreme_weather_annual_cost_b": 4.5,
+    "insured_losses_2024_25_b": 1.97,
+    "nsw_esl_pct": 18,
+    "heat_deaths_current_yr": 142,
+    "heat_deaths_2050_yr_low": 300,
+    "heat_deaths_2050_yr_high": 600
+  }
+}
