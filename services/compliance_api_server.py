@@ -24,6 +24,7 @@ try:
     from services.pre_da_history import router as pre_da_history_router
     from services.bushfire_prescreen import router as bushfire_router
     from services.conveyancing import router as conveyancing_router
+    from services.climate_risk_pipeline import router as climate_risk_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -36,6 +37,7 @@ except ImportError:
     from pre_da_history import router as pre_da_history_router
     from bushfire_prescreen import router as bushfire_router
     from conveyancing import router as conveyancing_router
+    from climate_risk_pipeline import router as climate_risk_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -68,6 +70,7 @@ app.include_router(rss_proxy_router)
 app.include_router(pre_da_history_router)
 app.include_router(bushfire_router)
 app.include_router(conveyancing_router)
+app.include_router(climate_risk_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()
@@ -153,6 +156,7 @@ async def root():
             "POST /pipeline/bushfire": "Satellite: Bushfire Pre-Screen — RFS BFPL + PostGIS overlays",
             "POST /pipeline/conveyancing": "Satellite: Conveyancing Planning Disclosure — LEP controls, overlays, feasibility",
             "POST /pipeline/conveyancing/pdf": "Satellite: Conveyancing — generate full PDF report (paid tier)",
+            "POST /pipeline/climate-risk": "Climate Risk — composite score (flood + bushfire + coastal + fire history + NARCliM heat)",
             "GET /health": "Health check",
             "GET /docs": "API documentation"
         }

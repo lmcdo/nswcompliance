@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history' | 'bushfire' | 'conveyancing' | 'planning-controls';
+type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history' | 'bushfire' | 'conveyancing' | 'planning-controls' | 'climate-risk';
 
 interface Card {
   title: string;
@@ -72,6 +72,12 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
     href: `/assessment?address=${encodeURIComponent(address)}`,
     label: 'See full planning controls →',
   }),
+  'climate-risk': (address) => ({
+    title: 'Climate Risk Score',
+    body: 'Composite climate risk scoring — flood, bushfire, coastal, fire history, and NARCliM heat projections.',
+    href: `/climate-risk?address=${encodeURIComponent(address)}`,
+    label: 'Check climate risk →',
+  }),
 };
 
 // Relevance order per tool — granny flat income angle always first when applicable
@@ -85,6 +91,7 @@ const ORDER: Record<ToolKey, ToolKey[]> = {
   'bushfire':           ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector'],
   'conveyancing':       ['planning-controls', 'granny-flat', 'flood-truth', 'threat-radar', 'bushfire'],
   'planning-controls':  ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'conveyancing'],
+  'climate-risk':       ['flood-truth', 'bushfire', 'planning-controls', 'conveyancing', 'granny-flat'],
 };
 
 export function ToolCrossSell({
