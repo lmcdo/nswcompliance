@@ -1,0 +1,138 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { ClimateRiskResultCard, type ClimateRiskResult } from '@/components/tools/ClimateRiskResultCard';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { posthog } from '@/components/providers/PostHogProvider';
+
+type PageState = 'idle' | 'running' | 'complete' | 'error';
+
+export function ClimateRiskTool() {
+  const [address, setAddress] = useState('');
+  const [state, setState] = useState<PageState>('idle');
+  const [result, setResult] = useState<ClimateRiskResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const runCheck = useCallback(async (addr: string) => {
+    if (!addr.trim()) return;
+    setState('running');
+    setResult(null);
+    setErrorMsg('');
+
+    try {
+      const res = await fetch('/api/satellite/climate-risk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Climate risk check failed');
+      setResult(json);
+      setState('complete');
+      posthog.capture('tool_run', {
+        tool: 'climate-risk',
+        source: 'direct',
+        result_score: json.outputs?.score ?? null,
+        result_band: json.outputs?.band ?? null,
+      });
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
+      setState('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const addr = (e as CustomEvent).detail?.address;
+      if (addr) {
+        setAddress(addr);
+        runCheck(addr);
+      }
+    };
+    window.addEventListener('landing-search', handler);
+    return () => window.removeEventListener('landing-search', handler);
+  }, [runCheck]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address')?.trim();
+    if (addrParam) {
+      setAddress(addrParam);
+      runCheck(addrParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [runCheck]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runCheck(address);
+  };
+
+  const handleReset = () => {
+    setAddress('');
+    setState('idle');
+    setResult(null);
+    setErrorMsg('');
+    window.dispatchEvent(new CustomEvent('landing-reset'));
+  };
+
+  return (
+    <div>
+      {state === 'idle' || state === 'error' ? (
+        <form id="tool-input" onSubmit={handleSubmit} className="flex gap-3 mb-8">
+          <AddressAutocomplete
+            value={address}
+            onChange={setAddress}
+            onSelect={(addr) => setAddress(addr)}
+            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            disabled={!address.trim()}
+            className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Run Climate Check
+          </button>
+        </form>
+      ) : (
+        <div className="mb-6">
+          <button
+            onClick={handleReset}
+            className="text-sm text-teal-600 hover:text-teal-700 transition-colors mb-4"
+          >
+            ← Check another address
+          </button>
+        </div>
+      )}
+
+      {state === 'running' && (
+        <div className="flex items-center gap-3 py-12 justify-center text-gray-500 text-sm">
+          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Querying spatial overlays and climate projections...
+        </div>
+      )}
+
+      {state === 'error' && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 mb-6">
+          {errorMsg}
+        </div>
+      )}
+
+      {state === 'complete' && result && (
+        <>
+          <ClimateRiskResultCard result={result} />
+          <div className="mt-8">
+            <ToolCrossSell
+              currentTool="climate-risk"
+              address={result.address}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
