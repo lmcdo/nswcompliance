@@ -35,7 +35,7 @@ export default function ClimateRiskPage() {
       {/* Five hazards */}
       <section className="max-w-4xl mx-auto px-6 pb-12">
         <h2 className="text-xl font-bold text-gray-900 mb-6">
-          Five hazards. One composite score.
+          Five hazards assessed independently
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
@@ -45,6 +45,7 @@ export default function ClimateRiskPage() {
               title: 'Flood',
               description: 'EPI flood overlay status, council flood study ARI depths, and satellite water detection.',
               source: 'NSW Planning Portal + SES flood studies',
+              dataType: 'Current mapping',
             },
             {
               icon: Flame,
@@ -52,6 +53,7 @@ export default function ClimateRiskPage() {
               title: 'Bushfire',
               description: 'RFS Bush Fire Prone Land classification and estimated BAL band from vegetation proximity.',
               source: 'NSW Rural Fire Service BFPL dataset',
+              dataType: 'Current mapping',
             },
             {
               icon: Waves,
@@ -59,6 +61,7 @@ export default function ClimateRiskPage() {
               title: 'Coastal',
               description: 'SEPP Resilience and Hazards coastal zone mapping. Erosion and inundation exposure.',
               source: 'SEPP (Resilience and Hazards) 2021',
+              dataType: 'Current mapping',
             },
             {
               icon: TreePine,
@@ -66,6 +69,7 @@ export default function ClimateRiskPage() {
               title: 'Fire History',
               description: 'Historical fire scar records from NPWS. Proximity to burn areas over the past 20 years.',
               source: 'NSW National Parks fire history',
+              dataType: 'Historical observed',
             },
             {
               icon: Sun,
@@ -73,10 +77,22 @@ export default function ClimateRiskPage() {
               title: 'Heat Trajectory',
               description: 'Projected temperature change to 2099 under SSP2.45 and SSP3.70 scenarios. 4km grid resolution.',
               source: 'NARCliM 2.0 (ACCESS-ESM1-5 GCM)',
+              dataType: 'Climate projection',
             },
-          ].map(({ icon: Icon, iconColor, title, description, source }) => (
+          ].map(({ icon: Icon, iconColor, title, description, source, dataType }) => (
             <div key={title} className="rounded-xl border border-gray-200 p-5">
-              <Icon className={`w-5 h-5 ${iconColor} mb-2`} />
+              <div className="flex items-center justify-between mb-2">
+                <Icon className={`w-5 h-5 ${iconColor}`} />
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                  dataType === 'Climate projection'
+                    ? 'bg-purple-50 text-purple-700'
+                    : dataType === 'Historical observed'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-green-50 text-green-700'
+                }`}>
+                  {dataType}
+                </span>
+              </div>
               <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed mb-2">{description}</p>
               <p className="text-xs text-gray-400">{source}</p>
@@ -510,6 +526,22 @@ export default function ClimateRiskPage() {
           Check any NSW address
           <ArrowRight className="w-4 h-4" />
         </Link>
+      </section>
+
+      {/* Legal disclaimer */}
+      <section className="border-t border-gray-100 bg-gray-50 py-8 px-6">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Climate risk scores are provided for informational purposes only and do not constitute
+            financial, insurance, legal, or property advice. Scores reflect publicly available
+            government spatial data and climate projection modelling — they are not a professional
+            risk assessment and should not be relied upon as a substitute for independent expert
+            advice. Always consult qualified professionals before making property, insurance, or
+            investment decisions. PlotDetect does not provide financial product advice within the
+            meaning of the Corporations Act 2001 (Cth) s766B. Past hazard exposure does not
+            guarantee future outcomes. Climate projections are modelled scenarios, not predictions.
+          </p>
+        </div>
       </section>
 
       <SiteFooter />
