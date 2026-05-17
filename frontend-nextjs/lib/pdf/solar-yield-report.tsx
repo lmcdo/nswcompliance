@@ -13,7 +13,8 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer';
-import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { AerialWithOverlay } from './map-overlay';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,6 +54,7 @@ export interface SolarYieldReportData {
   // meta
   confidence: string;
   data_sources: string[];
+  lot_polygon?: { type: string; coordinates: number[][][] } | null;
   tile_b64: string | null;
   logo_b64?: string | null;
   qr_b64?: string | null;
@@ -608,9 +610,13 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
             NSW SIX Maps aerial imagery for context.
           </Text>
-          <Image
-            src={`data:image/png;base64,${data.tile_b64}`}
-            style={{ width: '100%', borderRadius: 4 }}
+          <AerialWithOverlay
+            tile_b64={data.tile_b64}
+            center={[data.lng, data.lat]}
+            zoom="property"
+            layers={data.lot_polygon ? [
+              { geojson: data.lot_polygon, fill: '#0d9488', fillOpacity: 0.15, stroke: '#0d9488', strokeWidth: 2 },
+            ] : []}
           />
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
             © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only

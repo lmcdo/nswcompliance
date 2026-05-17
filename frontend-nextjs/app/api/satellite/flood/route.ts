@@ -6,6 +6,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
+import { esriRingsToGeoJSON } from '@/lib/geo-utils';
 
 export const dynamic = 'force-dynamic';
 // Flood pipeline (EPI WFS + EMS + JRC + BOM + SAR) can take up to ~50s
@@ -88,6 +89,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const lot_polygon = propData.lotGeometry?.rings?.length
+    ? esriRingsToGeoJSON(propData.lotGeometry.rings)
+    : null;
+
   const report_id = crypto.randomUUID();
 
   let pythonResp: Response;
@@ -114,5 +119,5 @@ export async function POST(request: NextRequest) {
   const result = await pythonResp.json();
   const report_token = signReport(lat, lng, address, result.run_date ?? '');
   // Include report_id so the frontend can pass it to the Stripe checkout route
-  return NextResponse.json({ ...result, report_id, report_token });
+  return NextResponse.json({ ...result, report_id, report_token, lot_polygon });
 }

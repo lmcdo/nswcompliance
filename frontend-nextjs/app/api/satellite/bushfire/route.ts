@@ -6,6 +6,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
+import { esriRingsToGeoJSON } from '@/lib/geo-utils';
 
 export const dynamic = 'force-dynamic';
 // Bushfire pipeline (RFS BFPL + PostGIS overlays) typically <15s
@@ -87,6 +88,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const lot_polygon = propData.lotGeometry?.rings?.length
+    ? esriRingsToGeoJSON(propData.lotGeometry.rings)
+    : null;
+
   const report_id = crypto.randomUUID();
   // Preserve lot geometry for PDF map rendering (EPSG:3857 rings)
   const lot_geometry = propData.lotGeometry?.rings?.[0]?.length
@@ -117,5 +122,5 @@ export async function POST(request: NextRequest) {
   const result = await pythonResp.json();
   const report_token = signReport(lat, lng, address, result.run_date ?? '');
   // Include report_id so the frontend can pass it to the Stripe checkout route
-  return NextResponse.json({ ...result, report_id, report_token });
+  return NextResponse.json({ ...result, report_id, report_token, lot_polygon });
 }

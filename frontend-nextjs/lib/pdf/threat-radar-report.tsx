@@ -15,7 +15,8 @@ import {
   Svg,
   Circle,
 } from '@react-pdf/renderer';
-import { PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { WhatThisMeans, PlotDetectFooter, AboutPage, ReferralLinks, DataCurrencyTable, QRBlock, PreparedBy } from './shared-components';
+import { AerialWithOverlay } from './map-overlay';
 import { PDF_DISCLAIMERS } from '../disclaimers';
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ export interface ThreatRadarReportData {
   window_days: number;
   radius_m?: number;
   is_paid?: boolean;
+  lot_polygon?: { type: string; coordinates: number[][][] } | null;
   tile_b64: string | null;
   qr_b64?: string | null;
   firm_name?: string | null;

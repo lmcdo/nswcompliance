@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
     data = {
       address: String(raw.address),
       run_date: String(raw.run_date ?? today),
+      lat: lat ?? undefined,
+      lng: lng ?? undefined,
       lot_area_m2: raw.lot_area_m2 != null ? Number(raw.lot_area_m2) : null,
       main_dwelling_area_m2: raw.main_dwelling_area_m2 != null ? Number(raw.main_dwelling_area_m2) : null,
       confirmed_structure_count: raw.confirmed_structure_count != null ? Number(raw.confirmed_structure_count) : null,
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
       confidence_reason: String(raw.confidence_reason ?? ''),
       warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
       data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
+      lot_polygon: (raw.lot_polygon as GrannyFlatReportData['lot_polygon']) ?? null,
       tile_b64,
       logo_b64,
       is_paid: !!(process.env.ADMIN_SECRET && req.headers.get('x-admin-key') === process.env.ADMIN_SECRET && (body as Record<string, unknown>).is_paid === true),
@@ -125,6 +128,7 @@ export async function POST(req: NextRequest) {
       confidence_reason: (outputs.confidence_reason as string) ?? '',
       warnings: (outputs.warnings as string[]) ?? [],
       data_sources: (outputs.data_sources as string[]) ?? [],
+      lot_polygon: (outputs.lot_polygon as GrannyFlatReportData['lot_polygon']) ?? null,
       tile_b64: (outputs.tile_b64 as string | null) ?? null,
       logo_b64: getLogoBase64(),
       is_paid: true, // UUID access = sufficient guard; always render paid sections for DB-fetched reports
