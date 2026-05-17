@@ -119,6 +119,10 @@ function PreDAHistoryToolInner() {
     const payment = searchParams?.get('payment');
     if (payment === 'success')    setPaymentStatus('success');
     if (payment === 'cancelled')  setPaymentStatus('cancelled');
+    // Clean URL params after reading
+    if (payment) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
 
     const addrParam = searchParams?.get('address')?.trim();
     if (addrParam && !payment) {
@@ -336,8 +340,28 @@ function PreDAHistoryToolInner() {
         </div>
       )}
 
-      {/* Results */}
-      {state === 'complete' && result && (
+      {/* Payment success — thank you + PDF download + full results */}
+      {paymentStatus === 'success' && (
+        <PreDAPaidResults
+          reportId={reportId}
+          result={result}
+          state={state}
+          validYears={validYears}
+          notableYears={notableYears}
+          allDaPans={allDaPans}
+          onRunAnother={() => {
+            setState('idle');
+            setResult(null);
+            setAddress('');
+            setEmail('');
+            setReportId(null);
+            setPaymentStatus(null);
+          }}
+        />
+      )}
+
+      {/* Results — free tier (no payment) */}
+      {state === 'complete' && result && paymentStatus !== 'success' && (
         <>
           {/* Findings */}
           <SiteHistoryFindings result={result} validYears={validYears} notableYears={notableYears} allDaRefs={allDaPans} />
@@ -600,6 +624,242 @@ function SiteHistoryFindings({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PreDAPaidResults — post-payment thank-you + full results + PDF download
+// ---------------------------------------------------------------------------
+
+function PreDAPaidResults({
+  reportId,
+  result,
+  state,
+  validYears,
+  notableYears,
+  allDaPans,
+  onRunAnother,
+}: {
+  reportId: string | null;
+  result: PipelineResult | null;
+  state: PageState;
+  validYears: TimelineEntry[];
+  notableYears: TimelineEntry[];
+  allDaPans: string[];
+  onRunAnother: () => void;
+}) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    if (!reportId) return;
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/pre-da-history/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pre-da-history-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Thank you banner + download */}
+      <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 p-6">
+        <p className="text-base font-semibold text-teal-900 mb-1">Payment confirmed — thank you.</p>
+        <p className="text-sm text-teal-700 mb-4">
+          Your full PDF report is being emailed to you now. You can also download it directly below.
+        </p>
+        {reportId && (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {downloading ? 'Preparing download...' : 'Download PDF report'}
+          </button>
+        )}
+        {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
+      </div>
+
+      {/* Loading while polling for results */}
+      {state === 'polling' && (
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <p className="text-sm text-gray-600 animate-pulse">Loading your results...</p>
+        </div>
+      )}
+
+      {/* Full paid results */}
+      {result && (
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Years analysed</p>
+              <p className="text-2xl font-bold text-gray-900">{validYears.length}/8</p>
+              <p className="text-xs text-gray-400 mt-1">2017–2024</p>
+            </div>
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Notable years</p>
+              <p className={`text-2xl font-bold ${notableYears.length > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                {notableYears.length}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {notableYears.length === 0 ? 'No changes detected' : 'Year(s) with detected change'}
+              </p>
+            </div>
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">DA events found</p>
+              <p className="text-2xl font-bold text-gray-900">{allDaPans.length}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {allDaPans.length > 0 ? allDaPans[0] : 'None matched'}
+              </p>
+            </div>
+          </div>
+
+          {/* Interpretation summary */}
+          <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed">
+            <p className="font-semibold text-slate-900 mb-1">What this means</p>
+            {notableYears.length === 0 && allDaPans.length === 0 && (
+              <p>No significant physical changes detected on this lot between 2017 and 2024. No development applications found on record. This is a clean site history — low risk of unapproved works or undisclosed changes.</p>
+            )}
+            {notableYears.length === 0 && allDaPans.length > 0 && (
+              <p>No significant physical changes detected by satellite, but {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. The approved works may have been minor or not yet constructed.</p>
+            )}
+            {notableYears.length > 0 && allDaPans.length > 0 && (
+              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} — and {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. Cross-reference the DA details with the satellite timeline to check whether all changes were approved.</p>
+            )}
+            {notableYears.length > 0 && allDaPans.length === 0 && (
+              <p>Physical change detected in {notableYears.map(y => y.year).join(', ')} but no development applications found on record. This may indicate unapproved works, natural events, or works predating the ePlanning Portal (pre-2021).</p>
+            )}
+          </div>
+
+          {/* Heritage flag */}
+          <div className={`mb-4 p-4 rounded-lg text-sm ${
+            result.heritage_flag
+              ? 'bg-amber-50 border border-amber-200 text-amber-800'
+              : 'bg-green-50 border border-green-200 text-green-800'
+          }`}>
+            <span className="font-semibold">
+              {result.heritage_flag ? 'Heritage overlay detected' : 'No heritage overlay detected'}
+            </span>
+            {result.heritage_note && (
+              <p className="mt-1 text-xs">{result.heritage_note}</p>
+            )}
+          </div>
+
+          {/* Timeline table */}
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">Year-by-year satellite timeline</h2>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-900 text-white">
+                    <th className="py-2 px-3 text-left font-medium">Year</th>
+                    <th className="py-2 px-3 text-left font-medium">Level</th>
+                    <th className="py-2 px-3 text-left font-medium">Notes</th>
+                    <th className="py-2 px-3 text-left font-medium">DA refs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.timeline.map((entry, i) => (
+                    <tr key={entry.year} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className="py-2 px-3 font-semibold text-gray-900">{entry.year}</td>
+                      <td className="py-2 px-3">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${levelBg(entry.level)}`}>
+                          {levelLabel(entry.level)}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-gray-600 max-w-xs">
+                        {entry.suppressed
+                          ? 'Stable — neighbourhood-wide variation, not site-specific'
+                          : entry.explanation || entry.label || '\u2014'}
+                      </td>
+                      <td className="py-2 px-3 text-gray-400">
+                        {entry.da_events && entry.da_events.length > 0
+                          ? entry.da_events.join(', ')
+                          : '\u2014'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Detailed analysis — paid content, always shown after payment */}
+          {result.timeline.some(e => !e.suppressed && e.level !== 'no_data') && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Detailed analysis</h2>
+              <div className="space-y-3">
+                {result.timeline
+                  .filter(e => !e.suppressed && e.level !== 'no_data')
+                  .map(entry => (
+                    <div key={entry.year} className="p-4 border border-gray-200 rounded-lg bg-white">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-gray-900">{entry.year}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${levelBg(entry.level)}`}>
+                          {levelLabel(entry.level)}
+                        </span>
+                        {entry.change_type && entry.change_type !== 'unknown' && (
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                            {entry.change_type}
+                          </span>
+                        )}
+                      </div>
+                      {entry.similarity != null && (
+                        <p className="text-xs text-gray-500 mb-1">
+                          Similarity score: {entry.similarity.toFixed(3)}
+                        </p>
+                      )}
+                      {entry.explanation && (
+                        <p className="text-sm text-gray-700">{entry.explanation}</p>
+                      )}
+                      {entry.da_events && entry.da_events.length > 0 && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          DA references: {entry.da_events.join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Methodology note */}
+          <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+            Each year is compared to the previous year and to the surrounding neighbourhood. Years marked
+            &ldquo;area-wide variation filtered out&rdquo; showed satellite changes consistent with the whole
+            neighbourhood (drought, seasonal shift, or sensor variation) rather than lot-specific activity.
+            DA events are sourced from the NSW ePlanning Portal — complete from July 2021.
+          </p>
+
+          {/* Run another */}
+          <div className="mt-6 text-center">
+            <button onClick={onRunAnother} className="text-sm text-teal-700 hover:underline">
+              Run another analysis
+            </button>
+          </div>
+
+          {/* Cross-sell */}
+          <ToolCrossSell currentTool="pre-da-history" address={result.address} />
+        </>
+      )}
     </div>
   );
 }
