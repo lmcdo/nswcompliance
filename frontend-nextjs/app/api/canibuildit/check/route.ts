@@ -380,7 +380,17 @@ export async function POST(req: NextRequest) {
   }> = [];
   if (lgaName) {
     try {
-      const normLga = lgaName.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+      let normLga = lgaName.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+      // Map Portal LGA names to dcp_setback_controls.lga slugs
+      const LGA_SLUG_MAP: Record<string, string> = {
+        sydney: 'city_of_sydney',
+        city_of_parramatta: 'parramatta',
+        the_hills_shire: 'the_hills',
+        city_of_canada_bay: 'canada_bay',
+        city_of_ryde: 'ryde',
+        strathfield_municipal: 'strathfield',
+      };
+      normLga = LGA_SLUG_MAP[normLga] || normLga;
       const dcpRes = await query(
         `SELECT control_type, value_min, value_max, unit, condition, applicability, source_text, section_ref
          FROM dcp_setback_controls

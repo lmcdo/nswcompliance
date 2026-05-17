@@ -279,6 +279,19 @@ export class PropertyDataService {
    }
  }
 
+ // Final fallback: for LGAs without a JSON config (e.g. Canterbury-Bankstown, Penrith)
+ // normalize the LGA name to a slug so DcpStructuredControls can query dcp_setback_controls.
+ // This only fires if formerCouncil is still unset after precinct, suburb, and config lookups.
+ if (!constraints.formerCouncil && constraints.lga) {
+   const slug = constraints.lga.toLowerCase().trim()
+     .replace(/[-\s]+/g, '_')
+     .replace(/[^a-z0-9_]/g, '');
+   if (slug) {
+     constraints.formerCouncil = slug;
+     console.log(`[PropertyDataService] LGA slug fallback: formerCouncil = '${slug}'`);
+   }
+ }
+
     // Match site-specific Part 6 LEP clauses (based on address and heritage item)
     try {
       const siteSpecificClauseNumbers = getSiteSpecificClauses(propertyData.address);

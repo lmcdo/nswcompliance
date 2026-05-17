@@ -432,6 +432,17 @@ async function getSetbacks(
         { boundary: 'rear', text: 'Maintain useable outdoor space' }
       ]
     };
+  } else if (formerCouncil.toLowerCase().includes('sydney') || formerCouncil.toLowerCase().includes('city_of_sydney')) {
+    return {
+      type: 'prevailing',
+      message: 'City of Sydney uses map-based setbacks (Building Setback and Alignment Map)',
+      method: 'Front setback per Building Setbacks Map; side/rear consistent with adjoining buildings',
+      guidance: [
+        { boundary: 'front', text: 'Consistent with Building Setbacks Map or predominant street setting' },
+        { boundary: 'side', text: 'Relate to established development pattern (heritage areas)' },
+        { boundary: 'rear', text: 'Consistent with adjoining buildings; adopt adjacent or average rear setback' }
+      ]
+    };
   }
 
   // Unknown council - generic guidance
