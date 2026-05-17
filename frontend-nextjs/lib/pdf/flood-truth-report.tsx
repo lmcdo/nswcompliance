@@ -741,7 +741,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             NSW SIX Maps aerial imagery for context.
           </Text>
           <AerialWithOverlay
-            tile_b64={data.tile_b64}
+            tile_b64={data.tile_b64!}
             center={[data.lng, data.lat]}
             zoom="property"
             layers={data.lot_polygon ? [
