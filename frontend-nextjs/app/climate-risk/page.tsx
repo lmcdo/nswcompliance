@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Thermometer, Droplets, Flame, Waves, TreePine, Sun, ArrowRight } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { ClimateRiskTool } from '@/components/tools/ClimateRiskTool';
 
 export const metadata: Metadata = {
   title: 'Climate Risk Intelligence — PlotDetect',
@@ -30,6 +30,11 @@ export default function ClimateRiskPage() {
           climate projection modelling. Deterministic composite scoring — no AI interpretation,
           no guesswork.
         </p>
+      </section>
+
+      {/* Interactive tool */}
+      <section className="max-w-3xl mx-auto px-6 pb-16">
+        <ClimateRiskTool />
       </section>
 
       {/* Five hazards */}
@@ -517,15 +522,15 @@ export default function ClimateRiskPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA — scroll to tool */}
       <section className="max-w-3xl mx-auto px-6 py-12 text-center">
-        <Link
-          href="/reports"
+        <a
+          href="#tool-input"
           className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
         >
           Check any NSW address
           <ArrowRight className="w-4 h-4" />
-        </Link>
+        </a>
       </section>
 
       {/* Legal disclaimer */}

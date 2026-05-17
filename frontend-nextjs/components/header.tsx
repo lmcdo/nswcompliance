@@ -22,8 +22,8 @@ export function Header() {
  right: 0,
  width: '100vw',
  height: '80px',
- backgroundColor: 'white',
- borderBottom: '1px solid #f3f4f6',
+ backgroundColor: '#020617',
+ borderBottom: '1px solid rgba(30, 41, 59, 0.5)',
  zIndex: 50
  }}>
  <div style={{
@@ -43,18 +43,10 @@ export function Header() {
  <Menu style={{ height: '20px', width: '20px' }} />
  </Button>
  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
- <div style={{
- width: '32px',
- height: '32px',
- backgroundColor: '#2563eb',
- borderRadius: '8px',
- display: 'flex',
- alignItems: 'center',
- justifyContent: 'center'
- }}>
- <CheckCircle style={{ height: '20px', width: '20px', color: 'white' }} />
+ <div style={{ fontWeight: '700', fontSize: '16px', color: 'white', letterSpacing: '-0.025em' }}>
+ Plot<span style={{ color: '#2dd4bf' }}>Detect</span>
  </div>
- <div style={{ fontWeight: '600', fontSize: '20px', color: '#111827' }}>NSW Planning</div>
+ <div style={{ fontWeight: '600', fontSize: '18px', color: 'white' }}>NSW Planning</div>
  </div>
  </div>
 
@@ -78,24 +70,24 @@ export function Header() {
  <div style={{
  width: '32px',
  height: '32px',
- backgroundColor: '#dbeafe',
+ backgroundColor: 'rgba(45, 212, 191, 0.1)',
  borderRadius: '50%',
  display: 'flex',
  alignItems: 'center',
  justifyContent: 'center'
  }}>
- <User style={{ height: '16px', width: '16px', color: '#2563eb' }} />
+ <User style={{ height: '16px', width: '16px', color: '#2dd4bf' }} />
  </div>
  <div style={{ textAlign: 'right' }}>
- <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>Sarah Peterson</div>
- <div style={{ fontSize: '12px', color: '#6b7280' }}>sarah.p@council.nsw.gov.au</div>
+ <div style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Sarah Peterson</div>
+ <div style={{ fontSize: '12px', color: '#64748b' }}>sarah.p@council.nsw.gov.au</div>
  </div>
  </div>
  <Button
  variant="ghost"
  size="sm"
  style={{
- backgroundColor: '#2563eb',
+ backgroundColor: '#0d9488',
  color: 'white',
  height: '32px',
  borderRadius: '6px',

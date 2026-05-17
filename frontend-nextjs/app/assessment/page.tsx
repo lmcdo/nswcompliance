@@ -137,54 +137,44 @@ export default function AssessmentPage() {
       <RegulatoryCurrencyBanner />
 
       {/* Header */}
-      <header className="relative border-b shadow-sm overflow-hidden flex">
-        {/* Tulip glyph - dark gray shape on white, curves into white logo area */}
-        <div className="relative flex-shrink-0 bg-white">
-          <svg className="h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
-            <path d="M0 0 L16 0 Q36 14 28 28 Q20 42 36 56 L0 56 Z" fill="#374151" />
-          </svg>
-        </div>
-        {/* Logo + name on white */}
+      <header className="bg-slate-950 border-b border-slate-800/50 flex items-center gap-4 px-4 py-3 md:py-4">
+        {/* Logo + name */}
         <a
-          href="https://plotdetect.com.au/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 pr-4 py-3 md:py-4 bg-white hover:opacity-80 transition-opacity"
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
-          <span className="text-base font-semibold text-gray-900">PlotDetect</span>
+          <span className="text-base font-bold tracking-tight text-white">
+            Plot<span className="text-teal-400">Detect</span>
+          </span>
         </a>
-        {/* Rest of header - neutral white */}
-        <div className="flex-1 bg-white flex items-center gap-4 px-4 py-3 md:py-4">
-          {/* Page title */}
-          <div className="flex-1">
-            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-800">
-              NSW Planning Assessment
-            </h1>
-            <p className="text-gray-600 text-xs hidden sm:block">
-              Professional compliance assessment using real-time planning data
-            </p>
-          </div>
-          {/* Quick Guide */}
-          <div className="hidden sm:flex items-center">
-            <a
-              href="/quick-guide"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-teal-600 bg-white text-teal-700 hover:bg-teal-50 transition-colors"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Quick Guide
-            </a>
-          </div>
-          <div className="hidden sm:flex items-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-100 text-gray-700">
-              <MapPin className="h-3.5 w-3.5" />
-              {selectedProperty?.constraints?.lga || 'NSW Planning'}
-            </span>
-          </div>
+        {/* Page title */}
+        <div className="flex-1">
+          <h1 className="text-lg md:text-xl font-semibold tracking-tight text-white">
+            NSW Planning Assessment
+          </h1>
+          <p className="text-slate-400 text-xs hidden sm:block">
+            Professional compliance assessment using real-time planning data
+          </p>
+        </div>
+        {/* Quick Guide */}
+        <div className="hidden sm:flex items-center">
+          <a
+            href="/quick-guide"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-teal-500/50 text-teal-400 hover:bg-teal-500/10 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Quick Guide
+          </a>
+        </div>
+        <div className="hidden sm:flex items-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-slate-700 bg-slate-800 text-slate-300">
+            <MapPin className="h-3.5 w-3.5" />
+            {selectedProperty?.constraints?.lga || 'NSW Planning'}
+          </span>
         </div>
       </header>
 

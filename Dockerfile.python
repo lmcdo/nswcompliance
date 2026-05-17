@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdal-dev \
     gdal-bin \
     python3-gdal \
+    # HDF5 — required by netCDF4 for NARCliM raster sampling
+    libhdf5-dev \
     # proj — coordinate transforms
     libproj-dev \
     proj-data \

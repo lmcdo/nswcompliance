@@ -31,12 +31,12 @@ export default async function ReportsLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-slate-950 border-b border-slate-800/50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-semibold text-gray-900 text-base tracking-tight">
-              Plot<span className="text-teal-600">Detect</span>
+            <span className="font-semibold text-white text-base tracking-tight">
+              Plot<span className="text-teal-400">Detect</span>
             </span>
           </Link>
           <nav className="flex items-center gap-1 overflow-x-auto">
@@ -44,7 +44,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
               <Link
                 key={href}
                 href={href}
-                className="px-3 py-1.5 text-sm text-gray-600 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="px-3 py-1.5 text-sm text-slate-400 rounded-md hover:bg-slate-800 hover:text-white transition-colors"
               >
                 {label}
               </Link>
@@ -53,19 +53,19 @@ export default async function ReportsLayout({ children }: { children: React.Reac
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-6 py-10">{children}</main>
-      <footer className="border-t border-gray-100 mt-16">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
-          <span>© 2026 PlotDetect — NSW property intelligence</span>
+      <footer className="bg-slate-950 border-t border-slate-800/50 mt-16">
+        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+          <span>&copy; {new Date().getFullYear()} PlotDetect &mdash; NSW property intelligence</span>
           <div className="flex flex-wrap gap-4">
-            <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>
-            <Link href="/pricing" className="hover:text-gray-600 transition-colors">Pricing</Link>
-            <Link href="/for/builders" className="hover:text-gray-600 transition-colors">Embed program</Link>
-            <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
+            <Link href="/how-it-works" className="hover:text-slate-300 transition-colors">How it works</Link>
+            <Link href="/pricing" className="hover:text-slate-600 transition-colors">Pricing</Link>
+            <Link href="/for/builders" className="hover:text-slate-300 transition-colors">Embed program</Link>
+            <Link href="/privacy" className="hover:text-slate-300 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-slate-300 transition-colors">Terms</Link>
           </div>
         </div>
         <div className="max-w-5xl mx-auto px-6 pb-6">
-          <p className="text-xs text-gray-300">
+          <p className="text-xs text-slate-600">
             {REPORTS_LAYOUT_FOOTER}
           </p>
         </div>

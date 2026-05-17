@@ -10,38 +10,29 @@ export default function QuickGuidePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="relative border-b shadow-sm overflow-hidden flex bg-white">
-        <div className="relative flex-shrink-0">
-          <svg className="h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
-            <path d="M0 0 L16 0 Q36 14 28 28 Q20 42 36 56 L0 56 Z" fill="#0d9488" />
-          </svg>
-        </div>
-        <a
-          href="https://plotdetect.com.au/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 pr-4 py-3 md:py-4 hover:opacity-80 transition-opacity"
-        >
-          <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
-          <span className="text-base font-semibold text-gray-900">PlotDetect</span>
-        </a>
-        <div className="flex-1 bg-teal-50 flex items-center justify-between px-4 py-3 md:py-4">
+      <header className="bg-slate-950 border-b border-slate-800/50 flex items-center justify-between px-4 py-3 md:py-4">
+        <div className="flex items-center gap-4">
+          <a href="/" className="hover:opacity-80 transition-opacity">
+            <span className="text-base font-bold tracking-tight text-white">
+              Plot<span className="text-teal-400">Detect</span>
+            </span>
+          </a>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-teal-800">
+            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-white">
               Quick Start Guide
             </h1>
-            <p className="text-teal-600 text-xs hidden sm:block">
+            <p className="text-slate-400 text-xs hidden sm:block">
               NSW planning assessment — approval pathways explained
             </p>
           </div>
-          <Link
-            href="/assessment"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-          >
-            <Home className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Back to Assessment</span>
-          </Link>
         </div>
+        <Link
+          href="/assessment"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-600 text-white hover:bg-teal-500 transition-colors"
+        >
+          <Home className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Back to Assessment</span>
+        </Link>
       </header>
 
       {/* Main Content */}

@@ -1,22 +1,129 @@
+'use client';
+
 import Link from 'next/link';
+
+const TOOL_LINKS = [
+  { label: 'Flood Risk Check', href: '/reports/flood' },
+  { label: 'Bushfire Pre-Screen', href: '/reports/bushfire' },
+  { label: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
+  { label: 'Granny Flat Yield', href: '/reports/granny-flat' },
+  { label: 'Shadow Analyser', href: '/reports/shadow' },
+  { label: 'Solar Yield', href: '/reports/solar-yield' },
+  { label: 'Threat Radar', href: '/reports/threat-radar' },
+  { label: 'Pre-DA Site History', href: '/reports/pre-da-history' },
+];
+
+const PLATFORM_LINKS = [
+  { label: 'Verify (Compliance)', href: '/assessment' },
+  { label: 'Scout (Map Explorer)', href: '/scout' },
+  { label: 'Validate (DA Analytics)', href: '/validate' },
+  { label: 'Climate Risk', href: '/climate-risk' },
+  { label: 'Browse Councils', href: '/browse' },
+  { label: 'Insights', href: '/blog' },
+];
+
+const COMPANY_LINKS = [
+  { label: 'How it works', href: '/how-it-works' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Embed program', href: '/for/builders' },
+  { label: 'Contact', href: '/contact' },
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'Terms', href: '/terms' },
+];
+
+const DATA_SOURCES = [
+  'NSW Planning Portal',
+  'Bureau of Meteorology',
+  'European Space Agency',
+  'NSW Rural Fire Service',
+  'Copernicus EMS',
+  'NARCliM 2.0',
+  'Spatial Services NSW',
+];
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-gray-100 py-6 px-6">
-      <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
-        <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
-        <Link href="/reports" className="hover:text-gray-600 transition-colors">Tools</Link>
-        <Link href="/how-it-works" className="hover:text-gray-600 transition-colors">How it works</Link>
-        <Link href="/pricing" className="hover:text-gray-600 transition-colors">Pricing</Link>
-        <Link href="/for/builders" className="hover:text-gray-600 transition-colors">Embed program</Link>
-        <Link href="/contact" className="hover:text-gray-600 transition-colors">Contact</Link>
-        <Link href="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
-        <Link href="/terms" className="hover:text-gray-600 transition-colors">Terms</Link>
+    <footer className="bg-slate-950 border-t border-slate-800/50">
+      <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-2 sm:grid-cols-4 gap-8">
+        {/* Brand */}
+        <div className="col-span-2 sm:col-span-1">
+          <Link href="/" className="text-base font-bold tracking-tight text-white mb-3 block">
+            Plot<span className="text-teal-400">Detect</span>
+          </Link>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            NSW property intelligence. Flood, bushfire, planning controls,
+            and climate projections for any address.
+          </p>
+        </div>
+
+        {/* Tools */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Tools
+          </p>
+          <ul className="space-y-2">
+            {TOOL_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Platform */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Platform
+          </p>
+          <ul className="space-y-2">
+            {PLATFORM_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Company */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Company
+          </p>
+          <ul className="space-y-2">
+            {COMPANY_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <div className="max-w-3xl mx-auto mt-4">
-        <p className="text-xs text-gray-300">
-          © {new Date().getFullYear()} PlotDetect — NSW property intelligence
-        </p>
+
+      {/* Data sources + copyright */}
+      <div className="border-t border-slate-800/50">
+        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p className="text-xs text-slate-600">
+            &copy; {new Date().getFullYear()} PlotDetect &mdash; NSW property intelligence
+          </p>
+          <p className="text-xs text-slate-600">
+            Data: {DATA_SOURCES.join(' \u00B7 ')}
+          </p>
+        </div>
       </div>
     </footer>
   );

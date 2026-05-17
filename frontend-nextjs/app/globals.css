@@ -64,6 +64,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hero dot pattern texture */
+.dot-pattern {
+  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 /* Reduce paint and layout thrashing */
 .setback-card, .property-panel, .analysis-tabs {
   contain: layout style paint;
