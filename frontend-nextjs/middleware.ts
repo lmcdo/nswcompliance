@@ -134,10 +134,7 @@ export async function middleware(request: NextRequest) {
     request.headers.get('x-forwarded-host') ??
     request.headers.get('host') ??
     request.nextUrl.hostname;
-  const isVerifyDomain =
-    hostname === 'verify.plotdetect.com.au' ||
-    hostname === 'plotdetect.com.au' ||
-    hostname === 'www.plotdetect.com.au';
+  const isVerifyDomain = hostname === 'verify.plotdetect.com.au';
 
   if (isVerifyDomain && pathname === '/') {
     return NextResponse.rewrite(new URL('/assessment', request.url));
