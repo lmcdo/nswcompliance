@@ -24,6 +24,9 @@ rasterio==1.4.3
 planetary-computer==1.0.0
 xmltodict==0.14.2
 
+# Climate risk raster — NARCliM NetCDF sampling
+netCDF4==1.7.2
+
 # Conveyancing PDF generation
 reportlab==4.4.3
 
