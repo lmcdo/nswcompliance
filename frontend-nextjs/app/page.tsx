@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import {
   Droplets, Flame, FileCheck, Building2, Radar, Sun, Moon, Satellite,
-  ShieldCheck, Map, BarChart3, Thermometer, ArrowRight,
+  ShieldCheck, Map, BarChart3, Thermometer, ArrowRight, Search,
 } from 'lucide-react';
-import { SiteNav } from '@/components/marketing/SiteNav';
+import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 
 /* ------------------------------------------------------------------ */
@@ -18,6 +18,7 @@ const TOOLS = [
     badge: 'Free + $49',
     icon: Droplets,
     iconColor: 'text-blue-600',
+    iconBg: 'bg-blue-500/10',
   },
   {
     href: '/reports/bushfire',
@@ -26,6 +27,7 @@ const TOOLS = [
     badge: 'Free + $39',
     icon: Flame,
     iconColor: 'text-orange-600',
+    iconBg: 'bg-orange-500/10',
   },
   {
     href: '/reports/conveyancing',
@@ -34,6 +36,7 @@ const TOOLS = [
     badge: 'Free + $49',
     icon: FileCheck,
     iconColor: 'text-emerald-600',
+    iconBg: 'bg-emerald-500/10',
   },
   {
     href: '/reports/granny-flat',
@@ -42,6 +45,7 @@ const TOOLS = [
     badge: 'Free + $49',
     icon: Building2,
     iconColor: 'text-teal-600',
+    iconBg: 'bg-teal-500/10',
   },
   {
     href: '/reports/threat-radar',
@@ -50,6 +54,7 @@ const TOOLS = [
     badge: 'Free + $9/mo',
     icon: Radar,
     iconColor: 'text-violet-600',
+    iconBg: 'bg-violet-500/10',
   },
   {
     href: '/reports/shadow',
@@ -57,7 +62,8 @@ const TOOLS = [
     tagline: 'Shadow modelled from the maximum-height building envelope on ADG solar access test dates.',
     badge: '$39',
     icon: Moon,
-    iconColor: 'text-slate-600',
+    iconColor: 'text-slate-400',
+    iconBg: 'bg-slate-500/10',
   },
   {
     href: '/reports/solar-yield',
@@ -66,6 +72,7 @@ const TOOLS = [
     badge: '$39',
     icon: Sun,
     iconColor: 'text-amber-500',
+    iconBg: 'bg-amber-500/10',
   },
   {
     href: '/reports/pre-da-history',
@@ -74,7 +81,19 @@ const TOOLS = [
     badge: '$49',
     icon: Satellite,
     iconColor: 'text-indigo-600',
+    iconBg: 'bg-indigo-500/10',
   },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Stats                                                              */
+/* ------------------------------------------------------------------ */
+
+const STATS = [
+  { value: '47,000+', label: 'Provisions indexed' },
+  { value: '130+', label: 'LGAs covered' },
+  { value: '8', label: 'Risk layers' },
+  { value: '7', label: 'Gov data sources' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -92,164 +111,279 @@ const DATA_SOURCES = [
 ];
 
 /* ------------------------------------------------------------------ */
+/*  Climate hazards                                                    */
+/* ------------------------------------------------------------------ */
+
+const CLIMATE_HAZARDS = [
+  {
+    title: 'Flood',
+    description: 'Modelled depth at ARI return periods — not just "flood zone."',
+    source: 'NSW SES + council flood studies',
+  },
+  {
+    title: 'Bushfire',
+    description: 'BAL band estimation, CDC pathway assessment, and 10/50 vegetation clearing.',
+    source: 'NSW Rural Fire Service',
+  },
+  {
+    title: 'Climate Projections',
+    description: 'Heat stress and precipitation change trajectories to 2099.',
+    source: 'NARCliM 2.0 (SSP2.45 + SSP3.70)',
+  },
+  {
+    title: 'Compound Hazards',
+    description: 'Bushfire + heat, flood + coastal — interaction scoring for combined risk.',
+    source: 'Composite hazard model',
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Personas                                                           */
+/* ------------------------------------------------------------------ */
+
+const PERSONAS = [
+  {
+    title: 'Homebuyers',
+    description: 'Check hazards before you bid. Free instant checks, detailed reports for shortlisted properties.',
+    href: '/reports',
+    cta: 'Run a free check',
+  },
+  {
+    title: 'Conveyancers',
+    description: 'Pre-exchange planning disclosure in 30 seconds. LEP, DCP, heritage, flood, bushfire — one report.',
+    href: '/for/conveyancers',
+    cta: 'See conveyancing tools',
+  },
+  {
+    title: 'Buyers Agents',
+    description: 'Satellite hazard screening for shortlists. Threat Radar monitoring for your portfolio.',
+    href: '/for/buyers-agents',
+    cta: 'Professional tools',
+  },
+  {
+    title: 'Builders & Planners',
+    description: 'Compliance checking with Verify. Free embed program for your website.',
+    href: '/for/builders',
+    cta: 'Embed program',
+  },
+];
+
+/* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-white">
-      <SiteNav maxWidth="max-w-6xl" />
+    <main className="min-h-screen">
+      <HomeNav />
 
       {/* ── Hero ── */}
-      <section className="px-6 pt-20 pb-16 max-w-3xl mx-auto text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-gray-900 mb-4">
-          Stop guessing.{' '}
-          <span className="text-teal-600">Start with the data.</span>
-        </h1>
-        <p className="text-gray-500 text-lg mb-10 max-w-xl mx-auto">
-          Flood depth, bushfire risk, planning controls, and climate projections
-          for any NSW address. Free instant checks. Professional reports from $39.
-        </p>
-        <div className="flex flex-wrap justify-center gap-2.5">
-          {TOOLS.slice(0, 5).map(({ href, title, icon: Icon, iconColor }) => (
-            <Link
-              key={href}
-              href={href}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all"
-            >
-              <Icon className={`w-4 h-4 ${iconColor}`} />
-              {title}
-            </Link>
-          ))}
+      <section className="relative bg-slate-950 overflow-hidden">
+        {/* Texture */}
+        <div className="absolute inset-0 dot-pattern" />
+        {/* Radial glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-teal-500/8 rounded-full blur-[120px]" />
+
+        <div className="relative px-6 pt-32 pb-24 max-w-3xl mx-auto text-center">
+          <h1 className="text-5xl sm:text-6xl font-bold leading-[1.08] text-white mb-6 tracking-tight">
+            Stop guessing.{' '}
+            <span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
+              Start with the data.
+            </span>
+          </h1>
+          <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
+            Flood depth, bushfire risk, planning controls, and climate projections
+            for any NSW address. Free instant checks. Professional reports from $39.
+          </p>
+
+          {/* Search-bar CTA */}
           <Link
             href="/reports"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
+            className="group flex items-center gap-3 w-full max-w-lg mx-auto bg-slate-900/80 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 transition-all mb-10"
           >
-            All tools
-            <ArrowRight className="w-3.5 h-3.5" />
+            <Search className="w-5 h-5 text-slate-500 group-hover:text-teal-400 transition-colors" />
+            <span className="text-slate-500 text-left">Enter any NSW address...</span>
+            <ArrowRight className="w-4 h-4 text-slate-600 ml-auto group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
           </Link>
-        </div>
-      </section>
 
-      {/* ── Verify — full-width showcase ── */}
-      <section className="bg-gray-50 border-y border-gray-100 py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <ShieldCheck className="w-5 h-5 text-teal-600" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-teal-600">
-              Verify — Compliance Engine
-            </span>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">
-            Every provision. Every clause. Every PDF page.
-          </h2>
-          <p className="text-gray-500 max-w-2xl mb-8">
-            Design compliant from the start. Verify extracts the exact DCP provisions,
-            SEPP standards, and LEP controls that apply to your property and development type
-            — with clause citations and PDF page references.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Inner West tier */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700">
-                  Full DCP coverage
-                </span>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Inner West Council</h3>
-              <ul className="space-y-1.5 text-sm text-gray-600">
-                <li>~11,000 provisions across 3 former councils</li>
-                <li>Precinct-specific filtering</li>
-                <li>DA Mode with triage and annotation</li>
-                <li>SEE scaffold export</li>
-                <li>Development type filtering</li>
-                <li>PDF page citations for every clause</li>
-              </ul>
-            </div>
-
-            {/* 28 LGA tier */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                  Numeric controls
-                </span>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">28 NSW councils</h3>
-              <ul className="space-y-1.5 text-sm text-gray-600">
-                <li>Setbacks, parking rates, landscaping standards</li>
-                <li>Clause citations from source DCP</li>
-                <li>Useful for pre-DA checks and CDC screening</li>
-                <li>Coverage expanding with each LGA onboarding</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/assessment"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              Try Verify — free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/how-it-works"
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all"
-            >
-              How the data works
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Property intelligence tools (8 cards) ── */}
-      <section className="py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Property intelligence tools
-          </h2>
-          <p className="text-gray-500 mb-8 max-w-xl">
-            Free instant checks reveal risk. Professional reports resolve it.
-            No account required.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {TOOLS.map(({ href, title, tagline, badge, icon: Icon, iconColor }) => (
+          {/* Tool pills */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {TOOLS.slice(0, 5).map(({ href, title, icon: Icon, iconColor }) => (
               <Link
                 key={href}
                 href={href}
-                className="group block bg-white rounded-xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:border-slate-600 hover:text-white hover:bg-slate-800 transition-all backdrop-blur-sm"
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <Icon className={`w-5 h-5 ${iconColor} shrink-0 mt-0.5`} />
-                  <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                    badge.startsWith('Free')
-                      ? 'bg-teal-50 text-teal-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {badge}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-gray-900 text-sm mb-1 group-hover:text-teal-700 transition-colors">
-                  {title}
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{tagline}</p>
+                <Icon className={`w-4 h-4 ${iconColor}`} />
+                {title}
               </Link>
             ))}
+            <Link
+              href="/reports"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-teal-400 bg-teal-500/10 border border-teal-500/20 rounded-lg hover:bg-teal-500/20 transition-colors"
+            >
+              All tools
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Climate intelligence ── */}
-      <section className="bg-slate-900 text-white py-16 px-6">
+      {/* ── Stats strip ── */}
+      <section className="bg-slate-950 border-t border-slate-800/50 py-10 px-6">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8">
+          {STATS.map(({ value, label }) => (
+            <div key={label} className="text-center">
+              <div className="text-3xl font-bold text-white tracking-tight">{value}</div>
+              <div className="text-sm text-slate-500 mt-1">{label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Tools bento grid ── */}
+      <section className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
+                Property intelligence tools
+              </h2>
+              <p className="text-slate-500 max-w-lg">
+                Free instant checks reveal risk. Professional reports resolve it. No account required.
+              </p>
+            </div>
+            <Link
+              href="/reports"
+              className="hidden sm:inline-flex text-sm text-teal-600 font-medium hover:text-teal-500 transition-colors"
+            >
+              View all →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {TOOLS.map((tool, i) => {
+              const Icon = tool.icon;
+              const isWide = i === 0;
+              return (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className={`group rounded-2xl border border-slate-200 p-6 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/5 transition-all ${
+                    isWide ? 'sm:col-span-2' : ''
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl ${tool.iconBg} flex items-center justify-center mb-4`}>
+                    <Icon className={`w-5 h-5 ${tool.iconColor}`} />
+                  </div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">
+                      {tool.title}
+                    </h3>
+                    <span
+                      className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        tool.badge.startsWith('Free')
+                          ? 'bg-teal-50 text-teal-700'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {tool.badge}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed">{tool.tagline}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Verify — compliance engine ── */}
+      <section className="py-20 px-6 bg-slate-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 md:p-12">
+            {/* Gradient accent bar */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-500" />
+
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="w-5 h-5 text-teal-600" />
+              <span className="text-xs font-semibold uppercase tracking-widest text-teal-600">
+                Verify — Compliance Engine
+              </span>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">
+              Every provision. Every clause. Every PDF page.
+            </h2>
+            <p className="text-slate-500 max-w-2xl mb-8">
+              Design compliant from the start. Verify extracts the exact DCP provisions,
+              SEPP standards, and LEP controls that apply to your property and development type
+              — with clause citations and PDF page references.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Inner West tier */}
+              <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-6">
+                <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 mb-3">
+                  Full DCP coverage
+                </span>
+                <h3 className="font-semibold text-slate-900 mb-3">Inner West Council</h3>
+                <ul className="space-y-1.5 text-sm text-slate-600">
+                  <li>~11,000 provisions across 3 former councils</li>
+                  <li>Precinct-specific filtering</li>
+                  <li>DA Mode with triage and annotation</li>
+                  <li>SEE scaffold export</li>
+                  <li>Development type filtering</li>
+                  <li>PDF page citations for every clause</li>
+                </ul>
+              </div>
+
+              {/* 28 LGA tier */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6">
+                <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 mb-3">
+                  Numeric controls
+                </span>
+                <h3 className="font-semibold text-slate-900 mb-3">28 NSW councils</h3>
+                <ul className="space-y-1.5 text-sm text-slate-600">
+                  <li>Setbacks, parking rates, landscaping standards</li>
+                  <li>Clause citations from source DCP</li>
+                  <li>Useful for pre-DA checks and CDC screening</li>
+                  <li>Coverage expanding with each LGA onboarding</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/assessment"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+              >
+                Try Verify — free
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                href="/how-it-works"
+                className="inline-flex items-center gap-2 px-6 py-3 text-slate-600 text-sm font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
+              >
+                How the data works
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Climate Risk Intelligence ── */}
+      <section className="relative bg-slate-950 py-20 px-6 overflow-hidden">
+        {/* Subtle glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-teal-500/5 rounded-full blur-[100px]" />
+
+        <div className="relative max-w-5xl mx-auto">
+          <div className="flex items-center gap-2 mb-4">
             <Thermometer className="w-5 h-5 text-teal-400" />
             <span className="text-xs font-semibold uppercase tracking-widest text-teal-400">
               Climate Risk Intelligence
             </span>
           </div>
-          <h2 className="text-3xl font-bold mb-3">
+          <h2 className="text-3xl font-bold text-white tracking-tight mb-3">
             Property risk is changing. We measure it.
           </h2>
           <p className="text-slate-400 max-w-2xl mb-10">
@@ -257,135 +391,119 @@ export default function HomePage() {
             and satellite hazard detection. Deterministic composite scoring — no AI interpretation.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: 'Flood',
-                description: 'Modelled depth at ARI return periods — not just "flood zone."',
-                source: 'NSW SES + council flood studies',
-              },
-              {
-                title: 'Bushfire',
-                description: 'BAL band estimation, CDC pathway assessment, and 10/50 vegetation clearing.',
-                source: 'NSW Rural Fire Service',
-              },
-              {
-                title: 'Climate Projections',
-                description: 'Heat stress and precipitation change trajectories to 2099.',
-                source: 'NARCliM 2.0 (SSP2.45 + SSP3.70)',
-              },
-              {
-                title: 'Compound Hazards',
-                description: 'Bushfire + heat, flood + coastal — interaction scoring for combined risk.',
-                source: 'Composite hazard model',
-              },
-            ].map(({ title, description, source }) => (
-              <div key={title} className="border border-slate-700 rounded-xl p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {CLIMATE_HAZARDS.map(({ title, description, source }) => (
+              <div
+                key={title}
+                className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
+              >
+                {/* Gradient top edge */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-teal-500/50 to-transparent" />
                 <h3 className="font-semibold text-white mb-2">{title}</h3>
                 <p className="text-sm text-slate-400 leading-relaxed mb-3">{description}</p>
-                <p className="text-xs text-slate-500">{source}</p>
+                <p className="text-xs text-slate-600">{source}</p>
               </div>
             ))}
           </div>
 
-          <p className="text-xs text-slate-500 mt-8">
-            Climate Risk Score — free composite assessment for any NSW address.
+          <div className="flex flex-wrap items-center gap-4 mt-8">
+            <Link
+              href="/climate-risk"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+            >
+              Free climate risk check
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/blog/uninsurable-property-climate-risk"
+              className="text-sm text-slate-400 hover:text-teal-400 transition-colors"
+            >
+              How climate risk is repricing real estate →
+            </Link>
+          </div>
+          <p className="text-xs text-slate-600 mt-4">
             Climate Risk Report ($99) available after PlotDetect Pty Ltd incorporation and professional indemnity insurance.
           </p>
         </div>
       </section>
 
       {/* ── Scout + Validate ── */}
-      <section className="py-16 px-6 border-b border-gray-100">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Map className="w-5 h-5 text-blue-600" />
-              <span className="text-xs font-semibold uppercase tracking-widest text-blue-600">
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link
+            href="/scout"
+            className="group relative overflow-hidden rounded-2xl border border-slate-200 p-8 hover:shadow-lg hover:border-blue-500/30 transition-all"
+          >
+            {/* Decorative blob */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-50 rounded-full opacity-60" />
+            <div className="relative">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
+                <Map className="w-6 h-6 text-blue-600" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 mb-2 block">
                 Scout
               </span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Click any property in NSW
-            </h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-4">
-              Interactive map explorer with zone overlays, lot boundaries, heritage overlays,
-              and planning controls. Free, no account required.
-            </p>
-            <Link
-              href="/scout"
-              className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors"
-            >
-              Open Scout →
-            </Link>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart3 className="w-5 h-5 text-violet-600" />
-              <span className="text-xs font-semibold uppercase tracking-widest text-violet-600">
-                Validate
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                Click any property in NSW
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                Interactive map explorer with zone overlays, lot boundaries, heritage overlays,
+                and planning controls. Free, no account required.
+              </p>
+              <span className="inline-flex items-center gap-1 text-sm text-blue-600 font-medium group-hover:text-blue-500 transition-colors">
+                Open Scout
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </span>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Track DA patterns and approval rates
-            </h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-4">
-              DA analytics across 128 NSW councils — approval rates, processing times,
-              common refusal reasons, and trend analysis.
-            </p>
-            <Link
-              href="/validate"
-              className="text-sm text-violet-600 font-medium hover:text-violet-700 transition-colors"
-            >
-              Open Validate →
-            </Link>
-          </div>
+          </Link>
+
+          <Link
+            href="/validate"
+            className="group relative overflow-hidden rounded-2xl border border-slate-200 p-8 hover:shadow-lg hover:border-violet-500/30 transition-all"
+          >
+            {/* Decorative blob */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-50 rounded-full opacity-60" />
+            <div className="relative">
+              <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center mb-4">
+                <BarChart3 className="w-6 h-6 text-violet-600" />
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-2 block">
+                Validate
+              </span>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                Track DA patterns and approval rates
+              </h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                DA analytics across 128 NSW councils — approval rates, processing times,
+                common refusal reasons, and trend analysis.
+              </p>
+              <span className="inline-flex items-center gap-1 text-sm text-violet-600 font-medium group-hover:text-violet-500 transition-colors">
+                Open Validate
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 
-      {/* ── Who uses PlotDetect ── */}
-      <section className="py-16 px-6">
+      {/* ── Personas ── */}
+      <section className="py-20 px-6 bg-slate-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-10 text-center">
             Built for how you actually work
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                title: 'Homebuyers',
-                description: 'Check hazards before you bid. Free instant checks, detailed reports for shortlisted properties.',
-                href: '/reports',
-                cta: 'Run a free check',
-              },
-              {
-                title: 'Conveyancers',
-                description: 'Pre-exchange planning disclosure in 30 seconds. LEP, DCP, heritage, flood, bushfire — one report.',
-                href: '/for/conveyancers',
-                cta: 'See conveyancing tools',
-              },
-              {
-                title: 'Buyers Agents',
-                description: 'Satellite hazard screening for shortlists. Threat Radar monitoring for your portfolio.',
-                href: '/for/buyers-agents',
-                cta: 'Professional tools',
-              },
-              {
-                title: 'Builders & Planners',
-                description: 'Compliance checking with Verify. Free embed program for your website.',
-                href: '/for/builders',
-                cta: 'Embed program',
-              },
-            ].map(({ title, description, href, cta }) => (
+            {PERSONAS.map(({ title, description, href, cta }) => (
               <Link
                 key={title}
                 href={href}
-                className="group block rounded-xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-sm transition-all"
+                className="group rounded-2xl bg-white border border-slate-200 p-6 hover:shadow-lg hover:border-teal-500/30 transition-all"
               >
-                <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed mb-3">{description}</p>
-                <span className="text-sm text-teal-600 font-medium group-hover:text-teal-700 transition-colors">
-                  {cta} →
+                <h3 className="font-semibold text-slate-900 mb-2">{title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mb-4">{description}</p>
+                <span className="inline-flex items-center gap-1 text-sm text-teal-600 font-medium group-hover:text-teal-500 transition-colors">
+                  {cta}
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </Link>
             ))}
@@ -393,17 +511,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Data sources strip ── */}
-      <section className="border-y border-gray-100 bg-gray-50 py-8 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-xs text-gray-400 uppercase tracking-widest mb-4 font-medium">
-            Live government and scientific data sources
-          </p>
-          <p className="text-sm text-gray-500">
-            {DATA_SOURCES.join(' \u00B7 ')}
-          </p>
-        </div>
-      </section>
 
       <SiteFooter />
     </main>

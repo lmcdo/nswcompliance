@@ -45,6 +45,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/for/builders`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/for/councils`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog`,            priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/blog/aasb-s2-property-climate-data`,        priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/apra-cpg-229-property-assessment`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/climate-risk-data-provider-australia`,  priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/uninsurable-property-climate-risk`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/is-my-house-in-a-flood-zone-nsw`,      priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
   ]
 
   const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({
