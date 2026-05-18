@@ -83,7 +83,7 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
     findings.push({
       label: 'NSW RFS Bush Fire Prone Land Map',
       value: 'Data unavailable',
-      detail: 'Could not determine bushfire prone land status. This doesn\'t mean the property is safe — contact the local council or check the RFS portal directly.',
+      detail: 'Could not determine bushfire prone land status. This does not indicate absence of risk — contact the local council or check the RFS Bush Fire Prone Land Map directly.',
       severity: 'amber',
     })
   } else if (o.is_bushfire_prone) {
@@ -132,7 +132,7 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
     findings.push({
       label: 'RFS referral (s4.14 EP&A Act)',
       value: 'Required for any new development',
-      detail: 'The Rural Fire Service must be consulted on your DA. This adds 4–6 weeks to the approval timeline. Your architect or planner should factor this into the project schedule.',
+      detail: 'The Rural Fire Service must be consulted on any DA for this property. This typically adds 4–6 weeks to the approval timeline. Factor this into the project schedule.',
       severity: 'red',
     })
   } else if (c?.rfs_referral_required === false) {

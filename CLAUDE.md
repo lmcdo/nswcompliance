@@ -87,6 +87,7 @@ Before creating any PR, apply these four checks to every file changed in the bra
 2. **Unguarded nulls** — every value that comes from a DB row, API response, or optional field must be null-checked before use. Check: `.rows[0]?.field ?? null`, optional chaining, loading states in React components.
 3. **Type assumptions** — check that types match at every boundary: DB → API (psycopg2/pg date parsing), API → component (ISO string vs Date object), component state (undefined vs null vs false).
 4. **Silent failure modes** — ask: if this fails, does it fail visibly (error thrown, banner shown) or silently (wrong data served, stale state displayed)? Silent failures are always worse.
+5. **Liability language audit** — grep all changed user-facing text (UI components, report pages, PDF generators) for: `safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|reliable`. Each match must be either (a) a regulatory quotation, (b) an internal variable/comment, or (c) replaced with factual language. See `docs/qa/language-audit-2026-05-18.md` for replacement principles and full methodology.
 
 Run this review mentally on each changed file before `gh pr create`. If uncertain, read the file again.
 

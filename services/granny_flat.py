@@ -43,6 +43,7 @@ import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
 logger = logging.getLogger(__name__)
@@ -1120,6 +1121,87 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             conn.close()
         except Exception:
             pass
+
+    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    ds_samgeo = DataSourceQuery(
+        "SAM segmentation (LangSAM via Modal)",
+        os.environ.get("MODAL_STRUCTURES_URL", "modal:detect-structures"),
+        {"lat": req.lat, "lng": req.lng, "prop_id": req.prop_id},
+    )
+    ds_samgeo.record_response(
+        {"structure_count": req.confirmed_structure_count},
+        features_returned=req.confirmed_structure_count,
+    )
+
+    ds_aerial = DataSourceQuery(
+        "NSW SIX Maps LPI Imagery",
+        "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer",
+        {"lat": req.lat, "lng": req.lng},
+    )
+    ds_aerial.record_response({"tile": "fetched"}, features_returned=1)
+
+    ds_sepp = DataSourceQuery(
+        "SEPP Housing 2021 rules",
+        "local:sepp_housing_2021",
+        {"min_lot_m2": SEPP_MIN_LOT_M2, "max_gf_area_m2": SEPP_MAX_GF_AREA_M2},
+    )
+    ds_sepp.record_response(
+        {"eligible": granny_flat_buildable, "max_floor_area_m2": max_floor_area_m2},
+        features_returned=1,
+    )
+
+    ds_zone_heritage = DataSourceQuery(
+        "NSW Planning Portal zone/heritage lookup",
+        f"{NSW_API_BASE}/viewersf/V1/ePlanningApi/lot",
+        {"prop_id": req.prop_id, "is_heritage": is_heritage},
+    )
+    ds_zone_heritage.record_response(
+        {"is_heritage": is_heritage},
+        features_returned=1 if req.prop_id else 0,
+    )
+
+    audit_data_sources = [ds_samgeo, ds_aerial, ds_sepp, ds_zone_heritage]
+
+    outputs_for_audit = {
+        "granny_flat_buildable": granny_flat_buildable,
+        "max_floor_area_m2": max_floor_area_m2,
+        "estimated_weekly_rent_aud": weekly_rent,
+        "rental_yield_annual_pct": rental_yield_pct,
+        "assumed_build_cost_aud": assumed_build_cost,
+        "confidence": confidence,
+    }
+
+    log_audit_trail(
+        report_id=report_id,
+        pipeline_name="granny-flat",
+        input_params={
+            "address": req.address,
+            "lat": req.lat,
+            "lng": req.lng,
+            "prop_id": req.prop_id,
+            "lot_area_m2": lot_area_m2,
+            "confirmed_structure_count": req.confirmed_structure_count,
+            "samgeo_structure_count": req.samgeo_structure_count,
+            "postcode": postcode,
+            "existing_secondary_dwelling": req.existing_secondary_dwelling,
+        },
+        data_sources=audit_data_sources,
+        output_summary=outputs_for_audit,
+        disclaimer_version=get_current_disclaimer_version("granny-flat"),
+        intermediate_calculations={
+            "lot_area_m2": lot_area_m2,
+            "max_buildable_m2": max_floor_area_m2,
+            "structure_count": req.confirmed_structure_count,
+            "eligible": granny_flat_buildable,
+            "is_heritage": is_heritage,
+            "residual_area_m2": (
+                round(lot_area_m2 - req.main_dwelling_area_m2, 1)
+                if lot_area_m2 is not None and req.main_dwelling_area_m2 is not None
+                else None
+            ),
+            "weekly_rent": weekly_rent,
+        },
+    )
 
     return GrannyFlatConfirmResponse(
         report_id=report_id,

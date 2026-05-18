@@ -54,6 +54,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -493,7 +495,11 @@ def run_bushfire(req: BushfireRequest):
         if conn:
             conn.close()
 
-    # Run queries in parallel
+    # Run queries in parallel (with audit trail tracking)
+    ds_rfs = DataSourceQuery("NSW RFS BFPL", RFS_BFPL_REST, {"lat": req.lat, "lng": req.lng})
+    ds_flood = DataSourceQuery("PostGIS flood overlay", "local:spatial_overlays", {"lat": req.lat, "lng": req.lng})
+    ds_heritage = DataSourceQuery("PostGIS heritage overlay", "local:spatial_overlays", {"lat": req.lat, "lng": req.lng})
+
     with ThreadPoolExecutor(max_workers=3) as pool:
         f_rfs = pool.submit(_query_rfs_bfpl, req.lat, req.lng)
         f_flood = pool.submit(_query_flood_overlay, req.lat, req.lng)
@@ -502,6 +508,10 @@ def run_bushfire(req: BushfireRequest):
         rfs_result = f_rfs.result(timeout=15)
         flood_overlay = f_flood.result(timeout=15)
         heritage_overlay = f_heritage.result(timeout=15)
+
+    ds_rfs.record_response(rfs_result, features_returned=1 if rfs_result.get("is_bushfire_prone") else 0)
+    ds_flood.record_response(flood_overlay, features_returned=1 if flood_overlay else 0)
+    ds_heritage.record_response(heritage_overlay, features_returned=1 if heritage_overlay else 0)
 
     # Zone query (separate — quick)
     zone = _query_zone_overlay(req.lat, req.lng)
@@ -540,10 +550,10 @@ def run_bushfire(req: BushfireRequest):
     }
 
     # Write to DB
+    inputs = {"lat": req.lat, "lng": req.lng}
+    if req.lot_geometry:
+        inputs["lot_geometry"] = req.lot_geometry
     try:
-        inputs = {"lat": req.lat, "lng": req.lng}
-        if req.lot_geometry:
-            inputs["lot_geometry"] = req.lot_geometry
         _write_report(
             req.report_id, req.address, req.lat, req.lng,
             req.prop_id, inputs,
@@ -552,6 +562,23 @@ def run_bushfire(req: BushfireRequest):
     except Exception as e:
         logger.error(f"Bushfire report DB write failed: {e}")
         raise HTTPException(status_code=503, detail="Failed to save report — please retry")
+
+    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    ds_zone = DataSourceQuery("PostGIS zone overlay", "local:spatial_overlays", {"lat": req.lat, "lng": req.lng})
+    ds_zone.record_response(zone, features_returned=1 if zone else 0)
+    log_audit_trail(
+        report_id=req.report_id,
+        pipeline_name="bushfire",
+        input_params=inputs,
+        data_sources=[ds_rfs, ds_flood, ds_heritage, ds_zone],
+        output_summary=internal_outputs,
+        disclaimer_version=get_current_disclaimer_version("bushfire"),
+        intermediate_calculations={
+            "bal_band": internal_outputs.get("estimated_bal_band"),
+            "fire_signal": internal_outputs.get("fire_signal"),
+            "cross_overlays_count": len(cross_overlays),
+        },
+    )
 
     return {
         "address": req.address, "lat": req.lat, "lng": req.lng,

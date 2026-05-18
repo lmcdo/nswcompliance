@@ -49,8 +49,8 @@ export default async function ShadowReportPage(
       generatePath="/api/reports/shadow/generate"
       highlights={[
         {
-          label: 'ADG compliance',
-          value: outputs.adg_compliant ? 'Compliant' : outputs.adg_compliant === false ? 'Concern' : 'N/A',
+          label: 'ADG solar access test',
+          value: outputs.adg_compliant ? 'Meets test' : outputs.adg_compliant === false ? 'Concern' : 'N/A',
           severity: outputs.adg_compliant === false ? 'high' : 'low',
         },
         {

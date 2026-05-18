@@ -252,7 +252,7 @@ function buildFindings(data: ShadowReportData): Finding[] {
   } else if (data.adg_compliant) {
     findings.push({
       label: 'ADG Part 3F solar access test',
-      value: overlapCount === 0 ? 'ADG compliant — no shadow overlap' : `ADG compliant — ${overlapCount} of 5 scenarios with shadow`,
+      value: overlapCount === 0 ? 'Meets ADG solar access test — no shadow overlap' : `Meets ADG solar access test — ${overlapCount} of 5 scenarios with shadow`,
       detail: overlapCount === 0
         ? 'A maximum-height building on an adjacent lot would not significantly shadow this property across any test scenario. ADG solar access requirements are met.'
         : 'Some shadow impact is expected but the ADG 2-hour solar access requirement (9am–3pm on 21 June) is still met. This is typical for urban lots and unlikely to be grounds for objection.',
@@ -521,7 +521,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
               'All 5 ADG test scenarios (free shows 2)',
               'Seasonal shadow summary with ADG thresholds',
               'Shadow diagram overlays on aerial imagery',
-              'Objection-ready paragraph (if ADG non-compliant)',
+              'Objection-ready paragraph (if ADG solar access test not met)',
               'Data currency and methodology details',
             ].map((item) => (
               <View key={item} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 }}>

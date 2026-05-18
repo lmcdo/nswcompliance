@@ -48,6 +48,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, model_validator
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
 logger = logging.getLogger(__name__)
@@ -531,11 +532,31 @@ def _lookup_neighbour_hob(lat: float, lng: float) -> Optional[float]:
 def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
 
+    # Audit trail: track data source queries
+    ds_google = DataSourceQuery(
+        "Google Solar API", GOOGLE_SOLAR_API,
+        {"lat": request.lat, "lng": request.lng, "requiredQuality": "MEDIUM"},
+    )
+    ds_heritage = DataSourceQuery(
+        "PostGIS heritage overlay", "local:spatial_overlays",
+        {"lat": request.lat, "lng": request.lng, "layer_type": "heritage"},
+    )
+    ds_hob = DataSourceQuery(
+        "PostGIS height overlay", "local:spatial_overlays",
+        {"lat": request.lat, "lng": request.lng, "layer_type": "height"},
+    )
+
     try:
         raw = _query_google_solar(request.lat, request.lng)
     except Exception as e:
+        ds_google.record_error(str(e))
         logger.exception(f"Google Solar API failed: {e}")
         raise HTTPException(status_code=502, detail=f"Google Solar API error: {e}")
+
+    ds_google.record_response(
+        raw,
+        features_returned=1 if raw.get("coverage_available", True) and raw.get("solarPotential") else 0,
+    )
 
     try:
         outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
@@ -544,7 +565,13 @@ def run_solar_yield(request: SolarYieldRequest):
         raise HTTPException(status_code=500, detail="Failed to parse solar data")
 
     outputs.is_heritage = _check_heritage(request.lat, request.lng)
+    ds_heritage.record_response(outputs.is_heritage, features_returned=1 if outputs.is_heritage else 0)
+
     outputs.neighbour_max_height_m = _lookup_neighbour_hob(request.lat, request.lng)
+    ds_hob.record_response(
+        outputs.neighbour_max_height_m,
+        features_returned=1 if outputs.neighbour_max_height_m is not None else 0,
+    )
 
     # Resolve LGA
     try:
@@ -584,6 +611,32 @@ def run_solar_yield(request: SolarYieldRequest):
     except Exception as e:
         logger.error(f"Solar yield DB write failed: {e}")
         raise HTTPException(status_code=503, detail="Failed to save report — please retry")
+
+    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    log_audit_trail(
+        report_id=request.report_id,
+        pipeline_name="solar-yield",
+        input_params={
+            "address": request.address,
+            "lat": request.lat,
+            "lng": request.lng,
+            "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
+        },
+        data_sources=[ds_google, ds_heritage, ds_hob],
+        output_summary=outputs.model_dump(),
+        disclaimer_version=get_current_disclaimer_version("solar-yield"),
+        intermediate_calculations={
+            "max_panels": outputs.max_panels,
+            "annual_kwh_estimate": outputs.annual_kwh_estimate,
+            "roof_area_m2": outputs.roof_area_m2,
+            "is_commercial_scale": outputs.is_commercial_scale,
+            "best_pitch_deg": outputs.best_pitch_deg,
+            "best_azimuth_deg": outputs.best_azimuth_deg,
+            "coverage_available": outputs.coverage_available,
+            "lot_clipped": request.lot_polygon_wgs84 is not None,
+            "confidence": confidence,
+        },
+    )
 
     logger.info(
         f"Solar yield complete: {request.report_id} — "

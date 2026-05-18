@@ -62,6 +62,24 @@ threat_radar_subscriptions - weekly DA monitoring subscriptions
 pipeline_idea_runs - GIS bot / pipeline discovery runs
   run_id, run_date, repos_scanned, tier1/2/3_repos jsonb, pipeline_combinations jsonb
 
+## Audit Trail Tables (added 2026-05-18)
+
+report_audit_trail - APPEND-ONLY log of every report generation (legal defensibility)
+  id uuid PK, report_id uuid, pipeline_name text, pipeline_version text (git SHA),
+  input_params jsonb, data_sources_queried jsonb (array of source queries with response hashes),
+  intermediate_calculations jsonb, output_summary jsonb, disclaimer_version text,
+  created_at timestamptz
+  Index: (report_id), (pipeline_name, created_at DESC)
+  Policy: INSERT only — NO UPDATE or DELETE (immutability required)
+  Retention: 10 years (Design and Building Practitioners Act 2020)
+
+disclaimer_versions - versioned disclaimer text per product
+  id serial PK, pipeline_name text, version text, headline_disclaimer text,
+  limitations_text text, source_attributions text, effective_from timestamptz,
+  superseded_at timestamptz (NULL = active), created_at timestamptz
+  Unique: (pipeline_name, version)
+  Index: (pipeline_name, effective_from DESC) WHERE superseded_at IS NULL
+
 ## Important: What's Missing
 
 dcp_precinct_metadata: 0 rows (don't use)

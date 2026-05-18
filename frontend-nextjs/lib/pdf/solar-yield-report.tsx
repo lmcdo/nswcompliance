@@ -232,11 +232,11 @@ function buildFindings(data: SolarYieldReportData): Finding[] {
 
   // Solar grade
   const gradeDetail: Record<string, string> = {
-    A: 'This roof has excellent solar potential. North-facing with ideal pitch and strong sunshine hours — an installer would consider this a premium site.',
-    B: 'Good solar potential. Minor compromises in orientation or pitch, but still a strong candidate for solar. Most installers would recommend proceeding.',
+    A: 'This roof has strong solar potential based on available data. North-facing with ideal pitch and strong sunshine hours — typically considered a premium site by installers.',
+    B: 'Good solar potential based on available data. Minor compromises in orientation or pitch, but still a strong candidate for solar installation.',
     C: 'Moderate solar potential. The roof geometry or orientation reduces output compared to ideal. Still viable, but payback period will be longer.',
-    D: 'Below-average solar potential. Significant orientation or pitch issues will reduce output. Consider whether the investment makes sense at current panel prices.',
-    F: 'Poor solar potential. The roof geometry makes solar panels unlikely to deliver a reasonable return. A ground-mounted system or different roof face may be worth exploring.',
+    D: 'Below-average solar potential. Significant orientation or pitch issues will reduce output. The investment case at current panel prices may be marginal.',
+    F: 'Poor solar potential. The roof geometry makes solar panels unlikely to deliver a reasonable return at current prices. A ground-mounted system or different roof face may be worth exploring.',
   };
 
   findings.push({

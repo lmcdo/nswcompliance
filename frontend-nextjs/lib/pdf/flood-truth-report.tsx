@@ -124,7 +124,7 @@ const SIGNAL_META: Record<string, { label: string; sublabel: string; bg: string;
   none:     { label: 'No flood indicators detected', sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records', bg: GREEN_LIGHT, color: GREEN },
   low:      { label: 'Low flood signal', sublabel: 'Property is within a statutory flood zone — no observed inundation events on record', bg: AMBER_LIGHT, color: AMBER },
   moderate: { label: 'Moderate flood signal', sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing', bg: ORANGE_LIGHT, color: ORANGE },
-  elevated: { label: 'Elevated flood signal', sublabel: 'Multiple independent sources confirm flood exposure — professional flood assessment recommended', bg: RED_LIGHT, color: RED },
+  elevated: { label: 'Elevated flood signal', sublabel: 'Multiple independent sources indicate flood exposure — professional flood study advisable', bg: RED_LIGHT, color: RED },
 };
 
 const EPI_CLASS_META: Record<string, { label: string }> = {

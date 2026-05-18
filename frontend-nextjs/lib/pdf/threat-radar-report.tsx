@@ -306,7 +306,7 @@ function buildFindings(data: ThreatRadarReportData): Finding[] {
       value: `+${netDwellings} new dwelling${netDwellings !== 1 ? 's' : ''} proposed nearby`,
       detail: netDwellings >= 10
         ? 'Significant densification is proposed. Expect increased traffic, parking pressure, and construction activity over 12–24 months.'
-        : 'Moderate new housing proposed. Some construction disruption is expected but the impact should be limited.',
+        : 'Moderate new housing proposed. Some construction disruption is expected, though the scale is relatively contained.',
       severity: netDwellings >= 10 ? 'red' : netDwellings >= 4 ? 'amber' : 'green',
     });
   }

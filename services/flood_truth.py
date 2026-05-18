@@ -70,6 +70,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from pyproj import Transformer
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -1384,6 +1386,17 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
+    # Audit trail: create DataSourceQuery objects before queries run
+    coord_params = {"lat": req.lat, "lng": req.lng}
+    ds_epi = DataSourceQuery("NSW SEED EPI WFS", EPI_REST, coord_params)
+    ds_ems = DataSourceQuery("Copernicus EMS flood events", "local:copernicus_flood_events", coord_params)
+    ds_jrc = DataSourceQuery("JRC Global Surface Water", _jrc_tile_url(req.lat, req.lng), coord_params)
+    ds_wofs = DataSourceQuery("DEA Water Observations (WOfS)", DEA_WCS_BASE, coord_params)
+    ds_bom = DataSourceQuery("BOM Water Data Online", BOM_SOS2, coord_params)
+    ds_ses = DataSourceQuery("SES / Council flood study", "local:spatial_overlays", coord_params)
+    ds_studies = DataSourceQuery("Flood study rasters", "local:flood_study_rasters", coord_params)
+    ds_dem = DataSourceQuery("NSW 5m DEM", _DEM_IDENTIFY_URL, coord_params)
+
     with ThreadPoolExecutor(max_workers=9) as pool:
         f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
         f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
@@ -1402,6 +1415,16 @@ def run_flood(req: FloodRequest):
         studies = f_studies.result()
         dem  = f_dem.result()
 
+    # Audit trail: record responses
+    ds_epi.record_response(epi, features_returned=0 if epi.get("epi_flood_class") in (None, "none") else 1)
+    ds_ems.record_response(ems, features_returned=len(ems.get("ems_activations") or []))
+    ds_jrc.record_response(jrc, features_returned=1 if jrc.get("jrc_water_occurrence_pct") is not None else 0)
+    ds_wofs.record_response(wofs, features_returned=1 if wofs.get("dea_wofs_frequency_pct") is not None else 0)
+    ds_bom.record_response(bom, features_returned=1 if bom.get("bom_gauge_name") is not None else 0)
+    ds_ses.record_response(ses, features_returned=1 if ses.get("ses_in_flood_planning_area") else 0)
+    ds_studies.record_response(studies, features_returned=len(studies.get("flood_studies") or []))
+    ds_dem.record_response(dem, features_returned=1 if dem.get("ground_elevation_m_ahd") is not None else 0)
+
     internal_outputs = {
         "wet_seasons_checked": 0,
         "flood_event_count": None,
@@ -1413,14 +1436,38 @@ def run_flood(req: FloodRequest):
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
+    inputs = {"lat": req.lat, "lng": req.lng}
     try:
         _write_report(
             req.report_id, req.address, req.lat, req.lng,
-            req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
+            req.prop_id, inputs, internal_outputs,
         )
     except Exception as e:
         logger.error(f"Flood report DB write failed: {e}")
         raise HTTPException(status_code=503, detail="Failed to save report — please retry")
+
+    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    outputs = _normalise_outputs(internal_outputs)
+    log_audit_trail(
+        report_id=req.report_id,
+        pipeline_name="flood",
+        input_params=inputs,
+        data_sources=[ds_epi, ds_ems, ds_jrc, ds_wofs, ds_bom, ds_ses, ds_studies, ds_dem],
+        output_summary=outputs,
+        disclaimer_version=get_current_disclaimer_version("flood"),
+        intermediate_calculations={
+            "flood_signal": outputs.get("flood_signal"),
+            "in_100yr_flood_zone": outputs.get("in_100yr_flood_zone"),
+            "epi_had_data": epi.get("epi_flood_class") not in (None, "none"),
+            "ems_had_data": ems.get("ems_flood_detected") is not None,
+            "jrc_had_data": jrc.get("jrc_water_occurrence_pct") is not None,
+            "wofs_had_data": wofs.get("dea_wofs_frequency_pct") is not None,
+            "bom_had_data": bom.get("bom_gauge_name") is not None,
+            "ses_had_data": ses.get("ses_in_flood_planning_area") is not None,
+            "flood_studies_matched": len(studies.get("flood_studies") or []),
+            "ground_elevation_m_ahd": dem.get("ground_elevation_m_ahd"),
+        },
+    )
 
     return {
         "address": req.address, "lat": req.lat, "lng": req.lng,

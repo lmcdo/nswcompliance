@@ -16,6 +16,8 @@ import psycopg2, psycopg2.extras, requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -142,11 +144,12 @@ def _normalise_council(council_name: str) -> str:
     return _COUNCIL_NAME_MAP.get(key, council_name.strip())
 
 
-def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> tuple[list, bool]:
+def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> tuple[list, bool, dict]:
     """
     Fetch DAs and CDCs from NSW ePlanning API.
-    Returns (applications, api_available).
+    Returns (applications, api_available, per_endpoint_counts).
     api_available is False only if BOTH endpoints failed — used to skip updating last_checked.
+    per_endpoint_counts maps each URL to its app count (or error string).
     """
     since = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     council = _normalise_council(council_name)
@@ -159,16 +162,20 @@ def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> tuple[list, b
     }
     apps = []
     any_success = False
+    per_endpoint: dict = {}
     for url in (DA_URL, CDC_URL):
         try:
             r = requests.get(url, headers=headers, timeout=20)
             r.raise_for_status()
             data = r.json()
-            apps.extend(data.get("Application") or data.get("ApplicationList") or [])
+            batch = data.get("Application") or data.get("ApplicationList") or []
+            apps.extend(batch)
+            per_endpoint[url] = len(batch)
             any_success = True
         except Exception as e:
             logger.warning(f"ePlanning {url}: {e}")
-    return apps, any_success
+            per_endpoint[url] = f"error: {e}"
+    return apps, any_success, per_endpoint
 
 
 def _filter_nearby(apps: list, lat: float, lng: float) -> list:
@@ -246,11 +253,44 @@ def check(req: CheckRequest):
     if not council:
         raise HTTPException(422, "council_name missing from subscription")
 
-    apps, api_available = _fetch_das(council)
+    apps, api_available, per_endpoint = _fetch_das(council)
+
+    # Build audit data source objects for each ePlanning endpoint
+    query_params = {"council": council, "days_back": WINDOW_DAYS, "radius_m": ALERT_RADIUS_M}
+    ds_online_da = DataSourceQuery("NSW ePlanning OnlineDA", DA_URL, query_params)
+    ds_online_cdc = DataSourceQuery("NSW ePlanning OnlineCDC", CDC_URL, query_params)
+
+    da_result = per_endpoint.get(DA_URL)
+    cdc_result = per_endpoint.get(CDC_URL)
+    if isinstance(da_result, int):
+        ds_online_da.record_response({"count": da_result}, features_returned=da_result)
+    else:
+        ds_online_da.error = str(da_result) if da_result else "no response"
+    if isinstance(cdc_result, int):
+        ds_online_cdc.record_response({"count": cdc_result}, features_returned=cdc_result)
+    else:
+        ds_online_cdc.error = str(cdc_result) if cdc_result else "no response"
+
     if not api_available:
         # Both ePlanning endpoints failed — don't update last_checked or seen set.
         # The next run will retry rather than treating this as a successful empty check.
         logger.warning(f"Skipping last_checked update for {req.subscription_id} — ePlanning API unavailable")
+
+        # Audit trail even on failure (non-blocking)
+        log_audit_trail(
+            report_id=req.subscription_id,
+            pipeline_name="threat-radar",
+            input_params={"subscription_id": req.subscription_id, "address": sub["address"],
+                          "lat": float(sub["lat"]), "lng": float(sub["lng"]), "council": council},
+            data_sources=[ds_online_da, ds_online_cdc],
+            output_summary={"api_error": True, "new_application_count": 0},
+            disclaimer_version=get_current_disclaimer_version("threat-radar"),
+            intermediate_calculations={
+                "total_das_fetched": 0, "total_cdcs_fetched": 0, "radius_m": ALERT_RADIUS_M,
+                "api_available": False,
+            },
+        )
+
         return {
             "subscription_id": req.subscription_id,
             "address": sub["address"],
@@ -284,13 +324,46 @@ def check(req: CheckRequest):
         if conn:
             conn.close()
 
+    # Audit trail (non-blocking — won't prevent check results delivery on failure)
+    checked_at = datetime.utcnow().isoformat()
+    da_count = per_endpoint.get(DA_URL, 0) if isinstance(per_endpoint.get(DA_URL), int) else 0
+    cdc_count = per_endpoint.get(CDC_URL, 0) if isinstance(per_endpoint.get(CDC_URL), int) else 0
+    log_audit_trail(
+        report_id=req.subscription_id,
+        pipeline_name="threat-radar",
+        input_params={
+            "subscription_id": req.subscription_id,
+            "address": sub["address"],
+            "lat": float(sub["lat"]),
+            "lng": float(sub["lng"]),
+            "council": council,
+        },
+        data_sources=[ds_online_da, ds_online_cdc],
+        output_summary={
+            "new_application_count": len(new_apps),
+            "total_nearby": len(nearby),
+            "checked_at": checked_at,
+        },
+        disclaimer_version=get_current_disclaimer_version("threat-radar"),
+        intermediate_calculations={
+            "total_das_fetched": da_count,
+            "total_cdcs_fetched": cdc_count,
+            "total_apps_before_filter": len(apps),
+            "nearby_within_radius": len(nearby),
+            "new_unseen_apps": len(new_apps),
+            "radius_m": ALERT_RADIUS_M,
+            "window_days": WINDOW_DAYS,
+            "api_available": True,
+        },
+    )
+
     return {
         "subscription_id": req.subscription_id,
         "address": sub["address"],
         "new_application_count": len(new_apps),
         "new_applications": new_apps,
         "total_nearby": len(nearby),
-        "checked_at": datetime.utcnow().isoformat(),
+        "checked_at": checked_at,
     }
 
 

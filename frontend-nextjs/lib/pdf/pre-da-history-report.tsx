@@ -270,7 +270,7 @@ function buildRecommendations(data: PreDAHistoryReportData, notableYears: Timeli
   }
 
   if (notableYears.length === 0 && allDAs.length === 0) {
-    recs.push('No red flags identified. Standard pre-DA due diligence (s10.7 certificate, site inspection, planner consultation) is sufficient.');
+    recs.push('No red flags identified in the data sources checked. Standard pre-DA due diligence includes a s10.7 certificate, site inspection, and planner consultation.');
   } else {
     recs.push('Request a Section 10.7(2) planning certificate from council to confirm current planning controls and any outstanding orders.');
   }
@@ -336,7 +336,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
             {hasRisk
               ? 'Action required — physical changes detected'
               : hasFlags
-                ? 'Review recommended — activity detected'
+                ? 'Further review advisable — activity detected'
                 : 'No red flags identified'}
           </Text>
           <Text style={s.calloutText}>{summary}</Text>
@@ -388,7 +388,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         )}
 
         {/* ---- Recommended next steps ---- */}
-        <Text style={s.sectionTitle}>Recommended next steps</Text>
+        <Text style={s.sectionTitle}>Suggested next steps</Text>
         <View style={{ marginBottom: 24 }}>
           {recs.map((rec, i) => (
             <View key={i} style={{ flexDirection: 'row', marginBottom: 6, paddingRight: 16 }} wrap={false}>

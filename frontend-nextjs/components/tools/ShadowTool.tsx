@@ -532,14 +532,14 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   const badgeLabel = isNonResidential
     ? 'Indicative only'
     : o.adg_compliant
-    ? 'ADG compliant'
-    : 'ADG concern';
+    ? 'Meets ADG solar access test'
+    : 'ADG solar access concern';
 
   const summaryText = isNonResidential
     ? 'ADG solar access requirements apply to residential apartment buildings only. This result is indicative for non-residential zones.'
     : o.adg_compliant
-    ? 'Based on the worst-case model, this property meets the ADG 2-hour solar access requirement on 21 June (winter solstice).'
-    : 'This property may not meet the ADG 2-hour solar access requirement on 21 June. If a neighbour lodges a DA for a tall building, this is the evidence you need to object.';
+    ? 'Based on the modelled worst-case scenario, this property appears to meet the ADG 2-hour solar access test on 21 June (winter solstice). This is an indicative analysis, not a formal compliance assessment.'
+    : 'Based on the modelled scenario, this property may not meet the ADG 2-hour solar access test on 21 June. If a neighbour lodges a DA for a tall building, this analysis may support an objection submission.';
 
   // Build findings
   const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];

@@ -35,6 +35,8 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -1018,12 +1020,46 @@ def run_pre_da_history(req: PreDAHistoryRequest):
 
 
 def _run_pre_da_history_inner(req: PreDAHistoryRequest):
+    # --- Audit trail: data source query objects ---
+    ds_geocode = DataSourceQuery(
+        "NSW Planning Portal geocode",
+        f"{NSW_PLANNING_BASE}/viewersf/V1/ePlanningApi/address",
+        {"address": req.address},
+    )
+    ds_tessera = DataSourceQuery(
+        "GeoTessera Clay v1.5 embeddings",
+        "local:geotessera",
+        {"years": f"{YEARS[0]}-{YEARS[-1]}"},
+    )
+    ds_sentinel2 = DataSourceQuery(
+        "Element84 Sentinel-2 L2A (NDVI/NDBI)",
+        ELEMENT84_URL,
+        {"collections": "sentinel-2-l2a"},
+    )
+    ds_eplanning = DataSourceQuery(
+        "NSW ePlanning DA/CC/OC",
+        f"{EPLANNING_BASE}/OnlineDA",
+        {"address": req.address},
+    )
+    ds_heritage = DataSourceQuery(
+        "PostGIS heritage overlay",
+        "local:spatial_overlays",
+        {"layer_type": "heritage"},
+    )
+
     # --- Geocode ---
     try:
         lat, lon, council = geocode_address(req.address)
+        ds_geocode.record_response({"lat": lat, "lon": lon, "council": council}, features_returned=1)
     except ValueError as exc:
+        ds_geocode.record_error(str(exc))
         _mark_error(req.report_id, str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
+
+    # Update query params now that we have coordinates
+    ds_sentinel2.query_params.update({"lat": lat, "lon": lon})
+    ds_eplanning.query_params.update({"council": council})
+    ds_heritage.query_params.update({"lat": lat, "lon": lon})
 
     # --- Parallel pipeline ---
     # Tessera runs sequentially (single GeoTessera instance to avoid OOM from
@@ -1069,13 +1105,50 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         all_da = fut_da.result()
         heritage = fut_heritage.result()
 
+    # Record audit trail responses for parallel queries
+    tessera_years_available = sum(1 for v in similarity_timeline.values() if v is not None)
+    ds_tessera.record_response(
+        {"years_with_data": tessera_years_available},
+        features_returned=tessera_years_available,
+    )
+
+    ndvi_years_available = sum(
+        1 for v in ndvi_ndbi_deltas.values()
+        if v.get("ndvi_delta") is not None
+    )
+    ds_sentinel2.record_response(
+        {"years_with_deltas": ndvi_years_available},
+        features_returned=ndvi_years_available,
+    )
+
+    ds_eplanning.record_response(
+        {"da_count": len(all_da)},
+        features_returned=len(all_da),
+    )
+
+    ds_heritage.record_response(
+        heritage,
+        features_returned=1 if heritage.get("flag") else 0,
+    )
+
     # --- Wayback SSIM (small lots only) ---
+    ds_wayback: DataSourceQuery | None = None
     wayback_ssim: dict[str, float] = {}
     if req.lot_area_m2 is not None and req.lot_area_m2 < SMALL_LOT_THRESHOLD_M2:
+        ds_wayback = DataSourceQuery(
+            "Esri World Imagery Wayback",
+            WAYBACK_META_URL,
+            {"lat": lat, "lon": lon, "lot_area_m2": req.lot_area_m2},
+        )
         try:
             releases = get_wayback_releases()
             wayback_ssim = compute_wayback_ssim_timeline(lat, lon, releases)
+            ds_wayback.record_response(
+                {"pairs_compared": len(wayback_ssim)},
+                features_returned=len(wayback_ssim),
+            )
         except Exception as exc:
+            ds_wayback.record_error(str(exc))
             logger.warning(f"Wayback SSIM skipped: {exc}")
 
     # --- Annotate ---
@@ -1137,6 +1210,42 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
     finally:
         if conn:
             conn.close()
+
+    # --- Audit trail (non-blocking — won't prevent report delivery on failure) ---
+    notable_years = [
+        entry["year"] for entry in timeline
+        if entry.get("level") in ("minor", "moderate", "major")
+    ]
+    audit_data_sources = [ds_geocode, ds_tessera, ds_sentinel2, ds_eplanning, ds_heritage]
+    if ds_wayback is not None:
+        audit_data_sources.append(ds_wayback)
+
+    log_audit_trail(
+        report_id=result.get("id", req.report_id or "unknown"),
+        pipeline_name="pre-da-history",
+        input_params={
+            "address": req.address,
+            "lot_area_m2": req.lot_area_m2,
+            "lat": lat,
+            "lon": lon,
+            "council": council,
+        },
+        data_sources=audit_data_sources,
+        output_summary=result,
+        disclaimer_version=get_current_disclaimer_version("pre-da-history"),
+        intermediate_calculations={
+            "notable_years_count": len(notable_years),
+            "notable_years": notable_years,
+            "da_count": len(all_da),
+            "heritage_flag": heritage.get("flag", False),
+            "wayback_ssim_pairs": len(wayback_ssim),
+            "tessera_years_available": sum(1 for v in similarity_timeline.values() if v is not None),
+            "ndvi_years_available": sum(
+                1 for v in ndvi_ndbi_deltas.values()
+                if v.get("ndvi_delta") is not None
+            ),
+        },
+    )
 
     return result
 

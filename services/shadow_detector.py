@@ -49,6 +49,7 @@ import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 from services.lga_lookup import lookup_lga
 
 try:
@@ -340,9 +341,13 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
 @router.post("/shadow")
 def run_shadow(request: ShadowRequest):
     """Shadow Detector: 5 ADG scenarios + S2 construction change score."""
+    # Audit trail: track lot geometry fetch
+    ds_lot = DataSourceQuery("NSW Planning Portal lot API", LOT_API, {"propId": request.prop_id})
     lot_geometry = _fetch_lot_geometry(request.prop_id)
     if not lot_geometry:
+        ds_lot.record_error("No geometry returned")
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
+    ds_lot.record_response(lot_geometry, features_returned=1)
 
     lot_geojson = _arcgis_to_geojson(lot_geometry)
     if request.height_m:
@@ -371,16 +376,25 @@ def run_shadow(request: ShadowRequest):
     else:
         height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
+    # Audit trail: track Sentinel-2 change score
+    ds_sentinel = DataSourceQuery(
+        "Element84 Sentinel-2 BSI change detection",
+        "https://earth-search.aws.element84.com/v1",
+        {"lat": request.lat, "lng": request.lng, "buffer_m": 200},
+    )
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(compute_change_score, request.lat, request.lng, 200)
             change = fut.result(timeout=25)
+        ds_sentinel.record_response(change, features_returned=1 if change.get("change_score") is not None else 0)
     except concurrent.futures.TimeoutError:
         logger.warning("Sentinel-2 change score timed out after 25s — skipping")
         change = {"change_score": None, "construction_detected": False, "note": "Sentinel-2 timeout"}
+        ds_sentinel.record_error("Timeout after 25s")
     except Exception as e:
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
+        ds_sentinel.record_error(str(e))
 
     # Proxy building: max-height structure at the north lot boundary.
     # Models worst-case shadow — the closest a neighbour could build.
@@ -388,9 +402,20 @@ def run_shadow(request: ShadowRequest):
     # are not reflected here, keeping the model conservative.
     north_proxy = northern_neighbour_proxy(lot_geojson)
 
+    # Audit trail: track pybdshadow + pvlib shadow modelling
+    ds_shadow = DataSourceQuery(
+        "pybdshadow shadow casting + pvlib solar position",
+        "local:model_all_scenarios",
+        {"height_m": height_m, "scenarios": len(SHADOW_SCENARIOS)},
+    )
     try:
         shadow_map = model_all_scenarios(north_proxy, height_m)
+        ds_shadow.record_response(
+            {"scenarios_computed": len(shadow_map)},
+            features_returned=len(shadow_map),
+        )
     except Exception as e:
+        ds_shadow.record_error(str(e))
         raise HTTPException(500, str(e))
 
     scenarios = _build_scenario_list(
@@ -432,6 +457,41 @@ def run_shadow(request: ShadowRequest):
     except Exception as e:
         logger.error(f"Shadow report DB write failed: {e}")
         raise HTTPException(status_code=503, detail="Failed to save report — please retry")
+
+    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    ds_height = DataSourceQuery(
+        "LEP height limit lookup",
+        "local:spatial_overlays" if height_source == "spatial_overlays" else "local:regulatory_provisions",
+        {"lat": request.lat, "lng": request.lng},
+    )
+    ds_height.record_response({"height_m": height_m, "source": height_source}, features_returned=1)
+
+    log_audit_trail(
+        report_id=request.report_id,
+        pipeline_name="shadow",
+        input_params={
+            "address": request.address,
+            "prop_id": request.prop_id,
+            "lat": request.lat,
+            "lng": request.lng,
+            "height_m_override": request.height_m,
+        },
+        data_sources=[ds_lot, ds_height, ds_shadow, ds_sentinel],
+        output_summary=outputs,
+        disclaimer_version=get_current_disclaimer_version("shadow"),
+        intermediate_calculations={
+            "height_m": height_m,
+            "height_source": height_source,
+            "adg_compliant": outputs["adg_compliant"],
+            "worst_case_scenario": outputs["worst_case_scenario"],
+            "construction_change_score": outputs["construction_change_score"],
+            "construction_change_detected": outputs["construction_change_detected"],
+            "shadow_overlap_fractions": {
+                s["scenario"]: s.get("shadow_overlap_fraction", 0.0)
+                for s in scenarios
+            },
+        },
+    )
 
     return {
         "address": request.address,
