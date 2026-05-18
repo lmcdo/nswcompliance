@@ -106,13 +106,15 @@ LAYER_CONFIG = {
     # Additional LEP layers
     "land_reservation":          {"service": "Principal_Planning_Layers", "layer_id": 16, "value_field": "LAY_CLASS"},
     "foreshore_building_line":   {"service": "Principal_Planning_Layers", "layer_id": 18, "value_field": "LAY_CLASS"},
-    # Bushfire — no LGA_NAME field, use bbox for Greater Sydney
-    # bbox: minLon, minLat, maxLon, maxLat (EPSG:4283 ~= 4326)
+    # Bushfire — no LGA_NAME field, ingest statewide (~232K features).
+    # Previously bbox-limited to Greater Sydney which caused climate risk
+    # scores outside Sydney to report bushfire=0 (false negative).
     "bushfire": {
         "base": "Fire", "service": "BFPL", "layer_id": 0,
         "value_field": "d_Category",
-        "filter_mode": "bbox",
-        "bbox": "150.5,-34.3,151.6,-33.4",
+        "filter_mode": "all",
+        "oid_batch": True,
+        "page_size": 500,
     },
     # ANEF — 29 features statewide, ingest all
     "anef": {
@@ -544,6 +546,10 @@ def ingest_layer(
         features = data.get("features", [])
 
         if not features:
+            # For OID batching, an empty batch (e.g. from a transient 500)
+            # should not abort the entire run — skip to the next batch.
+            if batch_iter is not None:
+                continue
             break
 
         rows = []
