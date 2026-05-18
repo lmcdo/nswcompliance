@@ -1,9 +1,9 @@
-"""Composite Climate Risk Awareness Score — V1 (equal-weight, additive).
+"""Composite Climate Risk Awareness Score — V1.1 (equal-weight, additive).
 
 Methodology:
     - Each hazard is normalized to 0-1 using documented scale endpoints
-    - Equal weighting (0.2 per hazard) — documented simplifying assumption
-    - Composite = weighted sum × 100, clamped to 1-100
+    - Equal weighting (~0.167 per hazard, 6 hazards) — documented simplifying assumption
+    - Composite = weighted sum x 100, clamped to 1-100
     - Interaction bonus for documented compound hazard pairs
     - Deterministic: same inputs always produce same output
 
@@ -11,19 +11,25 @@ Data sources (all government-authoritative):
     - Flood: spatial_overlays (NSW Planning Portal EPI layers)
     - Bushfire: spatial_overlays (NSW RFS Bushfire Prone Land)
     - Coastal hazard: spatial_overlays (SEPP Resilience & Hazards 2021)
+    - Landslide: spatial_overlays (NSW Planning Portal EPI Landslide Risk)
     - Fire history: spatial_overlays (NPWS Fire History)
     - Heat trajectory: NARCliM 2.0 (AdaptNSW, 4km resolution)
     - Precipitation trend: NARCliM 2.0 (AdaptNSW)
 
-Limitations (V1):
+Limitations (V1.1):
     - Equal weighting does not reflect relative loss severity per hazard
     - No property-specific vulnerability (building type, floor height, materials)
     - No adaptation offset (flood levees, bushfire mitigation works)
     - NARCliM projections are model-dependent (single GCM: ACCESS-ESM1.5)
     - Score reflects hazard exposure, not probability of loss
 
-Version: 1.0
-Date: 2026-05-15
+Version: 1.1
+Date: 2026-05-18
+
+Changelog:
+    1.1 (2026-05-18): Added landslide as 6th hazard. Weights redistributed
+        from 0.20x5 to ~0.167x6. Landslide data was already ingested in
+        spatial_overlays but not wired into scoring.
 """
 
 from __future__ import annotations
@@ -99,8 +105,8 @@ class ClimateRiskResult:
     lng: float
     hazards: list[HazardScore] = field(default_factory=list)
     interaction_bonus: float = 0.0
-    methodology_version: str = "1.0"
-    data_date: str = "2026-05-15"
+    methodology_version: str = "1.1"
+    data_date: str = "2026-05-18"
     disclaimer: str = (
         "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data "
         "and NARCliM 2.0 climate projections. This is not financial, insurance, or property "
