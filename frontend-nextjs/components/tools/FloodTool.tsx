@@ -369,10 +369,10 @@ function FloodLockedPreviewCard({
     ? 'In a statutory flood zone — insurers price premiums against the depth numbers below'
     : o.epi_flood_class && o.epi_flood_class !== 'none'
     ? 'In a flood planning area — get the depths in writing before exchange'
-    : 'No flood indicators — get this confirmed before settlement';
+    : 'No flood indicators detected across checked sources — see limitations below';
 
   const alarmDetail = signal === 'unavailable'
-    ? 'Absence of data is not clearance. If no flood study covers this area, no-one has certified it safe. The full report documents exactly what was checked and what was not — giving your solicitor a paper trail.'
+    ? 'Absence of data is not clearance. If no flood study covers this area, flood status has not been formally assessed. The full report documents exactly what was checked and what was not — giving your solicitor a paper trail.'
     : signal === 'elevated'
     ? 'Banks, mortgage insurers, and conveyancers run the same government flood datasets before settlement. If they find flood risk you haven\'t disclosed, contracts fall over. The 1-in-100 year depth — the number they ask for — is in your report below.'
     : signal === 'moderate'

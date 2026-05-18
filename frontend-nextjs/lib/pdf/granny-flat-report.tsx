@@ -314,7 +314,7 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
       label: 'Satellite structure detection',
       value: `${data.confirmed_structure_count} structures detected on lot`,
       detail: isMultiStructureBlock
-        ? 'Multiple secondary structures detected. A town planner or private certifier needs to determine whether an existing structure is already classified as a secondary dwelling before the CDC pathway can be confirmed.'
+        ? 'Multiple secondary structures detected. A town planner or private certifier would need to assess whether an existing structure is already classified as a secondary dwelling before the CDC pathway can proceed.'
         : 'Multiple structures detected but eligibility is not affected. Existing structures may include garages, sheds, or other ancillary buildings that do not count as secondary dwellings.',
       severity: isMultiStructureBlock ? 'amber' : 'green',
     });
@@ -586,7 +586,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
               if (isMultiStructureBlock) {
                 return (
                   <WhatThisMeans>
-                    Two or more secondary structures were detected on this lot. A town planner or private certifier needs to determine whether an existing structure is already classified as a secondary dwelling before the CDC pathway can be confirmed.
+                    Two or more secondary structures were detected on this lot. A town planner or private certifier would need to assess whether an existing structure is already classified as a secondary dwelling before the CDC pathway can proceed.
                   </WhatThisMeans>
                 );
               }
@@ -763,7 +763,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {
               n: '1',
               title: 'Engage a private certifier for a CDC pre-lodgement check',
-              body: 'A certifier will confirm the SEPP standards are achievable on your specific lot geometry. Most offer a free or low-cost initial consultation.',
+              body: 'A certifier can assess whether the SEPP standards are achievable on your specific lot geometry. Most offer a free or low-cost initial consultation.',
             },
             {
               n: '2',
@@ -789,7 +789,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {
               n: '1',
               title: 'Consider the DA pathway',
-              body: 'A DA to council may still be possible, particularly if the lot is close to the 450 m\u00B2 minimum or the exclusion is borderline. A town planner can assess feasibility.',
+              body: 'A DA to council may still be possible, particularly if the lot is close to the 450 m\u00B2 minimum or the exclusion is borderline. A town planner can assess the options.',
             },
             {
               n: '2',
@@ -895,7 +895,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
               Get professional advice
             </Text>
             <Text style={s.bodyText}>
-              A private certifier experienced in secondary dwellings can confirm SEPP compliance and lodge your CDC.
+              A private certifier experienced in secondary dwellings can assess SEPP compliance and lodge your CDC.
               Visit <Link src="https://plotdetect.com.au" style={{ color: TEAL }}>plotdetect.com.au</Link> to run checks on any NSW address.
             </Text>
           </View>

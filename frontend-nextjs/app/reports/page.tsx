@@ -60,7 +60,7 @@ const TOOLS = [
   {
     href: '/reports/conveyancing',
     title: 'Conveyancing Planning Disclosure',
-    tagline: 'Everything your conveyancer should check — instantly.',
+    tagline: 'Planning data a conveyancer needs — instantly.',
     description:
       'LEP controls, environmental overlays, heritage status, SEPP overlays, development feasibility screening, and DCP setback controls from live government data.',
     badge: 'Free + $49',

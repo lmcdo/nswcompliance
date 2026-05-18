@@ -578,12 +578,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                   );
                 })}
 
-                {/* Nearby secondary dwelling approvals — social proof */}
+                {/* Nearby secondary dwelling applications */}
                 {eligibility.nearby_secondary_dwelling_count != null && eligibility.nearby_secondary_dwelling_count > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
                     <span className="text-teal-600 text-sm">✓</span>
                     <p className="text-xs text-teal-700">
-                      {eligibility.nearby_secondary_dwelling_count} secondary {eligibility.nearby_secondary_dwelling_count === 1 ? 'dwelling' : 'dwellings'} approved within 500m in the last 2 years
+                      {eligibility.nearby_secondary_dwelling_count} secondary {eligibility.nearby_secondary_dwelling_count === 1 ? 'dwelling application' : 'dwelling applications'} lodged within 500m in the last 2 years
                     </p>
                   </div>
                 )}

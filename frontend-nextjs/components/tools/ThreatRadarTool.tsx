@@ -467,7 +467,7 @@ function ThreatFindings({ stats, apps }: { stats: Stats; apps: Application[] }) 
     findings.push({
       label: 'Environmental Planning Instrument variations',
       value: `${stats.epiVariationCount} application${stats.epiVariationCount !== 1 ? 's' : ''} seeking to vary planning rules`,
-      detail: 'These developers are asking council to bend the rules — requesting exceptions to height limits, setbacks, or floor space ratios. If approved, they set precedents that future applicants will cite. Consider lodging an objection if any are near your property.',
+      detail: 'These applications request exceptions to height limits, setbacks, or floor space ratios. If approved, they may set precedents that future applicants can cite. Affected neighbours have a right to make submissions during the public notification period.',
       severity: 'red',
     });
   }

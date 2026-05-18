@@ -544,7 +544,7 @@ function SiteHistoryFindings({
     findings.push({
       label: `Sentinel-2 satellite analysis — ${validYears.length} years (2017–2024)`,
       value: 'No significant physical changes detected',
-      detail: 'Across 8 years of satellite imagery, no demolition, construction, or major ground disturbance was detected on this lot. This is a clean result — low risk of undisclosed or unapproved works.',
+      detail: 'Across 8 years of satellite imagery, no demolition, construction, or major ground disturbance was detected on this lot. No indicators of undisclosed or unapproved works were found in the data sources checked.',
       severity: 'green',
     });
   } else {
@@ -554,7 +554,7 @@ function SiteHistoryFindings({
       label: `Sentinel-2 satellite analysis — ${validYears.length} years (2017–2024)`,
       value: `Physical change detected in ${yearList}`,
       detail: majorYears.length > 0
-        ? `Major ground disturbance detected — likely demolition, construction, or significant earthworks. Your conveyancer should verify whether these changes were approved and properly certified.`
+        ? `Major ground disturbance detected — likely demolition, construction, or significant earthworks. A conveyancer can verify whether these changes were approved and properly certified.`
         : `Minor to moderate changes detected — could be renovations, landscaping, or outbuilding additions. Worth checking whether council approval was obtained, especially if not disclosed in the contract.`,
       severity: majorYears.length > 0 ? 'red' : 'amber',
     });
@@ -575,7 +575,7 @@ function SiteHistoryFindings({
       label: 'NSW ePlanning Portal — DA records',
       value: `${allDaRefs.length} development application${allDaRefs.length !== 1 ? 's' : ''} found`,
       detail: notableYears.length > 0
-        ? `DA records exist for this property. Cross-reference the satellite timeline below to check whether all detected changes align with approved applications.`
+        ? `DA records exist for this property. Cross-reference the satellite timeline below to check whether detected changes align with lodged applications.`
         : `DA records exist but no significant physical changes were detected by satellite. The approved works may have been minor, internal, or not yet constructed.`,
       severity: 'amber',
     });
@@ -736,7 +736,7 @@ function PreDAPaidResults({
           <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed">
             <p className="font-semibold text-slate-900 mb-1">What this means</p>
             {notableYears.length === 0 && allDaPans.length === 0 && (
-              <p>No significant physical changes detected on this lot between 2017 and 2024. No development applications found on record. This is a clean site history — low risk of unapproved works or undisclosed changes.</p>
+              <p>No significant physical changes detected on this lot between 2017 and 2024. No development applications found on record. No indicators of unapproved works or undisclosed changes were found in the data sources checked.</p>
             )}
             {notableYears.length === 0 && allDaPans.length > 0 && (
               <p>No significant physical changes detected by satellite, but {allDaPans.length} DA event{allDaPans.length !== 1 ? 's' : ''} found on record. The approved works may have been minor or not yet constructed.</p>

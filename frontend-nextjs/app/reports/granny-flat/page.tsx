@@ -551,7 +551,7 @@ function GrannyFlatPageInner() {
             <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 flex items-center gap-3">
               <span className="text-teal-600 font-bold text-lg">✓</span>
               <div>
-                <p className="text-sm font-semibold text-teal-900">Payment confirmed — generating your feasibility report</p>
+                <p className="text-sm font-semibold text-teal-900">Payment confirmed — generating your eligibility screening report</p>
                 <p className="text-xs text-teal-700">Our AI detected structures on your lot. Confirm the count below to complete your analysis.</p>
               </div>
             </div>
@@ -877,7 +877,7 @@ const GRANNY_FLAT_FAQS = [
   },
   {
     q: 'Why does this tool use aerial imagery to detect structures?',
-    a: 'SEPP Housing 2021 requires at most one secondary dwelling per lot. By detecting existing roofed structures on 10 cm NSW SIX Maps aerial imagery, this tool gives a more accurate buildability estimate than relying on lot area alone — existing garages, sheds, and ancillary structures all affect the available building envelope.',
+    a: 'SEPP Housing 2021 requires at most one secondary dwelling per lot. By detecting existing roofed structures on 10 cm NSW SIX Maps aerial imagery, this tool provides a buildability estimate that accounts for existing structures — garages, sheds, and ancillary buildings all affect the available building envelope. Aerial detection is indicative and may not identify all structures.',
   },
   {
     q: 'What does the yield calculator assume?',
@@ -1208,8 +1208,8 @@ function ConfirmationPanel({
            detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 == null && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
               The main dwelling footprint area could not be determined from aerial detection.
-              Available building envelope could not be verified — review the aerial map and confirm
-              sufficient rear yard space exists before proceeding.
+              Available building envelope could not be estimated — review the aerial map and check
+              whether adequate rear yard space appears to exist.
             </div>
           )}
 
@@ -1268,7 +1268,7 @@ function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
         Eligible properties nearby
       </h3>
       <p className="text-xs text-teal-700 mb-4">
-        These properties near you have been confirmed eligible — check if one suits you, or use these as DA precedents.
+        These nearby properties passed the automated eligibility screening — use as reference or DA precedents.
       </p>
       <div className="space-y-2">
         {results.map((r) => (

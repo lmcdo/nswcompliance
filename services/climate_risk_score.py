@@ -42,13 +42,14 @@ from services.climate_risk_raster import query_narclim_summary, DATA_DIR, NARCLI
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
-# Hazard weights (V1: equal at 0.2 each = 1.0 total)
+# Hazard weights (V1.1: equal at ~0.167 each = 1.0 total, 6 hazards)
 WEIGHTS = {
-    "flood": 0.20,
-    "bushfire": 0.20,
-    "coastal": 0.20,
-    "fire_history": 0.20,
-    "heat": 0.20,
+    "flood": 0.167,
+    "bushfire": 0.167,
+    "coastal": 0.167,
+    "fire_history": 0.167,
+    "heat": 0.167,
+    "landslide": 0.165,
 }
 
 # Interaction bonuses for documented compound hazard pathways
@@ -160,6 +161,7 @@ def _query_spatial_overlays(lat: float, lng: float) -> dict[str, list[dict]]:
         "coastal_land_application", "coastal_wetlands", "littoral_rainforest",
         "coastal_environment_area", "coastal_use_area",
         "fire_history",
+        "landslide",
     )
 
     conn = psycopg2.connect(DATABASE_URL)
@@ -258,6 +260,23 @@ def _normalize_coastal(overlays: dict[str, list[dict]]) -> HazardScore:
     )
 
 
+def _normalize_landslide(overlays: dict[str, list[dict]]) -> HazardScore:
+    """Landslide: presence in EPI landslide risk layer."""
+    hits = overlays.get("landslide", [])
+    present = len(hits) > 0
+    raw = 1.0 if present else 0.0
+    return HazardScore(
+        hazard="landslide",
+        raw_score=raw,
+        weight=WEIGHTS["landslide"],
+        weighted_score=raw * WEIGHTS["landslide"],
+        present=present,
+        detail=f"Landslide risk area: {'Yes' if present else 'No'}",
+        confidence="high",
+        data_source="NSW Planning Portal EPI Landslide Risk via spatial_overlays",
+    )
+
+
 def _normalize_fire_history(overlays: dict[str, list[dict]]) -> HazardScore:
     """Fire history: number of distinct fire events at location."""
     hits = overlays.get("fire_history", [])
@@ -347,6 +366,7 @@ def climate_risk_score(lat: float, lng: float) -> ClimateRiskResult:
         _normalize_flood(overlays),
         _normalize_bushfire(overlays),
         _normalize_coastal(overlays),
+        _normalize_landslide(overlays),
         _normalize_fire_history(overlays),
         _normalize_heat(narclim),
     ]
