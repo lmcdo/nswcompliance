@@ -856,13 +856,17 @@ def run_monitor(
                     )
                     conn.commit()
                     if is_spatial:
-                        send_telegram(
-                            f"DCP spatial amendment detected — {ch_council}/{key}\n"
-                            f"{label}\n"
-                            f"Map or boundary document changed. Manual review required.\n"
-                            f"{url}"
-                        )
-                        print(f"    [SPATIAL] Telegram alert sent — manual review required")
+                        if stored_hash:
+                            # Only alert on genuine changes, not first-time baseline
+                            send_telegram(
+                                f"DCP spatial amendment detected — {ch_council}/{key}\n"
+                                f"{label}\n"
+                                f"Map or boundary document changed. Manual review required.\n"
+                                f"{url}"
+                            )
+                            print(f"    [SPATIAL] Telegram alert sent — manual review required")
+                        else:
+                            print(f"    [SPATIAL] First baseline stored — no alert")
                     elif is_inert:
                         print(f"    [INERT] Hash updated silently — cover/ToC, no alert")
                 else:
