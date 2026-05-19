@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 
 interface DCPInterestFormProps {
@@ -8,20 +8,19 @@ interface DCPInterestFormProps {
   address: string;
 }
 
-/** Councils with structured numeric controls (setbacks, parking, landscaping, height) */
-const STRUCTURED_CONTROLS_COUNCILS = [
-  'Bayside', 'Blacktown', 'Burwood', 'Camden', 'Campbelltown',
-  'Canada Bay', 'Canterbury-Bankstown', 'City of Sydney', 'Cumberland',
-  'Fairfield', 'Georges River', 'Hornsby', 'Inner West', 'Ku-ring-gai',
-  'Liverpool', 'Northern Beaches', 'Parramatta', 'Penrith',
-  'Randwick', 'Ryde', 'Strathfield', 'Sutherland Shire',
-  'The Hills Shire', 'Waverley', 'Woollahra',
-];
-
 export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
   const [showCoverage, setShowCoverage] = useState(false);
+  const [structuredCouncils, setStructuredCouncils] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!showCoverage || structuredCouncils.length > 0) return;
+    fetch('/api/dcp/coverage')
+      .then(r => r.json())
+      .then(d => setStructuredCouncils(d.councils ?? []))
+      .catch(() => {});
+  }, [showCoverage, structuredCouncils.length]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,11 +132,15 @@ export function DCPInterestForm({ councilName, address }: DCPInterestFormProps) 
                 Setbacks, parking rates, landscaping, height, and site coverage with DCP clause citations.
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {STRUCTURED_CONTROLS_COUNCILS.map(c => (
-                  <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                    {c}
-                  </span>
-                ))}
+                {structuredCouncils.length > 0 ? (
+                  structuredCouncils.map(c => (
+                    <span key={c} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      {c}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-400">Loading coverage...</span>
+                )}
               </div>
             </div>
 
