@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -58,7 +58,7 @@ interface SearchResult {
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
-type SubscribeState = 'idle' | 'subscribing' | 'subscribed';
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -166,10 +166,10 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('idle');
-  const [subscribeState, setSubscribeState] = useState<SubscribeState>('idle');
+
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchError, setSearchError] = useState('');
-  const [subscribeError, setSubscribeError] = useState('');
+
 
   const runCheck = useCallback(async (addr: string) => {
     if (!addr.trim()) return;
@@ -235,39 +235,12 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
     runCheck(address);
   };
 
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !address.trim()) return;
-
-    setSubscribeState('subscribing');
-    setSubscribeError('');
-
-    posthog?.capture('threat_radar_subscribe', { address, lga_slug: lgaSlug });
-
-    try {
-      const res = await fetch('/api/stripe/checkout/threat-radar-monitor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: address.trim(), email: email.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
-      window.location.href = json.checkout_url;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      setSubscribeError(msg);
-      setSubscribeState('idle');
-    }
-  };
-
   const reset = () => {
     setSearchState('idle');
-    setSubscribeState('idle');
     setSearchResult(null);
     setAddress('');
     setEmail('');
     setSearchError('');
-    setSubscribeError('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
   };
 
@@ -316,11 +289,6 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
           <SearchResults
             result={searchResult}
             onReset={reset}
-            email={email}
-            onEmailChange={setEmail}
-            onSubscribe={handleSubscribe}
-            subscribeState={subscribeState}
-            subscribeError={subscribeError}
           />
         )}
 
@@ -342,49 +310,14 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
           </>
         )}
 
-        {/* Subscribe — always visible */}
-        {subscribeState !== 'subscribed' ? (
-          <div className="border border-teal-200 bg-teal-50 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-sm font-medium text-teal-900">Weekly DA monitoring — $9.99/month</p>
-              <span className="text-xs font-bold text-teal-900">$9.99/mo</span>
-            </div>
-            <p className="text-xs text-teal-700 mb-3">
-              Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address. Cancel anytime.
-            </p>
-            <form onSubmit={handleSubscribe} className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="flex-1 px-3 py-2 rounded-lg border border-teal-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
-                disabled={subscribeState === 'subscribing'}
-                required
-              />
-              <button
-                type="submit"
-                disabled={subscribeState === 'subscribing' || !email.trim() || !address.trim()}
-                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {subscribeState === 'subscribing' ? 'Redirecting...' : 'Subscribe — $9.99/mo →'}
-              </button>
-            </form>
-            {subscribeError && (
-              <p className="text-xs text-red-600 mt-2">{subscribeError}</p>
-            )}
-            <PaymentTermsNotice />
-          </div>
-        ) : (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-            <p className="font-medium text-green-800 mb-1">Subscribed</p>
-            <p className="text-sm text-green-700">
-              Weekly alerts will be sent to <strong>{email}</strong> for new applications within 200m of{' '}
-              <strong>{address}</strong>.
-            </p>
-            <p className="text-xs text-gray-500 mt-2">Checks run every Monday 7:00 am AEST.</p>
-          </div>
-        )}
+        {/* Waitlist — payments not yet available */}
+        <div className="border border-teal-200 bg-teal-50 rounded-xl p-5">
+          <p className="text-sm font-medium text-teal-900 mb-1">Weekly DA monitoring — coming soon</p>
+          <p className="text-xs text-teal-700 mb-3">
+            Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address. Join the waitlist to be first in line.
+          </p>
+          <WaitlistButton interestType="threat-radar" address={address} label="Join waitlist" />
+        </div>
 
         <p className="text-xs text-gray-400 text-center">
           {DATA_PROVENANCE.threat_radar}
@@ -693,24 +626,12 @@ function ThreatBadges({ app }: { app: Application }) {
 // MonitorPreviewCard — forward-anxiety subscription gate
 // ---------------------------------------------------------------------------
 
-function MonitorPreviewCard({
-  email,
-  onEmailChange,
-  onSubscribe,
-  subscribeState,
-  subscribeError,
-}: {
-  email: string;
-  onEmailChange: (v: string) => void;
-  onSubscribe: (e: React.FormEvent) => void;
-  subscribeState: SubscribeState;
-  subscribeError: string;
-}) {
+function MonitorPreviewCard() {
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5 space-y-3" data-testid="monitor-preview-card">
       <div>
         <p className="text-sm font-semibold text-teal-900">
-          Weekly DA monitoring — $9.99/month
+          Weekly DA monitoring — coming soon
         </p>
         <p className="text-xs text-teal-700 mt-1 leading-relaxed">
           New DAs are lodged every week near most addresses.
@@ -741,28 +662,7 @@ function MonitorPreviewCard({
         Example alert — real applications sent every Monday.
       </p>
 
-      {/* Subscribe form */}
-      <form onSubmit={onSubscribe} className="flex gap-2">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
-          placeholder="you@example.com"
-          className="flex-1 px-3 py-2 rounded-lg border border-teal-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
-          disabled={subscribeState === 'subscribing'}
-          required
-          data-testid="monitor-email-input"
-        />
-        <button
-          type="submit"
-          disabled={subscribeState === 'subscribing' || !email.trim()}
-          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-        >
-          {subscribeState === 'subscribing' ? 'Redirecting...' : 'Subscribe — $9.99/mo →'}
-        </button>
-      </form>
-      {subscribeError && <p className="text-xs text-red-600">{subscribeError}</p>}
-      <PaymentTermsNotice />
+      <WaitlistButton interestType="threat-radar" label="Join waitlist" />
     </div>
   );
 }
@@ -774,19 +674,9 @@ function MonitorPreviewCard({
 function SearchResults({
   result,
   onReset,
-  email,
-  onEmailChange,
-  onSubscribe,
-  subscribeState,
-  subscribeError,
 }: {
   result: SearchResult;
   onReset: () => void;
-  email: string;
-  onEmailChange: (v: string) => void;
-  onSubscribe: (e: React.FormEvent) => void;
-  subscribeState: SubscribeState;
-  subscribeError: string;
 }) {
   const apps = result.applications ?? [];
   const stats = useMemo(() => computeStats(apps), [apps]);
@@ -915,13 +805,7 @@ function SearchResults({
             );
           })}
           {/* Subscribe CTA after all results */}
-          <MonitorPreviewCard
-            email={email}
-            onEmailChange={onEmailChange}
-            onSubscribe={onSubscribe}
-            subscribeState={subscribeState}
-            subscribeError={subscribeError}
-          />
+          <MonitorPreviewCard />
         </>
       )}
     </div>

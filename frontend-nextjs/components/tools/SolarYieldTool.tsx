@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -123,8 +123,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
   const [report, setReport] = useState<ReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [ineligible, setIneligible] = useState<{ error: string; evidence?: string; evidence_label?: string } | null>(null);
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState('');
+
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
 
   const runCheck = useCallback(async (addr: string) => {
@@ -195,25 +194,6 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
     }
   }, [runCheck]);
 
-  const handleUnlock = async () => {
-    if (!report?.report_id || !report?.address) return;
-    setUnlocking(true);
-    setUnlockError('');
-    try {
-      const res = await fetch('/api/stripe/checkout/solar-yield', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: report.report_id, address: report.address }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
-      window.location.href = json.checkout_url;
-    } catch (err: unknown) {
-      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
-      setUnlocking(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     runCheck(address);
@@ -227,8 +207,6 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
     setErrorMsg('');
     setIneligible(null);
     setPaidReportId(null);
-    setUnlocking(false);
-    setUnlockError('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
   };
 
@@ -336,12 +314,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
             paidReportId ? (
               <PaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <SolarLockedPreviewCard
-                outputs={report.outputs}
-                onUnlock={handleUnlock}
-                unlocking={unlocking}
-                error={unlockError}
-              />
+              <SolarLockedPreviewCard outputs={report.outputs} />
             )
           ) : null}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
@@ -618,14 +591,8 @@ function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) 
 
 function SolarLockedPreviewCard({
   outputs,
-  onUnlock,
-  unlocking,
-  error,
 }: {
   outputs: SolarYieldOutputs;
-  onUnlock: () => void;
-  unlocking: boolean;
-  error: string;
 }) {
   const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
   const annualKwh       = outputs.annual_kwh_estimate;
@@ -676,25 +643,7 @@ function SolarLockedPreviewCard({
       </div>
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <button
-          onClick={onUnlock}
-          disabled={unlocking}
-          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          {unlocking ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Starting checkout...
-            </>
-          ) : (
-            'Unlock full analysis — $19'
-          )}
-        </button>
-        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-        <p className="text-xs text-gray-400 text-center mt-2">
-          Paid once. PDF delivered to your email after checkout.
-        </p>
-        <PaymentTermsNotice />
+        <WaitlistButton interestType="solar-yield" />
       </div>
     </div>
   );

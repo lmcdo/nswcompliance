@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -120,16 +120,10 @@ const SEPP_LEGISLATION_URL =
 
 function LockedPreviewCard({
   lga_name,
-  onUnlock,
-  unlocking,
-  email,
-  onEmailChange,
+  address,
 }: {
   lga_name: string | null;
-  onUnlock: () => void;
-  unlocking: boolean;
-  email: string;
-  onEmailChange: (v: string) => void;
+  address?: string;
 }) {
   const rows = [
     { label: 'Aerial structure analysis', preview: '1 structure detected' },
@@ -155,24 +149,7 @@ function LockedPreviewCard({
         ))}
       </div>
       <div className="px-5 pb-5 space-y-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
-          placeholder="your@email.com — results emailed to you"
-          className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-        />
-        <button
-          onClick={onUnlock}
-          disabled={unlocking || !email.trim()}
-          className="w-full py-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-60 transition-colors"
-        >
-          {unlocking ? 'Starting analysis…' : 'Get your feasibility report — $49'}
-        </button>
-        <p className="text-xs text-gray-400 text-center">
-          Rental yield estimate · build ROI · DCP setbacks · AI structure map · PDF report
-        </p>
-        <PaymentTermsNotice />
+        <WaitlistButton interestType="granny-flat" address={address} />
       </div>
     </div>
   );
@@ -237,7 +214,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   const [address, setAddress] = useState('');
   const [pageState, setPageState] = useState<PageState>('idle');
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
-  const [unlocking, setUnlocking] = useState(false);
+
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
@@ -281,7 +258,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     setPageState('loading');
     setEligibility(null);
     setErrorMsg('');
-    setUnlocking(false);
 
     try {
       const res = await fetch('/api/canibuildit/check', {
@@ -316,45 +292,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   const handleCheck = (e: React.FormEvent) => {
     e.preventDefault();
     runCheck(address);
-  };
-
-  // Unlock — fire detect job in background, then redirect to Stripe checkout
-  const handleUnlock = async () => {
-    if (!eligibility || unlocking) return;
-    setUnlocking(true);
-    setErrorMsg('');
-    try {
-      const detectRes = await fetch('/api/satellite/granny-flat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: eligibility.address ?? address,
-          action: 'detect',
-          ...(email.trim() ? { notification_email: email.trim() } : {}),
-        }),
-      });
-      const detectJson = await detectRes.json();
-      if (!detectRes.ok) throw new Error(detectJson.error ?? 'Could not start analysis');
-      const jobId: string = detectJson.jobId;
-
-      const checkoutRes = await fetch('/api/stripe/checkout/granny-flat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          job_id: jobId,
-          address: eligibility.address ?? address,
-          ...(email.trim() ? { email: email.trim() } : {}),
-        }),
-      });
-      const checkoutJson = await checkoutRes.json();
-      if (!checkoutRes.ok || !checkoutJson.checkout_url) {
-        throw new Error(checkoutJson.error ?? 'Checkout failed');
-      }
-      window.location.href = checkoutJson.checkout_url;
-    } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong — please try again.');
-      setUnlocking(false);
-    }
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -405,7 +342,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     setEmailSubmitted(false);
     setLgaEmail('');
     setLgaInterestSubmitted(false);
-    setUnlocking(false);
     autoSubmittedRef.current = false;
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -602,10 +538,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               )}
               <LockedPreviewCard
                 lga_name={eligibility.lga_name}
-                onUnlock={handleUnlock}
-                unlocking={unlocking}
-                email={email}
-                onEmailChange={setEmail}
+                address={eligibility.address ?? address}
               />
               <FreePaidComparison />
             </>

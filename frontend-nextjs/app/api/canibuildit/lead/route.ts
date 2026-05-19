@@ -61,7 +61,7 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),

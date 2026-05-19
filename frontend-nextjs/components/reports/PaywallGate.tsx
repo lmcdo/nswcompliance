@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { PaymentTermsNotice } from './PaymentTermsNotice';
+import { WaitlistButton } from './WaitlistButton';
 
 interface PaywallGateProps {
   tool: 'flood-truth' | 'shadow' | 'solar-yield';
@@ -23,51 +22,13 @@ const TOOL_LABELS: Record<PaywallGateProps['tool'], string> = {
   'solar-yield':  'Solar Yield Report',
 };
 
-const CHECKOUT_PATHS: Record<PaywallGateProps['tool'], string> = {
-  'flood-truth': '/api/stripe/checkout/flood-truth',
-  'shadow':      '/api/stripe/checkout/shadow',
-  'solar-yield': '/api/stripe/checkout/solar-yield',
-};
-
 export function PaywallGate({
   tool,
-  reportId,
   address,
-  price,
   alarmHeadline,
   alarmDetail,
   previewItems,
 }: PaywallGateProps) {
-  const [email, setEmail]       = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed || !trimmed.includes('@')) {
-      setError('Enter a valid email address.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(CHECKOUT_PATHS[tool], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, email: trimmed }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) {
-        throw new Error(json.error || 'Could not start checkout');
-      }
-      window.location.href = json.checkout_url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
 
@@ -99,43 +60,9 @@ export function PaywallGate({
         />
       </div>
 
-      {/* CTA */}
+      {/* Waitlist CTA */}
       <div className="bg-white px-5 pb-5 pt-3">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Your email — report delivered here"
-            className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            disabled={loading}
-            autoComplete="email"
-          />
-          <button
-            type="submit"
-            disabled={loading || !email.trim()}
-            className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Starting checkout…
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                </svg>
-                Get full report &mdash; ${price}
-              </>
-            )}
-          </button>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <p className="text-xs text-gray-400 text-center">
-            Paid once. PDF delivered to your email. {address && `For: ${address}`}
-          </p>
-          <PaymentTermsNotice />
-        </form>
+        <WaitlistButton interestType={tool} address={address} />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
@@ -94,7 +94,7 @@ function PreDAHistoryToolInner() {
   const [errorMsg, setErrorMsg]             = useState('');
   const [step, setStep]                     = useState(0);
   const [email, setEmail]                   = useState('');
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
   const [paymentStatus, setPaymentStatus]   = useState<'success' | 'cancelled' | null>(null);
 
   const stepTimersRef  = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -237,29 +237,6 @@ function PreDAHistoryToolInner() {
     }
   };
   handleRunRef.current = handleRun;
-
-  const handleCheckout = async () => {
-    const rid = result?.id ?? reportId;
-    if (!email.trim() || !rid) return;
-    setCheckoutLoading(true);
-    try {
-      const res = await fetch('/api/stripe/checkout/pre-da-history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: rid, email: email.trim() }),
-      });
-      const json = await res.json();
-      if (json?.checkout_url) {
-        window.location.href = json.checkout_url;
-      } else {
-        throw new Error(json?.error ?? 'Checkout failed');
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Checkout failed');
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
 
   // Derived stats
   const validYears    = result ? result.timeline.filter((r) => r.level !== 'no_data') : [];
@@ -434,30 +411,13 @@ function PreDAHistoryToolInner() {
             DA events are sourced from the NSW ePlanning Portal — complete from July 2021.
           </p>
 
-          {/* Stripe CTA */}
+          {/* Waitlist CTA */}
           <div className="p-6 bg-teal-50 border border-teal-200 rounded-lg">
-            <h2 className="text-sm font-semibold text-gray-900 mb-1">Get the full PDF report — $49</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">Full PDF report — coming soon</h2>
             <p className="text-xs text-gray-500 mb-4">
               Includes the full annotated timeline, DA event detail, heritage assessment, methodology, and disclaimer.
-              Delivered to your email immediately after payment.
             </p>
-            <div className="flex gap-3">
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-              <button
-                onClick={handleCheckout}
-                disabled={!email.trim() || !(result?.id ?? reportId) || checkoutLoading}
-                className="bg-teal-700 hover:bg-teal-800 disabled:opacity-40 text-white text-sm font-semibold py-2 px-5 rounded-lg transition-colors whitespace-nowrap"
-              >
-                {checkoutLoading ? 'Loading...' : 'Buy PDF — $49'}
-              </button>
-            </div>
-            <PaymentTermsNotice />
+            <WaitlistButton interestType="pre-da-history" address={result?.address} />
           </div>
 
           {/* Run another */}
