@@ -25,7 +25,9 @@ const PLATFORM_LINKS = [
 const COMPANY_LINKS = [
   { label: 'How it works', href: '/how-it-works' },
   { label: 'Pricing', href: '/pricing' },
-  { label: 'Embed program', href: '/for/builders' },
+  { label: 'For Buyers Agents', href: '/for/buyers-agents' },
+  { label: 'For Conveyancers', href: '/for/conveyancers' },
+  { label: 'For Builders', href: '/for/builders' },
   { label: 'Contact', href: '/contact' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
