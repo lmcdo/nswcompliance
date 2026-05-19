@@ -15,8 +15,8 @@ const TOOL_LINKS = [
 
 const PLATFORM_LINKS = [
   { label: 'Verify (Compliance)', href: '/assessment' },
-  { label: 'Scout (Map Explorer)', href: '/scout' },
-  { label: 'Validate (DA Analytics)', href: '/validate' },
+  { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
+  { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
   { label: 'Climate Risk', href: '/climate-risk' },
   { label: 'Browse Councils', href: '/browse' },
   { label: 'Insights', href: '/blog' },
@@ -83,12 +83,23 @@ export function SiteFooter() {
           <ul className="space-y-2">
             {PLATFORM_LINKS.map(({ label, href }) => (
               <li key={href}>
-                <Link
-                  href={href}
-                  className="text-sm text-slate-400 hover:text-white transition-colors"
-                >
-                  {label}
-                </Link>
+                {href.startsWith('http') ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-slate-400 hover:text-white transition-colors"
+                  >
+                    {label}
+                  </a>
+                ) : (
+                  <Link
+                    href={href}
+                    className="text-sm text-slate-400 hover:text-white transition-colors"
+                  >
+                    {label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
