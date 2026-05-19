@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -105,8 +105,7 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<ShadowResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState('');
+
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
 
   const runCheck = useCallback(async (addr: string) => {
@@ -174,24 +173,6 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [runCheck]);
-
-  const handleUnlock = async (reportId: string, addr: string) => {
-    setUnlocking(true);
-    setUnlockError('');
-    try {
-      const res = await fetch('/api/stripe/checkout/shadow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, address: addr }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
-      window.location.href = json.checkout_url;
-    } catch (err: unknown) {
-      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
-      setUnlocking(false);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,12 +258,7 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
             paidReportId ? (
               <ShadowPaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <ShadowLockedPreviewCard
-                result={result}
-                onUnlock={() => handleUnlock(result.report_id!, result.address)}
-                unlocking={unlocking}
-                error={unlockError}
-              />
+              <ShadowLockedPreviewCard result={result} />
             )
           ) : null}
           <ToolCrossSell currentTool="shadow-detector" address={result.address} />
@@ -332,14 +308,8 @@ const SCENARIO_ORDER = ['jun21_9am', 'jun21_12pm', 'jun21_3pm', 'sep21_12pm', 'd
 
 function ShadowLockedPreviewCard({
   result,
-  onUnlock,
-  unlocking,
-  error,
 }: {
   result: ShadowResult;
-  onUnlock: () => void;
-  unlocking: boolean;
-  error: string;
 }) {
   const o = result.outputs;
   const overlapCount = o.scenarios.filter(s => s.overlaps_subject_lot).length;
@@ -431,25 +401,7 @@ function ShadowLockedPreviewCard({
       </div>
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <button
-          onClick={onUnlock}
-          disabled={unlocking}
-          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          {unlocking ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Starting checkout...
-            </>
-          ) : (
-            'Unlock shadow report — $29'
-          )}
-        </button>
-        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-        <p className="text-xs text-gray-400 text-center mt-2">
-          Paid once. PDF delivered to your email after checkout.
-        </p>
-        <PaymentTermsNotice />
+        <WaitlistButton interestType="shadow" address={result.address} />
       </div>
     </div>
   );

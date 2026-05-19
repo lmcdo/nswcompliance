@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -101,8 +101,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<ConveyancingResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState('');
+
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
 
   const runCheck = useCallback(async (addr: string) => {
@@ -176,27 +175,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
     setState('idle');
     setResult(null);
     setErrorMsg('');
-    setUnlocking(false);
-    setUnlockError('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
-  };
-
-  const handleUnlock = async (reportId: string, addr: string, lat?: number, lng?: number, propId?: string | null) => {
-    setUnlocking(true);
-    setUnlockError('');
-    try {
-      const res = await fetch('/api/stripe/checkout/conveyancing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, address: addr, lat, lng, prop_id: propId }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
-      window.location.href = json.checkout_url;
-    } catch (err: unknown) {
-      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
-      setUnlocking(false);
-    }
   };
 
   return (
@@ -459,18 +438,8 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
               ]}
             />
 
-            <div className="flex items-center gap-4 mt-5">
-              <button
-                onClick={() => result.report_id && handleUnlock(result.report_id, result.address, result.lat, result.lng, result.prop_id != null ? String(result.prop_id) : null)}
-                disabled={unlocking || !result.report_id}
-                className="px-6 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
-              >
-                {unlocking ? 'Redirecting to checkout...' : 'Get full report — $49'}
-              </button>
-              {unlockError && (
-                <p className="text-sm text-red-600">{unlockError}</p>
-              )}
-              <PaymentTermsNotice />
+            <div className="mt-5">
+              <WaitlistButton interestType="conveyancing" address={result.address} />
             </div>
           </div>
 

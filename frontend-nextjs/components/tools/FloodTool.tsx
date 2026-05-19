@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { PaymentTermsNotice } from '@/components/reports/PaymentTermsNotice';
+import { WaitlistButton } from '@/components/reports/WaitlistButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -120,8 +120,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<FloodResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockError, setUnlockError] = useState('');
+
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
 
   // Listen for hero address input — run the check directly with the address
@@ -185,24 +184,6 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     }
   }, [runCheck]);
 
-  const handleUnlock = async (reportId: string, addr: string) => {
-    setUnlocking(true);
-    setUnlockError('');
-    try {
-      const res = await fetch('/api/stripe/checkout/flood-truth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, address: addr }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
-      window.location.href = json.checkout_url;
-    } catch (err: unknown) {
-      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
-      setUnlocking(false);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     runCheck(address);
@@ -214,8 +195,6 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     setResult(null);
     setErrorMsg('');
     setPaidReportId(null);
-    setUnlocking(false);
-    setUnlockError('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
   };
 
@@ -290,12 +269,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <FloodLockedPreviewCard
-                result={result}
-                onUnlock={() => handleUnlock(result.report_id!, result.address)}
-                unlocking={unlocking}
-                error={unlockError}
-              />
+              <FloodLockedPreviewCard result={result} />
             )
           ) : null}
           <ToolCrossSell currentTool="flood-truth" address={result.address} />
@@ -347,14 +321,8 @@ function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) 
 
 function FloodLockedPreviewCard({
   result,
-  onUnlock,
-  unlocking,
-  error,
 }: {
   result: FloodResult;
-  onUnlock: () => void;
-  unlocking: boolean;
-  error: string;
 }) {
   const o = result.outputs;
   const signal = o.flood_signal ?? 'none';
@@ -454,27 +422,7 @@ function FloodLockedPreviewCard({
       )}
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <button
-          onClick={onUnlock}
-          disabled={unlocking}
-          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          {unlocking ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Starting checkout...
-            </>
-          ) : (
-            signal !== 'none' && signal !== 'unavailable'
-              ? 'Get my flood depths — $49'
-              : 'Get the full flood report — $49'
-          )}
-        </button>
-        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-        <p className="text-xs text-gray-400 text-center mt-2">
-          Paid once. PDF delivered to your email after checkout.
-        </p>
-        <PaymentTermsNotice />
+        <WaitlistButton interestType="flood-truth" address={result.address} />
       </div>
     </div>
   );
