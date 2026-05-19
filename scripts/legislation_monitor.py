@@ -5,14 +5,18 @@ Legislation Monitor
 Weekly check of NSW planning instruments (SEPPs, LEPs) for version changes.
 
 Primary source: PCO XML export (legislation.nsw.gov.au/export/week)
-  - Requires IP whitelisting (contact belinda.brown@pco.nsw.gov.au)
-  - Must run outside Sydney business hours
+  - IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help)
+  - Must run outside Sydney business hours (agreed condition)
   - Returns JSON list of all instruments updated in last 7 days
+
+Secondary source: NSW Legislation individual pages (legislation.nsw.gov.au)
+  - Plain HTTP with whitelisted IP, Playwright fallback
+  - Extracts point-in-time version dates from instrument pages
 
 Fallback source: AustLII consolidated copies (classic.austlii.edu.au)
   - ~7-day lag vs legislation.nsw.gov.au
   - Scrapes "As at DD Month YYYY" date from HTML
-  - Used when PCO endpoint is inaccessible (403, timeout, etc.)
+  - Used when both PCO and NSW Legislation are inaccessible
 
 Usage:
     python scripts/legislation_monitor.py               # all active instruments
@@ -145,15 +149,13 @@ def check_via_nsw_legislation(
 ) -> tuple[dict[str, str | None], list[str]]:
     """Check instruments via legislation.nsw.gov.au (official NSW source).
 
-    Uses Playwright because the site blocks plain HTTP requests (403).
-    Scrapes the "Current version for DD Month YYYY" text from each page.
+    IP 149.28.176.81 whitelisted by PCO (confirmed 2026-05-19).
+    Uses plain HTTP requests. Falls back to Playwright if HTTP fails (403).
 
     Returns (version_map, fetch_errors).
     """
     results: dict[str, str | None] = {}
     fetch_errors: list[str] = []
-
-    browser = _get_playwright_browser()
 
     for inst in instruments:
         key = inst["instrument_key"]
@@ -164,7 +166,7 @@ def check_via_nsw_legislation(
             continue
 
         try:
-            version = _fetch_nsw_legislation_version(browser, url)
+            version = _fetch_nsw_legislation_version_http(url)
             results[key] = version
             print(f"    NSW Legislation: {key} → {version or '(not found)'}")
         except DownloadTriggeredError:
@@ -215,13 +217,41 @@ def _extract_latest_pit_date(html: str, url: str) -> str | None:
     return dt.strftime("%-d %B %Y") if sys.platform != "win32" else dt.strftime("%d %B %Y").lstrip("0")
 
 
-def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
-    """Fetch version date from legislation.nsw.gov.au using Playwright.
+def _fetch_nsw_legislation_version_http(url: str) -> str | None:
+    """Fetch version date from legislation.nsw.gov.au using plain HTTP.
+
+    IP 149.28.176.81 whitelisted by PCO (confirmed 2026-05-19).
+    Falls back to Playwright if HTTP returns 403.
 
     Prefers point-in-time version dates (actual amendment dates) over the
     "Current version for" header which advances with time even when the
     instrument hasn't been amended.
     """
+    resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
+
+    if resp.status_code == 403:
+        # IP may not be active on this machine — fall back to Playwright
+        print(f"    HTTP 403 — falling back to Playwright for {url}")
+        return _fetch_nsw_legislation_version_playwright(url)
+    if resp.status_code == 404:
+        raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code}: {url}")
+
+    # Check for download response (not HTML)
+    ct = resp.headers.get("Content-Type", "")
+    if "html" not in ct and "text" not in ct:
+        raise DownloadTriggeredError(
+            f"Page serves download ({ct}) instead of HTML — "
+            f"manual check needed: {url}"
+        )
+
+    return _extract_version_from_html(resp.text, url)
+
+
+def _fetch_nsw_legislation_version_playwright(url: str) -> str | None:
+    """Playwright fallback for legislation.nsw.gov.au when HTTP fails."""
+    browser = _get_playwright_browser()
     ctx = browser.new_context(
         user_agent=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -235,9 +265,7 @@ def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
         resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
         if resp and resp.status == 404:
             raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
-        # Wait for page to render — look for the legislation title or body content
         page.wait_for_selector("h1, .legislation-title, #content", timeout=15000)
-        # Give JS a moment to render version info
         time.sleep(2)
         html = page.content()
     except Exception as exc:
@@ -250,6 +278,11 @@ def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
     finally:
         ctx.close()
 
+    return _extract_version_from_html(html, url)
+
+
+def _extract_version_from_html(html: str, url: str) -> str | None:
+    """Extract version date from legislation.nsw.gov.au HTML."""
     # Prefer point-in-time version date (actual amendment date, not rolling header)
     pit_date = _extract_latest_pit_date(html, url)
     if pit_date:
@@ -533,7 +566,6 @@ def main():
                 sys.exit(1)
             # Auto mode — fall back to nsw_legislation (preferred over AustLII)
             print(f"  PCO unavailable ({exc}), falling back to NSW Legislation...")
-            print(f"  [REMINDER] Chase PCO IP whitelisting: belinda.brown@pco.nsw.gov.au, IP 149.28.176.81")
             source_used = "nsw_legislation"
 
     if source_used == "nsw_legislation":

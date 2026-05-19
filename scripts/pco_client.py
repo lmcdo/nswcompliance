@@ -4,8 +4,8 @@ PCO (Parliamentary Counsel's Office) XML Export Client
 =====================================================
 Queries legislation.nsw.gov.au export API for instrument changes.
 
-Requires IP whitelisting — contact belinda.brown@pco.nsw.gov.au.
-Must run outside Sydney business hours (PCO requirement).
+IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help).
+Must run outside Sydney business hours (agreed condition).
 
 Reference: https://legislation.nsw.gov.au/help/export
 
@@ -42,7 +42,9 @@ SESSION.headers.update(HEADERS)
 
 
 class PCOAccessDenied(Exception):
-    """Raised when PCO returns 403 — likely IP not whitelisted."""
+    """Raised when PCO returns 403 — IP may not be active on this machine.
+    Whitelisted IP: 149.28.176.81 (confirmed 2026-05-19).
+    """
     pass
 
 
@@ -68,8 +70,8 @@ def _request(url: str, timeout: int = 30) -> requests.Response:
     resp = SESSION.get(url, timeout=timeout, allow_redirects=True)
     if resp.status_code == 403:
         raise PCOAccessDenied(
-            f"HTTP 403 from PCO — IP likely not whitelisted. "
-            f"Contact belinda.brown@pco.nsw.gov.au. URL: {url}"
+            f"HTTP 403 from PCO — this machine's IP may not be the "
+            f"whitelisted IP (149.28.176.81). URL: {url}"
         )
     if resp.status_code != 200:
         raise PCOError(f"HTTP {resp.status_code}: {url}")
@@ -195,6 +197,6 @@ if __name__ == "__main__":
             if c.point_in_time:
                 print(f"      Point in time: {c.point_in_time}")
     else:
-        print("  PCO returned 403 — IP not whitelisted.")
-        print("  Contact: belinda.brown@pco.nsw.gov.au")
+        print("  PCO returned 403 — this machine's IP is not the whitelisted IP.")
+        print("  Whitelisted IP: 149.28.176.81 (run from that server)")
         sys.exit(1)
