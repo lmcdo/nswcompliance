@@ -186,8 +186,42 @@ def check_via_nsw_legislation(
     return results, fetch_errors
 
 
+def _extract_latest_pit_date(html: str, url: str) -> str | None:
+    """Extract the most recent point-in-time version date from the page.
+
+    legislation.nsw.gov.au embeds links like /view/html/inforce/2026-03-13/epi-...
+    in the version timeline. The most recent date is the actual last-amended date,
+    unlike the "Current version for" header which advances with time even when
+    the instrument hasn't changed.
+    """
+    # Extract EPI ID from the URL (e.g. "epi-2008-0572")
+    epi_match = re.search(r"(epi-\d{4}-\d+)", url)
+    if not epi_match:
+        return None
+
+    epi_id = epi_match.group(1)
+    # Find all point-in-time links: /view/html/inforce/YYYY-MM-DD/epi-...
+    pit_pattern = re.compile(
+        rf"/view/html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
+    )
+    dates = pit_pattern.findall(html)
+    if not dates:
+        return None
+
+    # Most recent date = last amendment commencement
+    latest_iso = sorted(set(dates))[-1]
+    # Convert 2026-03-13 → "13 March 2026" to match stored format
+    dt = datetime.strptime(latest_iso, "%Y-%m-%d")
+    return dt.strftime("%-d %B %Y") if sys.platform != "win32" else dt.strftime("%d %B %Y").lstrip("0")
+
+
 def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
-    """Fetch version date from legislation.nsw.gov.au using Playwright."""
+    """Fetch version date from legislation.nsw.gov.au using Playwright.
+
+    Prefers point-in-time version dates (actual amendment dates) over the
+    "Current version for" header which advances with time even when the
+    instrument hasn't been amended.
+    """
     ctx = browser.new_context(
         user_agent=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -216,7 +250,13 @@ def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
     finally:
         ctx.close()
 
-    # Try "Current version for DD Month YYYY" first
+    # Prefer point-in-time version date (actual amendment date, not rolling header)
+    pit_date = _extract_latest_pit_date(html, url)
+    if pit_date:
+        return pit_date
+
+    # Fallback: "Current version for DD Month YYYY" header
+    # NOTE: this advances with time even without amendments — may cause false positives
     m = CURRENT_VERSION_PATTERN.search(html)
     if m:
         return m.group(1)

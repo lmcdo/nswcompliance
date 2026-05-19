@@ -58,6 +58,16 @@ HEADERS = {
 # "As at DD Month YYYY" in the <PRE> block at the top of each AustLII page
 AS_AT_PATTERN = re.compile(r"As at\s+(\d{1,2}\s+\w+\s+\d{4})", re.IGNORECASE)
 
+# legislation.nsw.gov.au patterns:
+#   "Current version for DD Month YYYY" in the version info bar
+#   "Published LW DD.MM.YYYY" in the gazette info
+CURRENT_VERSION_PATTERN = re.compile(
+    r"Current version for\s+(\d{1,2}\s+\w+\s+\d{4})", re.IGNORECASE
+)
+PUBLISHED_LW_PATTERN = re.compile(
+    r"Published LW\s+(\d{1,2}[\.\s]+\w+[\.\s]+\d{4})", re.IGNORECASE
+)
+
 
 @dataclass
 class InstrumentResult:
@@ -121,6 +131,153 @@ def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
 
 
 # ---------------------------------------------------------------------------
+# legislation.nsw.gov.au source (preferred over AustLII — more stable)
+# ---------------------------------------------------------------------------
+
+
+class DownloadTriggeredError(Exception):
+    """Raised when legislation.nsw.gov.au serves a download instead of HTML."""
+    pass
+
+
+def check_via_nsw_legislation(
+    instruments: list[dict],
+) -> tuple[dict[str, str | None], list[str]]:
+    """Check instruments via legislation.nsw.gov.au (official NSW source).
+
+    Uses Playwright because the site blocks plain HTTP requests (403).
+    Scrapes the "Current version for DD Month YYYY" text from each page.
+
+    Returns (version_map, fetch_errors).
+    """
+    results: dict[str, str | None] = {}
+    fetch_errors: list[str] = []
+
+    browser = _get_playwright_browser()
+
+    for inst in instruments:
+        key = inst["instrument_key"]
+        url = inst.get("legislation_url")
+        if not url:
+            print(f"    {key} — no legislation_url mapped, skipping")
+            results[key] = None
+            continue
+
+        try:
+            version = _fetch_nsw_legislation_version(browser, url)
+            results[key] = version
+            print(f"    NSW Legislation: {key} → {version or '(not found)'}")
+        except DownloadTriggeredError:
+            print(f"    [DOWNLOAD] {key}: page serves download, not HTML")
+            results[key] = None
+            fetch_errors.append(f"{key}: download triggered (manual check needed)")
+            send_telegram(
+                f"Legislation Monitor: {key} triggers download\n"
+                f"  URL: {url}\n"
+                f"  EPI ID may be wrong — check legislation.nsw.gov.au manually\n"
+                f"  and update instrument_registry.legislation_url"
+            )
+        except Exception as exc:
+            print(f"    [ERROR] {key}: {exc}")
+            results[key] = None
+            fetch_errors.append(f"{key}: {exc}")
+        time.sleep(2)
+
+    return results, fetch_errors
+
+
+def _extract_latest_pit_date(html: str, url: str) -> str | None:
+    """Extract the most recent point-in-time version date from the page.
+
+    legislation.nsw.gov.au embeds links like /view/html/inforce/2026-03-13/epi-...
+    in the version timeline. The most recent date is the actual last-amended date,
+    unlike the "Current version for" header which advances with time even when
+    the instrument hasn't changed.
+    """
+    # Extract EPI ID from the URL (e.g. "epi-2008-0572")
+    epi_match = re.search(r"(epi-\d{4}-\d+)", url)
+    if not epi_match:
+        return None
+
+    epi_id = epi_match.group(1)
+    # Find all point-in-time links: /view/html/inforce/YYYY-MM-DD/epi-...
+    pit_pattern = re.compile(
+        rf"/view/html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
+    )
+    dates = pit_pattern.findall(html)
+    if not dates:
+        return None
+
+    # Most recent date = last amendment commencement
+    latest_iso = sorted(set(dates))[-1]
+    # Convert 2026-03-13 → "13 March 2026" to match stored format
+    dt = datetime.strptime(latest_iso, "%Y-%m-%d")
+    return dt.strftime("%-d %B %Y") if sys.platform != "win32" else dt.strftime("%d %B %Y").lstrip("0")
+
+
+def _fetch_nsw_legislation_version(browser, url: str) -> str | None:
+    """Fetch version date from legislation.nsw.gov.au using Playwright.
+
+    Prefers point-in-time version dates (actual amendment dates) over the
+    "Current version for" header which advances with time even when the
+    instrument hasn't been amended.
+    """
+    ctx = browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/125.0.0.0 Safari/537.36"
+        ),
+        accept_downloads=True,
+    )
+    page = ctx.new_page()
+    try:
+        resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
+        if resp and resp.status == 404:
+            raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
+        # Wait for page to render — look for the legislation title or body content
+        page.wait_for_selector("h1, .legislation-title, #content", timeout=15000)
+        # Give JS a moment to render version info
+        time.sleep(2)
+        html = page.content()
+    except Exception as exc:
+        if "Download is starting" in str(exc):
+            raise DownloadTriggeredError(
+                f"Page triggers download instead of rendering HTML — "
+                f"manual check needed: {url}"
+            ) from exc
+        raise
+    finally:
+        ctx.close()
+
+    # Prefer point-in-time version date (actual amendment date, not rolling header)
+    pit_date = _extract_latest_pit_date(html, url)
+    if pit_date:
+        return pit_date
+
+    # Fallback: "Current version for DD Month YYYY" header
+    # NOTE: this advances with time even without amendments — may cause false positives
+    m = CURRENT_VERSION_PATTERN.search(html)
+    if m:
+        return m.group(1)
+
+    # Try "Published LW" pattern
+    m = PUBLISHED_LW_PATTERN.search(html)
+    if m:
+        return m.group(1)
+
+    # Try "As at" pattern (some pages use this)
+    m = AS_AT_PATTERN.search(html)
+    if m:
+        return m.group(1)
+
+    raise RuntimeError(
+        f"No version date pattern found on page — "
+        f"legislation.nsw.gov.au may have changed format: {url}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # AustLII fallback source
 # ---------------------------------------------------------------------------
 
@@ -151,23 +308,35 @@ def fetch_as_at_playwright(url: str) -> str | None:
         ),
     )
     page = ctx.new_page()
-    page.goto(url, timeout=45000)
-    # Wait for actual AustLII content, not a generic HTML tag.
-    # "As at" appears in the legislation header — if Cloudflare blocks us
-    # or AustLII redesigns, this selector will timeout instead of matching junk.
-    page.wait_for_selector("text=As at", timeout=45000)
-    html = page.content()
-    ctx.close()
+    try:
+        page.goto(url, timeout=45000, wait_until="domcontentloaded")
+        # Try multiple selectors — AustLII may have redesigned.
+        # "As at" is the classic format; "Current version" is an alternative.
+        for selector in ["text=As at", "text=Current version", "text=In force", "pre", "h1"]:
+            try:
+                page.wait_for_selector(selector, timeout=10000)
+                break
+            except Exception:
+                continue
+        # Give JS a moment to finish rendering
+        time.sleep(2)
+        html = page.content()
+    finally:
+        ctx.close()
 
     m = AS_AT_PATTERN.search(html)
-    if not m:
-        # Canary: Playwright loaded the page but the pattern didn't match.
-        # This means AustLII changed their format — alert, don't silently return None.
-        raise RuntimeError(
-            f"Playwright loaded page but 'As at' pattern not found — "
-            f"AustLII may have changed format: {url}"
-        )
-    return m.group(1)
+    if m:
+        return m.group(1)
+
+    # Try alternative patterns
+    m = CURRENT_VERSION_PATTERN.search(html)
+    if m:
+        return m.group(1)
+
+    raise RuntimeError(
+        f"Playwright loaded page but no version date pattern found — "
+        f"AustLII may have changed format: {url}"
+    )
 
 
 def fetch_as_at(url: str) -> str | None:
@@ -309,8 +478,10 @@ def main():
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
     parser.add_argument(
-        "--source", choices=["auto", "pco", "austlii"], default="auto",
-        help="Force data source (default: auto — try PCO, fall back to AustLII)",
+        "--source", choices=["auto", "pco", "nsw_legislation", "austlii"],
+        default="auto",
+        help="Force data source (default: auto — try PCO, fall back to "
+             "nsw_legislation, then AustLII)",
     )
     args = parser.parse_args()
 
@@ -360,9 +531,23 @@ def main():
                 send_telegram(f"Legislation Monitor ERROR\nPCO access failed: {exc}")
                 conn.close()
                 sys.exit(1)
-            # Auto mode — fall back to AustLII
-            print(f"  PCO unavailable ({exc}), falling back to AustLII...")
+            # Auto mode — fall back to nsw_legislation (preferred over AustLII)
+            print(f"  PCO unavailable ({exc}), falling back to NSW Legislation...")
             print(f"  [REMINDER] Chase PCO IP whitelisting: belinda.brown@pco.nsw.gov.au, IP 149.28.176.81")
+            source_used = "nsw_legislation"
+
+    if source_used == "nsw_legislation":
+        print(f"\n  Source: NSW Legislation (legislation.nsw.gov.au) — authoritative")
+        try:
+            version_map, source_fetch_errors = check_via_nsw_legislation(instruments)
+        except Exception as exc:
+            if args.source == "nsw_legislation":
+                # User forced this source — don't fall back
+                print(f"\n  [ERROR] NSW Legislation failed: {exc}")
+                send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
+                conn.close()
+                sys.exit(1)
+            print(f"  NSW Legislation failed ({exc}), falling back to AustLII...")
             source_used = "austlii"
 
     if source_used == "austlii":
