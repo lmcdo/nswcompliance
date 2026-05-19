@@ -36,6 +36,30 @@ import { captureServerException } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Map former_council slug → document_id ILIKE pattern.
+ *
+ * Document IDs in regulatory_provisions use the DCP's published name
+ * (e.g. "Sydney_DCP_2012__section_3_general_provisions") which doesn't
+ * always match the formerCouncil slug (e.g. "city_of_sydney").
+ */
+const COUNCIL_DOC_PATTERNS: Record<string, string> = {
+  city_of_sydney: 'Sydney_DCP',
+  northern_beaches: 'Warringah_DCP',
+  ku_ring_gai: 'Ku-ring-gai_DCP',
+  the_hills: 'The_Hills',
+  the_hills_shire: 'The_Hills',
+  canada_bay: 'Canada_Bay',
+};
+
+function councilToDocPattern(formerCouncil: string): string {
+  const slug = formerCouncil.toLowerCase().replace(/[-\s]+/g, '_');
+  if (COUNCIL_DOC_PATTERNS[slug]) return COUNCIL_DOC_PATTERNS[slug];
+  // Default: capitalize first letter of each word segment
+  // e.g. "canterbury_bankstown" → "Canterbury_Bankstown"
+  return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('_');
+}
+
 interface PropertyFilters {
   lga?: string;
   zone?: string;
@@ -606,11 +630,11 @@ async function queryHeritageByHca(
     sql += ` AND rp.v2_heritage_hca IS NULL`;
   }
 
-  // Filter by former council
+  // Filter by former council — map slug to document_id prefix
   if (filters.former_council) {
-    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
+    const docPattern = councilToDocPattern(filters.former_council);
     sql += ` AND rp.document_id ILIKE $${paramIndex++}`;
-    params.push(`%${councilName}%`);
+    params.push(`%${docPattern}%`);
   }
 
   // Filter by precinct - only include general provisions or property's precinct
@@ -847,9 +871,9 @@ async function queryLayer(
 
   // Filter by former council name embedded in document_id
   if (filters.former_council) {
-    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
+    const docPattern = councilToDocPattern(filters.former_council);
     sql += ` AND document_id ILIKE $${paramIndex++}`;
-    params.push(`%${councilName}%`);
+    params.push(`%${docPattern}%`);
   }
 
   // Heritage filtering logic:
@@ -1081,7 +1105,7 @@ function sectionTitleFromChapterKey(chapterKey: string): string {
  * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
  */
 async function getCompleteTocStructure(client: any, formerCouncil: string, devType?: string, partNameMap?: Record<string, string>): Promise<Record<string, TocPart>> {
-  const councilName = formerCouncil.charAt(0).toUpperCase() + formerCouncil.slice(1).toLowerCase();
+  const councilName = councilToDocPattern(formerCouncil);
 
   // When devType is provided, also compute how many provisions in each chapter match
   const expandedTypes = devType ? expandDevTypeHierarchyMulti(devType) : null;
