@@ -11,8 +11,8 @@ interface DCPInterestFormProps {
 /** Councils with structured numeric controls (setbacks, parking, landscaping, height) */
 const STRUCTURED_CONTROLS_COUNCILS = [
   'Bayside', 'Blacktown', 'Burwood', 'Camden', 'Campbelltown',
-  'Canada Bay', 'Canterbury-Bankstown', 'Cumberland', 'Fairfield',
-  'Georges River', 'Hornsby', 'Inner West', 'Ku-ring-gai',
+  'Canada Bay', 'Canterbury-Bankstown', 'City of Sydney', 'Cumberland',
+  'Fairfield', 'Georges River', 'Hornsby', 'Inner West', 'Ku-ring-gai',
   'Liverpool', 'Northern Beaches', 'Parramatta', 'Penrith',
   'Randwick', 'Ryde', 'Strathfield', 'Sutherland Shire',
   'The Hills Shire', 'Waverley', 'Woollahra',
