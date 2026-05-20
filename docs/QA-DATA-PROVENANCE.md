@@ -203,7 +203,7 @@ Each pipeline undergoes 5 passes:
 | Flood Truth | Done | Done | Done | Done | Done | 70 tests | Complete |
 | Solar Yield | Done | Done | Done | Done | Done | 31 tests | Complete |
 | Shadow | Scanned | — | — | — | — | 0 | In progress |
-| Threat Radar | Scanned | — | — | — | — | 0 | In progress |
+| Threat Radar | Done | Done | Done | Done | Done | 6 bugs fixed | Complete |
 | Granny Flat | Partial | Partial | — | — | — | 13 tests (geometry only) | In progress |
 | Bushfire | Done | Done | Done | Done | Done | 3 bugs fixed | Complete |
 | Pre-DA History | — | — | — | — | — | 0 | Not started |

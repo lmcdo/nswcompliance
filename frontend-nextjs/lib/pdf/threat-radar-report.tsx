@@ -200,10 +200,10 @@ function calcPressureScore(apps: ThreatRadarApplication[]): number {
 }
 
 function pressureLabel(score: number): string {
-  if (score >= 8) return 'high';
-  if (score >= 5) return 'elevated';
-  if (score >= 3) return 'moderate';
-  return 'low';
+  if (score >= 8) return 'Intense';
+  if (score >= 5) return 'High';
+  if (score >= 3) return 'Moderate';
+  return 'Low';
 }
 
 function estimateConstructionWindow(app: ThreatRadarApplication): string | null {
@@ -284,7 +284,7 @@ function buildFindings(data: ThreatRadarReportData): Finding[] {
     findings.push({
       label: `NSW ePlanning Portal · ${radius}m radius · last ${data.window_days} days`,
       value: 'No development applications found',
-      detail: 'No DA or CDC applications were lodged near this property in the search window. This is a positive signal for amenity stability.',
+      detail: 'No DA or CDC applications were lodged near this property in the search window.',
       severity: 'green',
     });
   } else {
@@ -305,7 +305,7 @@ function buildFindings(data: ThreatRadarReportData): Finding[] {
       label: 'Net dwelling impact',
       value: `+${netDwellings} new dwelling${netDwellings !== 1 ? 's' : ''} proposed nearby`,
       detail: netDwellings >= 10
-        ? 'Significant densification is proposed. Expect increased traffic, parking pressure, and construction activity over 12–24 months.'
+        ? 'Significant densification is proposed. Areas with this level of new housing typically experience increased traffic, parking pressure, and construction activity over 12–24 months.'
         : 'Moderate new housing proposed. Some construction disruption is expected, though the scale is relatively contained.',
       severity: netDwellings >= 10 ? 'red' : netDwellings >= 4 ? 'amber' : 'green',
     });
@@ -328,7 +328,7 @@ function buildFindings(data: ThreatRadarReportData): Finding[] {
     findings.push({
       label: 'Planning instrument variations',
       value: `${epiVars.length} application${epiVars.length !== 1 ? 's' : ''} seeking EPI variations`,
-      detail: 'These applications seek exceptions to standard planning controls. If approved, they may set precedents for further non-compliant development in the area.',
+      detail: 'These applications seek exceptions to standard planning controls. If approved, they may set precedents for further variation from standard controls in the area.',
       severity: 'amber',
     });
   }
@@ -508,7 +508,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
             Next steps
           </Text>
           <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-            A buyers agent can advise on price adjustments based on nearby development risk. A town planner can assess whether approved DAs would materially affect amenity.
+            A buyers agent can advise on price adjustments based on nearby development activity. A town planner can assess whether approved DAs would materially affect amenity.
           </Text>
         </View>
 
@@ -519,8 +519,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
 
         {/* Data currency */}
         <DataCurrencyTable rows={[
-          { source: 'NSW ePlanning Portal', type: 'Live API query', currency: `Queried ${data.run_date}` },
-          { source: 'NSW Planning Portal (LEP zones)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+          { source: 'NSW ePlanning Portal (OnlineDA + OnlineCDC)', type: 'Live API query', currency: `Queried ${data.run_date}` },
         ]} />
 
         {/* Disclaimer */}
