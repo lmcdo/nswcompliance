@@ -205,7 +205,7 @@ Each pipeline undergoes 5 passes:
 | Shadow | Scanned | — | — | — | — | 0 | In progress |
 | Threat Radar | Scanned | — | — | — | — | 0 | In progress |
 | Granny Flat | Partial | Partial | — | — | — | 13 tests (geometry only) | In progress |
-| Bushfire | — | — | — | — | — | 0 | Not started |
+| Bushfire | Done | Done | Done | Done | Done | 3 bugs fixed | Complete |
 | Pre-DA History | — | — | — | — | — | 0 | Not started |
 
 ### 6.3 Bug Classes Found and Fixed
