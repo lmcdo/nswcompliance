@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer'
-import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
+import { COUNCIL_STATS, DATA_AS_OF } from '@/lib/lga-data/secondary-dwelling-stats'
 
 export const metadata: Metadata = {
   title: 'Granny Flat Statistics by Council — NSW Secondary Dwelling Data | PlotDetect',
@@ -68,7 +68,7 @@ export default function GrannyFlatBlogIndexPage() {
         <p className="text-lg text-slate-500 leading-relaxed max-w-2xl">
           Secondary dwelling DA and CDC statistics for {TOTALS.councils} NSW
           councils. {TOTALS.applications.toLocaleString()} applications recorded
-          in the NSW Planning Portal open dataset.
+          in the NSW Planning Portal open dataset. Data generated on {DATA_AS_OF}.
         </p>
       </div>
 
@@ -135,9 +135,9 @@ export default function GrannyFlatBlogIndexPage() {
           </table>
         </div>
         <p className="text-xs text-slate-400 mt-4">
-          Source: NSW Planning Portal open data. CDC % only shown for councils
-          with 10+ applications. Cost is self-reported at lodgement. CDC time is
-          median calendar days from submission to determination.
+          Source: NSW Planning Portal open data as of {DATA_AS_OF}. CDC % only
+          shown for councils with 10+ applications. Cost is self-reported at
+          lodgement. CDC time is median calendar days from submission to determination.
         </p>
       </div>
 

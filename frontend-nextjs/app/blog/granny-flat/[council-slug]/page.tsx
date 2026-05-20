@@ -17,6 +17,7 @@ function trustedJsonLd(obj: Record<string, unknown>): string {
 import {
   COUNCIL_STATS,
   COUNCIL_STATS_BY_SLUG,
+  DATA_AS_OF,
   type CouncilStats,
 } from '@/lib/lga-data/secondary-dwelling-stats'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
@@ -38,7 +39,7 @@ export function generateMetadata({
 
   return {
     title: `Granny Flat Applications in ${stats.shortName} — CDC & DA Statistics | PlotDetect`,
-    description: `${stats.totalApplications} secondary dwelling applications recorded in ${stats.shortName}. ${cdcPct}% used the CDC pathway (median ${cdcDays} days). NSW Planning Portal data, updated weekly.`,
+    description: `${stats.totalApplications} secondary dwelling applications recorded in ${stats.shortName}. ${cdcPct}% used the CDC pathway (median ${cdcDays} days). NSW Planning Portal data as of ${DATA_AS_OF}.`,
     keywords: [
       `granny flat ${stats.shortName.toLowerCase()}`,
       `secondary dwelling ${stats.shortName.toLowerCase()}`,
@@ -265,7 +266,7 @@ export default function CouncilGrannyFlatStatsPage({
           <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-700">
             Council Data
           </span>
-          <span className="text-xs text-slate-400">Updated May 2026</span>
+          <span className="text-xs text-slate-400">Data as of {DATA_AS_OF}</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight mb-4">
           Granny flat applications in {stats.shortName}: CDC and DA statistics
@@ -312,8 +313,9 @@ export default function CouncilGrannyFlatStatsPage({
             >
               NSW Planning Portal
             </a>{' '}
-            open data API. It covers all secondary dwelling Development Applications
-            and Complying Development Certificates lodged in {stats.councilName}.
+            open data API, generated on {DATA_AS_OF}. It covers all secondary dwelling
+            Development Applications and Complying Development Certificates lodged in{' '}
+            {stats.councilName}.
           </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
             <StatCard
@@ -519,7 +521,7 @@ export default function CouncilGrannyFlatStatsPage({
             '@type': 'Article',
             headline: `Granny flat applications in ${stats.shortName}: CDC and DA statistics`,
             datePublished: '2026-05-20',
-            dateModified: '2026-05-20',
+            dateModified: DATA_AS_OF,
             author: {
               '@type': 'Organization',
               name: 'PlotDetect',
