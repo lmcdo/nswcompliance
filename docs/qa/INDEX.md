@@ -26,7 +26,7 @@ Each report documents 5 passes: source authority, algorithm correctness, null/ed
 | Threat Radar | [`docs/qa/threat_radar_validation.md`](threat_radar_validation.md) | 6 found, 6 fixed (false LEP attribution, label mismatch, 4 language issues) | Complete |
 | Flood Truth | — | 70 tests written | Complete (no separate report yet) |
 | Solar Yield | — | 31 tests written | Complete (no separate report yet) |
-| Shadow Detector | — | — | In progress |
+| Shadow Detector | [`docs/qa/shadow_validation.md`](shadow_validation.md) | 9 found, 9 fixed (wrong comment, connection leak, 2 false attributions, wrong lib name, 4 language) | Complete |
 | Granny Flat | — | 13 geometry tests | In progress |
 | Pre-DA History | — | — | Not started |
 
