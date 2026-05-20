@@ -8,6 +8,7 @@ import { BUSHFIRE_LGAS } from '@/lib/lga-data/bushfire-lgas'
 import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
 import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
+import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://plotdetect.com.au'
@@ -46,6 +47,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/for/councils`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog`,            priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/blog/granny-flat`, priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/blog/aasb-s2-property-climate-data`,        priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog/apra-cpg-229-property-assessment`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog/climate-risk-data-provider-australia`,  priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
@@ -102,11 +104,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.85,
   }))
 
+  const grannyFlatBlogPages = COUNCIL_STATS.map(c => ({
+    url: `${base}/blog/granny-flat/${c.slug}`,
+    lastModified: now,
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }))
+
   return [
     ...staticPages,
     { url: `${base}/browse`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.7 },
     ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages,
     ...shadowPages, ...bushfirePages, ...preDaHistoryPages, ...planningControlsPages,
-    ...conveyancingPages,
+    ...conveyancingPages, ...grannyFlatBlogPages,
   ]
 }
