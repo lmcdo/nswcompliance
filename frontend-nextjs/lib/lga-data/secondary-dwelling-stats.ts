@@ -4,6 +4,9 @@
  * Source: https://www.planningportal.nsw.gov.au/opendata/dataset/online-da-data-api
  */
 
+/** ISO date string — when the stats were last generated from the Planning Portal */
+export const DATA_AS_OF = '2026-05-20'
+
 export interface YearlyStats {
   da_count: number
   cdc_count: number
