@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats';
 
 /* ------------------------------------------------------------------ */
 /*  Article metadata                                                   */
@@ -55,6 +56,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Property Research': 'bg-amber-500/10 text-amber-700',
 };
 
+/* Top councils by volume for the featured section */
+const TOP_COUNCILS = [...COUNCIL_STATS]
+  .sort((a, b) => b.totalApplications - a.totalApplications)
+  .slice(0, 12);
+
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
@@ -72,6 +78,44 @@ export default function BlogIndexPage() {
         </p>
       </div>
 
+      {/* Council data section */}
+      <div className="mb-10">
+        <Link
+          href="/blog/granny-flat"
+          className="group block rounded-2xl border border-teal-200 bg-teal-50/30 p-6 hover:border-teal-400 hover:shadow-lg hover:shadow-teal-500/5 transition-all"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-700">
+              Council Data
+            </span>
+            <span className="text-xs text-slate-400">{COUNCIL_STATS.length} councils</span>
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-2 group-hover:text-teal-700 transition-colors">
+            Granny flat applications by council — CDC and DA statistics
+          </h2>
+          <p className="text-sm text-slate-500 leading-relaxed mb-3">
+            Secondary dwelling application volumes, CDC pathway rates, processing
+            times, and build costs for {COUNCIL_STATS.length} NSW councils. NSW
+            Planning Portal open data.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {TOP_COUNCILS.slice(0, 6).map(c => (
+              <span key={c.slug} className="text-xs px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600">
+                {c.shortName} ({c.totalApplications})
+              </span>
+            ))}
+            <span className="text-xs px-2 py-1 text-slate-400">
+              +{COUNCIL_STATS.length - 6} more
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-sm text-teal-600 font-medium group-hover:text-teal-500 transition-colors">
+            View all councils
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        </Link>
+      </div>
+
+      {/* Articles */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {ARTICLES.map((article) => (
           <Link
