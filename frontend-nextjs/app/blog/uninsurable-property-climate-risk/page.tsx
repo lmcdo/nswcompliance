@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -252,6 +253,8 @@ export default function UninsurablePropertyPage() {
             </div>
           </div>
         </section>
+
+        <BlogDisclaimer />
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

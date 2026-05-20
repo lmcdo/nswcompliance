@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -317,6 +318,8 @@ export default function AasbS2PropertyDataPage() {
             <p className="text-xs text-slate-400 mt-2">Coming soon</p>
           </div>
         </section>
+
+        <BlogDisclaimer />
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">
