@@ -53,7 +53,7 @@ jobs:
           # Collapse whitespace from YAML heredoc indentation
           MSG=$(echo "$MSG" | sed 's/^[[:space:]]*//')
 
-          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+          curl -sf --retry 3 --retry-delay 5 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -H "Content-Type: application/json" \
             -d "$(jq -n \
               --arg chat_id "$TELEGRAM_CHAT_ID" \
