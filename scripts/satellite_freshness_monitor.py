@@ -613,6 +613,11 @@ def main() -> int:
         action="store_true",
         help="Show detailed error messages",
     )
+    parser.add_argument(
+        "--skip-quality-checks",
+        action="store_true",
+        help="Skip audit trail and output quality checks",
+    )
     args = parser.parse_args()
 
     # Filter to single source if requested
@@ -661,6 +666,8 @@ def main() -> int:
 
     print(f"Summary: {ok_count}/{total} sources healthy")
 
+    exit_code = 0
+
     if failures:
         # Build alert message
         lines = [f"Satellite Source Monitor: {len(failures)}/{total} sources unhealthy"]
@@ -674,10 +681,161 @@ def main() -> int:
 
         print(alert)
         send_telegram(alert)
-        return 2
+        exit_code = 2
+    else:
+        logger.info("All sources healthy")
 
-    logger.info("All sources healthy")
-    return 0
+    # --- Data quality checks (post-source, pre-exit) ---
+    if not args.skip_quality_checks and not args.dry_run:
+        audit_gaps = check_audit_trail_completeness(days=7)
+        output_issues = check_output_quality(days=7)
+
+        quality_alerts = []
+
+        if audit_gaps:
+            gap_lines = [f"Audit trail gaps: {len(audit_gaps)} reports missing audit rows (last 7 days)"]
+            for g in audit_gaps[:5]:
+                gap_lines.append(f"  {g['product']} — {g['address']} ({g['run_date']})")
+            if len(audit_gaps) > 5:
+                gap_lines.append(f"  ... and {len(audit_gaps) - 5} more")
+            quality_alerts.extend(gap_lines)
+
+        if output_issues:
+            out_lines = [f"Output quality: {len(output_issues)} reports with empty/null data (last 7 days)"]
+            for o in output_issues[:5]:
+                out_lines.append(f"  {o['product']} — {o['address']} ({o['issue']})")
+            if len(output_issues) > 5:
+                out_lines.append(f"  ... and {len(output_issues) - 5} more")
+            quality_alerts.extend(out_lines)
+
+        if quality_alerts:
+            quality_msg = "Data Quality Alert:\n" + "\n".join(quality_alerts)
+            print(quality_msg)
+            send_telegram(quality_msg)
+            exit_code = max(exit_code, 2)
+
+    return exit_code
+
+
+# ---------------------------------------------------------------------------
+# Audit trail completeness check
+# ---------------------------------------------------------------------------
+
+def check_audit_trail_completeness(days: int = 7) -> list[dict]:
+    """Find reports with no corresponding audit trail row.
+
+    Queries property_reports from the last N days and LEFT JOINs to
+    report_audit_trail. Any report without a matching audit row is a
+    gap — the pipeline ran but the audit write silently failed.
+
+    Returns list of gap dicts. Empty list = all reports have audit trails.
+    """
+    if not DATABASE_URL:
+        logger.warning("DATABASE_URL not set — skipping audit trail check")
+        return []
+
+    sql = """
+        SELECT
+            pr.id AS report_id,
+            pr.product,
+            pr.address,
+            pr.run_date
+        FROM property_reports pr
+        LEFT JOIN report_audit_trail rat ON rat.report_id = pr.id
+        WHERE pr.run_date >= NOW() - INTERVAL '%s days'
+          AND rat.id IS NULL
+        ORDER BY pr.run_date DESC
+        LIMIT 50
+    """
+
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, (days,))
+            gaps = [dict(row) for row in cur.fetchall()]
+
+        if gaps:
+            logger.warning(f"Audit trail gaps: {len(gaps)} reports missing audit rows")
+        else:
+            logger.info(f"Audit trail complete: all reports from last {days} days have audit rows")
+
+        return gaps
+
+    except psycopg2.errors.UndefinedTable:
+        logger.info("report_audit_trail table does not exist yet — skipping check")
+        return []
+    except Exception as exc:
+        logger.error(f"Audit trail check failed: {exc}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def check_output_quality(days: int = 7) -> list[dict]:
+    """Find reports with empty or suspicious outputs.
+
+    Checks property_reports from the last N days for:
+    - NULL or empty outputs JSONB
+    - NULL confidence (pipeline didn't set it)
+    - Empty data_sources array (no sources recorded)
+
+    These indicate a pipeline ran "successfully" but produced garbage.
+    """
+    if not DATABASE_URL:
+        logger.warning("DATABASE_URL not set — skipping output quality check")
+        return []
+
+    sql = """
+        SELECT
+            id AS report_id,
+            product,
+            address,
+            run_date,
+            CASE
+                WHEN outputs IS NULL THEN 'null_outputs'
+                WHEN outputs = '{}'::jsonb THEN 'empty_outputs'
+                WHEN confidence IS NULL THEN 'null_confidence'
+                WHEN data_sources IS NULL OR array_length(data_sources, 1) IS NULL THEN 'no_data_sources'
+                ELSE 'unknown'
+            END AS issue
+        FROM property_reports
+        WHERE run_date >= NOW() - INTERVAL '%s days'
+          AND (
+            outputs IS NULL
+            OR outputs = '{}'::jsonb
+            OR confidence IS NULL
+            OR data_sources IS NULL
+            OR array_length(data_sources, 1) IS NULL
+          )
+        ORDER BY run_date DESC
+        LIMIT 50
+    """
+
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, (days,))
+            issues = [dict(row) for row in cur.fetchall()]
+
+        if issues:
+            logger.warning(f"Output quality issues: {len(issues)} reports with empty/null outputs")
+        else:
+            logger.info(f"Output quality OK: all reports from last {days} days have valid outputs")
+
+        return issues
+
+    except psycopg2.errors.UndefinedTable:
+        logger.info("property_reports table does not exist yet — skipping check")
+        return []
+    except Exception as exc:
+        logger.error(f"Output quality check failed: {exc}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":
