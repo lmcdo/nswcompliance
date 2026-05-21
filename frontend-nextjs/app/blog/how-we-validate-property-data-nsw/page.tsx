@@ -297,19 +297,46 @@ export default function HowWeValidatePage() {
 
       <p>
         Government APIs go down, change their schema, or return stale data without
-        warning. An automated daily monitor probes every external endpoint across
-        all 7 pipelines — 15 endpoints in total. Each probe checks:
+        warning. An automated daily monitor probes every external data source
+        across all screening tools. Each probe checks:
       </p>
 
       <ul>
         <li>Is the endpoint reachable?</li>
-        <li>Does the response match the expected schema?</li>
-        <li>Has the response hash changed since last check?</li>
+        <li>Does the response match the expected format?</li>
+        <li>Has the response structure changed since the last check?</li>
+        <li>Is the response time within acceptable limits?</li>
       </ul>
 
       <p>
-        Results are written to a health check table and failures trigger an
-        alert. This is not a one-off validation — it runs every day, automatically.
+        If a source goes down or changes its format, we know within 24
+        hours — not when a user receives a broken report. Failures trigger an
+        immediate alert.
+      </p>
+
+      <p>
+        The same daily check also looks for two types of silent failure that
+        are harder to catch:
+      </p>
+
+      <ul>
+        <li>
+          <strong>Missing audit trails</strong> — if a report was generated
+          but the audit record was not written, the gap is flagged. A report
+          without an audit trail cannot be defended if questioned.
+        </li>
+        <li>
+          <strong>Empty or incomplete outputs</strong> — if a screening tool
+          ran but produced no results, no confidence rating, or recorded no
+          data sources, it is flagged. This catches the case where a tool
+          appears to succeed but actually returned nothing useful.
+        </li>
+      </ul>
+
+      <p>
+        This is not a one-off validation — it runs every day, automatically.
+        The results are recorded so we can show, for any given day, which
+        sources were checked and what their status was.
       </p>
 
       {/* ---- What this means for you ---- */}
