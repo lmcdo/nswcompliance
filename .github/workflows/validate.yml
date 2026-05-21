@@ -70,11 +70,3 @@ jobs:
             exit 1
           fi
           echo "✅ All checks passed"
-
-  notify-on-failure:
-    needs: [validate]
-    if: failure()
-    uses: ./.github/workflows/notify-failure.yml
-    with:
-      workflow_name: ${{ github.workflow }}
-    secrets: inherit

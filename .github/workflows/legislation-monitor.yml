@@ -40,9 +40,11 @@ jobs:
     steps:
       - name: Ping healthcheck
         run: |
-          if [ -n "${{ secrets.HC_PING_LEGISLATION_MONITOR }}" ]; then
-            curl -fsS --retry 3 "${{ secrets.HC_PING_LEGISLATION_MONITOR }}" || true
+          if [ -z "${{ secrets.HC_PING_LEGISLATION_MONITOR }}" ]; then
+            echo "::error::HC_PING_LEGISLATION_MONITOR secret not set — dead man's switch is not active"
+            exit 1
           fi
+          curl -fsS --retry 3 "${{ secrets.HC_PING_LEGISLATION_MONITOR }}"
 
   notify-on-failure:
     needs: [check-instruments]

@@ -176,9 +176,11 @@ jobs:
     steps:
       - name: Ping healthcheck
         run: |
-          if [ -n "${{ secrets.HC_PING_DCP_MONITOR }}" ]; then
-            curl -fsS --retry 3 "${{ secrets.HC_PING_DCP_MONITOR }}" || true
+          if [ -z "${{ secrets.HC_PING_DCP_MONITOR }}" ]; then
+            echo "::error::HC_PING_DCP_MONITOR secret not set — dead man's switch is not active"
+            exit 1
           fi
+          curl -fsS --retry 3 "${{ secrets.HC_PING_DCP_MONITOR }}"
 
   notify-on-failure:
     needs: [monitor-single, monitor-matrix]
@@ -186,4 +188,5 @@ jobs:
     uses: ./.github/workflows/notify-failure.yml
     with:
       workflow_name: ${{ github.workflow }}
+      extra_context: "One or more council monitors failed — check run for details"
     secrets: inherit
