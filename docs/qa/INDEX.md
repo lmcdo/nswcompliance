@@ -27,7 +27,7 @@ Each report documents 5 passes: source authority, algorithm correctness, null/ed
 | Flood Truth | — | 70 tests written | Complete (no separate report yet) |
 | Solar Yield | — | 31 tests written | Complete (no separate report yet) |
 | Shadow Detector | [`docs/qa/shadow_validation.md`](shadow_validation.md) | 9 found, 9 fixed (wrong comment, connection leak, 2 false attributions, wrong lib name, 4 language) | Complete |
-| Granny Flat | — | 13 geometry tests | In progress |
+| Granny Flat | [`docs/qa/granny_flat_validation.md`](granny_flat_validation.md) | 8 found, 8 fixed (cursor leak, 7 language) | Complete |
 | Pre-DA History | — | — | Not started |
 
 ---
@@ -103,7 +103,7 @@ These are the actual pipeline implementations that the QA reports audit.
 
 | # | Gap | Severity | Path to Resolution |
 |---|---|---|---|
-| 1 | Shadow, Granny Flat, Pre-DA History QA reports not yet written | Medium | Continue 5-pass validation in order |
+| 1 | Pre-DA History QA report not yet written | Medium | Continue 5-pass validation |
 | 2 | Flood Truth + Solar Yield have tests but no formal QA validation report | Low | Write reports documenting existing test coverage |
 | 3 | Audit trail migration run in prod but disclaimer seed data status unverified | Medium | Verify `disclaimer_versions` has 7 rows in Supabase |
 | 4 | Language audit branch (`chore/language-audit-liability-cleanup`) not yet merged | High | Merge after QA validation complete |

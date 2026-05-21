@@ -204,7 +204,7 @@ Each pipeline undergoes 5 passes:
 | Solar Yield | Done | Done | Done | Done | Done | 31 tests | Complete |
 | Shadow | Done | Done | Done | Done | Done | 9 bugs fixed | Complete |
 | Threat Radar | Done | Done | Done | Done | Done | 6 bugs fixed | Complete |
-| Granny Flat | Partial | Partial | — | — | — | 13 tests (geometry only) | In progress |
+| Granny Flat | Done | Done | Done | Done | Done | 8 bugs fixed | Complete |
 | Bushfire | Done | Done | Done | Done | Done | 3 bugs fixed | Complete |
 | Pre-DA History | — | — | — | — | — | 0 | Not started |
 
@@ -288,8 +288,7 @@ Before any new satellite pipeline can be deployed to production:
 | # | Gap | Severity | Status |
 |---|---|---|---|
 | 1 | SEPP R&H 2021 — `sepp_structured_requirements` has 0 rows for `resilience_hazards_2021` | High | Not fixed. Schema + API ready, needs population script. |
-| 2 | Shadow, Threat Radar, Granny Flat — QA passes 2-5 incomplete | Medium | In progress. See §6.2. |
-| 3 | Bushfire, Pre-DA History — QA not started | Medium | Queued. |
+| 2 | Pre-DA History — QA not started | Medium | Queued. See §6.2. |
 | 4 | Audit trail migration not yet run in production | High | SQL ready (`migrations/042_report_audit_trail.sql`). Run in Supabase. |
 | 5 | Language audit branch not yet merged | High | Branch `chore/language-audit-liability-cleanup` has all changes. |
 
