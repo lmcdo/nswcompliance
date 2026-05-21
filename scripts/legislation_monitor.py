@@ -191,10 +191,12 @@ def check_via_nsw_legislation(
 def _extract_latest_pit_date(html: str, url: str) -> str | None:
     """Extract the most recent point-in-time version date from the page.
 
-    legislation.nsw.gov.au embeds links like /view/html/inforce/2026-03-13/epi-...
-    in the version timeline. The most recent date is the actual last-amended date,
-    unlike the "Current version for" header which advances with time even when
-    the instrument hasn't changed.
+    legislation.nsw.gov.au embeds links like:
+      /view/html/inforce/2026-03-13/epi-...
+      /view/whole/html/inforce/2026-03-13/epi-...
+    in the version timeline and "View whole" links. The most recent date is
+    the actual last-amended date, unlike the "Current version for" header
+    which advances with time even when the instrument hasn't changed.
     """
     # Extract EPI ID from the URL (e.g. "epi-2008-0572")
     epi_match = re.search(r"(epi-\d{4}-\d+)", url)
@@ -202,11 +204,18 @@ def _extract_latest_pit_date(html: str, url: str) -> str | None:
         return None
 
     epi_id = epi_match.group(1)
-    # Find all point-in-time links: /view/html/inforce/YYYY-MM-DD/epi-...
+    # Find all point-in-time links — both fragment and whole-document views:
+    #   /view/html/inforce/YYYY-MM-DD/epi-...
+    #   /view/whole/html/inforce/YYYY-MM-DD/epi-...
     pit_pattern = re.compile(
-        rf"/view/html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
+        rf"/view/(?:whole/)?html/inforce/(\d{{4}}-\d{{2}}-\d{{2}})/{re.escape(epi_id)}"
     )
     dates = pit_pattern.findall(html)
+
+    # Also check pointInTime URL parameter (e.g. ?pointInTime=2026-04-24)
+    pit_param = re.findall(r"pointInTime=(\d{4}-\d{2}-\d{2})", html)
+    dates.extend(pit_param)
+
     if not dates:
         return None
 
@@ -304,9 +313,14 @@ def _extract_version_from_html(html: str, url: str) -> str | None:
     if m:
         return m.group(1)
 
+    # Log a snippet of the HTML for debugging
+    snippet = html[:500].replace("\n", " ").strip()
     raise RuntimeError(
         f"No version date pattern found on page — "
-        f"legislation.nsw.gov.au may have changed format: {url}"
+        f"legislation.nsw.gov.au may have changed format: {url}\n"
+        f"  Tried: PIT links, pointInTime param, 'Current version for', "
+        f"'Published LW', 'As at'\n"
+        f"  HTML snippet: {snippet[:200]}..."
     )
 
 
