@@ -237,6 +237,7 @@ def _get_council_from_db(lat: float, lon: float) -> str:
     Prefers layer_type='height' rows (confirmed to have lga_name, covers 75 LGAs).
     Falls back to any layer type if height rows don't cover the point.
     """
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
@@ -260,11 +261,13 @@ def _get_council_from_db(lat: float, lon: float) -> str:
                     (lon, lat),
                 )
                 row = cur.fetchone()
-        conn.close()
         if row and row[0]:
             return _lga_to_council(row[0])
     except Exception as exc:
         logger.warning(f"Council DB lookup failed: {exc}")
+    finally:
+        if conn:
+            conn.close()
     return ""
 
 
@@ -317,7 +320,11 @@ def geocode_address(address: str) -> tuple[float, float, str]:
     lots = lot_r.json()
     if not lots:
         raise ValueError(f"No lot geometry for propId={prop_id}")
-    ring = lots[0]["geometry"]["rings"][0]
+    geom = lots[0].get("geometry") or {}
+    rings = geom.get("rings") or []
+    if not rings or not rings[0]:
+        raise ValueError(f"Lot geometry has no rings for propId={prop_id}")
+    ring = rings[0]
     cx = sum(pt[0] for pt in ring) / len(ring)
     cy = sum(pt[1] for pt in ring) / len(ring)
     lat, lon = _mercator_to_wgs84(cx, cy)
@@ -1254,6 +1261,7 @@ def _mark_error(report_id: Optional[str], msg: str) -> None:
     """Mark a pre-allocated row as errored. Best-effort — never raises."""
     if not report_id:
         return
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
@@ -1262,6 +1270,8 @@ def _mark_error(report_id: Optional[str], msg: str) -> None:
                 (msg[:500], report_id),
             )
         conn.commit()
-        conn.close()
     except Exception as exc:
         logger.debug(f"_mark_error failed: {exc}")
+    finally:
+        if conn:
+            conn.close()

@@ -243,7 +243,7 @@ function buildSummary(data: PreDAHistoryReportData, notableYears: TimelineEntry[
   }
 
   if (data.heritage_flag) {
-    parts.push('A heritage overlay applies to this property — any works will require a Statement of Heritage Impact.');
+    parts.push('A heritage overlay applies to this property — any works may require a Statement of Heritage Impact.');
   }
 
   return parts.join(' ');
@@ -638,8 +638,9 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         <View style={{ marginTop: 4, marginBottom: 12 }}>
           <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
             <Text style={s.bold}>Data sources: </Text>
-            Sentinel-2 satellite imagery (ESA, via Spatial Days) | NSW ePlanning Portal |
-            NSW Planning Portal spatial overlays | NSW SES flood event records | NSW RFS bushfire records
+            Sentinel-2 satellite imagery (ESA/Copernicus, via Element84 Earth Search) | GeoTessera Clay v1.5 embeddings |
+            NSW ePlanning Portal | NSW Planning Portal spatial overlays |
+            Flood and bushfire event annotations based on known event bounding boxes (indicative, not sourced from live SES/RFS feeds)
           </Text>
         </View>
 
@@ -665,7 +666,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
           <Text style={{ ...s.calloutTitle, color: TEAL }}>More reports for this property</Text>
           <Text style={s.calloutText}>
             <Link src={`https://canibuildit.com.au`} style={{ color: TEAL }}>canibuildit.com.au</Link>
-            {' '} — flood risk, bushfire pre-screen, shadow impact, solar yield, and granny flat eligibility for any NSW address.
+            {' '} — flood screening, bushfire pre-screen, shadow impact, solar yield, and granny flat eligibility for any NSW address.
           </Text>
         </View>
 
