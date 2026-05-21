@@ -731,6 +731,17 @@ def run_monitor(
                     council_failed += 1
                     adaptive_delay(url)
                     continue
+                if head_status == 429:
+                    _backoff(url)
+                    delay = _domain_delays.get(_get_domain(url), DEFAULT_DELAY)
+                    print(f"    [429] rate-limited on HEAD — backing off {delay:.0f}s, retrying")
+                    time.sleep(delay)
+                    head = head_request(url)
+                    head_status = head.get("status")
+                    if head_status == 429:
+                        print(f"    [429] still rate-limited after backoff — skipping")
+                        adaptive_delay(url)
+                        continue
                 if head_status not in (200, 206):
                     raise RuntimeError(f"HEAD returned HTTP {head_status}: {url}")
 
@@ -771,6 +782,7 @@ def run_monitor(
                         conn.commit()
                     results["unchanged"] += 1
                     results["checked"] += 1
+                    adaptive_delay(url)
                     continue
                 elif stored_etag and not new_etag_head:
                     print(f"    Stored ETag but server no longer serving one — downloading for hash check")
