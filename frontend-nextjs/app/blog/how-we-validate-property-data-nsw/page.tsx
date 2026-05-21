@@ -76,6 +76,72 @@ function ValidationPipeline() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Visual: audit trail itemised checks                                */
+/* ------------------------------------------------------------------ */
+
+function AuditTrailChecks() {
+  const checks = [
+    {
+      check: 'Every data source queried',
+      recorded: 'Source name, endpoint URL, query parameters',
+      proves: 'Which government APIs and datasets were actually consulted for this specific address',
+    },
+    {
+      check: 'Query timestamp',
+      recorded: 'UTC timestamp for each data source query',
+      proves: 'Exactly when each source was checked — not a cached result from weeks ago',
+    },
+    {
+      check: 'Response time',
+      recorded: 'Milliseconds from request to response for each source',
+      proves: 'The query actually executed (not a timeout or silent failure)',
+    },
+    {
+      check: 'Response hash',
+      recorded: 'SHA-256 cryptographic hash of each API response body',
+      proves: 'The raw data has not been altered after receipt — tamper-evident',
+    },
+    {
+      check: 'Features returned',
+      recorded: 'Count of records/features returned by each source',
+      proves: 'Whether the source returned data or came back empty for this location',
+    },
+    {
+      check: 'Error tracking',
+      recorded: 'Error message and stack trace if a source query failed',
+      proves: 'Failures are recorded, not silently swallowed — you see what was not available',
+    },
+    {
+      check: 'Pipeline version',
+      recorded: 'Git commit SHA of the deployed code',
+      proves: 'Which exact version of the analysis logic produced the result',
+    },
+    {
+      check: 'Disclaimer version',
+      recorded: 'Version ID of the disclaimer active at report generation time',
+      proves: 'What the user was told about limitations when they received the report',
+    },
+  ];
+
+  return (
+    <div className="not-prose my-8 grid gap-3 sm:grid-cols-2">
+      {checks.map((c) => (
+        <div key={c.check} className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">
+              &#10003;
+            </span>
+            <p className="text-sm font-semibold text-slate-900">{c.check}</p>
+          </div>
+          <p className="text-xs text-slate-500 mb-1"><span className="font-medium text-slate-600">Recorded:</span> {c.recorded}</p>
+          <p className="text-xs text-slate-500"><span className="font-medium text-slate-600">Proves:</span> {c.proves}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Visual: bug pattern summary                                        */
 /* ------------------------------------------------------------------ */
 
@@ -193,27 +259,19 @@ export default function HowWeValidatePage() {
       </p>
 
       {/* ---- Audit trail ---- */}
-      <h2>How we prove what was queried</h2>
+      <h2>What every report records</h2>
 
       <p>
         Every report generated on this platform creates an append-only audit
-        trail record. That record captures:
+        trail record. Here is exactly what is captured:
       </p>
 
-      <ul>
-        <li>Which data sources were queried, with exact endpoint URLs</li>
-        <li>When each query ran (UTC timestamp)</li>
-        <li>How long each query took (milliseconds)</li>
-        <li>A SHA-256 hash of each API response body</li>
-        <li>Which version of the code generated the report (git commit SHA)</li>
-        <li>Which version of the disclaimer was active at generation time</li>
-      </ul>
+      <AuditTrailChecks />
 
       <p>
-        This means that if a data source is later questioned — &ldquo;did you
-        actually check the flood overlay for this address?&rdquo; — we can produce
-        the exact API response, when it was received, and what it contained.
-        The response hash makes the record tamper-evident.
+        If a data source is later questioned — &ldquo;did you actually check
+        the flood overlay for this address?&rdquo; — we can produce the exact
+        response, when it was received, and what it contained.
       </p>
 
       {/* ---- Disclaimer architecture ---- */}
