@@ -23,6 +23,7 @@ from typing import List, Tuple, Optional, Set, Dict, Any
 from enrichment.config.ashfield_config import ASHFIELD_CONFIG
 from enrichment.config.leichhardt_config import LEICHHARDT_CONFIG
 from enrichment.config.marrickville_config import MARRICKVILLE_CONFIG
+from enrichment.config import COUNCIL_CONFIGS
 
 
 class ApplicabilityTagger:
@@ -351,6 +352,77 @@ class ApplicabilityTagger:
 
         return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
 
+    def _get_config_driven(self, document_id: str, text: str) -> Optional[Dict[str, Any]]:
+        """Get applicability from COUNCIL_CONFIGS (woollahra, waverley, etc.).
+
+        Uses the same section-code extraction as LayerTopicTagger._tag_from_config().
+        Returns None if no config matches (falls through to text extraction).
+        """
+        doc_lower = document_id.lower()
+        config = None
+        for council_key, cfg in COUNCIL_CONFIGS.items():
+            if council_key in doc_lower:
+                config = cfg
+                break
+        if not config:
+            return None
+
+        parts = config.get("parts", {})
+        chapter_topics = config.get("chapter_topics")
+
+        # chapter_topics path (City of Sydney, Ku-ring-gai)
+        if chapter_topics:
+            for chapter_key, entry in chapter_topics.items():
+                if chapter_key in doc_lower:
+                    return {
+                        'applicable_zones': entry.get('applicable_zones', ['ALL']),
+                        'applicable_dev_types': entry.get('applicable_dev_types', ['ALL']),
+                        'site_conditions': entry.get('site_conditions'),
+                    }
+            return None
+
+        # parts path (Woollahra, Waverley) — extract section code from heading
+        section_code = self._extract_section_code(text)
+        if not section_code:
+            # Fallback: extract chapter code from document_id for preamble provisions
+            # e.g. "Woollahra_DCP_2015__chapter_b1_residential_precincts" → "B1"
+            doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
+            if doc_match:
+                section_code = doc_match.group(1).upper()
+            else:
+                return None
+
+        entry = parts.get(section_code)
+
+        # Progressive strip: "C1.2" → "C1" → "C"
+        if not entry:
+            code = section_code
+            while code and not entry:
+                shorter = re.sub(r'\.?\d+$', '', code)
+                if shorter == code:
+                    break
+                code = shorter
+                entry = parts.get(code)
+
+        # Letter-only prefix
+        if not entry and section_code[0].isalpha():
+            entry = parts.get(section_code[0])
+
+        if entry:
+            return {
+                'applicable_zones': entry.get('applicable_zones', ['ALL']),
+                'applicable_dev_types': entry.get('applicable_dev_types', ['ALL']),
+                'site_conditions': entry.get('site_conditions'),
+            }
+
+        return None
+
+    @staticmethod
+    def _extract_section_code(text: str) -> Optional[str]:
+        """Extract section code from markdown heading (e.g. '# B3.1 Site Coverage' → 'B3.1')."""
+        match = re.match(r'^#\s+([A-Z]?\d+(?:\.\d+)*)', (text or '').strip())
+        return match.group(1) if match else None
+
     def _extract_zones_from_text(self, text: str) -> Set[str]:
         """Extract explicit zone mentions from provision text."""
         zones = set()
@@ -408,6 +480,9 @@ class ApplicabilityTagger:
                 config = self._get_leichhardt_config(document_id)
             elif council == 'marrickville':
                 config = self._get_marrickville_config(document_id)
+            else:
+                # Config-driven path: woollahra, waverley, city_of_sydney, ku_ring_gai
+                config = self._get_config_driven(document_id, text)
 
             if config:
                 struct_zones = config.get('applicable_zones', ['ALL'])
@@ -420,11 +495,13 @@ class ApplicabilityTagger:
                     dev_types.update(struct_dev_types)
 
         # 2. Extract from text (supplement structural config)
-        if text:
+        # Skip text extraction for config-driven councils — the config is
+        # authoritative, and text regex produces false positives (e.g. matching
+        # DCP chapter codes "B3", "E1" as zone codes).
+        if text and not config:
             text_zones = self._extract_zones_from_text(text)
             text_dev_types = self._extract_dev_types_from_text(text)
 
-            # Add text-extracted values if they add specificity
             if text_zones:
                 zones.update(text_zones)
             if text_dev_types:
