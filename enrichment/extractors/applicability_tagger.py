@@ -384,7 +384,13 @@ class ApplicabilityTagger:
         # parts path (Woollahra, Waverley) — extract section code from heading
         section_code = self._extract_section_code(text)
         if not section_code:
-            return None
+            # Fallback: extract chapter code from document_id for preamble provisions
+            # e.g. "Woollahra_DCP_2015__chapter_b1_residential_precincts" → "B1"
+            doc_match = re.search(r'chapter_([a-z]\d+)', doc_lower)
+            if doc_match:
+                section_code = doc_match.group(1).upper()
+            else:
+                return None
 
         entry = parts.get(section_code)
 
