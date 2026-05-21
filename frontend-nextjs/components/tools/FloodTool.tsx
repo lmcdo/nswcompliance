@@ -14,7 +14,7 @@ const FLOOD_STEPS: TransparencyStep[] = [
   { label: 'Scanning Copernicus EMS satellite history…', ms: 5000 },
   { label: 'Checking JRC 40-year surface water record…', ms: 9000 },
   { label: 'Reading BOM gauge data…',                   ms: 14000 },
-  { label: 'Assembling risk assessment…',               ms: 20000 },
+  { label: 'Assembling flood screening…',                ms: 20000 },
 ];
 
 interface EmsActivation {
@@ -95,7 +95,7 @@ const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge
   },
   elevated: {
     label:    'Elevated flood signal',
-    sublabel: 'Multiple independent sources confirm flood exposure — professional flood assessment recommended',
+    sublabel: 'Multiple independent sources confirm flood exposure — professional flood study recommended',
     badge:    'bg-red-100 text-red-800',
     bar:      'bg-red-500',
   },

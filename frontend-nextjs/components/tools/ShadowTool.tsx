@@ -13,7 +13,7 @@ const SHADOW_STEPS: TransparencyStep[] = [
   { label: 'Calculating sun angles across 5 ADG scenarios…', ms: 0 },
   { label: 'Modelling shadow envelopes for each scenario…',  ms: 3000 },
   { label: 'Measuring shadow impact on neighbouring lots…',   ms: 8000 },
-  { label: 'Checking ADG solar access compliance…',          ms: 14000 },
+  { label: 'Checking ADG solar access test…',                 ms: 14000 },
   { label: 'Generating shadow diagrams…',                    ms: 20000 },
 ];
 
@@ -508,7 +508,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
     findings.push({
       label: 'NSW Apartment Design Guide — Part 3F',
       value: 'Meets 2-hour solar access requirement',
-      detail: 'Even if your neighbour builds to the maximum permitted height, your property would still receive at least 2 hours of direct sunlight between 9 am and 3 pm on 21 June (the worst day of the year for shadows).',
+      detail: 'Even if your neighbour builds to the maximum permitted height, the model indicates your property would receive at least 2 hours of direct sunlight between 9 am and 3 pm on 21 June (the worst day of the year for shadows).',
       severity: 'green',
     });
   } else {

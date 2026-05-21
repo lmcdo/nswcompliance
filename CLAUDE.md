@@ -65,6 +65,13 @@ git checkout -b feat/<short-description>
 - Use real APIs (NSW Planning Portal, geocoding) for coordinates
 - NEVER create rectangular approximations or made-up lat/lon
 
+## Blog Content — IP Protection (NON-NEGOTIABLE)
+- **NEVER use internal pipeline names in blog articles:** "Flood Truth Engine", "Threat Radar", "Shadow Ambush Detector", "Granny Flat Yield Predictor", "Solar Yield Underwriter", "Pre-DA Site History"
+- **NEVER use internal algorithm/model names:** "GeoTessera Clay", "Neighbourhood suppression", "VH ratio method", "BSI/NDBI spectral differencing"
+- **NEVER use internal infrastructure terms:** "DataSourceQuery", "audit_trail", "spatial_overlays", "property_reports", function/class/table names
+- **Use generic descriptions instead:** "flood screening", "development monitoring", "shadow analysis", "solar potential assessment", "site history analysis"
+- **Why:** Blog content is public and indexed. Internal names give competitors a roadmap. These terms were used to build the products — they must not appear in the marketing of them.
+
 ## Code Standards
 - Python: PEP8, type hints, black, pydantic, Google-style docstrings
 - TypeScript: for Next.js frontend

@@ -198,7 +198,22 @@ def _query_rfs_bfpl(lat: float, lng: float) -> dict:
                 "data_currency": date.today().isoformat(),
             }
 
-        attrs = feats[0].get("attributes") or {}
+        # When a lot straddles multiple BFPL categories, use the highest-risk
+        # category.  Risk order: Category 1 > 2 > 3 > Buffer > unknown.
+        _RISK_ORDER = {
+            "vegetation category 1": 4,
+            "vegetation category 2": 3,
+            "vegetation category 3": 2,
+            "vegetation buffer": 1,
+        }
+        best_feat = max(
+            feats,
+            key=lambda f: _RISK_ORDER.get(
+                ((f.get("attributes") or {}).get("d_Category") or "").strip().lower(), 0
+            ),
+        )
+
+        attrs = best_feat.get("attributes") or {}
         raw_category = (attrs.get("d_Category") or "").strip()
         raw_guideline = (attrs.get("d_Guidelin") or "").strip()
         category_lower = raw_category.lower()

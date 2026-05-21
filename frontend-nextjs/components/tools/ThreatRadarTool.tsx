@@ -342,14 +342,14 @@ function ThreatFindings({ stats, apps }: { stats: Stats; apps: Application[] }) 
     findings.push({
       label: 'Development pressure index',
       value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
-      detail: 'Very high development activity near your property. Multiple applications close by with significant dwelling numbers. Expect construction noise, traffic disruption, and potential changes to your street character.',
+      detail: 'Very high development activity near your property. Multiple applications close by with significant dwelling numbers. Construction noise, traffic disruption, and changes to street character are common in areas with this level of activity.',
       severity: 'red',
     });
   } else if (stats.pressureScore >= 5) {
     findings.push({
       label: 'Development pressure index',
       value: `${stats.pressureLabel} pressure — ${stats.pressureScore}/10`,
-      detail: 'Significant development activity in your area. Several applications are in progress nearby. Worth monitoring — new buildings can affect parking, sunlight, and property values.',
+      detail: 'Significant development activity in your area. Several applications are in progress nearby. Worth monitoring — new buildings can affect parking, sunlight, and street amenity.',
       severity: 'amber',
     });
   } else if (stats.pressureScore >= 3) {
@@ -387,7 +387,7 @@ function ThreatFindings({ stats, apps }: { stats: Stats; apps: Application[] }) 
       label: 'Dwelling density analysis',
       value: `${sign}${stats.netDwellingChange} net dwellings within 500m`,
       detail: stats.netDwellingChange > 10
-        ? `${stats.newDwellings} new dwellings proposed${stats.demolishedDwellings > 0 ? `, ${stats.demolishedDwellings} being demolished` : ''}. Your neighbourhood is densifying significantly — expect more traffic, parking pressure, and potential shadow/privacy impacts.`
+        ? `${stats.newDwellings} new dwellings proposed${stats.demolishedDwellings > 0 ? `, ${stats.demolishedDwellings} being demolished` : ''}. Your neighbourhood is densifying significantly. Areas with this level of new housing typically experience increased traffic, parking pressure, and shadow/privacy impacts.`
         : stats.netDwellingChange > 0
         ? `${stats.newDwellings} new dwellings proposed${stats.demolishedDwellings > 0 ? `, ${stats.demolishedDwellings} being demolished` : ''}. Moderate densification — typical for established suburbs with good transport links.`
         : `${stats.demolishedDwellings} dwellings being demolished, ${stats.newDwellings} being built. The neighbourhood composition is changing.`,

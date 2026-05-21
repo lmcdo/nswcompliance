@@ -136,6 +136,7 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
     """
     if not lga_slug:
         return None
+    cur = None
     try:
         cur = conn.cursor()
         cur.execute(
@@ -171,10 +172,12 @@ def _fetch_sd_setbacks(conn, lga_slug: Optional[str]) -> Optional[dict]:
             (lga_slug,),
         )
         reg = cur.fetchone()
-        cur.close()
     except Exception as e:
         logger.warning(f"DCP setback lookup failed: {e}")
         return None
+    finally:
+        if cur:
+            cur.close()
 
     if not rows:
         return None

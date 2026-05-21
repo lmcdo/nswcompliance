@@ -91,7 +91,7 @@ function deriveIneligibleReason(reason: string | null, lotArea: number | null): 
     return `Lot area ${Math.round(lotArea).toLocaleString()} m² — ${shortfall} m² short of the 450 m² minimum under SEPP Housing 2021`;
   }
   if (lotArea != null && lotArea >= 450) {
-    return `Lot area ${Math.round(lotArea).toLocaleString()} m² meets the size threshold, but the property does not qualify — likely due to zoning, heritage, flood, or biodiversity exclusions`;
+    return `Lot area ${Math.round(lotArea).toLocaleString()} m² meets the size threshold, but the property did not pass one or more other checks — likely due to zoning, heritage, flood, or biodiversity exclusions`;
   }
   return 'This property does not meet SEPP Housing 2021 eligibility requirements';
 }
@@ -442,7 +442,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 </p>
                 {eligibility.sepp_eligible && (
                   <p className="text-xs text-gray-500 mt-1">
-                    This property passes all SEPP Housing 2021 spatial checks. Get a full feasibility report to see rental yield, build ROI, and council setbacks.
+                    Based on the data sources checked, this property meets the SEPP Housing 2021 spatial criteria. Get a full feasibility report to see rental yield, build ROI, and council setbacks.
                   </p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
@@ -697,7 +697,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
                     { href: '/reports/threat-radar', label: 'Nearby development activity', detail: 'See DAs and CDCs lodged within 200m' },
-                    { href: '/reports/shadow', label: 'Shadow risk from neighbours', detail: 'Model future shadow from a max-height northern build' },
+                    { href: '/reports/shadow', label: 'Shadow impact from neighbours', detail: 'Model future shadow from a max-height northern build' },
                     { href: '/reports/solar-yield', label: 'Rooftop solar potential', detail: 'Estimate annual kWh yield from aerial imagery' },
                     { href: '/reports/flood', label: 'Flood history', detail: 'SAR satellite flood detection + NSW statutory overlays' },
                   ].map(({ href, label, detail }) => (

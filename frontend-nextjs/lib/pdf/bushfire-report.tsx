@@ -88,9 +88,9 @@ const GRAY_100   = '#f3f4f6';
 
 const SIGNAL_COLORS: Record<string, { bg: string; fg: string; label: string }> = {
   none:       { bg: '#ecfdf5', fg: GREEN,  label: 'Not bushfire prone' },
-  low:        { bg: '#fefce8', fg: '#ca8a04', label: 'Low fire signal' },
-  moderate:   { bg: '#fff7ed', fg: AMBER,  label: 'Moderate fire signal' },
-  elevated:   { bg: '#fef2f2', fg: RED,    label: 'Elevated fire signal' },
+  low:        { bg: '#fefce8', fg: '#ca8a04', label: 'Bushfire prone — lower category' },
+  moderate:   { bg: '#fff7ed', fg: AMBER,  label: 'Bushfire prone — moderate category' },
+  elevated:   { bg: '#fef2f2', fg: RED,    label: 'Bushfire prone — highest category' },
   unavailable:{ bg: GRAY_100,  fg: GRAY_500, label: 'Data unavailable' },
 };
 
@@ -486,7 +486,6 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
           <DataCurrencyTable rows={[
             { source: 'NSW RFS Bush Fire Prone Land Map', type: 'Live API query', currency: `Queried ${data.run_date}` },
             { source: 'NSW Planning Portal (EPI overlays)', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'NSW DEM (ground elevation)', type: 'Cached raster', currency: 'LiDAR 2020–2023' },
             { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
           ]} />
         )}

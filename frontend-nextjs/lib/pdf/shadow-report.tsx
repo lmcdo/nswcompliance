@@ -254,7 +254,7 @@ function buildFindings(data: ShadowReportData): Finding[] {
       label: 'ADG Part 3F solar access test',
       value: overlapCount === 0 ? 'Meets ADG solar access test — no shadow overlap' : `Meets ADG solar access test — ${overlapCount} of 5 scenarios with shadow`,
       detail: overlapCount === 0
-        ? 'A maximum-height building on an adjacent lot would not significantly shadow this property across any test scenario. ADG solar access requirements are met.'
+        ? 'The model shows no significant shadow impact on this property from a maximum-height building on an adjacent lot across any test scenario. The ADG solar access test is met based on this model.'
         : 'Some shadow impact is expected but the ADG 2-hour solar access requirement (9am–3pm on 21 June) is still met. This is typical for urban lots and unlikely to be grounds for objection.',
       severity: overlapCount === 0 ? 'green' : 'amber',
     });
@@ -304,7 +304,7 @@ function buildFindings(data: ShadowReportData): Finding[] {
     findings.push({
       label: 'Shadow analysis — 5 ADG test scenarios',
       value: 'No shadow overlap detected',
-      detail: 'A maximum-height building on an adjacent lot would not cast shadow onto this property in any of the 5 test scenarios. This is a strong result for solar access.',
+      detail: 'A maximum-height building on an adjacent lot would not cast shadow onto this property in any of the 5 test scenarios. No shadow overlap was detected in any test scenario.',
       severity: 'green',
     });
   }
@@ -554,17 +554,16 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
 
         {isPaid && (
           <DataCurrencyTable rows={[
-            { source: 'NSW Planning Portal (height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
-            { source: 'NSW DEM (ground elevation)', type: 'Cached raster', currency: 'LiDAR 2020–2023' },
-            { source: 'Solar geometry (pysolar)', type: 'Computed', currency: 'Analytical model' },
+            { source: 'NSW Planning Portal (lot boundary + height controls)', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'Element84 Sentinel-2 (construction change)', type: 'Live STAC query', currency: `Queried ${data.run_date}` },
+            { source: 'Shadow geometry (pvlib + pybdshadow)', type: 'Computed', currency: 'Analytical model' },
           ]} />
         )}
 
         {/* Methodology — compact */}
         <Text style={s.sectionTitle}>Methodology</Text>
         <Text style={s.bodyText}>
-          Shadow geometry computed using NREL Solar Position Algorithm for ADG test dates (21 Jun, 21 Sep, 21 Dec). Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
+          Shadow geometry computed using pvlib Solar Position Algorithm and pybdshadow shadow casting for ADG test dates (21 Jun, 21 Sep, 21 Dec). Building height from applicable LEP. Northern neighbour footprint approximated from lot boundary offset. Construction activity detected via Sentinel-2 Bare Soil Index (BSI) change.
         </Text>
 
         <Text style={[s.sectionTitle, { marginTop: 4 }]}>Disclaimer</Text>

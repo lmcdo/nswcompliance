@@ -80,6 +80,16 @@ disclaimer_versions - versioned disclaimer text per product
   Unique: (pipeline_name, version)
   Index: (pipeline_name, effective_from DESC) WHERE superseded_at IS NULL
 
+data_source_health_checks - APPEND-ONLY log of external API health probes
+  id uuid PK, run_id uuid (groups checks from one run), source_key text,
+  source_name text, endpoint_url text, pipeline_names text[],
+  status text ('ok'|'degraded'|'down'|'schema_changed'|'stale'),
+  http_status int, response_time_ms int, response_hash text (SHA-256),
+  schema_valid boolean, error_message text, metadata jsonb, checked_at timestamptz
+  Index: (source_key, checked_at DESC), (run_id), (status, checked_at DESC) WHERE status != 'ok'
+  Policy: INSERT only — NO UPDATE or DELETE (immutability required)
+  Retention: aligned with report_audit_trail (10 years)
+
 ## Important: What's Missing
 
 dcp_precinct_metadata: 0 rows (don't use)

@@ -266,7 +266,7 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
       ? 'Eligibility unconfirmed - multiple structures detected'
       : 'Not eligible for CDC pathway',
     detail: pass
-      ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway. A CDC can be lodged with a private certifier without council consent.'
+      ? 'Based on the data sources checked, this property meets the SEPP Housing 2021 spatial criteria for a secondary dwelling under the Complying Development pathway. A private certifier can verify eligibility and lodge a CDC without council consent.'
       : isMultiStructureBlock
       ? 'Two or more secondary structures were detected. SEPP Housing 2021 (cl 53(1)) only permits one secondary dwelling per lot. A town planner or private certifier must verify before proceeding.'
       : 'This property does not meet one or more requirements for a secondary dwelling under the CDC pathway. A Development Application (DA) to council may still be available.',
@@ -291,7 +291,7 @@ function buildFindings(data: GrannyFlatReportData): Finding[] {
     findings.push({
       label: 'SEPP Housing 2021 cl 4.18 - floor area cap',
       value: `${fmt(data.max_floor_area_m2)} m\u00B2 maximum floor area (CDC)`,
-      detail: 'The CDC pathway caps secondary dwellings at 60 m\u00B2. Your lot qualifies for the full allowance. This is the maximum habitable floor area, excluding verandahs, garages, and laundries.',
+      detail: 'The CDC pathway caps secondary dwellings at 60 m\u00B2. Based on the data sources checked, your lot is within the full allowance. This is the maximum habitable floor area, excluding verandahs, garages, and laundries.',
       severity: 'green',
     });
   }
@@ -572,14 +572,14 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
               if (pass && data.estimated_weekly_rent_aud != null) {
                 return (
                   <WhatThisMeans>
-                    {`This lot qualifies for a secondary dwelling under the fast-track CDC pathway. You do not need council approval. Engage a private certifier for a pre-lodgement check (approximately $500), then a draftsperson for CDC-ready drawings (approximately $2,000-$5,000). Estimated rental income: $${data.estimated_weekly_rent_aud}/week.`}
+                    {`Based on the data sources checked, this lot meets the SEPP Housing 2021 spatial criteria for a secondary dwelling via the CDC pathway. A private certifier can confirm eligibility (approximately $500), then a draftsperson can prepare CDC-ready drawings (approximately $2,000-$5,000). Estimated rental income: $${data.estimated_weekly_rent_aud}/week.`}
                   </WhatThisMeans>
                 );
               }
               if (pass) {
                 return (
                   <WhatThisMeans>
-                    This lot qualifies for a secondary dwelling under the fast-track CDC pathway. You do not need council approval. Engage a private certifier for a pre-lodgement check (approximately $500), then a draftsperson for CDC-ready drawings (approximately $2,000-$5,000).
+                    Based on the data sources checked, this lot meets the SEPP Housing 2021 spatial criteria for a secondary dwelling via the CDC pathway. A private certifier can confirm eligibility (approximately $500), then a draftsperson can prepare CDC-ready drawings (approximately $2,000-$5,000).
                   </WhatThisMeans>
                 );
               }
@@ -871,7 +871,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           <Text style={s.sectionTitle}>Disclaimer and data sources</Text>
           <Text style={s.bodyText}>
             This report is indicative only and does not constitute legal, planning, or financial advice.
-            Eligibility determinations are based on automated analysis of publicly available data as at the
+            Eligibility indicators are based on automated screening of publicly available data as at the
             report date and may not reflect recent amendments to planning instruments, heritage listings, or
             flood mapping. Always verify with a qualified town planner or private certifier before lodging a
             development application or complying development certificate.

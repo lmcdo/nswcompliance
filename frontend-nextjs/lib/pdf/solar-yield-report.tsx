@@ -539,7 +539,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
                 'Feed-in rate sensitivity table (4 scenarios)',
                 'Monthly kWh output breakdown',
                 'Battery storage upgrade analysis',
-                'Future shading risk assessment',
+                'Future shading screening',
               ].map((item) => (
                 <View key={item} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 3 }}>
                   <Text style={{ fontSize: 8, color: TEAL, marginRight: 4 }}>•</Text>
@@ -571,9 +571,8 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         {isPaid && (
           <DataCurrencyTable rows={[
             { source: 'Google Solar API', type: 'Live API query', currency: `Queried ${data.run_date}` },
-            { source: 'NSW Building Footprints', type: 'Cached dataset', currency: '2023 release' },
-            { source: 'BoM climate records', type: 'Cached dataset', currency: '30-year average' },
-            { source: 'NSW Heritage Register', type: 'Live API query', currency: `Queried ${data.run_date}` },
+            { source: 'NSW Heritage Register (spatial_overlays)', type: 'PostGIS query', currency: `Queried ${data.run_date}` },
+            { source: 'LEP Height of Buildings (spatial_overlays)', type: 'PostGIS query', currency: `Queried ${data.run_date}` },
           ]} />
         )}
 

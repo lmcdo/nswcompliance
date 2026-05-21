@@ -28,7 +28,7 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
     ],
     "construction_change_score": float | null,
     "construction_change_detected": bool,
-    "adg_compliant": bool,       # True if ≥2 of 3 Jun 21 scenarios do NOT overlap subject lot
+    "adg_compliant": bool,       # True if Jun 21 noon shadow does NOT overlap subject lot (noon-only gate)
     "worst_case_scenario": str   # scenario key with longest shadow
   },
   "confidence": str,
@@ -424,12 +424,15 @@ def run_shadow(request: ShadowRequest):
 
     # Resolve LGA for council name on report
     lga_info = {"lga_name": None, "lga_slug": None}
+    _lga_conn = None
     try:
         _lga_conn = _get_conn()
         lga_info = lookup_lga(request.lat, request.lng, _lga_conn)
-        _lga_conn.close()
     except Exception:
         pass
+    finally:
+        if _lga_conn:
+            _lga_conn.close()
 
     outputs = {
         "height_m": height_m,

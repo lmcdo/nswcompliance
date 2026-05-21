@@ -49,18 +49,18 @@ const FIRE_SIGNAL_META: Record<string, { label: string; sublabel: string; badge:
     badge: 'bg-green-100 text-green-800',
   },
   low: {
-    label: 'Low bushfire risk',
-    sublabel: 'This property is on bushfire prone land but in a lower-risk category. You\'ll need a BAL assessment before building, but construction costs are unlikely to be significant.',
+    label: 'Bushfire prone — lower category',
+    sublabel: 'This property is on the RFS Bush Fire Prone Land Map in a lower designation category. A BAL assessment is required before building.',
     badge: 'bg-yellow-100 text-yellow-800',
   },
   moderate: {
-    label: 'Moderate bushfire risk',
-    sublabel: 'This property requires bushfire-rated construction. Your builder will need to meet AS 3959 standards, and RFS must sign off on any new development.',
+    label: 'Bushfire prone — moderate category',
+    sublabel: 'This property is mapped in a moderate bushfire designation category. Bushfire-rated construction under AS 3959 applies, and RFS must be consulted on any new development.',
     badge: 'bg-orange-100 text-orange-800',
   },
   elevated: {
-    label: 'High bushfire risk',
-    sublabel: 'This property is in the highest bushfire risk category. Construction costs will be significantly higher, and you cannot use the fast-track CDC approval pathway.',
+    label: 'Bushfire prone — highest category',
+    sublabel: 'This property is in the highest bushfire designation category on the RFS map. AS 3959 construction standards apply, and the fast-track CDC approval pathway is not available.',
     badge: 'bg-red-100 text-red-800',
   },
   unavailable: {
