@@ -183,7 +183,8 @@ def check_via_nsw_legislation(
             print(f"    [ERROR] {key}: {exc}")
             results[key] = None
             fetch_errors.append(f"{key}: {exc}")
-        time.sleep(2)
+        # 5s between requests to avoid Cloudflare rate-limiting
+        time.sleep(5)
 
     return results, fetch_errors
 
@@ -274,8 +275,30 @@ def _fetch_nsw_legislation_version_playwright(url: str) -> str | None:
         resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
         if resp and resp.status == 404:
             raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
-        page.wait_for_selector("h1, .legislation-title, #content", timeout=15000)
-        time.sleep(2)
+
+        # Wait for Cloudflare challenge to resolve — the challenge page has
+        # title "Just a moment..." and its own <h1>. Poll until the real page
+        # appears or timeout after ~30s.
+        for attempt in range(6):
+            html = page.content()
+            if "Just a moment" not in html:
+                break
+            print(f"    Cloudflare challenge detected, waiting... (attempt {attempt + 1}/6)")
+            time.sleep(5)
+        else:
+            raise RuntimeError(
+                f"Cloudflare challenge did not resolve after 30s: {url}"
+            )
+
+        # Wait for actual legislation content to render
+        try:
+            page.wait_for_selector(
+                ".legislation-title, #content, .legislation-body",
+                timeout=10000,
+            )
+        except Exception:
+            pass  # Content may already be in the HTML from goto
+        time.sleep(1)
         html = page.content()
     except Exception as exc:
         if "Download is starting" in str(exc):
