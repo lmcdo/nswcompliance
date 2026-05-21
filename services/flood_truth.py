@@ -478,64 +478,6 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
 
 
-# ---------------------------------------------------------------------------
-# DEA Water Observations (WOfS)
-# ---------------------------------------------------------------------------
-
-def _query_dea_wofs(lat: float, lng: float) -> dict:
-    """
-    Sample DEA WOfS multi-year frequency at a point via WCS GetCoverage.
-
-    Layer: ga_ls_wo_fq_myear_3 (all-of-archive composite, 1987–present, 25m).
-    Band 1 = frequency (0.0–1.0 fraction). nodata = -999.0.
-    Returns dea_wofs_frequency_pct (0–100) or None on failure.
-
-    Simpler than JRC: no vsicurl, no tile lookup — single HTTP request, in-memory rasterio.
-    """
-    try:
-        import io
-        import rasterio
-    except ImportError:
-        logger.warning("rasterio not installed — DEA WOfS unavailable")
-        return {"dea_wofs_frequency_pct": None}
-
-    try:
-        delta = 0.001  # ~100m bbox, enough for a point sample
-        r = requests.get(
-            DEA_WCS_BASE,
-            params={
-                "service": "WCS",
-                "version": "1.0.0",
-                "request": "GetCoverage",
-                "coverage": DEA_WOFS_LAYER,
-                "format": "GeoTIFF",
-                "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
-                "crs": "EPSG:4326",
-                "resx": str(delta),
-                "resy": str(delta),
-            },
-            timeout=20,
-        )
-        r.raise_for_status()
-
-        # Validate response is a GeoTIFF (not an XML error response)
-        ct = r.headers.get("Content-Type", "")
-        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
-            logger.warning(f"DEA WOfS: unexpected Content-Type {ct}")
-            return {"dea_wofs_frequency_pct": None}
-
-        with rasterio.open(io.BytesIO(r.content)) as ds:
-            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
-
-        if raw == -999.0 or raw < 0 or math.isnan(raw):
-            return {"dea_wofs_frequency_pct": None}
-
-        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
-
-    except Exception as e:
-        logger.warning(f"DEA WOfS query: {e}")
-        return {"dea_wofs_frequency_pct": None}
-
 
 # ---------------------------------------------------------------------------
 # BOM nearest river gauge
@@ -849,7 +791,7 @@ _WOFS_HARD_TIMEOUT = 25  # seconds — WCS can stall after connect; requests.get
 def _query_dea_wofs(lat: float, lng: float) -> dict:
     """
     Sample DEA Water Observations (WOfS) multi-year composite via WCS.
-    Layer: ga_ls_wo_fq_myear_3 — Band 1 = frequency fraction (0.0–1.0).
+    Layer: ga_ls_wo_fq_myear_3 — Band 3 = frequency fraction (0.0–1.0).
     Returns dea_wofs_frequency_pct (0.0–100.0) or None on failure/nodata.
 
     Uses an inner ThreadPoolExecutor with a hard 25s wall-clock timeout so a
@@ -871,10 +813,19 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
         if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
             return {"dea_wofs_frequency_pct": None}
         with rasterio.open(io.BytesIO(r.content)) as ds:
-            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+            # Band order: 1=count_wet, 2=count_clear, 3=frequency (0.0–1.0)
+            if ds.count >= 3:
+                raw = float(ds.read(3)[0, 0])
+            else:
+                raw = float(ds.read(1)[0, 0])  # single-band fallback
         if raw == -999.0 or raw < 0 or math.isnan(raw):
             return {"dea_wofs_frequency_pct": None}
-        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+        # frequency band is 0.0–1.0; guard against already-percentage values
+        if raw > 1.0:
+            pct = min(raw, 100.0)
+        else:
+            pct = raw * 100.0
+        return {"dea_wofs_frequency_pct": round(pct, 2)}
 
     try:
         with ThreadPoolExecutor(max_workers=1) as inner:
