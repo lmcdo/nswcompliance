@@ -98,7 +98,10 @@ jobs:
       - name: Auto-commit if quality gate passes
         if: steps.extract.outputs.exit_code == '2' && steps.gate.outputs.gate_code == '0' && github.event.inputs.council != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Default GITHUB_TOKEN can't trigger workflow_dispatch on other workflows
+          # (GitHub prevents infinite loops). GH_PAT is a fine-grained PAT with
+          # actions:write scope. Falls back gracefully if not set.
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         run: |
           echo "Quality gate PASSED — auto-triggering commit workflow for ${{ github.event.inputs.council }}"
           gh workflow run dcp-commit.yml \
