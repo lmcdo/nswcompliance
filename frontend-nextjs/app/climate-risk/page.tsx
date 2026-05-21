@@ -32,6 +32,47 @@ export default function ClimateRiskPage() {
         </p>
       </section>
 
+      {/* Plain English: what this does and doesn't do */}
+      <section className="max-w-3xl mx-auto px-6 pb-10">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8 space-y-4">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 mb-1.5">
+              What this tool does
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Checks whether your property falls within government-mapped hazard
+              zones for flood, bushfire, coastal erosion, and fire history, and
+              shows projected temperature changes from NSW climate modelling
+              (NARCliM 2.0). Combines these into a single score out of 100.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 mb-1.5">
+              What this tool does not do
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              It does not predict whether your property will flood, burn, or be
+              damaged. It does not assess your building&apos;s construction,
+              resilience, or insurability. It is not an insurance assessment,
+              engineering report, or financial advice. The score measures
+              exposure to mapped hazards &mdash; not probability of loss.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 mb-1.5">
+              Where the data comes from
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              NSW Planning Portal (flood overlays), NSW Rural Fire Service
+              (bushfire prone land), SEPP Resilience &amp; Hazards 2021
+              (coastal zones), NPWS (fire history), and NARCliM 2.0 via
+              AdaptNSW (heat projections). All government sources, queried
+              live.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Interactive tool */}
       <section className="max-w-3xl mx-auto px-6 pb-16">
         <ClimateRiskTool />
