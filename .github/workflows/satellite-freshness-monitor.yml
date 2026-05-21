@@ -56,3 +56,33 @@ jobs:
             echo "Monitor script failed with exit code $CODE."
             exit 1
           fi
+
+  # --- Heartbeat: prove this workflow keeps running ---
+  heartbeat:
+    needs: [check-sources]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping healthchecks.io
+        env:
+          HC_PING_URL: ${{ secrets.HC_PING_SATELLITE_MONITOR }}
+        run: |
+          if [ -z "$HC_PING_URL" ]; then
+            echo "HC_PING_SATELLITE_MONITOR secret not set — heartbeat skipped"
+            echo "WARNING: Dead man's switch not configured. If this workflow stops running, no one will know."
+            exit 1
+          fi
+          if [ "${{ needs.check-sources.result }}" = "success" ]; then
+            curl -fsS --retry 3 "$HC_PING_URL" || echo "Heartbeat ping failed"
+          else
+            curl -fsS --retry 3 "$HC_PING_URL/fail" || echo "Heartbeat fail-ping failed"
+          fi
+
+  # --- Failure notification ---
+  notify-on-failure:
+    needs: [check-sources]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: Satellite Data Source Freshness Monitor
+    secrets: inherit

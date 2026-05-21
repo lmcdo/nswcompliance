@@ -57,7 +57,9 @@ Each report documents 5 passes: source authority, algorithm correctness, null/ed
 | Artefact | Path | What It Proves |
 |---|---|---|
 | Satellite Freshness Monitor | [`scripts/satellite_freshness_monitor.py`](../../scripts/satellite_freshness_monitor.py) | Automated daily probing of all 15 external endpoints across 7 pipelines. 8 probe types (ArcGIS, ePlanning, Google Solar, BOM, WCS, etc.). Schema validation. Telegram alerts on failure. Results written to `data_source_health_checks`. |
-| GitHub Actions Workflow | [`.github/workflows/satellite-freshness-monitor.yml`](../../.github/workflows/satellite-freshness-monitor.yml) | Cron schedule (daily 06:00 UTC / 16:00 AEST). Manual dispatch with optional source filter. Proves ongoing automated monitoring, not one-off. |
+| Audit Trail Completeness Check | [`scripts/satellite_freshness_monitor.py`](../../scripts/satellite_freshness_monitor.py) | Runs as part of daily freshness check. Finds reports in `property_reports` with no corresponding `report_audit_trail` row (last 7 days). Alerts if audit write silently failed. |
+| Output Quality Check | [`scripts/satellite_freshness_monitor.py`](../../scripts/satellite_freshness_monitor.py) | Runs as part of daily freshness check. Finds reports with NULL/empty outputs, NULL confidence, or empty data_sources arrays. Catches "ran successfully but produced garbage". |
+| GitHub Actions Workflow | [`.github/workflows/satellite-freshness-monitor.yml`](../../.github/workflows/satellite-freshness-monitor.yml) | Cron schedule (daily 06:00 UTC / 16:00 AEST). Manual dispatch with optional source filter. Failure notification via Telegram. Dead man's switch via healthchecks.io. Proves ongoing automated monitoring, not one-off. |
 
 ---
 
