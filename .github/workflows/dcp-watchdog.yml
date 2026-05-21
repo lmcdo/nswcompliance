@@ -35,3 +35,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python scripts/dcp_watchdog.py
+
+  notify-on-failure:
+    needs: [watchdog]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+    secrets: inherit

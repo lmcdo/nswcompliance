@@ -1,0 +1,62 @@
+name: Notify Failure (reusable)
+
+# Called by other workflows on failure. Sends a Telegram alert with
+# workflow name, branch, commit, and a link to the failed run.
+#
+# Usage in any workflow:
+#   notify-on-failure:
+#     needs: [job-name]
+#     if: failure()
+#     uses: ./.github/workflows/notify-failure.yml
+#     with:
+#       workflow_name: ${{ github.workflow }}
+#     secrets: inherit
+
+on:
+  workflow_call:
+    inputs:
+      workflow_name:
+        required: true
+        type: string
+      extra_context:
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram failure alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets not configured — skipping notification"
+            exit 0
+          fi
+
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          EXTRA="${{ inputs.extra_context }}"
+          CONTEXT=""
+          if [ -n "$EXTRA" ]; then
+            CONTEXT="\n${EXTRA}"
+          fi
+
+          MSG="<b>FAILED:</b> ${{ inputs.workflow_name }}${CONTEXT}
+          <b>Branch:</b> ${{ github.ref_name }}
+          <b>Commit:</b> <code>${{ github.sha }}</code>
+          <b>Actor:</b> ${{ github.actor }}
+          <a href=\"${RUN_URL}\">View run</a>"
+
+          # Collapse whitespace from YAML heredoc indentation
+          MSG=$(echo "$MSG" | sed 's/^[[:space:]]*//')
+
+          curl -sf --retry 3 --retry-delay 5 -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg chat_id "$TELEGRAM_CHAT_ID" \
+              --arg text "$MSG" \
+              '{chat_id: $chat_id, text: $text, parse_mode: "HTML", disable_web_page_preview: true}'
+            )" || echo "Warning: Telegram notification failed (API error or network issue)"

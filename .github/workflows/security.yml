@@ -66,3 +66,11 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript-typescript"
+
+  notify-on-failure:
+    needs: [npm-audit, codeql]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+    secrets: inherit

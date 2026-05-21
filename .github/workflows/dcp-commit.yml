@@ -108,3 +108,11 @@ jobs:
             echo "Commit failed with exit code $CODE. Production DB unchanged."
             exit 1
           fi
+
+  notify-on-failure:
+    needs: [commit]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: "${{ github.workflow }} (${{ github.event.inputs.council }})"
+    secrets: inherit

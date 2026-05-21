@@ -165,3 +165,28 @@ jobs:
             echo "[${{ matrix.council }}] Failed with exit code $CODE."
             exit 1
           fi
+
+  # Dead man's switch — pings healthchecks.io on success.
+  # If this workflow stops running (cron disabled, Actions outage, etc.)
+  # healthchecks.io will alert via its own channel after the grace period.
+  heartbeat:
+    needs: [monitor-single, monitor-matrix]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping healthcheck
+        run: |
+          if [ -z "${{ secrets.HC_PING_DCP_MONITOR }}" ]; then
+            echo "::error::HC_PING_DCP_MONITOR secret not set — dead man's switch is not active"
+            exit 1
+          fi
+          curl -fsS --retry 3 "${{ secrets.HC_PING_DCP_MONITOR }}"
+
+  notify-on-failure:
+    needs: [monitor-single, monitor-matrix]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+      extra_context: "One or more council monitors failed — check run for details"
+    secrets: inherit
