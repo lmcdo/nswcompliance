@@ -200,8 +200,8 @@ Each pipeline undergoes 5 passes:
 
 | Pipeline | Pass 1 | Pass 2 | Pass 3 | Pass 4 | Pass 5 | Test Count | Status |
 |---|---|---|---|---|---|---|---|
-| Flood Truth | Done | Done | Done | Done | Done | 70 tests | Complete |
-| Solar Yield | Done | Done | Done | Done | Done | 31 tests | Complete |
+| Flood Truth | Done | Done | Done | Done | Done | 2 bugs fixed | Complete |
+| Solar Yield | Done | Done | Done | Done | Done | 4 bugs fixed | Complete |
 | Shadow | Done | Done | Done | Done | Done | 9 bugs fixed | Complete |
 | Threat Radar | Done | Done | Done | Done | Done | 6 bugs fixed | Complete |
 | Granny Flat | Done | Done | Done | Done | Done | 8 bugs fixed | Complete |

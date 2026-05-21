@@ -156,6 +156,14 @@ const ARTICLES: {
     category: 'Planning Reforms',
     date: '2026-05-20',
   },
+  /* ---- Data Quality & Methodology ---- */
+  {
+    slug: 'how-we-validate-property-data-nsw',
+    title: 'How we validate property data before it reaches you',
+    description: 'Every property screening result goes through a 5-pass validation: data source verification, algorithm checks, edge case hardening, connection safety, and output defensibility.',
+    category: 'Property Research',
+    date: '2026-05-21',
+  },
   /* ---- Hub 3 (existing) ---- */
   {
     slug: 'aasb-s2-property-climate-data',

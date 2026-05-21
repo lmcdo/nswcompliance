@@ -177,6 +177,14 @@ export default function HowItWorksPage() {
             building certifier reviewing your specific situation. We cite every data source so you
             can verify results directly.
           </p>
+          <p className="text-sm text-teal-800 mt-3">
+            <Link
+              href="/blog/how-we-validate-property-data-nsw"
+              className="font-medium text-teal-700 underline underline-offset-2 hover:text-teal-900 transition-colors"
+            >
+              Read how we validate data before it reaches you →
+            </Link>
+          </p>
         </div>
       </div>
 

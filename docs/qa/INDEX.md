@@ -24,8 +24,8 @@ Each report documents 5 passes: source authority, algorithm correctness, null/ed
 |---|---|---|---|
 | Bushfire Pre-Screen | [`docs/qa/bushfire_validation.md`](bushfire_validation.md) | 3 found, 3 fixed (multi-feature selection, false DEM attribution, risk labels) | Complete |
 | Threat Radar | [`docs/qa/threat_radar_validation.md`](threat_radar_validation.md) | 6 found, 6 fixed (false LEP attribution, label mismatch, 4 language issues) | Complete |
-| Flood Truth | — | 70 tests written | Complete (no separate report yet) |
-| Solar Yield | — | 31 tests written | Complete (no separate report yet) |
+| Flood Truth | [`docs/qa/flood_truth_validation.md`](flood_truth_validation.md) | 2 found, 2 fixed (2 language issues) | Complete |
+| Solar Yield | [`docs/qa/solar_yield_validation.md`](solar_yield_validation.md) | 4 found, 4 fixed (connection leak, false attribution, 2 language) | Complete |
 | Shadow Detector | [`docs/qa/shadow_validation.md`](shadow_validation.md) | 9 found, 9 fixed (wrong comment, connection leak, 2 false attributions, wrong lib name, 4 language) | Complete |
 | Granny Flat | [`docs/qa/granny_flat_validation.md`](granny_flat_validation.md) | 8 found, 8 fixed (cursor leak, 7 language) | Complete |
 | Pre-DA History | [`docs/qa/pre_da_history_validation.md`](pre_da_history_validation.md) | 8 found, 8 fixed (2 connection leaks, 1 null guard, 3 false attributions, 2 language) | Complete |
@@ -103,8 +103,8 @@ These are the actual pipeline implementations that the QA reports audit.
 
 | # | Gap | Severity | Path to Resolution |
 |---|---|---|---|
-| 1 | Flood Truth + Solar Yield have tests but no formal QA validation report | Low | Write reports documenting existing test coverage |
 | 3 | Audit trail migration run in prod but disclaimer seed data status unverified | Medium | Verify `disclaimer_versions` has 7 rows in Supabase |
 | 4 | Language audit branch (`chore/language-audit-liability-cleanup`) not yet merged | High | Merge after QA validation complete |
 | 5 | No external legal review of disclaimers | High | Engage Australian technology lawyer (§8.3 of QA-DATA-PROVENANCE.md) |
 | 6 | No Professional Indemnity insurance | Critical | Commercial action, pre-revenue |
+| 7 | `how-it-works` page lists inaccurate data sources for Solar Yield and Flood tools | Medium | Update to match actual pipeline data sources |

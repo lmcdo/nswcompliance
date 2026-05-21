@@ -1,0 +1,302 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+
+export const metadata: Metadata = {
+  title:
+    'How We Validate Property Data Before It Reaches You — PlotDetect',
+  description:
+    'Every property screening result on PlotDetect goes through a 5-pass validation process — data source verification, algorithm checks, edge case hardening, connection safety, and output defensibility. Here is exactly how it works.',
+  keywords: [
+    'property data validation',
+    'data provenance property',
+    'NSW planning data accuracy',
+    'property screening methodology',
+    'satellite data validation',
+    'flood data verification NSW',
+    'solar yield data accuracy',
+    'property report quality assurance',
+  ],
+};
+
+/* ------------------------------------------------------------------ */
+/*  Visual: 5-pass validation pipeline                                 */
+/* ------------------------------------------------------------------ */
+
+function ValidationPipeline() {
+  const passes = [
+    {
+      number: 1,
+      name: 'Data source verification',
+      question: 'Are we querying the right source, with the right parameters?',
+      detail: 'Every external data source — government APIs, satellite imagery providers, spatial databases — is traced from endpoint URL to the value that appears in your report. If a source is listed in your report, it was actually queried. If it was not queried, it does not appear.',
+    },
+    {
+      number: 2,
+      name: 'Algorithm correctness',
+      question: 'Does the logic produce the right answer for known inputs?',
+      detail: 'Scoring algorithms, signal computations, and derived fields are verified against expected outputs. Test suites cover normal cases, boundary conditions, and adversarial inputs. Across 7 pipelines, we maintain over 200 automated tests.',
+    },
+    {
+      number: 3,
+      name: 'Null and edge case hardening',
+      question: 'What happens when data is missing, malformed, or unexpected?',
+      detail: 'Government APIs return null fields, empty arrays, and unexpected formats more often than you would think. Every field that comes from an external source is null-checked before use. Missing data produces a clear "unavailable" indicator — never a false positive or silent failure.',
+    },
+    {
+      number: 4,
+      name: 'Connection and resource safety',
+      question: 'Are database connections and API handles properly released?',
+      detail: 'A leaked database connection under load can take down an entire service. Every connection follows a strict open-try-finally-close pattern. External API calls have timeouts. Long-running queries have statement-level time limits.',
+    },
+    {
+      number: 5,
+      name: 'Output defensibility',
+      question: 'Does the language in the report stay within what the data supports?',
+      detail: 'Every word of user-facing text is audited against a substitution ruleset. "Qualifies" becomes "meets criteria based on data sources checked". "Risk assessment" becomes "screening". No statement crosses the line from factual information into advice, recommendation, or assurance.',
+    },
+  ];
+
+  return (
+    <div className="my-8 space-y-4">
+      {passes.map((pass) => (
+        <div key={pass.number} className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="flex items-baseline gap-3 mb-2">
+            <span className="shrink-0 w-7 h-7 rounded-full bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center">
+              {pass.number}
+            </span>
+            <h3 className="font-semibold text-slate-900 text-sm">{pass.name}</h3>
+          </div>
+          <p className="text-sm font-medium text-slate-600 mb-1 ml-10">{pass.question}</p>
+          <p className="text-sm text-slate-500 leading-relaxed ml-10">{pass.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Visual: bug pattern summary                                        */
+/* ------------------------------------------------------------------ */
+
+function RecurringPatterns() {
+  const patterns = [
+    {
+      name: 'False data source attribution',
+      description: 'PDF reports listing data sources the pipeline did not actually query. Found and fixed across 5 of 7 pipelines.',
+      fix: 'Every source in the report now maps 1:1 to a verified API call with a recorded response hash.',
+    },
+    {
+      name: 'Connection leaks',
+      description: 'Database connections closed inside the success path but not on the error path — meaning an API failure would leak a connection.',
+      fix: 'All connections now follow an open-try-finally-close pattern. Connections are released regardless of whether the query succeeds or fails.',
+    },
+    {
+      name: 'Liability-creating language',
+      description: 'Words like "qualifies", "passes all checks", "risk assessment", and "will require" that imply a formal professional determination.',
+      fix: 'Systematic replacement with factual alternatives: "meets criteria", "meets", "screening", "may require". Automated grep patterns enforce this in code review.',
+    },
+  ];
+
+  return (
+    <div className="my-8 rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-5">
+        Recurring patterns found across all pipelines
+      </p>
+      <div className="space-y-5">
+        {patterns.map((p) => (
+          <div key={p.name}>
+            <p className="text-sm font-semibold text-slate-900">{p.name}</p>
+            <p className="text-sm text-slate-500 mt-1">{p.description}</p>
+            <p className="text-sm text-teal-700 mt-1"><span className="font-medium">Fix:</span> {p.fix}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export default function HowWeValidatePage() {
+  return (
+    <article className="prose prose-slate max-w-none">
+      {/* ---- Lead (inverted pyramid: most important info first) ---- */}
+      <p className="text-lg text-slate-700 leading-relaxed">
+        Every property screening result on this platform goes through a 5-pass
+        validation process before it reaches you. Across 7 pipelines and tens of
+        thousands of lines of code, this process has found and fixed 40 bugs —
+        including false data source attributions, database connection leaks, and
+        language that overstated what the data could support.
+      </p>
+
+      <p className="text-base text-slate-600">
+        This page explains what those 5 passes are, why they matter for property
+        data specifically, and what we found when we applied them.
+      </p>
+
+      {/* ---- Why this matters ---- */}
+      <h2>Why property data needs more than unit tests</h2>
+
+      <p>
+        Property screening tools sit in a specific legal position under Australian
+        law. Under the{' '}
+        <a href="https://www.legislation.gov.au/Details/C2014C00004" target="_blank" rel="noopener noreferrer">
+          Australian Consumer Law
+        </a>{' '}
+        (section 18), conduct that is misleading or deceptive — or likely to mislead
+        or deceive — is prohibited. Under the principle established in{' '}
+        <em>Shaddock &amp; Associates Pty Ltd v Parramatta City Council</em>{' '}
+        (1981), a party that provides information knowing it will be relied upon
+        owes a duty of care in how that information is presented.
+      </p>
+
+      <p>
+        What this means in practice: if a property screening report says a lot
+        &ldquo;qualifies&rdquo; for a secondary dwelling, and the buyer relies on
+        that to purchase, and it turns out the data was wrong or the language
+        overstated, there is a liability chain. Unit tests catch code bugs.
+        They do not catch false data attributions, misleading language, or
+        silent failures where wrong data is served without any error.
+      </p>
+
+      <p>
+        The 5-pass framework addresses all of these.
+      </p>
+
+      {/* ---- The 5 passes ---- */}
+      <h2>The 5-pass validation framework</h2>
+
+      <ValidationPipeline />
+
+      {/* ---- What we found ---- */}
+      <h2>What we found</h2>
+
+      <p>
+        When we applied this framework systematically across all 7 property
+        screening pipelines, we found 40 bugs. None of them would have been
+        caught by standard unit tests alone.
+      </p>
+
+      <RecurringPatterns />
+
+      <p>
+        The single most common issue was <strong>false data source attribution</strong> —
+        PDF reports claiming data came from a source that the pipeline never
+        actually queried. This is exactly the kind of issue that creates legal
+        exposure: a user sees &ldquo;source: NSW Building Footprints&rdquo; in their
+        report, assumes the data came from that dataset, and makes a decision
+        based on that assumption. In reality, the data came from a different
+        source entirely.
+      </p>
+
+      {/* ---- Audit trail ---- */}
+      <h2>How we prove what was queried</h2>
+
+      <p>
+        Every report generated on this platform creates an append-only audit
+        trail record. That record captures:
+      </p>
+
+      <ul>
+        <li>Which data sources were queried, with exact endpoint URLs</li>
+        <li>When each query ran (UTC timestamp)</li>
+        <li>How long each query took (milliseconds)</li>
+        <li>A SHA-256 hash of each API response body</li>
+        <li>Which version of the code generated the report (git commit SHA)</li>
+        <li>Which version of the disclaimer was active at generation time</li>
+      </ul>
+
+      <p>
+        This means that if a data source is later questioned — &ldquo;did you
+        actually check the flood overlay for this address?&rdquo; — we can produce
+        the exact API response, when it was received, and what it contained.
+        The response hash makes the record tamper-evident.
+      </p>
+
+      {/* ---- Disclaimer architecture ---- */}
+      <h2>Versioned disclaimers</h2>
+
+      <p>
+        Each product has its own disclaimer text, stored in a versioned database
+        table. Disclaimers are never deleted — when the text changes, a new
+        version is inserted and the old version is marked as superseded. Every
+        audit trail record captures which disclaimer version was active when the
+        report was generated.
+      </p>
+
+      <p>
+        This matters because the legal question is not &ldquo;what does the
+        disclaimer say today?&rdquo; — it is &ldquo;what did the user see when
+        they received their report?&rdquo; Versioned disclaimers answer that
+        question definitively.
+      </p>
+
+      {/* ---- Ongoing monitoring ---- */}
+      <h2>Ongoing data source monitoring</h2>
+
+      <p>
+        Government APIs go down, change their schema, or return stale data without
+        warning. An automated daily monitor probes every external endpoint across
+        all 7 pipelines — 15 endpoints in total. Each probe checks:
+      </p>
+
+      <ul>
+        <li>Is the endpoint reachable?</li>
+        <li>Does the response match the expected schema?</li>
+        <li>Has the response hash changed since last check?</li>
+      </ul>
+
+      <p>
+        Results are written to a health check table and failures trigger an
+        alert. This is not a one-off validation — it runs every day, automatically.
+      </p>
+
+      {/* ---- What this means for you ---- */}
+      <h2>What this means for you</h2>
+
+      <p>
+        When you receive a property screening report from this platform:
+      </p>
+
+      <ul>
+        <li>
+          Every data source listed in the report was actually queried — the
+          attribution is verified, not copied from a template
+        </li>
+        <li>
+          Missing data is clearly labelled as &ldquo;unavailable&rdquo; — you
+          will never see a false &ldquo;all clear&rdquo; when data is actually
+          missing
+        </li>
+        <li>
+          The language describes what the data shows — it does not make
+          compliance determinations, recommendations, or assurances
+        </li>
+        <li>
+          A complete audit trail exists for every report, linking the output to
+          the exact data that produced it
+        </li>
+      </ul>
+
+      <p>
+        These are screening tools, not formal planning certificates. They are
+        designed to surface the right questions early — before you are committed
+        — so you can get qualified professional advice where it matters.
+      </p>
+
+      <div className="not-prose mt-8 flex flex-col sm:flex-row gap-3">
+        <Link
+          href="/how-it-works"
+          className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors"
+        >
+          See data sources per tool
+        </Link>
+      </div>
+
+      <BlogDisclaimer />
+    </article>
+  );
+}

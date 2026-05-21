@@ -574,14 +574,17 @@ def run_solar_yield(request: SolarYieldRequest):
     )
 
     # Resolve LGA
+    _lga_conn = None
     try:
         _lga_conn = _get_conn()
         _lga = lookup_lga(request.lat, request.lng, _lga_conn)
         outputs.lga_name = _lga.get("lga_name")
         outputs.lga_slug = _lga.get("lga_slug")
-        _lga_conn.close()
     except Exception:
         pass
+    finally:
+        if _lga_conn:
+            _lga_conn.close()
 
     if not outputs.coverage_available:
         confidence = "low"
