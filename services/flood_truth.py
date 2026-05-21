@@ -1373,6 +1373,15 @@ def run_flood(req: FloodRequest):
                 req.prop_id, {"lat": req.lat, "lng": req.lng},
                 cached["outputs"] or {},
             )
+            log_audit_trail(
+                report_id=req.report_id,
+                pipeline_name="flood",
+                input_params={"address": req.address, "lat": req.lat, "lng": req.lng},
+                data_sources=[],
+                output_summary=cached["outputs"] or {},
+                disclaimer_version=get_current_disclaimer_version("flood"),
+                intermediate_calculations={"cache_hit": True},
+            )
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
