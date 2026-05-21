@@ -16,6 +16,9 @@ on:
         required: true
         default: ''
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   commit:
     name: Commit reviewed provisions to production DB

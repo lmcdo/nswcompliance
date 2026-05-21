@@ -19,6 +19,9 @@ on:
         required: false
         default: 'false'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # When a specific council is provided, run a single job for that council.
   # Otherwise, run a matrix of jobs — one per council group.
