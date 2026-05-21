@@ -223,13 +223,14 @@ async function handleGrannyFlatAnalysis(
 // ---------------------------------------------------------------------------
 
 async function handleGrannyFlatReport(
-  _session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session,
   meta: Record<string, string>
 ) {
-  const { report_id, email } = meta;
+  const { report_id } = meta;
+  const email = meta.email || session.customer_details?.email || session.customer_email || '';
 
   if (!report_id || !email) {
-    console.error('[stripe/webhook] granny-flat missing metadata');
+    console.error('[stripe/webhook] granny-flat missing metadata — report_id=' + report_id + ', email=' + email);
     return NextResponse.json({ received: true });
   }
 
@@ -331,15 +332,16 @@ const SATELLITE_REPORT_META: Record<
 };
 
 async function handleSatelliteReport(
-  _session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session,
   meta: Record<string, string>,
   product: 'flood-truth' | 'shadow' | 'solar-yield' | 'bushfire'
 ) {
-  const { report_id, email } = meta;
+  const { report_id } = meta;
+  const email = meta.email || session.customer_details?.email || session.customer_email || '';
   const cfg = SATELLITE_REPORT_META[product];
 
   if (!report_id || !email) {
-    console.error(`[stripe/webhook] ${product} missing metadata`);
+    console.error(`[stripe/webhook] ${product} missing metadata — report_id=${report_id}, email=${email}`);
     return NextResponse.json({ received: true });
   }
 
@@ -492,13 +494,14 @@ async function handleConveyancingReport(
 // ---------------------------------------------------------------------------
 
 async function handlePreDAHistoryReport(
-  _session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session,
   meta: Record<string, string>
 ) {
-  const { report_id, email } = meta;
+  const { report_id } = meta;
+  const email = meta.email || session.customer_details?.email || session.customer_email || '';
 
   if (!report_id || !email) {
-    console.error('[stripe/webhook] pre-da-history missing metadata');
+    console.error('[stripe/webhook] pre-da-history missing metadata — report_id=' + report_id + ', email=' + email);
     return NextResponse.json({ received: true });
   }
 
