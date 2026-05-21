@@ -107,4 +107,3 @@ These are the actual pipeline implementations that the QA reports audit.
 | 4 | Language audit branch (`chore/language-audit-liability-cleanup`) not yet merged | High | Merge after QA validation complete |
 | 5 | No external legal review of disclaimers | High | Engage Australian technology lawyer (§8.3 of QA-DATA-PROVENANCE.md) |
 | 6 | No Professional Indemnity insurance | Critical | Commercial action, pre-revenue |
-| 7 | `how-it-works` page lists inaccurate data sources for Solar Yield and Flood tools | Medium | Update to match actual pipeline data sources |
