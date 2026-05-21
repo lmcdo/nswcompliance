@@ -497,6 +497,15 @@ def run_bushfire(req: BushfireRequest):
                 raw, cached["confidence"],
                 cached["data_sources"] or [_DATA_SOURCE_RFS],
             )
+            log_audit_trail(
+                report_id=req.report_id,
+                pipeline_name="bushfire",
+                input_params={"address": req.address, "lat": req.lat, "lng": req.lng},
+                data_sources=[],
+                output_summary=raw,
+                disclaimer_version=get_current_disclaimer_version("bushfire"),
+                intermediate_calculations={"cache_hit": True},
+            )
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
