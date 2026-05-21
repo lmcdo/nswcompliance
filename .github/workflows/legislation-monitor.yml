@@ -32,3 +32,22 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python scripts/legislation_monitor.py
+
+  heartbeat:
+    needs: [check-instruments]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping healthcheck
+        run: |
+          if [ -n "${{ secrets.HC_PING_LEGISLATION_MONITOR }}" ]; then
+            curl -fsS --retry 3 "${{ secrets.HC_PING_LEGISLATION_MONITOR }}" || true
+          fi
+
+  notify-on-failure:
+    needs: [check-instruments]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+    secrets: inherit

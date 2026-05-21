@@ -146,3 +146,11 @@ jobs:
             echo "Extraction failed with exit code $CODE."
             exit 1
           fi
+
+  notify-on-failure:
+    needs: [extract]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+    secrets: inherit

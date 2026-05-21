@@ -53,3 +53,11 @@ jobs:
           git add frontend-nextjs/lib/lga-data/secondary-dwelling-stats.ts
           git commit -m "chore: refresh secondary dwelling stats ($(date -u +%Y-%m-%d))"
           git push
+
+  notify-on-failure:
+    needs: [refresh-stats]
+    if: failure()
+    uses: ./.github/workflows/notify-failure.yml
+    with:
+      workflow_name: ${{ github.workflow }}
+    secrets: inherit
