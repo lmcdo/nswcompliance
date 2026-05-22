@@ -88,6 +88,9 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   dwelling_size_min: 'Minimum dwelling size',
 };
 
+/** Data status for a control row — drives distinct UI treatment */
+export type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
+
 export interface StructuredControl {
   control_type: string;
   control_label: string;
@@ -101,6 +104,7 @@ export interface StructuredControl {
   dcp_version: string | null;
   pdf_page: number | null;
   pdf_url: string | null;
+  data_status: ControlDataStatus;
 }
 
 export interface ControlCategory {
@@ -128,7 +132,7 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(
       `SELECT sc.control_type, sc.value_min, sc.value_max, sc.unit, sc.condition,
               sc.section_ref, sc.source_text, sc.dcp_version, sc.pdf_page,
-              sc.source_chapter_key,
+              sc.source_chapter_key, sc.needs_review,
               cr.r2_public_pdf_url, cr.chapter_label, cr.dcp_name
        FROM dcp_setback_controls sc
        LEFT JOIN dcp_chapter_registry cr
@@ -184,11 +188,25 @@ export async function GET(request: NextRequest) {
         pdfUrl = `${pdfUrl}#page=${row.pdf_page}`;
       }
 
+      const valueMin = row.value_min != null ? parseFloat(row.value_min) : null;
+      const valueMax = row.value_max != null ? parseFloat(row.value_max) : null;
+      const hasNumeric = valueMin !== null || valueMax !== null;
+      const needsReview = row.needs_review === true;
+
+      let dataStatus: ControlDataStatus;
+      if (hasNumeric) {
+        dataStatus = 'numeric';
+      } else if (needsReview) {
+        dataStatus = 'under_review';
+      } else {
+        dataStatus = 'not_applicable';
+      }
+
       categoryMap.get(catKey)!.controls.push({
         control_type: row.control_type,
         control_label: CONTROL_TYPE_LABELS[row.control_type] || row.control_type,
-        value_min: row.value_min ? parseFloat(row.value_min) : null,
-        value_max: row.value_max ? parseFloat(row.value_max) : null,
+        value_min: valueMin,
+        value_max: valueMax,
         unit: row.unit,
         condition: row.condition,
         section_ref: row.section_ref,
@@ -197,6 +215,7 @@ export async function GET(request: NextRequest) {
         dcp_version: row.dcp_version,
         pdf_page: row.pdf_page ? parseInt(row.pdf_page) : null,
         pdf_url: pdfUrl,
+        data_status: dataStatus,
       });
     }
 
