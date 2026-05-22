@@ -15,13 +15,16 @@ The document_id patterns in database:
 - "Inner_West_Ashfield_DCP_2016___Chapter_D..."
 """
 
-# Standard NSW zone codes
-RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4', 'R5']
-BUSINESS_ZONES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']
-INDUSTRIAL_ZONES = ['IN1', 'IN2', 'IN3', 'IN4']
-SPECIAL_ZONES = ['SP1', 'SP2', 'SP3']
+# Inner West LEP 2022 zone codes (Ashfield area)
+# Only zones that actually exist in the former Ashfield LGA boundaries.
+# Generic NSW constants (R5, B5-B8, IN3-IN4, E1/E3/E4) removed — they
+# produced false-positive tags on provisions that can never apply.
+RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4']
+BUSINESS_ZONES = ['B1', 'B2', 'B4']
+INDUSTRIAL_ZONES = ['IN1', 'IN2']
+SPECIAL_ZONES = ['SP1', 'SP2']
 RECREATION_ZONES = ['RE1', 'RE2']
-ENVIRONMENT_ZONES = ['E1', 'E2', 'E3', 'E4']
+ENVIRONMENT_ZONES = ['E2']
 MIXED_USE_ZONES = ['MU1']
 
 ALL_ZONES = ['ALL']
@@ -136,7 +139,7 @@ ASHFIELD_CONFIG = {
         "Part_9": {
             "description": "F9 - Sex Services Premises",
             "applicable_dev_types": ["sex_services_premises"],
-            "applicable_zones": ['B3', 'B4', 'IN1', 'IN2'],
+            "applicable_zones": ['B4', 'IN1', 'IN2'],
         },
         "Part_10": {
             "description": "F10 - Other Development",

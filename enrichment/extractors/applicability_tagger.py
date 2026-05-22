@@ -283,14 +283,14 @@ class ApplicabilityTagger:
         # Part 5 - Commercial and Mixed Use
         if '5_0' in document_id or '__5__0__' in document_id or '5.0' in document_id:
             return {
-                'applicable_zones': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'MU1'],
+                'applicable_zones': ['B1', 'B2', 'B4', 'MU1'],
                 'applicable_dev_types': ['commercial_premises', 'retail_premises', 'office_premises', 'shop_top_housing'],
                 'site_conditions': None,
             }
         # Also match "Commercial" but NOT "Commercial_Precinct" (which is Part 9)
         if 'Commercial' in document_id and 'Precinct' not in document_id:
             return {
-                'applicable_zones': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'MU1'],
+                'applicable_zones': ['B1', 'B2', 'B4', 'MU1'],
                 'applicable_dev_types': ['commercial_premises', 'retail_premises', 'office_premises', 'shop_top_housing'],
                 'site_conditions': None,
             }
@@ -298,14 +298,14 @@ class ApplicabilityTagger:
         # Part 6 - Industrial Development
         if '6_0' in document_id or '__6__0__' in document_id or '6.0' in document_id:
             return {
-                'applicable_zones': ['IN1', 'IN2', 'IN3', 'IN4'],
+                'applicable_zones': ['IN1', 'IN2'],
                 'applicable_dev_types': ['industrial_development', 'warehouse', 'light_industry'],
                 'site_conditions': None,
             }
         # Also match "Industrial" but NOT "Industrial_Precinct" (which is Part 9)
         if 'Industrial' in document_id and 'Precinct' not in document_id:
             return {
-                'applicable_zones': ['IN1', 'IN2', 'IN3', 'IN4'],
+                'applicable_zones': ['IN1', 'IN2'],
                 'applicable_dev_types': ['industrial_development', 'warehouse', 'light_industry'],
                 'site_conditions': None,
             }
@@ -321,7 +321,7 @@ class ApplicabilityTagger:
         # Part 7.3 - Sex Industry
         if '7.3' in document_id or 'Sex' in document_id:
             return {
-                'applicable_zones': ['B3', 'B4', 'IN1', 'IN2'],
+                'applicable_zones': ['B4', 'IN1', 'IN2'],
                 'applicable_dev_types': ['sex_services_premises', 'restricted_premises'],
                 'site_conditions': None,
             }

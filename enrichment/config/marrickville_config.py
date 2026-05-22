@@ -20,13 +20,15 @@ Document_id patterns in database:
 - "Marrickville__DCP__2011__-__X__X__Name" (double underscore variant)
 """
 
-# Standard NSW zone codes
-RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4', 'R5']
-BUSINESS_ZONES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']
-INDUSTRIAL_ZONES = ['IN1', 'IN2', 'IN3', 'IN4']
-SPECIAL_ZONES = ['SP1', 'SP2', 'SP3']
+# Inner West LEP 2022 zone codes (Marrickville area)
+# Only zones that actually exist in the former Marrickville LGA boundaries.
+# Generic NSW constants (R5, B5-B8, IN3-IN4, E1/E3/E4) removed.
+RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4']
+BUSINESS_ZONES = ['B1', 'B2', 'B4']
+INDUSTRIAL_ZONES = ['IN1', 'IN2']
+SPECIAL_ZONES = ['SP1', 'SP2']
 RECREATION_ZONES = ['RE1', 'RE2']
-ENVIRONMENT_ZONES = ['E1', 'E2', 'E3', 'E4']
+ENVIRONMENT_ZONES = ['E2']
 MIXED_USE_ZONES = ['MU1']
 
 ALL_ZONES = ['ALL']
@@ -239,7 +241,7 @@ MARRICKVILLE_CONFIG = {
         # Part 7.3 - Sex Industry
         "7.3": {
             "description": "Sex Industry and Adult Business Premises",
-            "applicable_zones": ['B3', 'B4', 'IN1', 'IN2'],
+            "applicable_zones": ['B4', 'IN1', 'IN2'],
             "applicable_dev_types": ["sex_services_premises", "restricted_premises"],
             "site_conditions": None,
         },
