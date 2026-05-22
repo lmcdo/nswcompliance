@@ -161,7 +161,6 @@ export async function GET(request: NextRequest) {
     return new Response('address parameter required', { status: 400 });
   }
 
-  const debug = request.nextUrl.searchParams.get('debug') === '1';
   const origin = request.nextUrl.origin;
 
   // Fetch property data (zone/area) and lot geometry in parallel
@@ -203,14 +202,10 @@ export async function GET(request: NextRequest) {
   // Fetch aerial tile + build polygon
   let tile: Awaited<ReturnType<typeof fetchAerialTile>> = null;
   let polygonSvgPoints = '';
-  let tileDebug: unknown = null;
-
   if (coordsWgs84) {
     const rawResult = await fetchAerialTile(coordsWgs84);
     if (rawResult && 'dataUrl' in rawResult) {
       tile = rawResult;
-    } else {
-      tileDebug = rawResult;
     }
     if (tile) {
       const { bbox, w, h } = tile;
@@ -221,19 +216,6 @@ export async function GET(request: NextRequest) {
         .map(([x, y]) => `${x.toFixed(0)},${y.toFixed(0)}`)
         .join(' ');
     }
-  }
-
-  if (debug) {
-    return Response.json({
-      resolvedAddress,
-      hasProperty: !!property.zone,
-      lotRingsCount: lotRings?.[0]?.length ?? 0,
-      coordsWgs84Count: coordsWgs84?.length ?? 0,
-      coordsSample: coordsWgs84?.slice(0, 2),
-      tileLoaded: !!tile,
-      tileDebug,
-      result,
-    });
   }
 
   const isEligible = result.eligible;
