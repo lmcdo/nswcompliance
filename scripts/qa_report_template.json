@@ -1,0 +1,54 @@
+{
+  "tier": "standard",
+  "justification": "Why this tier, not the one above or below",
+  "files": ["path/to/changed/file.py"],
+  "pre_impl": {
+    "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
+    "assumption_mismatch": "What if existing data doesn't match assumptions? [specific failure]",
+    "new_vs_existing": "Will this apply to existing rows or only new? [mechanism]",
+    "external_source_error": "(Critical only) What does external source return on error?",
+    "frontend_type": "(Critical only) Does frontend type need updating?",
+    "user_failure_mode": "(Critical only) What does user see if this fails?"
+  },
+  "functions": [
+    {
+      "name": "function_name",
+      "file_line": "file.py:42",
+      "input": "type + source",
+      "output": "type + destination",
+      "if_none": "what happens if input is None/empty"
+    }
+  ],
+  "values": [
+    {
+      "value": "variable_name",
+      "read_at": "file.py:55",
+      "nullable": "yes/no",
+      "guard_at": "file.py:60 or N/A",
+      "if_missing": "what user sees"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "what this query does",
+      "file_line": "file.py:100",
+      "where_clause": "the WHERE clause",
+      "if_zero": "what if 0 rows returned",
+      "if_wrong": "what if wrong rows returned"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "concrete way this produces wrong results",
+      "what_happens": "what the user sees or what data is corrupted",
+      "mitigated": true,
+      "how": "file.py:72 — explanation of mitigation"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

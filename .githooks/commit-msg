@@ -1,14 +1,21 @@
 #!/bin/sh
 #
 # QA Railguards enforcement hook
-# Rejects commits without a QA tier classification line.
+# Single hard gate: commit message must contain a QA tier line.
 #
-# Expected format in commit message:
-#   QA: Critical — [modes] — [findings]
-#   QA: Standard — [modes] — [findings]
-#   QA: Minor — pre-pr-review — [findings]
+# Expected format:
+#   QA: Critical — [details]
+#   QA: Standard — [details]
+#   QA: Minor — [details]
 #
 # Exempt: merge commits, revert commits, CI commits
+#
+# The qa_gate.py script is a SEPARATE tool that Claude runs before
+# committing. Its output appears in the conversation for human review.
+# The hook does NOT call qa_gate.py because:
+#   - Humans shouldn't need python + JSON to commit
+#   - Hook must work on any machine (pure shell, no deps)
+#   - Missing script output in conversation = visibly skipped QA
 
 MSG_FILE="$1"
 MSG=$(cat "$MSG_FILE")
@@ -32,17 +39,15 @@ fi
 if ! echo "$MSG" | grep -qE "^QA: (Critical|Standard|Minor) "; then
   echo ""
   echo "=========================================="
-  echo "  COMMIT REJECTED — QA railguards missing"
+  echo "  COMMIT REJECTED — QA line missing"
   echo "=========================================="
   echo ""
   echo "Every commit requires a QA tier classification."
   echo "Add one of these lines to your commit message:"
   echo ""
-  echo "  QA: Critical — [modes run] — [findings]"
-  echo "  QA: Standard — [modes run] — [findings]"
-  echo "  QA: Minor — pre-pr-review — [findings]"
-  echo ""
-  echo "See: ~/.claude/projects/.../memory/reference-code-quality-railguards.md"
+  echo "  QA: Critical — [sections] — [findings]"
+  echo "  QA: Standard — [sections] — [findings]"
+  echo "  QA: Minor — [sections] — [findings]"
   echo ""
   exit 1
 fi
