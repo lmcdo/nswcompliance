@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home } from 'lucide-react';
 
 interface StructuredControl {
   control_type: string;
@@ -60,6 +60,10 @@ const CATEGORY_ICONS: Record<string, typeof Ruler> = {
   'Site Coverage': Maximize2,
   'Height': Building2,
   'Open Space': LayoutGrid,
+  'Solar & Amenity': Sun,
+  'Privacy': Eye,
+  'Fencing': Ruler,
+  'Dwelling Size': Home,
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -69,6 +73,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Site Coverage': 'border-purple-200 bg-purple-50',
   'Height': 'border-slate-200 bg-slate-50',
   'Open Space': 'border-teal-200 bg-teal-50',
+  'Solar & Amenity': 'border-yellow-200 bg-yellow-50',
+  'Privacy': 'border-indigo-200 bg-indigo-50',
+  'Fencing': 'border-orange-200 bg-orange-50',
+  'Dwelling Size': 'border-rose-200 bg-rose-50',
 };
 
 function formatValue(control: StructuredControl): string {

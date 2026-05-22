@@ -50,12 +50,19 @@ const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   separation_from_dwelling: { label: 'Setbacks', order: 1 },
   car_parking: { label: 'Parking', order: 2 },
   bicycle_parking: { label: 'Parking', order: 2 },
+  driveway_width: { label: 'Parking', order: 2 },
+  driveway_gradient: { label: 'Parking', order: 2 },
   max_site_coverage: { label: 'Site Coverage', order: 3 },
   max_height: { label: 'Height', order: 4 },
   landscaping_min: { label: 'Landscaping & Canopy', order: 5 },
   deep_soil_min: { label: 'Landscaping & Canopy', order: 5 },
   tree_canopy_min: { label: 'Landscaping & Canopy', order: 5 },
   communal_open_space_min: { label: 'Open Space', order: 6 },
+  private_open_space: { label: 'Open Space', order: 6 },
+  solar_access_hours: { label: 'Solar & Amenity', order: 7 },
+  privacy_separation: { label: 'Privacy', order: 8 },
+  fencing_height_max: { label: 'Fencing', order: 9 },
+  dwelling_size_min: { label: 'Dwelling Size', order: 10 },
 };
 
 // Human-readable control type labels
@@ -66,12 +73,19 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   separation_from_dwelling: 'Separation from dwelling',
   car_parking: 'Car parking',
   bicycle_parking: 'Bicycle parking',
+  driveway_width: 'Minimum driveway width',
+  driveway_gradient: 'Maximum driveway gradient',
   max_site_coverage: 'Maximum site coverage',
   max_height: 'Maximum height',
   landscaping_min: 'Minimum landscaped area',
   deep_soil_min: 'Minimum deep soil zone',
   tree_canopy_min: 'Tree canopy coverage',
   communal_open_space_min: 'Communal open space',
+  private_open_space: 'Private open space',
+  solar_access_hours: 'Solar access (hours)',
+  privacy_separation: 'Privacy separation',
+  fencing_height_max: 'Maximum fence height',
+  dwelling_size_min: 'Minimum dwelling size',
 };
 
 export interface StructuredControl {
