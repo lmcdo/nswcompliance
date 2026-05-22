@@ -1,21 +1,32 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { sanitizeHTML } from '@/lib/sanitize'
-
-export const dynamic = 'force-dynamic';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
 
 const DEFAULT_TITLE = 'Granny Flat Eligibility Check NSW — Free Instant SEPP Housing 2021 Check';
 const DEFAULT_DESCRIPTION = 'Can you build a granny flat on your NSW property? Free instant check — lot size, zoning, heritage, flood, and biodiversity under SEPP Housing 2021. Any NSW address, no signup.';
 
-export function generateMetadata({
-  searchParams,
-}: {
-  searchParams: { address?: string }
-}): Metadata {
-  const address = searchParams.address;
+export async function generateMetadata(): Promise<Metadata> {
+  // Read address from the request URL via Next.js headers
+  const headersList = headers();
+  const fullUrl = headersList.get('x-invoke-path') ?? '';
+  const queryString = headersList.get('x-invoke-query') ?? '{}';
+
+  let address: string | undefined;
+  try {
+    const query = JSON.parse(queryString);
+    address = query.address;
+  } catch {
+    // x-invoke-query not parseable — try referer
+    const referer = headersList.get('referer') ?? '';
+    if (referer.includes('address=')) {
+      const url = new URL(referer);
+      address = url.searchParams.get('address') ?? undefined;
+    }
+  }
 
   if (!address) {
     return { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION };
