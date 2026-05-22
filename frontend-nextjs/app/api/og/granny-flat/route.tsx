@@ -80,15 +80,16 @@ async function fetchAerialTile(
     f: 'image',
   });
 
+  const url = `${SIX_MAPS_EXPORT}?${params}`;
   try {
-    const res = await fetch(`${SIX_MAPS_EXPORT}?${params}`, {
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(6_000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { failReason: `http ${res.status}`, url } as never;
     const ct = res.headers.get('content-type') ?? '';
-    if (!ct.includes('image')) return null;
+    if (!ct.includes('image')) return { failReason: `content-type: ${ct}`, url } as never;
     const buf = await res.arrayBuffer();
-    if (buf.byteLength < 3000) return null;
+    if (buf.byteLength < 3000) return { failReason: `too small: ${buf.byteLength}`, url } as never;
     const b64 = Buffer.from(buf).toString('base64');
     return {
       dataUrl: `data:image/png;base64,${b64}`,
@@ -96,8 +97,8 @@ async function fetchAerialTile(
       w,
       h,
     };
-  } catch {
-    return null;
+  } catch (e) {
+    return { failReason: `exception: ${e instanceof Error ? e.message : String(e)}`, url } as never;
   }
 }
 
@@ -205,11 +206,13 @@ export async function GET(request: NextRequest) {
   let polygonSvgPoints = '';
 
   let tileError: string | null = null;
+  let tileDebug: unknown = null;
   if (coordsWgs84) {
-    try {
-      tile = await fetchAerialTile(coordsWgs84);
-    } catch (e) {
-      tileError = e instanceof Error ? e.message : String(e);
+    const rawResult = await fetchAerialTile(coordsWgs84);
+    if (rawResult && 'dataUrl' in rawResult) {
+      tile = rawResult;
+    } else {
+      tileDebug = rawResult;
     }
     if (tile) {
       const { bbox, w, h } = tile;
@@ -231,6 +234,7 @@ export async function GET(request: NextRequest) {
       coordsSample: coordsWgs84?.slice(0, 2),
       tileLoaded: !!tile,
       tileError,
+      tileDebug,
       result,
     });
   }
