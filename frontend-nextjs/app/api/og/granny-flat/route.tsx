@@ -89,7 +89,7 @@ async function fetchAerialTile(
     if (!ct.includes('image')) return null;
     const buf = await res.arrayBuffer();
     if (buf.byteLength < 3000) return null;
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const b64 = Buffer.from(buf).toString('base64');
     return {
       dataUrl: `data:image/png;base64,${b64}`,
       bbox: { minLng, maxLng, minLat, maxLat },
