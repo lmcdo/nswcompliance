@@ -1,90 +1,77 @@
 {
   "tier": "standard",
-  "justification": "Data insertion script for a new control type (solar_access_hours) across 27 councils. No schema changes, no frontend changes. Uses established insert pattern with dedup check. 12 of 27 rows marked needs_review for PDF verification.",
-  "files": ["scripts/insert_solar_access_hours.py"],
+  "justification": "Data insertion script for gap-fill controls across 7 councils (21 rows). No schema changes, no frontend changes. Uses established insert pattern with dedup check. NULL value_min rows for councils with performance-based DCPs or inaccessible PDFs (needs_review=TRUE for 8 rows).",
+  "files": ["scripts/insert_gap_fill_mid_volume.py"],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls table has 823 rows across 28 LGAs. No existing solar_access_hours rows — this is net-new data. Frontend registration for solar_access_hours already merged in PR #350.",
-    "assumption_mismatch": "If a council's actual solar requirement differs from the standard 3h assumed for needs_review rows, the value_min will be wrong. Mitigated: needs_review=TRUE flag + review_reason column flag these for manual verification before user-facing display.",
-    "new_vs_existing": "All new rows. dev_type='universal_residential' because solar access applies to all residential development. Dedup check prevents duplicates on re-run."
+    "existing_data": "dcp_setback_controls table — checked existing rows for each (lga, control_type, dev_type) combo. All 21 are new gaps.",
+    "assumption_mismatch": "Both value_min and value_max columns used: Strathfield landscaping_min has value_min=10, value_max=45 (lot-size range). Script handles dual-column INSERT at lines 278-288.",
+    "new_vs_existing": "All 21 rows are new. Dedup check prevents duplicates on re-run."
   },
   "functions": [
     {
       "name": "main",
-      "file_line": "scripts/insert_solar_access_hours.py:287",
-      "input": "Command line args (--dry-run flag) and DATABASE_URL from .env file",
-      "output": "Inserts 27 rows into dcp_setback_controls with control_type='solar_access_hours', prints summary table",
-      "if_none": "If DATABASE_URL is None, psycopg2.connect raises OperationalError with clear connection failure message"
+      "file_line": "scripts/insert_gap_fill_mid_volume.py:510",
+      "input": "GAP_ROWS list (21 dicts) + DATABASE_URL from .env",
+      "output": "INSERT 21 rows into dcp_setback_controls, committed on success",
+      "if_none": "If DATABASE_URL is None, psycopg2.connect raises OperationalError"
     }
   ],
   "values": [
     {
-      "value": "DATABASE_URL",
-      "read_at": "scripts/insert_solar_access_hours.py:43",
-      "nullable": "yes — if neither DATABASE_URL nor SUPABASE_DB_URL set in .env",
-      "guard_at": "N/A — psycopg2.connect will raise on None",
-      "if_missing": "Script crashes with psycopg2 connection error — visible, not silent"
+      "value": "value_min / value_max",
+      "read_at": "insert_gap_fill_mid_volume.py:GAP_ROWS (lines 33-256)",
+      "nullable": "yes — NULL for 17 of 21 rows (performance-based, LEP-controlled, or PDF inaccessible)",
+      "guard_at": "DB columns allow NULL. condition + source_text contain human-readable DCP position.",
+      "if_missing": "Row stored with NULL value, condition/source_text explains DCP position"
     },
     {
-      "value": "row[value_min]",
-      "read_at": "scripts/insert_solar_access_hours.py:55-270",
-      "nullable": "no — every SOLAR_ROWS entry has an explicit integer value_min (2, 3, or 4)",
-      "guard_at": "N/A — hardcoded per row",
-      "if_missing": "KeyError on row access — script crashes visibly"
-    },
-    {
-      "value": "needs_review flag",
-      "read_at": "scripts/insert_solar_access_hours.py:55-270",
-      "nullable": "no — every row explicitly sets needs_review to True or False",
-      "guard_at": "scripts/insert_solar_access_hours.py:313",
-      "if_missing": "KeyError — script crashes visibly"
+      "value": "applicability",
+      "read_at": "insert_gap_fill_mid_volume.py:303",
+      "nullable": "no — NOT NULL constraint in DB",
+      "guard_at": "insert_gap_fill_mid_volume.py:303 — row.get('applicability', 'universal_residential')",
+      "if_missing": "Defaults to universal_residential"
     }
   ],
   "queries": [
     {
-      "purpose": "Dedup check — prevents inserting duplicate solar_access_hours for same LGA",
-      "file_line": "scripts/insert_solar_access_hours.py:308",
-      "where_clause": "WHERE lga = %s AND control_type = 'solar_access_hours' AND dev_type = 'universal_residential' AND is_current = TRUE",
-      "if_zero": "Row is new — proceeds to INSERT",
-      "if_wrong": "If an older solar row exists with different value, it will be skipped. To update, set old row is_current=FALSE first."
+      "purpose": "Dedup check — skip rows that already exist",
+      "file_line": "insert_gap_fill_mid_volume.py:272",
+      "where_clause": "lga = %s AND control_type = %s AND dev_type = %s AND condition LIKE %s AND is_current = TRUE",
+      "if_zero": "Row is new — proceed with INSERT",
+      "if_wrong": "False positive on condition prefix could skip legitimate row — mitigated by 30-char prefix uniqueness"
     },
     {
-      "purpose": "INSERT new solar access control row",
-      "file_line": "scripts/insert_solar_access_hours.py:326",
-      "where_clause": "N/A — INSERT statement",
+      "purpose": "INSERT new gap-fill control",
+      "file_line": "insert_gap_fill_mid_volume.py:290",
+      "where_clause": "N/A — INSERT",
       "if_zero": "N/A",
-      "if_wrong": "Wrong value_min would show incorrect hours in DcpStructuredControls. Mitigated by needs_review flag for unverified councils."
+      "if_wrong": "Wrong value or source_text would serve incorrect data — mitigated by verified DCP citations for verified rows, needs_review flag for unverified"
     }
   ],
   "break_it": [
     {
-      "scenario": "A needs_review row has wrong value_min (e.g., council actually requires 4 hours but we inserted 3) and user sees incorrect DCP requirement",
-      "what_happens": "User sees '3 hours' when council actually requires 4 hours — could lead to non-compliant design",
+      "scenario": "Strathfield landscaping_min range (10-45%) confuses frontend expecting single value",
+      "what_happens": "Frontend might display 10% when lot is >1500m2 (should be 45%)",
       "mitigated": true,
-      "how": "scripts/insert_solar_access_hours.py:55-270 — 12 rows have needs_review=TRUE and source_text explicitly says 'Assumed — needs PDF verification'. Frontend should surface review status to internal team."
+      "how": "value_min=10, value_max=45 stored in separate columns. condition text explains full lot-size tiers. Frontend shows condition text alongside values."
     },
     {
-      "scenario": "Script run twice inserts duplicate rows creating double-counted solar requirements",
-      "what_happens": "API returns two solar_access_hours entries for same council — confusing UI display",
+      "scenario": "needs_review rows with NULL values served as 'no requirement' when DCP actually has a numeric rate",
+      "what_happens": "User might think no control exists when Leichhardt/Marrickville do have numeric controls locked in scanned PDFs",
       "mitigated": true,
-      "how": "scripts/insert_solar_access_hours.py:301 — dedup SELECT before INSERT checks (lga, control_type, dev_type, is_current). Exact match → skip."
+      "how": "needs_review=TRUE + review_reason explains PDF extraction blocker. condition text says 'value not yet extracted' or 'scanned image'. 8 of 21 rows flagged."
     },
     {
-      "scenario": "Canterbury-Bankstown has non-standard time windows (8am-4pm living, 9am-5pm equinox POS) which differ from what user expects when seeing '3 hours'",
-      "what_happens": "User assumes standard 9am-3pm window but actual requirement uses 8am-4pm for living areas and equinox for POS",
+      "scenario": "Dedup check fails causing duplicate rows on re-run",
+      "what_happens": "User sees double controls for same council/type",
       "mitigated": true,
-      "how": "scripts/insert_solar_access_hours.py:128 — full condition text captures both time windows. DcpStructuredControls renders condition text alongside the numeric value."
-    },
-    {
-      "scenario": "Dedup SELECT query fails due to DB connection timeout or schema mismatch (e.g., column renamed), causing script to crash mid-run with some rows inserted and others not",
-      "what_happens": "Partial insertion — some councils have solar data, others don't. Inconsistent coverage visible in UI.",
-      "mitigated": true,
-      "how": "scripts/insert_solar_access_hours.py:350 — conn.commit() only called after ALL rows processed successfully. If any query fails, transaction is uncommitted and no rows are written. Script is idempotent on re-run via dedup check."
+      "how": "Line 272: dedup SELECT on 5-field key. Exception at line 310, conn.rollback() prevents partial insert."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — run the script against production DB: python scripts/insert_solar_access_hours.py. Then verify with: SELECT lga, value_min, needs_review FROM dcp_setback_controls WHERE control_type = 'solar_access_hours' AND is_current = TRUE ORDER BY lga;"
+    "manual_verify": "Yes — spot-check: SELECT lga, control_type, value_min, value_max, needs_review, condition FROM dcp_setback_controls WHERE lga IN ('ryde','canada_bay','strathfield','burwood','ashfield','leichhardt','marrickville') AND control_type IN ('deep_soil_min','max_site_coverage','landscaping_min','front_setback','rear_setback') AND is_current = TRUE ORDER BY lga, control_type;"
   }
 }
