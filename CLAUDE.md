@@ -3,6 +3,20 @@
 ## Worktree Rule
 After context compaction, if `.claude/worktrees/` contains directories, check which branch you're supposed to be on and run all commands from that worktree path. Never cd to the main repo root when a worktree is active.
 
+## 🔴 HOOKS GUARD — DO THIS AT SESSION START 🔴
+```bash
+git config core.hooksPath .githooks
+```
+This activates the `commit-msg` hook at `.githooks/commit-msg` which enforces QA tier classification on every commit. The hook file is tracked in git but `core.hooksPath` is a per-clone setting — it does not transfer via pull. Run this once per clone/worktree.
+
+Every commit message must include a QA line:
+```
+QA: Critical — boundary-trace, adversarial — [findings summary]
+QA: Standard — boundary-trace — no findings
+QA: Minor — pre-pr-review — no findings
+```
+Exempt: merge commits, reverts, `chore(deps)`.
+
 ## 🔴 BRANCH GUARD — DO THIS BEFORE ANYTHING ELSE 🔴
 ```bash
 git branch --show-current
