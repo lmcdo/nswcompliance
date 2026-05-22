@@ -70,7 +70,7 @@ async function fetchAerialTile(
   const minLat = rawMinLat - padY;
   const maxLat = rawMaxLat + padY;
 
-  // Fixed tile size for left panel
+  // Fixed tile size for left panel — use jpeg for faster transfer from AU server
   const w = 520;
   const h = 630;
 
@@ -79,7 +79,7 @@ async function fetchAerialTile(
     bboxSR: '4326',
     imageSR: '4326',
     size: `${w},${h}`,
-    format: 'png',
+    format: 'jpg',
     f: 'image',
   });
 
@@ -92,10 +92,11 @@ async function fetchAerialTile(
     const ct = res.headers.get('content-type') ?? '';
     if (!ct.includes('image')) return { failReason: `content-type: ${ct}`, url } as never;
     const buf = await res.arrayBuffer();
-    if (buf.byteLength < 3000) return { failReason: `too small: ${buf.byteLength}`, url } as never;
+    if (buf.byteLength < 1000) return { failReason: `too small: ${buf.byteLength}`, url } as never;
+    const mime = ct.includes('jpeg') || ct.includes('jpg') ? 'image/jpeg' : 'image/png';
     const b64 = Buffer.from(buf).toString('base64');
     return {
-      dataUrl: `data:image/png;base64,${b64}`,
+      dataUrl: `data:${mime};base64,${b64}`,
       bbox: { minLng, maxLng, minLat, maxLat },
       w,
       h,
@@ -160,38 +161,36 @@ export async function GET(request: NextRequest) {
     return new Response('address parameter required', { status: 400 });
   }
 
+  const debug = request.nextUrl.searchParams.get('debug') === '1';
   const origin = request.nextUrl.origin;
-  let property: Record<string, unknown> = {};
-  let lotArea: number | null = null;
-  let resolvedAddress = address;
-  let lotRings: number[][][] | null = null;
 
-  try {
-    const propResp = await fetch(
-      `${origin}/api/property/${encodeURIComponent(address)}`,
-      { signal: AbortSignal.timeout(8_000) },
-    );
-    if (propResp.ok) {
-      const data = await propResp.json();
-      if (data.success && data.property) {
-        property = data.property;
-        resolvedAddress = (property.address as string) ?? address;
-        lotArea = (data.lotDimensions as { area?: number } | undefined)?.area ?? null;
-        lotRings = (data.lotGeometry as { rings?: number[][][] } | undefined)?.rings ?? null;
-      }
-    }
-  } catch {
-    // Continue — will try NSW API directly for geometry
-  }
+  // Fetch property data (zone/area) and lot geometry in parallel
+  const [propData, nswLot] = await Promise.all([
+    (async () => {
+      try {
+        const resp = await fetch(
+          `${origin}/api/property/${encodeURIComponent(address)}`,
+          { signal: AbortSignal.timeout(8_000) },
+        );
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (!data.success || !data.property) return null;
+        return {
+          property: data.property as Record<string, unknown>,
+          lotArea: (data.lotDimensions as { area?: number } | undefined)?.area ?? null,
+          lotRings: (data.lotGeometry as { rings?: number[][][] } | undefined)?.rings ?? null,
+        };
+      } catch { return null; }
+    })(),
+    fetchLotFromNswApi(address),
+  ]);
 
-  // If internal API didn't return lot geometry, fetch directly from NSW Planning API
-  if (!lotRings || !lotRings[0]?.length) {
-    const nswResult = await fetchLotFromNswApi(address);
-    if (nswResult) {
-      lotRings = nswResult.rings;
-      if (resolvedAddress === address) resolvedAddress = nswResult.resolvedAddress;
-    }
-  }
+  const property = propData?.property ?? {};
+  const lotArea = propData?.lotArea ?? null;
+  const resolvedAddress = (property.address as string) ?? nswLot?.resolvedAddress ?? address;
+  // Prefer internal API geometry, fall back to NSW Planning API
+  const lotRings = (propData?.lotRings?.[0]?.length ? propData.lotRings : null)
+    ?? nswLot?.rings ?? null;
 
   const result = assess(property, lotArea);
 
@@ -201,15 +200,11 @@ export async function GET(request: NextRequest) {
     coordsWgs84 = lotRings[0].map(([x, y]) => webMercatorToWgs84(x, y));
   }
 
-  // Debug mode: return JSON diagnostics instead of image
-  const debug = request.nextUrl.searchParams.get('debug') === '1';
-
   // Fetch aerial tile + build polygon
   let tile: Awaited<ReturnType<typeof fetchAerialTile>> = null;
   let polygonSvgPoints = '';
-
-  let tileError: string | null = null;
   let tileDebug: unknown = null;
+
   if (coordsWgs84) {
     const rawResult = await fetchAerialTile(coordsWgs84);
     if (rawResult && 'dataUrl' in rawResult) {
@@ -236,7 +231,6 @@ export async function GET(request: NextRequest) {
       coordsWgs84Count: coordsWgs84?.length ?? 0,
       coordsSample: coordsWgs84?.slice(0, 2),
       tileLoaded: !!tile,
-      tileError,
       tileDebug,
       result,
     });
