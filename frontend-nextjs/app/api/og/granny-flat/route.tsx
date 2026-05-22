@@ -197,12 +197,20 @@ export async function GET(request: NextRequest) {
     coordsWgs84 = lotRings[0].map(([x, y]) => webMercatorToWgs84(x, y));
   }
 
+  // Debug mode: return JSON diagnostics instead of image
+  const debug = request.nextUrl.searchParams.get('debug') === '1';
+
   // Fetch aerial tile + build polygon
   let tile: Awaited<ReturnType<typeof fetchAerialTile>> = null;
   let polygonSvgPoints = '';
 
+  let tileError: string | null = null;
   if (coordsWgs84) {
-    tile = await fetchAerialTile(coordsWgs84);
+    try {
+      tile = await fetchAerialTile(coordsWgs84);
+    } catch (e) {
+      tileError = e instanceof Error ? e.message : String(e);
+    }
     if (tile) {
       const { bbox, w, h } = tile;
       const scaleX = w / (bbox.maxLng - bbox.minLng);
@@ -212,6 +220,19 @@ export async function GET(request: NextRequest) {
         .map(([x, y]) => `${x.toFixed(0)},${y.toFixed(0)}`)
         .join(' ');
     }
+  }
+
+  if (debug) {
+    return Response.json({
+      resolvedAddress,
+      hasProperty: !!property.zone,
+      lotRingsCount: lotRings?.[0]?.length ?? 0,
+      coordsWgs84Count: coordsWgs84?.length ?? 0,
+      coordsSample: coordsWgs84?.slice(0, 2),
+      tileLoaded: !!tile,
+      tileError,
+      result,
+    });
   }
 
   const isEligible = result.eligible;
