@@ -166,11 +166,16 @@ async function fetchLotFromNswApi(address: string): Promise<{
 /** Compact check-row for the OG card */
 function CheckRow({ label, status }: { label: string; status: 'pass' | 'fail' | 'unknown' }) {
   const color = status === 'pass' ? '#10b981' : status === 'fail' ? '#ef4444' : '#64748b';
-  const icon = status === 'pass' ? '\u2713' : status === 'fail' ? '\u2717' : '\u2014';
+  const bg = status === 'pass' ? 'rgba(16,185,129,0.2)' : status === 'fail' ? 'rgba(239,68,68,0.2)' : 'rgba(100,116,139,0.2)';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span style={{ fontSize: '14px', color, fontWeight: 700, width: '18px', textAlign: 'center' }}>{icon}</span>
-      <span style={{ fontSize: '14px', color: status === 'fail' ? '#fca5a5' : '#cbd5e1' }}>{label}</span>
+      <div style={{
+        width: '16px', height: '16px', borderRadius: '50%',
+        backgroundColor: bg, border: `1.5px solid ${color}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }} />
+      <span style={{ fontSize: '13px', color: status === 'fail' ? '#fca5a5' : '#cbd5e1' }}>{label}</span>
     </div>
   );
 }
@@ -245,8 +250,6 @@ export async function GET(request: NextRequest) {
   const verdictColor = isEligible ? '#10b981' : '#ef4444';
   const verdictBg = isEligible ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
   const verdictLabel = isEligible ? 'CDC Pathway Available' : 'DA Required';
-  const verdictIcon = isEligible ? '\u2713' : '\u2717';
-
   const displayAddress = resolvedAddress.length > 45
     ? resolvedAddress.slice(0, 42) + '...'
     : resolvedAddress;
@@ -368,9 +371,11 @@ export async function GET(request: NextRequest) {
                 padding: '14px 20px',
               }}
             >
-              <span style={{ fontSize: '24px', color: verdictColor, fontWeight: 700 }}>
-                {verdictIcon}
-              </span>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                backgroundColor: verdictColor, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }} />
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '22px', fontWeight: 700, color: verdictColor }}>
                   {verdictLabel}
@@ -450,7 +455,7 @@ export async function GET(request: NextRequest) {
               }}
             >
               <span style={{ color: '#0d9488', fontSize: '15px', fontWeight: 700 }}>
-                Check your address free \u2192
+                Check your address free →
               </span>
               <span style={{ color: '#475569', fontSize: '13px' }}>
                 plotdetect.com.au
@@ -525,7 +530,11 @@ export async function GET(request: NextRequest) {
             padding: '24px 32px',
           }}
         >
-          <span style={{ fontSize: '36px', fontWeight: 700 }}>{verdictIcon}</span>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            backgroundColor: verdictColor, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '36px', fontWeight: 800 }}>{verdictLabel}</span>
             {result.constraint && (
