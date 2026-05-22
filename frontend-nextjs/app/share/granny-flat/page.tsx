@@ -63,13 +63,19 @@ export default async function ShareGrannyFlatPage({
   const params = await searchParams;
   const address = typeof params.address === 'string' ? params.address : undefined;
 
-  // Client-side redirect — crawlers ignore meta refresh and read OG tags.
-  // Server-side redirect() sends a 307 which Facebook follows before reading tags.
+  // Redirect via JS — crawlers don't execute scripts so they read OG tags.
+  // Can't use redirect() (307) or <meta httpEquiv="refresh"> — Next.js converts
+  // both into server-side redirects which Facebook follows before reading tags.
   const target = address
     ? `/granny-flat?address=${encodeURIComponent(address)}`
     : '/granny-flat';
 
   return (
-    <meta httpEquiv="refresh" content={`0;url=${target}`} />
+    <div>
+      <script dangerouslySetInnerHTML={{ __html: `window.location.replace("${target}")` }} />
+      <p style={{ textAlign: 'center', marginTop: '2rem', fontFamily: 'system-ui' }}>
+        Redirecting to <a href={target}>granny flat eligibility check</a>...
+      </p>
+    </div>
   );
 }
