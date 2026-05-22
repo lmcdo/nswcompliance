@@ -16,13 +16,15 @@ Document_id patterns in database:
 - "Leichhardt_DCP_2013_Part_C_Section_2_C2_2_X_X_Neighbourhood_Name"
 """
 
-# Standard NSW zone codes
-RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4', 'R5']
-BUSINESS_ZONES = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']
-INDUSTRIAL_ZONES = ['IN1', 'IN2', 'IN3', 'IN4']
-SPECIAL_ZONES = ['SP1', 'SP2', 'SP3']
+# Inner West LEP 2022 zone codes (Leichhardt area)
+# Only zones that actually exist in the former Leichhardt LGA boundaries.
+# Generic NSW constants (R4-R5, B3-B8, IN3-IN4, E1/E3/E4) removed.
+RESIDENTIAL_ZONES = ['R1', 'R2', 'R3']
+BUSINESS_ZONES = ['B1', 'B2', 'B4']
+INDUSTRIAL_ZONES = ['IN1', 'IN2']
+SPECIAL_ZONES = ['SP1', 'SP2']
 RECREATION_ZONES = ['RE1', 'RE2']
-ENVIRONMENT_ZONES = ['E1', 'E2', 'E3', 'E4']
+ENVIRONMENT_ZONES = ['E2']
 MIXED_USE_ZONES = ['MU1']
 
 ALL_ZONES = ['ALL']
