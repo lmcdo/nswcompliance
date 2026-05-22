@@ -486,6 +486,9 @@ scripts/
 !scripts/insert_waverley_landscaping.py
 !scripts/insert_inner_west_landscaping.py
 !scripts/insert_northern_beaches_landscaping.py
+!scripts/insert_solar_access_hours.py
+!scripts/qa_gate.py
+!scripts/qa_report_template.json
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
