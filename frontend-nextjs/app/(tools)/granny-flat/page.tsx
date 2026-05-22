@@ -3,46 +3,9 @@ import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { sanitizeHTML } from '@/lib/sanitize'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
-
-const DEFAULT_TITLE = 'Granny Flat Eligibility Check NSW — Free Instant SEPP Housing 2021 Check';
-const DEFAULT_DESCRIPTION = 'Can you build a granny flat on your NSW property? Free instant check — lot size, zoning, heritage, flood, and biodiversity under SEPP Housing 2021. Any NSW address, no signup.';
-
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}): Promise<Metadata> {
-  const params = await searchParams;
-  const address = typeof params.address === 'string' ? params.address : undefined;
-
-  if (!address) {
-    return { title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION };
-  }
-
-  const ogImageUrl = `${SITE_URL}/api/og/granny-flat?address=${encodeURIComponent(address)}`;
-  const pageUrl = `${SITE_URL}/granny-flat?address=${encodeURIComponent(address)}`;
-  const title = `Granny Flat Check — ${address}`;
-  const description = `Can you build a granny flat at ${address}? Free instant eligibility check under SEPP Housing 2021.`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      url: pageUrl,
-      siteName: 'PlotDetect',
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: `Granny flat eligibility result for ${address}` }],
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-      images: [ogImageUrl],
-    },
-  };
+export const metadata: Metadata = {
+  title: 'Granny Flat Eligibility Check NSW — Free Instant SEPP Housing 2021 Check',
+  description: 'Can you build a granny flat on your NSW property? Free instant check — lot size, zoning, heritage, flood, and biodiversity under SEPP Housing 2021. Any NSW address, no signup.',
 }
 
 const FAQS = [
