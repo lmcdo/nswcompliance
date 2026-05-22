@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# QA Railguards enforcement hook
+# Rejects commits without a QA tier classification line.
+#
+# Expected format in commit message:
+#   QA: Critical — [modes] — [findings]
+#   QA: Standard — [modes] — [findings]
+#   QA: Minor — pre-pr-review — [findings]
+#
+# Exempt: merge commits, revert commits, CI commits
+
+MSG_FILE="$1"
+MSG=$(cat "$MSG_FILE")
+
+# Skip merge commits
+if echo "$MSG" | head -1 | grep -qiE "^Merge "; then
+  exit 0
+fi
+
+# Skip revert commits
+if echo "$MSG" | head -1 | grep -qiE "^Revert "; then
+  exit 0
+fi
+
+# Skip CI / automated commits
+if echo "$MSG" | grep -qiE "^\[skip ci\]|^\[ci skip\]|^chore\(deps\)"; then
+  exit 0
+fi
+
+# Check for QA line
+if ! echo "$MSG" | grep -qE "^QA: (Critical|Standard|Minor) "; then
+  echo ""
+  echo "=========================================="
+  echo "  COMMIT REJECTED — QA railguards missing"
+  echo "=========================================="
+  echo ""
+  echo "Every commit requires a QA tier classification."
+  echo "Add one of these lines to your commit message:"
+  echo ""
+  echo "  QA: Critical — [modes run] — [findings]"
+  echo "  QA: Standard — [modes run] — [findings]"
+  echo "  QA: Minor — pre-pr-review — [findings]"
+  echo ""
+  echo "See: ~/.claude/projects/.../memory/reference-code-quality-railguards.md"
+  echo ""
+  exit 1
+fi
+
+exit 0
