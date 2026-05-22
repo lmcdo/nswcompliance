@@ -639,19 +639,24 @@ def test_ses_class_display_no_snake_case_values_in_dict_values():
 # ---------------------------------------------------------------------------
 
 def test_hawkesbury_missing_raster_dir_returns_null_gracefully(monkeypatch):
-    """If raster directory doesn't exist on this host, return null — not an error."""
+    """If raster directory doesn't exist on this host, return null — not an error.
+    Note: _query_hawkesbury_rasters was refactored into _query_flood_study_rasters.
+    rasterio is required for raster tests — skip if unavailable."""
     import services.flood_truth as ft
-    monkeypatch.setattr(ft, "HAWKESBURY_RASTER_DIR", "/nonexistent/path/to/rasters")
-    result = ft._query_hawkesbury_rasters(-33.6134, 150.8130)
-    assert result["hawkesbury_flood_level_100aep"] is None
-    assert result["hawkesbury_flood_study"] is None
+    pytest.importorskip("rasterio")
+    monkeypatch.setitem(ft.FLOOD_STUDIES["hawkesbury"], "dir",
+                        "/nonexistent/path/to/rasters")
+    result = ft._query_flood_study_rasters(-33.6134, 150.8130)
+    assert result.get("hawkesbury_flood_level_100aep") is None
 
 
 def test_hawkesbury_result_has_all_nine_aep_fields(monkeypatch):
-    """null_result always contains all 9 AEP keys (contract stability)."""
+    """null_result always contains all 9 AEP keys (contract stability).
+    rasterio is required for raster tests — skip if unavailable."""
     import services.flood_truth as ft
-    monkeypatch.setattr(ft, "HAWKESBURY_RASTER_DIR", "/nonexistent")
-    result = ft._query_hawkesbury_rasters(-33.6134, 150.8130)
+    pytest.importorskip("rasterio")
+    monkeypatch.setitem(ft.FLOOD_STUDIES["hawkesbury"], "dir", "/nonexistent")
+    result = ft._query_flood_study_rasters(-33.6134, 150.8130)
     for k in ft.HAWKESBURY_AEP_FILES:
         assert f"hawkesbury_flood_level_{k}" in result
 

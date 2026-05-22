@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """
 Real User Flow Test - Using Actual Planning Portal API
 

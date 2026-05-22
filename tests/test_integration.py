@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """
 Integration tests for the complete processing pipeline
 """

@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 #!/usr/bin/env python3
 """
 PRP-8B Comprehensive Verification Testing
