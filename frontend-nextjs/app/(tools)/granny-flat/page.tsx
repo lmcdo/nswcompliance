@@ -3,16 +3,18 @@ import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { sanitizeHTML } from '@/lib/sanitize'
 
+export const dynamic = 'force-dynamic';
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
 
 const DEFAULT_TITLE = 'Granny Flat Eligibility Check NSW — Free Instant SEPP Housing 2021 Check';
 const DEFAULT_DESCRIPTION = 'Can you build a granny flat on your NSW property? Free instant check — lot size, zoning, heritage, flood, and biodiversity under SEPP Housing 2021. Any NSW address, no signup.';
 
-export async function generateMetadata({
+export function generateMetadata({
   searchParams,
 }: {
   searchParams: { address?: string }
-}): Promise<Metadata> {
+}): Metadata {
   const address = searchParams.address;
 
   if (!address) {
