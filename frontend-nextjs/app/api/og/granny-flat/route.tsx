@@ -115,6 +115,41 @@ function geoToPixel(
   ];
 }
 
+const NSW_PLANNING_API = 'https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi';
+
+/** Resolve address → propId → lot geometry via NSW Planning Portal */
+async function fetchLotFromNswApi(address: string): Promise<{
+  resolvedAddress: string;
+  rings: number[][][];
+} | null> {
+  try {
+    // Step 1: address search
+    const addrResp = await fetch(
+      `${NSW_PLANNING_API}/address?a=${encodeURIComponent(address)}`,
+      { signal: AbortSignal.timeout(5_000) },
+    );
+    if (!addrResp.ok) return null;
+    const addrData = await addrResp.json();
+    const propId = addrData?.[0]?.propId;
+    const resolved = addrData?.[0]?.address ?? address;
+    if (!propId) return null;
+
+    // Step 2: lot geometry
+    const lotResp = await fetch(
+      `${NSW_PLANNING_API}/lot?propId=${propId}`,
+      { signal: AbortSignal.timeout(5_000) },
+    );
+    if (!lotResp.ok) return null;
+    const lotData = await lotResp.json();
+    const geometry = lotData?.[0]?.geometry;
+    if (!geometry?.rings?.[0]?.length) return null;
+
+    return { resolvedAddress: resolved, rings: geometry.rings };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get('address');
   if (!address) {
@@ -142,7 +177,16 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch {
-    // Render fallback card if API fails
+    // Continue — will try NSW API directly for geometry
+  }
+
+  // If internal API didn't return lot geometry, fetch directly from NSW Planning API
+  if (!lotRings || !lotRings[0]?.length) {
+    const nswResult = await fetchLotFromNswApi(address);
+    if (nswResult) {
+      lotRings = nswResult.rings;
+      if (resolvedAddress === address) resolvedAddress = nswResult.resolvedAddress;
+    }
   }
 
   const result = assess(property, lotArea);
