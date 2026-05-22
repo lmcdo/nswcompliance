@@ -1,77 +1,86 @@
 {
   "tier": "standard",
-  "justification": "Data insertion script for gap-fill controls across 7 councils (21 rows). No schema changes, no frontend changes. Uses established insert pattern with dedup check. NULL value_min rows for councils with performance-based DCPs or inaccessible PDFs (needs_review=TRUE for 8 rows).",
-  "files": ["scripts/insert_gap_fill_mid_volume.py"],
+  "justification": "Frontend + API change: adds data_status field to structured controls API, three-state visual rendering in component. Fixes value_min=0 falsy bug. No DB schema changes.",
+  "files": [
+    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx"
+  ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls table — checked existing rows for each (lga, control_type, dev_type) combo. All 21 are new gaps.",
-    "assumption_mismatch": "Both value_min and value_max columns used: Strathfield landscaping_min has value_min=10, value_max=45 (lot-size range). Script handles dual-column INSERT at lines 278-288.",
-    "new_vs_existing": "All 21 rows are new. Dedup check prevents duplicates on re-run."
+    "existing_data": "API previously returned no needs_review info. Frontend showed grey dash for all NULL values regardless of reason.",
+    "assumption_mismatch": "value_min=0 was treated as null (falsy check). Fixed to != null check.",
+    "new_vs_existing": "Adds data_status field to API response. Backward compatible — component falls back to hasNumericValue check if data_status missing."
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "scripts/insert_gap_fill_mid_volume.py:510",
-      "input": "GAP_ROWS list (21 dicts) + DATABASE_URL from .env",
-      "output": "INSERT 21 rows into dcp_setback_controls, committed on success",
-      "if_none": "If DATABASE_URL is None, psycopg2.connect raises OperationalError"
+      "name": "GET",
+      "file_line": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:114",
+      "input": "council slug + dev_type query params",
+      "output": "JSON with categories[].controls[].data_status field added",
+      "if_none": "If needs_review column missing from DB, row.needs_review is undefined, treated as false — falls back to not_applicable"
+    },
+    {
+      "name": "DcpStructuredControls",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:110",
+      "input": "formerCouncil slug string + optional devType string prop from parent component",
+      "output": "Renders three visual states: numeric (bold value), not_applicable (no rate + italic condition), under_review (amber pending badge)",
+      "if_none": "If data_status missing from API (backward compat), falls back to numeric vs not_applicable based on value_min/max nullity"
     }
   ],
   "values": [
     {
-      "value": "value_min / value_max",
-      "read_at": "insert_gap_fill_mid_volume.py:GAP_ROWS (lines 33-256)",
-      "nullable": "yes — NULL for 17 of 21 rows (performance-based, LEP-controlled, or PDF inaccessible)",
-      "guard_at": "DB columns allow NULL. condition + source_text contain human-readable DCP position.",
-      "if_missing": "Row stored with NULL value, condition/source_text explains DCP position"
+      "value": "data_status",
+      "read_at": "route.ts:193-199 (computed from needs_review + value presence)",
+      "nullable": "no — always computed",
+      "guard_at": "DcpStructuredControls.tsx:188-189 — fallback via ?? operator if data_status undefined",
+      "if_missing": "Falls back to hasNumericValue check — same behavior as before this change"
     },
     {
-      "value": "applicability",
-      "read_at": "insert_gap_fill_mid_volume.py:303",
-      "nullable": "no — NOT NULL constraint in DB",
-      "guard_at": "insert_gap_fill_mid_volume.py:303 — row.get('applicability', 'universal_residential')",
-      "if_missing": "Defaults to universal_residential"
+      "value": "value_min / value_max",
+      "read_at": "route.ts:190-191",
+      "nullable": "yes — null when DCP has no numeric rate",
+      "guard_at": "route.ts:190 — uses != null instead of falsy check (fixes value=0 bug)",
+      "if_missing": "Renders as 'no rate' or 'pending' depending on data_status"
     }
   ],
   "queries": [
     {
-      "purpose": "Dedup check — skip rows that already exist",
-      "file_line": "insert_gap_fill_mid_volume.py:272",
-      "where_clause": "lga = %s AND control_type = %s AND dev_type = %s AND condition LIKE %s AND is_current = TRUE",
-      "if_zero": "Row is new — proceed with INSERT",
-      "if_wrong": "False positive on condition prefix could skip legitimate row — mitigated by 30-char prefix uniqueness"
-    },
-    {
-      "purpose": "INSERT new gap-fill control",
-      "file_line": "insert_gap_fill_mid_volume.py:290",
-      "where_clause": "N/A — INSERT",
-      "if_zero": "N/A",
-      "if_wrong": "Wrong value or source_text would serve incorrect data — mitigated by verified DCP citations for verified rows, needs_review flag for unverified"
+      "purpose": "Fetch structured controls with needs_review flag",
+      "file_line": "route.ts:130",
+      "where_clause": "sc.lga IN ($1...) AND sc.dev_type = $N AND (sc.is_current IS NULL OR sc.is_current = true)",
+      "if_zero": "Returns has_controls: false with empty categories",
+      "if_wrong": "needs_review=true rows correctly tagged as under_review in response"
     }
   ],
   "break_it": [
     {
-      "scenario": "Strathfield landscaping_min range (10-45%) confuses frontend expecting single value",
-      "what_happens": "Frontend might display 10% when lot is >1500m2 (should be 45%)",
+      "scenario": "needs_review column doesn't exist on older DB schema",
+      "what_happens": "SQL query would fail with column not found error",
       "mitigated": true,
-      "how": "value_min=10, value_max=45 stored in separate columns. condition text explains full lot-size tiers. Frontend shows condition text alongside values."
+      "how": "needs_review column exists since table creation (confirmed in DB_SCHEMA.md). If somehow missing, query error is caught at route.ts:232 and returns 500."
     },
     {
-      "scenario": "needs_review rows with NULL values served as 'no requirement' when DCP actually has a numeric rate",
-      "what_happens": "User might think no control exists when Leichhardt/Marrickville do have numeric controls locked in scanned PDFs",
+      "scenario": "needs_review=true row with non-null value_min classified as under_review instead of numeric",
+      "what_happens": "User sees 'pending' badge instead of the actual value",
       "mitigated": true,
-      "how": "needs_review=TRUE + review_reason explains PDF extraction blocker. condition text says 'value not yet extracted' or 'scanned image'. 8 of 21 rows flagged."
+      "how": "route.ts:195 — hasNumeric check comes first. If value_min or value_max is non-null, data_status is always 'numeric' regardless of needs_review."
     },
     {
-      "scenario": "Dedup check fails causing duplicate rows on re-run",
-      "what_happens": "User sees double controls for same council/type",
+      "scenario": "data_status field missing from API response (cache/CDN serving old version)",
+      "what_happens": "Component would use undefined data_status",
       "mitigated": true,
-      "how": "Line 272: dedup SELECT on 5-field key. Exception at line 310, conn.rollback() prevents partial insert."
+      "how": "DcpStructuredControls.tsx:188-189 — nullish coalescing fallback: control.data_status ?? (hasNumericValue ? 'numeric' : 'not_applicable')"
+    },
+    {
+      "scenario": "DB query for structured controls fails (timeout, connection error)",
+      "what_happens": "API returns 500, component shows nothing (SWR error state)",
+      "mitigated": true,
+      "how": "route.ts:231-233 — catch block logs error and returns 500 JSON. Component's useSWR handles error state — returns null (no broken UI)."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — spot-check: SELECT lga, control_type, value_min, value_max, needs_review, condition FROM dcp_setback_controls WHERE lga IN ('ryde','canada_bay','strathfield','burwood','ashfield','leichhardt','marrickville') AND control_type IN ('deep_soil_min','max_site_coverage','landscaping_min','front_setback','rear_setback') AND is_current = TRUE ORDER BY lga, control_type;"
+    "manual_verify": "Yes — load /assessment for a council with NULL controls (e.g. ashfield). Verify: numeric rows show bold value, not_applicable rows show 'no rate' + italic condition, any needs_review rows show amber 'pending' badge."
   }
 }

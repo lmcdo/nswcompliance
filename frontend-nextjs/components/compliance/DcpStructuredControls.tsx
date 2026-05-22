@@ -10,7 +10,9 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home } from 'lucide-react';
+import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home, AlertCircle, MinusCircle } from 'lucide-react';
+
+type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
 
 interface StructuredControl {
   control_type: string;
@@ -25,6 +27,7 @@ interface StructuredControl {
   dcp_version: string | null;
   pdf_page: number | null;
   pdf_url: string | null;
+  data_status?: ControlDataStatus;
 }
 
 interface ControlCategory {
@@ -182,6 +185,9 @@ export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house
                     const isSourceExpanded = expandedSource === rowKey;
                     const citation = formatCitation(control);
 
+                    const status: ControlDataStatus = control.data_status
+                      ?? (hasNumericValue(control) ? 'numeric' : 'not_applicable');
+
                     return (
                       <div key={rowKey}>
                         <div className="flex items-center px-3 py-2 text-sm">
@@ -189,18 +195,28 @@ export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house
                           <div className="text-gray-700 font-medium w-1/4 flex-shrink-0">
                             {control.control_label}
                           </div>
-                          {/* Value */}
+                          {/* Value — three states */}
                           <div className="text-right w-[100px] flex-shrink-0">
-                            {hasNumericValue(control) ? (
+                            {status === 'numeric' ? (
                               <span className="font-mono text-sm font-semibold text-gray-900">
                                 {formatValue(control)}
                               </span>
+                            ) : status === 'under_review' ? (
+                              <span className="inline-flex items-center gap-0.5 text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                <AlertCircle className="w-3 h-3" />
+                                pending
+                              </span>
                             ) : (
-                              <span className="text-xs text-gray-400">—</span>
+                              <span className="inline-flex items-center gap-0.5 text-xs text-gray-400">
+                                <MinusCircle className="w-3 h-3" />
+                                no rate
+                              </span>
                             )}
                           </div>
                           {/* Condition */}
-                          <div className="text-xs text-gray-500 px-3 flex-1 min-w-0">
+                          <div className={`text-xs px-3 flex-1 min-w-0 ${
+                            status === 'not_applicable' ? 'text-gray-600 italic' : 'text-gray-500'
+                          }`}>
                             {control.condition}
                           </div>
                           {/* Citation + expand source */}
