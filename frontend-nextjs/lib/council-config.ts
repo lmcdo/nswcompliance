@@ -11,6 +11,10 @@
 import marrickvilleConfig from './council-configs/marrickville.json';
 import leichhardtConfig from './council-configs/leichhardt.json';
 import ashfieldConfig from './council-configs/ashfield.json';
+import waverleyConfig from './council-configs/waverley.json';
+import woollahraConfig from './council-configs/woollahra.json';
+import cityOfSydneyConfig from './council-configs/city_of_sydney.json';
+import kuRingGaiConfig from './council-configs/ku_ring_gai.json';
 
 export interface CategoryGroup {
   label: string;
@@ -182,6 +186,10 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: marrickvilleConfig as CouncilConfig,
   leichhardt: leichhardtConfig as CouncilConfig,
   ashfield: ashfieldConfig as CouncilConfig,
+  waverley: waverleyConfig as CouncilConfig,
+  woollahra: woollahraConfig as CouncilConfig,
+  city_of_sydney: cityOfSydneyConfig as CouncilConfig,
+  ku_ring_gai: kuRingGaiConfig as CouncilConfig,
 };
 
 /**
@@ -193,7 +201,13 @@ const COUNCIL_ALIASES: Record<string, string> = {
   'marrickville': 'marrickville',
   'leichhardt': 'leichhardt',
   'ashfield': 'ashfield',
-  // Add aliases for new LGAs here
+  // Eastern Suburbs / North Shore
+  'waverley': 'waverley',
+  'woollahra': 'woollahra',
+  'city_of_sydney': 'city_of_sydney',
+  'sydney': 'city_of_sydney',
+  'ku_ring_gai': 'ku_ring_gai',
+  'ku-ring-gai': 'ku_ring_gai',
 };
 
 /**
