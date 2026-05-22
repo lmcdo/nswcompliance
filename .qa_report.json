@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "Data insertion script for a new control type (solar_access_hours) across 27 councils. No schema changes, no frontend changes. Uses established insert pattern with dedup check. 12 of 27 rows marked needs_review for PDF verification.",
+  "files": ["scripts/insert_solar_access_hours.py"],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls table has 823 rows across 28 LGAs. No existing solar_access_hours rows — this is net-new data. Frontend registration for solar_access_hours already merged in PR #350.",
+    "assumption_mismatch": "If a council's actual solar requirement differs from the standard 3h assumed for needs_review rows, the value_min will be wrong. Mitigated: needs_review=TRUE flag + review_reason column flag these for manual verification before user-facing display.",
+    "new_vs_existing": "All new rows. dev_type='universal_residential' because solar access applies to all residential development. Dedup check prevents duplicates on re-run."
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/insert_solar_access_hours.py:287",
+      "input": "Command line args (--dry-run flag) and DATABASE_URL from .env file",
+      "output": "Inserts 27 rows into dcp_setback_controls with control_type='solar_access_hours', prints summary table",
+      "if_none": "If DATABASE_URL is None, psycopg2.connect raises OperationalError with clear connection failure message"
+    }
+  ],
+  "values": [
+    {
+      "value": "DATABASE_URL",
+      "read_at": "scripts/insert_solar_access_hours.py:43",
+      "nullable": "yes — if neither DATABASE_URL nor SUPABASE_DB_URL set in .env",
+      "guard_at": "N/A — psycopg2.connect will raise on None",
+      "if_missing": "Script crashes with psycopg2 connection error — visible, not silent"
+    },
+    {
+      "value": "row[value_min]",
+      "read_at": "scripts/insert_solar_access_hours.py:55-270",
+      "nullable": "no — every SOLAR_ROWS entry has an explicit integer value_min (2, 3, or 4)",
+      "guard_at": "N/A — hardcoded per row",
+      "if_missing": "KeyError on row access — script crashes visibly"
+    },
+    {
+      "value": "needs_review flag",
+      "read_at": "scripts/insert_solar_access_hours.py:55-270",
+      "nullable": "no — every row explicitly sets needs_review to True or False",
+      "guard_at": "scripts/insert_solar_access_hours.py:313",
+      "if_missing": "KeyError — script crashes visibly"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Dedup check — prevents inserting duplicate solar_access_hours for same LGA",
+      "file_line": "scripts/insert_solar_access_hours.py:308",
+      "where_clause": "WHERE lga = %s AND control_type = 'solar_access_hours' AND dev_type = 'universal_residential' AND is_current = TRUE",
+      "if_zero": "Row is new — proceeds to INSERT",
+      "if_wrong": "If an older solar row exists with different value, it will be skipped. To update, set old row is_current=FALSE first."
+    },
+    {
+      "purpose": "INSERT new solar access control row",
+      "file_line": "scripts/insert_solar_access_hours.py:326",
+      "where_clause": "N/A — INSERT statement",
+      "if_zero": "N/A",
+      "if_wrong": "Wrong value_min would show incorrect hours in DcpStructuredControls. Mitigated by needs_review flag for unverified councils."
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A needs_review row has wrong value_min (e.g., council actually requires 4 hours but we inserted 3) and user sees incorrect DCP requirement",
+      "what_happens": "User sees '3 hours' when council actually requires 4 hours — could lead to non-compliant design",
+      "mitigated": true,
+      "how": "scripts/insert_solar_access_hours.py:55-270 — 12 rows have needs_review=TRUE and source_text explicitly says 'Assumed — needs PDF verification'. Frontend should surface review status to internal team."
+    },
+    {
+      "scenario": "Script run twice inserts duplicate rows creating double-counted solar requirements",
+      "what_happens": "API returns two solar_access_hours entries for same council — confusing UI display",
+      "mitigated": true,
+      "how": "scripts/insert_solar_access_hours.py:301 — dedup SELECT before INSERT checks (lga, control_type, dev_type, is_current). Exact match → skip."
+    },
+    {
+      "scenario": "Canterbury-Bankstown has non-standard time windows (8am-4pm living, 9am-5pm equinox POS) which differ from what user expects when seeing '3 hours'",
+      "what_happens": "User assumes standard 9am-3pm window but actual requirement uses 8am-4pm for living areas and equinox for POS",
+      "mitigated": true,
+      "how": "scripts/insert_solar_access_hours.py:128 — full condition text captures both time windows. DcpStructuredControls renders condition text alongside the numeric value."
+    },
+    {
+      "scenario": "Dedup SELECT query fails due to DB connection timeout or schema mismatch (e.g., column renamed), causing script to crash mid-run with some rows inserted and others not",
+      "what_happens": "Partial insertion — some councils have solar data, others don't. Inconsistent coverage visible in UI.",
+      "mitigated": true,
+      "how": "scripts/insert_solar_access_hours.py:350 — conn.commit() only called after ALL rows processed successfully. If any query fails, transaction is uncommitted and no rows are written. Script is idempotent on re-run via dedup check."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — run the script against production DB: python scripts/insert_solar_access_hours.py. Then verify with: SELECT lga, value_min, needs_review FROM dcp_setback_controls WHERE control_type = 'solar_access_hours' AND is_current = TRUE ORDER BY lga;"
+  }
+}
