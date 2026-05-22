@@ -261,9 +261,18 @@ function buildFindings(data: FloodReportData): Finding[] {
   const findings: Finding[] = [];
   const epiKey = data.epi_flood_class ?? 'none';
   const epiLabel = EPI_CLASS_META[epiKey]?.label ?? epiKey;
+  const signal = data.flood_signal ?? 'none';
 
   // 1. Government flood overlay
-  if (epiKey === 'none') {
+  if (epiKey === 'none' && (signal === 'moderate' || signal === 'elevated')) {
+    // EPI says clear but other sources indicate flood exposure — contextual wording
+    findings.push({
+      label: 'NSW EPI Flood WFS',
+      value: 'Not in statutory flood overlay',
+      detail: 'This property is not in a gazetted flood zone, but other data sources in this report indicate flood exposure. The EPI overlay does not cover all flood-affected areas — absence from the overlay is not clearance.',
+      severity: 'amber',
+    });
+  } else if (epiKey === 'none') {
     findings.push({
       label: 'NSW EPI Flood WFS',
       value: 'Not mapped as flood-prone',

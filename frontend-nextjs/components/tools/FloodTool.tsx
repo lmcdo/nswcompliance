@@ -487,7 +487,14 @@ function FloodCard({ result }: { result: FloodResult }) {
   const findings: { label: string; value: string; detail: string; severity: 'green' | 'amber' | 'red' }[] = [];
 
   // Government flood overlay
-  if (epiClass === 'none') {
+  if (epiClass === 'none' && (signal === 'moderate' || signal === 'elevated')) {
+    findings.push({
+      label: 'Government flood overlay',
+      value: 'Not in statutory flood overlay',
+      detail: 'This property is not in a gazetted flood zone, but other data sources in this report indicate flood exposure. The EPI overlay does not cover all flood-affected areas — absence from the overlay is not clearance.',
+      severity: 'amber',
+    });
+  } else if (epiClass === 'none') {
     findings.push({
       label: 'Government flood overlay',
       value: 'Not mapped as flood-prone',

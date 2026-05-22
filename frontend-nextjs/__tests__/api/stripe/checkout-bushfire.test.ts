@@ -40,7 +40,7 @@ const VALID_ADDRESS   = '15 Mountain Rd Springwood NSW 2777';
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.STRIPE_BUSHFIRE_PRICE_ID = 'price_bush_test_123';
-  process.env.NEXT_PUBLIC_SITE_URL = 'https://canibuildit.com.au';
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://plotdetect.com.au';
   mockCreate.mockResolvedValue({ url: 'https://checkout.stripe.com/pay/cs_test_bush' });
 });
 

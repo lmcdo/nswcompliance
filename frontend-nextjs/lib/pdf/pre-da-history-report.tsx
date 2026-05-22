@@ -313,8 +313,8 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
   return (
     <Document
       title={`Pre-DA Site History — ${data.address}`}
-      author="canibuildit.com.au"
-      creator="canibuildit.com.au"
+      author="plotdetect.com.au"
+      creator="plotdetect.com.au"
     >
       {/* ================================================================ */}
       {/* Page 1 — Cover, verdict, executive summary, recommendations     */}
@@ -401,7 +401,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText}>plotdetect.com.au</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
@@ -541,7 +541,7 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         )}
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText}>plotdetect.com.au</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
@@ -665,13 +665,13 @@ export function PreDAHistoryReportDocument({ data }: { data: PreDAHistoryReportD
         <View style={{ ...s.calloutTeal, marginTop: 16 }}>
           <Text style={{ ...s.calloutTitle, color: TEAL }}>More reports for this property</Text>
           <Text style={s.calloutText}>
-            <Link src={`https://canibuildit.com.au`} style={{ color: TEAL }}>canibuildit.com.au</Link>
+            <Link src={`https://plotdetect.com.au`} style={{ color: TEAL }}>plotdetect.com.au</Link>
             {' '} — flood screening, bushfire pre-screen, shadow impact, solar yield, and granny flat eligibility for any NSW address.
           </Text>
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>canibuildit.com.au</Text>
+          <Text style={s.footerText}>plotdetect.com.au</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>
       </Page>
