@@ -1,8 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
-
 const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
 const NSW_ZONE_NAMES: Record<string, string> = {
@@ -30,7 +28,6 @@ function assess(property: Record<string, unknown>, lotArea: number | null): Quic
   const zoneOk = zoneCode ? ELIGIBLE_ZONE_PREFIXES.some(p => zoneCode.startsWith(p)) : null;
   const areaOk = lotArea != null ? lotArea >= 450 : null;
 
-  // Determine constraint
   let constraint: string | null = null;
   if (zoneOk === false) constraint = `Zone ${zoneCode} is not eligible`;
   else if (heritage) constraint = 'Heritage listed — CDC excluded';
@@ -47,7 +44,6 @@ export async function GET(request: NextRequest) {
     return new Response('address parameter required', { status: 400 });
   }
 
-  // Fetch property data from internal API
   const origin = request.nextUrl.origin;
   let property: Record<string, unknown> = {};
   let lotArea: number | null = null;
@@ -72,10 +68,25 @@ export async function GET(request: NextRequest) {
 
   const result = assess(property, lotArea);
 
-  const verdictColor = result.eligible ? '#0f766e' : '#dc2626';
-  const verdictBg = result.eligible ? '#f0fdfa' : '#fef2f2';
-  const verdictLabel = result.eligible ? 'CDC Pathway Available' : 'DA Required';
-  const verdictIcon = result.eligible ? '✓' : '✗';
+  const isEligible = result.eligible;
+  const accentColor = isEligible ? '#0d9488' : '#dc2626';
+  const bgGradientStart = isEligible ? '#0f766e' : '#991b1b';
+  const bgGradientEnd = isEligible ? '#134e4a' : '#7f1d1d';
+  const verdictLabel = isEligible ? 'YES — CDC Pathway' : 'NO — DA Required';
+  const subtitle = isEligible
+    ? 'Complying development eligible under SEPP Housing 2021'
+    : (result.constraint ?? 'Does not meet SEPP Housing 2021 criteria');
+
+  // Truncate address for display
+  const displayAddress = resolvedAddress.length > 50
+    ? resolvedAddress.slice(0, 47) + '...'
+    : resolvedAddress;
+
+  // Build stats chips
+  const stats: string[] = [];
+  if (result.lotArea != null) stats.push(`${Math.round(result.lotArea).toLocaleString()} m²`);
+  if (result.zone) stats.push(`Zone ${result.zone}`);
+  if (result.lga) stats.push(result.lga);
 
   return new ImageResponse(
     (
@@ -85,166 +96,123 @@ export async function GET(request: NextRequest) {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#ffffff',
           fontFamily: 'system-ui, sans-serif',
+          background: `linear-gradient(135deg, ${bgGradientStart} 0%, ${bgGradientEnd} 100%)`,
+          color: '#ffffff',
         }}
       >
-        {/* Top bar */}
+        {/* Top section — branding + question */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '28px 48px 20px',
-            borderBottom: '1px solid #e5e7eb',
+            flexDirection: 'column',
+            padding: '48px 56px 0',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '40px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                backgroundColor: '#0f766e',
+                width: '44px',
+                height: '44px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(255,255,255,0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#ffffff',
-                fontSize: '18px',
+                fontSize: '22px',
                 fontWeight: 700,
               }}
             >
               P
             </div>
-            <span style={{ fontSize: '22px', fontWeight: 600, color: '#111827' }}>
+            <span style={{ fontSize: '26px', fontWeight: 600, opacity: 0.9 }}>
               PlotDetect
             </span>
           </div>
-          <span style={{ fontSize: '16px', color: '#9ca3af', fontWeight: 500 }}>
-            Granny Flat Eligibility
+
+          {/* Question */}
+          <span style={{ fontSize: '22px', fontWeight: 400, opacity: 0.7, marginBottom: '8px' }}>
+            Can you build a granny flat at
+          </span>
+          <span style={{ fontSize: '42px', fontWeight: 800, lineHeight: 1.1, marginBottom: '32px' }}>
+            {displayAddress}
           </span>
         </div>
 
-        {/* Main content */}
+        {/* Verdict — the hero */}
         <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
             flex: 1,
-            padding: '36px 48px',
-            gap: '24px',
+            alignItems: 'center',
+            padding: '0 56px',
           }}
         >
-          {/* Address */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Property
-            </span>
-            <span style={{ fontSize: '30px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
-              {resolvedAddress.length > 60 ? resolvedAddress.slice(0, 57) + '...' : resolvedAddress}
-            </span>
-          </div>
-
-          {/* Verdict badge */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              backgroundColor: verdictBg,
-              border: `2px solid ${verdictColor}`,
-              borderRadius: '12px',
-              padding: '16px 24px',
+              flexDirection: 'column',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderRadius: '20px',
+              padding: '32px 40px',
+              width: '100%',
+              backdropFilter: 'blur(10px)',
             }}
           >
-            <span style={{ fontSize: '32px', color: verdictColor, fontWeight: 700 }}>
-              {verdictIcon}
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '26px', fontWeight: 700, color: verdictColor }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: isEligible ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '30px',
+                  fontWeight: 700,
+                }}
+              >
+                {isEligible ? '✓' : '✗'}
+              </div>
+              <span style={{ fontSize: '48px', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 {verdictLabel}
               </span>
-              {result.constraint && (
-                <span style={{ fontSize: '16px', color: '#6b7280', marginTop: '2px' }}>
-                  {result.constraint}
-                </span>
-              )}
             </div>
-          </div>
-
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: '24px' }}>
-            {result.lotArea != null && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '8px',
-                  padding: '14px 20px',
-                  minWidth: '160px',
-                }}
-              >
-                <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>Lot Area</span>
-                <span style={{ fontSize: '22px', fontWeight: 700, color: '#111827' }}>
-                  {Math.round(result.lotArea).toLocaleString()} m²
-                </span>
-              </div>
-            )}
-            {result.zoneName && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '8px',
-                  padding: '14px 20px',
-                  minWidth: '160px',
-                }}
-              >
-                <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>Zone</span>
-                <span style={{ fontSize: '22px', fontWeight: 700, color: '#111827' }}>
-                  {result.zone}
-                </span>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>{result.zoneName}</span>
-              </div>
-            )}
-            {result.lga && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '8px',
-                  padding: '14px 20px',
-                  minWidth: '160px',
-                }}
-              >
-                <span style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>Council</span>
-                <span style={{ fontSize: '22px', fontWeight: 700, color: '#111827' }}>
-                  {(result.lga.length > 20 ? result.lga.slice(0, 18) + '...' : result.lga)}
-                </span>
-              </div>
-            )}
+            <span style={{ fontSize: '20px', opacity: 0.7, marginLeft: '72px' }}>
+              {subtitle}
+            </span>
           </div>
         </div>
 
-        {/* Bottom CTA bar */}
+        {/* Bottom bar — stats + CTA */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '20px 48px',
-            backgroundColor: '#f9fafb',
-            borderTop: '1px solid #e5e7eb',
+            padding: '24px 56px 32px',
           }}
         >
-          <span style={{ fontSize: '18px', fontWeight: 600, color: '#0f766e' }}>
-            Check your address free →  plotdetect.com.au/granny-flat
-          </span>
-          <span style={{ fontSize: '14px', color: '#9ca3af' }}>
-            SEPP Housing 2021
+          <div style={{ display: 'flex', gap: '16px' }}>
+            {stats.map((stat) => (
+              <div
+                key={stat}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '18px',
+                  fontWeight: 600,
+                }}
+              >
+                {stat}
+              </div>
+            ))}
+          </div>
+          <span style={{ fontSize: '20px', fontWeight: 700, opacity: 0.9 }}>
+            plotdetect.com.au
           </span>
         </div>
       </div>
