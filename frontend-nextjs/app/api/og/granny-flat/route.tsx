@@ -1,6 +1,9 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
+// SIX Maps is in Australia — cross-Pacific from Vercel US takes 10-15s
+export const maxDuration = 30;
+
 const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
 const NSW_ZONE_NAMES: Record<string, string> = {
@@ -83,7 +86,7 @@ async function fetchAerialTile(
   const url = `${SIX_MAPS_EXPORT}?${params}`;
   try {
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(6_000),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) return { failReason: `http ${res.status}`, url } as never;
     const ct = res.headers.get('content-type') ?? '';
