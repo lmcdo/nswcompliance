@@ -1,77 +1,85 @@
 {
   "tier": "Standard",
-  "justification": "DB update script modifying 7 production rows with extracted DCP values. No schema changes, no frontend changes. Standard because data is user-visible but script is idempotent.",
-  "files": ["scripts/update_needs_review_controls.py"],
+  "justification": "Frontend config-only change: adds 4 council config JSON files and registers them in loader + council-config. No DB changes, no API changes. Standard because user-visible (DCP tab navigation, labels, topic grouping).",
+  "files": [
+    "frontend-nextjs/lib/council-configs/waverley.json",
+    "frontend-nextjs/lib/council-configs/woollahra.json",
+    "frontend-nextjs/lib/council-configs/city_of_sydney.json",
+    "frontend-nextjs/lib/council-configs/ku_ring_gai.json",
+    "frontend-nextjs/lib/council-configs/loader.ts",
+    "frontend-nextjs/lib/council-config.ts",
+    "frontend-nextjs/components/compliance/TocSidebar.tsx"
+  ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls table — 7 rows with needs_review=true, ids 1080-1090",
-    "assumption_mismatch": "If row id doesn't exist or lga/control_type changed, script prints SKIP and doesn't update. No silent failures.",
-    "new_vs_existing": "Updates existing rows only (by id). No new rows inserted. Verification query checks id + is_current + lga + control_type match."
+    "existing_data": "These 4 councils already have provisions in regulatory_provisions (CoS 626, KRG 264, Waverley 304, Woollahra 350) and structured controls in dcp_setback_controls. They render in the DCP tab without configs — configs improve navigation.",
+    "assumption_mismatch": "If universalPartKeys or devTypeGatedPartKeys don't match actual v2_dcp_part values, chapter filtering may hide provisions. Mitigated: part keys derived from actual DB query of v2_dcp_part values.",
+    "new_vs_existing": "Config-only — no data changes. Existing provisions render unchanged; configs add labels, topic grouping, DCP explanation text."
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "update_needs_review_controls.py:196",
-      "input": "UPDATES list (7 dicts with id, lga, control_type, values) + DATABASE_URL from .env",
-      "output": "7 UPDATE statements to dcp_setback_controls, sets needs_review=false, updates value_min/max, condition, source_text, section_ref, review_reason, reviewed_at, last_verified_at, extraction_method",
-      "if_none": "If DATABASE_URL missing, exits with error message. If row not found, prints SKIP."
+      "name": "COUNCIL_CONFIGS (council-config.ts:181)",
+      "file_line": "council-config.ts:181",
+      "input": "4 new JSON imports cast as CouncilConfig",
+      "output": "Record<string, CouncilConfig> with 7 entries (was 3)",
+      "if_none": "N/A — static import, always available"
+    },
+    {
+      "name": "BUNDLED_CONFIGS (loader.ts:26)",
+      "file_line": "loader.ts:26",
+      "input": "4 new JSON imports cast as CouncilConfig",
+      "output": "Record<string, CouncilConfig> with 7 entries (was 3)",
+      "if_none": "N/A — static import, always available"
     }
   ],
   "values": [
     {
-      "value": "u['id']",
-      "read_at": "update_needs_review_controls.py:204",
-      "nullable": "no — hardcoded integer per row",
-      "guard_at": "update_needs_review_controls.py:207-212 — verifies row exists and lga/control_type match before UPDATE",
-      "if_missing": "Prints SKIP, row unchanged"
+      "value": "councilConfig (ProvisionsByTocStructure.tsx:348)",
+      "read_at": "ProvisionsByTocStructure.tsx:348",
+      "nullable": "yes — null for unconfigured councils",
+      "guard_at": "ProvisionsByTocStructure.tsx:355 — optional chaining on universalPartKeys",
+      "if_missing": "Falls back to defaults (tocTopLevelTerm='part'). Provisions still render."
     },
     {
-      "value": "value_min / value_max",
-      "read_at": "update_needs_review_controls.py:215",
-      "nullable": "yes — None for not_applicable rows, numeric for resolved rows",
-      "guard_at": "N/A — NULL is the correct DB value for not_applicable controls",
-      "if_missing": "Row displays as 'no rate' in frontend (correct for not_applicable)"
+      "value": "formerCouncil in TocSidebar.tsx:143-149",
+      "read_at": "TocSidebar.tsx:143",
+      "nullable": "yes — optional prop",
+      "guard_at": "TocSidebar.tsx:148 — ternary chain with fallback to generic label",
+      "if_missing": "Shows generic 'DCP' label"
     }
   ],
   "queries": [
     {
-      "purpose": "Verify row exists and matches expected lga/control_type before update",
-      "file_line": "update_needs_review_controls.py:204-206",
-      "where_clause": "WHERE id = %s AND is_current = true",
-      "if_zero": "Prints SKIP, no update — safe",
-      "if_wrong": "Additional lga/control_type check catches mismatch — prints SKIP"
-    },
-    {
-      "purpose": "Update row with extracted values",
-      "file_line": "update_needs_review_controls.py:214-234",
-      "where_clause": "WHERE id = %s",
-      "if_zero": "Row already verified to exist in prior SELECT",
-      "if_wrong": "Primary key ensures single row affected"
+      "purpose": "No new DB queries — config is static JSON. Existing provision query uses document_id ILIKE pattern from COUNCIL_DOC_PATTERNS.",
+      "file_line": "route.ts:46-53",
+      "where_clause": "document_id ILIKE %{pattern}%",
+      "if_zero": "No provisions returned — DcpStructuredControls + DCPInterestForm shown",
+      "if_wrong": "COUNCIL_DOC_PATTERNS already handles city_of_sydney→Sydney_DCP and ku_ring_gai→Ku-ring-gai_DCP"
     }
   ],
   "break_it": [
     {
-      "scenario": "Verify query returns 0 rows (row deleted or id changed since extraction)",
-      "what_happens": "Script prints SKIP, row not updated, needs_review stays true",
+      "scenario": "universalPartKeys contain part keys that don't exist in DB v2_dcp_part",
+      "what_happens": "Chapter marked universal but has no provisions — shows as empty chapter in TOC. Not harmful, just noisy.",
       "mitigated": true,
-      "how": "update_needs_review_controls.py:207-209 — if fetchone() returns None, prints SKIP and continues to next row. No crash, no silent skip."
+      "how": "Part keys derived from actual DB query of v2_dcp_part values for each council. Verified against live data."
     },
     {
-      "scenario": "Script run twice — double update",
-      "what_happens": "Same values written again, reviewed_at timestamp updated. No data corruption.",
+      "scenario": "Config JSON has invalid field — breaks TypeScript cast",
+      "what_happens": "TSC error at build time, Vercel deploy fails",
       "mitigated": true,
-      "how": "Idempotent — same values, same result. needs_review already false after first run."
+      "how": "npx tsc --noEmit passes with 664 errors (unchanged baseline). All 4 configs type-checked."
     },
     {
-      "scenario": "Incorrect DCP value extracted from PDF",
-      "what_happens": "User sees wrong numeric value for a control",
+      "scenario": "COUNCIL_ALIASES maps 'sydney' to 'city_of_sydney' but formerCouncil from API is 'City of Sydney' (mixed case with spaces)",
+      "what_happens": "detectCouncil may not match — falls back to null config",
       "mitigated": true,
-      "how": "Values verified against literal DCP text — source_text contains exact quote. Burwood Table 3 (3m/6m), Marrickville Table 1 (40-60%), Burwood landscaping (30%/70%)."
+      "how": "council-config.ts:204 lowercases and trims. COUNCIL_CONFIGS lookup at ProvisionsByTocStructure.tsx:348 also lowercases. Alias 'sydney' catches the Planning Portal's value."
     }
   ],
   "post_merge": {
-    "db_reset": "No — script already executed against production DB",
+    "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Check /api/dcp/structured-controls for burwood, marrickville, leichhardt"
+    "manual_verify": "Load /assessment with addresses in Waverley, Woollahra, City of Sydney, Ku-ring-gai. Verify DCP tab shows provisions with TOC sidebar, correct DCP name, and structured controls."
   }
 }

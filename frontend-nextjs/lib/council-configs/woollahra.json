@@ -1,0 +1,91 @@
+{
+  "id": "woollahra",
+  "name": "Woollahra",
+  "parentLGA": "Woollahra",
+  "dcpCitation": "Woollahra Development Control Plan 2015",
+  "lepCitation": "Woollahra Local Environmental Plan 2014",
+  "dcpExplanation": "Woollahra DCP 2015 is heritage-heavy (56% of provisions). Structured as:\n- Chapters A-B: General controls and building design\n- Chapters C1-C3: Heritage Conservation Areas (Paddington, Woollahra, Double Bay etc.)\n- Chapters D: Development type controls (neighbourhood centres, mixed use)\n- Chapters E: Specific controls (parking, signage, adaptable housing)\n\nHeritage provisions are filtered to your property's HCA. Use topic filters for non-heritage controls.",
+  "totalProvisions": 350,
+  "primaryLayer": "condition",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": false,
+  "devTypeNote": "Most provisions are heritage HCA controls that apply regardless of development type.",
+  "dcpStructureModel": "dev_type_organized",
+  "universalPartKeys": ["A1", "B1", "B2", "B3", "B4", "E1", "E2", "E3", "E5", "E6", "E7", "E8"],
+  "devTypeGatedPartKeys": ["D1", "D2", "D4", "D6"],
+  "daDevTypeRole": "chapter_selector",
+  "topicFilterRequired": false,
+  "warningThreshold": 400,
+  "resultGuidance": {
+    "DA_expected": "150-300",
+    "CDC_expected": "5-15"
+  },
+  "suggestedTopics": ["heritage", "parking", "residential", "environmental", "landscaping", "signage"],
+  "topicOrder": {
+    "certifier": ["parking", "height", "setbacks", "heritage", "landscaping", "signage"],
+    "planner": ["heritage", "residential", "building_form", "parking", "environmental"]
+  },
+  "layerLabels": {
+    "generic": "General Controls",
+    "use_specific": "Development Type",
+    "condition": "Heritage (HCA)",
+    "precinct": "Precinct"
+  },
+  "hideLayers": ["precinct"],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage & Character",
+      "categories": ["heritage", "character", "streetscape"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "building": {
+      "label": "Building Form & Height",
+      "categories": ["building_form", "building_height", "height", "residential"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility", "access", "transport"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "landscaping": {
+      "label": "Landscaping & Environment",
+      "categories": ["landscaping", "environmental", "tree_preservation", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setback_front", "setback_side", "setback_rear", "setbacks"],
+      "showSubcategories": true,
+      "priority": 5
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "solar_access"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "general", "commercial", "da_requirements", "subdivision", "safety", "fencing", "acoustic", "amenity", "privacy", "waste_management", "stormwater", "water_management"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "not_available",
+    "message": "Refer to DCP Chapter B3 for setback controls",
+    "method": "Numeric setback controls shown in structured controls panel",
+    "guidance": []
+  }
+}

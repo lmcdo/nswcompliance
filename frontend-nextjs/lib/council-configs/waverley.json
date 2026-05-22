@@ -1,0 +1,91 @@
+{
+  "id": "waverley",
+  "name": "Waverley",
+  "parentLGA": "Waverley",
+  "dcpCitation": "Waverley Development Control Plan 2022",
+  "lepCitation": "Waverley Local Environmental Plan 2012",
+  "dcpExplanation": "Waverley DCP 2022 is structured into five parts:\n- Part B: General controls (setbacks, height, parking, landscaping, sustainability)\n- Part C: Residential development (dwelling houses, multi-dwelling, RFBs)\n- Part D: Non-residential (commercial, mixed use)\n- Part E: Site-specific and heritage controls\n- Part F: Locality statements\n\nHeritage and residential topics are the most detailed. Use topic filters to navigate. Zone filtering is not effective as most provisions apply broadly.",
+  "totalProvisions": 304,
+  "primaryLayer": "generic",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": true,
+  "devTypeNote": "Parts C and D are dev-type-gated. Part B applies to all development.",
+  "dcpStructureModel": "dev_type_organized",
+  "universalPartKeys": ["B1", "B2", "B3", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "B17"],
+  "devTypeGatedPartKeys": ["C1", "C2", "D1"],
+  "daDevTypeRole": "chapter_selector",
+  "topicFilterRequired": false,
+  "warningThreshold": 300,
+  "resultGuidance": {
+    "DA_expected": "100-200",
+    "CDC_expected": "10-30"
+  },
+  "suggestedTopics": ["heritage", "residential", "landscaping", "transport", "setbacks", "sustainability"],
+  "topicOrder": {
+    "certifier": ["setbacks", "height", "parking", "landscaping", "heritage", "sustainability"],
+    "planner": ["heritage", "residential", "building_form", "setbacks", "landscaping", "parking"]
+  },
+  "layerLabels": {
+    "generic": "General Controls",
+    "use_specific": "Development Type",
+    "condition": "Heritage & Site",
+    "precinct": "Locality"
+  },
+  "hideLayers": [],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage & Character",
+      "categories": ["heritage", "character", "streetscape"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setback_front", "setback_side", "setback_rear", "setbacks"],
+      "showSubcategories": true,
+      "priority": 2
+    },
+    "building": {
+      "label": "Building Form & Height",
+      "categories": ["building_form", "building_height", "height", "residential"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "parking": {
+      "label": "Parking & Transport",
+      "categories": ["parking", "transport", "accessibility", "access"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "landscaping": {
+      "label": "Landscaping",
+      "categories": ["landscaping", "tree_preservation", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "solar_access", "energy_efficiency"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management", "water"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "da_requirements", "subdivision", "safety", "fencing", "environmental", "acoustic", "amenity", "privacy", "waste_management", "signage", "public_domain"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "not_available",
+    "message": "Refer to DCP Part B7 for setback controls",
+    "method": "Numeric setback controls shown in structured controls panel",
+    "guidance": []
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "id": "city_of_sydney",
+  "name": "City of Sydney",
+  "parentLGA": "City of Sydney",
+  "dcpCitation": "Sydney Development Control Plan 2012",
+  "lepCitation": "Sydney Local Environmental Plan 2012",
+  "dcpExplanation": "Sydney DCP 2012 is structured into six sections:\n- Section 1: Objectives and definitions\n- Section 2: Locality statements (area-specific controls)\n- Section 3: General provisions (setbacks, height, parking, landscaping, heritage)\n- Section 4: Development types (residential, commercial, mixed use)\n- Section 5: Specific areas (Green Square, Ashmore, etc.)\n- Section 6: Specific sites\n\nSections 2, 5, and 6 are locality/site-specific — filtered to your address where possible. Section 3 contains the core general controls.",
+  "totalProvisions": 626,
+  "primaryLayer": "precinct",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": true,
+  "devTypeNote": "Section 4 is dev-type-gated. Sections 2, 5, 6 are locality-specific.",
+  "dcpStructureModel": "dev_type_organized",
+  "universalPartKeys": ["section_1", "section_3"],
+  "devTypeGatedPartKeys": ["section_4"],
+  "daDevTypeRole": "chapter_selector",
+  "topicFilterRequired": false,
+  "warningThreshold": 400,
+  "resultGuidance": {
+    "DA_expected": "200-400",
+    "CDC_expected": "10-30"
+  },
+  "suggestedTopics": ["heritage", "height", "setbacks", "signage", "building_form", "parking"],
+  "topicOrder": {
+    "certifier": ["setbacks", "height", "parking", "heritage", "building_form", "signage"],
+    "planner": ["heritage", "building_form", "height", "setbacks", "residential", "parking"]
+  },
+  "layerLabels": {
+    "generic": "General Controls",
+    "use_specific": "Development Type",
+    "condition": "Heritage & Site",
+    "precinct": "Locality / Specific Area"
+  },
+  "hideLayers": [],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage & Character",
+      "categories": ["heritage", "character", "streetscape"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "building": {
+      "label": "Building Form & Height",
+      "categories": ["building_form", "building_height", "height", "residential"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setback_front", "setback_side", "setback_rear", "setbacks"],
+      "showSubcategories": true,
+      "priority": 3
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "transport", "accessibility", "access"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "landscaping": {
+      "label": "Landscaping",
+      "categories": ["landscaping", "tree_preservation", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "solar_access", "energy_efficiency"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "commercial", "da_requirements", "subdivision", "safety", "fencing", "environmental", "acoustic", "amenity", "privacy", "waste_management"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "not_available",
+    "message": "Refer to DCP Section 3 for setback controls",
+    "method": "Numeric setback controls shown in structured controls panel",
+    "guidance": []
+  }
+}
