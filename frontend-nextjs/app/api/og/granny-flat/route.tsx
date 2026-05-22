@@ -16,19 +16,29 @@ const NSW_ZONE_NAMES: Record<string, string> = {
 const SIX_MAPS_EXPORT =
   'https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/LPI_Imagery_Best/MapServer/export';
 
-interface QuickEligibility {
+interface PropertyDetails {
   eligible: boolean;
   zone: string | null;
   zoneName: string | null;
   lotArea: number | null;
+  frontage: number | null;
+  depth: number | null;
+  heightLimit: number | null;
+  heritage: boolean;
   constraint: string | null;
   lga: string | null;
 }
 
-function assess(property: Record<string, unknown>, lotArea: number | null): QuickEligibility {
+function assess(
+  property: Record<string, unknown>,
+  lotArea: number | null,
+  frontage: number | null,
+  depth: number | null,
+): PropertyDetails {
   const zone = (property.zone as string) ?? null;
   const heritage = !!(property.heritage_status || (property.heritage_overlays as unknown[] | undefined)?.length);
   const lga = (property.lga_name as string) ?? null;
+  const heightLimit = (property.height_limit as number) ?? null;
 
   const zoneCode = zone?.split(' ')[0] ?? null;
   const zoneName = zoneCode ? (NSW_ZONE_NAMES[zoneCode] ?? zone) : null;
@@ -41,7 +51,7 @@ function assess(property: Record<string, unknown>, lotArea: number | null): Quic
   else if (areaOk === false) constraint = `${Math.round(lotArea!)} m² — below 450 m² minimum`;
 
   const eligible = zoneOk !== false && !heritage && areaOk !== false && zoneOk !== null;
-  return { eligible, zone: zoneCode, zoneName, lotArea, constraint, lga };
+  return { eligible, zone: zoneCode, zoneName, lotArea, frontage, depth, heightLimit, heritage, constraint, lga };
 }
 
 /** Convert Web Mercator (EPSG:3857) to WGS84 (EPSG:4326) */
@@ -62,15 +72,15 @@ async function fetchAerialTile(
   const rawMaxLng = Math.max(...lngs);
   const rawMinLat = Math.min(...lats);
   const rawMaxLat = Math.max(...lats);
-  // Pad 60% around the lot so it's not edge-to-edge
-  const padX = (rawMaxLng - rawMinLng) * 0.6;
-  const padY = (rawMaxLat - rawMinLat) * 0.6;
+  // Tight pad (25%) — keeps lot prominent, reduces building perspective distortion
+  const padX = (rawMaxLng - rawMinLng) * 0.25;
+  const padY = (rawMaxLat - rawMinLat) * 0.25;
   const minLng = rawMinLng - padX;
   const maxLng = rawMaxLng + padX;
   const minLat = rawMinLat - padY;
   const maxLat = rawMaxLat + padY;
 
-  // Fixed tile size for left panel — use jpeg for faster transfer from AU server
+  // Fixed tile size for left panel — jpeg for faster cross-Pacific transfer
   const w = 520;
   const h = 630;
 
@@ -128,7 +138,6 @@ async function fetchLotFromNswApi(address: string): Promise<{
   rings: number[][][];
 } | null> {
   try {
-    // Step 1: address search
     const addrResp = await fetch(
       `${NSW_PLANNING_API}/address?a=${encodeURIComponent(address)}`,
       { signal: AbortSignal.timeout(5_000) },
@@ -139,7 +148,6 @@ async function fetchLotFromNswApi(address: string): Promise<{
     const resolved = addrData?.[0]?.address ?? address;
     if (!propId) return null;
 
-    // Step 2: lot geometry
     const lotResp = await fetch(
       `${NSW_PLANNING_API}/lot?propId=${propId}`,
       { signal: AbortSignal.timeout(5_000) },
@@ -153,6 +161,18 @@ async function fetchLotFromNswApi(address: string): Promise<{
   } catch {
     return null;
   }
+}
+
+/** Compact check-row for the OG card */
+function CheckRow({ label, status }: { label: string; status: 'pass' | 'fail' | 'unknown' }) {
+  const color = status === 'pass' ? '#10b981' : status === 'fail' ? '#ef4444' : '#64748b';
+  const icon = status === 'pass' ? '\u2713' : status === 'fail' ? '\u2717' : '\u2014';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span style={{ fontSize: '14px', color, fontWeight: 700, width: '18px', textAlign: 'center' }}>{icon}</span>
+      <span style={{ fontSize: '14px', color: status === 'fail' ? '#fca5a5' : '#cbd5e1' }}>{label}</span>
+    </div>
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -177,6 +197,8 @@ export async function GET(request: NextRequest) {
         return {
           property: data.property as Record<string, unknown>,
           lotArea: (data.lotDimensions as { area?: number } | undefined)?.area ?? null,
+          frontage: (data.lotDimensions as { frontage?: number } | undefined)?.frontage ?? null,
+          depth: (data.lotDimensions as { depth?: number } | undefined)?.depth ?? null,
           lotRings: (data.lotGeometry as { rings?: number[][][] } | undefined)?.rings ?? null,
         };
       } catch { return null; }
@@ -186,12 +208,13 @@ export async function GET(request: NextRequest) {
 
   const property = propData?.property ?? {};
   const lotArea = propData?.lotArea ?? null;
+  const frontage = propData?.frontage ?? null;
+  const depth = propData?.depth ?? null;
   const resolvedAddress = (property.address as string) ?? nswLot?.resolvedAddress ?? address;
-  // Prefer internal API geometry, fall back to NSW Planning API
   const lotRings = (propData?.lotRings?.[0]?.length ? propData.lotRings : null)
     ?? nswLot?.rings ?? null;
 
-  const result = assess(property, lotArea);
+  const result = assess(property, lotArea, frontage, depth);
 
   // Convert lot rings from Web Mercator to WGS84
   let coordsWgs84: [number, number][] | null = null;
@@ -228,12 +251,15 @@ export async function GET(request: NextRequest) {
     ? resolvedAddress.slice(0, 42) + '...'
     : resolvedAddress;
 
-  // Stats
-  const stats: { label: string; value: string }[] = [];
-  if (result.lotArea != null) stats.push({ label: 'Lot Area', value: `${Math.round(result.lotArea).toLocaleString()} m\u00B2` });
-  if (result.zone && result.zoneName) stats.push({ label: 'Zone', value: `${result.zone} ${result.zoneName}` });
-  else if (result.zone) stats.push({ label: 'Zone', value: result.zone });
-  if (result.lga) stats.push({ label: 'Council', value: result.lga });
+  // Zone eligibility check status
+  const zoneCode = result.zone;
+  const zoneStatus: 'pass' | 'fail' | 'unknown' = zoneCode
+    ? (ELIGIBLE_ZONE_PREFIXES.some(p => zoneCode.startsWith(p)) ? 'pass' : 'fail')
+    : 'unknown';
+  const areaStatus: 'pass' | 'fail' | 'unknown' = result.lotArea != null
+    ? (result.lotArea >= 450 ? 'pass' : 'fail')
+    : 'unknown';
+  const heritageStatus: 'pass' | 'fail' | 'unknown' = result.heritage ? 'fail' : 'pass';
 
   // ── Card WITH aerial image ──
   if (tile) {
@@ -257,7 +283,6 @@ export async function GET(request: NextRequest) {
               height={630}
               style={{ width: '520px', height: '630px', objectFit: 'cover' }}
             />
-            {/* Lot polygon overlay */}
             {polygonSvgPoints && (
               <div style={{ position: 'absolute', top: 0, left: 0, width: '520px', height: '630px', display: 'flex' }}>
                 <svg
@@ -268,14 +293,13 @@ export async function GET(request: NextRequest) {
                 >
                   <polygon
                     points={polygonSvgPoints}
-                    fill={isEligible ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}
+                    fill={isEligible ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}
                     stroke={verdictColor}
                     stroke-width="3"
                   />
                 </svg>
               </div>
             )}
-            {/* Attribution */}
             <div style={{
               position: 'absolute',
               bottom: '8px',
@@ -295,38 +319,38 @@ export async function GET(request: NextRequest) {
               display: 'flex',
               flexDirection: 'column',
               flex: 1,
-              padding: '40px 44px',
+              padding: '32px 40px',
             }}
           >
             {/* Brand */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '32px',
+                  height: '32px',
                   backgroundColor: '#0f766e',
-                  borderRadius: '8px',
+                  borderRadius: '7px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '18px',
+                  fontSize: '16px',
                   fontWeight: 700,
                   color: 'white',
                 }}
               >
                 P
               </div>
-              <span style={{ color: '#64748b', fontSize: '15px', letterSpacing: '0.08em', fontWeight: 600 }}>
+              <span style={{ color: '#64748b', fontSize: '14px', letterSpacing: '0.08em', fontWeight: 600 }}>
                 PLOTDETECT
               </span>
             </div>
 
             {/* Address */}
-            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '32px' }}>
-              <span style={{ color: '#64748b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '20px' }}>
+              <span style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>
                 Granny Flat Eligibility
               </span>
-              <span style={{ color: '#f1f5f9', fontSize: '32px', fontWeight: 700, lineHeight: 1.15 }}>
+              <span style={{ color: '#f1f5f9', fontSize: '28px', fontWeight: 700, lineHeight: 1.15 }}>
                 {displayAddress}
               </span>
             </div>
@@ -337,40 +361,83 @@ export async function GET(request: NextRequest) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                marginTop: '24px',
+                marginTop: '18px',
                 backgroundColor: verdictBg,
                 border: `2px solid ${verdictColor}`,
-                borderRadius: '14px',
-                padding: '16px 22px',
+                borderRadius: '12px',
+                padding: '14px 20px',
               }}
             >
-              <span style={{ fontSize: '28px', color: verdictColor, fontWeight: 700 }}>
+              <span style={{ fontSize: '24px', color: verdictColor, fontWeight: 700 }}>
                 {verdictIcon}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '24px', fontWeight: 700, color: verdictColor }}>
+                <span style={{ fontSize: '22px', fontWeight: 700, color: verdictColor }}>
                   {verdictLabel}
                 </span>
                 {result.constraint && (
-                  <span style={{ fontSize: '14px', color: '#94a3b8', marginTop: '2px' }}>
+                  <span style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
                     {result.constraint}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Stats */}
-            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '24px', gap: '12px' }}>
-              {stats.map((stat) => (
-                <div key={stat.label} style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                    {stat.label}
-                  </span>
-                  <span style={{ color: '#e2e8f0', fontSize: '20px', fontWeight: 600 }}>
-                    {stat.value}
-                  </span>
-                </div>
-              ))}
+            {/* Property details grid */}
+            <div style={{ display: 'flex', gap: '24px', marginTop: '18px' }}>
+              {/* Left column: lot stats */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                {result.lotArea != null && (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Lot Area
+                    </span>
+                    <span style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 600 }}>
+                      {Math.round(result.lotArea).toLocaleString()} m{'\u00B2'}
+                    </span>
+                  </div>
+                )}
+                {result.frontage != null && result.depth != null && (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Dimensions
+                    </span>
+                    <span style={{ color: '#e2e8f0', fontSize: '18px', fontWeight: 600 }}>
+                      {result.frontage.toFixed(1)}m × {result.depth.toFixed(1)}m
+                    </span>
+                  </div>
+                )}
+                {result.zone && (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Zone
+                    </span>
+                    <span style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 600 }}>
+                      {result.zone} {result.zoneName}
+                    </span>
+                  </div>
+                )}
+                {result.heightLimit != null && (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Height Limit
+                    </span>
+                    <span style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 600 }}>
+                      {result.heightLimit}m
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right column: SEPP checks */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
+                <span style={{ color: '#64748b', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '2px' }}>
+                  SEPP Housing Checks
+                </span>
+                <CheckRow label={`Lot area ${result.lotArea != null ? `(${Math.round(result.lotArea).toLocaleString()} m\u00B2)` : ''}`} status={areaStatus} />
+                <CheckRow label={`Zoning ${result.zone ? `(${result.zone})` : ''}`} status={zoneStatus} />
+                <CheckRow label="Heritage exclusion" status={heritageStatus} />
+              </div>
             </div>
 
             {/* Footer CTA */}
@@ -382,10 +449,10 @@ export async function GET(request: NextRequest) {
                 marginTop: 'auto',
               }}
             >
-              <span style={{ color: '#0d9488', fontSize: '16px', fontWeight: 700 }}>
-                Check your address free
+              <span style={{ color: '#0d9488', fontSize: '15px', fontWeight: 700 }}>
+                Check your address free \u2192
               </span>
-              <span style={{ color: '#475569', fontSize: '14px' }}>
+              <span style={{ color: '#475569', fontSize: '13px' }}>
                 plotdetect.com.au
               </span>
             </div>
@@ -470,20 +537,21 @@ export async function GET(request: NextRequest) {
         {/* Stats + CTA */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
           <div style={{ display: 'flex', gap: '16px' }}>
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  borderRadius: '8px',
-                  padding: '8px 16px',
-                  fontSize: '16px',
-                  fontWeight: 600,
-                }}
-              >
-                {stat.value}
+            {result.lotArea != null && (
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '8px 16px', fontSize: '16px', fontWeight: 600 }}>
+                {Math.round(result.lotArea).toLocaleString()} m{'\u00B2'}
               </div>
-            ))}
+            )}
+            {result.zone && (
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '8px 16px', fontSize: '16px', fontWeight: 600 }}>
+                Zone {result.zone}
+              </div>
+            )}
+            {result.frontage != null && result.depth != null && (
+              <div style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '8px 16px', fontSize: '16px', fontWeight: 600 }}>
+                {result.frontage.toFixed(1)}m × {result.depth.toFixed(1)}m
+              </div>
+            )}
           </div>
           <span style={{ fontSize: '18px', fontWeight: 700, opacity: 0.9 }}>plotdetect.com.au</span>
         </div>
