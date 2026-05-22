@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au';
 
@@ -8,7 +7,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au'
  *
  * Lightweight page that exists solely to serve dynamic OG meta tags for
  * social sharing. Crawlers (Facebook, Twitter, LinkedIn) read the meta tags.
- * Browsers are immediately redirected to the actual granny-flat tool page.
+ * Browsers are redirected to the actual granny-flat tool page via client-side
+ * meta refresh — NOT a server-side 307, which crawlers follow before reading
+ * OG tags.
  *
  * This page lives OUTSIDE the (tools) route group to avoid the 'use client'
  * layout that breaks generateMetadata + searchParams on Next.js 14.2.
@@ -62,10 +63,13 @@ export default async function ShareGrannyFlatPage({
   const params = await searchParams;
   const address = typeof params.address === 'string' ? params.address : undefined;
 
-  // Redirect browsers to the actual tool page
+  // Client-side redirect — crawlers ignore meta refresh and read OG tags.
+  // Server-side redirect() sends a 307 which Facebook follows before reading tags.
   const target = address
     ? `/granny-flat?address=${encodeURIComponent(address)}`
     : '/granny-flat';
 
-  redirect(target);
+  return (
+    <meta httpEquiv="refresh" content={`0;url=${target}`} />
+  );
 }
