@@ -172,7 +172,65 @@ export default function HowItWorksPage() {
           ))}
         </div>
 
-        <div className="mt-16 p-6 bg-teal-50 border border-teal-200 rounded-xl">
+        {/* --- How we check our work --- */}
+        <div className="mt-16 space-y-10">
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">How we check our work</h2>
+            <p className="text-sm text-gray-600 mb-5">
+              Every data source listed above is monitored by automated checks that run daily.
+              If a government API goes down, returns unexpected data, or stops responding entirely,
+              our monitoring flags it before any report is affected.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">15</p>
+                <p className="text-xs text-gray-500 mt-1">Data sources monitored daily</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">100%</p>
+                <p className="text-xs text-gray-500 mt-1">Reports with full audit trail</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-gray-900">&lt; 2 min</p>
+                <p className="text-xs text-gray-500 mt-1">Alert time on source failure</p>
+              </div>
+            </div>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Every report records the exact API endpoints queried, response timestamps, and data versions used.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Reports with missing audit data or empty outputs are flagged automatically and withheld until resolved.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Source health checks probe each API for expected response structure, not just HTTP 200 status.</li>
+            </ul>
+          </section>
+
+          {/* --- How results are computed --- */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">How results are computed</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Every tool on this platform uses deterministic processing. Given the same property
+              and the same source data, the result is identical every time. There is no AI
+              interpretation, no language model inference, and no probabilistic scoring in the
+              compliance pipeline.
+            </p>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Planning controls are extracted verbatim from government instruments — never paraphrased or summarised.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Satellite analysis uses published spectral indices with fixed thresholds, not trained classifiers.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Where multiple data sources cover the same property, all are shown independently — we do not blend or average conflicting values.</li>
+            </ul>
+          </section>
+
+          {/* --- What this is not --- */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">What this is not</h2>
+            <ul className="text-sm text-gray-600 space-y-2">
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not a planning certificate.</strong> These results do not replace a Section 10.7 certificate issued by council.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not legal or financial advice.</strong> We present government data — interpretation requires a qualified professional.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not a substitute for site inspection.</strong> Satellite and spatial data cannot capture every on-ground condition.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not exhaustive.</strong> Where data is unavailable for a property, the result states &ldquo;unavailable&rdquo; — absence of data is not clearance.</li>
+            </ul>
+          </section>
+        </div>
+
+        <div className="mt-10 p-6 bg-teal-50 border border-teal-200 rounded-xl">
           <h3 className="font-semibold text-teal-900 mb-2">A note on accuracy</h3>
           <p className="text-sm text-teal-800 leading-relaxed">
             All results on this platform are <strong>indicative</strong> — they are starting points
