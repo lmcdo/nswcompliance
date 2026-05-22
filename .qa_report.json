@@ -1,86 +1,77 @@
 {
-  "tier": "standard",
-  "justification": "Frontend + API change: adds data_status field to structured controls API, three-state visual rendering in component. Fixes value_min=0 falsy bug. No DB schema changes.",
-  "files": [
-    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx"
-  ],
+  "tier": "Standard",
+  "justification": "DB update script modifying 7 production rows with extracted DCP values. No schema changes, no frontend changes. Standard because data is user-visible but script is idempotent.",
+  "files": ["scripts/update_needs_review_controls.py"],
   "pre_impl": {
-    "existing_data": "API previously returned no needs_review info. Frontend showed grey dash for all NULL values regardless of reason.",
-    "assumption_mismatch": "value_min=0 was treated as null (falsy check). Fixed to != null check.",
-    "new_vs_existing": "Adds data_status field to API response. Backward compatible — component falls back to hasNumericValue check if data_status missing."
+    "existing_data": "dcp_setback_controls table — 7 rows with needs_review=true, ids 1080-1090",
+    "assumption_mismatch": "If row id doesn't exist or lga/control_type changed, script prints SKIP and doesn't update. No silent failures.",
+    "new_vs_existing": "Updates existing rows only (by id). No new rows inserted. Verification query checks id + is_current + lga + control_type match."
   },
   "functions": [
     {
-      "name": "GET",
-      "file_line": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:114",
-      "input": "council slug + dev_type query params",
-      "output": "JSON with categories[].controls[].data_status field added",
-      "if_none": "If needs_review column missing from DB, row.needs_review is undefined, treated as false — falls back to not_applicable"
-    },
-    {
-      "name": "DcpStructuredControls",
-      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:110",
-      "input": "formerCouncil slug string + optional devType string prop from parent component",
-      "output": "Renders three visual states: numeric (bold value), not_applicable (no rate + italic condition), under_review (amber pending badge)",
-      "if_none": "If data_status missing from API (backward compat), falls back to numeric vs not_applicable based on value_min/max nullity"
+      "name": "main",
+      "file_line": "update_needs_review_controls.py:196",
+      "input": "UPDATES list (7 dicts with id, lga, control_type, values) + DATABASE_URL from .env",
+      "output": "7 UPDATE statements to dcp_setback_controls, sets needs_review=false, updates value_min/max, condition, source_text, section_ref, review_reason, reviewed_at, last_verified_at, extraction_method",
+      "if_none": "If DATABASE_URL missing, exits with error message. If row not found, prints SKIP."
     }
   ],
   "values": [
     {
-      "value": "data_status",
-      "read_at": "route.ts:193-199 (computed from needs_review + value presence)",
-      "nullable": "no — always computed",
-      "guard_at": "DcpStructuredControls.tsx:188-189 — fallback via ?? operator if data_status undefined",
-      "if_missing": "Falls back to hasNumericValue check — same behavior as before this change"
+      "value": "u['id']",
+      "read_at": "update_needs_review_controls.py:204",
+      "nullable": "no — hardcoded integer per row",
+      "guard_at": "update_needs_review_controls.py:207-212 — verifies row exists and lga/control_type match before UPDATE",
+      "if_missing": "Prints SKIP, row unchanged"
     },
     {
       "value": "value_min / value_max",
-      "read_at": "route.ts:190-191",
-      "nullable": "yes — null when DCP has no numeric rate",
-      "guard_at": "route.ts:190 — uses != null instead of falsy check (fixes value=0 bug)",
-      "if_missing": "Renders as 'no rate' or 'pending' depending on data_status"
+      "read_at": "update_needs_review_controls.py:215",
+      "nullable": "yes — None for not_applicable rows, numeric for resolved rows",
+      "guard_at": "N/A — NULL is the correct DB value for not_applicable controls",
+      "if_missing": "Row displays as 'no rate' in frontend (correct for not_applicable)"
     }
   ],
   "queries": [
     {
-      "purpose": "Fetch structured controls with needs_review flag",
-      "file_line": "route.ts:130",
-      "where_clause": "sc.lga IN ($1...) AND sc.dev_type = $N AND (sc.is_current IS NULL OR sc.is_current = true)",
-      "if_zero": "Returns has_controls: false with empty categories",
-      "if_wrong": "needs_review=true rows correctly tagged as under_review in response"
+      "purpose": "Verify row exists and matches expected lga/control_type before update",
+      "file_line": "update_needs_review_controls.py:204-206",
+      "where_clause": "WHERE id = %s AND is_current = true",
+      "if_zero": "Prints SKIP, no update — safe",
+      "if_wrong": "Additional lga/control_type check catches mismatch — prints SKIP"
+    },
+    {
+      "purpose": "Update row with extracted values",
+      "file_line": "update_needs_review_controls.py:214-234",
+      "where_clause": "WHERE id = %s",
+      "if_zero": "Row already verified to exist in prior SELECT",
+      "if_wrong": "Primary key ensures single row affected"
     }
   ],
   "break_it": [
     {
-      "scenario": "needs_review column doesn't exist on older DB schema",
-      "what_happens": "SQL query would fail with column not found error",
+      "scenario": "Verify query returns 0 rows (row deleted or id changed since extraction)",
+      "what_happens": "Script prints SKIP, row not updated, needs_review stays true",
       "mitigated": true,
-      "how": "needs_review column exists since table creation (confirmed in DB_SCHEMA.md). If somehow missing, query error is caught at route.ts:232 and returns 500."
+      "how": "update_needs_review_controls.py:207-209 — if fetchone() returns None, prints SKIP and continues to next row. No crash, no silent skip."
     },
     {
-      "scenario": "needs_review=true row with non-null value_min classified as under_review instead of numeric",
-      "what_happens": "User sees 'pending' badge instead of the actual value",
+      "scenario": "Script run twice — double update",
+      "what_happens": "Same values written again, reviewed_at timestamp updated. No data corruption.",
       "mitigated": true,
-      "how": "route.ts:195 — hasNumeric check comes first. If value_min or value_max is non-null, data_status is always 'numeric' regardless of needs_review."
+      "how": "Idempotent — same values, same result. needs_review already false after first run."
     },
     {
-      "scenario": "data_status field missing from API response (cache/CDN serving old version)",
-      "what_happens": "Component would use undefined data_status",
+      "scenario": "Incorrect DCP value extracted from PDF",
+      "what_happens": "User sees wrong numeric value for a control",
       "mitigated": true,
-      "how": "DcpStructuredControls.tsx:188-189 — nullish coalescing fallback: control.data_status ?? (hasNumericValue ? 'numeric' : 'not_applicable')"
-    },
-    {
-      "scenario": "DB query for structured controls fails (timeout, connection error)",
-      "what_happens": "API returns 500, component shows nothing (SWR error state)",
-      "mitigated": true,
-      "how": "route.ts:231-233 — catch block logs error and returns 500 JSON. Component's useSWR handles error state — returns null (no broken UI)."
+      "how": "Values verified against literal DCP text — source_text contains exact quote. Burwood Table 3 (3m/6m), Marrickville Table 1 (40-60%), Burwood landscaping (30%/70%)."
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — script already executed against production DB",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — load /assessment for a council with NULL controls (e.g. ashfield). Verify: numeric rows show bold value, not_applicable rows show 'no rate' + italic condition, any needs_review rows show amber 'pending' badge."
+    "manual_verify": "Check /api/dcp/structured-controls for burwood, marrickville, leichhardt"
   }
 }
