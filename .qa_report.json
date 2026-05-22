@@ -1,77 +1,77 @@
 {
   "tier": "standard",
-  "justification": "Data insertion script for bicycle_parking controls across 25 councils (+ 2 already in DB = 27 total). No schema changes, no frontend changes. Uses established insert pattern with dedup check. NULL value_min rows for councils that defer to standards — literal DCP citations stored.",
-  "files": ["scripts/insert_bicycle_parking.py"],
+  "justification": "Data insertion script for gap-fill controls across 6 top-volume councils (13 rows). No schema changes, no frontend changes. Uses established insert pattern with dedup check. NULL value_min rows for councils that defer to standards or use LEP FSR — literal DCP citations stored.",
+  "files": ["scripts/insert_gap_fill_top_volume.py"],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls table — 4 existing bicycle_parking rows (city_of_sydney: 3, leichhardt: 1). Script skips via dedup check on (lga, control_type, dev_type, condition prefix, is_current).",
-    "assumption_mismatch": "If applicability NOT NULL constraint missed, INSERT fails and transaction rolls back. Caught and fixed during first run — added applicability='universal_residential' default.",
-    "new_vs_existing": "All new rows. Dedup check prevents duplicates on re-run. Existing city_of_sydney/leichhardt rows untouched."
+    "existing_data": "dcp_setback_controls table — checked existing rows for each (lga, control_type, dev_type) combo. All 13 are new gaps.",
+    "assumption_mismatch": "value_max vs value_min column selection: rows with max_site_coverage use value_max, others use value_min. Script handles via val_col logic at line 338.",
+    "new_vs_existing": "All 13 rows are new. Dedup check prevents duplicates on re-run."
   },
   "functions": [
     {
       "name": "main",
-      "file_line": "scripts/insert_bicycle_parking.py:667",
-      "input": "BICYCLE_ROWS list (38 dicts) + DATABASE_URL from .env",
-      "output": "INSERT 38 rows into dcp_setback_controls with control_type='bicycle_parking', committed on success",
+      "file_line": "scripts/insert_gap_fill_top_volume.py:298",
+      "input": "GAP_ROWS list (13 dicts) + DATABASE_URL from .env",
+      "output": "INSERT 13 rows into dcp_setback_controls with various control_types, committed on success",
       "if_none": "If DATABASE_URL is None, psycopg2.connect raises OperationalError"
     }
   ],
   "values": [
     {
-      "value": "value_min",
-      "read_at": "insert_bicycle_parking.py:BICYCLE_ROWS (lines 44-387)",
-      "nullable": "yes — NULL for 12 defer-to-standard and no-requirement councils",
-      "guard_at": "DB column allows NULL. condition field contains human-readable DCP position.",
-      "if_missing": "Row stored with NULL value_min, condition/source_text explains DCP position"
+      "value": "value_min / value_max",
+      "read_at": "insert_gap_fill_top_volume.py:GAP_ROWS (lines 33-294)",
+      "nullable": "yes — NULL for 4 rows (deep_soil_min defer-to-landscaping, max_site_coverage FSR-controlled)",
+      "guard_at": "DB columns allow NULL. condition + source_text contain human-readable DCP position.",
+      "if_missing": "Row stored with NULL value, condition/source_text explains DCP position"
     },
     {
       "value": "applicability",
-      "read_at": "insert_bicycle_parking.py:425",
+      "read_at": "insert_gap_fill_top_volume.py:369",
       "nullable": "no — NOT NULL constraint in DB",
-      "guard_at": "insert_bicycle_parking.py:425 — row.get('applicability', 'universal_residential')",
-      "if_missing": "Defaults to universal_residential — appropriate for all bicycle parking rows"
+      "guard_at": "insert_gap_fill_top_volume.py:369 — row.get('applicability', 'universal_residential')",
+      "if_missing": "Defaults to universal_residential"
     }
   ],
   "queries": [
     {
       "purpose": "Dedup check — skip rows that already exist",
-      "file_line": "insert_bicycle_parking.py:404",
-      "where_clause": "lga = %s AND control_type = 'bicycle_parking' AND dev_type = %s AND condition LIKE %s AND is_current = TRUE",
+      "file_line": "insert_gap_fill_top_volume.py:319",
+      "where_clause": "lga = %s AND control_type = %s AND dev_type = %s AND condition LIKE %s AND is_current = TRUE",
       "if_zero": "Row is new — proceed with INSERT",
-      "if_wrong": "False positive on condition prefix could skip legitimate row — mitigated by 30-char prefix distinguishing Residents/Visitors/No/Defers/Qualitative/Indirect"
+      "if_wrong": "False positive on condition prefix could skip legitimate row — mitigated by 30-char prefix being unique per row"
     },
     {
-      "purpose": "INSERT new bicycle parking control",
-      "file_line": "insert_bicycle_parking.py:414",
+      "purpose": "INSERT new gap-fill control",
+      "file_line": "insert_gap_fill_top_volume.py:348",
       "where_clause": "N/A — INSERT",
       "if_zero": "N/A",
-      "if_wrong": "Wrong value_min or source_text would serve incorrect data — mitigated by verified DCP citations for 13 councils, literal DCP quotes for remaining 12"
+      "if_wrong": "Wrong value or source_text would serve incorrect data — mitigated by verified DCP citations"
     }
   ],
   "break_it": [
     {
-      "scenario": "Dedup check fails (DB timeout, schema change) causing duplicate rows on re-run",
-      "what_happens": "User sees double bicycle parking rates for same council",
+      "scenario": "val_col logic picks wrong column (value_min vs value_max) for a row",
+      "what_happens": "Row stored in wrong column — e.g. max_site_coverage 60% stored in value_min instead of value_max",
       "mitigated": true,
-      "how": "insert_bicycle_parking.py:404 — dedup SELECT on (lga, control_type, dev_type, condition LIKE prefix, is_current). If SELECT fails, exception caught at line 445, conn.rollback() prevents partial insert."
+      "how": "Lines 337-338: rows with value_max key get val_col='value_max', rows with value_min key get val_col='value_min'. Each GAP_ROWS dict uses exactly one of the two keys."
     },
     {
-      "scenario": "NULL value_min rows confuse frontend display",
-      "what_happens": "Frontend might show blank or error for no-rate councils",
+      "scenario": "Dedup check fails (DB timeout) causing duplicate rows on re-run",
+      "what_happens": "User sees double controls for same council/type",
       "mitigated": true,
-      "how": "condition field contains human-readable text (e.g. 'Defers to AS2890.3...'). Frontend already handles missing values for other control types."
+      "how": "Line 319: dedup SELECT on (lga, control_type, dev_type, condition LIKE prefix, is_current). If SELECT fails, exception at line 380, conn.rollback() prevents partial insert."
     },
     {
-      "scenario": "The Hills Showground precinct rate applied as general LGA rate",
-      "what_happens": "User outside Showground precinct sees incorrect bicycle rate",
+      "scenario": "Camden rear_setback 4m (single storey) applied to two-storey building",
+      "what_happens": "User sees wrong setback for their building type",
       "mitigated": true,
-      "how": "needs_review=TRUE + review_reason explains this is precinct-specific. condition text states 'Showground Precinct DCP rate'."
+      "how": "Two separate rows with distinct condition text: 'Single storey: 4m' vs 'Two storey (two-storey component): 6m'. Frontend shows condition text."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — spot-check 3 councils on /assessment page: SELECT lga, value_min, condition FROM dcp_setback_controls WHERE control_type = 'bicycle_parking' AND is_current = TRUE ORDER BY lga;"
+    "manual_verify": "Yes — spot-check: SELECT lga, control_type, value_min, value_max, condition FROM dcp_setback_controls WHERE lga IN ('blacktown','the_hills','camden','randwick') AND control_type IN ('max_site_coverage','rear_setback','landscaping_min','deep_soil_min','car_parking') AND is_current = TRUE ORDER BY lga, control_type;"
   }
 }

@@ -488,6 +488,7 @@ scripts/
 !scripts/insert_northern_beaches_landscaping.py
 !scripts/insert_solar_access_hours.py
 !scripts/insert_bicycle_parking.py
+!scripts/insert_gap_fill_top_volume.py
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
 
