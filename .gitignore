@@ -494,6 +494,7 @@ scripts/
 !scripts/qa_report_template.json
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
+!scripts/numeric_control_review.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
