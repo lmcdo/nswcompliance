@@ -2352,20 +2352,7 @@ export function ProvisionsByTocStructure({
               </div>
             )}
 
-            {/* Action Toolbar - Export (non-DA mode only, only when assessable provisions present) */}
-            {filteredProvisions.filter((p: any) => p.v2_provision_type !== 'procedural' && p.v2_provision_type !== 'descriptive').length > 0 && !isDaMode && (
-              <div className="px-4 py-3 border-b bg-gray-50">
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                  <Download className="h-4 w-4" />
-                  {topicFilters.length > 0
-                    ? `Export ${filteredProvisions.length} ${topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')} provision${filteredProvisions.length !== 1 ? 's' : ''}`
-                    : `Export ${filteredProvisions.length === allProvisions.length ? 'all ' : ''}${filteredProvisions.length} provision${filteredProvisions.length !== 1 ? 's' : ''}`}
-                </button>
-              </div>
-            )}
+            {/* Action Toolbar - Export (temporarily disabled) */}
 
             {/* Provisions list */}
             <DcpProvisionList
