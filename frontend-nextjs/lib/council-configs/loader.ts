@@ -18,6 +18,10 @@ import path from 'path';
 import marrickvilleConfig from './marrickville.json';
 import leichhardtConfig from './leichhardt.json';
 import ashfieldConfig from './ashfield.json';
+import waverleyConfig from './waverley.json';
+import woollahraConfig from './woollahra.json';
+import cityOfSydneyConfig from './city_of_sydney.json';
+import kuRingGaiConfig from './ku_ring_gai.json';
 
 // Cache for loaded configs
 const configCache = new Map<string, CouncilConfig>();
@@ -27,6 +31,10 @@ const BUNDLED_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: marrickvilleConfig as CouncilConfig,
   leichhardt: leichhardtConfig as CouncilConfig,
   ashfield: ashfieldConfig as CouncilConfig,
+  waverley: waverleyConfig as CouncilConfig,
+  woollahra: woollahraConfig as CouncilConfig,
+  city_of_sydney: cityOfSydneyConfig as CouncilConfig,
+  ku_ring_gai: kuRingGaiConfig as CouncilConfig,
 };
 
 /**

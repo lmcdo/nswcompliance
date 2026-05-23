@@ -144,7 +144,9 @@ export function TocSidebar({
             : formerCouncil === 'Leichhardt' ? 'Leichhardt DCP 2013'
             : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
             : formerCouncil === 'Waverley' ? 'Waverley DCP 2022'
-            : formerCouncil === 'Woollahra' ? 'Woollahra DCP 2022'
+            : formerCouncil === 'Woollahra' ? 'Woollahra DCP 2015'
+            : formerCouncil === 'City of Sydney' ? 'Sydney DCP 2012'
+            : formerCouncil === 'Ku-ring-gai' ? 'Ku-ring-gai DCP 2024'
             : formerCouncil ? `${formerCouncil} DCP`
             : 'DCP'}
         </h3>

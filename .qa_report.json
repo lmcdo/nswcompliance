@@ -1,70 +1,85 @@
 {
-  "tier": "standard",
-  "justification": "Test infrastructure changes -- no production code modified. Pre-push hook blocks bad pushes. No DB, no API, no user-facing changes.",
+  "tier": "Standard",
+  "justification": "Frontend config-only change: adds 4 council config JSON files and registers them in loader + council-config. No DB changes, no API changes. Standard because user-visible (DCP tab navigation, labels, topic grouping).",
   "files": [
-    "tests/conftest.py",
-    "tests/conftest_mocks.py",
-    "pytest.ini",
-    "requirements-test.txt",
-    ".githooks/pre-push",
-    ".github/workflows/python-tests.yml",
-    "CLAUDE.md",
-    "tests/test_flood_truth.py",
-    "tests/test_solar_yield.py",
-    "tests/test_climate_risk_score.py",
-    "tests/test_granny_flat_logic.py",
-    "tests/test_granny_flat_geometry.py",
-    "tests/enrichment/conftest.py",
-    "tests/enrichment/test_applicability_tagger.py"
+    "frontend-nextjs/lib/council-configs/waverley.json",
+    "frontend-nextjs/lib/council-configs/woollahra.json",
+    "frontend-nextjs/lib/council-configs/city_of_sydney.json",
+    "frontend-nextjs/lib/council-configs/ku_ring_gai.json",
+    "frontend-nextjs/lib/council-configs/loader.ts",
+    "frontend-nextjs/lib/council-config.ts",
+    "frontend-nextjs/components/compliance/TocSidebar.tsx"
   ],
   "pre_impl": {
-    "existing_data": "No DB interaction. Tests mock all DB calls via conftest_mocks.py sys.modules injection.",
-    "assumption_mismatch": "If service files add new top-level imports, conftest_mocks.py needs updating -- tests fail loudly at collection.",
-    "new_vs_existing": "N/A -- no data changes"
+    "existing_data": "These 4 councils already have provisions in regulatory_provisions (CoS 626, KRG 264, Waverley 304, Woollahra 350) and structured controls in dcp_setback_controls. They render in the DCP tab without configs — configs improve navigation.",
+    "assumption_mismatch": "If universalPartKeys or devTypeGatedPartKeys don't match actual v2_dcp_part values, chapter filtering may hide provisions. Mitigated: part keys derived from actual DB query of v2_dcp_part values.",
+    "new_vs_existing": "Config-only — no data changes. Existing provisions render unchanged; configs add labels, topic grouping, DCP explanation text."
   },
   "functions": [
     {
-      "name": "pytest_generate_tests",
-      "file_line": "tests/conftest.py:46",
-      "input": "keyword arguments from pydantic BaseModel subclass constructors",
-      "output": "instance with attributes set from kwargs, supports model_validate classmethod",
-      "if_none": "returns empty instance with no attributes set"
+      "name": "COUNCIL_CONFIGS (council-config.ts:181)",
+      "file_line": "council-config.ts:181",
+      "input": "4 new JSON imports cast as CouncilConfig",
+      "output": "Record<string, CouncilConfig> with 7 entries (was 3)",
+      "if_none": "N/A — static import, always available"
+    },
+    {
+      "name": "BUNDLED_CONFIGS (loader.ts:26)",
+      "file_line": "loader.ts:26",
+      "input": "4 new JSON imports cast as CouncilConfig",
+      "output": "Record<string, CouncilConfig> with 7 entries (was 3)",
+      "if_none": "N/A — static import, always available"
     }
   ],
   "values": [
     {
-      "value": "_MOCK_MODULES list",
-      "read_at": "tests/conftest_mocks.py:18",
-      "nullable": "no",
-      "guard_at": "N/A",
-      "if_missing": "service imports fail -- tests error at collection"
+      "value": "councilConfig (ProvisionsByTocStructure.tsx:348)",
+      "read_at": "ProvisionsByTocStructure.tsx:348",
+      "nullable": "yes — null for unconfigured councils",
+      "guard_at": "ProvisionsByTocStructure.tsx:355 — optional chaining on universalPartKeys",
+      "if_missing": "Falls back to defaults (tocTopLevelTerm='part'). Provisions still render."
+    },
+    {
+      "value": "formerCouncil in TocSidebar.tsx:143-149",
+      "read_at": "TocSidebar.tsx:143",
+      "nullable": "yes — optional prop",
+      "guard_at": "TocSidebar.tsx:148 — ternary chain with fallback to generic label",
+      "if_missing": "Shows generic 'DCP' label"
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "No new DB queries — config is static JSON. Existing provision query uses document_id ILIKE pattern from COUNCIL_DOC_PATTERNS.",
+      "file_line": "route.ts:46-53",
+      "where_clause": "document_id ILIKE %{pattern}%",
+      "if_zero": "No provisions returned — DcpStructuredControls + DCPInterestForm shown",
+      "if_wrong": "COUNCIL_DOC_PATTERNS already handles city_of_sydney→Sydney_DCP and ku_ring_gai→Ku-ring-gai_DCP"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "New service imports native dep not in _MOCK_MODULES",
-      "what_happens": "pytest collection fails with ModuleNotFoundError -- pre-push blocks push",
+      "scenario": "universalPartKeys contain part keys that don't exist in DB v2_dcp_part",
+      "what_happens": "Chapter marked universal but has no provisions — shows as empty chapter in TOC. Not harmful, just noisy.",
       "mitigated": true,
-      "how": "Failure is loud. Fix: add module to _MOCK_MODULES."
+      "how": "Part keys derived from actual DB query of v2_dcp_part values for each council. Verified against live data."
     },
     {
-      "scenario": "Mock overrides a module that tests actually need to exercise",
-      "what_happens": "Tests pass vacuously because MagicMock returns MagicMock for any attribute",
+      "scenario": "Config JSON has invalid field — breaks TypeScript cast",
+      "what_happens": "TSC error at build time, Vercel deploy fails",
       "mitigated": true,
-      "how": "Only mocking psycopg2/requests/pyproj/audit_trail. Tests assert concrete values not MagicMock."
+      "how": "npx tsc --noEmit passes with 664 errors (unchanged baseline). All 4 configs type-checked."
     },
     {
-      "scenario": "Pre-push hook runs with Python that has no pytest installed",
-      "what_happens": "Hook errors with ModuleNotFoundError for pytest, push is blocked with clear message",
+      "scenario": "COUNCIL_ALIASES maps 'sydney' to 'city_of_sydney' but formerCouncil from API is 'City of Sydney' (mixed case with spaces)",
+      "what_happens": "detectCouncil may not match — falls back to null config",
       "mitigated": true,
-      "how": "requirements-test.txt documents deps. Error message tells user what to install."
+      "how": "council-config.ts:204 lowercases and trims. COUNCIL_CONFIGS lookup at ProvisionsByTocStructure.tsx:348 also lowercases. Alias 'sydney' catches the Planning Portal's value."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Run git config core.hooksPath .githooks to pick up pre-push hook"
+    "manual_verify": "Load /assessment with addresses in Waverley, Woollahra, City of Sydney, Ku-ring-gai. Verify DCP tab shows provisions with TOC sidebar, correct DCP name, and structured controls."
   }
 }
