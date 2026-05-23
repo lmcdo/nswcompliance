@@ -241,15 +241,16 @@ export class PRPK7DatabaseClient {
  AND qs.context LIKE 'setback_%'
  `, [zone]);
 
- const statsRow = stats.rows[0];
- const standardsRow = standards.rows[0];
+ if (!stats.rows.length || !standards.rows.length) {
+ return { zone, total_provisions: 0, development_types: [], dev_type_count: 0, linked_standards: 0 };
+ }
 
  return {
  zone,
- total_provisions: statsRow ? parseInt(statsRow.total_provisions) : 0,
- development_types: statsRow?.development_types || [],
- dev_type_count: statsRow ? parseInt(statsRow.dev_types) : 0,
- linked_standards: standardsRow ? parseInt(standardsRow.linked_standards) : 0
+ total_provisions: parseInt(stats.rows[0].total_provisions),
+ development_types: stats.rows[0].development_types || [],
+ dev_type_count: parseInt(stats.rows[0].dev_types),
+ linked_standards: parseInt(standards.rows[0].linked_standards)
  };
 
  } finally {

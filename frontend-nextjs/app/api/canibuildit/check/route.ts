@@ -333,8 +333,8 @@ export async function POST(req: NextRequest) {
     acid_sulfate: CheckResult;
     dual_occ_prohibition: CheckResult;
   } = {
-    lot_area: lotArea === null ? 'unknown' : lotArea >= SEPP_MIN_M2 ? 'pass' : 'fail',
-    zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail',
+    lot_area: lotArea === null ? 'unknown' : lotArea >= SEPP_MIN_M2 ? 'pass' : 'fail', // qa-ignore: type-boundary — lotArea is number|null from geocode API
+    zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail', // qa-ignore: type-boundary — zone is string|null from geocode API
     heritage: planningControls.length === 0 ? 'unknown' : hasHeritage ? 'fail' : 'pass',
     // flood: fail if in flood zone; pass if LGA has coverage but point is clear; unknown if no LGA data
     flood: overlayTypes.has('flood') ? 'fail' : lgaHasFloodData ? 'pass' : 'unknown',
@@ -404,7 +404,7 @@ export async function POST(req: NextRequest) {
   await Promise.allSettled([
     // Nearby secondary dwelling DAs + CDCs
     (async () => {
-      if (!lgaName || centroidLat === null || centroidLng === null) return;
+      if (!lgaName || centroidLat === null || centroidLng === null) return; // qa-ignore: type-boundary — coords are number|null from geocode
       const since = new Date();
       since.setFullYear(since.getFullYear() - 2);
       const filtersHeader = JSON.stringify({

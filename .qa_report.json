@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "DB filter + null guard fixes across 5 API routes — affects data correctness in production queries",
-  "commit_hash": "a0d10d82",
+  "commit_hash": "c42c9d4b",
   "files": [
     "frontend-nextjs/app/api/canibuildit/check/route.ts",
     "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",

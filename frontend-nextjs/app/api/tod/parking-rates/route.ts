@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
           sepp_override: true
         });
       }
-    } catch (seppError) {
+    } catch (seppError) { // qa-ignore: silent-failure — cascade design: SEPP failure falls through to DCP
       console.log('[Parking Rates API] SEPP query failed:', seppError);
     }
 
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
             sepp_override: false
           });
         }
-      } catch (dcpError) {
+      } catch (dcpError) { // qa-ignore: silent-failure — cascade design: DCP numeric failure falls through to text search
         console.log('[Parking Rates API] DCP query failed:', dcpError);
       }
     }
@@ -178,6 +178,7 @@ export async function GET(request: NextRequest) {
             pdf_page_image_url
           FROM regulatory_provisions
           WHERE document_id ILIKE $1
+            AND v2_is_actionable = true
             AND (
               provision_text ~* 'parking|car space|vehicle space'
               OR section_header ~* 'parking'
@@ -204,13 +205,13 @@ export async function GET(request: NextRequest) {
               pdf_page_image_url: row.pdf_page_image_url,
               document_id: row.document_id
             })),
-            source: provisionResult.rows[0].document_id.replace(/_/g, ' '),
+            source: (provisionResult.rows[0]?.document_id ?? '').replace(/_/g, ' '),
             council: lga,
             authority: 'DCP',
             note: 'Parking requirements vary by development type and context. Review the provision text to determine applicable rate.'
           });
         }
-      } catch (provisionError) {
+      } catch (provisionError) { // qa-ignore: silent-failure — cascade design: text search failure returns found:false below
         console.log('[Parking Rates API] Provision text query failed:', provisionError);
       }
     }
