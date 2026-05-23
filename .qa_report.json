@@ -1,56 +1,59 @@
 {
   "tier": "standard",
-  "justification": "Hardening QA gate enforcement — changes to qa_gate.py validation logic, pre-push hook, and report template. Standard because it modifies validation rules that gate all future pushes.",
-  "commit_hash": "91908c6f",
-  "files": ["scripts/qa_gate.py", "scripts/qa_report_template.json", ".githooks/pre-push", "CLAUDE.md"],
+  "justification": "Adds DB guard column scanner and break-it repro field to qa_gate.py. Standard because it changes validation rules gating all future pushes, but no production code or DB changes.",
+  "commit_hash": "58233c85",
+  "files": ["scripts/qa_gate.py", "scripts/qa_report_template.json"],
   "pre_impl": {
-    "existing_data": "qa_gate.py already validates .qa_report.json structure + AST grounding. Pre-push hook already runs qa_gate.py but without --diff-files.",
-    "assumption_mismatch": "If origin/main doesn't exist (fresh clone, no remote), git diff --name-only fails — pre-push falls back to no diff files (existing behavior).",
-    "new_vs_existing": "New validations apply to all future pushes. Existing .qa_report.json files missing commit_hash will fail on standard/critical tier — forces update."
+    "existing_data": "qa_gate.py already has structure, AST grounding, and depth checks. Adding two new validation layers on top.",
+    "assumption_mismatch": "If a changed file references 'regulatory_provisions' in a comment or variable name (not a query), scanner could false-positive. Mitigated by requiring SQL keywords (SELECT/FROM/WHERE/JOIN) within the 10-line window.",
+    "new_vs_existing": "New checks apply to all future pushes. Existing reports without 'repro' field in break-it scenarios will fail on standard/critical tier."
   },
   "functions": [
     {
-      "name": "validate_report",
-      "file_line": "scripts/qa_gate.py:266",
-      "input": "report dict, optional diff_files list, optional project_dir string",
-      "output": "tuple of (passed bool, errors list, summary string)",
-      "if_none": "diff_files=None skips diff coverage and tier floor checks; project_dir=None skips AST grounding"
+      "name": "scan_diff_for_unguarded_queries",
+      "file_line": "scripts/qa_gate.py:275",
+      "input": "diff_files list of relative paths, project_dir string for resolving full paths",
+      "output": "list of error strings for each unguarded table reference found",
+      "if_none": "empty diff_files or missing project_dir returns empty list, no errors"
     }
   ],
   "values": [
     {
-      "value": "commit_hash",
-      "read_at": "scripts/qa_gate.py:378",
-      "nullable": "yes — optional for minor tier",
-      "guard_at": "scripts/qa_gate.py:380 — only errors if tier is standard/critical",
-      "if_missing": "standard/critical: validation error requiring commit_hash. minor: silently skipped."
+      "value": "GUARDED_TABLES",
+      "read_at": "scripts/qa_gate.py:268",
+      "nullable": "no — module-level constant dict",
+      "guard_at": "N/A — always present",
+      "if_missing": "scanner would find no tables to check, all queries pass silently"
     }
   ],
   "queries": "N/A — no database queries in this change",
   "break_it": [
     {
-      "scenario": "Pre-push hook runs on a branch with no origin/main (detached clone or renamed default branch)",
-      "what_happens": "git diff --name-only fails, DIFF_FILES is empty, qa_gate runs without --diff-files — same as current behavior, no regression",
+      "scenario": "Changed file references 'regulatory_provisions' in a Python comment, not a query",
+      "what_happens": "False positive — scanner flags a non-query line as missing is_current",
       "mitigated": true,
-      "how": ".githooks/pre-push — 2>/dev/null on the git diff command, falls back gracefully"
+      "how": "scripts/qa_gate.py:297 — skips lines starting with #, //, *, /* prefixes",
+      "repro": "echo '# TODO: check regulatory_provisions table' > test.py && python -c \"from qa_gate import scan_diff_for_unguarded_queries; print(scan_diff_for_unguarded_queries(['test.py'], '.'))\""
     },
     {
-      "scenario": "LLM session writes commit_hash from a previous commit, then amends — hash changes",
-      "what_happens": "qa_gate detects mismatch between report hash and HEAD, blocks push with clear error message telling session to regenerate",
-      "mitigated": true,
-      "how": "scripts/qa_gate.py:381-390 — subprocess calls git rev-parse --short HEAD and compares"
+      "scenario": "Changed file has a properly guarded query but guard column is 12+ lines from table reference",
+      "what_happens": "False positive — scanner only checks ±10 line window, misses the guard",
+      "mitigated": false,
+      "how": "Accepted risk — queries spanning >10 lines are rare and poorly structured. Would indicate a refactoring need.",
+      "repro": "Write a .py file with SELECT ... FROM regulatory_provisions on line 1 and is_current on line 15, run scanner"
     },
     {
-      "scenario": "Session classifies a 6-file refactor as Minor to skip sections 2-5",
-      "what_happens": "Tier floor check counts substantive diff files (excludes .json/.md/.yml/config), rejects Minor when >3 files changed",
+      "scenario": "Break-it scenario has 'repro' key but empty string value",
+      "what_happens": "Passes repro check (key exists) but provides no actual reproduction step",
       "mitigated": true,
-      "how": "scripts/qa_gate.py:372-377 — filters diff_files to substantive extensions, checks count against tier"
+      "how": "validate_non_empty already catches empty strings and placeholders — repro field uses s.get('repro') which returns empty string, caught by truthy check",
+      "repro": "python -c \"from qa_gate import validate_report; r={'tier':'standard','break_it':[{'scenario':'x','what_happens':'y','mitigated':True,'how':'z','repro':''}]}; print(validate_report(r))\""
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Run git config core.hooksPath .githooks in existing clones to get updated pre-push hook"
+    "manual_verify": "No"
   }
 }

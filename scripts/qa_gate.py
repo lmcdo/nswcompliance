@@ -261,6 +261,72 @@ def check_cross_references(report: dict) -> list[str]:
     return errors
 
 
+# ─── Layer 4: DB query guard column scanner ─────────────────────────────────
+
+# Tables that MUST have specific WHERE guards in any SELECT
+# {table_name: [required_guard_columns]}
+GUARDED_TABLES = {
+    "regulatory_provisions": ["is_current"],
+    "dcp_setback_controls": ["is_current"],
+    "lga_registry": ["is_active"],
+}
+
+
+def scan_diff_for_unguarded_queries(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed files for SELECT queries against guarded tables missing WHERE guards.
+
+    Reads each changed file, finds references to guarded table names,
+    then checks whether the required guard column appears within the same
+    query block (within 10 lines).
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for table_name, guard_cols in GUARDED_TABLES.items():
+            for i, line in enumerate(lines):
+                line_lower = line.lower()
+                # Look for table references in query context (FROM, JOIN, or string containing table name)
+                if table_name not in line_lower:
+                    continue
+                # Skip comments, imports, and non-query lines
+                stripped = line.strip()
+                if stripped.startswith(("#", "//", "*", "/*", "import ", "from ")):
+                    continue
+                # Skip test files — they mock DB calls
+                if "/test" in filepath.lower() or "\\test" in filepath.lower():
+                    continue
+
+                # Check if this looks like a query context (SQL keywords nearby)
+                query_window = "".join(lines[max(0, i - 3):min(len(lines), i + 10)]).lower()
+                if not any(kw in query_window for kw in ("select", "from", "where", "join")):
+                    continue
+
+                # Now check if the required guard columns appear in the query window
+                for guard_col in guard_cols:
+                    if guard_col not in query_window:
+                        errors.append(
+                            f"DB guard: {filepath}:{i + 1} references '{table_name}' "
+                            f"but '{guard_col}' not found in query (within ±10 lines). "
+                            f"Add WHERE {guard_col} = TRUE to prevent stale data."
+                        )
+
+    return errors
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -408,8 +474,25 @@ def validate_report(
             "matching the current HEAD. Run: git rev-parse --short HEAD"
         )
 
+    # --- DB guard column scanner: detect unguarded queries in changed files ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_unguarded_queries(diff_files, project_dir))
+
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
+
+    # --- Break-it repro field: force specificity ---
+    if tier in ("standard", "critical") and break_it:
+        missing_repro = [
+            i for i, s in enumerate(break_it)
+            if not s.get("repro")
+        ]
+        if missing_repro:
+            errors.append(
+                f"Section 6: break-it scenarios {missing_repro} missing 'repro' field. "
+                f"Each scenario needs a concrete reproduction step (curl, pytest command, "
+                f"SQL query, or UI action that would trigger the failure)."
+            )
 
     # --- Build summary ---
     n_functions = len(report.get("functions", [])) if isinstance(report.get("functions"), list) else 0

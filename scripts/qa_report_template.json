@@ -43,7 +43,8 @@
       "scenario": "concrete way this produces wrong results",
       "what_happens": "what the user sees or what data is corrupted",
       "mitigated": true,
-      "how": "file.py:72 — explanation of mitigation"
+      "how": "file.py:72 — explanation of mitigation",
+      "repro": "curl/pytest/SQL/UI step that triggers this failure"
     }
   ],
   "post_merge": {
