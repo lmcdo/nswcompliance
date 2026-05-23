@@ -417,6 +417,241 @@ def scan_diff_for_unguarded_nulls(
     return errors
 
 
+# ─── Layer 6: Type boundary heuristics ───────────────────────────────────────
+
+# Heuristic A: {value && <JSX>} where value could be 0 or ""
+# This silently renders nothing when value is falsy but non-null (0, "", NaN)
+FALSY_JSX_PATTERN = re.compile(
+    r'\{(\w+(?:\.\w+)*)\s*&&\s*[<(]'
+)
+# Known safe: boolean-only variables
+BOOLEAN_HINTS = re.compile(
+    r'\b(?:is[A-Z_]|has[A-Z_]|show[A-Z_]|can[A-Z_]|should[A-Z_]|loading|error|open|visible|active|disabled|checked|selected|expanded)',
+)
+
+# Heuristic B: === null without also checking undefined
+STRICT_NULL_ONLY = re.compile(
+    r'===\s*null(?!\s*\|\|\s*\w+\s*===\s*undefined)')
+# Patterns that show undefined is also handled
+UNDEFINED_ALSO_CHECKED = [
+    re.compile(r'===?\s*null\s*\|\|\s*\w+\s*===?\s*undefined'),
+    re.compile(r'===?\s*undefined\s*\|\|\s*\w+\s*===?\s*null'),
+    re.compile(r'(?<!=)==\s*null\b'),   # == null (not ===) catches both null and undefined
+    re.compile(r'(?<!!)!=\s*null\b'),  # != null (not !==) catches both
+    re.compile(r'\?\?'),              # nullish coalescing handles both
+    re.compile(r'\?\.\w'),            # optional chaining handles both
+]
+
+
+def scan_diff_for_type_boundaries(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/TSX files for common type boundary issues.
+
+    Heuristic A: {value && <JSX>} with potentially numeric/string values
+                 that could be 0 or "" (falsy but valid).
+    Heuristic B: === null without also checking undefined, in contexts
+                 where the value could be undefined (API responses, optional props).
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+        if 'backup' in fp_lower or 'migrate' in fp_lower:
+            continue
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*")):
+                continue
+            # Allow suppression with // qa-ignore: type-boundary
+            if "qa-ignore" in line and "type-boundary" in line:
+                continue
+
+            # --- Heuristic A: falsy JSX guard ---
+            if filepath.endswith('.tsx') or filepath.endswith('.jsx'):
+                match = FALSY_JSX_PATTERN.search(line)
+                if match:
+                    var_name = match.group(1)
+                    # Skip if the variable name strongly implies boolean
+                    if not BOOLEAN_HINTS.search(var_name):
+                        # Check surrounding context for type hints that show it's numeric
+                        window = "".join(lines[max(0, i - 5):min(len(lines), i + 3)])
+                        # If the variable appears with numeric operations or min/max/count
+                        if re.search(rf'{re.escape(var_name)}.*(?:number|count|min|max|total|value|amount|price|rate|size|width|height|length\b)', window, re.IGNORECASE):
+                            errors.append(
+                                f"Type boundary: {filepath}:{i + 1} uses "
+                                f"'{{{var_name} && <...>}}' but {var_name} may be "
+                                f"numeric (0 is falsy). Use '{{{var_name} != null && <...>}}' "
+                                f"or '{{!!{var_name} && <...>}}' instead."
+                            )
+
+            # --- Heuristic B: strict null without undefined ---
+            if '=== null' in line and '!== null' not in line:
+                # Check window for undefined also being handled
+                window = "".join(lines[max(0, i - 3):min(len(lines), i + 3)])
+                handled = any(p.search(window) for p in UNDEFINED_ALSO_CHECKED)
+                if not handled:
+                    # Check if this is in a type guard context (function return, not conditional)
+                    if re.search(r'if\s*\(|[?:]|\|\|', line):
+                        errors.append(
+                            f"Type boundary: {filepath}:{i + 1} uses '=== null' but "
+                            f"API/DB values can also be undefined. Use '== null' "
+                            f"(catches both) or add explicit undefined check."
+                        )
+
+    return errors
+
+
+# ─── Layer 7: Silent failure mode heuristics ─────────────────────────────────
+
+# Heuristic C: empty or swallowing catch blocks
+CATCH_PATTERN = re.compile(r'\bcatch\s*\(\s*\w*\s*\)\s*\{')
+
+# Heuristic D: catch blocks returning 200 with empty data
+CATCH_SUCCESS_PATTERNS = [
+    re.compile(r'NextResponse\.json\s*\(\s*\{'),
+    re.compile(r'res\.(?:json|send|status\s*\(\s*200\s*\))'),
+    re.compile(r'return\s+\{'),
+    re.compile(r'return\s+\[\s*\]'),
+    re.compile(r'return\s+null\b'),
+]
+
+
+def scan_diff_for_silent_failures(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/JS files for silent failure patterns.
+
+    Heuristic C: empty catch blocks or catch blocks that only log
+                 without rethrowing or returning an error response.
+    Heuristic D: catch blocks that return 200/success with empty data,
+                 masking the error from the caller.
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx', '.py')):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+        if 'backup' in fp_lower or 'migrate' in fp_lower:
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+                lines = content.split('\n')
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*", "#")):
+                continue
+            if "qa-ignore" in line and "silent-failure" in line:
+                continue
+
+            # --- Heuristic C: empty/swallowing catch blocks ---
+            if CATCH_PATTERN.search(line):
+                # Find the catch block's opening { and track from there.
+                # The line may start with } from the try block (e.g. "} catch (e) {"),
+                # so we locate the catch keyword's { specifically.
+                match = CATCH_PATTERN.search(line)
+                # Start brace depth at 1 (we found the opening {)
+                # and scan from the next line forward.
+                brace_depth = 1
+                body_lines = []
+                for j in range(i + 1, min(len(lines), i + 20)):
+                    for ch in lines[j]:
+                        if ch == '{':
+                            brace_depth += 1
+                        elif ch == '}':
+                            brace_depth -= 1
+                            if brace_depth == 0:
+                                break
+                    if brace_depth == 0:
+                        break
+                    body_lines.append(lines[j])
+
+                body_text = "\n".join(body_lines)
+                body_stripped = body_text.strip()
+
+                # Empty catch block — only flag in API routes where silence = user impact
+                if not body_stripped or body_stripped == '}':
+                    if 'route' in fp_lower or 'api' in fp_lower:
+                        errors.append(
+                            f"Silent failure: {filepath}:{i + 1} has an empty catch block. "
+                            f"Errors are swallowed silently. Add error logging, rethrow, "
+                            f"or return an error response."
+                        )
+                    continue
+
+                # Catch block that only logs (no throw, no error return)
+                has_throw = bool(re.search(r'\bthrow\b', body_text))
+                has_error_response = bool(re.search(
+                    r'status\s*\(\s*[45]\d\d\s*\)|(?<!console)\.error\s*\(|NextResponse\.json\s*\([^)]*\{[^}]*error',
+                    body_text
+                ))
+                has_rethrow = has_throw or has_error_response
+                has_log_only = bool(re.search(
+                    r'console\.\w+|logger\.\w+|logging\.\w+|print\s*\(', body_text
+                ))
+
+                if has_log_only and not has_rethrow:
+                    # Check if this is in an API route (where silent = user sees nothing)
+                    if 'route' in filepath.lower() or 'api' in filepath.lower():
+                        errors.append(
+                            f"Silent failure: {filepath}:{i + 1} catch block only logs "
+                            f"but doesn't return an error response or rethrow. "
+                            f"In API routes, this means the user gets no indication of failure."
+                        )
+
+            # --- Heuristic D: catch returning success with empty data ---
+            # Only flag in route/API files where this pattern matters
+            if ('route' in fp_lower or 'api' in fp_lower):
+                if CATCH_PATTERN.search(line):
+                    # Reuse body_text from Heuristic C if we already parsed it
+                    catch_body_d = body_text if CATCH_PATTERN.search(line) and body_text else ""
+                    if not catch_body_d:
+                        catch_body_d = "\n".join(lines[i + 1:min(len(lines), i + 10)])
+                    for sp in CATCH_SUCCESS_PATTERNS:
+                        if sp.search(catch_body_d):
+                            # Check it's not already returning an error status
+                            if not re.search(r'status\s*\(\s*[45]\d\d\s*\)', catch_body_d):
+                                if not re.search(r'\berror\b.*:', catch_body_d):
+                                    errors.append(
+                                        f"Silent failure: {filepath}:{i + 1} catch block "
+                                        f"returns success/data instead of an error response. "
+                                        f"Callers won't know the operation failed."
+                                    )
+                                    break
+
+    return errors
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -571,6 +806,14 @@ def validate_report(
     # --- Null guard scanner: detect .rows[0] without length checks ---
     if diff_files and project_dir:
         errors.extend(scan_diff_for_unguarded_nulls(diff_files, project_dir))
+
+    # --- Type boundary scanner: detect falsy JSX guards and strict null checks ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_type_boundaries(diff_files, project_dir))
+
+    # --- Silent failure scanner: detect empty catches and success-on-error ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_silent_failures(diff_files, project_dir))
 
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
