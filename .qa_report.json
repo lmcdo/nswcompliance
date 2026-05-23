@@ -1,59 +1,91 @@
 {
   "tier": "standard",
-  "justification": "Adds DB guard column scanner and break-it repro field to qa_gate.py. Standard because it changes validation rules gating all future pushes, but no production code or DB changes.",
-  "commit_hash": "58233c85",
-  "files": ["scripts/qa_gate.py", "scripts/qa_report_template.json"],
+  "justification": "Data-only insert script, single file, follows established insert pattern. No frontend changes, no schema changes.",
+  "commit_hash": "",
+  "files": ["scripts/insert_private_open_space.py"],
   "pre_impl": {
-    "existing_data": "qa_gate.py already has structure, AST grounding, and depth checks. Adding two new validation layers on top.",
-    "assumption_mismatch": "If a changed file references 'regulatory_provisions' in a comment or variable name (not a query), scanner could false-positive. Mitigated by requiring SQL keywords (SELECT/FROM/WHERE/JOIN) within the 10-line window.",
-    "new_vs_existing": "New checks apply to all future pushes. Existing reports without 'repro' field in break-it scenarios will fail on standard/critical tier."
+    "existing_data": "dcp_setback_controls table — 999 existing rows, 0 existing private_open_space rows",
+    "assumption_mismatch": "If lga values don't match existing lga values in table, rows insert but won't join to frontend queries. Mitigated: all lga values taken from existing DISTINCT lga list.",
+    "new_vs_existing": "New rows only — INSERT with dedup check (SELECT before INSERT). No UPDATE on existing rows.",
+    "external_source_error": "N/A — no external API calls",
+    "frontend_type": "N/A — private_open_space already registered in CONTROL_CATEGORIES (Phase 1)",
+    "user_failure_mode": "N/A — data appears in existing structured controls UI automatically"
   },
   "functions": [
     {
-      "name": "scan_diff_for_unguarded_queries",
-      "file_line": "scripts/qa_gate.py:275",
-      "input": "diff_files list of relative paths, project_dir string for resolving full paths",
-      "output": "list of error strings for each unguarded table reference found",
-      "if_none": "empty diff_files or missing project_dir returns empty list, no errors"
+      "name": "main",
+      "file_line": "insert_private_open_space.py:444",
+      "input": "POS_ROWS list (43 dicts) + command line args (--dry-run)",
+      "output": "INSERT into dcp_setback_controls, console summary",
+      "if_none": "DATABASE_URL missing — psycopg2.OperationalError raised immediately"
     }
   ],
   "values": [
     {
-      "value": "GUARDED_TABLES",
-      "read_at": "scripts/qa_gate.py:268",
-      "nullable": "no — module-level constant dict",
-      "guard_at": "N/A — always present",
-      "if_missing": "scanner would find no tables to check, all queries pass silently"
+      "value": "POS_ROWS[*].lga",
+      "read_at": "insert_private_open_space.py:68-430",
+      "nullable": "no — all hardcoded strings",
+      "guard_at": "N/A — hardcoded",
+      "if_missing": "INSERT would fail on NOT NULL constraint"
+    },
+    {
+      "value": "POS_ROWS[*].value_min",
+      "read_at": "insert_private_open_space.py:68-430",
+      "nullable": "no — all hardcoded integers",
+      "guard_at": "N/A — hardcoded",
+      "if_missing": "INSERT would fail on NOT NULL constraint"
+    },
+    {
+      "value": "applicability",
+      "read_at": "insert_private_open_space.py:481",
+      "nullable": "no — computed from needs_review flag",
+      "guard_at": "insert_private_open_space.py:481 — ternary based on needs_review",
+      "if_missing": "CHECK constraint violation (dcp_setback_controls_applicability_check)"
     }
   ],
-  "queries": "N/A — no database queries in this change",
+  "queries": [
+    {
+      "purpose": "Dedup check — prevent duplicate POS rows for same lga+dev_type+condition",
+      "file_line": "insert_private_open_space.py:461",
+      "where_clause": "WHERE lga = %s AND control_type = 'private_open_space' AND dev_type = %s AND condition = %s AND is_current = TRUE",
+      "if_zero": "Proceeds with INSERT — correct behavior for first run",
+      "if_wrong": "False positive dup detection would skip valid insert; mitigated by matching on condition string which is unique per row"
+    },
+    {
+      "purpose": "INSERT new POS control row",
+      "file_line": "insert_private_open_space.py:473",
+      "where_clause": "N/A — INSERT statement",
+      "if_zero": "N/A",
+      "if_wrong": "Wrong values would be stored; mitigated by hardcoded data verified against DCP provision text"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Changed file references 'regulatory_provisions' in a Python comment, not a query",
-      "what_happens": "False positive — scanner flags a non-query line as missing is_current",
+      "scenario": "Run script twice — duplicate rows inserted",
+      "what_happens": "Double-counted POS controls in frontend",
       "mitigated": true,
-      "how": "scripts/qa_gate.py:297 — skips lines starting with #, //, *, /* prefixes",
-      "repro": "echo '# TODO: check regulatory_provisions table' > test.py && python -c \"from qa_gate import scan_diff_for_unguarded_queries; print(scan_diff_for_unguarded_queries(['test.py'], '.'))\""
+      "how": "insert_private_open_space.py:461 — dedup SELECT checks lga+control_type+dev_type+condition before INSERT",
+      "repro": "python scripts/insert_private_open_space.py && python scripts/insert_private_open_space.py — second run should show 43 skipped, 0 inserted"
     },
     {
-      "scenario": "Changed file has a properly guarded query but guard column is 12+ lines from table reference",
-      "what_happens": "False positive — scanner only checks ±10 line window, misses the guard",
-      "mitigated": false,
-      "how": "Accepted risk — queries spanning >10 lines are rare and poorly structured. Would indicate a refactoring need.",
-      "repro": "Write a .py file with SELECT ... FROM regulatory_provisions on line 1 and is_current on line 15, run scanner"
+      "scenario": "applicability value doesn't match CHECK constraint",
+      "what_happens": "psycopg2.errors.CheckViolation — entire transaction fails, no rows inserted",
+      "mitigated": true,
+      "how": "insert_private_open_space.py:481 — only uses 'development_specific' or 'universal_residential', both in CHECK constraint enum",
+      "repro": "grep -n applicability insert_private_open_space.py — verify only valid enum values"
     },
     {
-      "scenario": "Break-it scenario has 'repro' key but empty string value",
-      "what_happens": "Passes repro check (key exists) but provides no actual reproduction step",
+      "scenario": "Wrong value_min for a council (e.g. Hornsby 16m2 should be 24m2)",
+      "what_happens": "Users see incorrect POS requirement — could under/overestimate feasibility",
       "mitigated": true,
-      "how": "validate_non_empty already catches empty strings and placeholders — repro field uses s.get('repro') which returns empty string, caught by truthy check",
-      "repro": "python -c \"from qa_gate import validate_report; r={'tier':'standard','break_it':[{'scenario':'x','what_happens':'y','mitigated':True,'how':'z','repro':''}]}; print(validate_report(r))\""
+      "how": "All verified values cross-checked against regulatory_provisions text; unverified councils marked needs_review=TRUE with review_reason='standard_pattern_assumed'",
+      "repro": "SELECT lga, value_min, needs_review FROM dcp_setback_controls WHERE control_type = 'private_open_space' AND is_current = TRUE ORDER BY lga"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No"
+    "manual_verify": "Check /api/dcp/structured-controls for any council — private_open_space should appear in Open Space category"
   }
 }
