@@ -1,0 +1,97 @@
+{
+  "id": "ku_ring_gai",
+  "name": "Ku-ring-gai",
+  "parentLGA": "Ku-ring-gai",
+  "dcpCitation": "Ku-ring-gai Development Control Plan 2024",
+  "lepCitation": "Ku-ring-gai Local Environmental Plan 2015",
+  "dcpExplanation": "Ku-ring-gai DCP is structured into three sections:\n- Section A: Development type controls (dwelling houses, dual occupancy, RFBs, mixed use, non-residential)\n- Section B: Heritage controls\n- Section C: General controls (signage, trees, contamination, bushfire, riparian, biodiversity, parking, building design, water, waste)\n\nSection A is the most detailed, organised by development type. Section C contains universal controls that apply regardless of development type. Stormwater and biodiversity controls are prominent.",
+  "totalProvisions": 264,
+  "primaryLayer": "generic",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": true,
+  "devTypeNote": "Section A is organised by development type. Use dev type filter to see relevant parts.",
+  "dcpStructureModel": "dev_type_organized",
+  "universalPartKeys": ["part_2_site_analysis", "part_12_signage", "part_13_trees", "part_15_contamination", "part_16_bushfire", "part_17_riparian", "part_18_biodiversity", "part_19_heritage", "part_22_parking", "part_23_building_design", "part_24_water", "part_25_waste"],
+  "devTypeGatedPartKeys": ["part_3_subdivision", "part_4_dwelling_houses", "part_4_1_secondary_dwellings", "part_5_dual_occupancy", "part_6_multi_dwelling", "part_7_residential_flat", "part_8_mixed_use", "part_9_non_residential"],
+  "daDevTypeRole": "chapter_selector",
+  "topicFilterRequired": false,
+  "warningThreshold": 300,
+  "resultGuidance": {
+    "DA_expected": "100-200",
+    "CDC_expected": "10-20"
+  },
+  "suggestedTopics": ["residential", "stormwater", "heritage", "parking", "biodiversity", "landscaping"],
+  "topicOrder": {
+    "certifier": ["setbacks", "height", "parking", "landscaping", "heritage", "stormwater", "waste"],
+    "planner": ["heritage", "residential", "biodiversity", "building_design", "parking", "landscaping"]
+  },
+  "layerLabels": {
+    "generic": "General Controls",
+    "use_specific": "Development Type",
+    "condition": "Heritage & Site",
+    "precinct": "Precinct"
+  },
+  "hideLayers": ["precinct", "condition"],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage",
+      "categories": ["heritage", "character"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "building": {
+      "label": "Building Design",
+      "categories": ["building_form", "building_design", "building_height", "height", "residential", "roofing"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setback_front", "setback_side", "setback_rear", "setbacks"],
+      "showSubcategories": true,
+      "priority": 3
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility", "access", "transport"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "landscaping": {
+      "label": "Landscaping & Biodiversity",
+      "categories": ["landscaping", "tree_preservation", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management", "water"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "waste": {
+      "label": "Waste",
+      "categories": ["waste_management", "waste"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "da_requirements", "subdivision", "safety", "fencing", "environmental", "acoustic", "amenity", "privacy", "sustainability", "solar_access", "contamination"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "not_available",
+    "message": "Refer to Section A for development-type-specific setback controls",
+    "method": "Numeric setback controls shown in structured controls panel",
+    "guidance": []
+  }
+}

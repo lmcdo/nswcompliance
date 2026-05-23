@@ -2,7 +2,17 @@
 
 **Purpose:** Single manifest of all QA, audit trail, and legal defensibility artefacts across the PlotDetect satellite product suite. Hand this file to an auditor, lawyer, or due diligence reviewer — every item they need is linked from here.
 
-**Last updated:** 2026-05-21
+**Last updated:** 2026-05-23
+
+---
+
+## 0. Architecture & Test Infrastructure
+
+| Artefact | Path | What It Proves |
+|---|---|---|
+| Architecture Overview | [`docs/qa/architecture-overview.md`](architecture-overview.md) | System topology, data flow, security posture, deployment model. Shows how components interact and where data originates. |
+| Test Matrix | [`docs/qa/test-matrix.md`](test-matrix.md) | 415 unit tests across 14 test files covering all 7 pipelines + enrichment + QA infrastructure. Execution <2s, enforced on every push. |
+| Full Codebase Scan | [`docs/qa/codebase-scan-2026-05-23.md`](codebase-scan-2026-05-23.md) | 1,177 files scanned with 4 automated scanners. Every finding triaged as true positive, accepted risk, or false positive. |
 
 ---
 
@@ -22,13 +32,14 @@ Each report documents 5 passes: source authority, algorithm correctness, null/ed
 
 | Pipeline | Report | Bugs Found | Status |
 |---|---|---|---|
-| Bushfire Pre-Screen | [`docs/qa/bushfire_validation.md`](bushfire_validation.md) | 3 found, 3 fixed (multi-feature selection, false DEM attribution, risk labels) | Complete |
-| Threat Radar | [`docs/qa/threat_radar_validation.md`](threat_radar_validation.md) | 6 found, 6 fixed (false LEP attribution, label mismatch, 4 language issues) | Complete |
-| Flood Truth | [`docs/qa/flood_truth_validation.md`](flood_truth_validation.md) | 2 found, 2 fixed (2 language issues) | Complete |
-| Solar Yield | [`docs/qa/solar_yield_validation.md`](solar_yield_validation.md) | 4 found, 4 fixed (connection leak, false attribution, 2 language) | Complete |
-| Shadow Detector | [`docs/qa/shadow_validation.md`](shadow_validation.md) | 9 found, 9 fixed (wrong comment, connection leak, 2 false attributions, wrong lib name, 4 language) | Complete |
-| Granny Flat | [`docs/qa/granny_flat_validation.md`](granny_flat_validation.md) | 8 found, 8 fixed (cursor leak, 7 language) | Complete |
-| Pre-DA History | [`docs/qa/pre_da_history_validation.md`](pre_da_history_validation.md) | 8 found, 8 fixed (2 connection leaks, 1 null guard, 3 false attributions, 2 language) | Complete |
+| Bushfire Pre-Screen | [`docs/qa/bushfire_validation.md`](bushfire_validation.md) | 3 found, 3 fixed | Complete |
+| Threat Radar | [`docs/qa/threat_radar_validation.md`](threat_radar_validation.md) | 6 found, 6 fixed | Complete |
+| Flood Truth | [`docs/qa/flood_truth_validation.md`](flood_truth_validation.md) | 2 found, 2 fixed | Complete |
+| Solar Yield | [`docs/qa/solar_yield_validation.md`](solar_yield_validation.md) | 4 found, 4 fixed | Complete |
+| Shadow Detector | [`docs/qa/shadow_validation.md`](shadow_validation.md) | 9 found, 9 fixed | Complete |
+| Granny Flat | [`docs/qa/granny_flat_validation.md`](granny_flat_validation.md) | 8 found, 8 fixed | Complete |
+| Pre-DA History | [`docs/qa/pre_da_history_validation.md`](pre_da_history_validation.md) | 8 found, 8 fixed | Complete |
+| **Total** | **7/7 pipelines** | **40 bugs found, 40 fixed** | **All complete** |
 
 ---
 
@@ -101,11 +112,90 @@ These are the actual pipeline implementations that the QA reports audit.
 
 ---
 
-## 9. Known Gaps
+## 9. Data Provenance
 
-| # | Gap | Severity | Path to Resolution |
+| Artefact | Path | What It Proves |
+|---|---|---|
+| DCP Controls Provenance | [`docs/qa/dcp-data-provenance.md`](dcp-data-provenance.md) | 999 structured numeric controls across 29 LGAs traced to council DCP source documents. Extraction methodology, dedup checks, three-state review model, 17 automated data integrity tests. |
+| Regulatory Provisions | `regulatory_provisions` table | 46,585 provisions with `source_ref`, `effective_date`, `document_id` linking to specific planning instruments. Enriched with `v2_is_actionable`, `v2_applicable_dev_types`, `v2_topic`. |
+| Spatial Overlays | `spatial_overlays` table | 128 LGAs with 14 overlay types. Each overlay references the statutory instrument (e.g., EPI flood mapping under EP&A Act s9.1). |
+
+---
+
+## 10. Automated Code Quality Gates
+
+Every code change passes through 7 automated scanner layers before it can reach production. These gates are enforced by git hooks — they cannot be bypassed without explicit `--no-verify` (which is prohibited by team policy and flagged in code review).
+
+| Layer | Scanner | What It Catches | Hook | Added |
+|---|---|---|---|---|
+| 1 | QA tier classifier | Missing `QA: [Tier]` line in commit message | `commit-msg` | PR #344 |
+| 2 | TSC error count | TypeScript errors above baseline (664) | `pre-commit` | PR #347 |
+| 3 | Python test suite | 415 unit tests across 7 pipelines + enrichment | `pre-push` | PR #362 |
+| 4 | DB guard scanner | SQL queries missing `is_current = TRUE` on scoped tables | `pre-push` (qa_gate.py) | PR #362 |
+| 5 | Null guard scanner | `.rows[0]` access without prior length check | `pre-push` (qa_gate.py) | PR #365 |
+| 6 | Type boundary scanner | Falsy JSX guards and `=== null` without undefined coverage | `pre-push` (qa_gate.py) | PR #366 |
+| 7 | Silent failure scanner | Empty/log-only catch blocks and success-on-error in API routes | `pre-push` (qa_gate.py) | PR #366 |
+
+Additionally, the QA gate (`scripts/qa_gate.py`) validates per-PR quality reports:
+- **AST grounding:** file:line references in report verified against actual source code
+- **Tier floor:** >3 files changed = cannot use Minor tier
+- **Commit hash binding:** report cryptographically pinned to specific commit
+- **Break-it specificity:** each failure scenario requires a concrete reproduction step
+- **Liability language:** new user-facing text scanned for terms that create legal liability
+
+**Artefacts:**
+| Artefact | Path |
+|---|---|
+| QA gate script (all scanners) | [`scripts/qa_gate.py`](../../scripts/qa_gate.py) |
+| Liability language scanner | [`scripts/liability_language_check.py`](../../scripts/liability_language_check.py) |
+| QA report template | [`scripts/qa_report_template.json`](../../scripts/qa_report_template.json) |
+| Commit-msg hook | [`.githooks/commit-msg`](../../.githooks/commit-msg) |
+| Pre-commit hook | [`.githooks/pre-commit`](../../.githooks/pre-commit) |
+| Pre-push hook | [`.githooks/pre-push`](../../.githooks/pre-push) |
+| Scanner unit tests | [`tests/test_qa_scanners.py`](../../tests/test_qa_scanners.py) |
+
+**Compliance evidence:**
+- 100% of commits since hook activation include QA classification (15/15)
+- QA tier distribution: 8 Standard, 5 Minor, 2 Critical
+- Full codebase scan: [`docs/qa/codebase-scan-2026-05-23.md`](codebase-scan-2026-05-23.md)
+
+---
+
+## 11. Test Infrastructure
+
+| Metric | Value |
+|---|---|
+| Total unit tests | 415 |
+| Test execution time | <2 seconds |
+| Pipelines with dedicated test suites | 7/7 |
+| Mock injection | `conftest_mocks.py` stubs external deps (psycopg2, requests, pyproj) |
+| Test framework | pytest with pydantic validation |
+| Pre-push enforcement | Tests must pass before code can be pushed |
+
+### Test coverage by pipeline
+
+| Pipeline | Test file | Tests | Coverage focus |
 |---|---|---|---|
-| 3 | Audit trail migration run in prod but disclaimer seed data status unverified | Medium | Verify `disclaimer_versions` has 7 rows in Supabase |
-| 4 | Language audit branch (`chore/language-audit-liability-cleanup`) not yet merged | High | Merge after QA validation complete |
-| 5 | No external legal review of disclaimers | High | Engage Australian technology lawyer (§8.3 of QA-DATA-PROVENANCE.md) |
-| 6 | No Professional Indemnity insurance | Critical | Commercial action, pre-revenue |
+| Bushfire Pre-Screen | `tests/test_bushfire_prescreen.py` | 51 | BAL classification, multi-feature, null handling |
+| Flood Truth | `tests/test_flood_truth.py` | 70 | Multi-source validation, WOfS bands, EPI tiers |
+| Granny Flat | `tests/test_granny_flat_logic.py` + `_geometry.py` | 35 | CDC eligibility, lot geometry, edge cases |
+| Shadow Detector | `tests/test_shadow_detector.py` | 18 | Seasonal shadow, height limits, boundary conditions |
+| Solar Yield | `tests/test_solar_yield.py` | 31 | Panel yield, shading loss, battery sizing |
+| Threat Radar | `tests/test_threat_radar.py` | 25 | DA monitoring, distance calculation, status parsing |
+| Climate Risk Score | `tests/test_climate_risk_score.py` | 51 | Multi-hazard scoring, raster query, edge cases |
+| Enrichment | `tests/enrichment/` | 88 | Provision tagging, layer classification, applicability |
+| QA Scanners | `tests/test_qa_scanners.py` | 14 | Scanner false positive/negative validation |
+| Insert Scripts | `tests/test_insert_scripts.py` | 17 | DCP control data integrity, dedup, constraint compliance |
+
+---
+
+## 12. Known Gaps
+
+| # | Gap | Severity | Path to Resolution | Status |
+|---|---|---|---|---|
+| 3 | Audit trail migration run in prod but disclaimer seed data status unverified | Medium | Verify `disclaimer_versions` has 7 rows in Supabase | Open |
+| 4 | ~~Language audit branch not yet merged~~ | ~~High~~ | ~~Merge after QA validation~~ | **RESOLVED** — merged |
+| 5 | No external legal review of disclaimers | High | Engage Australian technology lawyer (§8.3 of QA-DATA-PROVENANCE.md) | Open |
+| 6 | No Professional Indemnity insurance | Critical | Commercial action, pre-revenue | Open |
+| 7 | 31 unguarded `.rows[0]` accesses in API routes | Medium | Fix with optional chaining or length check | Open — see codebase scan |
+| 8 | 45 log-only catch blocks in API routes | Low | Add error responses or document as accepted risk | Open — see codebase scan |

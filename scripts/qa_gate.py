@@ -19,6 +19,7 @@ Exit codes:
 
 import ast
 import json
+import subprocess
 import sys
 import os
 import re
@@ -260,6 +261,399 @@ def check_cross_references(report: dict) -> list[str]:
     return errors
 
 
+# ─── Layer 4: DB query guard column scanner ─────────────────────────────────
+
+# Tables that MUST have specific WHERE guards in any SELECT
+# {table_name: [required_guard_columns]}
+GUARDED_TABLES = {
+    "regulatory_provisions": ["is_current", "v2_is_actionable"],
+    "dcp_setback_controls": ["is_current"],
+    "lga_registry": ["is_active"],
+}
+
+
+def scan_diff_for_unguarded_queries(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed files for SELECT queries against guarded tables missing WHERE guards.
+
+    Reads each changed file, finds references to guarded table names,
+    then checks whether the required guard column appears within the same
+    query block (within 10 lines).
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        # Pre-compute docstring regions for Python files
+        in_docstring = [False] * len(lines)
+        if filepath.endswith(".py"):
+            inside = False
+            for idx, ln in enumerate(lines):
+                s = ln.strip()
+                if s.startswith('"""') or s.startswith("'''"):
+                    # Toggle: opening or closing docstring
+                    delim = s[:3]
+                    count = s.count(delim)
+                    if count == 1:
+                        inside = not inside
+                    # Single-line docstring ("""...""") stays outside
+                in_docstring[idx] = inside or s.startswith('"""') or s.startswith("'''")
+
+        for table_name, guard_cols in GUARDED_TABLES.items():
+            for i, line in enumerate(lines):
+                line_lower = line.lower()
+                # Look for exact table references (not substrings like regulatory_provisions_canonical)
+                if table_name not in line_lower:
+                    continue
+                # Ensure this is the exact table, not a derived/canonical variant
+                if not re.search(rf'\b{re.escape(table_name)}\b', line_lower):
+                    continue
+                # Skip comments, imports, and non-query lines
+                stripped = line.strip()
+                if stripped.startswith(("#", "//", "*", "/*", "import ", "from ")):
+                    continue
+                # Skip lines inside docstrings or string literals
+                if in_docstring[i]:
+                    continue
+                if stripped.startswith(('"""', "'''", '"', "'")):
+                    continue
+                # Skip test files — they mock DB calls
+                if "/test" in filepath.lower() or "\\test" in filepath.lower():
+                    continue
+
+                # Check if this looks like a query context (SQL keywords nearby)
+                query_window = "".join(lines[max(0, i - 3):min(len(lines), i + 10)]).lower()
+                if not any(kw in query_window for kw in ("select", "from", "where", "join")):
+                    continue
+
+                # Now check if at least one required guard column appears in the query window
+                if not any(guard_col in query_window for guard_col in guard_cols):
+                    errors.append(
+                        f"DB guard: {filepath}:{i + 1} references '{table_name}' "
+                        f"but none of {guard_cols} found in query (within ±10 lines). "
+                        f"Add a currency filter (e.g. WHERE {guard_cols[0]} = TRUE) to prevent stale data."
+                    )
+
+    return errors
+
+
+# ─── Layer 5: Unguarded null access scanner ──────────────────────────────────
+
+# Pattern: .rows[0]. without a preceding length/existence check
+ROWS_ACCESS_PATTERN = re.compile(r'\.rows\[0\]')
+# Patterns that indicate the access IS guarded
+NULL_GUARD_PATTERNS = [
+    re.compile(r'\.rows\.length'),
+    re.compile(r'\.rows\?\['),
+    re.compile(r'\.rowCount'),
+    re.compile(r'COUNT\s*\(\s*\*\s*\)', re.IGNORECASE),
+    re.compile(r'INSERT\s+INTO\b.*\bRETURNING\b', re.IGNORECASE | re.DOTALL),
+    re.compile(r'if\s*\(\s*!?\s*\w+\.rows'),
+    re.compile(r'rows\[0\]\?\.'),
+]
+
+
+def scan_diff_for_unguarded_nulls(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/JS files for .rows[0]. access without null guards.
+
+    Checks a ±10 line window around each .rows[0] access for evidence of
+    a prior length check, COUNT(*) query, INSERT RETURNING, or optional chaining.
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        # Only scan TypeScript/JavaScript files (where .rows[0] is used)
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            continue
+        # Skip test files
+        if '/test' in filepath.lower() or '\\test' in filepath.lower():
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            if not ROWS_ACCESS_PATTERN.search(line):
+                continue
+            # Skip comments
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*")):
+                continue
+
+            # Check window for guards
+            window_start = max(0, i - 10)
+            window_end = min(len(lines), i + 5)
+            window_text = "".join(lines[window_start:window_end])
+
+            guarded = any(p.search(window_text) for p in NULL_GUARD_PATTERNS)
+            if not guarded:
+                errors.append(
+                    f"Null guard: {filepath}:{i + 1} accesses .rows[0] without "
+                    f"a prior length check, COUNT(*), INSERT RETURNING, or "
+                    f"optional chaining (?.) in the surrounding code."
+                )
+
+    return errors
+
+
+# ─── Layer 6: Type boundary heuristics ───────────────────────────────────────
+
+# Heuristic A: {value && <JSX>} where value could be 0 or ""
+# This silently renders nothing when value is falsy but non-null (0, "", NaN)
+FALSY_JSX_PATTERN = re.compile(
+    r'\{(\w+(?:\.\w+)*)\s*&&\s*[<(]'
+)
+# Known safe: boolean-only variables
+BOOLEAN_HINTS = re.compile(
+    r'\b(?:is[A-Z_]|has[A-Z_]|show[A-Z_]|can[A-Z_]|should[A-Z_]|loading|error|open|visible|active|disabled|checked|selected|expanded)',
+)
+
+# Heuristic B: === null without also checking undefined
+STRICT_NULL_ONLY = re.compile(
+    r'===\s*null(?!\s*\|\|\s*\w+\s*===\s*undefined)')
+# Patterns that show undefined is also handled
+UNDEFINED_ALSO_CHECKED = [
+    re.compile(r'===?\s*null\s*\|\|\s*\w+\s*===?\s*undefined'),
+    re.compile(r'===?\s*undefined\s*\|\|\s*\w+\s*===?\s*null'),
+    re.compile(r'(?<!=)==\s*null\b'),   # == null (not ===) catches both null and undefined
+    re.compile(r'(?<!!)!=\s*null\b'),  # != null (not !==) catches both
+    re.compile(r'\?\?'),              # nullish coalescing handles both
+    re.compile(r'\?\.\w'),            # optional chaining handles both
+]
+
+
+def scan_diff_for_type_boundaries(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/TSX files for common type boundary issues.
+
+    Heuristic A: {value && <JSX>} with potentially numeric/string values
+                 that could be 0 or "" (falsy but valid).
+    Heuristic B: === null without also checking undefined, in contexts
+                 where the value could be undefined (API responses, optional props).
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+        if 'backup' in fp_lower or 'migrate' in fp_lower:
+            continue
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*")):
+                continue
+            # Allow suppression with // qa-ignore: type-boundary
+            if "qa-ignore" in line and "type-boundary" in line:
+                continue
+
+            # --- Heuristic A: falsy JSX guard ---
+            if filepath.endswith('.tsx') or filepath.endswith('.jsx'):
+                match = FALSY_JSX_PATTERN.search(line)
+                if match:
+                    var_name = match.group(1)
+                    # Skip if the variable name strongly implies boolean
+                    if not BOOLEAN_HINTS.search(var_name):
+                        # Check surrounding context for type hints that show it's numeric
+                        window = "".join(lines[max(0, i - 5):min(len(lines), i + 3)])
+                        # If the variable appears with numeric operations or min/max/count
+                        if re.search(rf'{re.escape(var_name)}.*(?:number|count|min|max|total|value|amount|price|rate|size|width|height|length\b)', window, re.IGNORECASE):
+                            errors.append(
+                                f"Type boundary: {filepath}:{i + 1} uses "
+                                f"'{{{var_name} && <...>}}' but {var_name} may be "
+                                f"numeric (0 is falsy). Use '{{{var_name} != null && <...>}}' "
+                                f"or '{{!!{var_name} && <...>}}' instead."
+                            )
+
+            # --- Heuristic B: strict null without undefined ---
+            if '=== null' in line and '!== null' not in line:
+                # Check window for undefined also being handled
+                window = "".join(lines[max(0, i - 3):min(len(lines), i + 3)])
+                handled = any(p.search(window) for p in UNDEFINED_ALSO_CHECKED)
+                if not handled:
+                    # Check if this is in a type guard context (function return, not conditional)
+                    if re.search(r'if\s*\(|[?:]|\|\|', line):
+                        errors.append(
+                            f"Type boundary: {filepath}:{i + 1} uses '=== null' but "
+                            f"API/DB values can also be undefined. Use '== null' "
+                            f"(catches both) or add explicit undefined check."
+                        )
+
+    return errors
+
+
+# ─── Layer 7: Silent failure mode heuristics ─────────────────────────────────
+
+# Heuristic C: empty or swallowing catch blocks
+CATCH_PATTERN = re.compile(r'\bcatch\s*\(\s*\w*\s*\)\s*\{')
+
+# Heuristic D: catch blocks returning 200 with empty data
+CATCH_SUCCESS_PATTERNS = [
+    re.compile(r'NextResponse\.json\s*\(\s*\{'),
+    re.compile(r'res\.(?:json|send|status\s*\(\s*200\s*\))'),
+    re.compile(r'return\s+\{'),
+    re.compile(r'return\s+\[\s*\]'),
+    re.compile(r'return\s+null\b'),
+]
+
+
+def scan_diff_for_silent_failures(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/JS files for silent failure patterns.
+
+    Heuristic C: empty catch blocks or catch blocks that only log
+                 without rethrowing or returning an error response.
+    Heuristic D: catch blocks that return 200/success with empty data,
+                 masking the error from the caller.
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx', '.py')):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+        if 'backup' in fp_lower or 'migrate' in fp_lower:
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+                lines = content.split('\n')
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*", "#")):
+                continue
+            if "qa-ignore" in line and "silent-failure" in line:
+                continue
+
+            # --- Heuristic C: empty/swallowing catch blocks ---
+            if CATCH_PATTERN.search(line):
+                # Find the catch block's opening { and track from there.
+                # The line may start with } from the try block (e.g. "} catch (e) {"),
+                # so we locate the catch keyword's { specifically.
+                match = CATCH_PATTERN.search(line)
+                # Start brace depth at 1 (we found the opening {)
+                # and scan from the next line forward.
+                brace_depth = 1
+                body_lines = []
+                for j in range(i + 1, min(len(lines), i + 20)):
+                    for ch in lines[j]:
+                        if ch == '{':
+                            brace_depth += 1
+                        elif ch == '}':
+                            brace_depth -= 1
+                            if brace_depth == 0:
+                                break
+                    if brace_depth == 0:
+                        break
+                    body_lines.append(lines[j])
+
+                body_text = "\n".join(body_lines)
+                body_stripped = body_text.strip()
+
+                # Empty catch block — only flag in API routes where silence = user impact
+                if not body_stripped or body_stripped == '}':
+                    if 'route' in fp_lower or 'api' in fp_lower:
+                        errors.append(
+                            f"Silent failure: {filepath}:{i + 1} has an empty catch block. "
+                            f"Errors are swallowed silently. Add error logging, rethrow, "
+                            f"or return an error response."
+                        )
+                    continue
+
+                # Catch block that only logs (no throw, no error return)
+                has_throw = bool(re.search(r'\bthrow\b', body_text))
+                has_error_response = bool(re.search(
+                    r'status\s*\(\s*[45]\d\d\s*\)|(?<!console)\.error\s*\(|NextResponse\.json\s*\([^)]*\{[^}]*error',
+                    body_text
+                ))
+                has_rethrow = has_throw or has_error_response
+                has_log_only = bool(re.search(
+                    r'console\.\w+|logger\.\w+|logging\.\w+|print\s*\(', body_text
+                ))
+
+                if has_log_only and not has_rethrow:
+                    # Check if this is in an API route (where silent = user sees nothing)
+                    if 'route' in filepath.lower() or 'api' in filepath.lower():
+                        errors.append(
+                            f"Silent failure: {filepath}:{i + 1} catch block only logs "
+                            f"but doesn't return an error response or rethrow. "
+                            f"In API routes, this means the user gets no indication of failure."
+                        )
+
+            # --- Heuristic D: catch returning success with empty data ---
+            # Only flag in route/API files where this pattern matters
+            if ('route' in fp_lower or 'api' in fp_lower):
+                if CATCH_PATTERN.search(line):
+                    # Reuse body_text from Heuristic C if we already parsed it
+                    catch_body_d = body_text if CATCH_PATTERN.search(line) and body_text else ""
+                    if not catch_body_d:
+                        catch_body_d = "\n".join(lines[i + 1:min(len(lines), i + 10)])
+                    for sp in CATCH_SUCCESS_PATTERNS:
+                        if sp.search(catch_body_d):
+                            # Check it's not already returning an error status
+                            if not re.search(r'status\s*\(\s*[45]\d\d\s*\)', catch_body_d):
+                                if not re.search(r'\berror\b.*:', catch_body_d):
+                                    errors.append(
+                                        f"Silent failure: {filepath}:{i + 1} catch block "
+                                        f"returns success/data instead of an error response. "
+                                        f"Callers won't know the operation failed."
+                                    )
+                                    break
+
+    return errors
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -369,8 +763,75 @@ def validate_report(
     if diff_files:
         errors.extend(check_diff_coverage(files, diff_files))
 
+        # --- Tier floor: prevent Minor classification on large changes ---
+        substantive_diff = [
+            f for f in diff_files
+            if not f.startswith(".") and not f.endswith((".json", ".md", ".txt", ".yml", ".yaml"))
+            and "config" not in f.lower()
+        ]
+        if tier == "minor" and len(substantive_diff) > 3:
+            errors.append(
+                f"Tier floor: {len(substantive_diff)} substantive files changed — "
+                f"'minor' tier requires <= 3. Reclassify as 'standard' or 'critical'."
+            )
+
+    # --- Commit hash binding: detect stale/copied reports ---
+    # The report hash must match a recent commit on the branch (within last 5).
+    # This avoids the chicken-and-egg problem: committing the report changes HEAD,
+    # so we accept any hash from the recent branch history, not just HEAD exactly.
+    report_hash = report.get("commit_hash", "")
+    if report_hash:
+        try:
+            result = subprocess.run(
+                ["git", "log", "--format=%h", "-5"],
+                capture_output=True, text=True, timeout=5,
+                cwd=project_dir or "."
+            )
+            recent_hashes = result.stdout.strip().split("\n")
+            if recent_hashes and report_hash not in recent_hashes:
+                errors.append(
+                    f"Commit hash mismatch: report says '{report_hash}' but recent "
+                    f"commits are {recent_hashes[:3]}. Regenerate the QA report."
+                )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass  # Can't verify — don't block
+    elif tier in ("standard", "critical"):
+        errors.append(
+            "Missing commit_hash in report. Add \"commit_hash\": \"<short-hash>\" "
+            "matching the current HEAD. Run: git rev-parse --short HEAD"
+        )
+
+    # --- DB guard column scanner: detect unguarded queries in changed files ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_unguarded_queries(diff_files, project_dir))
+
+    # --- Null guard scanner: detect .rows[0] without length checks ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_unguarded_nulls(diff_files, project_dir))
+
+    # --- Type boundary scanner: detect falsy JSX guards and strict null checks ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_type_boundaries(diff_files, project_dir))
+
+    # --- Silent failure scanner: detect empty catches and success-on-error ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_silent_failures(diff_files, project_dir))
+
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
+
+    # --- Break-it repro field: force specificity ---
+    if tier in ("standard", "critical") and break_it:
+        missing_repro = [
+            i for i, s in enumerate(break_it)
+            if not s.get("repro")
+        ]
+        if missing_repro:
+            errors.append(
+                f"Section 6: break-it scenarios {missing_repro} missing 'repro' field. "
+                f"Each scenario needs a concrete reproduction step (curl, pytest command, "
+                f"SQL query, or UI action that would trigger the failure)."
+            )
 
     # --- Build summary ---
     n_functions = len(report.get("functions", [])) if isinstance(report.get("functions"), list) else 0
@@ -429,10 +890,10 @@ def main():
 
     # Auto-detect project dir if not specified
     if not project_dir:
-        # Walk up from report file to find .git
+        # Walk up from report file to find .git (dir or file — worktrees use a file)
         check = os.path.dirname(os.path.abspath(report_path))
         for _ in range(10):
-            if os.path.isdir(os.path.join(check, ".git")):
+            if os.path.exists(os.path.join(check, ".git")):
                 project_dir = check
                 break
             parent = os.path.dirname(check)

@@ -296,9 +296,20 @@ def test_happy_path_returns_correct_values():
 
 
 # ---------------------------------------------------------------------------
-# _clip_panels_to_lot
+# _clip_panels_to_lot — requires shapely
 # ---------------------------------------------------------------------------
 
+_has_shapely = False
+try:
+    import shapely  # noqa: F401
+    _has_shapely = True
+except ImportError:
+    pass
+
+_skip_no_shapely = pytest.mark.skipif(not _has_shapely, reason="shapely not installed")
+
+
+@_skip_no_shapely
 def test_all_panels_inside_lot_preserves_count():
     sp = dict(_NORMAL_SP)
     sp["solarPanels"] = [_PANEL_INSIDE, _PANEL_INSIDE]
@@ -307,6 +318,7 @@ def test_all_panels_inside_lot_preserves_count():
     assert result["_lot_clipped"] is True
 
 
+@_skip_no_shapely
 def test_all_panels_outside_lot_returns_zero():
     sp = dict(_NORMAL_SP)
     sp["solarPanels"] = [_PANEL_OUTSIDE, _PANEL_OUTSIDE]
@@ -316,6 +328,7 @@ def test_all_panels_outside_lot_returns_zero():
     assert result["_lot_clipped"] is True
 
 
+@_skip_no_shapely
 def test_mixed_panels_counts_only_inside():
     sp = dict(_NORMAL_SP)
     sp["solarPanels"] = [_PANEL_INSIDE, _PANEL_OUTSIDE, _PANEL_INSIDE]
@@ -323,6 +336,7 @@ def test_mixed_panels_counts_only_inside():
     assert result["maxArrayPanelsCount"] == 2
 
 
+@_skip_no_shapely
 def test_null_yearly_energy_per_panel_no_crash():
     """yearlyEnergyDcKwh=None on a panel must not raise — should count as 0."""
     panel_null_kwh = {
@@ -336,6 +350,7 @@ def test_null_yearly_energy_per_panel_no_crash():
     assert result["_lot_annual_kwh"] == 0.0
 
 
+@_skip_no_shapely
 def test_malformed_panel_missing_center_skipped():
     """Panel without center key should be skipped, not crash."""
     bad_panel = {"segmentIndex": 0, "yearlyEnergyDcKwh": 400.0}
@@ -346,6 +361,7 @@ def test_malformed_panel_missing_center_skipped():
     assert result["maxArrayPanelsCount"] == 1
 
 
+@_skip_no_shapely
 def test_null_max_array_panels_count_no_crash():
     """maxArrayPanelsCount=null in the response must not cause TypeError."""
     sp = dict(_NORMAL_SP)
@@ -356,6 +372,7 @@ def test_null_max_array_panels_count_no_crash():
     assert result["maxArrayPanelsCount"] == 1
 
 
+@_skip_no_shapely
 def test_empty_panels_list_returns_sp_unchanged():
     sp = dict(_NORMAL_SP)
     sp["solarPanels"] = []
@@ -364,6 +381,7 @@ def test_empty_panels_list_returns_sp_unchanged():
     assert "_lot_clipped" not in result
 
 
+@_skip_no_shapely
 def test_invalid_lot_polygon_returns_sp_unchanged():
     sp = dict(_NORMAL_SP)
     bad_polygon = {"type": "Polygon", "coordinates": "not_a_list"}
@@ -371,6 +389,7 @@ def test_invalid_lot_polygon_returns_sp_unchanged():
     assert "_lot_clipped" not in result
 
 
+@_skip_no_shapely
 def test_kwh_sum_correct_for_inside_panels():
     panel_a = {**_PANEL_INSIDE, "yearlyEnergyDcKwh": 300.0}
     panel_b = {**_PANEL_INSIDE, "yearlyEnergyDcKwh": 250.0}
@@ -380,6 +399,7 @@ def test_kwh_sum_correct_for_inside_panels():
     assert result["_lot_annual_kwh"] == 550.0
 
 
+@_skip_no_shapely
 def test_zero_total_area_uses_per_panel_fallback():
     """maxArrayAreaMeters2=0 should not produce 0-area panels — uses 2.0m² fallback."""
     sp = dict(_NORMAL_SP)
@@ -394,6 +414,7 @@ def test_zero_total_area_uses_per_panel_fallback():
 # Round-trip: _parse_solar_response with lot clipping
 # ---------------------------------------------------------------------------
 
+@_skip_no_shapely
 def test_parse_with_lot_clipping_uses_lot_kwh():
     """When lot_polygon_wgs84 is provided and panels are inside, annual_kwh comes from per-panel sum."""
     panel = {**_PANEL_INSIDE, "yearlyEnergyDcKwh": 500.0}
@@ -404,6 +425,7 @@ def test_parse_with_lot_clipping_uses_lot_kwh():
     assert out.annual_kwh_estimate == 500.0
 
 
+@_skip_no_shapely
 def test_parse_with_lot_clipping_no_panels_in_lot():
     """All panels outside lot → annual_kwh=0, coverage_available still True."""
     sp = dict(_NORMAL_SP)

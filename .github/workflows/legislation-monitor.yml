@@ -1,9 +1,9 @@
 name: Legislation Monitor
 
 on:
-  schedule:
-    # Every Monday 08:00 UTC (18:00 AEST)
-    - cron: "0 8 * * 1"
+  # Schedule disabled — moved to Railway cron (see docs/RAILWAY_MONITORS.md)
+  # schedule:
+  #   - cron: "0 8 * * 1"
   workflow_dispatch:
 
 env:

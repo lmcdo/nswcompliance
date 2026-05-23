@@ -1,0 +1,23 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Only psycopg2 needs build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/requirements-monitor.txt ./requirements-monitor.txt
+RUN pip install --no-cache-dir -r requirements-monitor.txt
+
+# Copy monitor scripts + hub scrapers
+COPY scripts/satellite_freshness_monitor.py ./scripts/satellite_freshness_monitor.py
+COPY scripts/legislation_monitor.py ./scripts/legislation_monitor.py
+COPY scripts/r2_monitor.py ./scripts/r2_monitor.py
+COPY scripts/dcp_watchdog.py ./scripts/dcp_watchdog.py
+COPY scripts/hub_scrapers/ ./scripts/hub_scrapers/
+COPY scripts/run_monitors.py ./scripts/run_monitors.py
+
+ENV PYTHONPATH=/app:/app/scripts

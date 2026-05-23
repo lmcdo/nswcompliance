@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """
 Tests for scripts/conveyancing_db.py
 

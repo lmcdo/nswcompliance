@@ -1,6 +1,7 @@
 {
   "tier": "standard",
   "justification": "Why this tier, not the one above or below",
+  "commit_hash": "run: git rev-parse --short HEAD",
   "files": ["path/to/changed/file.py"],
   "pre_impl": {
     "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
@@ -42,7 +43,8 @@
       "scenario": "concrete way this produces wrong results",
       "what_happens": "what the user sees or what data is corrupted",
       "mitigated": true,
-      "how": "file.py:72 — explanation of mitigation"
+      "how": "file.py:72 — explanation of mitigation",
+      "repro": "curl/pytest/SQL/UI step that triggers this failure"
     }
   ],
   "post_merge": {

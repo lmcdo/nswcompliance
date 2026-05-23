@@ -492,6 +492,9 @@ scripts/
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
+!scripts/satellite_freshness_monitor.py
+!scripts/run_monitors.py
+!scripts/numeric_control_review.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py
@@ -549,3 +552,4 @@ data/lep-html/
 
 # Climate risk intelligence — reference PDFs (future product, not compliance engine core)
 climate_risk_intel/
+temp_dcp_pdfs/

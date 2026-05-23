@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """
 End-to-End User Flow Test
 

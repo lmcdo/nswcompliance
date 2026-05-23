@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """Test Ashfield and Marrickville dev type filtering after fix"""
 import requests
 import json

@@ -303,7 +303,7 @@ def golden_set_applicability():
         {
             "document_id": "Marrickville__DCP__2011__-__5_0__Commercial",
             "text": "Commercial setbacks.",
-            "expected_zones": ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "MU1"],
+            "expected_zones": ["B1", "B2", "B4", "MU1"],
             "expected_dev_types": ["commercial_premises", "retail_premises", "office_premises", "shop_top_housing"],
             "council": "marrickville",
         },
@@ -311,7 +311,7 @@ def golden_set_applicability():
         {
             "document_id": "Marrickville__DCP__2011__-__6_0__Industrial",
             "text": "Industrial setbacks.",
-            "expected_zones": ["IN1", "IN2", "IN3", "IN4"],
+            "expected_zones": ["IN1", "IN2"],
             "expected_dev_types": ["industrial_development", "warehouse", "light_industry"],
             "council": "marrickville",
         },

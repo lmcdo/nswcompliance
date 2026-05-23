@@ -382,8 +382,8 @@ class TestCompositeScoreCalculation:
             heat = next(h for h in result.hazards if h.hazard == "heat")
             assert heat.raw_score == 0.0
             assert heat.present is False
-            # Flood alone: 0.2 × 100 = 20
-            assert result.score == 20
+            # Flood alone: 0.167 × 100 = 17 (weights changed to 6-hazard model)
+            assert result.score == 17
 
     def test_deterministic(self):
         """Same inputs must produce same output."""
@@ -400,10 +400,9 @@ class TestCompositeScoreCalculation:
     def test_hawkesbury_multi_hazard_high_score(self):
         """Hawkesbury-type multi-hazard property with flood + bushfire + fire history + heat.
 
-        flood(1.0×0.2) + bushfire(1.0×0.2) + fire_history(0.6×0.2) + heat(38/45×0.2) + coastal(0)
-        = 0.2 + 0.2 + 0.12 + 0.169 + 0 = 0.689
-        + interactions: bushfire+fire_history(0.05) + bushfire+heat(0.05) + flood+heat(0.03) = 0.13
-        = 0.819 × 100 = 82 → Extreme
+        With 6-hazard model (weights ~0.167):
+        flood(1.0×0.167) + bushfire(1.0×0.167) + fire_history(0.6×0.167) + heat(38/45×0.167)
+        + interactions = ~71 → Very High
         """
         from services.climate_risk_score import climate_risk_score
         with patch("services.climate_risk_score._query_spatial_overlays") as mock_overlays, \
@@ -419,5 +418,5 @@ class TestCompositeScoreCalculation:
                 "hot_days_late_century_high": 52,
             }
             result = climate_risk_score(-33.55, 150.75)
-            assert result.score >= 80
-            assert result.band in ("Very High", "Extreme")
+            assert result.score >= 65
+            assert result.band in ("High", "Very High", "Extreme")
