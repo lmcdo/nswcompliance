@@ -1,91 +1,80 @@
 {
   "tier": "standard",
-  "justification": "Data-only insert script, single file, follows established insert pattern. No frontend changes, no schema changes.",
-  "commit_hash": "",
-  "files": ["scripts/insert_private_open_space.py"],
+  "justification": "Adds null guard scanner to qa_gate.py, post-commit hash stamping hook, and insert script test suite. Changes validation rules gating all future pushes.",
+  "commit_hash": "f31311d1",
+  "files": ["scripts/qa_gate.py", ".githooks/post-commit", "tests/test_insert_scripts.py"],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls table — 999 existing rows, 0 existing private_open_space rows",
-    "assumption_mismatch": "If lga values don't match existing lga values in table, rows insert but won't join to frontend queries. Mitigated: all lga values taken from existing DISTINCT lga list.",
-    "new_vs_existing": "New rows only — INSERT with dedup check (SELECT before INSERT). No UPDATE on existing rows.",
-    "external_source_error": "N/A — no external API calls",
-    "frontend_type": "N/A — private_open_space already registered in CONTROL_CATEGORIES (Phase 1)",
-    "user_failure_mode": "N/A — data appears in existing structured controls UI automatically"
+    "existing_data": "qa_gate.py has DB guard scanner, AST grounding, tier floor, commit hash binding, break-it repro. Adding null guard scanner on top.",
+    "assumption_mismatch": "Null guard scanner checks .rows[0] access patterns. Could false-positive on non-DB .rows arrays (e.g. CSV parsing). Mitigated by only scanning .ts/.tsx/.js/.jsx files.",
+    "new_vs_existing": "New checks apply to all future pushes. Post-commit hook patches existing .qa_report.json files. Tests validate existing insert scripts retroactively."
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "insert_private_open_space.py:444",
-      "input": "POS_ROWS list (43 dicts) + command line args (--dry-run)",
-      "output": "INSERT into dcp_setback_controls, console summary",
-      "if_none": "DATABASE_URL missing — psycopg2.OperationalError raised immediately"
+      "name": "scan_diff_for_unguarded_nulls",
+      "file_line": "scripts/qa_gate.py:346",
+      "input": "diff_files list of relative paths, project_dir string for resolving full paths",
+      "output": "list of error strings for each unguarded .rows[0] access found in TS/JS files",
+      "if_none": "empty diff_files or missing project_dir returns empty list (no false failures)"
+    },
+    {
+      "name": "_load_rows",
+      "file_line": "tests/test_insert_scripts.py:52",
+      "input": "script_name string (e.g. 'insert_solar_access_hours'), var_name string (e.g. 'SOLAR_ROWS')",
+      "output": "list of dicts from module-level variable, loaded without executing main()",
+      "if_none": "Returns empty list if module or variable not found"
     }
   ],
   "values": [
     {
-      "value": "POS_ROWS[*].lga",
-      "read_at": "insert_private_open_space.py:68-430",
-      "nullable": "no — all hardcoded strings",
-      "guard_at": "N/A — hardcoded",
-      "if_missing": "INSERT would fail on NOT NULL constraint"
+      "value": "ROWS_ACCESS_PATTERN",
+      "read_at": "scripts/qa_gate.py:333",
+      "nullable": "no — compiled regex constant",
+      "guard_at": "N/A — always present",
+      "if_missing": "Scanner would find no .rows[0] accesses, all pass silently"
     },
     {
-      "value": "POS_ROWS[*].value_min",
-      "read_at": "insert_private_open_space.py:68-430",
-      "nullable": "no — all hardcoded integers",
-      "guard_at": "N/A — hardcoded",
-      "if_missing": "INSERT would fail on NOT NULL constraint"
+      "value": "NULL_GUARD_PATTERNS",
+      "read_at": "scripts/qa_gate.py:335",
+      "nullable": "no — list of compiled regexes",
+      "guard_at": "N/A — always present",
+      "if_missing": "All .rows[0] accesses flagged as unguarded (false positives)"
     },
     {
-      "value": "applicability",
-      "read_at": "insert_private_open_space.py:481",
-      "nullable": "no — computed from needs_review flag",
-      "guard_at": "insert_private_open_space.py:481 — ternary based on needs_review",
-      "if_missing": "CHECK constraint violation (dcp_setback_controls_applicability_check)"
+      "value": "ALL_LGAS",
+      "read_at": "tests/test_insert_scripts.py:40",
+      "nullable": "no — hardcoded set of 28 LGA slugs",
+      "guard_at": "N/A — module constant",
+      "if_missing": "LGA validation tests would have no reference set"
     }
   ],
-  "queries": [
-    {
-      "purpose": "Dedup check — prevent duplicate POS rows for same lga+dev_type+condition",
-      "file_line": "insert_private_open_space.py:461",
-      "where_clause": "WHERE lga = %s AND control_type = 'private_open_space' AND dev_type = %s AND condition = %s AND is_current = TRUE",
-      "if_zero": "Proceeds with INSERT — correct behavior for first run",
-      "if_wrong": "False positive dup detection would skip valid insert; mitigated by matching on condition string which is unique per row"
-    },
-    {
-      "purpose": "INSERT new POS control row",
-      "file_line": "insert_private_open_space.py:473",
-      "where_clause": "N/A — INSERT statement",
-      "if_zero": "N/A",
-      "if_wrong": "Wrong values would be stored; mitigated by hardcoded data verified against DCP provision text"
-    }
-  ],
+  "queries": "N/A — no database queries in this change",
   "break_it": [
     {
-      "scenario": "Run script twice — duplicate rows inserted",
-      "what_happens": "Double-counted POS controls in frontend",
+      "scenario": "TS file uses .rows[0] for a non-DB array (e.g. CSV rows)",
+      "what_happens": "False positive — scanner flags a safe access as unguarded",
       "mitigated": true,
-      "how": "insert_private_open_space.py:461 — dedup SELECT checks lga+control_type+dev_type+condition before INSERT",
-      "repro": "python scripts/insert_private_open_space.py && python scripts/insert_private_open_space.py — second run should show 43 skipped, 0 inserted"
+      "how": "scripts/qa_gate.py:352 — only scans .ts/.tsx/.js/.jsx files; non-DB .rows arrays are rare in frontend code and can be suppressed with .rows[0]?. pattern",
+      "repro": "Create a .ts file with 'const x = csvRows.rows[0].col' and run scan_diff_for_unguarded_nulls(['test.ts'], '.')"
     },
     {
-      "scenario": "applicability value doesn't match CHECK constraint",
-      "what_happens": "psycopg2.errors.CheckViolation — entire transaction fails, no rows inserted",
+      "scenario": "Post-commit hook enters infinite loop (amend triggers post-commit again)",
+      "what_happens": "Git hangs on commit in an infinite amend loop",
       "mitigated": true,
-      "how": "insert_private_open_space.py:481 — only uses 'development_specific' or 'universal_residential', both in CHECK constraint enum",
-      "repro": "grep -n applicability insert_private_open_space.py — verify only valid enum values"
+      "how": ".githooks/post-commit:24 — uses POST_COMMIT_HASH_LOCK file; if lock exists, hook exits immediately and removes lock",
+      "repro": "git commit with .qa_report.json containing commit_hash field — should amend once and stop"
     },
     {
-      "scenario": "Wrong value_min for a council (e.g. Hornsby 16m2 should be 24m2)",
-      "what_happens": "Users see incorrect POS requirement — could under/overestimate feasibility",
+      "scenario": "Insert script adds a new LGA not in ALL_LGAS test constant",
+      "what_happens": "test_lga_values_valid fails — alerts developer to update test set",
       "mitigated": true,
-      "how": "All verified values cross-checked against regulatory_provisions text; unverified councils marked needs_review=TRUE with review_reason='standard_pattern_assumed'",
-      "repro": "SELECT lga, value_min, needs_review FROM dcp_setback_controls WHERE control_type = 'private_open_space' AND is_current = TRUE ORDER BY lga"
+      "how": "tests/test_insert_scripts.py:40 — ALL_LGAS must be updated when new councils are onboarded. Test failure is the desired behavior.",
+      "repro": "Add a row with lga='new_council' to POS_ROWS, run pytest tests/test_insert_scripts.py -v"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Check /api/dcp/structured-controls for any council — private_open_space should appear in Open Space category"
+    "manual_verify": "No"
   }
 }

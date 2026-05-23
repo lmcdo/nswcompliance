@@ -1,0 +1,47 @@
+#!/bin/sh
+# post-commit hook — stamps the commit hash into .qa_report.json
+#
+# Solves the chicken-and-egg problem: you can't know the commit hash
+# before committing, but the QA report needs to reference the commit
+# it ships with. This hook patches the hash into the report and amends
+# the commit silently.
+#
+# Only runs if .qa_report.json exists and has a commit_hash field.
+
+QA_REPORT=".qa_report.json"
+
+# Skip if no report
+[ -f "$QA_REPORT" ] || exit 0
+
+# Skip during rebase/merge (avoid infinite amend loops)
+[ -d "$(git rev-parse --git-dir)/rebase-merge" ] && exit 0
+[ -d "$(git rev-parse --git-dir)/rebase-apply" ] && exit 0
+[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ] && exit 0
+
+# Skip if this IS an amend from the post-commit hook itself (prevent recursion)
+# We use a lock file to detect this
+LOCK_FILE="$(git rev-parse --git-dir)/POST_COMMIT_HASH_LOCK"
+if [ -f "$LOCK_FILE" ]; then
+    rm -f "$LOCK_FILE"
+    exit 0
+fi
+
+# Get the current commit short hash
+HASH=$(git rev-parse --short HEAD)
+
+# Check if report has a commit_hash field
+if grep -q '"commit_hash"' "$QA_REPORT" 2>/dev/null; then
+    # Check if hash is already correct (no need to amend)
+    CURRENT_HASH=$(grep '"commit_hash"' "$QA_REPORT" | sed 's/.*: *"\([^"]*\)".*/\1/')
+    if [ "$CURRENT_HASH" = "$HASH" ]; then
+        exit 0
+    fi
+
+    # Stamp the hash using sed
+    sed -i "s/\"commit_hash\": *\"[^\"]*\"/\"commit_hash\": \"$HASH\"/" "$QA_REPORT"
+
+    # Stage and amend
+    touch "$LOCK_FILE"
+    git add "$QA_REPORT"
+    git commit --amend --no-edit --no-verify
+fi

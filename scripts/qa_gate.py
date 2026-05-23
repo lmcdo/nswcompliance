@@ -327,6 +327,76 @@ def scan_diff_for_unguarded_queries(
     return errors
 
 
+# ─── Layer 5: Unguarded null access scanner ──────────────────────────────────
+
+# Pattern: .rows[0]. without a preceding length/existence check
+ROWS_ACCESS_PATTERN = re.compile(r'\.rows\[0\]')
+# Patterns that indicate the access IS guarded
+NULL_GUARD_PATTERNS = [
+    re.compile(r'\.rows\.length'),
+    re.compile(r'\.rows\?\['),
+    re.compile(r'\.rowCount'),
+    re.compile(r'COUNT\s*\(\s*\*\s*\)', re.IGNORECASE),
+    re.compile(r'INSERT\s+INTO\b.*\bRETURNING\b', re.IGNORECASE | re.DOTALL),
+    re.compile(r'if\s*\(\s*!?\s*\w+\.rows'),
+    re.compile(r'rows\[0\]\?\.'),
+]
+
+
+def scan_diff_for_unguarded_nulls(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/JS files for .rows[0]. access without null guards.
+
+    Checks a ±10 line window around each .rows[0] access for evidence of
+    a prior length check, COUNT(*) query, INSERT RETURNING, or optional chaining.
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        # Only scan TypeScript/JavaScript files (where .rows[0] is used)
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            continue
+        # Skip test files
+        if '/test' in filepath.lower() or '\\test' in filepath.lower():
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        for i, line in enumerate(lines):
+            if not ROWS_ACCESS_PATTERN.search(line):
+                continue
+            # Skip comments
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*")):
+                continue
+
+            # Check window for guards
+            window_start = max(0, i - 10)
+            window_end = min(len(lines), i + 5)
+            window_text = "".join(lines[window_start:window_end])
+
+            guarded = any(p.search(window_text) for p in NULL_GUARD_PATTERNS)
+            if not guarded:
+                errors.append(
+                    f"Null guard: {filepath}:{i + 1} accesses .rows[0] without "
+                    f"a prior length check, COUNT(*), INSERT RETURNING, or "
+                    f"optional chaining (?.) in the surrounding code."
+                )
+
+    return errors
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -477,6 +547,10 @@ def validate_report(
     # --- DB guard column scanner: detect unguarded queries in changed files ---
     if diff_files and project_dir:
         errors.extend(scan_diff_for_unguarded_queries(diff_files, project_dir))
+
+    # --- Null guard scanner: detect .rows[0] without length checks ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_unguarded_nulls(diff_files, project_dir))
 
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
