@@ -1,16 +1,57 @@
 #!/bin/sh
-# pre-push hook — runs Python unit tests before allowing push.
+# pre-push hook — runs automated checks before allowing push.
 # To bypass in an emergency: git push --no-verify
+#
+# Checks:
+#   1. Python unit tests (369+ tests)
+#   2. QA report validation (structure, AST grounding, depth)
+#   3. Liability language scan on changed user-facing files
 
-echo "Running Python unit tests..."
+set -e
+
+# ── 1. Python unit tests ─────────────────────────────────────────────────────
+
+echo "=== [1/3] Running Python unit tests ==="
 python -m pytest tests/ -x -q --tb=short 2>&1
-RESULT=$?
+echo ""
 
-if [ $RESULT -ne 0 ]; then
+# ── 2. QA report validation ──────────────────────────────────────────────────
+
+echo "=== [2/3] Validating QA report ==="
+if [ -f .qa_report.json ]; then
+  # Auto-detect changed files vs main so qa_gate can verify diff coverage
+  DIFF_FILES=$(git diff --name-only origin/main...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
+  QA_ARGS=".qa_report.json"
+  if [ -n "$DIFF_FILES" ]; then
+    QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
+  fi
+  python scripts/qa_gate.py $QA_ARGS 2>&1
+  QA_RESULT=$?
+  if [ $QA_RESULT -ne 0 ]; then
+    echo ""
+    echo "QA report validation FAILED. Push blocked."
+    echo "Fix .qa_report.json and re-run: python scripts/qa_gate.py .qa_report.json"
+    exit 1
+  fi
+else
+  echo "WARNING: No .qa_report.json found. Skipping QA validation."
+  echo "  Create one before committing non-trivial changes."
+fi
+echo ""
+
+# ── 3. Liability language check ──────────────────────────────────────────────
+
+echo "=== [3/3] Scanning for liability language ==="
+
+# Scan only NEW lines in user-facing files (not existing reviewed code)
+python scripts/liability_language_check.py --diff-base origin/main 2>&1
+LANG_RESULT=$?
+if [ $LANG_RESULT -ne 0 ]; then
   echo ""
-  echo "Python tests FAILED. Push blocked."
-  echo "Fix tests or bypass with: git push --no-verify"
+  echo "Liability language check FAILED. Push blocked."
+  echo "Review flagged terms above. See docs/qa/language-audit-2026-05-18.md"
   exit 1
 fi
 
-echo "All tests passed."
+echo ""
+echo "All pre-push checks passed."

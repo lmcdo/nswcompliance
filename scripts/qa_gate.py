@@ -19,6 +19,7 @@ Exit codes:
 
 import ast
 import json
+import subprocess
 import sys
 import os
 import re
@@ -369,6 +370,44 @@ def validate_report(
     if diff_files:
         errors.extend(check_diff_coverage(files, diff_files))
 
+        # --- Tier floor: prevent Minor classification on large changes ---
+        substantive_diff = [
+            f for f in diff_files
+            if not f.startswith(".") and not f.endswith((".json", ".md", ".txt", ".yml", ".yaml"))
+            and "config" not in f.lower()
+        ]
+        if tier == "minor" and len(substantive_diff) > 3:
+            errors.append(
+                f"Tier floor: {len(substantive_diff)} substantive files changed — "
+                f"'minor' tier requires <= 3. Reclassify as 'standard' or 'critical'."
+            )
+
+    # --- Commit hash binding: detect stale/copied reports ---
+    # The report hash must match a recent commit on the branch (within last 5).
+    # This avoids the chicken-and-egg problem: committing the report changes HEAD,
+    # so we accept any hash from the recent branch history, not just HEAD exactly.
+    report_hash = report.get("commit_hash", "")
+    if report_hash:
+        try:
+            result = subprocess.run(
+                ["git", "log", "--format=%h", "-5"],
+                capture_output=True, text=True, timeout=5,
+                cwd=project_dir or "."
+            )
+            recent_hashes = result.stdout.strip().split("\n")
+            if recent_hashes and report_hash not in recent_hashes:
+                errors.append(
+                    f"Commit hash mismatch: report says '{report_hash}' but recent "
+                    f"commits are {recent_hashes[:3]}. Regenerate the QA report."
+                )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass  # Can't verify — don't block
+    elif tier in ("standard", "critical"):
+        errors.append(
+            "Missing commit_hash in report. Add \"commit_hash\": \"<short-hash>\" "
+            "matching the current HEAD. Run: git rev-parse --short HEAD"
+        )
+
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
 
@@ -429,10 +468,10 @@ def main():
 
     # Auto-detect project dir if not specified
     if not project_dir:
-        # Walk up from report file to find .git
+        # Walk up from report file to find .git (dir or file — worktrees use a file)
         check = os.path.dirname(os.path.abspath(report_path))
         for _ in range(10):
-            if os.path.isdir(os.path.join(check, ".git")):
+            if os.path.exists(os.path.join(check, ".git")):
                 project_dir = check
                 break
             parent = os.path.dirname(check)
