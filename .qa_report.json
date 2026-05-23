@@ -1,86 +1,175 @@
 {
   "tier": "standard",
-  "justification": "Frontend + API change: adds data_status field to structured controls API, three-state visual rendering in component. Fixes value_min=0 falsy bug. No DB schema changes.",
+  "justification": "New data pipeline + new DB table. Not Critical because no user-facing output, payments, or legal compliance text.",
   "files": [
-    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx"
+    "scripts/ingest_cadastre.py",
+    "db-clean-tasks/migrations/20260523_nsw_cadastre_lots.sql"
   ],
   "pre_impl": {
-    "existing_data": "API previously returned no needs_review info. Frontend showed grey dash for all NULL values regardless of reason.",
-    "assumption_mismatch": "value_min=0 was treated as null (falsy check). Fixed to != null check.",
-    "new_vs_existing": "Adds data_status field to API response. Backward compatible — component falls back to hasNumericValue check if data_status missing."
+    "existing_data": "New table nsw_cadastre_lots — no existing table. PostGIS extension already enabled.",
+    "assumption_mismatch": "FeatureServer field names wrong → 400 error on query. Verified field names against layer metadata (29 fields, all lowercase except Shape__*).",
+    "new_vs_existing": "N/A — new table. Re-runs use UPSERT on lotidstring unique constraint, idempotent."
   },
   "functions": [
     {
-      "name": "GET",
-      "file_line": "frontend-nextjs/app/api/dcp/structured-controls/route.ts:114",
-      "input": "council slug + dev_type query params",
-      "output": "JSON with categories[].controls[].data_status field added",
-      "if_none": "If needs_review column missing from DB, row.needs_review is undefined, treated as false — falls back to not_applicable"
+      "name": "get_count",
+      "file_line": "ingest_cadastre.py:76",
+      "input": "str WHERE clause plus optional spatial params dict from CLI args",
+      "output": "int record count from FeatureServer returnCountOnly query response",
+      "if_none": "where defaults to '1=1' → returns total count"
     },
     {
-      "name": "DcpStructuredControls",
-      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:110",
-      "input": "formerCouncil slug string + optional devType string prop from parent component",
-      "output": "Renders three visual states: numeric (bold value), not_applicable (no rate + italic condition), under_review (amber pending badge)",
-      "if_none": "If data_status missing from API (backward compat), falls back to numeric vs not_applicable based on value_min/max nullity"
+      "name": "fetch_page",
+      "file_line": "ingest_cadastre.py:86",
+      "input": "str WHERE clause, int page offset, optional spatial params dict",
+      "output": "dict Esri JSON response with features list and exceededTransferLimit flag",
+      "if_none": "Returns {'features': []} after 3 retry attempts with backoff"
+    },
+    {
+      "name": "esri_rings_to_multipolygon_wkt",
+      "file_line": "ingest_cadastre.py:144",
+      "input": "list of ring coordinate arrays from Esri JSON geometry object",
+      "output": "Optional str WKT MultiPolygon representation for PostGIS insertion",
+      "if_none": "Returns None which causes the row to be skipped in build_rows"
+    },
+    {
+      "name": "build_rows",
+      "file_line": "ingest_cadastre.py:205",
+      "input": "list of dict features from Esri JSON API response page",
+      "output": "list of tuple rows ready for psycopg2 execute_values DB insertion",
+      "if_none": "Returns empty list which means nothing gets inserted for this page"
+    },
+    {
+      "name": "upsert_rows",
+      "file_line": "ingest_cadastre.py:248",
+      "input": "psycopg2 cursor plus list of tuple rows from build_rows",
+      "output": "DB side-effect INSERT or UPDATE via ON CONFLICT upsert",
+      "if_none": "Empty rows list is never passed since caller guards with if rows check"
+    },
+    {
+      "name": "validate_ingest",
+      "file_line": "ingest_cadastre.py:285",
+      "input": "psycopg2 cursor plus human-readable label string for report header",
+      "output": "stdout validation report with row counts and urbanity distribution",
+      "if_none": "Prints zero counts for empty table which is a valid state"
+    },
+    {
+      "name": "ingest",
+      "file_line": "ingest_cadastre.py:320",
+      "input": "where clause, label, dry_run flag, DB connection, optional row limit, optional spatial params",
+      "output": "int total number of rows successfully ingested across all pages",
+      "if_none": "Zero count from get_count returns 0 immediately without any DB operations"
+    },
+    {
+      "name": "get_lga_bbox",
+      "file_line": "ingest_cadastre.py:389",
+      "input": "psycopg2 connection plus LGA name string from CLI --lga argument",
+      "output": "Optional tuple of four floats representing xmin ymin xmax ymax bounding box",
+      "if_none": "Returns None which causes caller to print error and exit with code 1"
+    },
+    {
+      "name": "get_last_sync",
+      "file_line": "ingest_cadastre.py:408",
+      "input": "psycopg2 connection to query existing nsw_cadastre_lots table",
+      "output": "Optional datetime representing MAX modifieddate for incremental sync cutoff",
+      "if_none": "Returns None which triggers full ingest fallback instead of incremental"
     }
   ],
   "values": [
     {
-      "value": "data_status",
-      "read_at": "route.ts:193-199 (computed from needs_review + value presence)",
-      "nullable": "no — always computed",
-      "guard_at": "DcpStructuredControls.tsx:188-189 — fallback via ?? operator if data_status undefined",
-      "if_missing": "Falls back to hasNumericValue check — same behavior as before this change"
+      "value": "lotidstring",
+      "read_at": "ingest_cadastre.py:225",
+      "nullable": "yes (rare)",
+      "guard_at": "ingest_cadastre.py:226 — if not lotid: continue",
+      "if_missing": "Row silently skipped, does not affect other rows"
     },
     {
-      "value": "value_min / value_max",
-      "read_at": "route.ts:190-191",
-      "nullable": "yes — null when DCP has no numeric rate",
-      "guard_at": "route.ts:190 — uses != null instead of falsy check (fixes value=0 bug)",
-      "if_missing": "Renders as 'no rate' or 'pending' depending on data_status"
+      "value": "Shape__Area",
+      "read_at": "ingest_cadastre.py:229",
+      "nullable": "yes (rare)",
+      "guard_at": "ingest_cadastre.py:230 — if shape_area is None: continue",
+      "if_missing": "Row silently skipped, does not affect other rows"
+    },
+    {
+      "value": "geometry.rings",
+      "read_at": "ingest_cadastre.py:214",
+      "nullable": "yes",
+      "guard_at": "ingest_cadastre.py:215 — if not rings: continue",
+      "if_missing": "Row silently skipped, does not affect other rows"
+    },
+    {
+      "value": "DATABASE_URL",
+      "read_at": "ingest_cadastre.py:434",
+      "nullable": "yes (env var may be unset)",
+      "guard_at": "ingest_cadastre.py:435 — if not db_url and not args.dry_run: exits with error",
+      "if_missing": "Error message printed to stdout, script exits with code 1"
     }
   ],
   "queries": [
     {
-      "purpose": "Fetch structured controls with needs_review flag",
-      "file_line": "route.ts:130",
-      "where_clause": "sc.lga IN ($1...) AND sc.dev_type = $N AND (sc.is_current IS NULL OR sc.is_current = true)",
-      "if_zero": "Returns has_controls: false with empty categories",
-      "if_wrong": "needs_review=true rows correctly tagged as under_review in response"
+      "purpose": "UPSERT cadastre lots into nsw_cadastre_lots table",
+      "file_line": "ingest_cadastre.py:252",
+      "where_clause": "ON CONFLICT (lotidstring) DO UPDATE SET all columns",
+      "if_zero": "Nothing to insert which is correct for empty page",
+      "if_wrong": "UPSERT overwrites with same data since source is authoritative"
+    },
+    {
+      "purpose": "Validation total row count after ingest completes",
+      "file_line": "ingest_cadastre.py:288",
+      "where_clause": "None — full table count via COUNT(*)",
+      "if_zero": "Returns 0 and prints it which is valid for dry-run mode",
+      "if_wrong": "N/A — COUNT(*) on full table cannot return wrong rows"
+    },
+    {
+      "purpose": "LGA bounding box lookup from spatial_overlays zone layer",
+      "file_line": "ingest_cadastre.py:393",
+      "where_clause": "layer_type = 'zone' AND lga_name = %s (parameterised)",
+      "if_zero": "Returns None causing exit with error message and hint to run spatial overlay ingest",
+      "if_wrong": "Could return wrong bbox if lga_name doesn't match — mitigated by exact string match"
     }
   ],
   "break_it": [
     {
-      "scenario": "needs_review column doesn't exist on older DB schema",
-      "what_happens": "SQL query would fail with column not found error",
+      "scenario": "FeatureServer 500/503 during multi-page ingest at page 50 of 1675",
+      "what_happens": "3 retries per page then skips. Already-committed pages safe due to per-page commit.",
       "mitigated": true,
-      "how": "needs_review column exists since table creation (confirmed in DB_SCHEMA.md). If somehow missing, query error is caught at route.ts:232 and returns 500."
+      "how": "ingest_cadastre.py:100-107 retry loop with exponential backoff + ingest_cadastre.py:354 conn.commit() per page"
     },
     {
-      "scenario": "needs_review=true row with non-null value_min classified as under_review instead of numeric",
-      "what_happens": "User sees 'pending' badge instead of the actual value",
+      "scenario": "Invalid Esri geometry with self-intersecting or degenerate polygon rings",
+      "what_happens": "Shapely Polygon constructor may produce invalid geometry that fails PostGIS insertion",
       "mitigated": true,
-      "how": "route.ts:195 — hasNumeric check comes first. If value_min or value_max is non-null, data_status is always 'numeric' regardless of needs_review."
+      "how": "ingest_cadastre.py:196 — valid_polygons filters on p.is_valid and not p.is_empty"
     },
     {
-      "scenario": "data_status field missing from API response (cache/CDN serving old version)",
-      "what_happens": "Component would use undefined data_status",
+      "scenario": "Duplicate lotidstring across overlapping pages from bbox spatial query",
+      "what_happens": "ON CONFLICT DO UPDATE overwrites with identical data from second occurrence",
       "mitigated": true,
-      "how": "DcpStructuredControls.tsx:188-189 — nullish coalescing fallback: control.data_status ?? (hasNumericValue ? 'numeric' : 'not_applicable')"
+      "how": "ingest_cadastre.py:255 UPSERT on lotidstring unique constraint makes this idempotent"
     },
     {
-      "scenario": "DB query for structured controls fails (timeout, connection error)",
-      "what_happens": "API returns 500, component shows nothing (SWR error state)",
+      "scenario": "UPSERT fails mid-batch due to invalid WKT geometry causing PostGIS parse error",
+      "what_happens": "Transaction rolls back for that page, losing up to 2000 rows",
       "mitigated": true,
-      "how": "route.ts:231-233 — catch block logs error and returns 500 JSON. Component's useSWR handles error state — returns null (no broken UI)."
+      "how": "ingest_cadastre.py:196 pre-filters invalid geometries. ST_GeomFromText on valid WKT won't fail."
+    },
+    {
+      "scenario": "Validation query runs on empty table during dry-run mode",
+      "what_happens": "validate_ingest prints zero counts which is confusing but not harmful",
+      "mitigated": true,
+      "how": "ingest_cadastre.py:361 — validate_ingest only called when not dry_run"
+    },
+    {
+      "scenario": "LGA bbox lookup returns wrong extent because spatial_overlays zone data is stale or incomplete for that LGA",
+      "what_happens": "Spatial query fetches lots from wrong area — either too few lots or lots from neighbouring LGAs",
+      "mitigated": true,
+      "how": "ingest_cadastre.py:399 adds 0.001 degree buffer to bbox. Zone layer covers full LGA by definition. Missing LGA → returns None → exit with hint."
     }
   ],
   "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — load /assessment for a council with NULL controls (e.g. ashfield). Verify: numeric rows show bold value, not_applicable rows show 'no rate' + italic condition, any needs_review rows show amber 'pending' badge."
+    "db_reset": "No — new table, migration already run on production Supabase",
+    "secrets": "No — uses existing DATABASE_URL environment variable",
+    "other_repo": "No — standalone ingest script with no cross-repo dependencies",
+    "manual_verify": "Yes — run --scope all to ingest full NSW cadastre, then verify spatial queries work via ST_Contains point-in-polygon test"
   }
 }
