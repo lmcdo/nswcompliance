@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           FROM regulatory_provisions rp
           JOIN dcps d ON rp.dcp_id = d.id
           WHERE d.council_name ILIKE $1
+            AND rp.v2_is_actionable = true
             AND (
               rp.provision_title ILIKE '%parking%'
               OR rp.subcategory ILIKE '%parking%'

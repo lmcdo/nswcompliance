@@ -385,6 +385,7 @@ export async function POST(req: NextRequest) {
         `SELECT control_type, value_min, value_max, unit, condition, applicability, source_text, section_ref
          FROM dcp_setback_controls
          WHERE lga = $1 AND dev_type = 'secondary_dwelling'
+           AND is_current = TRUE
          ORDER BY control_type`,
         [normLga],
       );

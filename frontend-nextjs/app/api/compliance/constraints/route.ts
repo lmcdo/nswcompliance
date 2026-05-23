@@ -333,7 +333,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Unknown status
           permissions = baseResult.rows;
-          permissionStatus = baseResult.rows[0].permission_status;
+          permissionStatus = baseResult.rows[0]?.permission_status ?? 'unknown';
           console.log(`[Constraints API] Permission for ${developmentType} in ${zone}: ${permissionStatus}`);
         }
       } else {
