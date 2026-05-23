@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds null guard scanner to qa_gate.py, post-commit hash stamping hook, and insert script test suite. Changes validation rules gating all future pushes.",
-  "commit_hash": "adaa9a75",
+  "commit_hash": "2ee928fe",
   "files": ["scripts/qa_gate.py", ".githooks/post-commit", "tests/test_insert_scripts.py"],
   "pre_impl": {
     "existing_data": "qa_gate.py has DB guard scanner, AST grounding, tier floor, commit hash binding, break-it repro. Adding null guard scanner on top.",
@@ -11,7 +11,7 @@
   "functions": [
     {
       "name": "scan_diff_for_unguarded_nulls",
-      "file_line": "scripts/qa_gate.py:346",
+      "file_line": "scripts/qa_gate.py:366",
       "input": "diff_files list of relative paths, project_dir string for resolving full paths",
       "output": "list of error strings for each unguarded .rows[0] access found in TS/JS files",
       "if_none": "empty diff_files or missing project_dir returns empty list (no false failures)"

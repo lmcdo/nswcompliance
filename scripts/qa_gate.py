@@ -296,17 +296,34 @@ def scan_diff_for_unguarded_queries(
         except (FileNotFoundError, PermissionError):
             continue
 
+        # Pre-compute docstring regions for Python files
+        in_docstring = [False] * len(lines)
+        if filepath.endswith(".py"):
+            inside = False
+            for idx, ln in enumerate(lines):
+                s = ln.strip()
+                if s.startswith('"""') or s.startswith("'''"):
+                    # Toggle: opening or closing docstring
+                    delim = s[:3]
+                    count = s.count(delim)
+                    if count == 1:
+                        inside = not inside
+                    # Single-line docstring ("""...""") stays outside
+                in_docstring[idx] = inside or s.startswith('"""') or s.startswith("'''")
+
         for table_name, guard_cols in GUARDED_TABLES.items():
             for i, line in enumerate(lines):
                 line_lower = line.lower()
                 # Look for table references in query context (FROM, JOIN, or string containing table name)
                 if table_name not in line_lower:
                     continue
-                # Skip comments, imports, docstrings, and non-query lines
+                # Skip comments, imports, and non-query lines
                 stripped = line.strip()
                 if stripped.startswith(("#", "//", "*", "/*", "import ", "from ")):
                     continue
-                # Skip Python docstrings and string literals containing table names
+                # Skip lines inside docstrings or string literals
+                if in_docstring[i]:
+                    continue
                 if stripped.startswith(('"""', "'''", '"', "'")):
                     continue
                 # Skip test files — they mock DB calls
