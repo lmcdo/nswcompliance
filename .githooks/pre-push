@@ -19,7 +19,13 @@ echo ""
 
 echo "=== [2/3] Validating QA report ==="
 if [ -f .qa_report.json ]; then
-  python scripts/qa_gate.py .qa_report.json 2>&1
+  # Auto-detect changed files vs main so qa_gate can verify diff coverage
+  DIFF_FILES=$(git diff --name-only origin/main...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
+  QA_ARGS=".qa_report.json"
+  if [ -n "$DIFF_FILES" ]; then
+    QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
+  fi
+  python scripts/qa_gate.py $QA_ARGS 2>&1
   QA_RESULT=$?
   if [ $QA_RESULT -ne 0 ]; then
     echo ""

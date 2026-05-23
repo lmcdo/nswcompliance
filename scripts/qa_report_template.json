@@ -1,6 +1,7 @@
 {
   "tier": "standard",
   "justification": "Why this tier, not the one above or below",
+  "commit_hash": "run: git rev-parse --short HEAD",
   "files": ["path/to/changed/file.py"],
   "pre_impl": {
     "existing_data": "What existing data/state does this interact with? [table/column or 'none']",
