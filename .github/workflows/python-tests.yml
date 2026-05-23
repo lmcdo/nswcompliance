@@ -28,3 +28,44 @@ jobs:
 
       - name: Run unit tests
         run: python -m pytest tests/ --tb=short
+
+  qa-gate:
+    name: QA Report Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate QA report
+        run: |
+          if [ -f .qa_report.json ]; then
+            python scripts/qa_gate.py .qa_report.json
+          else
+            echo "WARNING: No .qa_report.json found"
+            echo "Non-trivial PRs require a QA report."
+          fi
+
+  liability-language:
+    name: Liability Language Audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Scan new code for liability language
+        run: python scripts/liability_language_check.py --diff-base origin/main
