@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds null guard scanner to qa_gate.py, post-commit hash stamping hook, and insert script test suite. Changes validation rules gating all future pushes.",
-  "commit_hash": "f31311d1",
+  "commit_hash": "adaa9a75",
   "files": ["scripts/qa_gate.py", ".githooks/post-commit", "tests/test_insert_scripts.py"],
   "pre_impl": {
     "existing_data": "qa_gate.py has DB guard scanner, AST grounding, tier floor, commit hash binding, break-it repro. Adding null guard scanner on top.",

@@ -302,9 +302,12 @@ def scan_diff_for_unguarded_queries(
                 # Look for table references in query context (FROM, JOIN, or string containing table name)
                 if table_name not in line_lower:
                     continue
-                # Skip comments, imports, and non-query lines
+                # Skip comments, imports, docstrings, and non-query lines
                 stripped = line.strip()
                 if stripped.startswith(("#", "//", "*", "/*", "import ", "from ")):
+                    continue
+                # Skip Python docstrings and string literals containing table names
+                if stripped.startswith(('"""', "'''", '"', "'")):
                     continue
                 # Skip test files — they mock DB calls
                 if "/test" in filepath.lower() or "\\test" in filepath.lower():

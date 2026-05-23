@@ -1,10 +1,13 @@
 #!/bin/sh
-# post-commit hook — stamps the commit hash into .qa_report.json
+# post-commit hook — stamps the current commit hash into .qa_report.json
 #
-# Solves the chicken-and-egg problem: you can't know the commit hash
-# before committing, but the QA report needs to reference the commit
-# it ships with. This hook patches the hash into the report and amends
-# the commit silently.
+# This does NOT amend the commit (that creates circular hash problems).
+# Instead it updates the working copy of .qa_report.json so that the
+# NEXT commit or the pre-push QA gate check will see a valid hash.
+#
+# The qa_gate.py commit hash check already accepts any hash from the
+# last 5 commits on the branch, so the hash from the most recent commit
+# will pass validation on push.
 #
 # Only runs if .qa_report.json exists and has a commit_hash field.
 
@@ -13,35 +16,18 @@ QA_REPORT=".qa_report.json"
 # Skip if no report
 [ -f "$QA_REPORT" ] || exit 0
 
-# Skip during rebase/merge (avoid infinite amend loops)
+# Skip during rebase/merge
 [ -d "$(git rev-parse --git-dir)/rebase-merge" ] && exit 0
 [ -d "$(git rev-parse --git-dir)/rebase-apply" ] && exit 0
 [ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ] && exit 0
 
-# Skip if this IS an amend from the post-commit hook itself (prevent recursion)
-# We use a lock file to detect this
-LOCK_FILE="$(git rev-parse --git-dir)/POST_COMMIT_HASH_LOCK"
-if [ -f "$LOCK_FILE" ]; then
-    rm -f "$LOCK_FILE"
-    exit 0
-fi
-
 # Get the current commit short hash
 HASH=$(git rev-parse --short HEAD)
 
-# Check if report has a commit_hash field
+# Update the hash in the report (working copy only, no amend)
 if grep -q '"commit_hash"' "$QA_REPORT" 2>/dev/null; then
-    # Check if hash is already correct (no need to amend)
     CURRENT_HASH=$(grep '"commit_hash"' "$QA_REPORT" | sed 's/.*: *"\([^"]*\)".*/\1/')
-    if [ "$CURRENT_HASH" = "$HASH" ]; then
-        exit 0
+    if [ "$CURRENT_HASH" != "$HASH" ]; then
+        sed -i "s/\"commit_hash\": *\"[^\"]*\"/\"commit_hash\": \"$HASH\"/" "$QA_REPORT"
     fi
-
-    # Stamp the hash using sed
-    sed -i "s/\"commit_hash\": *\"[^\"]*\"/\"commit_hash\": \"$HASH\"/" "$QA_REPORT"
-
-    # Stage and amend
-    touch "$LOCK_FILE"
-    git add "$QA_REPORT"
-    git commit --amend --no-edit --no-verify
 fi
