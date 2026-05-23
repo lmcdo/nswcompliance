@@ -1,9 +1,9 @@
 name: Satellite Data Source Freshness Monitor
 
 on:
-  schedule:
-    # Daily 06:00 UTC (16:00 AEST) — after business hours, before nightly maintenance
-    - cron: "0 6 * * *"
+  # Schedule disabled — moved to Railway cron (see docs/RAILWAY_MONITORS.md)
+  # schedule:
+  #   - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       source:

@@ -493,7 +493,7 @@ scripts/
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
 !scripts/satellite_freshness_monitor.py
-!scripts/requirements-freshness.txt
+!scripts/run_monitors.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

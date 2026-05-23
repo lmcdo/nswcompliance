@@ -5,9 +5,9 @@ name: DCP Watchdog
 # being processed.
 
 on:
-  schedule:
-    # Daily at 10:00 UTC — well after the Monday 02:00 UTC monitor run
-    - cron: '0 10 * * *'
+  # Schedule disabled — moved to Railway cron (see docs/RAILWAY_MONITORS.md)
+  # schedule:
+  #   - cron: '0 10 * * *'
   workflow_dispatch: {}
 
 env:
