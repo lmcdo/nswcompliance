@@ -70,7 +70,7 @@ def get_diff_added_lines(base: str) -> dict[str, list[tuple[int, str]]]:
     """
     result = subprocess.run(
         ['git', 'diff', '-U0', f'{base}...HEAD'],
-        capture_output=True, text=True
+        capture_output=True, text=True, encoding='utf-8', errors='replace'
     )
 
     files: dict[str, list[tuple[int, str]]] = {}

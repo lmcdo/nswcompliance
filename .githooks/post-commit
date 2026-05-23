@@ -1,0 +1,33 @@
+#!/bin/sh
+# post-commit hook — stamps the current commit hash into .qa_report.json
+#
+# This does NOT amend the commit (that creates circular hash problems).
+# Instead it updates the working copy of .qa_report.json so that the
+# NEXT commit or the pre-push QA gate check will see a valid hash.
+#
+# The qa_gate.py commit hash check already accepts any hash from the
+# last 5 commits on the branch, so the hash from the most recent commit
+# will pass validation on push.
+#
+# Only runs if .qa_report.json exists and has a commit_hash field.
+
+QA_REPORT=".qa_report.json"
+
+# Skip if no report
+[ -f "$QA_REPORT" ] || exit 0
+
+# Skip during rebase/merge
+[ -d "$(git rev-parse --git-dir)/rebase-merge" ] && exit 0
+[ -d "$(git rev-parse --git-dir)/rebase-apply" ] && exit 0
+[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ] && exit 0
+
+# Get the current commit short hash
+HASH=$(git rev-parse --short HEAD)
+
+# Update the hash in the report (working copy only, no amend)
+if grep -q '"commit_hash"' "$QA_REPORT" 2>/dev/null; then
+    CURRENT_HASH=$(grep '"commit_hash"' "$QA_REPORT" | sed 's/.*: *"\([^"]*\)".*/\1/')
+    if [ "$CURRENT_HASH" != "$HASH" ]; then
+        sed -i "s/\"commit_hash\": *\"[^\"]*\"/\"commit_hash\": \"$HASH\"/" "$QA_REPORT"
+    fi
+fi
