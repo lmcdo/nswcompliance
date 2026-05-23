@@ -1,8 +1,8 @@
 {
-  "tier": "standard",
-  "justification": "Standard — adds 2 new scanner layers to qa_gate.py (type boundaries + silent failures). No DB, no user-facing UI, but affects QA pipeline correctness for all future PRs.",
-  "commit_hash": "e1b481ad",
-  "files": ["scripts/qa_gate.py", "tests/test_qa_scanners.py"],
+  "tier": "minor",
+  "justification": "Minor — documentation-only changes. Updates stale SUMMARY.md and INDEX.md, adds 4 new audit documents. No code changes.",
+  "commit_hash": "4a2394a5",
+  "files": ["docs/qa/SUMMARY.md", "docs/qa/INDEX.md", "docs/qa/architecture-overview.md", "docs/qa/test-matrix.md", "docs/qa/dcp-data-provenance.md", "docs/qa/codebase-scan-2026-05-23.md"],
   "pre_impl": {
     "existing_data": "qa_gate.py already has DB guard scanner, null guard scanner, AST grounding, tier floor, commit hash binding. Adding type boundary + silent failure layers on top.",
     "assumption_mismatch": "Scanners only run on diff files. If diff file list is empty or project_dir is None, returns empty list (no false failures).",
