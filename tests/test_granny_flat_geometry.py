@@ -135,6 +135,10 @@ class TestComputeLotAreaM2:
 # Lot clipping — bbox corner check
 # ---------------------------------------------------------------------------
 
+@pytest.mark.skipif(
+    not all(__import__("importlib").util.find_spec(m) for m in ("PIL", "numpy")),
+    reason="lot clipping tests require Pillow + numpy",
+)
 class TestLotClipping:
     """
     Verify that the lot clipping logic retains structures whose bounding box

@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """Test the actual queries being run for Marrickville"""
 import psycopg2
 

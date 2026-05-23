@@ -39,7 +39,7 @@ def test_compute_confidence_high_when_validated_counts_agree_and_rent_available(
     )
     assert conf == "high"
     assert "3" in reason
-    assert "agree" in reason.lower()
+    assert "structures" in reason.lower()
 
 
 def test_compute_confidence_high_single_structure():

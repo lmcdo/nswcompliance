@@ -7,7 +7,12 @@ After context compaction, if `.claude/worktrees/` contains directories, check wh
 ```bash
 git config core.hooksPath .githooks
 ```
-This activates the `commit-msg` hook at `.githooks/commit-msg` which enforces QA tier classification on every commit. The hook file is tracked in git but `core.hooksPath` is a per-clone setting — it does not transfer via pull. Run this once per clone/worktree.
+This activates all hooks in `.githooks/`:
+- `commit-msg` — enforces QA tier classification on every commit
+- `pre-commit` — TSC error count gate (baseline 664)
+- `pre-push` — runs Python unit tests, blocks push on failure
+
+The hook files are tracked in git but `core.hooksPath` is a per-clone setting — it does not transfer via pull. Run this once per clone/worktree.
 
 Every commit message must include a QA line:
 ```
@@ -86,6 +91,14 @@ git checkout -b feat/<short-description>
 - **Use generic descriptions instead:** "flood screening", "development monitoring", "shadow analysis", "solar potential assessment", "site history analysis"
 - **Why:** Blog content is public and indexed. Internal names give competitors a roadmap. These terms were used to build the products — they must not appear in the marketing of them.
 
+## Running Tests
+- `python -m pytest` — runs all active unit tests (~370 tests, <1s)
+- `python -m pytest tests/test_flood_truth.py -v` — run a single test file
+- `python -m pytest -m database` — run DB-dependent tests (needs DATABASE_URL)
+- Test deps: `pip install -r requirements-test.txt` (pytest, pydantic, fastapi)
+- Mock injection: `tests/conftest_mocks.py` stubs psycopg2/requests/pyproj so pure-logic tests run without native deps
+- Stale tests are quarantined in `collect_ignore` (conftest.py) — not deleted, can be revived
+
 ## Code Standards
 - Python: PEP8, type hints, black, pydantic, Google-style docstrings
 - TypeScript: for Next.js frontend
@@ -125,7 +138,7 @@ Workflow:
 5. Share Vercel preview URL for QA
 6. User says "merge" → `gh pr merge --squash`
 
-The pre-push hook enforces automatically: pytest (enrichment suite) + TSC error count gate + smoke tests (if dev server running). Fix any failures before pushing.
+The pre-push hook runs `python -m pytest tests/` and blocks push on failure. TSC is checked by the pre-commit hook separately.
 
 PR body format:
 ```

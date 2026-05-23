@@ -1,3 +1,6 @@
+import pytest
+pytestmark = pytest.mark.stale
+
 """Thorough Leichhardt test - compare to Ashfield/Marrickville"""
 import requests
 import json
