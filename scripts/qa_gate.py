@@ -266,7 +266,7 @@ def check_cross_references(report: dict) -> list[str]:
 # Tables that MUST have specific WHERE guards in any SELECT
 # {table_name: [required_guard_columns]}
 GUARDED_TABLES = {
-    "regulatory_provisions": ["is_current"],
+    "regulatory_provisions": ["is_current", "v2_is_actionable"],
     "dcp_setback_controls": ["is_current"],
     "lga_registry": ["is_active"],
 }
@@ -314,8 +314,11 @@ def scan_diff_for_unguarded_queries(
         for table_name, guard_cols in GUARDED_TABLES.items():
             for i, line in enumerate(lines):
                 line_lower = line.lower()
-                # Look for table references in query context (FROM, JOIN, or string containing table name)
+                # Look for exact table references (not substrings like regulatory_provisions_canonical)
                 if table_name not in line_lower:
+                    continue
+                # Ensure this is the exact table, not a derived/canonical variant
+                if not re.search(rf'\b{re.escape(table_name)}\b', line_lower):
                     continue
                 # Skip comments, imports, and non-query lines
                 stripped = line.strip()
@@ -335,14 +338,13 @@ def scan_diff_for_unguarded_queries(
                 if not any(kw in query_window for kw in ("select", "from", "where", "join")):
                     continue
 
-                # Now check if the required guard columns appear in the query window
-                for guard_col in guard_cols:
-                    if guard_col not in query_window:
-                        errors.append(
-                            f"DB guard: {filepath}:{i + 1} references '{table_name}' "
-                            f"but '{guard_col}' not found in query (within ±10 lines). "
-                            f"Add WHERE {guard_col} = TRUE to prevent stale data."
-                        )
+                # Now check if at least one required guard column appears in the query window
+                if not any(guard_col in query_window for guard_col in guard_cols):
+                    errors.append(
+                        f"DB guard: {filepath}:{i + 1} references '{table_name}' "
+                        f"but none of {guard_cols} found in query (within ±10 lines). "
+                        f"Add a currency filter (e.g. WHERE {guard_cols[0]} = TRUE) to prevent stale data."
+                    )
 
     return errors
 

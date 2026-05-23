@@ -241,6 +241,10 @@ export class PRPK7DatabaseClient {
  AND qs.context LIKE 'setback_%'
  `, [zone]);
 
+ if (!stats.rows.length || !standards.rows.length) {
+ return { zone, total_provisions: 0, development_types: [], dev_type_count: 0, linked_standards: 0 };
+ }
+
  return {
  zone,
  total_provisions: parseInt(stats.rows[0].total_provisions),

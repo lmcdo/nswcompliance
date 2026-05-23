@@ -145,6 +145,7 @@ export class LiveComplianceClient {
         JOIN regulatory_provisions rp ON dc.provision_id = rp.id
         WHERE dc.control_type = 'fsr'
         AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
+        AND rp.v2_is_actionable = true
         ORDER BY dc.confidence_score DESC
         LIMIT 5
       `, [zone]);
@@ -156,6 +157,7 @@ export class LiveComplianceClient {
         JOIN regulatory_provisions rp ON dc.provision_id = rp.id
         WHERE dc.control_type = 'height'
         AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
+        AND rp.v2_is_actionable = true
         ORDER BY dc.confidence_score DESC
         LIMIT 5
       `, [zone]);
@@ -167,6 +169,7 @@ export class LiveComplianceClient {
         JOIN regulatory_provisions rp ON dc.provision_id = rp.id
         WHERE dc.control_type = 'site_coverage'
         AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
+        AND rp.v2_is_actionable = true
         ORDER BY dc.confidence_score DESC
         LIMIT 5
       `, [zone]);
