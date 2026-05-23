@@ -317,11 +317,19 @@ def validate_ingest(cur, label: str) -> None:
 # Ingest orchestration
 # ---------------------------------------------------------------------------
 
+def reconnect_db(db_url: str):
+    """Create a fresh DB connection."""
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = False
+    return conn
+
+
 def ingest(
     where: str,
     label: str,
     dry_run: bool = False,
     conn=None,
+    db_url: Optional[str] = None,
     limit: Optional[int] = None,
     spatial_params: Optional[dict] = None,
 ) -> int:
@@ -355,8 +363,23 @@ def ingest(
 
         rows = build_rows(features)
         if rows and cur and not dry_run:
-            upsert_rows(cur, rows)
-            conn.commit()
+            for attempt in range(3):
+                try:
+                    upsert_rows(cur, rows)
+                    conn.commit()
+                    break
+                except psycopg2.OperationalError as e:
+                    if not db_url or attempt == 2:
+                        raise
+                    wait = 10 * (attempt + 1)
+                    print(f"    [warn] DB connection lost (attempt {attempt + 1}/3) — reconnecting in {wait}s ...")
+                    time.sleep(wait)
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    conn = reconnect_db(db_url)
+                    cur = conn.cursor()
 
         ingested += len(rows)
         elapsed = time.time() - start_time
@@ -383,7 +406,7 @@ def ingest(
         validate_ingest(cur, label)
         cur.close()
 
-    return ingested
+    return ingested, conn
 
 
 def get_lga_bbox(conn, lga_name: str) -> Optional[tuple[float, float, float, float]]:
@@ -484,11 +507,12 @@ def main():
             label = args.lga
             print(f"  LGA bbox: {envelope}")
 
-        ingest(
+        _, conn = ingest(
             where=where,
             label=label,
             dry_run=args.dry_run,
             conn=conn,
+            db_url=db_url,
             limit=args.limit,
             spatial_params=spatial_params,
         )
