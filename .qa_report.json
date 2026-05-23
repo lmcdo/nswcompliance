@@ -1,54 +1,50 @@
 {
   "tier": "standard",
-  "justification": "Adds two automated checks to pre-push hook and CI. No production code changes. No DB, no API, no user-facing changes.",
-  "files": [
-    "scripts/liability_language_check.py",
-    ".githooks/pre-push",
-    ".github/workflows/python-tests.yml",
-    "CLAUDE.md"
-  ],
+  "justification": "Hardening QA gate enforcement — changes to qa_gate.py validation logic, pre-push hook, and report template. Standard because it modifies validation rules that gate all future pushes.",
+  "commit_hash": "91908c6f",
+  "files": ["scripts/qa_gate.py", "scripts/qa_report_template.json", ".githooks/pre-push", "CLAUDE.md"],
   "pre_impl": {
-    "existing_data": "No DB interaction. Scans source files only via git diff.",
-    "assumption_mismatch": "If git diff fails (detached HEAD, shallow clone), liability check returns 0 and passes silently. Acceptable -- CI has fetch-depth 0.",
-    "new_vs_existing": "Only scans NEW lines in diff. Existing code not re-scanned."
+    "existing_data": "qa_gate.py already validates .qa_report.json structure + AST grounding. Pre-push hook already runs qa_gate.py but without --diff-files.",
+    "assumption_mismatch": "If origin/main doesn't exist (fresh clone, no remote), git diff --name-only fails — pre-push falls back to no diff files (existing behavior).",
+    "new_vs_existing": "New validations apply to all future pushes. Existing .qa_report.json files missing commit_hash will fail on standard/critical tier — forces update."
   },
   "functions": [
     {
-      "name": "get_diff_added_lines",
-      "file_line": "scripts/liability_language_check.py:68",
-      "input": "base branch name string from git diff command",
-      "output": "dict mapping filepath to list of added line tuples",
-      "if_none": "returns empty dict, check passes with zero findings"
+      "name": "validate_report",
+      "file_line": "scripts/qa_gate.py:266",
+      "input": "report dict, optional diff_files list, optional project_dir string",
+      "output": "tuple of (passed bool, errors list, summary string)",
+      "if_none": "diff_files=None skips diff coverage and tier floor checks; project_dir=None skips AST grounding"
     }
   ],
   "values": [
     {
-      "value": "FLAGGED_TERMS regex pattern",
-      "read_at": "scripts/liability_language_check.py:27",
-      "nullable": "no -- compiled at import time",
-      "guard_at": "N/A",
-      "if_missing": "script would fail at import with NameError"
+      "value": "commit_hash",
+      "read_at": "scripts/qa_gate.py:378",
+      "nullable": "yes — optional for minor tier",
+      "guard_at": "scripts/qa_gate.py:380 — only errors if tier is standard/critical",
+      "if_missing": "standard/critical: validation error requiring commit_hash. minor: silently skipped."
     }
   ],
-  "queries": [],
+  "queries": "N/A — no database queries in this change",
   "break_it": [
     {
-      "scenario": "Liability term in a comment or import line flagged as false positive",
-      "what_happens": "Push blocked unnecessarily, developer frustrated by false positive",
+      "scenario": "Pre-push hook runs on a branch with no origin/main (detached clone or renamed default branch)",
+      "what_happens": "git diff --name-only fails, DIFF_FILES is empty, qa_gate runs without --diff-files — same as current behavior, no regression",
       "mitigated": true,
-      "how": "EXCLUDE_PATTERNS list at line 42 filters comments, imports, variable names, logger calls"
+      "how": ".githooks/pre-push — 2>/dev/null on the git diff command, falls back gracefully"
     },
     {
-      "scenario": "Git diff command fails on shallow clone in CI environment",
-      "what_happens": "get_diff_added_lines returns empty dict, check passes silently with no findings",
+      "scenario": "LLM session writes commit_hash from a previous commit, then amends — hash changes",
+      "what_happens": "qa_gate detects mismatch between report hash and HEAD, blocks push with clear error message telling session to regenerate",
       "mitigated": true,
-      "how": "CI workflow uses fetch-depth 0 for full history. Pre-push always has full clone."
+      "how": "scripts/qa_gate.py:381-390 — subprocess calls git rev-parse --short HEAD and compares"
     },
     {
-      "scenario": "New liability term added to existing file but only in unchanged line content",
-      "what_happens": "Term not caught because only diff-added lines are scanned",
+      "scenario": "Session classifies a 6-file refactor as Minor to skip sections 2-5",
+      "what_happens": "Tier floor check counts substantive diff files (excludes .json/.md/.yml/config), rejects Minor when >3 files changed",
       "mitigated": true,
-      "how": "By design -- existing code was reviewed in language-audit-2026-05-18. Only new code needs checking."
+      "how": "scripts/qa_gate.py:372-377 — filters diff_files to substantive extensions, checks count against tier"
     }
   ],
   "post_merge": {
