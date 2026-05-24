@@ -2352,7 +2352,19 @@ export function ProvisionsByTocStructure({
               </div>
             )}
 
-            {/* Action Toolbar - Export (temporarily disabled) */}
+            {/* Action Toolbar - Export (temporarily disabled until export is fixed) */}
+            {filteredProvisions.filter((p: any) => p.v2_provision_type !== 'procedural' && p.v2_provision_type !== 'descriptive').length > 0 && !isDaMode && (
+              <div className="px-4 py-3 border-b bg-gray-50">
+                <button
+                  disabled
+                  title="Export is temporarily unavailable"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 text-sm font-medium rounded-lg cursor-not-allowed"
+                >
+                  <Download className="h-4 w-4" />
+                  Export temporarily unavailable
+                </button>
+              </div>
+            )}
 
             {/* Provisions list */}
             <DcpProvisionList
