@@ -13,11 +13,12 @@ import { NextRequest } from 'next/server';
 // ---------------------------------------------------------------------------
 
 const mockConstructEvent = jest.fn();
+const mockSendEmail = jest.fn().mockResolvedValue({ id: 'mock-email-id' });
 
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => ({
     webhooks: {
-      constructEvent: mockConstructEvent,
+      constructEvent: (...args: unknown[]) => mockConstructEvent(...args),
     },
     checkout: {
       sessions: {},
@@ -29,11 +30,9 @@ jest.mock('stripe', () => {
 // Mock Resend
 // ---------------------------------------------------------------------------
 
-const mockSendEmail = jest.fn().mockResolvedValue({ id: 'mock-email-id' });
-
 jest.mock('resend', () => ({
   Resend: jest.fn().mockImplementation(() => ({
-    emails: { send: mockSendEmail },
+    emails: { send: (...args: unknown[]) => mockSendEmail(...args) },
   })),
 }));
 

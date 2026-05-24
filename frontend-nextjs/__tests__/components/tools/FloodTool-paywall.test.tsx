@@ -3,8 +3,7 @@
  *
  * After a result with report_id:
  *   - FloodLockedPreviewCard renders with blurred real data values
- *   - No email input visible
- *   - Clicking Unlock fires checkout with {report_id, address} (no email)
+ *   - WaitlistButton shown (no Stripe checkout)
  *
  * Alarm headline varies by flood_signal.
  * After payment success URL params: PaidDownloadCTA shown.
@@ -43,6 +42,16 @@ jest.mock('@/components/providers/PostHogProvider', () => ({
   posthog: { capture: jest.fn() },
 }));
 
+jest.mock('@/components/tools/OperationalTransparency', () => ({
+  OperationalTransparency: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: ({ interestType }: { interestType: string }) => (
+    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -72,6 +81,22 @@ const ELEVATED_RESULT = {
     s1_gap_warning: null,
     data_currency: '2026-04-01',
     flood_signal: 'elevated' as const,
+    dea_wofs_frequency_pct: null,
+    ses_in_flood_planning_area: null,
+    ses_flood_class: null,
+    ses_aep_tiers: null,
+    ses_study_name: null,
+    ses_study_lga: null,
+    hawkesbury_flood_level_2aep: null,
+    hawkesbury_flood_level_5aep: null,
+    hawkesbury_flood_level_10aep: null,
+    hawkesbury_flood_level_20aep: null,
+    hawkesbury_flood_level_50aep: null,
+    hawkesbury_flood_level_100aep: null,
+    hawkesbury_flood_level_200aep: null,
+    hawkesbury_flood_level_500aep: null,
+    hawkesbury_flood_level_pmf: null,
+    hawkesbury_flood_study: null,
   },
   confidence: 'high',
   data_sources: ['NSW EPI Flood WFS', 'Copernicus EMS', 'JRC GSW', 'BOM Gauge'],
@@ -145,7 +170,8 @@ describe('FloodTool — FloodLockedPreviewCard (elevated signal)', () => {
   it('shows FloodLockedPreviewCard with real data rows', async () => {
     await runFloodCheck();
     expect(screen.getByText('Your flood data')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /unlock flood report.*\$49/i })).toBeInTheDocument();
+    // WaitlistButton replaces Stripe checkout
+    expect(screen.getByTestId('waitlist-btn-flood-truth')).toBeInTheDocument();
   });
 
   it('shows BOM last major flood date (blurred)', async () => {
@@ -184,10 +210,9 @@ describe('FloodTool — FloodLockedPreviewCard (elevated signal)', () => {
     expect(screen.getByText(/Elevated flood signal/i)).toBeInTheDocument();
   });
 
-  it('does NOT show email input', async () => {
+  it('shows alarm headline about lender for elevated signal', async () => {
     await runFloodCheck();
-    const emailInputs = screen.queryAllByPlaceholderText(/email/i);
-    expect(emailInputs).toHaveLength(0);
+    expect(screen.getByText(/multiple independent flood sources/i)).toBeInTheDocument();
   });
 });
 
@@ -201,72 +226,14 @@ describe('FloodTool — FloodLockedPreviewCard (no flood signal)', () => {
     expect(screen.getByText('Your flood data')).toBeInTheDocument();
   });
 
-  it('shows "verified clean" headline for no-signal result', async () => {
+  it('shows "No flood indicators" headline for no-signal result', async () => {
     await runFloodCheck(NONE_RESULT);
-    expect(screen.getByText(/verified clean/i)).toBeInTheDocument();
+    expect(screen.getByText(/No flood indicators detected across checked sources/i)).toBeInTheDocument();
   });
 
   it('shows 0 events for no EMS activations', async () => {
     await runFloodCheck(NONE_RESULT);
     expect(screen.getByText(/0 events since 2000/)).toBeInTheDocument();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// handleUnlock
-// ---------------------------------------------------------------------------
-
-describe('FloodTool — handleUnlock', () => {
-  it('fires checkout POST with {report_id, address} and redirects', async () => {
-    await runFloodCheck();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.stripe.com/pay/cs_flood' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock flood report/i }));
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_flood');
-    });
-
-    const checkoutCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/stripe/checkout/flood-truth')
-    );
-    expect(checkoutCall).toBeDefined();
-    const body = JSON.parse(checkoutCall[1].body);
-    expect(body.report_id).toBe('flood-report-uuid-1234');
-    expect(body.address).toBe('23 Flood St Lismore NSW 2480');
-    expect(body).not.toHaveProperty('email');
-  });
-
-  it('shows error when checkout fails', async () => {
-    await runFloodCheck();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Payment unavailable' }), {
-        status: 503, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock flood report/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Payment unavailable')).toBeInTheDocument();
-    });
-  });
-
-  it('button shows "Starting checkout..." and is disabled while in flight', async () => {
-    await runFloodCheck();
-    (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock flood report/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /starting checkout/i })).toBeDisabled();
-    });
   });
 });
 

@@ -40,23 +40,23 @@ describe('ToolCrossSell — never shows current tool', () => {
 // Granny flat is first for solar, shadow, flood
 // ---------------------------------------------------------------------------
 
-describe('ToolCrossSell — granny flat is first card for income-relevant tools', () => {
-  it('solar-yield shows granny flat as first card', () => {
+describe('ToolCrossSell — planning controls is first card for satellite tools', () => {
+  it('solar-yield shows planning controls as first card', () => {
     render(<ToolCrossSell currentTool="solar-yield" address={ADDRESS} />);
     const links = screen.getAllByRole('link');
-    expect(links[0]).toHaveTextContent('Granny Flat Yield Predictor');
+    expect(links[0]).toHaveTextContent('Planning Controls Assessment');
   });
 
-  it('shadow-detector shows granny flat as first card', () => {
+  it('shadow-detector shows planning controls as first card', () => {
     render(<ToolCrossSell currentTool="shadow-detector" address={ADDRESS} />);
     const links = screen.getAllByRole('link');
-    expect(links[0]).toHaveTextContent('Granny Flat Yield Predictor');
+    expect(links[0]).toHaveTextContent('Planning Controls Assessment');
   });
 
-  it('flood-truth shows granny flat as first card', () => {
+  it('flood-truth shows planning controls as first card', () => {
     render(<ToolCrossSell currentTool="flood-truth" address={ADDRESS} />);
     const links = screen.getAllByRole('link');
-    expect(links[0]).toHaveTextContent('Granny Flat Yield Predictor');
+    expect(links[0]).toHaveTextContent('Planning Controls Assessment');
   });
 });
 
@@ -84,7 +84,7 @@ describe('ToolCrossSell — address encoding', () => {
   it('encodes address in granny flat link href', () => {
     render(<ToolCrossSell currentTool="solar-yield" address={ADDRESS} />);
     const link = screen.getByRole('link', { name: /Check granny flat eligibility/i });
-    expect(link).toHaveAttribute('href', expect.stringContaining('/reports/granny-flat'));
+    expect(link).toHaveAttribute('href', expect.stringContaining('/granny-flat'));
     expect(link).toHaveAttribute('href', expect.stringContaining(encodeURIComponent(ADDRESS)));
   });
 

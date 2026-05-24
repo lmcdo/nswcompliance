@@ -2,9 +2,9 @@
  * GrannyFlatTool paywall behaviour.
  *
  * After an eligible result:
- *   - LockedPreviewCard renders with "Unlock full analysis — $49" button
- *   - No yield calculator shown (it's behind the paywall)
- *   - Clicking Unlock fires detect then checkout in sequence
+ *   - LockedPreviewCard renders with "Your Granny Flat Feasibility Report" heading
+ *   - WaitlistButton shown (no Stripe checkout)
+ *   - FreePaidComparison shown
  *
  * After an ineligible result:
  *   - LockedPreviewCard does NOT render
@@ -45,6 +45,16 @@ jest.mock('@/components/reports/AddressAutocomplete', () => ({
 
 jest.mock('@/components/providers/PostHogProvider', () => ({
   posthog: { capture: jest.fn() },
+}));
+
+jest.mock('@/components/reports/ToolCrossSell', () => ({
+  ToolCrossSell: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: ({ interestType }: { interestType: string }) => (
+    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -116,7 +126,11 @@ async function runEligibilityCheck(result: typeof ELIGIBLE_RESULT) {
   fireEvent.change(input, { target: { value: result.address } });
   const btn = screen.getByRole('button', { name: /check my property/i });
   fireEvent.click(btn);
-  await waitFor(() => screen.getByText(/eligible|not eligible/i));
+  // Wait for the badge text — use getAllByText since "eligible" appears in badge + description
+  await waitFor(() => {
+    const matches = screen.getAllByText(/eligible|not eligible/i);
+    if (matches.length === 0) throw new Error('Result not yet rendered');
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +142,7 @@ beforeEach(() => {
   // jsdom doesn't implement window.location.href assignment
   Object.defineProperty(window, 'location', {
     writable: true,
-    value: { href: 'http://localhost/', search: '' },
+    value: { href: 'http://localhost/canibuildit', search: '', pathname: '/canibuildit' },
   });
   Object.defineProperty(window, 'history', {
     writable: true,
@@ -147,8 +161,9 @@ afterEach(() => {
 describe('GrannyFlatTool — eligible result paywall', () => {
   it('shows LockedPreviewCard after eligible result', async () => {
     await runEligibilityCheck(ELIGIBLE_RESULT);
-    expect(screen.getByText('Full property analysis')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /unlock full analysis.*\$49/i })).toBeInTheDocument();
+    expect(screen.getByText('Your Granny Flat Feasibility Report')).toBeInTheDocument();
+    // WaitlistButton replaces Stripe checkout
+    expect(screen.getByTestId('waitlist-btn-granny-flat')).toBeInTheDocument();
   });
 
   it('shows blurred preview rows in LockedPreviewCard', async () => {
@@ -166,92 +181,21 @@ describe('GrannyFlatTool — eligible result paywall', () => {
 
   it('does NOT show interactive yield calculator for eligible result', async () => {
     await runEligibilityCheck(ELIGIBLE_RESULT);
-    // The "Estimated return" label only appears in the old eligible yield calculator
-    expect(screen.queryByText('Estimated return')).not.toBeInTheDocument();
     // The "If this lot qualified" label is for ineligible only
     expect(screen.queryByText('If this lot qualified')).not.toBeInTheDocument();
   });
 
-  it('handleUnlock fires detect then checkout and redirects', async () => {
+  it('shows FreePaidComparison for eligible result', async () => {
     await runEligibilityCheck(ELIGIBLE_RESULT);
-
-    // Mock detect response
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ jobId: 'job-uuid-test-123' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-    // Mock checkout response
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.stripe.com/pay/cs_test' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_test');
-    });
-
-    // Verify detect was called with correct action
-    const detectCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/satellite/granny-flat')
-    );
-    expect(detectCall).toBeDefined();
-    const detectBody = JSON.parse(detectCall[1].body);
-    expect(detectBody.action).toBe('detect');
-
-    // Verify checkout was called with job_id (not report_id)
-    const checkoutCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/stripe/checkout/granny-flat')
-    );
-    expect(checkoutCall).toBeDefined();
-    const checkoutBody = JSON.parse(checkoutCall[1].body);
-    expect(checkoutBody.job_id).toBe('job-uuid-test-123');
-    expect(checkoutBody).not.toHaveProperty('report_id');
-  });
-
-  it('shows error message when unlock detect call fails', async () => {
-    await runEligibilityCheck(ELIGIBLE_RESULT);
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Service unavailable' }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Service unavailable')).toBeInTheDocument();
-    });
-  });
-
-  it('button shows "Starting analysis…" while unlocking', async () => {
-    await runEligibilityCheck(ELIGIBLE_RESULT);
-
-    // Never resolve to keep it in-flight
-    (global.fetch as jest.Mock).mockImplementationOnce(
-      () => new Promise(() => {})
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /starting analysis/i })).toBeDisabled();
-    });
+    expect(screen.getByText('Included free')).toBeInTheDocument();
+    expect(screen.getByText('In paid report')).toBeInTheDocument();
   });
 });
 
 describe('GrannyFlatTool — ineligible result', () => {
   it('does NOT show LockedPreviewCard for ineligible result', async () => {
     await runEligibilityCheck(INELIGIBLE_RESULT);
-    expect(screen.queryByText('Full property analysis')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /unlock full analysis/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Your Granny Flat Feasibility Report')).not.toBeInTheDocument();
   });
 
   it('shows "If this lot qualified" yield calculator for ineligible', async () => {

@@ -1,15 +1,12 @@
 /**
  * ThreatRadarTool paywall behaviour.
  *
- * Partial results gate:
- *   - 6 results: first 3 shown clearly, MonitorPreviewCard between 3 and 4, results 4-6 blurred
- *   - 2 results: both shown, MonitorPreviewCard after last result
- *   - 0 results: "no applications found" + MonitorPreviewCard after
- *
- * MonitorPreviewCard:
- *   - Email input present (subscription requires email)
- *   - Subscribe button fires checkout route
- *   - Mock DA card present (blurred content)
+ * Current UI:
+ *   - ALL results shown (no partial gate)
+ *   - MonitorPreviewCard with WaitlistButton (no email input / Stripe checkout)
+ *   - Mock blurred DA card present in MonitorPreviewCard
+ *   - FreePaidComparison shown
+ *   - DownloadPdfButton and PostResultEmailStrip shown after results
  */
 
 import React from 'react';
@@ -51,6 +48,16 @@ jest.mock('@/components/providers/PostHogProvider', () => ({
   posthog: { capture: jest.fn() },
 }));
 
+jest.mock('@/components/reports/ToolCrossSell', () => ({
+  ToolCrossSell: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: ({ interestType, label }: { interestType: string; label?: string }) => (
+    <button data-testid={`waitlist-btn-${interestType}`}>{label ?? 'Join waitlist'}</button>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -59,10 +66,12 @@ function makeApp(i: number) {
   return {
     PlanningPortalApplicationNumber: `DA/2026/${1000 + i}`,
     ApplicationType: 'Development Application',
+    DevelopmentType: 'Alterations & additions',
     ApplicationDescription: `Description for application ${i}`,
     LodgementDate: '2026-03-15',
     Status: 'Under Assessment',
     PropertyAddress: `${i} Test St Haberfield NSW 2045`,
+    CostOfDevelopment: 100000,
     _distance_m: 50 + i * 20,
   };
 }
@@ -110,7 +119,11 @@ beforeEach(() => {
   global.fetch = jest.fn();
   Object.defineProperty(window, 'location', {
     writable: true,
-    value: { href: 'http://localhost/', search: '' },
+    value: { href: 'http://localhost/', search: '', pathname: '/reports/threat-radar' },
+  });
+  Object.defineProperty(window, 'history', {
+    writable: true,
+    value: { replaceState: jest.fn() },
   });
 });
 
@@ -119,31 +132,23 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Many results (6) — partial gate
+// Many results (6) — all shown (no partial gate)
 // ---------------------------------------------------------------------------
 
-describe('ThreatRadarTool — 6 results (partial gate)', () => {
+describe('ThreatRadarTool — 6 results', () => {
   it('shows MonitorPreviewCard in results', async () => {
     await runSearch(6);
     expect(screen.getByTestId('monitor-preview-card')).toBeInTheDocument();
   });
 
-  it('shows first 3 application numbers (not blurred)', async () => {
+  it('shows all 6 application numbers', async () => {
     await runSearch(6);
-    // First 3 should render without blur class
     expect(screen.getByText('DA/2026/1000')).toBeInTheDocument();
     expect(screen.getByText('DA/2026/1001')).toBeInTheDocument();
     expect(screen.getByText('DA/2026/1002')).toBeInTheDocument();
-  });
-
-  it('card shows correct hidden count for 6 results', async () => {
-    await runSearch(6);
-    expect(screen.getByText(/3 more applications below/i)).toBeInTheDocument();
-  });
-
-  it('shows email input in MonitorPreviewCard', async () => {
-    await runSearch(6);
-    expect(screen.getByTestId('monitor-email-input')).toBeInTheDocument();
+    expect(screen.getByText('DA/2026/1003')).toBeInTheDocument();
+    expect(screen.getByText('DA/2026/1004')).toBeInTheDocument();
+    expect(screen.getByText('DA/2026/1005')).toBeInTheDocument();
   });
 
   it('shows mock blurred DA card in MonitorPreviewCard', async () => {
@@ -151,13 +156,27 @@ describe('ThreatRadarTool — 6 results (partial gate)', () => {
     // Mock DA card text exists in DOM (blurred via CSS, not hidden from DOM)
     expect(screen.getByText(/DA\/2026\/8821/)).toBeInTheDocument();
   });
+
+  it('shows "Weekly DA monitoring — coming soon" in MonitorPreviewCard', async () => {
+    await runSearch(6);
+    // Text appears in both MonitorPreviewCard and the top-level waitlist section
+    const elements = screen.getAllByText(/Weekly DA monitoring — coming soon/);
+    expect(elements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows WaitlistButton in MonitorPreviewCard', async () => {
+    await runSearch(6);
+    // WaitlistButton appears in both MonitorPreviewCard and the top-level waitlist section
+    const waitlistBtns = screen.getAllByTestId('waitlist-btn-threat-radar');
+    expect(waitlistBtns.length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
 // Few results (2) — card shown after all results
 // ---------------------------------------------------------------------------
 
-describe('ThreatRadarTool — 2 results (card after all results)', () => {
+describe('ThreatRadarTool — 2 results', () => {
   it('shows MonitorPreviewCard after results', async () => {
     await runSearch(2);
     expect(screen.getByTestId('monitor-preview-card')).toBeInTheDocument();
@@ -169,41 +188,23 @@ describe('ThreatRadarTool — 2 results (card after all results)', () => {
     expect(screen.getByText('DA/2026/1001')).toBeInTheDocument();
   });
 
-  it("card shows 'What you'd miss next week' when no hidden results", async () => {
+  it('shows "Example alert" text in MonitorPreviewCard', async () => {
     await runSearch(2);
-    expect(screen.getByText(/What you'd miss next week/i)).toBeInTheDocument();
+    expect(screen.getByText(/Example alert/i)).toBeInTheDocument();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Subscribe flow
+// Zero results
 // ---------------------------------------------------------------------------
 
-describe('ThreatRadarTool — subscribe from MonitorPreviewCard', () => {
-  it('subscribe button fires checkout with address and email', async () => {
-    await runSearch(2);
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.stripe.com/pay/cs_sub_test' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    const emailInput = screen.getByTestId('monitor-email-input');
-    fireEvent.change(emailInput, { target: { value: 'user@example.com' } });
-    fireEvent.submit(emailInput.closest('form')!);
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_sub_test');
-    });
-
-    const subCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/stripe/checkout/threat-radar-monitor')
-    );
-    expect(subCall).toBeDefined();
-    const body = JSON.parse(subCall[1].body);
-    expect(body.email).toBe('user@example.com');
-    expect(body.address).toBeTruthy();
+describe('ThreatRadarTool — 0 results', () => {
+  it('shows "No applications found" when no results', async () => {
+    render(<ThreatRadarTool />);
+    mockSearchFetch(0);
+    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '5 Commercial Rd Haberfield NSW 2045' } });
+    fireEvent.click(screen.getByRole('button', { name: /check nearby applications/i }));
+    await waitFor(() => screen.getByText(/No applications found/));
+    expect(screen.getByText(/No applications found/)).toBeInTheDocument();
   });
 });

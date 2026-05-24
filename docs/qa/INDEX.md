@@ -11,7 +11,7 @@
 | Artefact | Path | What It Proves |
 |---|---|---|
 | Architecture Overview | [`docs/qa/architecture-overview.md`](architecture-overview.md) | System topology, data flow, security posture, deployment model. Shows how components interact and where data originates. |
-| Test Matrix | [`docs/qa/test-matrix.md`](test-matrix.md) | 415 unit tests across 14 test files covering all 7 pipelines + enrichment + QA infrastructure. Execution <2s, enforced on every push. |
+| Test Matrix | [`docs/qa/test-matrix.md`](test-matrix.md) | 1,030 tests (415 Python + 615 Jest) across 56 test suites covering all 7 pipelines + enrichment + QA infrastructure + frontend components. Execution <8s, enforced on every push. |
 | Full Codebase Scan | [`docs/qa/codebase-scan-2026-05-23.md`](codebase-scan-2026-05-23.md) | 1,177 files scanned with 4 automated scanners. Every finding triaged as true positive, accepted risk, or false positive. |
 
 ---
@@ -131,6 +131,7 @@ Every code change passes through 7 automated scanner layers before it can reach 
 | 1 | QA tier classifier | Missing `QA: [Tier]` line in commit message | `commit-msg` | PR #344 |
 | 2 | TSC error count | TypeScript errors above baseline (664) | `pre-commit` | PR #347 |
 | 3 | Python test suite | 415 unit tests across 7 pipelines + enrichment | `pre-push` | PR #362 |
+| 3b | Frontend Jest suite | 615 tests across 42 suites (components, API routes, libs) | `pre-push` | PR #TBD |
 | 4 | DB guard scanner | SQL queries missing `is_current = TRUE` on scoped tables | `pre-push` (qa_gate.py) | PR #362 |
 | 5 | Null guard scanner | `.rows[0]` access without prior length check | `pre-push` (qa_gate.py) | PR #365 |
 | 6 | Type boundary scanner | Falsy JSX guards and `=== null` without undefined coverage | `pre-push` (qa_gate.py) | PR #366 |
@@ -165,12 +166,14 @@ Additionally, the QA gate (`scripts/qa_gate.py`) validates per-PR quality report
 
 | Metric | Value |
 |---|---|
-| Total unit tests | 415 |
-| Test execution time | <2 seconds |
-| Pipelines with dedicated test suites | 7/7 |
-| Mock injection | `conftest_mocks.py` stubs external deps (psycopg2, requests, pyproj) |
-| Test framework | pytest with pydantic validation |
-| Pre-push enforcement | Tests must pass before code can be pushed |
+| Total tests | 1,030 (415 Python + 615 Jest) |
+| Test execution time | <8 seconds total |
+| Python pipelines with test suites | 7/7 |
+| Frontend Jest suites | 42 |
+| Python mock injection | `conftest_mocks.py` stubs psycopg2, requests, pyproj |
+| Jest mock injection | Custom jsdom env + next/router + next/navigation mocks |
+| Test frameworks | pytest (Python), Jest + React Testing Library (frontend) |
+| Pre-push enforcement | Both suites must pass before code can be pushed |
 
 ### Test coverage by pipeline
 
@@ -186,6 +189,20 @@ Additionally, the QA gate (`scripts/qa_gate.py`) validates per-PR quality report
 | Enrichment | `tests/enrichment/` | 88 | Provision tagging, layer classification, applicability |
 | QA Scanners | `tests/test_qa_scanners.py` | 14 | Scanner false positive/negative validation |
 | Insert Scripts | `tests/test_insert_scripts.py` | 17 | DCP control data integrity, dedup, constraint compliance |
+
+### Frontend test coverage (Jest)
+
+| Area | Test file(s) | Tests | Coverage focus |
+|---|---|---|---|
+| Council Config | `__tests__/lib/council-config.test.ts` | 30 | Detection, lookup, categories, layers, sorting |
+| Satellite Paywalls (×5) | `__tests__/components/*-paywall.test.tsx` | ~200 | Paywall flow, pricing, unlock, source tracking |
+| Cross-sell | `__tests__/components/CrossSellCards.test.tsx` + `ToolCrossSell.test.tsx` | ~30 | Card rendering, navigation, router integration |
+| Email Capture | `__tests__/components/GrannyFlatEmailCapture.test.tsx` | ~20 | Form validation, submission flow |
+| Shadow Tool | `__tests__/components/ShadowTool.test.tsx` | ~25 | Results display, operational transparency |
+| Threat Radar | `__tests__/components/ThreatRadarTool.test.tsx` | ~20 | Multiple result rendering |
+| Pre-DA API | `__tests__/api/pre-da-history-generate.test.ts` | ~30 | Validation, auth, payment verification |
+| Webhooks | `__tests__/api/webhook-granny-flat-analysis.test.ts` | ~25 | Event handling, email extraction |
+| Other components | Various | ~235 | Compliance UI, DCP controls, assessment |
 
 ---
 

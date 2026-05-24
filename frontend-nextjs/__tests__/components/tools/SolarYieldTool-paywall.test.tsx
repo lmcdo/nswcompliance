@@ -3,8 +3,7 @@
  *
  * After a result with coverage_available=true:
  *   - SolarLockedPreviewCard renders with blurred financial values
- *   - No email input visible
- *   - Clicking Unlock fires checkout with {report_id, address} (no email)
+ *   - WaitlistButton shown (no Stripe checkout)
  *
  * After payment success URL params:
  *   - PaidDownloadCTA renders instead of SolarLockedPreviewCard
@@ -49,6 +48,16 @@ jest.mock('@/components/reports/ToolCrossSell', () => ({
 
 jest.mock('@/components/providers/PostHogProvider', () => ({
   posthog: { capture: jest.fn() },
+}));
+
+jest.mock('@/components/tools/OperationalTransparency', () => ({
+  OperationalTransparency: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: ({ interestType }: { interestType: string }) => (
+    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -106,10 +115,10 @@ async function runReport(data = SOLAR_RESULT) {
   mockRunFetch(data);
   fireEvent.change(screen.getByTestId('address-input'), { target: { value: data.address } });
   fireEvent.click(screen.getByRole('button', { name: /run report/i }));
-  // Wait for grade badge to appear (coverage_available path) or "not assessable" (no coverage)
+  // Wait for result to render
   await waitFor(() => {
-    const hasGrade = screen.queryByText(/Annual electricity savings/i) || screen.queryByText(/not assessable/i) || screen.queryByText(/Building data not available/i);
-    if (!hasGrade) throw new Error('Result not yet rendered');
+    const hasResult = screen.queryByText(/Your solar financials/i) || screen.queryByText(/not assessable/i) || screen.queryByText(/Building data not available/i);
+    if (!hasResult) throw new Error('Result not yet rendered');
   });
 }
 
@@ -140,98 +149,38 @@ afterEach(() => {
 describe('SolarYieldTool — LockedPreviewCard after result', () => {
   it('shows SolarLockedPreviewCard when coverage_available and report_id present', async () => {
     await runReport();
-    expect(screen.getByText('Annual electricity savings')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /unlock full analysis.*\$19/i })).toBeInTheDocument();
+    // "Your solar financials" is the unique heading in the LockedPreviewCard
+    expect(screen.getByText('Your solar financials')).toBeInTheDocument();
+    // WaitlistButton replaces Stripe checkout
+    expect(screen.getByTestId('waitlist-btn-solar-yield')).toBeInTheDocument();
   });
 
   it('shows all blurred preview rows', async () => {
     await runReport();
-    expect(screen.getByText('Annual electricity savings')).toBeInTheDocument();
-    expect(screen.getByText('Payback period')).toBeInTheDocument();
-    expect(screen.getByText('Installed cost estimate')).toBeInTheDocument();
-    expect(screen.getByText('Feed-in contribution')).toBeInTheDocument();
-    expect(screen.getByText('Full PDF report')).toBeInTheDocument();
+    // Some labels appear in both FreePaidComparison and LockedPreviewCard, use getAllByText
+    expect(screen.getAllByText(/Payback period/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Installed cost estimate/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Feed-in/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Full PDF report/).length).toBeGreaterThanOrEqual(1);
   });
 
   it('blurred values contain real computed $ amounts', async () => {
     await runReport();
-    // annual_savings = (8200*0.30*0.32) + (8200*0.70*0.06) = 786.24 + 344.4 = 1,130.64 → $1,131
+    // annual_savings = (8200*0.30*0.32) + (8200*0.70*0.06) = 787.2 + 344.4 = 1,131.6 → $1,132
     const savingsEl = screen.getByText(/\$1,1\d\d\s*\/\s*yr/);
     expect(savingsEl).toBeInTheDocument();
-    // payback = (20*400*1.00) / 1130.64 ≈ 7.1 years
+    // payback = (20*400*1.00) / 1131.6 ≈ 7.1 years
     expect(screen.getByText(/7\.\d years/)).toBeInTheDocument();
-  });
-
-  it('does NOT show email input in LockedPreviewCard', async () => {
-    await runReport();
-    // The coverage interest form has an email field, but LockedPreviewCard must not
-    const emailInputs = screen.queryAllByPlaceholderText(/email/i);
-    // Filter out coverage interest form (which is in no-coverage branch — not shown here)
-    expect(emailInputs).toHaveLength(0);
   });
 
   it('does NOT show LockedPreviewCard when coverage_available is false', async () => {
     await runReport(NO_COVERAGE_RESULT);
-    expect(screen.queryByText('Annual electricity savings')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /unlock/i })).not.toBeInTheDocument();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// handleUnlock
-// ---------------------------------------------------------------------------
-
-describe('SolarYieldTool — handleUnlock', () => {
-  it('fires checkout POST with {report_id, address} and redirects', async () => {
-    await runReport();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.stripe.com/pay/cs_test_sol' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_test_sol');
-    });
-
-    const checkoutCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/stripe/checkout/solar-yield')
-    );
-    expect(checkoutCall).toBeDefined();
-    const body = JSON.parse(checkoutCall[1].body);
-    expect(body.report_id).toBe('sol-report-uuid-1234');
-    expect(body.address).toBe('5 Commercial Rd Haberfield NSW 2045');
-    expect(body).not.toHaveProperty('email');
+    expect(screen.queryByText('Your solar financials')).not.toBeInTheDocument();
   });
 
-  it('shows error when checkout call fails', async () => {
+  it('shows "Your solar financials" heading', async () => {
     await runReport();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Service unavailable' }), {
-        status: 503, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Service unavailable')).toBeInTheDocument();
-    });
-  });
-
-  it('button shows "Starting checkout..." and is disabled while in flight', async () => {
-    await runReport();
-    (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock full analysis/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /starting checkout/i })).toBeDisabled();
-    });
+    expect(screen.getByText('Your solar financials')).toBeInTheDocument();
   });
 });
 

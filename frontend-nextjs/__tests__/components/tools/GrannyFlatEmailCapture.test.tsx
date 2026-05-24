@@ -19,7 +19,10 @@ import GrannyFlatPage from '@/app/reports/granny-flat/page';
 // ---- mocks ----
 
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'payment' ? 'success' : null),
+  }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn(), back: jest.fn(), forward: jest.fn(), prefetch: jest.fn() }),
 }));
 
 jest.mock('react-map-gl/maplibre', () => ({

@@ -10,10 +10,11 @@ git config core.hooksPath .githooks
 This activates all hooks in `.githooks/`:
 - `commit-msg` — enforces QA tier classification on every commit
 - `pre-commit` — TSC error count gate (baseline 664)
-- `pre-push` — runs 3 checks, blocks push on failure:
+- `pre-push` — runs 4 checks, blocks push on failure:
   1. Python unit tests (369+ tests)
-  2. QA report validation (`qa_gate.py` on `.qa_report.json`) — auto-feeds diff files for coverage check, enforces tier floor (>3 files = not Minor), verifies commit_hash matches HEAD
-  3. Liability language scan (new lines in user-facing files only)
+  2. Frontend Jest tests (615+ tests)
+  3. QA report validation (`qa_gate.py` on `.qa_report.json`) — auto-feeds diff files for coverage check, enforces tier floor (>3 files = not Minor), verifies commit_hash matches HEAD
+  4. Liability language scan (new lines in user-facing files only)
 
 The hook files are tracked in git but `core.hooksPath` is a per-clone setting — it does not transfer via pull. Run this once per clone/worktree.
 
@@ -101,6 +102,10 @@ git checkout -b feat/<short-description>
 - Test deps: `pip install -r requirements-test.txt` (pytest, pydantic, fastapi)
 - Mock injection: `tests/conftest_mocks.py` stubs psycopg2/requests/pyproj so pure-logic tests run without native deps
 - Stale tests are quarantined in `collect_ignore` (conftest.py) — not deleted, can be revived
+- `cd frontend-nextjs && npx jest` — runs all frontend Jest tests (~615 tests, ~6s)
+- `cd frontend-nextjs && npx jest --testPathPattern=council-config` — run a single test file
+- Custom jsdom env (`jest.jsdom-env.js`) preserves Node 20+ Web API globals (Response, fetch, etc.)
+- Jest setup (`jest.setup.js`) mocks next/router, next/navigation, window.matchMedia, localStorage
 
 ## Code Standards
 - Python: PEP8, type hints, black, pydantic, Google-style docstrings
@@ -141,7 +146,7 @@ Workflow:
 5. Share Vercel preview URL for QA
 6. User says "merge" → `gh pr merge --squash`
 
-The pre-push hook runs `python -m pytest tests/` and blocks push on failure. TSC is checked by the pre-commit hook separately.
+The pre-push hook runs `python -m pytest tests/` + `npx jest --bail` + QA validation + liability language scan. TSC is checked by the pre-commit hook separately.
 
 PR body format:
 ```

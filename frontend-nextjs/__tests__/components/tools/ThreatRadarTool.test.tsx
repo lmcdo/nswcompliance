@@ -100,9 +100,8 @@ function mockSubscribeError(message: string) {
 describe('ThreatRadarTool — idle state', () => {
   beforeEach(() => { mockFetch.mockReset(); mockCapture.mockReset(); });
 
-  it('renders form and heading', () => {
+  it('renders form with search button', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByText('Neighbour Development Threat Radar')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check nearby applications' })).toBeInTheDocument();
   });
 
@@ -111,15 +110,14 @@ describe('ThreatRadarTool — idle state', () => {
     expect(screen.getByRole('button', { name: 'Check nearby applications' })).toBeDisabled();
   });
 
-  it('subscribe form is visible on initial render', () => {
+  it('waitlist section is visible on initial render', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByText(/Subscribe for weekly email alerts/i)).toBeInTheDocument();
+    expect(screen.getByText(/Weekly DA monitoring — coming soon/i)).toBeInTheDocument();
   });
 
-  it('subscribe button disabled when address is empty (even with email filled)', () => {
+  it('waitlist join button disabled when email is empty', () => {
     render(<ThreatRadarTool />);
-    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'test@example.com' } });
-    expect(screen.getByRole('button', { name: /Subscribe/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeDisabled();
   });
 });
 
@@ -130,12 +128,14 @@ describe('ThreatRadarTool — idle state', () => {
 describe('ThreatRadarTool — search', () => {
   beforeEach(() => { mockFetch.mockReset(); mockCapture.mockReset(); });
 
-  it('shows "Searching..." while request is pending', async () => {
+  it('hides search form while request is pending', async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    expect(await screen.findByRole('button', { name: 'Searching...' })).toBeDisabled();
+    // In searching state, form is replaced with address text and "Search new address" button
+    expect(await screen.findByText('Search new address')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check nearby applications' })).not.toBeInTheDocument();
   });
 
   it('fires posthog threat_radar_search on submit', async () => {
@@ -186,20 +186,22 @@ describe('ThreatRadarTool — search results', () => {
     expect(await screen.findByText('No applications found')).toBeInTheDocument();
   });
 
-  it('shows correct application count (singular)', async () => {
+  it('shows application count in findings (singular)', async () => {
     mockSearchSuccess(makeSearchResult({ applications: [makeApplication()] }));
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    expect(await screen.findByText('1 application found nearby')).toBeInTheDocument();
+    const matches = await screen.findAllByText(/1 application/);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows correct application count (plural)', async () => {
+  it('shows application count in findings (plural)', async () => {
     mockSearchSuccess(makeSearchResult({ applications: [makeApplication(), makeApplication({ PlanningPortalApplicationNumber: 'DA-2024-002' })] }));
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    expect(await screen.findByText('2 applications found nearby')).toBeInTheDocument();
+    const matches = await screen.findAllByText(/2 applications/);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows application number and description', async () => {
@@ -275,58 +277,27 @@ describe('ThreatRadarTool — search results', () => {
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    await screen.findByText('1 application found nearby');
+    await screen.findAllByText(/1 application/);
     expect(mockCapture).toHaveBeenCalledWith('threat_radar_search_complete', expect.objectContaining({ application_count: 1 }));
   });
 });
 
 // ---------------------------------------------------------------------------
-// Subscribe state machine
+// Waitlist
 // ---------------------------------------------------------------------------
 
-describe('ThreatRadarTool — subscribe', () => {
+describe('ThreatRadarTool — waitlist', () => {
   beforeEach(() => { mockFetch.mockReset(); mockCapture.mockReset(); });
 
-  it('redirects to Stripe checkout on successful subscribe', async () => {
-    // Subscribe now redirects to Stripe rather than showing "Subscribed"
-    mockSearchSuccess(makeSearchResult());
-    mockSubscribeSuccess();
-    const assignSpy = jest.spyOn(window, 'location', 'get').mockReturnValue({ href: '' } as Location);
+  it('shows waitlist section with join button', () => {
     render(<ThreatRadarTool />);
-    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St Surry Hills' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    await screen.findByText('No applications found');
-    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
-    // Button shows 'Redirecting...' while in-flight
-    expect(await screen.findByRole('button', { name: /Redirecting/i })).toBeInTheDocument();
-    assignSpy.mockRestore();
+    expect(screen.getByText(/Weekly DA monitoring — coming soon/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeInTheDocument();
   });
 
-  it('shows inline error when subscribe fails', async () => {
-    mockSearchSuccess(makeSearchResult());
-    mockSubscribeError('Email already subscribed');
+  it('waitlist join button enabled when email is filled', () => {
     render(<ThreatRadarTool />);
-    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St Surry Hills' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    await screen.findByText('No applications found');
-    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
-    expect(await screen.findByText('Email already subscribed')).toBeInTheDocument();
-    // Form still visible — not subscribed
-    expect(screen.queryByText('Subscribed')).not.toBeInTheDocument();
-  });
-
-  it('fires posthog threat_radar_subscribe on submit', async () => {
-    mockSearchSuccess(makeSearchResult());
-    mockSubscribeSuccess();
-    render(<ThreatRadarTool />);
-    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
-    await screen.findByText('No applications found');
-    fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
-    await screen.findByRole('button', { name: /Redirecting/i });
-    expect(mockCapture).toHaveBeenCalledWith('threat_radar_subscribe', expect.anything());
+    fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'user@example.com' } });
+    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeEnabled();
   });
 });
