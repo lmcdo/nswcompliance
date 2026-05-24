@@ -1,5 +1,6 @@
 {
   "tier": "standard",
+  "commit_hash": "6e1b835d",
   "justification": "New data pipeline + new DB table. Not Critical because no user-facing output, payments, or legal compliance text.",
   "files": [
     "scripts/ingest_cadastre.py",
@@ -55,21 +56,21 @@
     },
     {
       "name": "ingest",
-      "file_line": "ingest_cadastre.py:320",
-      "input": "where clause, label, dry_run flag, DB connection, optional row limit, optional spatial params",
-      "output": "int total number of rows successfully ingested across all pages",
+      "file_line": "ingest_cadastre.py:327",
+      "input": "where clause, label, dry_run flag, DB connection, db_url for reconnection, optional row limit, optional spatial params",
+      "output": "tuple of int total rows ingested and connection object across all pages",
       "if_none": "Zero count from get_count returns 0 immediately without any DB operations"
     },
     {
       "name": "get_lga_bbox",
-      "file_line": "ingest_cadastre.py:389",
+      "file_line": "ingest_cadastre.py:412",
       "input": "psycopg2 connection plus LGA name string from CLI --lga argument",
       "output": "Optional tuple of four floats representing xmin ymin xmax ymax bounding box",
       "if_none": "Returns None which causes caller to print error and exit with code 1"
     },
     {
       "name": "get_last_sync",
-      "file_line": "ingest_cadastre.py:408",
+      "file_line": "ingest_cadastre.py:431",
       "input": "psycopg2 connection to query existing nsw_cadastre_lots table",
       "output": "Optional datetime representing MAX modifieddate for incremental sync cutoff",
       "if_none": "Returns None which triggers full ingest fallback instead of incremental"
@@ -99,9 +100,9 @@
     },
     {
       "value": "DATABASE_URL",
-      "read_at": "ingest_cadastre.py:434",
+      "read_at": "ingest_cadastre.py:466",
       "nullable": "yes (env var may be unset)",
-      "guard_at": "ingest_cadastre.py:435 — if not db_url and not args.dry_run: exits with error",
+      "guard_at": "ingest_cadastre.py:467 — if not db_url and not args.dry_run: exits with error",
       "if_missing": "Error message printed to stdout, script exits with code 1"
     }
   ],
@@ -122,7 +123,7 @@
     },
     {
       "purpose": "LGA bounding box lookup from spatial_overlays zone layer",
-      "file_line": "ingest_cadastre.py:393",
+      "file_line": "ingest_cadastre.py:416",
       "where_clause": "layer_type = 'zone' AND lga_name = %s (parameterised)",
       "if_zero": "Returns None causing exit with error message and hint to run spatial overlay ingest",
       "if_wrong": "Could return wrong bbox if lga_name doesn't match — mitigated by exact string match"
@@ -133,37 +134,43 @@
       "scenario": "FeatureServer 500/503 during multi-page ingest at page 50 of 1675",
       "what_happens": "3 retries per page then skips. Already-committed pages safe due to per-page commit.",
       "mitigated": true,
-      "how": "ingest_cadastre.py:100-107 retry loop with exponential backoff + ingest_cadastre.py:354 conn.commit() per page"
+      "how": "ingest_cadastre.py:100-107 retry loop with exponential backoff + ingest_cadastre.py:354 conn.commit() per page",
+      "repro": "python scripts/ingest_cadastre.py --scope all (wait for network interruption or manually block outbound traffic mid-run)"
     },
     {
       "scenario": "Invalid Esri geometry with self-intersecting or degenerate polygon rings",
       "what_happens": "Shapely Polygon constructor may produce invalid geometry that fails PostGIS insertion",
       "mitigated": true,
-      "how": "ingest_cadastre.py:196 — valid_polygons filters on p.is_valid and not p.is_empty"
+      "how": "ingest_cadastre.py:196 — valid_polygons filters on p.is_valid and not p.is_empty",
+      "repro": "python scripts/ingest_cadastre.py --scope all --limit 100000 (degenerate rings occur naturally in rural lots)"
     },
     {
       "scenario": "Duplicate lotidstring across overlapping pages from bbox spatial query",
       "what_happens": "ON CONFLICT DO UPDATE overwrites with identical data from second occurrence",
       "mitigated": true,
-      "how": "ingest_cadastre.py:255 UPSERT on lotidstring unique constraint makes this idempotent"
+      "how": "ingest_cadastre.py:255 UPSERT on lotidstring unique constraint makes this idempotent",
+      "repro": "python scripts/ingest_cadastre.py --lga 'INNER WEST' && python scripts/ingest_cadastre.py --lga 'INNER WEST' (run twice)"
     },
     {
       "scenario": "UPSERT fails mid-batch due to invalid WKT geometry causing PostGIS parse error",
       "what_happens": "Transaction rolls back for that page, losing up to 2000 rows",
       "mitigated": true,
-      "how": "ingest_cadastre.py:196 pre-filters invalid geometries. ST_GeomFromText on valid WKT won't fail."
+      "how": "ingest_cadastre.py:196 pre-filters invalid geometries. ST_GeomFromText on valid WKT won't fail.",
+      "repro": "python scripts/ingest_cadastre.py --scope all --limit 50000 (check for ST_GeomFromText errors in output)"
     },
     {
       "scenario": "Validation query runs on empty table during dry-run mode",
       "what_happens": "validate_ingest prints zero counts which is confusing but not harmful",
       "mitigated": true,
-      "how": "ingest_cadastre.py:361 — validate_ingest only called when not dry_run"
+      "how": "ingest_cadastre.py:361 — validate_ingest only called when not dry_run",
+      "repro": "python scripts/ingest_cadastre.py --dry-run --limit 2000 (verify no validation section printed)"
     },
     {
       "scenario": "LGA bbox lookup returns wrong extent because spatial_overlays zone data is stale or incomplete for that LGA",
       "what_happens": "Spatial query fetches lots from wrong area — either too few lots or lots from neighbouring LGAs",
       "mitigated": true,
-      "how": "ingest_cadastre.py:399 adds 0.001 degree buffer to bbox. Zone layer covers full LGA by definition. Missing LGA → returns None → exit with hint."
+      "how": "ingest_cadastre.py:399 adds 0.001 degree buffer to bbox. Zone layer covers full LGA by definition. Missing LGA → returns None → exit with hint.",
+      "repro": "python scripts/ingest_cadastre.py --lga 'NONEXISTENT COUNCIL' (should exit with error + hint)"
     }
   ],
   "post_merge": {
