@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     const { x, y, lga: lgaRaw } = body;
 
     // Normalise LGA to uppercase to match heritage_conservation_areas.lga_name format
-    const lga = lgaRaw ? lgaRaw.toUpperCase() : lgaRaw;
+    const lga = typeof lgaRaw === 'string' ? lgaRaw.toUpperCase() : lgaRaw;
 
     // Validate inputs
     if (!x || !y) {

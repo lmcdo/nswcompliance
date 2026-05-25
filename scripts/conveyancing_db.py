@@ -205,7 +205,7 @@ def fetch_dcp_setbacks(
     sd_setbacks: list[dict] = []
 
     # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
-    zone_prefix = (zone_code or "").split()[0].upper() if zone_code else ""
+    zone_prefix = (zone_code.strip().split()[0].upper() if zone_code and zone_code.strip() else "")
 
     for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability in rows:
         # Skip zone-specific controls that explicitly reference a DIFFERENT zone.
