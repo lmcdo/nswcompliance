@@ -1,182 +1,41 @@
 {
-  "tier": "standard",
-  "commit_hash": "6e1b835d",
-  "justification": "New data pipeline + new DB table. Not Critical because no user-facing output, payments, or legal compliance text.",
+  "tier": "minor",
+  "justification": "Documentation and .gitignore only. Two legacy script path fixes (non-functional LightRAG scripts). No business logic, no DB, no runtime code.",
+  "commit_hash": "3810c287",
   "files": [
-    "scripts/ingest_cadastre.py",
-    "db-clean-tasks/migrations/20260523_nsw_cadastre_lots.sql"
+    ".gitignore",
+    ".env.example",
+    "SETUP.md",
+    "scripts/simple_nsw_query.py",
+    "scripts/wsl2_query_wrapper.py",
+    "docs/intelligence-brief/CLAUDE.md",
+    "docs/intelligence-brief/IMPLEMENTATION.md",
+    "docs/intelligence-brief/LEGAL_STRATEGY.md",
+    "docs/intelligence-brief/LLM_STRATEGY.md",
+    "docs/intelligence-brief/PRODUCT_SCOPE.md",
+    "docs/intelligence-brief/QA_ANALYSIS.md"
   ],
   "pre_impl": {
-    "existing_data": "New table nsw_cadastre_lots — no existing table. PostGIS extension already enabled.",
-    "assumption_mismatch": "FeatureServer field names wrong → 400 error on query. Verified field names against layer metadata (29 fields, all lowercase except Shape__*).",
-    "new_vs_existing": "N/A — new table. Re-runs use UPSERT on lotidstring unique constraint, idempotent."
+    "existing_data": "None — documentation only",
+    "assumption_mismatch": "N/A",
+    "new_vs_existing": "N/A"
   },
-  "functions": [
-    {
-      "name": "get_count",
-      "file_line": "ingest_cadastre.py:76",
-      "input": "str WHERE clause plus optional spatial params dict from CLI args",
-      "output": "int record count from FeatureServer returnCountOnly query response",
-      "if_none": "where defaults to '1=1' → returns total count"
-    },
-    {
-      "name": "fetch_page",
-      "file_line": "ingest_cadastre.py:86",
-      "input": "str WHERE clause, int page offset, optional spatial params dict",
-      "output": "dict Esri JSON response with features list and exceededTransferLimit flag",
-      "if_none": "Returns {'features': []} after 3 retry attempts with backoff"
-    },
-    {
-      "name": "esri_rings_to_multipolygon_wkt",
-      "file_line": "ingest_cadastre.py:144",
-      "input": "list of ring coordinate arrays from Esri JSON geometry object",
-      "output": "Optional str WKT MultiPolygon representation for PostGIS insertion",
-      "if_none": "Returns None which causes the row to be skipped in build_rows"
-    },
-    {
-      "name": "build_rows",
-      "file_line": "ingest_cadastre.py:205",
-      "input": "list of dict features from Esri JSON API response page",
-      "output": "list of tuple rows ready for psycopg2 execute_values DB insertion",
-      "if_none": "Returns empty list which means nothing gets inserted for this page"
-    },
-    {
-      "name": "upsert_rows",
-      "file_line": "ingest_cadastre.py:248",
-      "input": "psycopg2 cursor plus list of tuple rows from build_rows",
-      "output": "DB side-effect INSERT or UPDATE via ON CONFLICT upsert",
-      "if_none": "Empty rows list is never passed since caller guards with if rows check"
-    },
-    {
-      "name": "validate_ingest",
-      "file_line": "ingest_cadastre.py:285",
-      "input": "psycopg2 cursor plus human-readable label string for report header",
-      "output": "stdout validation report with row counts and urbanity distribution",
-      "if_none": "Prints zero counts for empty table which is a valid state"
-    },
-    {
-      "name": "ingest",
-      "file_line": "ingest_cadastre.py:327",
-      "input": "where clause, label, dry_run flag, DB connection, db_url for reconnection, optional row limit, optional spatial params",
-      "output": "tuple of int total rows ingested and connection object across all pages",
-      "if_none": "Zero count from get_count returns 0 immediately without any DB operations"
-    },
-    {
-      "name": "get_lga_bbox",
-      "file_line": "ingest_cadastre.py:412",
-      "input": "psycopg2 connection plus LGA name string from CLI --lga argument",
-      "output": "Optional tuple of four floats representing xmin ymin xmax ymax bounding box",
-      "if_none": "Returns None which causes caller to print error and exit with code 1"
-    },
-    {
-      "name": "get_last_sync",
-      "file_line": "ingest_cadastre.py:431",
-      "input": "psycopg2 connection to query existing nsw_cadastre_lots table",
-      "output": "Optional datetime representing MAX modifieddate for incremental sync cutoff",
-      "if_none": "Returns None which triggers full ingest fallback instead of incremental"
-    }
-  ],
-  "values": [
-    {
-      "value": "lotidstring",
-      "read_at": "ingest_cadastre.py:225",
-      "nullable": "yes (rare)",
-      "guard_at": "ingest_cadastre.py:226 — if not lotid: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
-    },
-    {
-      "value": "Shape__Area",
-      "read_at": "ingest_cadastre.py:229",
-      "nullable": "yes (rare)",
-      "guard_at": "ingest_cadastre.py:230 — if shape_area is None: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
-    },
-    {
-      "value": "geometry.rings",
-      "read_at": "ingest_cadastre.py:214",
-      "nullable": "yes",
-      "guard_at": "ingest_cadastre.py:215 — if not rings: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
-    },
-    {
-      "value": "DATABASE_URL",
-      "read_at": "ingest_cadastre.py:466",
-      "nullable": "yes (env var may be unset)",
-      "guard_at": "ingest_cadastre.py:467 — if not db_url and not args.dry_run: exits with error",
-      "if_missing": "Error message printed to stdout, script exits with code 1"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "UPSERT cadastre lots into nsw_cadastre_lots table",
-      "file_line": "ingest_cadastre.py:252",
-      "where_clause": "ON CONFLICT (lotidstring) DO UPDATE SET all columns",
-      "if_zero": "Nothing to insert which is correct for empty page",
-      "if_wrong": "UPSERT overwrites with same data since source is authoritative"
-    },
-    {
-      "purpose": "Validation total row count after ingest completes",
-      "file_line": "ingest_cadastre.py:288",
-      "where_clause": "None — full table count via COUNT(*)",
-      "if_zero": "Returns 0 and prints it which is valid for dry-run mode",
-      "if_wrong": "N/A — COUNT(*) on full table cannot return wrong rows"
-    },
-    {
-      "purpose": "LGA bounding box lookup from spatial_overlays zone layer",
-      "file_line": "ingest_cadastre.py:416",
-      "where_clause": "layer_type = 'zone' AND lga_name = %s (parameterised)",
-      "if_zero": "Returns None causing exit with error message and hint to run spatial overlay ingest",
-      "if_wrong": "Could return wrong bbox if lga_name doesn't match — mitigated by exact string match"
-    }
-  ],
+  "functions": [],
+  "values": [],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "FeatureServer 500/503 during multi-page ingest at page 50 of 1675",
-      "what_happens": "3 retries per page then skips. Already-committed pages safe due to per-page commit.",
+      "scenario": ".gitignore negation for docs/intelligence-brief/** accidentally unignores other working files",
+      "what_happens": "Unintended files could be committed",
       "mitigated": true,
-      "how": "ingest_cadastre.py:100-107 retry loop with exponential backoff + ingest_cadastre.py:354 conn.commit() per page",
-      "repro": "python scripts/ingest_cadastre.py --scope all (wait for network interruption or manually block outbound traffic mid-run)"
-    },
-    {
-      "scenario": "Invalid Esri geometry with self-intersecting or degenerate polygon rings",
-      "what_happens": "Shapely Polygon constructor may produce invalid geometry that fails PostGIS insertion",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:196 — valid_polygons filters on p.is_valid and not p.is_empty",
-      "repro": "python scripts/ingest_cadastre.py --scope all --limit 100000 (degenerate rings occur naturally in rural lots)"
-    },
-    {
-      "scenario": "Duplicate lotidstring across overlapping pages from bbox spatial query",
-      "what_happens": "ON CONFLICT DO UPDATE overwrites with identical data from second occurrence",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:255 UPSERT on lotidstring unique constraint makes this idempotent",
-      "repro": "python scripts/ingest_cadastre.py --lga 'INNER WEST' && python scripts/ingest_cadastre.py --lga 'INNER WEST' (run twice)"
-    },
-    {
-      "scenario": "UPSERT fails mid-batch due to invalid WKT geometry causing PostGIS parse error",
-      "what_happens": "Transaction rolls back for that page, losing up to 2000 rows",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:196 pre-filters invalid geometries. ST_GeomFromText on valid WKT won't fail.",
-      "repro": "python scripts/ingest_cadastre.py --scope all --limit 50000 (check for ST_GeomFromText errors in output)"
-    },
-    {
-      "scenario": "Validation query runs on empty table during dry-run mode",
-      "what_happens": "validate_ingest prints zero counts which is confusing but not harmful",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:361 — validate_ingest only called when not dry_run",
-      "repro": "python scripts/ingest_cadastre.py --dry-run --limit 2000 (verify no validation section printed)"
-    },
-    {
-      "scenario": "LGA bbox lookup returns wrong extent because spatial_overlays zone data is stale or incomplete for that LGA",
-      "what_happens": "Spatial query fetches lots from wrong area — either too few lots or lots from neighbouring LGAs",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:399 adds 0.001 degree buffer to bbox. Zone layer covers full LGA by definition. Missing LGA → returns None → exit with hint.",
-      "repro": "python scripts/ingest_cadastre.py --lga 'NONEXISTENT COUNCIL' (should exit with error + hint)"
+      "how": ".gitignore:365 — negation scoped to docs/intelligence-brief/ only. Verified with git check-ignore on adjacent dirs.",
+      "repro": "git check-ignore docs/intelligence-brief/LEGAL_STRATEGY.md docs/qa/language-audit-2026-05-18.md — first not ignored, second still ignored"
     }
   ],
   "post_merge": {
-    "db_reset": "No — new table, migration already run on production Supabase",
-    "secrets": "No — uses existing DATABASE_URL environment variable",
-    "other_repo": "No — standalone ingest script with no cross-repo dependencies",
-    "manual_verify": "Yes — run --scope all to ingest full NSW cadastre, then verify spatial queries work via ST_Contains point-in-polygon test"
+    "db_reset": "No",
+    "secrets": "No — .env.example contains placeholder values only, no real secrets",
+    "other_repo": "No",
+    "manual_verify": "Clone to new folder, follow SETUP.md, verify npm install and pytest pass"
   }
 }
