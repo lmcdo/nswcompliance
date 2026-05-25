@@ -312,7 +312,7 @@ def interpret_sepp(
     parts: list[str] = []
     if type_:
         parts.append(type_)
-    if label and label.lower() != type_.lower():
+    if label and (not type_ or label.lower() != type_.lower()):
         parts.append(label)
 
     detail = " — ".join(parts) if parts else (epi_name or "SEPP overlay")

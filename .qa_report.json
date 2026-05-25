@@ -1,11 +1,12 @@
 {
   "tier": "standard",
   "justification": "Multi-file bug fixes across 3 API routes and 1 Python DB function. Affects data correctness for DCP provisions, heritage lookup, and setback filtering. Also fixes 5 pre-existing qa_gate issues in dcp-complete (4 unguarded regulatory_provisions queries + 1 undefined/null sentinel). Not Critical because fixes existing bugs, no new legal output or payment paths.",
-  "commit_hash": "12c380a8",
+  "commit_hash": "21448af6",
   "files": [
     "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
     "frontend-nextjs/app/api/heritage/hca-check/route.ts",
-    "scripts/conveyancing_db.py"
+    "scripts/conveyancing_db.py",
+    "tests/test_conveyancing_db.py"
   ],
   "pre_impl": {
     "existing_data": "heritage_conservation_areas (2039 IW rows, lga_name UPPER CASE), dcp_general_requirements (former_council column), dcp_setback_controls (1037 rows, applicability + condition columns)",
