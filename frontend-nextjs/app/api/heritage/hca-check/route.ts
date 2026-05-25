@@ -102,7 +102,10 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const { x, y, lga } = body;
+    const { x, y, lga: lgaRaw } = body;
+
+    // Normalise LGA to uppercase to match heritage_conservation_areas.lga_name format
+    const lga = lgaRaw ? lgaRaw.toUpperCase() : lgaRaw;
 
     // Validate inputs
     if (!x || !y) {
@@ -119,7 +122,7 @@ export async function POST(req: NextRequest) {
     // Check cache (round coordinates to 6 decimal places for cache key)
     const roundedX = pointX.toFixed(6);
     const roundedY = pointY.toFixed(6);
-    const cacheKey = createCacheKey('hca', { x: roundedX, y: roundedY, lga });
+    const cacheKey = createCacheKey('hca', { x: roundedX, y: roundedY, lga: lga?.toUpperCase() });
     const cache = getHeritageCache();
     const cached = cache.get(cacheKey);
 

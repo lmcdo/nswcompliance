@@ -1,182 +1,113 @@
 {
   "tier": "standard",
-  "commit_hash": "6e1b835d",
-  "justification": "New data pipeline + new DB table. Not Critical because no user-facing output, payments, or legal compliance text.",
+  "justification": "Multi-file bug fixes across 3 API routes and 1 Python DB function. Affects data correctness for DCP provisions, heritage lookup, and setback filtering. Not Critical because fixes existing bugs, no new legal output or payment paths.",
+  "commit_hash": "85d78ffb",
   "files": [
-    "scripts/ingest_cadastre.py",
-    "db-clean-tasks/migrations/20260523_nsw_cadastre_lots.sql"
+    "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+    "frontend-nextjs/app/api/heritage/hca-check/route.ts",
+    "scripts/conveyancing_db.py"
   ],
   "pre_impl": {
-    "existing_data": "New table nsw_cadastre_lots — no existing table. PostGIS extension already enabled.",
-    "assumption_mismatch": "FeatureServer field names wrong → 400 error on query. Verified field names against layer metadata (29 fields, all lowercase except Shape__*).",
-    "new_vs_existing": "N/A — new table. Re-runs use UPSERT on lotidstring unique constraint, idempotent."
+    "existing_data": "heritage_conservation_areas (2039 IW rows, lga_name UPPER CASE), dcp_general_requirements (former_council column), dcp_setback_controls (1037 rows, applicability + condition columns)",
+    "assumption_mismatch": "LGA case mismatch causes silent 0-row returns (heritage). Null formerCouncil causes wrong council data served (DCP). Missing zone filter causes irrelevant controls included (setbacks).",
+    "new_vs_existing": "All fixes are query-time behavior — applies to all requests immediately, no data migration needed."
   },
   "functions": [
     {
-      "name": "get_count",
-      "file_line": "ingest_cadastre.py:76",
-      "input": "str WHERE clause plus optional spatial params dict from CLI args",
-      "output": "int record count from FeatureServer returnCountOnly query response",
-      "if_none": "where defaults to '1=1' → returns total count"
+      "name": "DCP-complete handler (null council path)",
+      "file_line": "frontend-nextjs/app/api/compliance/dcp-complete/route.ts:897-908",
+      "input": "formerCouncil: string|null from PostGIS spatial query + address fallback",
+      "output": "JSON response with empty arrays + council_detection_failed metadata",
+      "if_none": "Returns empty result with metadata flag instead of wrong Marrickville data"
     },
     {
-      "name": "fetch_page",
-      "file_line": "ingest_cadastre.py:86",
-      "input": "str WHERE clause, int page offset, optional spatial params dict",
-      "output": "dict Esri JSON response with features list and exceededTransferLimit flag",
-      "if_none": "Returns {'features': []} after 3 retry attempts with backoff"
+      "name": "HCA check handler (lga normalisation)",
+      "file_line": "frontend-nextjs/app/api/heritage/hca-check/route.ts:105-108",
+      "input": "lgaRaw: string from request body",
+      "output": "lga: string uppercased for heritage_conservation_areas.lga_name match",
+      "if_none": "Ternary guard passes null through — DB query returns 0 rows, inHCA: false"
     },
     {
-      "name": "esri_rings_to_multipolygon_wkt",
-      "file_line": "ingest_cadastre.py:144",
-      "input": "list of ring coordinate arrays from Esri JSON geometry object",
-      "output": "Optional str WKT MultiPolygon representation for PostGIS insertion",
-      "if_none": "Returns None which causes the row to be skipped in build_rows"
-    },
-    {
-      "name": "build_rows",
-      "file_line": "ingest_cadastre.py:205",
-      "input": "list of dict features from Esri JSON API response page",
-      "output": "list of tuple rows ready for psycopg2 execute_values DB insertion",
-      "if_none": "Returns empty list which means nothing gets inserted for this page"
-    },
-    {
-      "name": "upsert_rows",
-      "file_line": "ingest_cadastre.py:248",
-      "input": "psycopg2 cursor plus list of tuple rows from build_rows",
-      "output": "DB side-effect INSERT or UPDATE via ON CONFLICT upsert",
-      "if_none": "Empty rows list is never passed since caller guards with if rows check"
-    },
-    {
-      "name": "validate_ingest",
-      "file_line": "ingest_cadastre.py:285",
-      "input": "psycopg2 cursor plus human-readable label string for report header",
-      "output": "stdout validation report with row counts and urbanity distribution",
-      "if_none": "Prints zero counts for empty table which is a valid state"
-    },
-    {
-      "name": "ingest",
-      "file_line": "ingest_cadastre.py:327",
-      "input": "where clause, label, dry_run flag, DB connection, db_url for reconnection, optional row limit, optional spatial params",
-      "output": "tuple of int total rows ingested and connection object across all pages",
-      "if_none": "Zero count from get_count returns 0 immediately without any DB operations"
-    },
-    {
-      "name": "get_lga_bbox",
-      "file_line": "ingest_cadastre.py:412",
-      "input": "psycopg2 connection plus LGA name string from CLI --lga argument",
-      "output": "Optional tuple of four floats representing xmin ymin xmax ymax bounding box",
-      "if_none": "Returns None which causes caller to print error and exit with code 1"
-    },
-    {
-      "name": "get_last_sync",
-      "file_line": "ingest_cadastre.py:431",
-      "input": "psycopg2 connection to query existing nsw_cadastre_lots table",
-      "output": "Optional datetime representing MAX modifieddate for incremental sync cutoff",
-      "if_none": "Returns None which triggers full ingest fallback instead of incremental"
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:130",
+      "input": "zone_code: Optional[str] from caller (e.g. 'R2 Low Density Residential')",
+      "output": "Filtered setback rows excluding zone-specific controls for different zones",
+      "if_none": "zone_prefix = '' — filter skipped, all rows returned (preserves existing behavior)"
     }
   ],
   "values": [
     {
-      "value": "lotidstring",
-      "read_at": "ingest_cadastre.py:225",
-      "nullable": "yes (rare)",
-      "guard_at": "ingest_cadastre.py:226 — if not lotid: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
-    },
-    {
-      "value": "Shape__Area",
-      "read_at": "ingest_cadastre.py:229",
-      "nullable": "yes (rare)",
-      "guard_at": "ingest_cadastre.py:230 — if shape_area is None: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
-    },
-    {
-      "value": "geometry.rings",
-      "read_at": "ingest_cadastre.py:214",
+      "value": "formerCouncil",
+      "read_at": "dcp-complete/route.ts:139,157",
       "nullable": "yes",
-      "guard_at": "ingest_cadastre.py:215 — if not rings: continue",
-      "if_missing": "Row silently skipped, does not affect other rows"
+      "guard_at": "dcp-complete/route.ts:898 — returns empty result with metadata",
+      "if_missing": "Empty DCP requirements with council_detection_failed: true"
     },
     {
-      "value": "DATABASE_URL",
-      "read_at": "ingest_cadastre.py:466",
-      "nullable": "yes (env var may be unset)",
-      "guard_at": "ingest_cadastre.py:467 — if not db_url and not args.dry_run: exits with error",
-      "if_missing": "Error message printed to stdout, script exits with code 1"
+      "value": "lgaRaw (body.lga)",
+      "read_at": "hca-check/route.ts:105",
+      "nullable": "yes",
+      "guard_at": "hca-check/route.ts:108 — ternary null guard on toUpperCase()",
+      "if_missing": "null passed to DB, 0 rows, inHCA: false (safe default)"
+    },
+    {
+      "value": "zone_code",
+      "read_at": "conveyancing_db.py:133",
+      "nullable": "yes (Optional parameter)",
+      "guard_at": "conveyancing_db.py:207 — conditional expression with if zone_code else empty",
+      "if_missing": "Empty string, zone filter skipped, all controls returned"
+    },
+    {
+      "value": "applicability (DB column)",
+      "read_at": "conveyancing_db.py:211",
+      "nullable": "yes",
+      "guard_at": "conveyancing_db.py:211 — must equal zone_specific AND condition must be truthy",
+      "if_missing": "Non-zone-specific rows always included (conservative)"
     }
   ],
   "queries": [
     {
-      "purpose": "UPSERT cadastre lots into nsw_cadastre_lots table",
-      "file_line": "ingest_cadastre.py:252",
-      "where_clause": "ON CONFLICT (lotidstring) DO UPDATE SET all columns",
-      "if_zero": "Nothing to insert which is correct for empty page",
-      "if_wrong": "UPSERT overwrites with same data since source is authoritative"
+      "purpose": "Heritage HCA bbox check with normalised LGA",
+      "file_line": "hca-check/route.ts:173-180",
+      "where_clause": "WHERE lga_name = $1 (now uppercased) AND bbox filters",
+      "if_zero": "Returns inHCA: false (correct behavior)",
+      "if_wrong": "Extra bbox candidates filtered by ray casting (safe)"
     },
     {
-      "purpose": "Validation total row count after ingest completes",
-      "file_line": "ingest_cadastre.py:288",
-      "where_clause": "None — full table count via COUNT(*)",
-      "if_zero": "Returns 0 and prints it which is valid for dry-run mode",
-      "if_wrong": "N/A — COUNT(*) on full table cannot return wrong rows"
-    },
-    {
-      "purpose": "LGA bounding box lookup from spatial_overlays zone layer",
-      "file_line": "ingest_cadastre.py:416",
-      "where_clause": "layer_type = 'zone' AND lga_name = %s (parameterised)",
-      "if_zero": "Returns None causing exit with error message and hint to run spatial overlay ingest",
-      "if_wrong": "Could return wrong bbox if lga_name doesn't match — mitigated by exact string match"
+      "purpose": "DCP setback fetch with zone advisory filter",
+      "file_line": "conveyancing_db.py:158-176",
+      "where_clause": "WHERE lga = %s AND is_current = TRUE (unchanged). Zone filter applied post-fetch in Python.",
+      "if_zero": "Returns None (correct)",
+      "if_wrong": "is_current = TRUE prevents inactive rows. Zone filter is conservative, only excludes explicit mismatches."
     }
   ],
   "break_it": [
     {
-      "scenario": "FeatureServer 500/503 during multi-page ingest at page 50 of 1675",
-      "what_happens": "3 retries per page then skips. Already-committed pages safe due to per-page commit.",
+      "scenario": "Address in Inner West, no suburb match, no precinct boundary match, formerCouncil stays null",
+      "what_happens": "Previously: wrong Marrickville data served silently. Now: empty result with council_detection_failed metadata.",
       "mitigated": true,
-      "how": "ingest_cadastre.py:100-107 retry loop with exponential backoff + ingest_cadastre.py:354 conn.commit() per page",
-      "repro": "python scripts/ingest_cadastre.py --scope all (wait for network interruption or manually block outbound traffic mid-run)"
+      "how": "dcp-complete/route.ts:898-908 — explicit empty return with metadata flag",
+      "repro": "POST /api/compliance/dcp-complete with address outside all precinct boundaries but within Inner West LGA"
     },
     {
-      "scenario": "Invalid Esri geometry with self-intersecting or degenerate polygon rings",
-      "what_happens": "Shapely Polygon constructor may produce invalid geometry that fails PostGIS insertion",
+      "scenario": "Frontend sends lga: 'inner west' (lowercase) to HCA check endpoint",
+      "what_happens": "Previously: 0 rows from WHERE lga_name = 'inner west' (DB stores INNER WEST). Now: toUpperCase() converts correctly.",
       "mitigated": true,
-      "how": "ingest_cadastre.py:196 — valid_polygons filters on p.is_valid and not p.is_empty",
-      "repro": "python scripts/ingest_cadastre.py --scope all --limit 100000 (degenerate rings occur naturally in rural lots)"
+      "how": "hca-check/route.ts:108 — lgaRaw.toUpperCase()",
+      "repro": "POST /api/heritage/hca-check with lga: 'inner west' and valid Inner West coordinates"
     },
     {
-      "scenario": "Duplicate lotidstring across overlapping pages from bbox spatial query",
-      "what_happens": "ON CONFLICT DO UPDATE overwrites with identical data from second occurrence",
+      "scenario": "Zone-specific setback condition 'R4 High Density' presented to R2 user, should be excluded",
+      "what_happens": "zone_prefix = R2, condition mentions R4 zone code, R2 not in condition text, row skipped (correct).",
       "mitigated": true,
-      "how": "ingest_cadastre.py:255 UPSERT on lotidstring unique constraint makes this idempotent",
-      "repro": "python scripts/ingest_cadastre.py --lga 'INNER WEST' && python scripts/ingest_cadastre.py --lga 'INNER WEST' (run twice)"
-    },
-    {
-      "scenario": "UPSERT fails mid-batch due to invalid WKT geometry causing PostGIS parse error",
-      "what_happens": "Transaction rolls back for that page, losing up to 2000 rows",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:196 pre-filters invalid geometries. ST_GeomFromText on valid WKT won't fail.",
-      "repro": "python scripts/ingest_cadastre.py --scope all --limit 50000 (check for ST_GeomFromText errors in output)"
-    },
-    {
-      "scenario": "Validation query runs on empty table during dry-run mode",
-      "what_happens": "validate_ingest prints zero counts which is confusing but not harmful",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:361 — validate_ingest only called when not dry_run",
-      "repro": "python scripts/ingest_cadastre.py --dry-run --limit 2000 (verify no validation section printed)"
-    },
-    {
-      "scenario": "LGA bbox lookup returns wrong extent because spatial_overlays zone data is stale or incomplete for that LGA",
-      "what_happens": "Spatial query fetches lots from wrong area — either too few lots or lots from neighbouring LGAs",
-      "mitigated": true,
-      "how": "ingest_cadastre.py:399 adds 0.001 degree buffer to bbox. Zone layer covers full LGA by definition. Missing LGA → returns None → exit with hint.",
-      "repro": "python scripts/ingest_cadastre.py --lga 'NONEXISTENT COUNCIL' (should exit with error + hint)"
+      "how": "conveyancing_db.py:214-215 — substring match checks if user's zone is present in condition text",
+      "repro": "Call fetch_dcp_setbacks('woollahra', 'R2') and verify R4-specific controls are excluded"
     }
   ],
   "post_merge": {
-    "db_reset": "No — new table, migration already run on production Supabase",
-    "secrets": "No — uses existing DATABASE_URL environment variable",
-    "other_repo": "No — standalone ingest script with no cross-repo dependencies",
-    "manual_verify": "Yes — run --scope all to ingest full NSW cadastre, then verify spatial queries work via ST_Contains point-in-polygon test"
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — test HCA check with lowercase LGA param; test DCP-complete for address outside precinct boundaries"
   }
 }

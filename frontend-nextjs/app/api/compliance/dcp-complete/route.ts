@@ -894,11 +894,21 @@ export async function POST(request: NextRequest) {
       // - Marrickville: No zone filtering (applicable_zones is NULL), some devtype filtering
       // - Leichhardt: Universal controls (both fields NULL)
 
-      // If formerCouncil is still null, use Marrickville as last resort
-      const councilForQuery = formerCouncil || 'Marrickville';
+      // If formerCouncil is still null, return empty rather than wrong council's data
       if (!formerCouncil) {
-        console.warn(`⚠️  Former council detection failed, defaulting to Marrickville. Address: ${address}`);
+        console.warn(`⚠️  Former council detection failed — returning empty requirements. Address: ${address}, LGA: ${lga}`);
+        return NextResponse.json({
+          general_provisions: [],
+          precinct_provisions: [],
+          precinct_name: detectedNeighbourhoodName,
+          requirements: [],
+          metadata: {
+            council_detection_failed: true,
+            message: 'Could not determine former council area for this address. DCP requirements unavailable.',
+          }
+        });
       }
+      const councilForQuery = formerCouncil;
 
       let generalRequirementsQuery: string;
       let queryParams: any[];

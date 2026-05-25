@@ -204,7 +204,18 @@ def fetch_dcp_setbacks(
     dh_setbacks: list[dict] = []
     sd_setbacks: list[dict] = []
 
+    # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
+    zone_prefix = (zone_code or "").split()[0].upper() if zone_code else ""
+
     for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability in rows:
+        # Skip zone-specific controls that explicitly reference a DIFFERENT zone.
+        # Conservative: only skip when condition names zones AND our zone isn't among them.
+        if zone_prefix and applicability == "zone_specific" and condition:
+            cond_upper = condition.upper()
+            # Check if condition mentions specific zone codes (R1, R2, R3, etc.)
+            if any(z in cond_upper for z in ("R1", "R2", "R3", "R4", "R5", "E1", "B1", "B2", "MU1", "C2")) \
+               and zone_prefix not in cond_upper:
+                continue
         base_label = _CONTROL_TYPE_LABELS.get(
             ctrl_type, ctrl_type.replace("_", " ").title()
         )
@@ -255,6 +266,7 @@ def fetch_dcp_setbacks(
         "section":          "Residential Development Controls",
         "clause_ref":       first_ref,
         "zones_applicable": [],
+        "zone_filter_applied": zone_prefix or None,
         "dev_type_scope":   "Dwelling house — DA pathway",
         "caveat":           caveat,
         "setbacks":         dh_setbacks,
