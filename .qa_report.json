@@ -1,122 +1,41 @@
 {
-  "tier": "standard",
-  "justification": "DB filter + null guard fixes across 5 API routes — affects data correctness in production queries",
-  "commit_hash": "c42c9d4b",
+  "tier": "minor",
+  "justification": "Documentation and .gitignore only. Two legacy script path fixes (non-functional LightRAG scripts). No business logic, no DB, no runtime code.",
+  "commit_hash": "ad57a29a",
   "files": [
-    "frontend-nextjs/app/api/canibuildit/check/route.ts",
-    "frontend-nextjs/lib/database/specialized/live-compliance-client.ts",
-    "frontend-nextjs/app/api/tod/parking-rates/route.ts",
-    "frontend-nextjs/app/api/compliance/constraints/route.ts",
-    "frontend-nextjs/lib/database/prp-k7-client.ts"
+    ".gitignore",
+    ".env.example",
+    "SETUP.md",
+    "scripts/simple_nsw_query.py",
+    "scripts/wsl2_query_wrapper.py",
+    "docs/intelligence-brief/CLAUDE.md",
+    "docs/intelligence-brief/IMPLEMENTATION.md",
+    "docs/intelligence-brief/LEGAL_STRATEGY.md",
+    "docs/intelligence-brief/LLM_STRATEGY.md",
+    "docs/intelligence-brief/PRODUCT_SCOPE.md",
+    "docs/intelligence-brief/QA_ANALYSIS.md"
   ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls (is_current column), regulatory_provisions (v2_is_actionable column), development_controls (joined to rp), development_permissions",
-    "assumption_mismatch": "If is_current or v2_is_actionable columns don't exist, queries will throw SQL errors — but both confirmed in migrations and existing usage",
-    "new_vs_existing": "Applies to all existing queries immediately — tightens WHERE filters to exclude superseded/inactive rows"
+    "existing_data": "None — documentation only",
+    "assumption_mismatch": "N/A",
+    "new_vs_existing": "N/A"
   },
-  "functions": [
-    {
-      "name": "GET (canibuildit/check)",
-      "file_line": "frontend-nextjs/app/api/canibuildit/check/route.ts:384",
-      "input": "lgaName string from property geocode",
-      "output": "dcpSetbacks array in eligibility response",
-      "if_none": "Empty array — non-blocking, caught by try/catch"
-    },
-    {
-      "name": "getComplianceRules",
-      "file_line": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts:142",
-      "input": "zone string from property lookup",
-      "output": "fsrRules/heightRules/siteCoverageRules arrays of development control objects",
-      "if_none": "Empty arrays — caller handles gracefully"
-    },
-    {
-      "name": "GET (parking-rates)",
-      "file_line": "frontend-nextjs/app/api/tod/parking-rates/route.ts:116",
-      "input": "lga + developmentType from URL query params",
-      "output": "parking rate JSON response with rate and source",
-      "if_none": "Falls through to fallback with found:false"
-    },
-    {
-      "name": "getZoneStats",
-      "file_line": "frontend-nextjs/lib/database/prp-k7-client.ts:224",
-      "input": "zone string from property lookup context",
-      "output": "stats object with total_provisions, dev_type_count, linked_standards",
-      "if_none": "Returns 0s instead of NaN/crash"
-    }
-  ],
-  "values": [
-    {
-      "value": "baseResult.rows[0].permission_status",
-      "read_at": "frontend-nextjs/app/api/compliance/constraints/route.ts:336",
-      "nullable": "yes — rows[0] could be undefined if upstream logic changes",
-      "guard_at": "frontend-nextjs/app/api/compliance/constraints/route.ts:336 — optional chaining + ?? 'unknown'",
-      "if_missing": "Returns 'unknown' permission status instead of crashing"
-    },
-    {
-      "value": "stats.rows[0].total_provisions",
-      "read_at": "frontend-nextjs/lib/database/prp-k7-client.ts:246",
-      "nullable": "yes — COUNT(*) always returns a row but defensive guard added",
-      "guard_at": "frontend-nextjs/lib/database/prp-k7-client.ts:244 — ternary on statsRow",
-      "if_missing": "Returns 0 instead of NaN"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Fetch DCP setback controls for granny flat eligibility",
-      "file_line": "frontend-nextjs/app/api/canibuildit/check/route.ts:385",
-      "where_clause": "lga = $1 AND dev_type = 'secondary_dwelling' AND is_current = TRUE",
-      "if_zero": "dcpSetbacks stays empty — non-blocking",
-      "if_wrong": "Previously returned superseded controls; now filtered to current"
-    },
-    {
-      "purpose": "Fetch FSR/height/coverage from development_controls joined to regulatory_provisions",
-      "file_line": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts:142",
-      "where_clause": "dc.control_type = X AND zone_applicable = $1 AND rp.v2_is_actionable = true",
-      "if_zero": "Empty arrays — caller handles gracefully",
-      "if_wrong": "Previously could join to inactive provisions; now filtered"
-    },
-    {
-      "purpose": "Fetch DCP parking provisions for TOD parking rates",
-      "file_line": "frontend-nextjs/app/api/tod/parking-rates/route.ts:116",
-      "where_clause": "d.council_name ILIKE $1 AND rp.v2_is_actionable = true AND parking ILIKE filters",
-      "if_zero": "Falls through to fallback with found:false",
-      "if_wrong": "Previously returned superseded parking provisions; now filtered"
-    }
-  ],
+  "functions": [],
+  "values": [],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "v2_is_actionable column doesn't exist on regulatory_provisions",
-      "what_happens": "SQL error on live-compliance-client and parking-rates queries",
+      "scenario": ".gitignore negation for docs/intelligence-brief/** accidentally unignores other working files",
+      "what_happens": "Unintended files could be committed",
       "mitigated": true,
-      "how": "Column confirmed in DB_SCHEMA.md (10,008 actionable of 46,585) and used in 20+ other queries",
-      "repro": "Hit /api/compliance/live-check or /api/tod/parking-rates"
-    },
-    {
-      "scenario": "is_current column doesn't exist on dcp_setback_controls",
-      "what_happens": "SQL error on canibuildit granny flat query",
-      "mitigated": true,
-      "how": "Column confirmed in migration 032 and indexed at (lga, dev_type, is_current)",
-      "repro": "Hit /api/canibuildit/check with valid address"
-    },
-    {
-      "scenario": "All provisions for a council have v2_is_actionable=false",
-      "what_happens": "Parking rates returns 0 rows, API returns found:false",
-      "mitigated": true,
-      "how": "Existing fallback at line 145 checks rows.length > 0",
-      "repro": "Hit /api/tod/parking-rates?lga=nonexistent&developmentType=dwelling_house"
-    },
-    {
-      "scenario": "development_controls row references provision where v2_is_actionable is false (superseded provision)",
-      "what_happens": "Previously returned stale FSR/height/coverage data; now correctly excluded by filter",
-      "mitigated": true,
-      "how": "frontend-nextjs/lib/database/specialized/live-compliance-client.ts:148 — AND rp.v2_is_actionable = true on all 3 queries",
-      "repro": "Hit /api/compliance/live-check with a zone that has superseded provisions"
+      "how": ".gitignore:365 — negation scoped to docs/intelligence-brief/ only. Verified with git check-ignore on adjacent dirs.",
+      "repro": "git check-ignore docs/intelligence-brief/LEGAL_STRATEGY.md docs/qa/language-audit-2026-05-18.md — first not ignored, second still ignored"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No",
+    "secrets": "No — .env.example contains placeholder values only, no real secrets",
     "other_repo": "No",
-    "manual_verify": "Spot-check /api/canibuildit/check and /api/tod/parking-rates on preview"
+    "manual_verify": "Clone to new folder, follow SETUP.md, verify npm install and pytest pass"
   }
 }

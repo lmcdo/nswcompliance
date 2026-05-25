@@ -172,6 +172,7 @@ diagnose_*.py
 !TASK.md
 !CHANGELOG.md
 !screencast-*.md
+!SETUP.md
 !SCREENCAST_API_CHECKLIST.md
 
 # BROAD: Ignore ALL root-level Python scripts except core
@@ -362,6 +363,8 @@ PRPs/
 docs/*
 !docs/screencasts/
 !docs/user-stories/
+!docs/intelligence-brief/
+!docs/intelligence-brief/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
