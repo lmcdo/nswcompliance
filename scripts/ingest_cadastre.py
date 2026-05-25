@@ -363,16 +363,16 @@ def ingest(
 
         rows = build_rows(features)
         if rows and cur and not dry_run:
-            for attempt in range(3):
+            for attempt in range(5):
                 try:
                     upsert_rows(cur, rows)
                     conn.commit()
                     break
-                except psycopg2.OperationalError as e:
-                    if not db_url or attempt == 2:
+                except (psycopg2.OperationalError, psycopg2.errors.QueryCanceled) as e:
+                    if not db_url or attempt == 4:
                         raise
-                    wait = 10 * (attempt + 1)
-                    print(f"    [warn] DB connection lost (attempt {attempt + 1}/3) — reconnecting in {wait}s ...")
+                    wait = 30 * (attempt + 1)
+                    print(f"    [warn] DB error (attempt {attempt + 1}/5): {type(e).__name__} — reconnecting in {wait}s ...")
                     time.sleep(wait)
                     try:
                         conn.close()
