@@ -691,7 +691,8 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
 
     if lot_area and min_lot_str:
         try:
-            min_lot = float(min_lot_str.strip().replace(",", "").replace(" ", "").split("m")[0])
+            _clean = min_lot_str.strip().replace(",", "").replace(" ", "")
+            min_lot = float(re.sub(r"[^\d.]", "", _clean.split("m")[0])) if _clean else 0
             if min_lot > 0 and lot_area >= min_lot * 2:
                 out["subdivision_feasible"] = True
                 out["subdivision_note"] = (
