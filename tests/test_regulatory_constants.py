@@ -25,6 +25,7 @@ _spec.loader.exec_module(_mod)
 fetch_sepp_housing_standards = _mod.fetch_sepp_housing_standards
 get_sepp_standard_value = _mod.get_sepp_standard_value
 fetch_tax_thresholds = _mod.fetch_tax_thresholds
+check_regulatory_freshness = _mod.check_regulatory_freshness
 
 # Load generate_conveyancing_report for calc_feasibility
 _gcr_spec = importlib.util.spec_from_file_location(
@@ -232,3 +233,63 @@ class TestCalcFeasibilityWithConfigs:
         # Land tax should not appear for strata
         lt_items = [r for r in result if "land tax" in r["question"].lower()]
         assert len(lt_items) == 0
+
+
+# ── check_regulatory_freshness ──
+
+class TestCheckRegulatoryFreshness:
+    def test_returns_critical_for_none_conn(self):
+        warnings = check_regulatory_freshness(None)
+        assert len(warnings) == 1
+        assert "CRITICAL" in warnings[0]
+
+    def test_returns_empty_when_all_present(self):
+        """Both SEPP rows and current-year tax row exist → no warnings."""
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        # First call: SEPP standards
+        # Second call: tax thresholds
+        from datetime import date
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = (date.today().year,)
+        warnings = check_regulatory_freshness(conn)
+        assert warnings == []
+
+    def test_warns_when_sepp_rows_missing(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        from datetime import date
+        cur.fetchall.return_value = []  # no SEPP rows
+        cur.fetchone.return_value = (date.today().year,)
+        warnings = check_regulatory_freshness(conn)
+        assert any("min_lot_size" in w for w in warnings)
+        assert any("max_floor_area" in w for w in warnings)
+
+    def test_warns_when_tax_year_stale(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = (2024,)  # stale year
+        warnings = check_regulatory_freshness(conn)
+        assert any("stale" in w for w in warnings)
+
+    def test_warns_when_no_tax_rows(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = None  # no tax rows
+        warnings = check_regulatory_freshness(conn)
+        assert any("no tax_thresholds" in w for w in warnings)

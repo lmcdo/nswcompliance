@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standardises hardcoded SEPP Housing and land tax constants into DB tables with fallback. 5 modified files + 3 new files. Touches production query paths in granny_flat.py and conveyancing.py but with identical fallback behaviour — no change in output unless DB rows exist.",
-  "commit_hash": "c6391183",
+  "commit_hash": "141f870f",
   "files": [
     "migrations/045_sepp_housing_secondary_dwelling.sql",
     "migrations/046_tax_thresholds.sql",

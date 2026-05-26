@@ -559,3 +559,59 @@ def fetch_tax_thresholds(
         "premium_rate": float(row[5]) if row[5] else None,
         "source_url": row[6],
     }
+
+
+def check_regulatory_freshness(conn) -> list[str]:
+    """Check that DB-sourced regulatory constants are present and current.
+
+    Returns a list of warning strings. Empty list = all checks pass.
+    Called by the regulatory-freshness monitor (run_monitors.py).
+    """
+    warnings = []
+    if conn is None:
+        return ["CRITICAL: no DB connection — all regulatory values will use hardcoded fallbacks"]
+
+    # 1. Check housing_sepp_standards has secondary_dwelling rows
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT standard_type, numeric_value
+            FROM housing_sepp_standards
+            WHERE development_type = 'secondary_dwelling'
+              AND standard_type IN ('min_lot_size', 'max_floor_area')
+            """,
+        )
+        rows = {r[0]: float(r[1]) for r in cur.fetchall()}
+        cur.close()
+        if "min_lot_size" not in rows:
+            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — fallback 450m² in use")
+        if "max_floor_area" not in rows:
+            warnings.append("SEPP: missing max_floor_area for secondary_dwelling — fallback 60m² in use")
+    except Exception as e:
+        warnings.append(f"SEPP: query failed — {e}")
+
+    # 2. Check tax_thresholds has a row for the current year
+    current_year = date.today().year
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT tax_year FROM tax_thresholds
+            WHERE jurisdiction = 'NSW' AND tax_type = 'land_tax'
+            ORDER BY tax_year DESC LIMIT 1
+            """,
+        )
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            warnings.append(f"TAX: no tax_thresholds rows at all — fallback 2025 values in use")
+        elif row[0] < current_year:
+            warnings.append(
+                f"TAX: latest tax_thresholds year is {row[0]}, current year is {current_year} "
+                f"— thresholds may be stale. Insert {current_year} row when Revenue NSW publishes new rates."
+            )
+    except Exception as e:
+        warnings.append(f"TAX: query failed — {e}")
+
+    return warnings

@@ -485,6 +485,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # 1. Secondary dwelling (granny flat)
     # Source: housing_sepp_standards table (migration 045), fallback to hardcoded.
     _sd = sepp_standards or {}
+    if not sepp_standards:
+        print("  [warn] calc_feasibility: using SEPP fallback values (no DB config injected)")
     _SD_MIN_LOT = _sd.get("sd_min_lot", _SD_FALLBACK_MIN_LOT)
     _SD_ZONES = _sd.get("sd_zones", _SD_FALLBACK_ZONES)
     if is_strata:
@@ -626,6 +628,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # Source: tax_thresholds table (migration 046), fallback to hardcoded.
     # Suppress for strata: VG returns whole-lot land value (building site), not unit value
     _lt = tax_config or _LT_FALLBACK
+    if not tax_config:
+        print("  [warn] calc_feasibility: using land tax fallback values (no DB config injected)")
     lt_year = _lt["tax_year"]
     lt_threshold = _lt["threshold_dollars"]
     lt_rate = _lt["rate"]

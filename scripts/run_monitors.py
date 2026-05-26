@@ -28,6 +28,9 @@ MONITORS = {
     "dcp-watchdog": {
         "cmd": ["python", "scripts/dcp_watchdog.py"],
     },
+    "regulatory-freshness": {
+        "cmd": ["python", "scripts/regulatory_freshness_monitor.py"],
+    },
 }
 
 

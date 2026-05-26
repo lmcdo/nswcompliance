@@ -104,6 +104,8 @@ def _get_sepp_sd_standards(conn=None) -> tuple[float, float]:
     Returns (min_lot_m2, max_floor_area_m2).
     """
     if conn is None:
+        logger.warning("SEPP standards: no DB connection, using fallback values (min_lot=%.0f, max_gf=%.0f)",
+                        _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2)
         return _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2
     try:
         cur = conn.cursor()

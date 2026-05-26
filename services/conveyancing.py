@@ -109,6 +109,7 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     import psycopg2
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
+        logger.warning("Regulatory configs: DATABASE_URL not set, using fallback values for SEPP + tax")
         return None, None
     conn = None
     try:
@@ -123,8 +124,12 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
                 "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
                 "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
             }
+        else:
+            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
         # Tax thresholds
         tax_config = fetch_tax_thresholds(conn)
+        if tax_config is None:
+            logger.warning("Regulatory configs: no tax_thresholds row for current year — using fallback")
         return sepp_standards, tax_config
     except Exception as e:
         logger.warning(f"Failed to load regulatory configs from DB: {e}")
