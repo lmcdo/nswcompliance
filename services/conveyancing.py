@@ -114,6 +114,7 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     conn = None
     try:
         conn = psycopg2.connect(db_url)
+        conn.autocommit = True
         # SEPP secondary dwelling standards
         sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
         sepp_standards = None
@@ -391,6 +392,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         conn = None
         try:
             conn = psycopg2.connect(db_url)
+            conn.autocommit = True
             key_sites_clause = controls.get("key_sites_clause")
             epi_name = controls.get("zone_epi", "")
             prop_zone = controls.get("zone", "")
@@ -493,6 +495,7 @@ def _save_pipeline_cache(report_id: str, data: dict) -> None:
     conn = None
     try:
         conn = psycopg2.connect(db_url)
+        conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO conveyancing_cache (report_id, pipeline_data, created_at)
@@ -502,7 +505,6 @@ def _save_pipeline_cache(report_id: str, data: dict) -> None:
                                  created_at = NOW()""",
                 (report_id, json.dumps(data, default=str)),
             )
-        conn.commit()
     except Exception as e:
         logger.warning(f"Failed to save pipeline cache: {e}")
     finally:
@@ -519,6 +521,7 @@ def _load_pipeline_cache(report_id: str) -> Optional[dict]:
     conn = None
     try:
         conn = psycopg2.connect(db_url)
+        conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT pipeline_data FROM conveyancing_cache WHERE report_id = %s",

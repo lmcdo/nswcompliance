@@ -1,139 +1,94 @@
 {
   "tier": "standard",
-  "justification": "Standardises hardcoded SEPP Housing and land tax constants into DB tables with fallback. 5 modified files + 3 new files. Touches production query paths in granny_flat.py and conveyancing.py but with identical fallback behaviour — no change in output unless DB rows exist.",
-  "commit_hash": "141f870f",
+  "justification": "Core DB connection handling change affecting all PostGIS queries. Not Critical because read-only queries, no schema changes, defense-in-depth pattern.",
+  "commit_hash": "51ce59c4",
   "files": [
-    "migrations/045_sepp_housing_secondary_dwelling.sql",
-    "migrations/046_tax_thresholds.sql",
-    "scripts/conveyancing_db.py",
-    "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",
-    "services/granny_flat.py",
-    "tests/test_granny_flat_logic.py",
-    "tests/test_regulatory_constants.py"
+    "scripts/conveyancing_db.py",
+    "tests/test_regulatory_constants.py",
+    "docs/intelligence-brief/spike-findings.md",
+    "docs/intelligence-brief/spike-results.json"
   ],
   "pre_impl": {
-    "existing_data": "housing_sepp_standards table (33 rows, used by 3 frontend TS routes). New: secondary_dwelling rows + tax_thresholds table.",
-    "assumption_mismatch": "If DB has no secondary_dwelling rows or tax_thresholds table doesn't exist, all code falls back to hardcoded values — identical to pre-PR behaviour.",
-    "new_vs_existing": "Migration 045 inserts 2 new rows into existing table. Migration 046 creates new table + seeds 2 years. ON CONFLICT DO NOTHING for idempotency."
+    "existing_data": "spatial_overlays, dcp_setback_controls, housing_sepp_standards, tax_thresholds — all read-only",
+    "assumption_mismatch": "autocommit=True on read-only connection is safe — no multi-statement transactions needed",
+    "new_vs_existing": "Applies to all existing DB calls immediately — connection pattern change, not data change"
   },
   "functions": [
     {
-      "name": "fetch_sepp_housing_standards",
-      "file_line": "scripts/conveyancing_db.py:EOF-60",
-      "input": "conn (psycopg2), optional zone_code (str), optional development_type (str)",
-      "output": "list[dict] with development_type, standard_type, numeric_value, unit, applicable_zones",
-      "if_none": "conn=None → returns []. DB error → returns []."
+      "name": "fetch_dcp_setbacks",
+      "file_line": "conveyancing_db.py:133",
+      "input": "conn (psycopg2 connection), lga_slug (str from detect_former_council)",
+      "output": "dict with setback rows or None",
+      "if_none": "returns None — caller shows 'DCP not available'"
     },
     {
-      "name": "fetch_tax_thresholds",
-      "file_line": "scripts/conveyancing_db.py:EOF-20",
-      "input": "conn (psycopg2), optional tax_year (int), jurisdiction (str), tax_type (str)",
-      "output": "Optional[dict] with tax_year, threshold_dollars, rate, base_amount_dollars, etc.",
-      "if_none": "conn=None → returns None. No row → returns None. DB error → returns None."
+      "name": "fetch_heritage_postgis",
+      "file_line": "conveyancing_db.py:355",
+      "input": "conn (psycopg2 connection), lat/lng (float), lot_wkt (optional str)",
+      "output": "dict with hca list, items list, has_heritage bool, raw list",
+      "if_none": "returns empty dict — caller shows no heritage from PostGIS"
     },
     {
-      "name": "_get_sepp_sd_standards",
-      "file_line": "services/granny_flat.py",
-      "input": "conn (psycopg2 connection, optional — None triggers fallback)",
-      "output": "tuple[float, float] — (min_lot_m2, max_gf_area_m2)",
-      "if_none": "conn=None → returns fallback (450.0, 60.0). DB error → returns fallback."
-    },
-    {
-      "name": "_load_regulatory_configs",
-      "file_line": "services/conveyancing.py",
-      "input": "None — reads DATABASE_URL from env",
-      "output": "tuple[Optional[dict], Optional[dict]] — (sepp_standards, tax_config)",
-      "if_none": "No DATABASE_URL → (None, None). DB error → (None, None)."
-    },
-    {
-      "name": "calc_feasibility",
-      "file_line": "scripts/generate_conveyancing_report.py",
-      "input": "controls, valuation, overlays + optional sepp_standards (dict), tax_config (dict)",
-      "output": "list[dict] — feasibility items with question/answer/flag/basis",
-      "if_none": "sepp_standards=None → uses fallback 450m². tax_config=None → uses fallback 2025 values."
+      "name": "fetch_lep_clauses",
+      "file_line": "conveyancing_db.py:58",
+      "input": "conn (psycopg2 connection), key_sites_clause (str), epi_name (str)",
+      "output": "list of clause dicts with number, heading, summary, source",
+      "if_none": "returns [] — caller skips LEP clause section in PDF"
     }
   ],
   "values": [
     {
-      "value": "_SEPP_FALLBACK_MIN_LOT_M2",
-      "read_at": "services/granny_flat.py:top",
-      "nullable": "no — hardcoded 450.0",
-      "guard_at": "_get_sepp_sd_standards returns this on any failure path",
-      "if_missing": "Cannot be missing — module-level constant"
-    },
-    {
-      "value": "sepp_standards dict",
-      "read_at": "services/conveyancing.py:_load_regulatory_configs",
-      "nullable": "yes — None if DB unavailable",
-      "guard_at": "calc_feasibility: _sd = sepp_standards or {}; .get() with fallback",
-      "if_missing": "Falls back to hardcoded 450m² / R1-R4 zones — same as before this PR"
-    },
-    {
-      "value": "tax_config dict",
-      "read_at": "services/conveyancing.py:_load_regulatory_configs",
-      "nullable": "yes — None if DB unavailable",
-      "guard_at": "calc_feasibility: _lt = tax_config or _LT_FALLBACK",
-      "if_missing": "Falls back to hardcoded 2025 thresholds — same as before this PR"
-    },
-    {
-      "value": "numeric_value from housing_sepp_standards",
-      "read_at": "services/granny_flat.py:_get_sepp_sd_standards",
-      "nullable": "no — column is NOT NULL in DB",
-      "guard_at": "rows.get('min_lot_size', _SEPP_FALLBACK_MIN_LOT_M2)",
-      "if_missing": "Falls back to 450.0"
+      "value": "conn.autocommit",
+      "read_at": "conveyancing.py:117,395,499,525",
+      "nullable": "no — set immediately after connect()",
+      "guard_at": "conveyancing.py:117,395,499,525",
+      "if_missing": "reverts to psycopg2 default (autocommit=False) — cascading failure on error"
     }
   ],
   "queries": [
     {
-      "purpose": "Load secondary_dwelling SEPP standards (min_lot_size, max_floor_area)",
-      "file_line": "services/granny_flat.py:_get_sepp_sd_standards",
-      "where_clause": "WHERE development_type = 'secondary_dwelling' AND standard_type IN ('min_lot_size', 'max_floor_area')",
-      "if_zero": "Returns fallback tuple (450.0, 60.0)",
-      "if_wrong": "Wrong numeric_value would change lot size threshold — but values come from migration with exact legislative references"
-    },
-    {
-      "purpose": "Load SEPP housing standards filtered by dev_type and/or zone",
-      "file_line": "scripts/conveyancing_db.py:fetch_sepp_housing_standards",
-      "where_clause": "Dynamic — development_type = %s AND/OR %s = ANY(applicable_zones)",
-      "if_zero": "Returns empty list — caller uses fallback",
-      "if_wrong": "Zone filter uses ANY(applicable_zones) array containment — correct for array column"
-    },
-    {
-      "purpose": "Load tax thresholds for a given year/jurisdiction",
-      "file_line": "scripts/conveyancing_db.py:fetch_tax_thresholds",
-      "where_clause": "WHERE jurisdiction = %s AND tax_type = %s AND tax_year = %s",
-      "if_zero": "Returns None — caller uses _LT_FALLBACK dict",
-      "if_wrong": "UNIQUE constraint on (jurisdiction, tax_type, tax_year) prevents duplicates"
+      "purpose": "fetch DCP setback controls for an LGA",
+      "file_line": "conveyancing_db.py:161",
+      "where_clause": "WHERE lga = %s AND is_current = TRUE",
+      "if_zero": "returns None — DCP section omitted from report",
+      "if_wrong": "wrong LGA's controls shown — mitigated by detect_former_council slug validation"
     }
   ],
   "break_it": [
     {
-      "scenario": "Migration 046 not run — tax_thresholds table doesn't exist",
-      "what_happens": "fetch_tax_thresholds catches exception, returns None. calc_feasibility uses _LT_FALLBACK. User sees identical output to pre-PR.",
+      "scenario": "autocommit=True with a connection that has an active transaction from caller code",
+      "what_happens": "psycopg2 raises ProgrammingError: can't change autocommit state within a transaction",
       "mitigated": true,
-      "how": "Every DB-sourced path has try/except returning fallback values",
-      "repro": "Run app without running migration 046, generate conveyancing report"
+      "how": "conveyancing.py creates fresh connections — no pre-existing transaction possible",
+      "repro": "python -c \"import psycopg2; c=psycopg2.connect(DB_URL); c.autocommit=True; print('ok')\""
     },
     {
-      "scenario": "Someone inserts wrong numeric_value (e.g. 4500 instead of 450) into housing_sepp_standards",
-      "what_happens": "Granny flat threshold would be 4500m² — almost no lots would qualify. Reports would show incorrect 'lot too small' warnings.",
-      "mitigated": false,
-      "how": "No DB-level CHECK constraint on numeric_value range. Mitigated by: values come from migration with legislative source_clause references, and existing frontend routes already use this table.",
-      "repro": "UPDATE housing_sepp_standards SET numeric_value = 4500 WHERE standard_type = 'min_lot_size' AND development_type = 'secondary_dwelling'"
+      "scenario": "conn.rollback() itself fails (e.g., connection already closed)",
+      "what_happens": "rollback exception caught by bare except, function still returns safe default",
+      "mitigated": true,
+      "how": "conveyancing_db.py — every rollback is wrapped in try/except Exception: pass",
+      "repro": "Mock conn.rollback to raise, verify function still returns empty/None"
     },
     {
-      "scenario": "DATABASE_URL unset in conveyancing.py environment",
-      "what_happens": "_load_regulatory_configs returns (None, None). calc_feasibility uses all fallback values. Output identical to pre-PR.",
+      "scenario": "First query fails, rollback succeeds, second query returns stale/cached cursor data",
+      "what_happens": "Would return wrong data from previous cursor state",
       "mitigated": true,
-      "how": "services/conveyancing.py:_load_regulatory_configs checks db_url first, returns (None, None) immediately",
-      "repro": "Unset DATABASE_URL env var, hit /api/conveyancing endpoint"
+      "how": "Each function creates its own cursor via conn.cursor() — no shared cursor state",
+      "repro": "test_sequential_calls_survive_first_failure in test_regulatory_constants.py"
+    },
+    {
+      "scenario": "DCP setback query returns rows for wrong LGA due to slug mismatch",
+      "what_happens": "User sees another council's setback controls — wrong regulatory data displayed",
+      "mitigated": true,
+      "how": "conveyancing_db.py:161 — WHERE lga = %s parameterised; slug comes from detect_former_council which maps known addresses to known slugs",
+      "repro": "Call fetch_dcp_setbacks with invalid slug → returns None (no rows match)"
     }
   ],
   "post_merge": {
-    "db_reset": "No — but migration 045 + 046 should be run to activate DB-sourced values",
+    "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Run migrations 045 + 046 on Supabase, then verify granny flat detect and conveyancing report use DB values"
+    "manual_verify": "No — connection behavior change is tested by 6 new unit tests"
   }
 }

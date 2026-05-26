@@ -25,6 +25,9 @@ _spec.loader.exec_module(_mod)
 fetch_sepp_housing_standards = _mod.fetch_sepp_housing_standards
 get_sepp_standard_value = _mod.get_sepp_standard_value
 fetch_tax_thresholds = _mod.fetch_tax_thresholds
+fetch_heritage_postgis = _mod.fetch_heritage_postgis
+fetch_dcp_setbacks = _mod.fetch_dcp_setbacks
+fetch_lep_clauses = _mod.fetch_lep_clauses
 check_regulatory_freshness = _mod.check_regulatory_freshness
 
 # Load generate_conveyancing_report for calc_feasibility
@@ -293,3 +296,82 @@ class TestCheckRegulatoryFreshness:
         cur.fetchone.return_value = None  # no tax rows
         warnings = check_regulatory_freshness(conn)
         assert any("no tax_thresholds" in w for w in warnings)
+
+
+# ── Connection isolation (Finding 1 fix) ──
+
+class TestConnectionIsolation:
+    """Verify that a failed DB query doesn't poison subsequent calls on the same connection."""
+
+    def test_rollback_called_on_query_failure(self):
+        """When a DB function's query raises, conn.rollback() must be called."""
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.execute.side_effect = Exception("current transaction is aborted")
+        fetch_dcp_setbacks(conn, "inner-west")
+        conn.rollback.assert_called_once()
+
+    def test_heritage_rollback_on_failure(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.execute.side_effect = Exception("relation does not exist")
+        result = fetch_heritage_postgis(conn, -33.8, 151.2)
+        assert result == {"hca": [], "items": [], "has_heritage": False, "raw": []}
+        conn.rollback.assert_called_once()
+
+    def test_lep_clauses_rollback_on_failure(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.execute.side_effect = Exception("timeout")
+        result = fetch_lep_clauses(conn, "Clause 4.3C", "Inner West LEP 2022")
+        assert result == []
+        conn.rollback.assert_called_once()
+
+    def test_sepp_rollback_on_failure(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.execute.side_effect = Exception("connection reset")
+        result = fetch_sepp_housing_standards(conn)
+        assert result == []
+        conn.rollback.assert_called_once()
+
+    def test_tax_rollback_on_failure(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.execute.side_effect = Exception("statement timeout")
+        result = fetch_tax_thresholds(conn)
+        assert result is None
+        conn.rollback.assert_called_once()
+
+    def test_sequential_calls_survive_first_failure(self):
+        """Simulate the exact spike bug: first call fails, second call succeeds."""
+        conn = MagicMock()
+        call_count = {"n": 0}
+
+        def _cursor_factory():
+            call_count["n"] += 1
+            cur = MagicMock()
+            if call_count["n"] == 1:
+                # First cursor: query fails (simulating poisoned transaction)
+                cur.execute.side_effect = Exception("current transaction is aborted")
+            else:
+                # Second cursor: query succeeds (after rollback)
+                cur.fetchall.return_value = []
+                cur.fetchone.return_value = None
+            return cur
+
+        conn.cursor.side_effect = _cursor_factory
+
+        # First call fails
+        result1 = fetch_dcp_setbacks(conn, "inner-west")
+        assert result1 is None
+        conn.rollback.assert_called_once()
+
+        # Second call on same connection succeeds (not poisoned)
+        result2 = fetch_heritage_postgis(conn, -33.8, 151.2)
+        assert result2 == {"hca": [], "items": [], "has_heritage": False, "raw": []}

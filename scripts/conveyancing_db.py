@@ -20,11 +20,14 @@ Heritage value taxonomy (spatial_overlays.value for layer_type='heritage'):
 """
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 from typing import Optional
 
 import psycopg2
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +95,11 @@ def fetch_lep_clauses(
             })
         cur.close()
     except Exception as e:
-        print(f"  [warn] fetch_lep_clauses: {e}")
+        logger.warning("fetch_lep_clauses: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
     return results
 
 
@@ -191,7 +198,11 @@ def fetch_dcp_setbacks(
         reg = cur.fetchone()
         cur.close()
     except Exception as e:
-        print(f"  [warn] fetch_dcp_setbacks: {e}")
+        logger.warning("fetch_dcp_setbacks: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return None
 
     if not rows:
@@ -389,7 +400,11 @@ def fetch_heritage_postgis(
         rows = cur.fetchall()
         cur.close()
     except Exception as e:
-        print(f"  [warn] fetch_heritage_postgis: {e}")
+        logger.warning("fetch_heritage_postgis: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return empty
 
     if not rows:
@@ -470,7 +485,11 @@ def fetch_sepp_housing_standards(
         rows = cur.fetchall()
         cur.close()
     except Exception as e:
-        print(f"  [warn] fetch_sepp_housing_standards: {e}")
+        logger.warning("fetch_sepp_housing_standards: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return []
 
     return [
@@ -544,7 +563,11 @@ def fetch_tax_thresholds(
         row = cur.fetchone()
         cur.close()
     except Exception as e:
-        print(f"  [warn] fetch_tax_thresholds: {e}")
+        logger.warning("fetch_tax_thresholds: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return None
 
     if not row:
@@ -590,6 +613,10 @@ def check_regulatory_freshness(conn) -> list[str]:
             warnings.append("SEPP: missing max_floor_area for secondary_dwelling — fallback 60m² in use")
     except Exception as e:
         warnings.append(f"SEPP: query failed — {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
     # 2. Check tax_thresholds has a row for the current year
     current_year = date.today().year
@@ -613,5 +640,9 @@ def check_regulatory_freshness(conn) -> list[str]:
             )
     except Exception as e:
         warnings.append(f"TAX: query failed — {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
     return warnings
