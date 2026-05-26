@@ -654,6 +654,282 @@ def scan_diff_for_silent_failures(
     return errors
 
 
+# ─── Layer 8: Python adversarial scanner ─────────────────────────────────────
+
+# 8a: .split()[N] without prior emptiness guard
+PY_SPLIT_INDEX = re.compile(r'\.split\s*\([^)]*\)\s*\[')
+
+# 8b: float(x) / int(x) where x could be None
+PY_UNSAFE_CAST = re.compile(r'\b(float|int)\s*\(\s*(\w+)\s*\)')
+
+# 8c: .get(key, default) null trap — key exists with value None, default is skipped
+PY_GET_FALSY_DEFAULT = re.compile(r'\.get\s*\(\s*["\'][^"\']+["\']\s*,\s*(0|0\.0|\[\]|\{\}|"")\s*\)')
+
+# 8d: psycopg2 connection opened without close in finally
+PY_CONN_OPEN = re.compile(r'\bpsycopg2\.connect\b|\b_get_conn\s*\(')
+PY_CONN_CLOSE = re.compile(r'\.close\s*\(|finally\s*:')
+
+# Guards that make .split()[N] safe
+PY_SPLIT_GUARDS = [
+    re.compile(r'\.strip\s*\(\s*\)\.split'),       # .strip().split()
+    re.compile(r'if\s+\w+.*\.strip\s*\(\s*\)'),    # if x.strip()
+    re.compile(r'if\s+\w+\s+and\s+\w+\.strip'),    # if x and x.strip()
+    re.compile(r'or\s+["\']'),                       # .split()[0] or "default"
+    re.compile(r'\.split\s*\([^)]*\)\s*\[\s*0\s*\]\s+if\s+'),  # conditional expression
+]
+
+
+def scan_diff_for_python_adversarial(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed Python files for adversarial edge cases.
+
+    8a: .split()[N] on strings that could be empty/whitespace → IndexError
+    8b: float(x)/int(x) where x could be None → TypeError
+    8c: .get(key, falsy_default) where key can exist with value None → null trap
+    8d: psycopg2 connection opened without close/finally → connection leak
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith('.py'):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+        # Skip qa_gate.py itself — internal dict reads are not external input
+        if os.path.basename(filepath) == 'qa_gate.py':
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        # Pre-compute docstring regions
+        in_docstring = [False] * len(lines)
+        inside = False
+        for idx, ln in enumerate(lines):
+            s = ln.strip()
+            if s.startswith('"""') or s.startswith("'''"):
+                delim = s[:3]
+                count = s.count(delim)
+                if count == 1:
+                    inside = not inside
+            in_docstring[idx] = inside or s.startswith('"""') or s.startswith("'''")
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("#") or in_docstring[i]:
+                continue
+            if "qa-ignore" in line:
+                continue
+
+            # --- 8a: .split()[N] without strip guard ---
+            if PY_SPLIT_INDEX.search(line):
+                window = "".join(lines[max(0, i - 3):min(len(lines), i + 2)])
+                guarded = any(g.search(window) for g in PY_SPLIT_GUARDS)
+                if not guarded:
+                    errors.append(
+                        f"Python adversarial: {filepath}:{i + 1} uses .split()[N] "
+                        f"without a prior .strip() or emptiness check. "
+                        f"Empty/whitespace input causes IndexError."
+                    )
+
+            # --- 8b: float(x)/int(x) on potentially-None variable ---
+            cast_match = PY_UNSAFE_CAST.search(line)
+            if cast_match:
+                cast_func = cast_match.group(1)
+                var_name = cast_match.group(2)
+                # Skip safe patterns: literals, len(), constants, loop vars
+                if var_name in ('0', '1', '2', 'True', 'False', 'None'):
+                    continue
+                # Check if var comes from .get(), DB row, or Optional param
+                window = "".join(lines[max(0, i - 10):i + 1])
+                from_external = any(p in window for p in (
+                    f'{var_name} = ', '.get(', f'{var_name}:', 'Optional',
+                    'row[', 'fetchone', 'fetchall',
+                ))
+                if from_external:
+                    # Check for None guard
+                    guard_window = "".join(lines[max(0, i - 5):i + 1])
+                    has_guard = any(p in guard_window for p in (
+                        f'if {var_name}', f'{var_name} is not None',
+                        f'{var_name} or ', f'{var_name} if ',
+                    ))
+                    if not has_guard:
+                        errors.append(
+                            f"Python adversarial: {filepath}:{i + 1} calls "
+                            f"{cast_func}({var_name}) but {var_name} may be None "
+                            f"(from DB/.get()/Optional). Add a None guard."
+                        )
+
+            # --- 8c: .get(key, falsy_default) null trap ---
+            get_match = PY_GET_FALSY_DEFAULT.search(line)
+            if get_match:
+                default_val = get_match.group(1)
+                # Only flag if the key's value could legitimately be None
+                # (heuristic: if the result feeds into arithmetic or iteration)
+                window_after = "".join(lines[i:min(len(lines), i + 5)])
+                feeds_into_math = bool(re.search(
+                    r'[\+\-\*/]|\.append|for\s+\w+\s+in|len\s*\(',
+                    window_after
+                ))
+                if feeds_into_math:
+                    errors.append(
+                        f"Python adversarial: {filepath}:{i + 1} uses "
+                        f".get(key, {default_val}) but if key exists with value None, "
+                        f"the default is NOT used. Use 'val or {default_val}' after."
+                    )
+
+        # --- 8d: connection leak check (whole-file) ---
+        file_text = "".join(lines)
+        if PY_CONN_OPEN.search(file_text):
+            if not PY_CONN_CLOSE.search(file_text):
+                errors.append(
+                    f"Python adversarial: {filepath} opens a psycopg2 connection "
+                    f"but no .close() or finally: block found. Connection leak risk."
+                )
+
+    return errors
+
+
+# ─── Layer 9: Untyped method call scanner (TS) ──────────────────────────────
+
+# Methods that crash on wrong types (calling on number, null, undefined)
+TS_STRING_METHODS = re.compile(
+    r'(\w+)\.(?:toUpperCase|toLowerCase|trim|trimStart|trimEnd|split|replace|replaceAll'
+    r'|startsWith|endsWith|includes|match|search|slice|substring|padStart|padEnd)\s*\('
+)
+
+# Pattern templates showing the variable's source is untyped external input.
+# These are raw strings with {var} placeholder — compiled per-variable at scan time.
+TS_UNTYPED_SOURCE_TEMPLATES = [
+    r'(?:const|let)\s*\{{[^}}]*\b{var}\b[^}}]*\}}\s*=\s*(?:body|params|query|req\.json|request\.json|data|result|row)',
+    r'\b{var}\s*=\s*(?:body|params|query|req|request)\s*\.\s*\w+',
+    r'\b{var}\s*=\s*\w+\.get\s*\(',
+    r'\b{var}\s*:\s*(?:any|unknown|string\s*\|\s*null|string\s*\|\s*undefined)',
+]
+
+# Guard templates that make the method call safe
+TS_STRING_GUARD_TEMPLATES = [
+    r'typeof\s+{var}\s*===?\s*[\'"]string[\'"]',
+    r'{var}\s*\?\.\s*(?:toUpperCase|toLowerCase|trim|split)',
+    r'String\s*\(\s*{var}\s*\)',
+    r'{var}\s+(?:as|instanceof)\s+string',
+    r'if\s*\(\s*typeof\s+{var}',
+    r'if\s*\(\s*{var}\s*&&\s*typeof\s+{var}',
+    r'if\s*\(\s*!{var}\s*\)',          # if (!var) early return narrows to truthy
+    r'if\s*\(\s*{var}\s*\)',           # if (var) block narrows to truthy
+    r'{var}\s*=\s*\w+\.match\s*\(',    # regex match reassignment (always string)
+]
+
+
+def scan_diff_for_untyped_method_calls(
+    diff_files: list[str], project_dir: str
+) -> list[str]:
+    """Scan changed TS/JS files for string method calls on untyped input.
+
+    Detects .toUpperCase(), .trim(), .split() etc. on variables that come
+    from req.json(), body destructuring, or other untyped sources, without
+    a typeof guard or optional chaining.
+    """
+    errors = []
+    if not project_dir:
+        return errors
+
+    for filepath in diff_files:
+        if not filepath.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            continue
+        fp_lower = filepath.lower().replace('\\', '/')
+        if '/test' in fp_lower or fp_lower.startswith('test'):
+            continue
+
+        full_path = os.path.join(project_dir, filepath)
+        if not os.path.exists(full_path):
+            continue
+
+        try:
+            with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()
+        except (FileNotFoundError, PermissionError):
+            continue
+
+        # Track which (variable, function_scope) pairs have already been reported
+        # to avoid duplicate warnings for the same var in a chain of calls
+        reported_vars: set[str] = set()
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(("//", "*", "/*")):
+                continue
+            if "qa-ignore" in line and "untyped-method" in line:
+                continue
+
+            match = TS_STRING_METHODS.search(line)
+            if not match:
+                continue
+
+            var_name = match.group(1)
+
+            # Deduplicate: only report first unguarded use per variable per file
+            if var_name in reported_vars:
+                continue
+            # Skip obvious safe patterns: string literals, 'this', well-known objects
+            if var_name in ('this', 'JSON', 'Math', 'console', 'window', 'document',
+                            'Object', 'Array', 'Date', 'RegExp', 'process', 'String',
+                            'Buffer', 'Error', 'Promise', 'path'):
+                continue
+            # Skip if it's a string literal method call like "hello".toUpperCase()
+            if re.search(rf'["\'][^"\']*["\']\.(?:toUpperCase|toLowerCase)', line):
+                continue
+            # Skip if already using optional chaining on this specific call
+            if re.search(rf'{re.escape(var_name)}\?\.', line):
+                continue
+
+            # Check if variable comes from untyped source (look back 30 lines)
+            var_escaped = re.escape(var_name)
+            lookback = "".join(lines[max(0, i - 30):i + 1])
+            from_untyped = any(
+                re.search(tmpl.format(var=var_escaped), lookback)
+                for tmpl in TS_UNTYPED_SOURCE_TEMPLATES
+            )
+
+            if not from_untyped:
+                continue
+
+            # Check if there's a type guard in the window. 30 lines back covers
+            # function-level null checks before long chains of method calls —
+            # e.g. if(!partNumber) early return followed by 25+ .startsWith() branches.
+            guard_window = "".join(lines[max(0, i - 30):i + 1])
+            has_guard = any(
+                re.search(tmpl.format(var=var_escaped), guard_window)
+                for tmpl in TS_STRING_GUARD_TEMPLATES
+            )
+
+            if not has_guard:
+                method_name = re.search(
+                    r'\.(\w+)\s*\(', line[match.start():]
+                )
+                method = method_name.group(1) if method_name else "method"
+                reported_vars.add(var_name)
+                errors.append(
+                    f"Untyped method: {filepath}:{i + 1} calls "
+                    f"{var_name}.{method}() but {var_name} comes from "
+                    f"untyped input (body/params/query). Add 'typeof {var_name} "
+                    f"=== \"string\"' guard or use optional chaining ({var_name}?.{method}())."
+                )
+
+    return errors
+
+
 # ─── Main validation ─────────────────────────────────────────────────────────
 
 
@@ -816,6 +1092,14 @@ def validate_report(
     # --- Silent failure scanner: detect empty catches and success-on-error ---
     if diff_files and project_dir:
         errors.extend(scan_diff_for_silent_failures(diff_files, project_dir))
+
+    # --- Python adversarial scanner: split/cast/get traps, connection leaks ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_python_adversarial(diff_files, project_dir))
+
+    # --- Untyped method call scanner: string methods on untyped TS input ---
+    if diff_files and project_dir:
+        errors.extend(scan_diff_for_untyped_method_calls(diff_files, project_dir))
 
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))

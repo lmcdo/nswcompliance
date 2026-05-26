@@ -866,6 +866,23 @@ def run_monitor(
                             chapter_id,
                         ),
                     )
+                    # Flag linked numeric control rows for review
+                    flagged = cur.execute(
+                        """
+                        UPDATE dcp_setback_controls
+                        SET needs_review = TRUE,
+                            review_reason = 'chapter_pdf_changed',
+                            reviewed_at = NULL
+                        WHERE source_chapter_key = %s
+                          AND lga = %s
+                          AND is_current = TRUE
+                          AND needs_review = FALSE
+                        """,
+                        (key, ch_council),
+                    )
+                    flagged_count = cur.rowcount
+                    if flagged_count > 0:
+                        print(f"    [CONTROLS] Flagged {flagged_count} numeric control rows for review")
                     conn.commit()
                     if is_spatial:
                         if stored_hash:

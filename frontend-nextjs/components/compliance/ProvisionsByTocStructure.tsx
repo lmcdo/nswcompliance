@@ -2352,12 +2352,12 @@ export function ProvisionsByTocStructure({
               </div>
             )}
 
-            {/* Action Toolbar - Export (non-DA mode only, only when assessable provisions present) */}
+            {/* Action Toolbar - Export (disabled until export is fixed) */}
             {filteredProvisions.filter((p: any) => p.v2_provision_type !== 'procedural' && p.v2_provision_type !== 'descriptive').length > 0 && !isDaMode && (
               <div className="px-4 py-3 border-b bg-gray-50">
                 <button
-                  onClick={() => setShowExportModal(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 text-sm font-medium rounded-lg cursor-not-allowed"
                 >
                   <Download className="h-4 w-4" />
                   {topicFilters.length > 0

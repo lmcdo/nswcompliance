@@ -331,7 +331,8 @@ export async function POST(request: NextRequest) {
 
       let fallbackQuery: string = '';
       let fallbackParams: any[] = [];
-      let fallbackResult: any = undefined; // Declare variable for all branches
+      let fallbackResult: any = null;
+      let fallbackAlreadyProcessed = false;
 
       if (detectedNeighbourhoodName && detectedPrecinctId) {
         // Return provisions for the specific neighbourhood + general provisions
@@ -397,6 +398,7 @@ export async function POST(request: NextRequest) {
             AND page_number != '0'  -- Exclude TOC pages
             AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
             AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
+            -- v2_is_actionable not filtered: document-level PDF page query needs all provisions
             AND (
               document_id ~ '_2011_[247][_.]'  -- Parts 2, 4, 7
               OR document_id ILIKE '%_4.1_%'   -- Low density residential
@@ -486,8 +488,7 @@ export async function POST(request: NextRequest) {
           console.log(`✓ Marrickville fallback complete: ${precinctRequirements.length} precinct + ${generalRequirements.rows.length} general`);
 
           // Skip the rest of fallback processing for Marrickville
-          // by not setting fallbackResult (will cause check below to skip)
-          fallbackResult = null;
+          fallbackAlreadyProcessed = true;
         } else {
           // Ashfield or Leichhardt: Fetch precinct + general provisions
           console.log(`  → Fetching precinct requirements for ${detectedPrecinctId}...`);
@@ -549,6 +550,7 @@ export async function POST(request: NextRequest) {
               AND page_number != '0'  -- Exclude TOC pages
               AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
               AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
+              -- v2_is_actionable not filtered: document-level PDF page query needs all provisions
               AND (
                 document_id ILIKE '%Chapter_F%'
                 OR document_id ILIKE '%Chapter F%'
@@ -581,6 +583,7 @@ export async function POST(request: NextRequest) {
               AND page_number != '0'  -- Exclude TOC pages
               AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
               AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
+              -- v2_is_actionable not filtered: document-level PDF page query needs all provisions
               AND (
                 -- General Parts A, B, D, E, F
                 document_id ILIKE '%Part A%'
@@ -701,7 +704,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Skip the rest of fallback processing
-          fallbackResult = null;
+          fallbackAlreadyProcessed = true;
         }
       } else {
         // No neighbourhood detected - return only general provisions
@@ -727,6 +730,7 @@ export async function POST(request: NextRequest) {
           AND page_number != '0'  -- Exclude TOC pages
           AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
           AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
+          -- v2_is_actionable not filtered: document-level PDF page query needs all provisions
           AND (
             document_id ~ '_2011_[2478][_.]'  -- General provisions (Parts 2, 4, 7, 8) after _2011_
             OR document_id ILIKE '%_10.%'  -- Definitions
@@ -738,9 +742,8 @@ export async function POST(request: NextRequest) {
         fallbackParams = [`%${documentFilter}%`];
       }
 
-      // Only execute fallback query if not already handled (Marrickville path sets fallbackResult=null)
-      if (fallbackResult === null) {
-        // Already processed (Marrickville with precinct + general)
+      // Only execute fallback query if not already handled (Marrickville/Leichhardt path)
+      if (fallbackAlreadyProcessed) {
         console.log(`✓ Fallback already processed above`);
       } else if (fallbackQuery && fallbackParams.length > 0) {
         // Only execute if query was set in one of the branches above
@@ -894,11 +897,21 @@ export async function POST(request: NextRequest) {
       // - Marrickville: No zone filtering (applicable_zones is NULL), some devtype filtering
       // - Leichhardt: Universal controls (both fields NULL)
 
-      // If formerCouncil is still null, use Marrickville as last resort
-      const councilForQuery = formerCouncil || 'Marrickville';
+      // If formerCouncil is still null, return empty rather than wrong council's data
       if (!formerCouncil) {
-        console.warn(`⚠️  Former council detection failed, defaulting to Marrickville. Address: ${address}`);
+        console.warn(`⚠️  Former council detection failed — returning empty requirements. Address: ${address}, LGA: ${lga}`);
+        return NextResponse.json({
+          general_provisions: [],
+          precinct_provisions: [],
+          precinct_name: detectedNeighbourhoodName,
+          requirements: [],
+          metadata: {
+            council_detection_failed: true,
+            message: 'Could not determine former council area for this address. DCP requirements unavailable.',
+          }
+        });
       }
+      const councilForQuery = formerCouncil;
 
       let generalRequirementsQuery: string;
       let queryParams: any[];

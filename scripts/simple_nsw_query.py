@@ -10,12 +10,14 @@ import os
 import openai
 import numpy as np
 
-# Set working directory to the ultimate processor
-os.chdir('/home/lawre/compliance-engine')
+# Set working directory to project root
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Set OpenAI API key
-OPENAI_API_KEY = "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"
-os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
+# OpenAI API key from environment
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+if not OPENAI_API_KEY:
+    print("Error: OPENAI_API_KEY not set in environment", file=sys.stderr)
+    sys.exit(1)
 
 def main():
     query = sys.argv[1] if len(sys.argv) > 1 else "height requirements"

@@ -1,9 +1,9 @@
 name: DCP Chapter Monitor
 
 on:
-  schedule:
-    # Every Monday at 02:00 UTC (midday AEST / midnight AEDT)
-    - cron: '0 2 * * 1'
+  # Schedule disabled — moved to Railway cron (see docs/RAILWAY_MONITORS.md)
+  # schedule:
+  #   - cron: '0 2 * * 1'
   workflow_dispatch:
     inputs:
       council:

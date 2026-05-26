@@ -172,6 +172,7 @@ diagnose_*.py
 !TASK.md
 !CHANGELOG.md
 !screencast-*.md
+!SETUP.md
 !SCREENCAST_API_CHECKLIST.md
 
 # BROAD: Ignore ALL root-level Python scripts except core
@@ -362,6 +363,8 @@ PRPs/
 docs/*
 !docs/screencasts/
 !docs/user-stories/
+!docs/intelligence-brief/
+!docs/intelligence-brief/**
 !docs/*.md
 
 # PDF page images (stored in cloud, not git)
@@ -492,6 +495,9 @@ scripts/
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
+!scripts/satellite_freshness_monitor.py
+!scripts/run_monitors.py
+!scripts/numeric_control_review.py
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

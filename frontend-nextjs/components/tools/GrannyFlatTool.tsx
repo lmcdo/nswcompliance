@@ -243,9 +243,9 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
 
   const handleShare = () => {
     if (!eligibility || typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
+    // Use /share/granny-flat route which has OG tags + satellite card for social previews
+    const url = new URL('/share/granny-flat', window.location.origin);
     url.searchParams.set('address', eligibility.address ?? address);
-    url.hash = '';
     navigator.clipboard.writeText(url.toString()).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

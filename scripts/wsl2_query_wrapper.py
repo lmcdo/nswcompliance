@@ -19,7 +19,9 @@ def main():
     try:
         # Execute query directly in WSL2 using the symlink path
         escaped_query = query.replace("'", "\\'")
-        wsl_command = f"cd /home/lawre/compliance-engine && python3 -c \"import sys; sys.path.insert(0, 'scripts'); from working_nsw_query import query_nsw_lightrag_async; import asyncio; import json; result = asyncio.run(query_nsw_lightrag_async('{escaped_query}')) or 'No results'; print(json.dumps({{'success': True, 'result': result}}))\"" 
+        # WSL2 path: adjust to match your WSL mount point for this repo
+        wsl_project_dir = os.environ.get("WSL_PROJECT_DIR", "/home/$USER/compliance-engine")
+        wsl_command = f"cd {wsl_project_dir} && python3 -c \"import sys; sys.path.insert(0, 'scripts'); from working_nsw_query import query_nsw_lightrag_async; import asyncio; import json; result = asyncio.run(query_nsw_lightrag_async('{escaped_query}')) or 'No results'; print(json.dumps({{'success': True, 'result': result}}))\"" 
         
         cmd = ["wsl", "--", "bash", "-c", wsl_command]
         

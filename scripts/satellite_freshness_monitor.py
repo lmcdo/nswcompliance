@@ -687,13 +687,13 @@ def main() -> int:
 
     # --- Data quality checks (post-source, pre-exit) ---
     if not args.skip_quality_checks and not args.dry_run:
-        audit_gaps = check_audit_trail_completeness(days=7)
+        audit_gaps = check_audit_trail_completeness()
         output_issues = check_output_quality(days=7)
 
         quality_alerts = []
 
         if audit_gaps:
-            gap_lines = [f"Audit trail gaps: {len(audit_gaps)} reports missing audit rows (last 7 days)"]
+            gap_lines = [f"Audit trail gaps: {len(audit_gaps)} reports missing audit rows (all time)"]
             for g in audit_gaps[:5]:
                 gap_lines.append(f"  {g['product']} — {g['address']} ({g['run_date']})")
             if len(audit_gaps) > 5:
@@ -721,12 +721,14 @@ def main() -> int:
 # Audit trail completeness check
 # ---------------------------------------------------------------------------
 
-def check_audit_trail_completeness(days: int = 7) -> list[dict]:
-    """Find reports with no corresponding audit trail row.
+def check_audit_trail_completeness() -> list[dict]:
+    """Find ALL reports with no corresponding audit trail row.
 
-    Queries property_reports from the last N days and LEFT JOINs to
-    report_audit_trail. Any report without a matching audit row is a
-    gap — the pipeline ran but the audit write silently failed.
+    Queries property_reports and LEFT JOINs to report_audit_trail.
+    Any report without a matching audit row is a gap — the pipeline
+    ran but the audit write silently failed.
+
+    No time window — gaps persist in alerts until backfilled or resolved.
 
     Returns list of gap dicts. Empty list = all reports have audit trails.
     """
@@ -742,8 +744,7 @@ def check_audit_trail_completeness(days: int = 7) -> list[dict]:
             pr.run_date
         FROM property_reports pr
         LEFT JOIN report_audit_trail rat ON rat.report_id = pr.id
-        WHERE pr.run_date >= NOW() - INTERVAL '%s days'
-          AND rat.id IS NULL
+        WHERE rat.id IS NULL
         ORDER BY pr.run_date DESC
         LIMIT 50
     """
@@ -752,13 +753,13 @@ def check_audit_trail_completeness(days: int = 7) -> list[dict]:
     try:
         conn = psycopg2.connect(DATABASE_URL)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, (days,))
+            cur.execute(sql)
             gaps = [dict(row) for row in cur.fetchall()]
 
         if gaps:
             logger.warning(f"Audit trail gaps: {len(gaps)} reports missing audit rows")
         else:
-            logger.info(f"Audit trail complete: all reports from last {days} days have audit rows")
+            logger.info("Audit trail complete: all reports have audit rows")
 
         return gaps
 
