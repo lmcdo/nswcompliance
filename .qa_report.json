@@ -1,41 +1,114 @@
 {
-  "tier": "minor",
-  "justification": "Documentation and .gitignore only. Two legacy script path fixes (non-functional LightRAG scripts). No business logic, no DB, no runtime code.",
-  "commit_hash": "3810c287",
+  "tier": "standard",
+  "justification": "Multi-file bug fixes across 3 API routes and 1 Python DB function. Affects data correctness for DCP provisions, heritage lookup, and setback filtering. Also fixes 5 pre-existing qa_gate issues in dcp-complete (4 unguarded regulatory_provisions queries + 1 undefined/null sentinel). Not Critical because fixes existing bugs, no new legal output or payment paths.",
+  "commit_hash": "21448af6",
   "files": [
-    ".gitignore",
-    ".env.example",
-    "SETUP.md",
-    "scripts/simple_nsw_query.py",
-    "scripts/wsl2_query_wrapper.py",
-    "docs/intelligence-brief/CLAUDE.md",
-    "docs/intelligence-brief/IMPLEMENTATION.md",
-    "docs/intelligence-brief/LEGAL_STRATEGY.md",
-    "docs/intelligence-brief/LLM_STRATEGY.md",
-    "docs/intelligence-brief/PRODUCT_SCOPE.md",
-    "docs/intelligence-brief/QA_ANALYSIS.md"
+    "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+    "frontend-nextjs/app/api/heritage/hca-check/route.ts",
+    "scripts/conveyancing_db.py",
+    "tests/test_conveyancing_db.py"
   ],
   "pre_impl": {
-    "existing_data": "None — documentation only",
-    "assumption_mismatch": "N/A",
-    "new_vs_existing": "N/A"
+    "existing_data": "heritage_conservation_areas (2039 IW rows, lga_name UPPER CASE), dcp_general_requirements (former_council column), dcp_setback_controls (1037 rows, applicability + condition columns)",
+    "assumption_mismatch": "LGA case mismatch causes silent 0-row returns (heritage). Null formerCouncil causes wrong council data served (DCP). Missing zone filter causes irrelevant controls included (setbacks).",
+    "new_vs_existing": "All fixes are query-time behavior — applies to all requests immediately, no data migration needed."
   },
-  "functions": [],
-  "values": [],
-  "queries": [],
+  "functions": [
+    {
+      "name": "DCP-complete handler (null council path)",
+      "file_line": "frontend-nextjs/app/api/compliance/dcp-complete/route.ts:897-908",
+      "input": "formerCouncil: string|null from PostGIS spatial query + address fallback",
+      "output": "JSON response with empty arrays + council_detection_failed metadata",
+      "if_none": "Returns empty result with metadata flag instead of wrong Marrickville data"
+    },
+    {
+      "name": "HCA check handler (lga normalisation)",
+      "file_line": "frontend-nextjs/app/api/heritage/hca-check/route.ts:105-108",
+      "input": "lgaRaw: string from request body",
+      "output": "lga: string uppercased for heritage_conservation_areas.lga_name match",
+      "if_none": "Ternary guard passes null through — DB query returns 0 rows, inHCA: false"
+    },
+    {
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:130",
+      "input": "zone_code: Optional[str] from caller (e.g. 'R2 Low Density Residential')",
+      "output": "Filtered setback rows excluding zone-specific controls for different zones",
+      "if_none": "zone_prefix = '' — filter skipped, all rows returned (preserves existing behavior)"
+    }
+  ],
+  "values": [
+    {
+      "value": "formerCouncil",
+      "read_at": "dcp-complete/route.ts:139,157",
+      "nullable": "yes",
+      "guard_at": "dcp-complete/route.ts:898 — returns empty result with metadata",
+      "if_missing": "Empty DCP requirements with council_detection_failed: true"
+    },
+    {
+      "value": "lgaRaw (body.lga)",
+      "read_at": "hca-check/route.ts:105",
+      "nullable": "yes",
+      "guard_at": "hca-check/route.ts:108 — ternary null guard on toUpperCase()",
+      "if_missing": "null passed to DB, 0 rows, inHCA: false (safe default)"
+    },
+    {
+      "value": "zone_code",
+      "read_at": "conveyancing_db.py:133",
+      "nullable": "yes (Optional parameter)",
+      "guard_at": "conveyancing_db.py:207 — conditional expression with if zone_code else empty",
+      "if_missing": "Empty string, zone filter skipped, all controls returned"
+    },
+    {
+      "value": "applicability (DB column)",
+      "read_at": "conveyancing_db.py:211",
+      "nullable": "yes",
+      "guard_at": "conveyancing_db.py:211 — must equal zone_specific AND condition must be truthy",
+      "if_missing": "Non-zone-specific rows always included (conservative)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Heritage HCA bbox check with normalised LGA",
+      "file_line": "hca-check/route.ts:173-180",
+      "where_clause": "WHERE lga_name = $1 (now uppercased) AND bbox filters",
+      "if_zero": "Returns inHCA: false (correct behavior)",
+      "if_wrong": "Extra bbox candidates filtered by ray casting (safe)"
+    },
+    {
+      "purpose": "DCP setback fetch with zone advisory filter",
+      "file_line": "conveyancing_db.py:158-176",
+      "where_clause": "WHERE lga = %s AND is_current = TRUE (unchanged). Zone filter applied post-fetch in Python.",
+      "if_zero": "Returns None (correct)",
+      "if_wrong": "is_current = TRUE prevents inactive rows. Zone filter is conservative, only excludes explicit mismatches."
+    }
+  ],
   "break_it": [
     {
-      "scenario": ".gitignore negation for docs/intelligence-brief/** accidentally unignores other working files",
-      "what_happens": "Unintended files could be committed",
+      "scenario": "Address in Inner West, no suburb match, no precinct boundary match, formerCouncil stays null",
+      "what_happens": "Previously: wrong Marrickville data served silently. Now: empty result with council_detection_failed metadata.",
       "mitigated": true,
-      "how": ".gitignore:365 — negation scoped to docs/intelligence-brief/ only. Verified with git check-ignore on adjacent dirs.",
-      "repro": "git check-ignore docs/intelligence-brief/LEGAL_STRATEGY.md docs/qa/language-audit-2026-05-18.md — first not ignored, second still ignored"
+      "how": "dcp-complete/route.ts:898-908 — explicit empty return with metadata flag",
+      "repro": "POST /api/compliance/dcp-complete with address outside all precinct boundaries but within Inner West LGA"
+    },
+    {
+      "scenario": "Frontend sends lga: 'inner west' (lowercase) to HCA check endpoint",
+      "what_happens": "Previously: 0 rows from WHERE lga_name = 'inner west' (DB stores INNER WEST). Now: toUpperCase() converts correctly.",
+      "mitigated": true,
+      "how": "hca-check/route.ts:108 — lgaRaw.toUpperCase()",
+      "repro": "POST /api/heritage/hca-check with lga: 'inner west' and valid Inner West coordinates"
+    },
+    {
+      "scenario": "Zone-specific setback condition 'R4 High Density' presented to R2 user, should be excluded",
+      "what_happens": "zone_prefix = R2, condition mentions R4 zone code, R2 not in condition text, row skipped (correct).",
+      "mitigated": true,
+      "how": "conveyancing_db.py:214-215 — substring match checks if user's zone is present in condition text",
+      "repro": "Call fetch_dcp_setbacks('woollahra', 'R2') and verify R4-specific controls are excluded"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — .env.example contains placeholder values only, no real secrets",
+    "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Clone to new folder, follow SETUP.md, verify npm install and pytest pass"
+    "manual_verify": "Yes — test HCA check with lowercase LGA param; test DCP-complete for address outside precinct boundaries"
   }
 }
