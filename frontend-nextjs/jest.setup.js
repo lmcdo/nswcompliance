@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom'
 
-// Mock Next.js router
+
+// Mock Next.js Pages Router
 jest.mock('next/router', () => ({
  useRouter() {
  return {
@@ -21,6 +22,23 @@ jest.mock('next/router', () => ({
  },
  }
  },
+}))
+
+// Mock Next.js App Router (next/navigation)
+jest.mock('next/navigation', () => ({
+ useRouter() {
+ return {
+ push: jest.fn(),
+ replace: jest.fn(),
+ refresh: jest.fn(),
+ back: jest.fn(),
+ forward: jest.fn(),
+ prefetch: jest.fn(),
+ }
+ },
+ usePathname() { return '/' },
+ useSearchParams() { return new URLSearchParams() },
+ useParams() { return {} },
 }))
 
 // Mock window.matchMedia (guard for node test environment)

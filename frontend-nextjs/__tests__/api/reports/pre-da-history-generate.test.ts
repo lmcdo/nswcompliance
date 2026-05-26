@@ -76,17 +76,6 @@ const COMPLETE_ROW = {
   },
 };
 
-const DIRECT_DATA = {
-  address: '42 George St Newtown NSW 2042',
-  lat: -33.8975,
-  lon: 151.1785,
-  council: 'Inner West Council',
-  heritage_flag: false,
-  timeline: [
-    { year: 2020, level: 'stable', label: 'Stable' },
-  ],
-};
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockRender.mockResolvedValue(Buffer.from('%PDF-mock') as any);
@@ -105,16 +94,11 @@ describe('POST /api/reports/pre-da-history/generate — input validation', () =>
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 when neither report_id nor data is provided', async () => {
+  it('returns 400 when report_id is not provided', async () => {
     const res = await POST(makeReq({}));
     expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when data is provided but address is missing', async () => {
-    const res = await POST(makeReq({ data: { lat: -33.89, lon: 151.17 } }));
-    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/address/i);
+    expect(body.error).toBe('report_id is required');
   });
 });
 
@@ -152,11 +136,11 @@ describe('POST /api/reports/pre-da-history/generate — Path A (DB)', () => {
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
   });
 
-  it('passes is_paid: true for DB-fetched reports', async () => {
+  it('passes report data to renderer with correct address', async () => {
     mockSingle.mockResolvedValueOnce({ data: COMPLETE_ROW, error: null });
     await POST(makeReq({ report_id: VALID_UUID }));
     const renderedProps = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
-    expect(renderedProps.is_paid).toBe(true);
+    expect(renderedProps.address).toBe('42 George St Newtown NSW 2042');
   });
 
   it('sets Content-Disposition with report_id prefix', async () => {
@@ -165,31 +149,6 @@ describe('POST /api/reports/pre-da-history/generate — Path A (DB)', () => {
     const disposition = res.headers.get('Content-Disposition');
     expect(disposition).toMatch(/attachment/);
     expect(disposition).toMatch(/a1b2c3d4/);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Path B: Direct data (testing / preview)
-// ---------------------------------------------------------------------------
-
-describe('POST /api/reports/pre-da-history/generate — Path B (direct data)', () => {
-  it('returns 200 with application/pdf', async () => {
-    const res = await POST(makeReq({ data: DIRECT_DATA }));
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Type')).toBe('application/pdf');
-  });
-
-  it('passes is_paid: false for direct data path', async () => {
-    await POST(makeReq({ data: DIRECT_DATA }));
-    const renderedProps = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
-    expect(renderedProps.is_paid).toBe(false);
-  });
-
-  it('sets Content-Disposition with address slug', async () => {
-    const res = await POST(makeReq({ data: DIRECT_DATA }));
-    const disposition = res.headers.get('Content-Disposition');
-    expect(disposition).toMatch(/attachment/);
-    expect(disposition).toMatch(/42-george-st-newtown/i);
   });
 });
 

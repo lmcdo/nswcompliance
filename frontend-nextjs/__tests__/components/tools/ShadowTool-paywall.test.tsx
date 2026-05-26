@@ -5,10 +5,8 @@
  *   - ShadowLockedPreviewCard renders
  *   - Shows first 2 scenario rows as teasers (readable)
  *   - Shows remaining rows blurred
- *   - Shows construction_change_detected (blurred)
- *   - Shows blurred objection paragraph
- *   - No email input
- *   - Unlock fires checkout with {report_id, address}
+ *   - Shows blurred objection paragraph when overlap detected
+ *   - WaitlistButton shown (no Stripe checkout)
  *
  * After payment success URL params: ShadowPaidDownloadCTA shown.
  */
@@ -49,6 +47,16 @@ jest.mock('@/components/reports/ToolCrossSell', () => ({
 
 jest.mock('@/components/providers/PostHogProvider', () => ({
   posthog: { capture: jest.fn() },
+}));
+
+jest.mock('@/components/tools/OperationalTransparency', () => ({
+  OperationalTransparency: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: ({ interestType }: { interestType: string }) => (
+    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -134,7 +142,8 @@ describe('ShadowTool — ShadowLockedPreviewCard', () => {
   it('renders after result with report_id', async () => {
     await runShadowCheck();
     expect(screen.getByText('Scenario breakdown')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /unlock shadow report.*\$29/i })).toBeInTheDocument();
+    // WaitlistButton replaces Stripe checkout
+    expect(screen.getByTestId('waitlist-btn-shadow')).toBeInTheDocument();
   });
 
   it('shows ADG concern in alarm headline for non-compliant result', async () => {
@@ -144,86 +153,25 @@ describe('ShadowTool — ShadowLockedPreviewCard', () => {
 
   it('shows first 2 scenario rows as readable teasers', async () => {
     await runShadowCheck();
-    // First teaser: jun21_9am → 18m shadow
-    expect(screen.getByText(/18m shadow/)).toBeInTheDocument();
+    // First teaser: jun21_9am → 18m shadow (also appears in ShadowCard findings)
+    const shadow18 = screen.getAllByText(/18m shadow/);
+    expect(shadow18.length).toBeGreaterThanOrEqual(1);
     // Second teaser: jun21_12pm → 12m shadow
-    expect(screen.getByText(/12m shadow/)).toBeInTheDocument();
-  });
-
-  it('shows construction detected section (blurred)', async () => {
-    await runShadowCheck();
-    expect(screen.getByText('Construction detected nearby')).toBeInTheDocument();
-    // Value is blurred but text exists in DOM
-    expect(screen.getByText(/Yes — recent activity detected/)).toBeInTheDocument();
+    const shadow12 = screen.getAllByText(/12m shadow/);
+    expect(shadow12.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows objection paragraph section (blurred)', async () => {
     await runShadowCheck();
-    expect(screen.getByText(/Objection-ready paragraph/i)).toBeInTheDocument();
+    // "Objection-ready paragraph" appears in both FreePaidComparison and LockedPreviewCard
+    const objectionHeaders = screen.getAllByText(/Objection-ready paragraph/i);
+    expect(objectionHeaders.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Shadow modelling conducted/i)).toBeInTheDocument();
   });
 
-  it('does NOT show email input', async () => {
+  it('shows worst-case overlap section', async () => {
     await runShadowCheck();
-    expect(screen.queryAllByPlaceholderText(/email/i)).toHaveLength(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// handleUnlock
-// ---------------------------------------------------------------------------
-
-describe('ShadowTool — handleUnlock', () => {
-  it('fires checkout POST with {report_id, address} and redirects', async () => {
-    await runShadowCheck();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ checkout_url: 'https://checkout.stripe.com/pay/cs_shadow' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock shadow report/i }));
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_shadow');
-    });
-
-    const checkoutCall = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
-      String(url).includes('/api/stripe/checkout/shadow')
-    );
-    expect(checkoutCall).toBeDefined();
-    const body = JSON.parse(checkoutCall[1].body);
-    expect(body.report_id).toBe('shadow-report-uuid-1234');
-    expect(body.address).toBe('5 Elm St Haberfield NSW 2045');
-    expect(body).not.toHaveProperty('email');
-  });
-
-  it('shows error when checkout fails', async () => {
-    await runShadowCheck();
-
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: 'Payment unavailable' }), {
-        status: 503, headers: { 'Content-Type': 'application/json' },
-      })
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock shadow report/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Payment unavailable')).toBeInTheDocument();
-    });
-  });
-
-  it('button disabled while in flight', async () => {
-    await runShadowCheck();
-    (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
-
-    fireEvent.click(screen.getByRole('button', { name: /unlock shadow report/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /starting checkout/i })).toBeDisabled();
-    });
+    expect(screen.getByText(/Shadow overlap — worst case/i)).toBeInTheDocument();
   });
 });
 

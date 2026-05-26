@@ -48,6 +48,7 @@ Seven automated scanner layers run on every code change, enforced by git hooks t
 | 1. QA tier classification | Every commit classified as Critical/Standard/Minor with required QA depth | commit-msg hook rejects without `QA:` line |
 | 2. TSC error count gate | TypeScript compiler errors cannot increase above baseline (664) | pre-commit hook blocks new TS errors |
 | 3. Python test suite | 415 unit tests covering all 7 pipelines + enrichment logic | pre-push hook blocks on failure |
+| 3b. Frontend Jest suite | 615 tests covering UI components, API routes, paywall flows, council config | pre-push hook blocks on failure |
 | 4. DB guard scanner | SQL queries on scoped tables must include `is_current = TRUE` | pre-push hook (via qa_gate.py) |
 | 5. Null guard scanner | `.rows[0]` access must have prior length check or optional chaining | pre-push hook (via qa_gate.py) |
 | 6. Type boundary scanner | Falsy JSX guards (`{value && <JSX>}` where value could be 0) and `=== null` without undefined coverage | pre-push hook (via qa_gate.py) |
@@ -90,9 +91,10 @@ The last two items are pre-revenue blockers — they require external engagement
 
 | Metric | Value |
 |---|---|
-| Total unit tests | 415 |
-| Test execution time | <2 seconds |
-| Pipelines with dedicated test suites | 7/7 |
-| Mock injection | `conftest_mocks.py` stubs external deps (psycopg2, requests, pyproj) |
-| Test framework | pytest with pydantic validation |
-| Pre-push enforcement | Tests must pass before code can be pushed |
+| Total tests | 1,030 (415 Python + 615 Jest) |
+| Test execution time | <8 seconds total |
+| Pipelines with dedicated test suites | 7/7 (Python) + 42 suites (Jest) |
+| Python mock injection | `conftest_mocks.py` stubs psycopg2, requests, pyproj |
+| Jest mock injection | Custom jsdom env + next/router + next/navigation mocks |
+| Test frameworks | pytest (Python), Jest + React Testing Library (frontend) |
+| Pre-push enforcement | Both suites must pass before code can be pushed |

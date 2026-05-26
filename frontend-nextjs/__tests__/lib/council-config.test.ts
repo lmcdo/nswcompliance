@@ -76,8 +76,8 @@ describe('Council Config', () => {
     });
 
     test('returns null for unknown LGA', () => {
-      expect(detectCouncil('Sydney', undefined)).toBeNull();
-      expect(detectCouncil('Parramatta', undefined)).toBeNull();
+      expect(detectCouncil('Wollongong', undefined)).toBeNull();
+      expect(detectCouncil('Central Coast', undefined)).toBeNull();
     });
 
     test('handles empty/undefined inputs', () => {
@@ -138,7 +138,7 @@ describe('Council Config', () => {
     });
 
     test('returns null for unknown LGA', () => {
-      expect(getCouncilConfigByLGA('Sydney')).toBeNull();
+      expect(getCouncilConfigByLGA('Wollongong')).toBeNull();
     });
   });
 

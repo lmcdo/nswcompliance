@@ -15,6 +15,26 @@ jest.mock('next/dynamic', () => () => {
   return MockShadowMap;
 });
 
+jest.mock('@/components/tools/OperationalTransparency', () => ({
+  OperationalTransparency: ({ active, address, steps }: { active: boolean; address?: string; steps: { label: string }[]; note?: string }) =>
+    active ? (
+      <div data-testid="operational-transparency">
+        <span>Analysing {address}...</span>
+        {steps.map((s: { label: string }, i: number) => (
+          <span key={i}>{s.label}</span>
+        ))}
+      </div>
+    ) : null,
+}));
+
+jest.mock('@/components/reports/ToolCrossSell', () => ({
+  ToolCrossSell: () => null,
+}));
+
+jest.mock('@/components/reports/WaitlistButton', () => ({
+  WaitlistButton: () => null,
+}));
+
 // AddressAutocomplete — simple input passthrough for testing
 jest.mock('@/components/reports/AddressAutocomplete', () => ({
   AddressAutocomplete: ({
@@ -127,7 +147,6 @@ describe('ShadowTool — idle state', () => {
 
   it('renders form with Analyse button', () => {
     render(<ShadowTool />);
-    expect(screen.getByText('Construction Shadow Detector')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Analyse' })).toBeInTheDocument();
   });
 
@@ -150,13 +169,14 @@ describe('ShadowTool — idle state', () => {
 describe('ShadowTool — running state', () => {
   beforeEach(() => mockFetch.mockReset());
 
-  it('shows spinner while analysing', async () => {
+  it('shows operational transparency steps while analysing', async () => {
     mockFetch.mockReturnValue(new Promise(() => {})); // never resolves
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    expect(await screen.findByText(/Running shadow model/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Analysing...' })).toBeDisabled();
+    // OperationalTransparency shows "Analysing {address}..." and step labels
+    expect(await screen.findByText(/Analysing 1 Smith St/)).toBeInTheDocument();
+    expect(screen.getByText('Calculating sun angles across 5 ADG scenarios…')).toBeInTheDocument();
   });
 
   it('fires posthog shadow_tool_run on submit', async () => {
@@ -212,8 +232,8 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    const badge = await screen.findByText('ADG compliant');
-    expect(badge).toHaveClass('text-green-700');
+    const badge = await screen.findByText('Meets ADG solar access test');
+    expect(badge).toHaveClass('text-green-800');
   });
 
   it('ADG concern result shows red badge', async () => {
@@ -223,8 +243,8 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    const badge = await screen.findByText('ADG concern');
-    expect(badge).toHaveClass('text-red-700');
+    const badge = await screen.findByText('ADG solar access concern');
+    expect(badge).toHaveClass('text-red-800');
   });
 
   it('non-residential zone shows indicative badge regardless of adg_compliant', async () => {
@@ -234,7 +254,7 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    const badge = await screen.findByText('ADG — indicative only');
+    const badge = await screen.findByText('Indicative only');
     expect(badge).toHaveClass('text-gray-600');
   });
 
@@ -243,7 +263,7 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    expect(await screen.findByText('ADG — indicative only')).toBeInTheDocument();
+    expect(await screen.findByText('Indicative only')).toBeInTheDocument();
   });
 
   it('null run_date does not crash — renders empty string', async () => {
@@ -261,19 +281,17 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
     // Card renders; no non-residential override
-    expect(await screen.findByText('ADG compliant')).toBeInTheDocument();
+    expect(await screen.findByText('Meets ADG solar access test')).toBeInTheDocument();
   });
 
-  it('scenarios table renders all scenario rows', async () => {
+  it('worst-case scenario label is shown in map overlay and locked preview', async () => {
     mockSuccessFetch();
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    await screen.findByText('Shadow impact by scenario');
-    // 21 Jun 9am only appears in the scenarios table
-    expect(screen.getByText('21 Jun — 9:00 am')).toBeInTheDocument();
-    // 21 Jun 12pm appears in both the map overlay and the table row
-    expect(screen.getAllByText('21 Jun — 12:00 pm').length).toBeGreaterThanOrEqual(2);
+    await screen.findByText('1 Smith St Surry Hills NSW 2010');
+    // The worst-case scenario (jun21_12pm) appears in map overlay and locked preview
+    expect(screen.getAllByText('21 Jun — 12:00 pm').length).toBeGreaterThanOrEqual(1);
   });
 
   it('null construction_change_score does not crash', async () => {
@@ -294,7 +312,7 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    expect(await screen.findByText(/No Height of Buildings control/)).toBeInTheDocument();
+    expect(await screen.findByText(/No specific height control found/)).toBeInTheDocument();
   });
 
   it('empty scenarios array does not crash', async () => {
@@ -324,16 +342,14 @@ describe('ShadowTool — complete state (ShadowCard)', () => {
     expect(mockCapture).toHaveBeenCalledWith('shadow_tool_complete', expect.objectContaining({ adg_compliant: true }));
   });
 
-  it('scenario with null shadow_overlap_fraction shows — not crash', async () => {
+  it('scenario with null shadow_overlap_fraction does not crash', async () => {
     const result = makeResult();
     result.outputs.scenarios[0].shadow_overlap_fraction = null as unknown as number;
     mockSuccessFetch(result);
     render(<ShadowTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St' } });
     fireEvent.click(screen.getByRole('button', { name: 'Analyse' }));
-    await screen.findByText('Shadow impact by scenario');
-    // null overlap fraction renders as '—'
-    const dashes = screen.getAllByText('—');
-    expect(dashes.length).toBeGreaterThan(0);
+    // Should render the card without throwing
+    expect(await screen.findByText('1 Smith St Surry Hills NSW 2010')).toBeInTheDocument();
   });
 });

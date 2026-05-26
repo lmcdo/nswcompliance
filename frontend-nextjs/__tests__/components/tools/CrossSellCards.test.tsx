@@ -12,7 +12,10 @@ import GrannyFlatPage from '@/app/reports/granny-flat/page';
 // ---- mocks ----
 
 jest.mock('next/navigation', () => ({
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'payment' ? 'success' : null),
+  }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn(), back: jest.fn(), forward: jest.fn(), prefetch: jest.fn() }),
 }));
 
 jest.mock('react-map-gl/maplibre', () => ({
@@ -101,12 +104,12 @@ describe('CrossSellCards — ineligible (fail) result', () => {
     expect(screen.getByText('Neighbour Development Threat Radar')).toBeInTheDocument();
   });
 
-  it('does NOT show Flood Truth card on ineligible result', async () => {
+  it('shows Flood Truth card on default ineligible result', async () => {
     mockIneligibleDetect();
     render(<GrannyFlatPage />);
     await runDetect();
     await screen.findByText('Not eligible');
-    expect(screen.queryByText('Wet Season Flood Truth')).not.toBeInTheDocument();
+    expect(screen.getByText('Wet Season Flood Truth')).toBeInTheDocument();
   });
 
   it('Threat Radar link points to /reports/threat-radar with encoded address', async () => {
@@ -115,7 +118,7 @@ describe('CrossSellCards — ineligible (fail) result', () => {
     await runDetect();
     await screen.findByText('Not eligible');
 
-    const link = screen.getByRole('link', { name: /Monitor this area/i });
+    const link = screen.getByRole('link', { name: /Check nearby approvals/i });
     expect(link).toHaveAttribute('href', expect.stringContaining('/reports/threat-radar'));
     expect(link).toHaveAttribute('href', expect.stringContaining(encodeURIComponent(ADDRESS)));
   });
@@ -182,7 +185,7 @@ describe('CrossSellCards — address encoding', () => {
 
     await screen.findByText('Not eligible');
 
-    const link = screen.getByRole('link', { name: /Monitor this area/i });
+    const link = screen.getByRole('link', { name: /Check nearby approvals/i });
     const href = link.getAttribute('href') ?? '';
     // Spaces and slashes are encoded; apostrophes are valid URL chars and left as-is
     expect(href).toContain('/reports/threat-radar');

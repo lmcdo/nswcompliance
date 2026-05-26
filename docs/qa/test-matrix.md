@@ -1,10 +1,10 @@
 # PlotDetect — Test Matrix
 
 **Date:** 2026-05-23
-**Total tests:** 415 passed, 2 skipped, 15 deselected (quarantined)
-**Execution time:** <2 seconds
-**Framework:** pytest with pydantic validation
-**Mock injection:** `tests/conftest_mocks.py` stubs psycopg2, requests, pyproj
+**Total tests:** 1,030 (415 Python + 615 frontend Jest)
+**Execution time:** <8 seconds total (<2s Python, ~6s Jest)
+**Frameworks:** pytest (Python), Jest + React Testing Library (frontend)
+**Mock injection:** Python: `tests/conftest_mocks.py` stubs psycopg2, requests, pyproj. Jest: custom jsdom env + setup mocks.
 
 ---
 
@@ -67,11 +67,36 @@ Scanner tests validate the automated quality gates themselves:
 
 ---
 
+## Frontend Jest Tests (42 suites — 615 tests)
+
+### Test Distribution
+
+| Test Suite | Tests | Coverage Focus |
+|-----------|-------|----------------|
+| `__tests__/lib/council-config.test.ts` | 30 | Council detection, config lookup, category groups, layer labels, sorting |
+| `__tests__/components/*-paywall.test.tsx` (×5) | ~200 | Paywall flow for all 5 satellite products: button text, pricing, unlock flow |
+| `__tests__/components/CrossSellCards.test.tsx` | ~15 | Cross-sell card rendering, navigation links |
+| `__tests__/components/ToolCrossSell.test.tsx` | ~15 | Tool cross-sell component, router integration |
+| `__tests__/components/GrannyFlatEmailCapture.test.tsx` | ~20 | Email capture form, validation, submission flow |
+| `__tests__/components/ShadowTool.test.tsx` | ~25 | Shadow analysis results, operational transparency |
+| `__tests__/components/ThreatRadarTool.test.tsx` | ~20 | Threat radar display, multiple result handling |
+| `__tests__/api/pre-da-history-generate.test.ts` | ~30 | Pre-DA API validation, auth, payment verification |
+| `__tests__/api/webhook-granny-flat-analysis.test.ts` | ~25 | Webhook event handling, email extraction, analysis trigger |
+| Other component + lib tests | ~235 | Compliance UI, DCP controls, assessment components |
+
+### Jest Environment
+
+- **Custom jsdom environment** (`jest.jsdom-env.js`): Re-exposes Node 20+ Web API globals (Response, Request, fetch, TextEncoder, etc.) that standard jsdom strips
+- **Setup file** (`jest.setup.js`): Mocks `next/router` (Pages Router), `next/navigation` (App Router), `window.matchMedia`, `localStorage`
+- **Module aliases**: `@/` → `<rootDir>/` via `moduleNameMapper`
+
+---
+
 ## Test Enforcement
 
 | Enforcement Point | What Runs | Blocks On |
 |-------------------|-----------|-----------|
-| `pre-push` hook | Full pytest suite (415 tests) | Any test failure |
+| `pre-push` hook | Python pytest (415 tests) + Jest (615 tests) | Any test failure |
 | `pre-commit` hook | TSC error count gate | New TypeScript errors |
 | `commit-msg` hook | QA tier classification | Missing QA line |
 
@@ -96,4 +121,16 @@ External dependencies are stubbed at import time via `tests/conftest_mocks.py`:
 | `requests` | External API calls not made during unit tests |
 | `pyproj` | Native GIS library not required for logic tests |
 
-This allows all 415 tests to run in <2 seconds without any external dependencies, network access, or database connection.
+This allows all 415 Python tests to run in <2 seconds without any external dependencies, network access, or database connection.
+
+### Frontend Mock Strategy
+
+Jest tests mock at the framework level via `jest.setup.js`:
+
+| Mock Target | Why |
+|-------------|-----|
+| `next/router` | Pages Router not available in test environment |
+| `next/navigation` | App Router not available in test environment |
+| `window.matchMedia` | Not implemented in jsdom |
+| `localStorage` | Provides controlled storage mock |
+| Node Web APIs (Response, fetch, etc.) | Restored via custom jsdom environment — jsdom strips them |
