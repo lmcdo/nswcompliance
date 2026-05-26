@@ -369,7 +369,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             tax_config=tax_config,
         )
 
-        zone_epi = controls.get("zone_epi", "")
+        zone_epi = controls.get("zone_epi") or ""
         council_name = _council_from_zone_epi(zone_epi)
         dcp_former_council = detect_former_council(req.address, zone_epi)
 
