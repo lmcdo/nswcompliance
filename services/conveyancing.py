@@ -83,7 +83,13 @@ from generate_conveyancing_report import (  # noqa: E402
     _council_from_zone_epi,
     _normalise_council,
 )
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses  # noqa: E402
+from conveyancing_db import (  # noqa: E402
+    fetch_dcp_setbacks,
+    fetch_heritage_postgis,
+    fetch_lep_clauses,
+    fetch_sepp_housing_standards,
+    fetch_tax_thresholds,
+)
 
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
@@ -93,6 +99,39 @@ _DATA_SOURCES = [
     "PostGIS spatial overlays (ePlanning MapServer)",
     "NSW ePlanning DA API",
 ]
+
+
+def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
+    """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
+
+    Returns (sepp_standards, tax_config) — both None if DB unavailable.
+    """
+    import psycopg2
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None, None
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        # SEPP secondary dwelling standards
+        sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
+        sepp_standards = None
+        if sd_rows:
+            sd_by_type = {r["standard_type"]: r for r in sd_rows}
+            min_lot_row = sd_by_type.get("min_lot_size")
+            sepp_standards = {
+                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
+                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
+            }
+        # Tax thresholds
+        tax_config = fetch_tax_thresholds(conn)
+        return sepp_standards, tax_config
+    except Exception as e:
+        logger.warning(f"Failed to load regulatory configs from DB: {e}")
+        return None, None
+    finally:
+        if conn:
+            conn.close()
 
 
 class ConveyancingRequest(BaseModel):
@@ -165,7 +204,13 @@ def run_conveyancing(req: ConveyancingRequest):
 
     # Calculate derived data
     headroom = calc_development_headroom(controls, valuation)
-    feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata_info["is_strata"])
+    sepp_standards, tax_config = _load_regulatory_configs()
+    feasibility = calc_feasibility(
+        controls, valuation, unique_overlays,
+        is_strata=strata_info["is_strata"],
+        sepp_standards=sepp_standards,
+        tax_config=tax_config,
+    )
 
     # DA count (quick — no full details in free tier)
     zone_epi = controls.get("zone_epi", "")
@@ -312,7 +357,13 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             controls["lot_size_units"] = "m\u00b2"
 
         headroom = calc_development_headroom(controls, valuation)
-        feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata_info["is_strata"])
+        sepp_standards, tax_config = _load_regulatory_configs()
+        feasibility = calc_feasibility(
+            controls, valuation, unique_overlays,
+            is_strata=strata_info["is_strata"],
+            sepp_standards=sepp_standards,
+            tax_config=tax_config,
+        )
 
         zone_epi = controls.get("zone_epi", "")
         raw_council = _council_from_zone_epi(zone_epi)

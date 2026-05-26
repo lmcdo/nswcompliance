@@ -192,14 +192,19 @@ CLASSIFIED_ROAD_NOTE = (
     "Applies to Parramatta Road, Pacific Highway, Victoria Road and other state roads."
 )
 
-# Land tax thresholds — NSW, update annually (Revenue NSW publishes June each year)
-# Source: revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/land-tax-thresholds
-# ⚠ UPDATE REQUIRED: verify 2026 threshold at revenue.nsw.gov.au before using in production.
-# Values below are 2025 thresholds — pending confirmation of 2026 figure.
-LT_YEAR = 2025
-LT_THRESHOLD = 1_075_000   # 2025 general threshold — UPDATE annually
-LT_RATE = 0.016
-LT_BASE = 100
+# Land tax fallbacks — used only when DB is unreachable.
+# Authoritative source: tax_thresholds table (migration 046).
+_LT_FALLBACK = {
+    "tax_year": 2025,
+    "threshold_dollars": 1_075_000,
+    "rate": 0.016,
+    "base_amount_dollars": 100,
+}
+
+# Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
+# Authoritative source: housing_sepp_standards table (migration 045).
+_SD_FALLBACK_MIN_LOT = 450
+_SD_FALLBACK_ZONES = {"R1", "R2", "R3", "R4"}
 
 # ZONE_PERMITTED lookup table intentionally removed.
 # Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
@@ -457,10 +462,18 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
 
 
 def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict],
-                     is_strata: bool = False) -> list[dict]:
+                     is_strata: bool = False,
+                     sepp_standards: Optional[dict] = None,
+                     tax_config: Optional[dict] = None) -> list[dict]:
     """
     Answer the questions buyers actually ask their conveyancer.
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
+
+    sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
+        sd_min_lot (float), sd_zones (set[str]).
+    tax_config: pre-loaded from tax_thresholds table. Keys:
+        tax_year, threshold_dollars, rate, base_amount_dollars.
+    Both fall back to hardcoded values if not provided or if DB was unreachable.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
@@ -470,11 +483,10 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
-    # SEPP (Housing) 2021, Division 2 — minimum lot area 450m² (Cl 53(1)(b)), zones R1/R2/R3/R4.
-    # These are SEPP standards — check current instrument if SEPP has been amended.
-    # Source: legislation.nsw.gov.au — SEPP (Housing) 2021
-    _SD_MIN_LOT = 450   # Cl 53(1)(b) SEPP (Housing) 2021 — source: https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649#sec.53
-    _SD_ZONES = {"R1", "R2", "R3", "R4"}  # Cl 53(1)(a)
+    # Source: housing_sepp_standards table (migration 045), fallback to hardcoded.
+    _sd = sepp_standards or {}
+    _SD_MIN_LOT = _sd.get("sd_min_lot", _SD_FALLBACK_MIN_LOT)
+    _SD_ZONES = _sd.get("sd_zones", _SD_FALLBACK_ZONES)
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -610,31 +622,38 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             "basis": f"Lot {headroom['lot_area_display']} × FSR {headroom['fsr_numeric']}:1. Existing improvements reduce available headroom — compare against current dwelling footprint."
         })
 
-    # 5. Land tax (investment property, NSW 2025)
+    # 5. Land tax (investment property)
+    # Source: tax_thresholds table (migration 046), fallback to hardcoded.
     # Suppress for strata: VG returns whole-lot land value (building site), not unit value
+    _lt = tax_config or _LT_FALLBACK
+    lt_year = _lt["tax_year"]
+    lt_threshold = _lt["threshold_dollars"]
+    lt_rate = _lt["rate"]
+    lt_base = _lt["base_amount_dollars"]
+
     lv = valuation.get("land_value")
     if lv and not is_strata:
         lv_int = int(lv)
-        if lv_int > LT_THRESHOLD:
-            annual_lt = LT_BASE + (lv_int - LT_THRESHOLD) * LT_RATE
+        if lv_int > lt_threshold:
+            annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
             results.append({
-                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "question": f"Land tax (investment, {lt_year} thresholds)",
                 "answer": f"${round(annual_lt):,}/year",
                 "flag": "warn",
                 "basis": (
-                    f"Land value ${lv_int:,} exceeds {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
-                    f"${LT_BASE} + 1.6% × ${lv_int - LT_THRESHOLD:,} = ${round(annual_lt):,}/year. "
+                    f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
+                    f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
                     f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
                     f"Verify current thresholds at revenue.nsw.gov.au."
                 )
             })
         else:
             results.append({
-                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "question": f"Land tax (investment, {lt_year} thresholds)",
                 "answer": "Below threshold — nil",
                 "flag": "ok",
                 "basis": (
-                    f"Land value ${lv_int:,} is below {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
+                    f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
                     "No land tax payable on investment property. PPOR always exempt. "
                     "Verify current thresholds at revenue.nsw.gov.au."
                 )

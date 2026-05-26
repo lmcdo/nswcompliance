@@ -1,78 +1,139 @@
 {
   "tier": "standard",
-  "justification": "Wires 615 frontend Jest tests into pre-push hook and fixes 71 stale test assertions. Changes span 17 test files + 4 config/doc files. No production logic changed — all changes are test infrastructure, mocks, and assertion updates to match current UI.",
-  "commit_hash": "f506dd62",
+  "justification": "Standardises hardcoded SEPP Housing and land tax constants into DB tables with fallback. 5 modified files + 3 new files. Touches production query paths in granny_flat.py and conveyancing.py but with identical fallback behaviour — no change in output unless DB rows exist.",
+  "commit_hash": "c6391183",
   "files": [
-    ".githooks/pre-push",
-    "frontend-nextjs/jest.config.js",
-    "frontend-nextjs/jest.jsdom-env.js",
-    "frontend-nextjs/jest.polyfills.js",
-    "frontend-nextjs/jest.setup.js",
-    "frontend-nextjs/__tests__/api/reports/pre-da-history-generate.test.ts",
-    "frontend-nextjs/__tests__/api/stripe/webhook-granny-flat-analysis.test.ts",
-    "frontend-nextjs/__tests__/components/reports/ToolCrossSell.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/GrannyFlatEmailCapture.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ShadowTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ShadowTool.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/SolarYieldTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool.test.tsx",
-    "frontend-nextjs/__tests__/lib/council-config.test.ts"
+    "migrations/045_sepp_housing_secondary_dwelling.sql",
+    "migrations/046_tax_thresholds.sql",
+    "scripts/conveyancing_db.py",
+    "scripts/generate_conveyancing_report.py",
+    "services/conveyancing.py",
+    "services/granny_flat.py",
+    "tests/test_granny_flat_logic.py",
+    "tests/test_regulatory_constants.py"
   ],
   "pre_impl": {
-    "existing_data": "42 Jest test suites (615 tests) existed but were not enforced — drifted as UI evolved",
-    "assumption_mismatch": "Test assertions referenced old button text, pricing ($49 not $29), removed fields, old API validation order",
-    "new_vs_existing": "No new production code. All changes fix test expectations to match current production behavior."
+    "existing_data": "housing_sepp_standards table (33 rows, used by 3 frontend TS routes). New: secondary_dwelling rows + tax_thresholds table.",
+    "assumption_mismatch": "If DB has no secondary_dwelling rows or tax_thresholds table doesn't exist, all code falls back to hardcoded values — identical to pre-PR behaviour.",
+    "new_vs_existing": "Migration 045 inserts 2 new rows into existing table. Migration 046 creates new table + seeds 2 years. ON CONFLICT DO NOTHING for idempotency."
   },
   "functions": [
     {
-      "name": "pre-push hook (jest step)",
-      "file_line": ".githooks/pre-push:18-30",
-      "input": "git push event triggers hook execution in shell",
-      "output": "Blocks push if any of 615 Jest tests fail",
-      "if_none": "N/A — hook enforcement only"
+      "name": "fetch_sepp_housing_standards",
+      "file_line": "scripts/conveyancing_db.py:EOF-60",
+      "input": "conn (psycopg2), optional zone_code (str), optional development_type (str)",
+      "output": "list[dict] with development_type, standard_type, numeric_value, unit, applicable_zones",
+      "if_none": "conn=None → returns []. DB error → returns []."
+    },
+    {
+      "name": "fetch_tax_thresholds",
+      "file_line": "scripts/conveyancing_db.py:EOF-20",
+      "input": "conn (psycopg2), optional tax_year (int), jurisdiction (str), tax_type (str)",
+      "output": "Optional[dict] with tax_year, threshold_dollars, rate, base_amount_dollars, etc.",
+      "if_none": "conn=None → returns None. No row → returns None. DB error → returns None."
+    },
+    {
+      "name": "_get_sepp_sd_standards",
+      "file_line": "services/granny_flat.py",
+      "input": "conn (psycopg2 connection, optional — None triggers fallback)",
+      "output": "tuple[float, float] — (min_lot_m2, max_gf_area_m2)",
+      "if_none": "conn=None → returns fallback (450.0, 60.0). DB error → returns fallback."
+    },
+    {
+      "name": "_load_regulatory_configs",
+      "file_line": "services/conveyancing.py",
+      "input": "None — reads DATABASE_URL from env",
+      "output": "tuple[Optional[dict], Optional[dict]] — (sepp_standards, tax_config)",
+      "if_none": "No DATABASE_URL → (None, None). DB error → (None, None)."
+    },
+    {
+      "name": "calc_feasibility",
+      "file_line": "scripts/generate_conveyancing_report.py",
+      "input": "controls, valuation, overlays + optional sepp_standards (dict), tax_config (dict)",
+      "output": "list[dict] — feasibility items with question/answer/flag/basis",
+      "if_none": "sepp_standards=None → uses fallback 450m². tax_config=None → uses fallback 2025 values."
     }
   ],
   "values": [
     {
-      "value": "jest.jsdom-env.js globals",
-      "read_at": "frontend-nextjs/jest.jsdom-env.js:1-25",
-      "nullable": "no",
-      "guard_at": "Extends jsdom TestEnvironment, re-exposes Response/fetch/TextEncoder",
-      "if_missing": "Tests fail with ReferenceError on Web API globals"
+      "value": "_SEPP_FALLBACK_MIN_LOT_M2",
+      "read_at": "services/granny_flat.py:top",
+      "nullable": "no — hardcoded 450.0",
+      "guard_at": "_get_sepp_sd_standards returns this on any failure path",
+      "if_missing": "Cannot be missing — module-level constant"
+    },
+    {
+      "value": "sepp_standards dict",
+      "read_at": "services/conveyancing.py:_load_regulatory_configs",
+      "nullable": "yes — None if DB unavailable",
+      "guard_at": "calc_feasibility: _sd = sepp_standards or {}; .get() with fallback",
+      "if_missing": "Falls back to hardcoded 450m² / R1-R4 zones — same as before this PR"
+    },
+    {
+      "value": "tax_config dict",
+      "read_at": "services/conveyancing.py:_load_regulatory_configs",
+      "nullable": "yes — None if DB unavailable",
+      "guard_at": "calc_feasibility: _lt = tax_config or _LT_FALLBACK",
+      "if_missing": "Falls back to hardcoded 2025 thresholds — same as before this PR"
+    },
+    {
+      "value": "numeric_value from housing_sepp_standards",
+      "read_at": "services/granny_flat.py:_get_sepp_sd_standards",
+      "nullable": "no — column is NOT NULL in DB",
+      "guard_at": "rows.get('min_lot_size', _SEPP_FALLBACK_MIN_LOT_M2)",
+      "if_missing": "Falls back to 450.0"
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "Load secondary_dwelling SEPP standards (min_lot_size, max_floor_area)",
+      "file_line": "services/granny_flat.py:_get_sepp_sd_standards",
+      "where_clause": "WHERE development_type = 'secondary_dwelling' AND standard_type IN ('min_lot_size', 'max_floor_area')",
+      "if_zero": "Returns fallback tuple (450.0, 60.0)",
+      "if_wrong": "Wrong numeric_value would change lot size threshold — but values come from migration with exact legislative references"
+    },
+    {
+      "purpose": "Load SEPP housing standards filtered by dev_type and/or zone",
+      "file_line": "scripts/conveyancing_db.py:fetch_sepp_housing_standards",
+      "where_clause": "Dynamic — development_type = %s AND/OR %s = ANY(applicable_zones)",
+      "if_zero": "Returns empty list — caller uses fallback",
+      "if_wrong": "Zone filter uses ANY(applicable_zones) array containment — correct for array column"
+    },
+    {
+      "purpose": "Load tax thresholds for a given year/jurisdiction",
+      "file_line": "scripts/conveyancing_db.py:fetch_tax_thresholds",
+      "where_clause": "WHERE jurisdiction = %s AND tax_type = %s AND tax_year = %s",
+      "if_zero": "Returns None — caller uses _LT_FALLBACK dict",
+      "if_wrong": "UNIQUE constraint on (jurisdiction, tax_type, tax_year) prevents duplicates"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Pre-push hook runs Jest on a machine without node_modules installed",
-      "what_happens": "npx jest --bail fails, push blocked with clear error message",
+      "scenario": "Migration 046 not run — tax_thresholds table doesn't exist",
+      "what_happens": "fetch_tax_thresholds catches exception, returns None. calc_feasibility uses _LT_FALLBACK. User sees identical output to pre-PR.",
       "mitigated": true,
-      "how": "Hook runs from frontend-nextjs/ dir where package.json lives; CI/local both have deps",
-      "repro": "git push from fresh clone without npm install"
+      "how": "Every DB-sourced path has try/except returning fallback values",
+      "repro": "Run app without running migration 046, generate conveyancing report"
     },
     {
-      "scenario": "Jest custom env breaks on Node < 20 (no native fetch/Response)",
-      "what_happens": "jest.polyfills.js provides fallback imports from undici",
-      "mitigated": true,
-      "how": "frontend-nextjs/jest.polyfills.js imports from undici (bundled with Node 18+)",
-      "repro": "Run npx jest on Node 18"
+      "scenario": "Someone inserts wrong numeric_value (e.g. 4500 instead of 450) into housing_sepp_standards",
+      "what_happens": "Granny flat threshold would be 4500m² — almost no lots would qualify. Reports would show incorrect 'lot too small' warnings.",
+      "mitigated": false,
+      "how": "No DB-level CHECK constraint on numeric_value range. Mitigated by: values come from migration with legislative source_clause references, and existing frontend routes already use this table.",
+      "repro": "UPDATE housing_sepp_standards SET numeric_value = 4500 WHERE standard_type = 'min_lot_size' AND development_type = 'secondary_dwelling'"
     },
     {
-      "scenario": "New component changes button text without updating test",
-      "what_happens": "Jest fails on push, developer sees which assertion needs updating",
+      "scenario": "DATABASE_URL unset in conveyancing.py environment",
+      "what_happens": "_load_regulatory_configs returns (None, None). calc_feasibility uses all fallback values. Output identical to pre-PR.",
       "mitigated": true,
-      "how": "Pre-push hook now enforces Jest — previously silent drift",
-      "repro": "Change paywall button text and try to push"
+      "how": "services/conveyancing.py:_load_regulatory_configs checks db_url first, returns (None, None) immediately",
+      "repro": "Unset DATABASE_URL env var, hit /api/conveyancing endpoint"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — but migration 045 + 046 should be run to activate DB-sourced values",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — all automated via hook"
+    "manual_verify": "Run migrations 045 + 046 on Supabase, then verify granny flat detect and conveyancing report use DB values"
   }
 }
