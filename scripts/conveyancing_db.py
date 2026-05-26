@@ -21,6 +21,7 @@ Heritage value taxonomy (spatial_overlays.value for layer_type='heritage'):
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Optional
 
 import psycopg2
@@ -417,3 +418,200 @@ def fetch_heritage_postgis(
         "has_heritage": bool(hca or items),
         "raw": raw,
     }
+
+
+# ---------------------------------------------------------------------------
+# SEPP Housing standards — queries housing_sepp_standards table
+# ---------------------------------------------------------------------------
+
+def fetch_sepp_housing_standards(
+    conn,
+    zone_code: Optional[str] = None,
+    development_type: Optional[str] = None,
+) -> list[dict]:
+    """Return SEPP Housing standards from the DB, optionally filtered by zone and dev type.
+
+    Returns list of dicts:
+      {development_type, standard_type, numeric_value, unit,
+       applicable_zones, source_clause, source_document, effective_date}
+
+    zone_code: e.g. "R2" — filters to standards whose applicable_zones include this zone.
+    development_type: e.g. "secondary_dwelling" — filters to a specific dev type.
+
+    Never raises — returns empty list on any failure.
+    """
+    try:
+        cur = conn.cursor()
+        conditions = []
+        params: list = []
+
+        if development_type:
+            conditions.append("development_type = %s")
+            params.append(development_type)
+
+        if zone_code:
+            zone_prefix = zone_code.strip().split()[0].upper()
+            conditions.append("%s = ANY(applicable_zones)")
+            params.append(zone_prefix)
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        cur.execute(
+            f"""
+            SELECT development_type, standard_type, numeric_value, unit,
+                   applicable_zones, source_clause, source_document,
+                   legislation_url, effective_date
+            FROM housing_sepp_standards
+            {where}
+            ORDER BY development_type, standard_type
+            """,
+            params,
+        )
+        rows = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"  [warn] fetch_sepp_housing_standards: {e}")
+        return []
+
+    return [
+        {
+            "development_type": r[0],
+            "standard_type": r[1],
+            "numeric_value": float(r[2]),
+            "unit": r[3],
+            "applicable_zones": r[4] or [],
+            "source_clause": r[5],
+            "source_document": r[6],
+            "legislation_url": r[7],
+            "effective_date": str(r[8]) if r[8] else None,
+        }
+        for r in rows
+    ]
+
+
+def get_sepp_standard_value(
+    conn,
+    development_type: str,
+    standard_type: str,
+    zone_code: Optional[str] = None,
+) -> Optional[float]:
+    """Convenience: return a single numeric value for a specific standard.
+
+    E.g. get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size", "R2")
+    returns 450.0
+
+    Returns None if not found. Never raises.
+    """
+    standards = fetch_sepp_housing_standards(conn, zone_code, development_type)
+    for s in standards:
+        if s["standard_type"] == standard_type:
+            return s["numeric_value"]
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Tax thresholds — queries tax_thresholds table
+# ---------------------------------------------------------------------------
+
+def fetch_tax_thresholds(
+    conn,
+    tax_year: Optional[int] = None,
+    jurisdiction: str = "NSW",
+    tax_type: str = "land_tax",
+) -> Optional[dict]:
+    """Return tax thresholds for the given year (defaults to current year).
+
+    Returns dict:
+      {tax_year, threshold_dollars, rate, base_amount_dollars,
+       premium_threshold_dollars, premium_rate, source_url}
+
+    Returns None if no row found. Never raises.
+    """
+    if tax_year is None:
+        tax_year = date.today().year
+
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT tax_year, threshold_dollars, rate, base_amount_dollars,
+                   premium_threshold_dollars, premium_rate, source_url
+            FROM tax_thresholds
+            WHERE jurisdiction = %s AND tax_type = %s AND tax_year = %s
+            """,
+            (jurisdiction, tax_type, tax_year),
+        )
+        row = cur.fetchone()
+        cur.close()
+    except Exception as e:
+        print(f"  [warn] fetch_tax_thresholds: {e}")
+        return None
+
+    if not row:
+        return None
+
+    return {
+        "tax_year": row[0],
+        "threshold_dollars": row[1],
+        "rate": float(row[2]),
+        "base_amount_dollars": row[3],
+        "premium_threshold_dollars": row[4],
+        "premium_rate": float(row[5]) if row[5] else None,
+        "source_url": row[6],
+    }
+
+
+def check_regulatory_freshness(conn) -> list[str]:
+    """Check that DB-sourced regulatory constants are present and current.
+
+    Returns a list of warning strings. Empty list = all checks pass.
+    Called by the regulatory-freshness monitor (run_monitors.py).
+    """
+    warnings = []
+    if conn is None:
+        return ["CRITICAL: no DB connection — all regulatory values will use hardcoded fallbacks"]
+
+    # 1. Check housing_sepp_standards has secondary_dwelling rows
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT standard_type, numeric_value
+            FROM housing_sepp_standards
+            WHERE development_type = 'secondary_dwelling'
+              AND standard_type IN ('min_lot_size', 'max_floor_area')
+            """,
+        )
+        rows = {r[0]: float(r[1]) for r in cur.fetchall()}
+        cur.close()
+        if "min_lot_size" not in rows:
+            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — fallback 450m² in use")
+        if "max_floor_area" not in rows:
+            warnings.append("SEPP: missing max_floor_area for secondary_dwelling — fallback 60m² in use")
+    except Exception as e:
+        warnings.append(f"SEPP: query failed — {e}")
+
+    # 2. Check tax_thresholds has a row for the current year
+    current_year = date.today().year
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT tax_year FROM tax_thresholds
+            WHERE jurisdiction = 'NSW' AND tax_type = 'land_tax'
+            ORDER BY tax_year DESC LIMIT 1
+            """,
+        )
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            warnings.append(f"TAX: no tax_thresholds rows at all — fallback 2025 values in use")
+        elif row[0] < current_year:
+            warnings.append(
+                f"TAX: latest tax_thresholds year is {row[0]}, current year is {current_year} "
+                f"— thresholds may be stale. Insert {current_year} row when Revenue NSW publishes new rates."
+            )
+    except Exception as e:
+        warnings.append(f"TAX: query failed — {e}")
+
+    return warnings

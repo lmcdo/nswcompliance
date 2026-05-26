@@ -192,14 +192,19 @@ CLASSIFIED_ROAD_NOTE = (
     "Applies to Parramatta Road, Pacific Highway, Victoria Road and other state roads."
 )
 
-# Land tax thresholds — NSW, update annually (Revenue NSW publishes June each year)
-# Source: revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/land-tax-thresholds
-# ⚠ UPDATE REQUIRED: verify 2026 threshold at revenue.nsw.gov.au before using in production.
-# Values below are 2025 thresholds — pending confirmation of 2026 figure.
-LT_YEAR = 2025
-LT_THRESHOLD = 1_075_000   # 2025 general threshold — UPDATE annually
-LT_RATE = 0.016
-LT_BASE = 100
+# Land tax fallbacks — used only when DB is unreachable.
+# Authoritative source: tax_thresholds table (migration 046).
+_LT_FALLBACK = {
+    "tax_year": 2025,
+    "threshold_dollars": 1_075_000,
+    "rate": 0.016,
+    "base_amount_dollars": 100,
+}
+
+# Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
+# Authoritative source: housing_sepp_standards table (migration 045).
+_SD_FALLBACK_MIN_LOT = 450
+_SD_FALLBACK_ZONES = {"R1", "R2", "R3", "R4"}
 
 # ZONE_PERMITTED lookup table intentionally removed.
 # Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
@@ -282,7 +287,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
             timeout=10,
         )
         r.raise_for_status()
-        features = r.json().get("features", [])
+        features = r.json().get("features") or []
         attrs_list = [f["attributes"] for f in features]
 
         # classsubtype=3 = strata lot (SP plan)
@@ -291,7 +296,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         sp_lots = [
             a for a in attrs_list
             if a.get("classsubtype") in (3, 4)
-            or str(a.get("planlabel", "")).startswith(("SP", "CP"))
+            or str(a.get("planlabel") or "").startswith(("SP", "CP"))
         ]
         parent_strata = any(a.get("hasstratum") == 2 for a in attrs_list)
 
@@ -457,10 +462,18 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
 
 
 def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict],
-                     is_strata: bool = False) -> list[dict]:
+                     is_strata: bool = False,
+                     sepp_standards: Optional[dict] = None,
+                     tax_config: Optional[dict] = None) -> list[dict]:
     """
     Answer the questions buyers actually ask their conveyancer.
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
+
+    sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
+        sd_min_lot (float), sd_zones (set[str]).
+    tax_config: pre-loaded from tax_thresholds table. Keys:
+        tax_year, threshold_dollars, rate, base_amount_dollars.
+    Both fall back to hardcoded values if not provided or if DB was unreachable.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
@@ -470,11 +483,12 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
-    # SEPP (Housing) 2021, Division 2 — minimum lot area 450m² (Cl 53(1)(b)), zones R1/R2/R3/R4.
-    # These are SEPP standards — check current instrument if SEPP has been amended.
-    # Source: legislation.nsw.gov.au — SEPP (Housing) 2021
-    _SD_MIN_LOT = 450   # Cl 53(1)(b) SEPP (Housing) 2021 — source: https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649#sec.53
-    _SD_ZONES = {"R1", "R2", "R3", "R4"}  # Cl 53(1)(a)
+    # Source: housing_sepp_standards table (migration 045), fallback to hardcoded.
+    _sd = sepp_standards or {}
+    if not sepp_standards:
+        print("  [warn] calc_feasibility: using SEPP fallback values (no DB config injected)")
+    _SD_MIN_LOT = _sd.get("sd_min_lot", _SD_FALLBACK_MIN_LOT)
+    _SD_ZONES = _sd.get("sd_zones", _SD_FALLBACK_ZONES)
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -534,7 +548,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         })
     elif lot_area is not None and min_lot_str:
         try:
-            min_lot = float(re.sub(r"[^\d.]", "", min_lot_str.split("m")[0]))
+            min_lot = float(re.sub(r"[^\d.]", "", min_lot_str.strip().split("m")[0]))
             if lot_area >= min_lot * 2:
                 results.append({
                     "question": "Torrens title subdivision",
@@ -610,31 +624,40 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             "basis": f"Lot {headroom['lot_area_display']} × FSR {headroom['fsr_numeric']}:1. Existing improvements reduce available headroom — compare against current dwelling footprint."
         })
 
-    # 5. Land tax (investment property, NSW 2025)
+    # 5. Land tax (investment property)
+    # Source: tax_thresholds table (migration 046), fallback to hardcoded.
     # Suppress for strata: VG returns whole-lot land value (building site), not unit value
+    _lt = tax_config or _LT_FALLBACK
+    if not tax_config:
+        print("  [warn] calc_feasibility: using land tax fallback values (no DB config injected)")
+    lt_year = _lt["tax_year"]
+    lt_threshold = _lt["threshold_dollars"]
+    lt_rate = _lt["rate"]
+    lt_base = _lt["base_amount_dollars"]
+
     lv = valuation.get("land_value")
     if lv and not is_strata:
         lv_int = int(lv)
-        if lv_int > LT_THRESHOLD:
-            annual_lt = LT_BASE + (lv_int - LT_THRESHOLD) * LT_RATE
+        if lv_int > lt_threshold:
+            annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
             results.append({
-                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "question": f"Land tax (investment, {lt_year} thresholds)",
                 "answer": f"${round(annual_lt):,}/year",
                 "flag": "warn",
                 "basis": (
-                    f"Land value ${lv_int:,} exceeds {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
-                    f"${LT_BASE} + 1.6% × ${lv_int - LT_THRESHOLD:,} = ${round(annual_lt):,}/year. "
+                    f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
+                    f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
                     f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
                     f"Verify current thresholds at revenue.nsw.gov.au."
                 )
             })
         else:
             results.append({
-                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "question": f"Land tax (investment, {lt_year} thresholds)",
                 "answer": "Below threshold — nil",
                 "flag": "ok",
                 "basis": (
-                    f"Land value ${lv_int:,} is below {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
+                    f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
                     "No land tax payable on investment property. PPOR always exempt. "
                     "Verify current thresholds at revenue.nsw.gov.au."
                 )
@@ -661,7 +684,7 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
     if lot_area and fsr_str:
         try:
             # FSR may be "0.5:1" or "0.5" or "84" (sqm — rare)
-            fsr_val = float(fsr_str.split(":")[0]) if ":" in fsr_str else float(fsr_str)
+            fsr_val = float(fsr_str.strip().split(":")[0]) if ":" in fsr_str else float(fsr_str.strip())
             if fsr_val < 10:  # ratio, not sqm
                 max_gfa = lot_area * fsr_val
                 out["max_gfa_m2"] = round(max_gfa)
@@ -672,7 +695,8 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
 
     if lot_area and min_lot_str:
         try:
-            min_lot = float(min_lot_str.replace(",", "").replace(" ", "").split("m")[0])
+            _clean = re.sub(r"[mM²].*$", "", min_lot_str.strip().replace(",", "").replace(" ", ""))
+            min_lot = float(re.sub(r"[^\d.]", "", _clean)) if _clean else 0
             if min_lot > 0 and lot_area >= min_lot * 2:
                 out["subdivision_feasible"] = True
                 out["subdivision_note"] = (
@@ -752,7 +776,7 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
     try:
         lot_data = _portal_get("lot", {"propId": prop_id})
         if lot_data and isinstance(lot_data, list) and lot_data[0].get("geometry"):
-            rings = lot_data[0]["geometry"].get("rings", [])
+            rings = lot_data[0]["geometry"].get("rings") or []
             if rings and rings[0]:
                 ring = rings[0]
                 cx = sum(p[0] for p in ring) / len(ring)
@@ -931,9 +955,9 @@ def parse_controls(raw: list[dict]) -> dict:
 
         elif "special provisions" in layer:
             for res in results:
-                epi = res.get("EPI Name", "")
-                type_ = res.get("Type") or res.get("Class") or res.get("title", "")
-                label = res.get("Label", "")
+                epi = res.get("EPI Name") or ""
+                type_ = res.get("Type") or res.get("Class") or res.get("title") or ""
+                label = res.get("Label") or ""
                 if epi or type_:
                     out["sepp_overlays"].append({"name": epi, "type": type_, "label": label})
                 if "housing" in epi.lower() or "housing" in type_.lower():
@@ -1437,9 +1461,9 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
             )
             r.raise_for_status()
             body = r.json()
-            batch = body.get("Application", [])
+            batch = body.get("Application") or []
             apps.extend(batch)
-            total = int(body.get("TotalCount", 0) or r.headers.get("TotalCount", 0) or 0)
+            total = int(body.get("TotalCount") or r.headers.get("TotalCount") or 0)
             if len(apps) >= total or len(batch) < page_size:
                 break
             page += 1
@@ -1461,13 +1485,13 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
             dist = _haversine_m(lat, lng, float(app_lat), float(app_lng))
             if dist <= radius_m:
                 nearby.append({
-                    "number": app.get("PlanningPortalApplicationNumber", ""),
+                    "number": app.get("PlanningPortalApplicationNumber") or "",
                     "address": address,
                     "description": ", ".join(
-                        dt.get("DevelopmentType", "") for dt in app.get("DevelopmentType", [])
+                        (dt.get("DevelopmentType") or "") for dt in (app.get("DevelopmentType") or [])
                     )[:120],
-                    "status": app.get("ApplicationStatus", ""),
-                    "lodged": (app.get("LodgementDate", "") or "")[:10],
+                    "status": app.get("ApplicationStatus") or "",
+                    "lodged": (app.get("LodgementDate") or "")[:10],
                     "distance_m": round(dist),
                 })
     nearby.sort(key=lambda x: x["distance_m"])
@@ -1773,7 +1797,7 @@ def generate_pdf(
     _generic_flood_rows = [o for o in _flood_rows if _parse_ari(o["value"]) is None]
     _flood_note_dynamic: str | None = None
     if _flood_rows:
-        _instrument = _flood_rows[0].get("instrument", "")
+        _instrument = _flood_rows[0].get("instrument") or ""
         _is_hnrfs = "HNRFS_2024" in _instrument
         _is_ctfs = "CTFS_2023" in _instrument
         _source_citation = (
@@ -2124,18 +2148,18 @@ def generate_pdf(
 
     # Shadow risk row — derived from shadow pipeline
     if shadow_result is not None:
-        jun21 = [s for s in shadow_result.get("scenarios", [])
+        jun21 = [s for s in (shadow_result.get("scenarios") or [])
                  if s["scenario"] in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
         overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
-        height_m = shadow_result.get("height_m", "?")
+        height_m = shadow_result.get("height_m") or "?"
         adg_ok = shadow_result.get("adg_compliant", True)
         # Worst Jun 21 overlap fraction for context (noon is usually most readable)
         jun21_fractions = [
-            round(s.get("shadow_overlap_fraction", 0) * 100)
+            round((s.get("shadow_overlap_fraction") or 0) * 100)
             for s in jun21
         ]
         noon = next((s for s in jun21 if s["scenario"] == "jun21_12pm"), None)
-        noon_pct = round((noon.get("shadow_overlap_fraction", 0) or 0) * 100) if noon else 0
+        noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
 
         _hob_note = f" (LEP maximum height of buildings: {height_m} m)"
         if adg_ok and overlap_count == 0:
@@ -2395,7 +2419,7 @@ def generate_pdf(
             story.append(Spacer(1, 2 * mm))
 
     # VG 5-year land value trend — suppressed for strata (whole-lot value, not unit)
-    val_history = [] if _is_strata else valuation.get("val_history", [])
+    val_history = [] if _is_strata else (valuation.get("val_history") or [])
     if len(val_history) >= 2:
         story.append(Paragraph("<b>Land Value Trend (excl. buildings — NSW Valuation Service):</b>", ss["body"]))
         story.append(Spacer(1, 1 * mm))
@@ -2576,10 +2600,10 @@ def generate_pdf(
                 story.append(Spacer(1, 2 * mm))
 
         # ── Dwelling house controls ──
-        _render_setback_group(dcp_data.get("setbacks", []), "Dwelling house")
+        _render_setback_group(dcp_data.get("setbacks") or [], "Dwelling house")
 
         # ── Secondary dwelling (granny flat) controls ──
-        sd_rows = dcp_data.get("sd_setbacks", [])
+        sd_rows = dcp_data.get("sd_setbacks") or []
         if sd_rows:
             story.append(Paragraph(
                 "Secondary dwelling (granny flat) setbacks are DCP controls for the DA pathway. "
@@ -2613,7 +2637,7 @@ def generate_pdf(
             "A town planner is required to determine applicable setbacks for any specific proposal.",
             ss["note"]
         ))
-        if any(sb["control_type"] == "site_derived" for sb in dcp_data.get("setbacks", []) + dcp_data.get("sd_setbacks", [])):
+        if any(sb["control_type"] == "site_derived" for sb in (dcp_data.get("setbacks") or []) + (dcp_data.get("sd_setbacks") or [])):
             story.append(Spacer(1, 1 * mm))
             story.append(Paragraph(
                 "<b>Site-derived controls require a site visit:</b> Where setbacks are determined by "
@@ -3277,8 +3301,8 @@ def main():
         raw = get_raw_controls(prop_id)
         controls = parse_controls(raw)
         print(f"  Zone: {controls.get('zone')}  Height: {controls.get('height')}  FSR: {controls.get('fsr')}")
-        print(f"  ASS: {controls.get('ass_class')}  Heritage items: {len(controls.get('heritage_items', []))}")
-        print(f"  SEPP overlays: {len(controls.get('sepp_overlays', []))}")
+        print(f"  ASS: {controls.get('ass_class')}  Heritage items: {len(controls.get('heritage_items') or [])}")
+        print(f"  SEPP overlays: {len(controls.get('sepp_overlays') or [])}")
         print(f"  Key sites: {controls.get('key_sites_clause')}")
         print("\nFetching valuation data ...")
         valuation = get_valuation(prop_id)
@@ -3362,7 +3386,7 @@ def main():
             postgis_heritage = fetch_heritage_postgis(_db_conn, lat, lng, lot_wkt=lot_wkt)
             _db_conn.close()
             if dcp_setbacks_db:
-                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks', []))
+                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks') or [])
                 print(f"  DCP setbacks: {_dh} DH + {_sd} SD rows from DB")
             if lep_clauses:
                 print(f"  LEP clauses: {len(lep_clauses)} rows")

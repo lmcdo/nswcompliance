@@ -1,0 +1,295 @@
+"""Tests for DB-sourced regulatory constants (SEPP Housing + tax thresholds).
+
+Verifies:
+  1. fetch_sepp_housing_standards returns correct shape and filters by zone/dev_type
+  2. get_sepp_standard_value returns single float
+  3. fetch_tax_thresholds returns correct shape
+  4. granny_flat._get_sepp_sd_standards falls back when DB unavailable
+  5. calc_feasibility uses injected configs correctly
+"""
+
+import importlib.util
+import os
+import pytest
+from unittest.mock import MagicMock, patch
+from decimal import Decimal
+
+# Load conveyancing_db from scripts/
+_spec = importlib.util.spec_from_file_location(
+    "conveyancing_db",
+    os.path.join(os.path.dirname(__file__), "..", "scripts", "conveyancing_db.py"),
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+fetch_sepp_housing_standards = _mod.fetch_sepp_housing_standards
+get_sepp_standard_value = _mod.get_sepp_standard_value
+fetch_tax_thresholds = _mod.fetch_tax_thresholds
+check_regulatory_freshness = _mod.check_regulatory_freshness
+
+# Load generate_conveyancing_report for calc_feasibility
+_gcr_spec = importlib.util.spec_from_file_location(
+    "generate_conveyancing_report",
+    os.path.join(os.path.dirname(__file__), "..", "scripts", "generate_conveyancing_report.py"),
+)
+_gcr_mod = importlib.util.module_from_spec(_gcr_spec)
+_gcr_spec.loader.exec_module(_gcr_mod)
+
+calc_feasibility = _gcr_mod.calc_feasibility
+
+
+# ── Helpers ──
+
+def _mock_conn_with_sepp_rows(rows):
+    """Create a mock DB connection that returns given rows for SEPP query."""
+    conn = MagicMock()
+    cur = MagicMock()
+    conn.cursor.return_value = cur
+    cur.fetchall.return_value = rows
+    return conn
+
+
+def _mock_conn_with_tax_row(row):
+    """Create a mock DB connection that returns given row for tax query."""
+    conn = MagicMock()
+    cur = MagicMock()
+    conn.cursor.return_value = cur
+    cur.fetchone.return_value = row
+    return conn
+
+
+# ── fetch_sepp_housing_standards ──
+
+class TestFetchSeppHousingStandards:
+    def test_returns_all_rows_no_filter(self):
+        rows = [
+            ("secondary_dwelling", "min_lot_size", Decimal("450"), "m²",
+             ["R1", "R2", "R3", "R4"], "53(1)(b)", "SEPP Housing 2021",
+             "https://legislation.nsw.gov.au/...", "2021-11-29"),
+            ("secondary_dwelling", "max_floor_area", Decimal("60"), "m²",
+             ["R1", "R2", "R3", "R4"], "22(1)", "SEPP (E&C) 2008",
+             "https://legislation.nsw.gov.au/...", "2021-11-29"),
+        ]
+        conn = _mock_conn_with_sepp_rows(rows)
+        result = fetch_sepp_housing_standards(conn)
+        assert len(result) == 2
+        assert result[0]["development_type"] == "secondary_dwelling"
+        assert result[0]["numeric_value"] == 450.0
+        assert result[1]["standard_type"] == "max_floor_area"
+        assert result[1]["numeric_value"] == 60.0
+
+    def test_filters_by_development_type(self):
+        conn = _mock_conn_with_sepp_rows([])
+        fetch_sepp_housing_standards(conn, development_type="dual_occupancy")
+        call_args = conn.cursor().execute.call_args
+        sql = call_args[0][0]
+        params = call_args[0][1]
+        assert "development_type = %s" in sql
+        assert "dual_occupancy" in params
+
+    def test_filters_by_zone(self):
+        conn = _mock_conn_with_sepp_rows([])
+        fetch_sepp_housing_standards(conn, zone_code="R2 Low Density Residential")
+        call_args = conn.cursor().execute.call_args
+        params = call_args[0][1]
+        assert "R2" in params
+
+    def test_filters_by_both(self):
+        conn = _mock_conn_with_sepp_rows([])
+        fetch_sepp_housing_standards(conn, zone_code="R3", development_type="secondary_dwelling")
+        call_args = conn.cursor().execute.call_args
+        sql = call_args[0][0]
+        params = call_args[0][1]
+        assert "development_type = %s" in sql
+        assert "ANY(applicable_zones)" in sql
+        assert "secondary_dwelling" in params
+        assert "R3" in params
+
+    def test_returns_empty_on_db_error(self):
+        conn = MagicMock()
+        conn.cursor.side_effect = Exception("connection lost")
+        result = fetch_sepp_housing_standards(conn)
+        assert result == []
+
+    def test_returns_empty_for_none_conn(self):
+        """Passing None should not crash — returns empty."""
+        # Can't call cursor() on None, so should catch and return []
+        result = fetch_sepp_housing_standards(None)
+        assert result == []
+
+
+# ── get_sepp_standard_value ──
+
+class TestGetSeppStandardValue:
+    def test_returns_float_for_known_standard(self):
+        rows = [
+            ("secondary_dwelling", "min_lot_size", Decimal("450"), "m²",
+             ["R1", "R2", "R3", "R4"], "53(1)(b)", "SEPP Housing 2021",
+             "https://...", "2021-11-29"),
+        ]
+        conn = _mock_conn_with_sepp_rows(rows)
+        val = get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size")
+        assert val == 450.0
+
+    def test_returns_none_for_unknown_standard(self):
+        conn = _mock_conn_with_sepp_rows([])
+        val = get_sepp_standard_value(conn, "secondary_dwelling", "nonexistent")
+        assert val is None
+
+
+# ── fetch_tax_thresholds ──
+
+class TestFetchTaxThresholds:
+    def test_returns_correct_shape(self):
+        row = (2025, 1075000, Decimal("0.0160"), 100, 6571000, Decimal("0.0200"),
+               "https://revenue.nsw.gov.au/...")
+        conn = _mock_conn_with_tax_row(row)
+        result = fetch_tax_thresholds(conn, tax_year=2025)
+        assert result["tax_year"] == 2025
+        assert result["threshold_dollars"] == 1075000
+        assert result["rate"] == 0.016
+        assert result["base_amount_dollars"] == 100
+        assert result["premium_threshold_dollars"] == 6571000
+        assert result["premium_rate"] == 0.02
+
+    def test_returns_none_for_missing_year(self):
+        conn = _mock_conn_with_tax_row(None)
+        result = fetch_tax_thresholds(conn, tax_year=2099)
+        assert result is None
+
+    def test_returns_none_on_db_error(self):
+        conn = MagicMock()
+        conn.cursor.side_effect = Exception("connection lost")
+        result = fetch_tax_thresholds(conn)
+        assert result is None
+
+
+# ── calc_feasibility with injected configs ──
+
+class TestCalcFeasibilityWithConfigs:
+    """Verify calc_feasibility uses injected SEPP and tax configs."""
+
+    _base_controls = {"zone": "R2 Low Density Residential", "zone_epi": "Inner West LEP"}
+    _base_valuation = {"lot_area_m2": 500, "land_value": 1_200_000}
+    _base_overlays = []
+
+    def test_uses_injected_sepp_min_lot(self):
+        """When SEPP says 600m², a 500m² lot should fail."""
+        sepp = {"sd_min_lot": 600, "sd_zones": {"R1", "R2", "R3", "R4"}}
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            sepp_standards=sepp,
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["flag"] == "warn"
+        assert "600" in sd_item["basis"]
+
+    def test_uses_injected_sepp_zones(self):
+        """When SEPP zones exclude R2, secondary dwelling should show zone check required."""
+        sepp = {"sd_min_lot": 450, "sd_zones": {"R3", "R4"}}
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            sepp_standards=sepp,
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["flag"] == "warn"
+        assert "Zone check" in sd_item["answer"]
+
+    def test_uses_injected_tax_config(self):
+        """When tax threshold is 1M, a 1.2M property should show tax."""
+        tax = {"tax_year": 2026, "threshold_dollars": 1_000_000, "rate": 0.02, "base_amount_dollars": 200}
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            tax_config=tax,
+        )
+        lt_item = next(r for r in result if "land tax" in r["question"].lower())
+        assert lt_item["flag"] == "warn"
+        assert "2026" in lt_item["question"]
+        assert "$1,000,000" in lt_item["basis"]
+
+    def test_fallback_when_no_configs(self):
+        """Without injected configs, should use fallback values (450m², 2025 thresholds)."""
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        # 500m² >= 450m² fallback → ok
+        assert sd_item["flag"] == "ok"
+        assert "450" in sd_item["basis"]
+
+    def test_strata_skips_secondary_dwelling_and_tax(self):
+        """Strata lots should skip granny flat and land tax regardless of configs."""
+        sepp = {"sd_min_lot": 450, "sd_zones": {"R1", "R2", "R3", "R4"}}
+        tax = {"tax_year": 2025, "threshold_dollars": 1_000_000, "rate": 0.016, "base_amount_dollars": 100}
+        result = calc_feasibility(
+            self._base_controls, self._base_valuation, self._base_overlays,
+            is_strata=True,
+            sepp_standards=sepp,
+            tax_config=tax,
+        )
+        sd_item = next(r for r in result if "granny flat" in r["question"].lower())
+        assert sd_item["flag"] == "warn"
+        assert "strata" in sd_item["answer"].lower()
+        # Land tax should not appear for strata
+        lt_items = [r for r in result if "land tax" in r["question"].lower()]
+        assert len(lt_items) == 0
+
+
+# ── check_regulatory_freshness ──
+
+class TestCheckRegulatoryFreshness:
+    def test_returns_critical_for_none_conn(self):
+        warnings = check_regulatory_freshness(None)
+        assert len(warnings) == 1
+        assert "CRITICAL" in warnings[0]
+
+    def test_returns_empty_when_all_present(self):
+        """Both SEPP rows and current-year tax row exist → no warnings."""
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        # First call: SEPP standards
+        # Second call: tax thresholds
+        from datetime import date
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = (date.today().year,)
+        warnings = check_regulatory_freshness(conn)
+        assert warnings == []
+
+    def test_warns_when_sepp_rows_missing(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        from datetime import date
+        cur.fetchall.return_value = []  # no SEPP rows
+        cur.fetchone.return_value = (date.today().year,)
+        warnings = check_regulatory_freshness(conn)
+        assert any("min_lot_size" in w for w in warnings)
+        assert any("max_floor_area" in w for w in warnings)
+
+    def test_warns_when_tax_year_stale(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = (2024,)  # stale year
+        warnings = check_regulatory_freshness(conn)
+        assert any("stale" in w for w in warnings)
+
+    def test_warns_when_no_tax_rows(self):
+        conn = MagicMock()
+        cur = MagicMock()
+        conn.cursor.return_value = cur
+        cur.fetchall.return_value = [
+            ("min_lot_size", 450.0),
+            ("max_floor_area", 60.0),
+        ]
+        cur.fetchone.return_value = None  # no tax rows
+        warnings = check_regulatory_freshness(conn)
+        assert any("no tax_thresholds" in w for w in warnings)

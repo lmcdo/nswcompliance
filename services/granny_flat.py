@@ -22,9 +22,9 @@ Confidence logic:
   "medium" — SAMGEO_VALIDATED + user adjusted count, OR rent data missing
   "low"    — SAMGEO_VALIDATED = False (pre-spike)
 
-SEPP Housing 2021 rules applied:
-  - Min lot area: 450 m²
-  - Max granny flat floor area: 60 m²
+SEPP Housing 2021 rules applied (sourced from housing_sepp_standards table):
+  - Min lot area: from DB (fallback 450 m²)
+  - Max granny flat floor area: from DB (fallback 60 m²)
   - Setbacks: SEPP Housing defaults (rear 3m, side 0.9m)
 """
 
@@ -92,9 +92,40 @@ MAX_BBOX_FRACTION = 0.35
 # Buildings are roughly equidimensional. Values > 8 indicate fences, roads, errors.
 MAX_ASPECT_RATIO = 8.0
 
-# SEPP Housing 2021 defaults
-SEPP_MIN_LOT_M2 = 450.0
-SEPP_MAX_GF_AREA_M2 = 60.0
+# SEPP Housing 2021 fallbacks — used only when DB is unreachable.
+# Authoritative source: housing_sepp_standards table (migration 045).
+_SEPP_FALLBACK_MIN_LOT_M2 = 450.0
+_SEPP_FALLBACK_MAX_GF_AREA_M2 = 60.0
+
+
+def _get_sepp_sd_standards(conn=None) -> tuple[float, float]:
+    """Load secondary dwelling SEPP standards from DB; fall back to hardcoded values.
+
+    Returns (min_lot_m2, max_floor_area_m2).
+    """
+    if conn is None:
+        logger.warning("SEPP standards: no DB connection, using fallback values (min_lot=%.0f, max_gf=%.0f)",
+                        _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2)
+        return _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT standard_type, numeric_value
+            FROM housing_sepp_standards
+            WHERE development_type = 'secondary_dwelling'
+              AND standard_type IN ('min_lot_size', 'max_floor_area')
+            """,
+        )
+        rows = {r[0]: float(r[1]) for r in cur.fetchall()}
+        cur.close()
+        return (
+            rows.get("min_lot_size", _SEPP_FALLBACK_MIN_LOT_M2),
+            rows.get("max_floor_area", _SEPP_FALLBACK_MAX_GF_AREA_M2),
+        )
+    except Exception as e:
+        logger.warning("Failed to load SEPP standards from DB, using fallback: %s", e)
+        return _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2
 
 # NSW Planning Portal
 NSW_API_BASE = "https://api.apps1.nsw.gov.au/planning"
@@ -335,9 +366,9 @@ def _mercator_rings_to_pixel_via_bbox(
         px_ring = []
         for x_merc, y_merc in ring:
             lat, lng = _mercator_to_wgs84(x_merc, y_merc)
-            px = (lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * w
-            py = (bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * h
-            px_ring.append((int(px), int(py)))
+            px_f = (lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * w
+            py_f = (bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * h
+            px_ring.append((round(px_f), round(py_f)))
         pixel_rings.append(px_ring)
     return pixel_rings
 
@@ -660,13 +691,24 @@ def detect_structures(req: GrannyFlatDetectRequest):
     lot_geometry = req.lot_geometry or _fetch_lot_geometry(req.prop_id)
     lot_area_m2 = _compute_lot_area_m2(lot_geometry) if lot_geometry else None
 
+    # Load SEPP standards from DB (with fallback)
+    _detect_conn = None
+    try:
+        _detect_conn = _get_conn()
+        sepp_min_lot, _sepp_max_gf = _get_sepp_sd_standards(_detect_conn)
+    except Exception:
+        sepp_min_lot, _sepp_max_gf = _get_sepp_sd_standards()
+    finally:
+        if _detect_conn:
+            _detect_conn.close()
+
     sepp_eligible = True
     sepp_ineligible_reason = None
-    if lot_area_m2 is not None and lot_area_m2 < SEPP_MIN_LOT_M2:
+    if lot_area_m2 is not None and lot_area_m2 < sepp_min_lot:
         sepp_eligible = False
         sepp_ineligible_reason = (
             f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 "
-            f"minimum of {SEPP_MIN_LOT_M2:.0f} m²"
+            f"minimum of {sepp_min_lot:.0f} m²"
         )
 
     # Sanitize prop_id to prevent path traversal (prop_ids are numeric, but be defensive)
@@ -883,20 +925,31 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         if _fallback_geom:
             lot_area_m2 = _compute_lot_area_m2(_fallback_geom)
 
+    # Load SEPP standards from DB (with fallback)
+    _confirm_conn = None
+    try:
+        _confirm_conn = _get_conn()
+        sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards(_confirm_conn)
+    except Exception:
+        sepp_min_lot, sepp_max_gf = _get_sepp_sd_standards()
+    finally:
+        if _confirm_conn:
+            _confirm_conn.close()
+
     granny_flat_buildable = True
-    max_floor_area_m2 = SEPP_MAX_GF_AREA_M2
+    max_floor_area_m2 = sepp_max_gf
 
     if lot_area_m2 is None:
         warnings.append(
-            "Lot area could not be calculated for this property — lot geometry was unavailable. "
-            "The 450 m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
-            "Confirm lot area on NSW Planning Portal before proceeding."
+            f"Lot area could not be calculated for this property — lot geometry was unavailable. "
+            f"The {sepp_min_lot:.0f} m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
+            f"Confirm lot area on NSW Planning Portal before proceeding."
         )
-    elif lot_area_m2 < SEPP_MIN_LOT_M2:
+    elif lot_area_m2 < sepp_min_lot:
         granny_flat_buildable = False
         warnings.append(
             f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 minimum "
-            f"of {SEPP_MIN_LOT_M2:.0f} m²"
+            f"of {sepp_min_lot:.0f} m²"
         )
 
     # Residual area proxy check — simple heuristic pending full geometric envelope computation.
@@ -1145,8 +1198,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
 
     ds_sepp = DataSourceQuery(
         "SEPP Housing 2021 rules",
-        "local:sepp_housing_2021",
-        {"min_lot_m2": SEPP_MIN_LOT_M2, "max_gf_area_m2": SEPP_MAX_GF_AREA_M2},
+        "db:housing_sepp_standards",
+        {"min_lot_m2": sepp_min_lot, "max_gf_area_m2": sepp_max_gf},
     )
     ds_sepp.record_response(
         {"eligible": granny_flat_buildable, "max_floor_area_m2": max_floor_area_m2},

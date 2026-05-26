@@ -17,7 +17,7 @@ from services.granny_flat import (
     _compute_confidence,
     _get_weekly_rent,
     _compute_lot_area_m2,
-    SEPP_MIN_LOT_M2,
+    _SEPP_FALLBACK_MIN_LOT_M2 as SEPP_MIN_LOT_M2,
 )
 
 
