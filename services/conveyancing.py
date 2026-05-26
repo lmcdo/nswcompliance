@@ -81,7 +81,6 @@ from generate_conveyancing_report import (  # noqa: E402
     get_nearby_das,
     get_shadow_risk,
     _council_from_zone_epi,
-    _normalise_council,
 )
 from conveyancing_db import (  # noqa: E402
     fetch_dcp_setbacks,
@@ -220,8 +219,7 @@ def run_conveyancing(req: ConveyancingRequest):
 
     # DA count (quick — no full details in free tier)
     zone_epi = controls.get("zone_epi", "")
-    raw_council = _council_from_zone_epi(zone_epi)
-    council_name = _normalise_council(raw_council) if raw_council else None
+    council_name = _council_from_zone_epi(zone_epi)
     da_count = 0
     if council_name:
         try:
@@ -372,8 +370,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         )
 
         zone_epi = controls.get("zone_epi", "")
-        raw_council = _council_from_zone_epi(zone_epi)
-        council_name = _normalise_council(raw_council) if raw_council else None
+        council_name = _council_from_zone_epi(zone_epi)
         dcp_former_council = detect_former_council(req.address, zone_epi)
 
     # ---------- PDF-exclusive data (always fetched fresh) ----------

@@ -1,94 +1,29 @@
 {
-  "tier": "standard",
-  "justification": "Core DB connection handling change affecting all PostGIS queries. Not Critical because read-only queries, no schema changes, defense-in-depth pattern.",
-  "commit_hash": "51ce59c4",
-  "files": [
-    "services/conveyancing.py",
-    "scripts/conveyancing_db.py",
-    "tests/test_regulatory_constants.py",
-    "docs/intelligence-brief/spike-findings.md",
-    "docs/intelligence-brief/spike-results.json"
-  ],
+  "tier": "minor",
+  "justification": "1 file, 2 line changes — removing redundant double-normalization call. No new logic.",
+  "commit_hash": "151012ef",
+  "files": ["services/conveyancing.py"],
   "pre_impl": {
-    "existing_data": "spatial_overlays, dcp_setback_controls, housing_sepp_standards, tax_thresholds — all read-only",
-    "assumption_mismatch": "autocommit=True on read-only connection is safe — no multi-statement transactions needed",
-    "new_vs_existing": "Applies to all existing DB calls immediately — connection pattern change, not data change"
+    "existing_data": "none — this changes how council_name is derived, not what data is queried",
+    "assumption_mismatch": "_council_from_zone_epi already returns normalised name — double call made it None",
+    "new_vs_existing": "Fixes existing bug — nearby DAs were always 0 due to double normalization"
   },
-  "functions": [
-    {
-      "name": "fetch_dcp_setbacks",
-      "file_line": "conveyancing_db.py:133",
-      "input": "conn (psycopg2 connection), lga_slug (str from detect_former_council)",
-      "output": "dict with setback rows or None",
-      "if_none": "returns None — caller shows 'DCP not available'"
-    },
-    {
-      "name": "fetch_heritage_postgis",
-      "file_line": "conveyancing_db.py:355",
-      "input": "conn (psycopg2 connection), lat/lng (float), lot_wkt (optional str)",
-      "output": "dict with hca list, items list, has_heritage bool, raw list",
-      "if_none": "returns empty dict — caller shows no heritage from PostGIS"
-    },
-    {
-      "name": "fetch_lep_clauses",
-      "file_line": "conveyancing_db.py:58",
-      "input": "conn (psycopg2 connection), key_sites_clause (str), epi_name (str)",
-      "output": "list of clause dicts with number, heading, summary, source",
-      "if_none": "returns [] — caller skips LEP clause section in PDF"
-    }
-  ],
-  "values": [
-    {
-      "value": "conn.autocommit",
-      "read_at": "conveyancing.py:117,395,499,525",
-      "nullable": "no — set immediately after connect()",
-      "guard_at": "conveyancing.py:117,395,499,525",
-      "if_missing": "reverts to psycopg2 default (autocommit=False) — cascading failure on error"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "fetch DCP setback controls for an LGA",
-      "file_line": "conveyancing_db.py:161",
-      "where_clause": "WHERE lga = %s AND is_current = TRUE",
-      "if_zero": "returns None — DCP section omitted from report",
-      "if_wrong": "wrong LGA's controls shown — mitigated by detect_former_council slug validation"
-    }
-  ],
+  "functions": [],
+  "values": [],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "autocommit=True with a connection that has an active transaction from caller code",
-      "what_happens": "psycopg2 raises ProgrammingError: can't change autocommit state within a transaction",
+      "scenario": "_council_from_zone_epi returns a name not in ePlanning API's CouncilName list",
+      "what_happens": "API returns 0 DAs — same as current broken behavior, no regression",
       "mitigated": true,
-      "how": "conveyancing.py creates fresh connections — no pre-existing transaction possible",
-      "repro": "python -c \"import psycopg2; c=psycopg2.connect(DB_URL); c.autocommit=True; print('ok')\""
-    },
-    {
-      "scenario": "conn.rollback() itself fails (e.g., connection already closed)",
-      "what_happens": "rollback exception caught by bare except, function still returns safe default",
-      "mitigated": true,
-      "how": "conveyancing_db.py — every rollback is wrapped in try/except Exception: pass",
-      "repro": "Mock conn.rollback to raise, verify function still returns empty/None"
-    },
-    {
-      "scenario": "First query fails, rollback succeeds, second query returns stale/cached cursor data",
-      "what_happens": "Would return wrong data from previous cursor state",
-      "mitigated": true,
-      "how": "Each function creates its own cursor via conn.cursor() — no shared cursor state",
-      "repro": "test_sequential_calls_survive_first_failure in test_regulatory_constants.py"
-    },
-    {
-      "scenario": "DCP setback query returns rows for wrong LGA due to slug mismatch",
-      "what_happens": "User sees another council's setback controls — wrong regulatory data displayed",
-      "mitigated": true,
-      "how": "conveyancing_db.py:161 — WHERE lga = %s parameterised; slug comes from detect_former_council which maps known addresses to known slugs",
-      "repro": "Call fetch_dcp_setbacks with invalid slug → returns None (no rows match)"
+      "how": "_normalise_council MAP is manually maintained with known council names matching ePlanning format",
+      "repro": "Call get_nearby_das with council_name='Nonexistent Council' — returns empty list"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — connection behavior change is tested by 6 new unit tests"
+    "manual_verify": "No"
   }
 }
