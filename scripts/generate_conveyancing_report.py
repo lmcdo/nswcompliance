@@ -287,7 +287,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
             timeout=10,
         )
         r.raise_for_status()
-        features = r.json().get("features", [])
+        features = r.json().get("features") or []
         attrs_list = [f["attributes"] for f in features]
 
         # classsubtype=3 = strata lot (SP plan)
@@ -296,7 +296,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         sp_lots = [
             a for a in attrs_list
             if a.get("classsubtype") in (3, 4)
-            or str(a.get("planlabel", "")).startswith(("SP", "CP"))
+            or str(a.get("planlabel") or "").startswith(("SP", "CP"))
         ]
         parent_strata = any(a.get("hasstratum") == 2 for a in attrs_list)
 
@@ -546,7 +546,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         })
     elif lot_area is not None and min_lot_str:
         try:
-            min_lot = float(re.sub(r"[^\d.]", "", min_lot_str.split("m")[0]))
+            min_lot = float(re.sub(r"[^\d.]", "", min_lot_str.strip().split("m")[0]))
             if lot_area >= min_lot * 2:
                 results.append({
                     "question": "Torrens title subdivision",
@@ -680,7 +680,7 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
     if lot_area and fsr_str:
         try:
             # FSR may be "0.5:1" or "0.5" or "84" (sqm — rare)
-            fsr_val = float(fsr_str.split(":")[0]) if ":" in fsr_str else float(fsr_str)
+            fsr_val = float(fsr_str.strip().split(":")[0]) if ":" in fsr_str else float(fsr_str.strip())
             if fsr_val < 10:  # ratio, not sqm
                 max_gfa = lot_area * fsr_val
                 out["max_gfa_m2"] = round(max_gfa)
@@ -691,7 +691,7 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
 
     if lot_area and min_lot_str:
         try:
-            min_lot = float(min_lot_str.replace(",", "").replace(" ", "").split("m")[0])
+            min_lot = float(min_lot_str.strip().replace(",", "").replace(" ", "").split("m")[0])
             if min_lot > 0 and lot_area >= min_lot * 2:
                 out["subdivision_feasible"] = True
                 out["subdivision_note"] = (
@@ -771,7 +771,7 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
     try:
         lot_data = _portal_get("lot", {"propId": prop_id})
         if lot_data and isinstance(lot_data, list) and lot_data[0].get("geometry"):
-            rings = lot_data[0]["geometry"].get("rings", [])
+            rings = lot_data[0]["geometry"].get("rings") or []
             if rings and rings[0]:
                 ring = rings[0]
                 cx = sum(p[0] for p in ring) / len(ring)
@@ -950,9 +950,9 @@ def parse_controls(raw: list[dict]) -> dict:
 
         elif "special provisions" in layer:
             for res in results:
-                epi = res.get("EPI Name", "")
-                type_ = res.get("Type") or res.get("Class") or res.get("title", "")
-                label = res.get("Label", "")
+                epi = res.get("EPI Name") or ""
+                type_ = res.get("Type") or res.get("Class") or res.get("title") or ""
+                label = res.get("Label") or ""
                 if epi or type_:
                     out["sepp_overlays"].append({"name": epi, "type": type_, "label": label})
                 if "housing" in epi.lower() or "housing" in type_.lower():
@@ -1456,9 +1456,9 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
             )
             r.raise_for_status()
             body = r.json()
-            batch = body.get("Application", [])
+            batch = body.get("Application") or []
             apps.extend(batch)
-            total = int(body.get("TotalCount", 0) or r.headers.get("TotalCount", 0) or 0)
+            total = int(body.get("TotalCount") or r.headers.get("TotalCount") or 0)
             if len(apps) >= total or len(batch) < page_size:
                 break
             page += 1
@@ -1480,13 +1480,13 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
             dist = _haversine_m(lat, lng, float(app_lat), float(app_lng))
             if dist <= radius_m:
                 nearby.append({
-                    "number": app.get("PlanningPortalApplicationNumber", ""),
+                    "number": app.get("PlanningPortalApplicationNumber") or "",
                     "address": address,
                     "description": ", ".join(
-                        dt.get("DevelopmentType", "") for dt in app.get("DevelopmentType", [])
+                        (dt.get("DevelopmentType") or "") for dt in (app.get("DevelopmentType") or [])
                     )[:120],
-                    "status": app.get("ApplicationStatus", ""),
-                    "lodged": (app.get("LodgementDate", "") or "")[:10],
+                    "status": app.get("ApplicationStatus") or "",
+                    "lodged": (app.get("LodgementDate") or "")[:10],
                     "distance_m": round(dist),
                 })
     nearby.sort(key=lambda x: x["distance_m"])
@@ -1792,7 +1792,7 @@ def generate_pdf(
     _generic_flood_rows = [o for o in _flood_rows if _parse_ari(o["value"]) is None]
     _flood_note_dynamic: str | None = None
     if _flood_rows:
-        _instrument = _flood_rows[0].get("instrument", "")
+        _instrument = _flood_rows[0].get("instrument") or ""
         _is_hnrfs = "HNRFS_2024" in _instrument
         _is_ctfs = "CTFS_2023" in _instrument
         _source_citation = (
@@ -2143,18 +2143,18 @@ def generate_pdf(
 
     # Shadow risk row — derived from shadow pipeline
     if shadow_result is not None:
-        jun21 = [s for s in shadow_result.get("scenarios", [])
+        jun21 = [s for s in (shadow_result.get("scenarios") or [])
                  if s["scenario"] in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
         overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
-        height_m = shadow_result.get("height_m", "?")
+        height_m = shadow_result.get("height_m") or "?"
         adg_ok = shadow_result.get("adg_compliant", True)
         # Worst Jun 21 overlap fraction for context (noon is usually most readable)
         jun21_fractions = [
-            round(s.get("shadow_overlap_fraction", 0) * 100)
+            round((s.get("shadow_overlap_fraction") or 0) * 100)
             for s in jun21
         ]
         noon = next((s for s in jun21 if s["scenario"] == "jun21_12pm"), None)
-        noon_pct = round((noon.get("shadow_overlap_fraction", 0) or 0) * 100) if noon else 0
+        noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
 
         _hob_note = f" (LEP maximum height of buildings: {height_m} m)"
         if adg_ok and overlap_count == 0:
@@ -2414,7 +2414,7 @@ def generate_pdf(
             story.append(Spacer(1, 2 * mm))
 
     # VG 5-year land value trend — suppressed for strata (whole-lot value, not unit)
-    val_history = [] if _is_strata else valuation.get("val_history", [])
+    val_history = [] if _is_strata else (valuation.get("val_history") or [])
     if len(val_history) >= 2:
         story.append(Paragraph("<b>Land Value Trend (excl. buildings — NSW Valuation Service):</b>", ss["body"]))
         story.append(Spacer(1, 1 * mm))
@@ -2595,10 +2595,10 @@ def generate_pdf(
                 story.append(Spacer(1, 2 * mm))
 
         # ── Dwelling house controls ──
-        _render_setback_group(dcp_data.get("setbacks", []), "Dwelling house")
+        _render_setback_group(dcp_data.get("setbacks") or [], "Dwelling house")
 
         # ── Secondary dwelling (granny flat) controls ──
-        sd_rows = dcp_data.get("sd_setbacks", [])
+        sd_rows = dcp_data.get("sd_setbacks") or []
         if sd_rows:
             story.append(Paragraph(
                 "Secondary dwelling (granny flat) setbacks are DCP controls for the DA pathway. "
@@ -2632,7 +2632,7 @@ def generate_pdf(
             "A town planner is required to determine applicable setbacks for any specific proposal.",
             ss["note"]
         ))
-        if any(sb["control_type"] == "site_derived" for sb in dcp_data.get("setbacks", []) + dcp_data.get("sd_setbacks", [])):
+        if any(sb["control_type"] == "site_derived" for sb in (dcp_data.get("setbacks") or []) + (dcp_data.get("sd_setbacks") or [])):
             story.append(Spacer(1, 1 * mm))
             story.append(Paragraph(
                 "<b>Site-derived controls require a site visit:</b> Where setbacks are determined by "
@@ -3296,8 +3296,8 @@ def main():
         raw = get_raw_controls(prop_id)
         controls = parse_controls(raw)
         print(f"  Zone: {controls.get('zone')}  Height: {controls.get('height')}  FSR: {controls.get('fsr')}")
-        print(f"  ASS: {controls.get('ass_class')}  Heritage items: {len(controls.get('heritage_items', []))}")
-        print(f"  SEPP overlays: {len(controls.get('sepp_overlays', []))}")
+        print(f"  ASS: {controls.get('ass_class')}  Heritage items: {len(controls.get('heritage_items') or [])}")
+        print(f"  SEPP overlays: {len(controls.get('sepp_overlays') or [])}")
         print(f"  Key sites: {controls.get('key_sites_clause')}")
         print("\nFetching valuation data ...")
         valuation = get_valuation(prop_id)
@@ -3381,7 +3381,7 @@ def main():
             postgis_heritage = fetch_heritage_postgis(_db_conn, lat, lng, lot_wkt=lot_wkt)
             _db_conn.close()
             if dcp_setbacks_db:
-                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks', []))
+                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks') or [])
                 print(f"  DCP setbacks: {_dh} DH + {_sd} SD rows from DB")
             if lep_clauses:
                 print(f"  LEP clauses: {len(lep_clauses)} rows")

@@ -364,8 +364,8 @@ def _mercator_rings_to_pixel_via_bbox(
         px_ring = []
         for x_merc, y_merc in ring:
             lat, lng = _mercator_to_wgs84(x_merc, y_merc)
-            px = (lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * w
-            py = (bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * h
+            px = float((lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * w)
+            py = float((bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * h)
             px_ring.append((int(px), int(py)))
         pixel_rings.append(px_ring)
     return pixel_rings
