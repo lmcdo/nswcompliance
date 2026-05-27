@@ -98,10 +98,13 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
   return (
     <Map
       ref={mapRef as never}
-      initialViewState={{
+      initialViewState={bbox ? {
+        bounds: bbox,
+        fitBoundsOptions: { padding: 40 },
+      } : {
         longitude: center[0],
         latitude: center[1],
-        zoom: 17,
+        zoom: 19,
       }}
       style={{ width: '100%', height: '100%' }}
       mapStyle={AERIAL_STYLE}
