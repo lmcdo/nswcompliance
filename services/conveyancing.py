@@ -89,8 +89,70 @@ from conveyancing_db import (  # noqa: E402
     fetch_sepp_housing_standards,
     fetch_tax_thresholds,
 )
+from lga_lookup import lookup_lga  # noqa: E402
 
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
+
+
+def _validate_former_council_postgis(
+    text_slug: Optional[str],
+    lat: float,
+    lng: float,
+    address: str,
+    zone_epi: str,
+) -> Optional[str]:
+    """Cross-validate text-based former council against PostGIS LGA geometry.
+
+    For Inner West boundary suburbs (Stanmore, Newtown, Camperdown, St Peters,
+    Alexandria, Erskineville, Glebe) the text-based detect_former_council
+    cannot determine which side of the LGA boundary the property falls on.
+    This function uses the spatial_overlays height layer to confirm the LGA.
+
+    Returns:
+        Validated lga_slug, or None if the property is not in the expected LGA.
+    """
+    import psycopg2
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return text_slug  # can't validate — trust text match
+
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        lga_result = lookup_lga(lat, lng, conn, address=address)
+    except Exception as e:
+        logger.warning("PostGIS LGA validation failed: %s — falling back to text match", e)
+        return text_slug
+    finally:
+        if conn:
+            conn.close()
+
+    postgis_lga = (lga_result.get("lga_name") or "").lower()
+
+    # If PostGIS says this is NOT Inner West, the text match was wrong
+    # (e.g. Glebe resolving to marrickville when it's actually City of Sydney)
+    if text_slug and text_slug in ("marrickville", "leichhardt", "ashfield"):
+        if postgis_lga and postgis_lga != "inner west":
+            logger.info(
+                "PostGIS overrode text match: %s is in '%s', not Inner West (text said '%s')",
+                address, postgis_lga, text_slug,
+            )
+            return None  # not Inner West — no DCP setback data for this LGA
+
+    # If text match returned None but PostGIS says Inner West, resolve via PostGIS
+    if text_slug is None and postgis_lga == "inner west":
+        postgis_slug = lga_result.get("lga_slug")
+        if postgis_slug and postgis_slug not in ("inner_west",):
+            # lookup_lga already did suburb disambiguation
+            logger.info(
+                "PostGIS resolved unmapped IW suburb: %s → %s", address, postgis_slug,
+            )
+            return postgis_slug
+
+    return text_slug
+
 
 _DATA_SOURCES = [
     "NSW Planning Portal",
@@ -228,8 +290,11 @@ def run_conveyancing(req: ConveyancingRequest):
         except Exception as e:
             logger.warning(f"DA fetch failed: {e}")
 
-    # Check DCP availability
+    # Check DCP availability — text match then PostGIS cross-validation
     dcp_former_council = detect_former_council(req.address, zone_epi)
+    dcp_former_council = _validate_former_council_postgis(
+        dcp_former_council, lat, lng, req.address, zone_epi,
+    )
 
     data_sources = list(_DATA_SOURCES)
     if dcp_former_council:
@@ -372,6 +437,9 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         zone_epi = controls.get("zone_epi") or ""
         council_name = _council_from_zone_epi(zone_epi)
         dcp_former_council = detect_former_council(req.address, zone_epi)
+        dcp_former_council = _validate_former_council_postgis(
+            dcp_former_council, req.lat, req.lng, req.address, zone_epi,
+        )
 
     # ---------- PDF-exclusive data (parallelised) ----------
     # DAs, shadow, and DB queries are independent — run concurrently.
@@ -429,15 +497,19 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
 
-    # Merge PostGIS heritage
+    # Merge PostGIS heritage — keep HCA and individual items separate.
+    # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
+    # PostGIS individual items merge into heritage_items (deduplicated).
     if postgis_heritage["hca"]:
-        if controls.get("heritage_items") and not controls.get("heritage_hca"):
-            controls["heritage_hca"] = controls["heritage_items"][:]
-        elif not controls.get("heritage_hca"):
-            controls.setdefault("heritage_items", []).extend(postgis_heritage["hca"])
-            controls["heritage_hca"] = postgis_heritage["hca"][:]
-    elif postgis_heritage["items"] and not controls.get("heritage_items"):
-        controls["heritage_items"] = postgis_heritage["items"][:]
+        existing_hca = controls.get("heritage_hca") or []
+        merged_hca = list(dict.fromkeys(existing_hca + postgis_heritage["hca"]))
+        controls["heritage_hca"] = merged_hca
+        # Also ensure HCA entries appear in the combined heritage_items list
+        existing_items = controls.get("heritage_items") or []
+        controls["heritage_items"] = list(dict.fromkeys(existing_items + postgis_heritage["hca"]))
+    if postgis_heritage["items"]:
+        existing_items = controls.get("heritage_items") or []
+        controls["heritage_items"] = list(dict.fromkeys(existing_items + postgis_heritage["items"]))
 
     # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")

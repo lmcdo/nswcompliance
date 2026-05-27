@@ -40,12 +40,15 @@ _LGA_NAME_TO_SLUG: dict[str, str] = {
 # Inner West post-2016 amalgamation — suburb → former council slug.
 # DCP setback controls are stored per former council area.
 _IW_SUBURB_TO_FORMER: dict[str, str] = {
-    # Marrickville
+    # Marrickville — includes boundary suburbs because this mapping is ONLY
+    # consulted after PostGIS has confirmed the point is within Inner West LGA.
+    # Safe to map here: PostGIS already excluded City of Sydney addresses.
     "marrickville": "marrickville", "sydenham": "marrickville", "tempe": "marrickville",
     "dulwich hill": "marrickville", "st peters": "marrickville", "newtown": "marrickville",
-    "erskineville": "marrickville", "alexandria": "marrickville", "enmore": "marrickville",
+    "erskineville": "marrickville", "enmore": "marrickville",
     "stanmore": "marrickville", "petersham": "marrickville", "lewisham": "marrickville",
-    "camperdown": "marrickville", "glebe": "marrickville",
+    "camperdown": "marrickville",
+    # NOTE: glebe and alexandria are NOT included — they are entirely in City of Sydney
     # Leichhardt
     "leichhardt": "leichhardt", "annandale": "leichhardt", "balmain": "leichhardt",
     "rozelle": "leichhardt", "lilyfield": "leichhardt", "forest lodge": "leichhardt",
