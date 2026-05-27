@@ -1,29 +1,88 @@
 {
-  "tier": "minor",
-  "justification": "1 file, 2 line changes — removing redundant double-normalization call. No new logic.",
-  "commit_hash": "151012ef",
-  "files": ["services/conveyancing.py"],
+  "tier": "standard",
+  "justification": "Replaces external API call with local DB query and parallelises independent calls. No schema changes. 3 files changed.",
+  "commit_hash": "ee8bd9dd",
+  "files": ["scripts/conveyancing_db.py", "services/conveyancing.py", "tests/test_regulatory_constants.py"],
   "pre_impl": {
-    "existing_data": "none — this changes how council_name is derived, not what data is queried",
-    "assumption_mismatch": "_council_from_zone_epi already returns normalised name — double call made it None",
-    "new_vs_existing": "Fixes existing bug — nearby DAs were always 0 due to double normalization"
+    "existing_data": "development_applications table — 50K+ rows with latitude/longitude columns",
+    "assumption_mismatch": "If DA table is empty or lat/lon NULL, fetch_nearby_das returns empty list — same as before when API returned no results",
+    "new_vs_existing": "Reads existing rows only. No writes."
   },
-  "functions": [],
-  "values": [],
-  "queries": [],
+  "functions": [
+    {
+      "name": "fetch_nearby_das",
+      "file_line": "conveyancing_db.py:597",
+      "input": "conn (psycopg2 connection) + lat/lng floats + optional council_name str + radius_m/days/limit ints",
+      "output": "list[dict] — each dict has keys: number, address, description, status, lodged (ISO str), distance_m (int)",
+      "if_none": "Returns empty list. DA section omitted from report."
+    },
+    {
+      "name": "_fetch_db_data",
+      "file_line": "conveyancing.py:385",
+      "input": "Captures req (with lat/lng/address), controls dict, council_name str, dcp_former_council str, lot_wkt geometry from enclosing scope",
+      "output": "Tuple of (das: list[dict], lep_clauses: list, dcp_setbacks_db: dict or None, postgis_heritage: dict with hca/items/has_heritage/raw keys)",
+      "if_none": "Returns defaults (empty list/dict). Report generates without DA/heritage/setback sections."
+    },
+    {
+      "name": "_fetch_shadow",
+      "file_line": "conveyancing.py:414",
+      "input": "Captures resolved_prop_id, controls, req from closure",
+      "output": "Optional[dict] shadow result with height/bearing/risk keys, or None if no prop_id",
+      "if_none": "Returns None. Shadow section omitted from report."
+    }
+  ],
+  "values": [
+    {
+      "value": "da_lat / da_lng",
+      "read_at": "conveyancing_db.py:636",
+      "nullable": "yes",
+      "guard_at": "conveyancing_db.py:637 — if da_lat is None or da_lng is None: continue",
+      "if_missing": "DA skipped from results"
+    },
+    {
+      "value": "dev_type (development_type JSONB)",
+      "read_at": "conveyancing_db.py:641",
+      "nullable": "yes",
+      "guard_at": "conveyancing_db.py:642 — if dev_type: guard + isinstance checks + json.loads fallback",
+      "if_missing": "Empty description string"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch DAs within bounding box of target lat/lng, filtered by date",
+      "file_line": "conveyancing_db.py:614",
+      "where_clause": "latitude BETWEEN %s AND %s AND longitude BETWEEN %s AND %s AND (lodgement_date >= %s OR determination_date >= %s) [AND council_name = %s]",
+      "if_zero": "Returns empty list — DA section omitted from report",
+      "if_wrong": "Overly broad bbox returns extra DAs — filtered by Haversine at line 637"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "_council_from_zone_epi returns a name not in ePlanning API's CouncilName list",
-      "what_happens": "API returns 0 DAs — same as current broken behavior, no regression",
+      "scenario": "ThreadPoolExecutor exception in _fetch_db_data propagates to main thread",
+      "what_happens": "db_future.result() re-raises the exception, report generation fails",
       "mitigated": true,
-      "how": "_normalise_council MAP is manually maintained with known council names matching ePlanning format",
-      "repro": "Call get_nearby_das with council_name='Nonexistent Council' — returns empty list"
+      "how": "_fetch_db_data has outer try/except returning safe defaults. All inner DB functions also catch Exception.",
+      "repro": "Kill DB connection during report generation"
+    },
+    {
+      "scenario": "DA table has NULL latitude/longitude for all rows",
+      "what_happens": "fetch_nearby_das returns empty list, DA section shows no nearby DAs",
+      "mitigated": true,
+      "how": "conveyancing_db.py:637 — explicit None check skips rows without coords",
+      "repro": "UPDATE development_applications SET latitude = NULL"
+    },
+    {
+      "scenario": "Shadow and DB run in parallel but shadow modifies shared state",
+      "what_happens": "Race condition corrupting controls dict",
+      "mitigated": true,
+      "how": "Shadow only reads controls (height). DB writes to separate return values. No shared mutable state between threads.",
+      "repro": "Concurrent report generation"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "No"
+    "other_repo": "No — DA table already created and backfilled",
+    "manual_verify": "Run conveyancing report for Inner West address, confirm DAs appear"
   }
 }

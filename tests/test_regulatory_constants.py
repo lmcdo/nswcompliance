@@ -375,3 +375,84 @@ class TestConnectionIsolation:
         # Second call on same connection succeeds (not poisoned)
         result2 = fetch_heritage_postgis(conn, -33.8, 151.2)
         assert result2 == {"hca": [], "items": [], "has_heritage": False, "raw": []}
+
+
+class TestFetchNearbyDas:
+    """Tests for fetch_nearby_das (local DB DA query)."""
+
+    def test_returns_sorted_by_distance(self):
+        from conveyancing_db import fetch_nearby_das
+
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [
+            ("PAN-111", "10 Far St", "SUBURB", "Determined", -33.895, 151.142, "2026-01-01", "2026-03-01", None, 100000),
+            ("PAN-222", "5 Near St", "SUBURB", "Determined", -33.8941, 151.1414, "2026-02-01", "2026-04-01", None, 200000),
+        ]
+        conn = MagicMock()
+        conn.cursor.return_value = mock_cursor
+
+        result = fetch_nearby_das(conn, -33.894, 151.1414, radius_m=500)
+        assert len(result) == 2
+        assert result[0]["number"] == "PAN-222"  # closer
+        assert result[1]["number"] == "PAN-111"
+        assert result[0]["distance_m"] < result[1]["distance_m"]
+
+    def test_filters_beyond_radius(self):
+        from conveyancing_db import fetch_nearby_das
+
+        mock_cursor = MagicMock()
+        # One DA within 100m, one 2km away
+        mock_cursor.fetchall.return_value = [
+            ("PAN-111", "5 Near St", "SUBURB", "Determined", -33.8941, 151.1414, "2026-01-01", "2026-03-01", None, 100000),
+            ("PAN-222", "99 Far St", "SUBURB", "Determined", -33.910, 151.160, "2026-02-01", "2026-04-01", None, 200000),
+        ]
+        conn = MagicMock()
+        conn.cursor.return_value = mock_cursor
+
+        result = fetch_nearby_das(conn, -33.894, 151.1414, radius_m=200)
+        assert len(result) == 1
+        assert result[0]["number"] == "PAN-111"
+
+    def test_returns_empty_on_db_error(self):
+        from conveyancing_db import fetch_nearby_das
+
+        conn = MagicMock()
+        conn.cursor.side_effect = Exception("connection lost")
+
+        result = fetch_nearby_das(conn, -33.894, 151.141)
+        assert result == []
+        conn.rollback.assert_called_once()
+
+    def test_parses_jsonb_development_type(self):
+        from conveyancing_db import fetch_nearby_das
+
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [
+            ("PAN-333", "1 Test St", "SUBURB", "Determined", -33.8940, 151.1414,
+             "2026-01-01", "2026-03-01",
+             [{"DevelopmentType": "Dwelling house"}, {"DevelopmentType": "Demolition"}],
+             500000),
+        ]
+        conn = MagicMock()
+        conn.cursor.return_value = mock_cursor
+
+        result = fetch_nearby_das(conn, -33.894, 151.1414, radius_m=500)
+        assert len(result) == 1
+        assert "Dwelling house" in result[0]["description"]
+        assert "Demolition" in result[0]["description"]
+
+    def test_respects_limit(self):
+        from conveyancing_db import fetch_nearby_das
+
+        mock_cursor = MagicMock()
+        # 5 DAs all very close
+        mock_cursor.fetchall.return_value = [
+            (f"PAN-{i}", f"{i} St", "SUB", "Determined", -33.894 + i * 0.00001, 151.1414,
+             "2026-01-01", "2026-03-01", None, 10000)
+            for i in range(5)
+        ]
+        conn = MagicMock()
+        conn.cursor.return_value = mock_cursor
+
+        result = fetch_nearby_das(conn, -33.894, 151.1414, radius_m=500, limit=3)
+        assert len(result) == 3
