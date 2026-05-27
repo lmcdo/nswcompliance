@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "New standalone developer tool script. No production code changes, no DB interaction, no UI changes. Calls external APIs (Anthropic, Brave) for analysis only.",
-  "commit_hash": "7c100199",
+  "commit_hash": "c0457fec",
   "files": ["scripts/idea_validator.py", "tests/test_idea_validator.py", "docs/idea-validations/.gitkeep"],
   "pre_impl": {
     "existing_data": "None — standalone tool, does not read or write any project data",

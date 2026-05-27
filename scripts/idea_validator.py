@@ -69,10 +69,10 @@ def brave_search(query: str, count: int = 10) -> list[dict]:
             timeout=10,
         )
         r.raise_for_status()
-        results = r.json().get("web", {}).get("results", [])
+        results = (r.json().get("web") or {}).get("results") or []
         return [
-            {"title": x.get("title", ""), "url": x.get("url", ""),
-             "snippet": x.get("description", "")}
+            {"title": x.get("title") or "", "url": x.get("url") or "",
+             "snippet": x.get("description") or ""}
             for x in results
         ]
     except Exception as e:
