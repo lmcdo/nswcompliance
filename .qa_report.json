@@ -1,26 +1,30 @@
 {
   "tier": "minor",
-  "justification": "Spike script + findings doc. No production code changes. Read-only queries against existing DB and APIs.",
-  "commit_hash": "pending",
-  "files": ["scripts/intelligence_brief_spike.py", "docs/intelligence-brief/spike-findings.md", "docs/intelligence-brief/spike-results.json"],
+  "justification": "One-line fix: return tuple instead of bare int from early exit path. No logic change, no new code paths.",
+  "commit_hash": "f10bcffa",
+  "files": ["scripts/ingest_cadastre.py"],
   "pre_impl": {
-    "existing_data": "All queries read existing tables (development_applications, spatial_overlays, dcp_setback_controls) and external APIs (Planning Portal, VG, Cadastre, Railway shadow)",
-    "assumption_mismatch": "N/A — read-only spike",
-    "new_vs_existing": "No writes. No schema changes."
+    "existing_data": "ingest() returns (int, conn) tuple; early exit at line 342 returned bare 0, causing TypeError in main()",
+    "assumption_mismatch": "N/A — trivial fix aligning return type with function contract",
+    "new_vs_existing": "No new code. Changed `return 0` to `return 0, conn` at line 342."
   },
   "break_it": [
     {
-      "scenario": "Planning Portal rate-limits spike requests (429)",
-      "what_happens": "Controls come back empty for affected addresses, rest of pipeline continues",
+      "scenario": "FeatureServer returns count=0 for a valid where clause",
+      "what_happens": "ingest() now returns (0, conn) — main() unpacks cleanly, conn.close() succeeds",
       "mitigated": true,
-      "how": "3s delay between addresses. Script handles empty controls gracefully.",
-      "repro": "Run with sleep(0) between addresses"
+      "how": "Return type matches function signature: (int, connection)",
+      "repro": "Run with --where \"lotidstring = 'NONEXISTENT'\" to trigger count=0 path"
     }
+  ],
+  "adversarial_notes": [
+    "Scanner flagged float(shape_area) at line 234 — false positive: guarded by `if shape_area is None: continue` at line 224",
+    "Scanner flagged data.get('features', []) at line 355 — false positive: data is from response.json(), features is always list or absent"
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Results already captured in spike-results.json"
+    "manual_verify": "No — fix is in error handling path only hit when count=0"
   }
 }
