@@ -1,88 +1,26 @@
 {
-  "tier": "standard",
-  "justification": "Replaces external API call with local DB query and parallelises independent calls. No schema changes. 3 files changed.",
-  "commit_hash": "ee8bd9dd",
-  "files": ["scripts/conveyancing_db.py", "services/conveyancing.py", "tests/test_regulatory_constants.py"],
+  "tier": "minor",
+  "justification": "Spike script + findings doc. No production code changes. Read-only queries against existing DB and APIs.",
+  "commit_hash": "pending",
+  "files": ["scripts/intelligence_brief_spike.py", "docs/intelligence-brief/spike-findings.md", "docs/intelligence-brief/spike-results.json"],
   "pre_impl": {
-    "existing_data": "development_applications table — 50K+ rows with latitude/longitude columns",
-    "assumption_mismatch": "If DA table is empty or lat/lon NULL, fetch_nearby_das returns empty list — same as before when API returned no results",
-    "new_vs_existing": "Reads existing rows only. No writes."
+    "existing_data": "All queries read existing tables (development_applications, spatial_overlays, dcp_setback_controls) and external APIs (Planning Portal, VG, Cadastre, Railway shadow)",
+    "assumption_mismatch": "N/A — read-only spike",
+    "new_vs_existing": "No writes. No schema changes."
   },
-  "functions": [
-    {
-      "name": "fetch_nearby_das",
-      "file_line": "conveyancing_db.py:597",
-      "input": "conn (psycopg2 connection) + lat/lng floats + optional council_name str + radius_m/days/limit ints",
-      "output": "list[dict] — each dict has keys: number, address, description, status, lodged (ISO str), distance_m (int)",
-      "if_none": "Returns empty list. DA section omitted from report."
-    },
-    {
-      "name": "_fetch_db_data",
-      "file_line": "conveyancing.py:385",
-      "input": "Captures req (with lat/lng/address), controls dict, council_name str, dcp_former_council str, lot_wkt geometry from enclosing scope",
-      "output": "Tuple of (das: list[dict], lep_clauses: list, dcp_setbacks_db: dict or None, postgis_heritage: dict with hca/items/has_heritage/raw keys)",
-      "if_none": "Returns defaults (empty list/dict). Report generates without DA/heritage/setback sections."
-    },
-    {
-      "name": "_fetch_shadow",
-      "file_line": "conveyancing.py:414",
-      "input": "Captures resolved_prop_id, controls, req from closure",
-      "output": "Optional[dict] shadow result with height/bearing/risk keys, or None if no prop_id",
-      "if_none": "Returns None. Shadow section omitted from report."
-    }
-  ],
-  "values": [
-    {
-      "value": "da_lat / da_lng",
-      "read_at": "conveyancing_db.py:636",
-      "nullable": "yes",
-      "guard_at": "conveyancing_db.py:637 — if da_lat is None or da_lng is None: continue",
-      "if_missing": "DA skipped from results"
-    },
-    {
-      "value": "dev_type (development_type JSONB)",
-      "read_at": "conveyancing_db.py:641",
-      "nullable": "yes",
-      "guard_at": "conveyancing_db.py:642 — if dev_type: guard + isinstance checks + json.loads fallback",
-      "if_missing": "Empty description string"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Fetch DAs within bounding box of target lat/lng, filtered by date",
-      "file_line": "conveyancing_db.py:614",
-      "where_clause": "latitude BETWEEN %s AND %s AND longitude BETWEEN %s AND %s AND (lodgement_date >= %s OR determination_date >= %s) [AND council_name = %s]",
-      "if_zero": "Returns empty list — DA section omitted from report",
-      "if_wrong": "Overly broad bbox returns extra DAs — filtered by Haversine at line 637"
-    }
-  ],
   "break_it": [
     {
-      "scenario": "ThreadPoolExecutor exception in _fetch_db_data propagates to main thread",
-      "what_happens": "db_future.result() re-raises the exception, report generation fails",
+      "scenario": "Planning Portal rate-limits spike requests (429)",
+      "what_happens": "Controls come back empty for affected addresses, rest of pipeline continues",
       "mitigated": true,
-      "how": "_fetch_db_data has outer try/except returning safe defaults. All inner DB functions also catch Exception.",
-      "repro": "Kill DB connection during report generation"
-    },
-    {
-      "scenario": "DA table has NULL latitude/longitude for all rows",
-      "what_happens": "fetch_nearby_das returns empty list, DA section shows no nearby DAs",
-      "mitigated": true,
-      "how": "conveyancing_db.py:637 — explicit None check skips rows without coords",
-      "repro": "UPDATE development_applications SET latitude = NULL"
-    },
-    {
-      "scenario": "Shadow and DB run in parallel but shadow modifies shared state",
-      "what_happens": "Race condition corrupting controls dict",
-      "mitigated": true,
-      "how": "Shadow only reads controls (height). DB writes to separate return values. No shared mutable state between threads.",
-      "repro": "Concurrent report generation"
+      "how": "3s delay between addresses. Script handles empty controls gracefully.",
+      "repro": "Run with sleep(0) between addresses"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
-    "other_repo": "No — DA table already created and backfilled",
-    "manual_verify": "Run conveyancing report for Inner West address, confirm DAs appear"
+    "other_repo": "No",
+    "manual_verify": "Results already captured in spike-results.json"
   }
 }

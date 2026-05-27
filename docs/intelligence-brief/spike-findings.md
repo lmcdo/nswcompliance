@@ -1,163 +1,182 @@
-# Intelligence Brief Spike — Findings
+# Intelligence Brief — Pre-Implementation Spike Findings
 
-**Date:** 2026-05-26
-**Addresses tested:** 20
-**Total runtime:** 580s (avg 29s/address)
-**Raw data:** `docs/intelligence-brief/spike-results.json`
-
----
-
-## Critical Findings (must fix before Stage 1)
-
-### Finding 1: DB Connection Poisoning — Silent Total Failure
-
-**Severity:** CRITICAL
-**What happened:** The first `fetch_heritage_postgis` call hit an error (likely the `tax_thresholds` query from the regulatory freshness check poisoned the transaction). After that, EVERY subsequent PostGIS function (`fetch_dcp_setbacks`, `fetch_heritage_postgis`) returned empty results with no crash — just a warning `current transaction is aborted, commands ignored until end of transaction block`.
-
-**Impact:** ALL 20 addresses got zero DCP setback data and zero heritage PostGIS data. This is a **silent total failure** — the response looks valid but is missing critical data.
-
-**Root cause:** Single psycopg2 connection shared across all calls without `autocommit=True` or per-function `conn.rollback()`. One failed query poisons the entire transaction.
-
-**Fix required:** Either:
-- (a) Set `conn.autocommit = True` in the spike/orchestrator, OR
-- (b) Each DB function wraps its query in a try/except with `conn.rollback()` on failure, OR
-- (c) Each function opens its own cursor and handles errors independently
-
-**Schema implication:** The orchestrator MUST use autocommit or independent connections per function. This is not a "nice to have" — without it, a single PostGIS query failure silently kills all downstream DB-dependent data.
+**Date:** 2026-05-27
+**Script:** `scripts/intelligence_brief_spike.py`
+**Addresses tested:** 20 (Inner West, Katoomba, Wahroonga, Hurstville, Windsor, Sydney CBD, Granville, Kurrajong Heights)
+**Full results:** `docs/intelligence-brief/spike-results.json`
 
 ---
 
-### Finding 2: Heritage Dual-Source Gap
+## Executive Summary
 
-**Severity:** HIGH
-**What happened:** Heritage data comes from TWO independent sources:
-1. **Planning Portal** `parse_controls` → `heritage_items` list (from layerintersect API)
-2. **PostGIS** `spatial_overlays` → `heritage` layer type (from ingested EPI data)
+20/20 addresses resolved successfully. All pipeline functions returned data. Shadow worked for all 20. LGA detection 100% accurate for onboarded councils. One confirmed strata misclassification. Compound constraint rules need refinement (heritage+bushfire didn't fire when expected). Overlay reporting is correct but was initially misinterpreted (LGA coverage vs property intersection).
 
-These sources DON'T always agree. The spike found:
-- Windsor: heritage in BOTH Portal (3 items) AND PostGIS (spatial overlay)
-- Balmain: heritage in Portal (1 item) but NOT in PostGIS spatial_overlays
-- Haberfield: heritage in Portal (1 item) but NOT in PostGIS spatial_overlays
-- Newcastle: heritage in Portal (2 items) but NOT in PostGIS spatial_overlays
-- Manly: heritage in Portal (2 items) but NOT in PostGIS spatial_overlays
-
-**Impact:** Compound constraint rules that check ONLY `spatial_overlays` for heritage would miss 4 out of 5 heritage properties. The compound constraint evaluation must check BOTH sources.
-
-**Fix required:** `evaluate_compound_constraints` must use:
-```python
-has_heritage = bool(controls.get("heritage_items")) or "heritage" in overlay_types
-```
-(Already implemented in the spike script — confirmed working.)
-
-**Schema implication:** The intelligence brief response should include `heritage_source: "portal" | "postgis" | "both"` to distinguish coverage.
+**Conclusion:** Stage 1 schema design can proceed. The fixes below are refinements, not blockers.
 
 ---
 
-### Finding 3: Shadow Latency Dominates Response Time
+## 1. Compound Constraints — Rules Need Refinement
 
-**Severity:** HIGH (UX, not correctness)
-**What happened:** Shadow pipeline averages 20.3s per address (max 31.2s). This is 70% of total response time. Without shadow, average would be ~8.7s.
+### What fired
 
-**Latency breakdown (averages):**
-| Source | Avg | Max |
-|---|---|---|
-| shadow | 20.34s | 31.23s |
-| nearby_das | 4.07s | 25.05s |
-| overlays (PostGIS) | 2.89s | 10.57s |
-| controls (Portal) | 0.57s | 1.04s |
-| resolve_address | 0.51s | 1.36s |
-| strata | 0.35s | 1.14s |
-| valuation | 0.23s | 0.85s |
+| Address | Rule | Meaning |
+|---------|------|---------|
+| 15 Fox Valley Rd, Wahroonga | `heritage_postgis_only` | Heritage in PostGIS but not in portal — data gap signal |
+| 3/22 Carlton Cres, Summer Hill | `heritage_postgis_only` | Same — PostGIS heritage near property, portal didn't return it |
+| 1 George St, Windsor | `heritage_hca_flood` | Heritage conservation area + flood zone — correct compound |
 
-**Impact:** The implementation procedure puts shadow in the free tier (Stage 2.6) because it's "planning-derived, not satellite." But at 20s it makes the free tier response unacceptably slow.
+### What didn't fire but should have
 
-**Options:**
-1. Move shadow to paid tier (simplest, but reduces free tier value)
-2. Make shadow async — return planning data immediately, shadow loads later
-3. Optimize the shadow pipeline (Railway cold start may be a factor)
-4. Cache shadow results aggressively (shadow only changes when LEP height changes)
+- **Heritage + bushfire (Katoomba, Wahroonga):** The rule checks `controls["heritage_hca"]` (conservation areas from portal), but the portal returned heritage *items* not *HCA* for these addresses. The bushfire overlay is also only checked against `overlay_types` which is LGA-level coverage, not property-level intersection.
 
-**Schema implication:** Response schema must support `loading` state per section, not just `available | not_available`.
+### Fix required
 
----
+1. Compound constraint rules should check `heritage_items` (any heritage) not just `heritage_hca` (conservation areas) for the bushfire interaction
+2. Bushfire/flood presence should be checked against actual `overlays` results (features list), not `overlay_types` (LGA coverage set)
+3. Portal `flood_epi` flag from `parse_controls` should be the primary flood signal (it checks the portal's Flood Planning layer directly)
 
-### Finding 4: Nearby DAs All Zero
+### Clarification: overlay_types vs overlay features
 
-**Severity:** MEDIUM
-**What happened:** All 20 addresses returned 0 nearby DAs. The ePlanning API was called successfully (no errors) but returned empty results.
+The spike initially appeared to show a bug: addresses with 20 overlay_types but 0 features. This is correct behaviour:
+- `overlay_types` (from `covered_layers`) = set of layer types ingested for that LGA (from `spatial_overlays_coverage` table) — "this council has bushfire data"
+- `overlays` (results list) = actual features that intersect this specific property — "this property is IN a bushfire zone"
 
-**Possible causes:**
-1. Council name extraction from `zone_epi` may not match ePlanning API's `CouncilName` parameter
-2. The API's date filter (365 days) may be too narrow for councils with low DA volume
-3. Some addresses are in LGAs where ePlanning data is sparse
-
-**Impact:** Cannot validate Fix C (DA-shadow interaction compound constraint). The DA-shadow rule never fires because there are no DAs to evaluate.
-
-**Fix required:** Debug `get_nearby_das` with a known high-DA-volume address (e.g., central Sydney). May need to check council name normalization.
+An urban Marrickville lot with 0 environmental overlay features is expected — the lot simply isn't inside any flood/bushfire/biodiversity polygon. The coverage set is used by the UI to distinguish "clear" (data exists, property isn't affected) from "not mapped" (no data for this council).
 
 ---
 
-### Finding 5: Strata Heuristic Partially Works
+## 2. Strata Heuristic — One Confirmed Misclassification
 
-**Severity:** MEDIUM
-**What happened:** 5 addresses classified as strata:
-| Address | lot_area | plan | Classification | Correct? |
-|---|---|---|---|---|
-| 12 Victoria Rd, Marrickville | 6,580m² | SP81199 | apartment_strata | Likely yes (MU1 zone, 23m height) |
-| 1 Stanmore Rd, Stanmore | 525.7m² | SP30364 | strata_house | Likely yes (R1, small lot) |
-| 1 Smith St, Summer Hill | 3,415m² | SP49675 | apartment_strata | Likely yes (R3, 12.5m height, large lot) |
-| 41 Porter St, N. Wollongong | 499.5m² | SP77492 | strata_house | Likely yes (R2, small lot) |
-| 15 King St, Newcastle | 1,107m² | SP1533 | strata_house | UNCLEAR — MU1 zone, 10m height, 2 heritage items. Could be commercial strata. |
+### Heuristic: `is_apartment = strata AND lot_area > 1500m²`
 
-**The lot_area > 1500 threshold** correctly separated small-lot strata (houses/townhouses) from large-lot strata (apartment blocks) in 4/5 cases. Newcastle is the edge case.
+| Address | Lot Area | Classification | Expected | Correct? |
+|---------|----------|---------------|----------|----------|
+| 5/1 Treacy St, Hurstville | 1,555m² | apartment | apartment | Yes |
+| 3/22 Carlton Cres, Summer Hill | 2,140m² | apartment | development (townhouse) | **No** |
+| 2/45 Alt St, Ashfield | 2,055m² | apartment | unclear (community title edge case) | Ambiguous |
 
-**Improvement:** Add zone to the heuristic — MU1/B1/B2 strata is almost certainly commercial/mixed, regardless of lot size.
+### Why the heuristic fails
 
----
+The 1,500m² threshold catches high-rise apartments (large parent lot = apartment block) but also catches townhouse complexes on large strata-subdivided lots. 3/22 Carlton Crescent is a strata townhouse on a 2,140m² parent lot — the heuristic sees "strata + big lot" and concludes apartment, but it's a townhouse with its own ground-floor access and potential for a granny flat.
 
-### Finding 6: DCP Data Validation Blocked
+### Fix options
 
-**Severity:** MEDIUM (blocked by Finding 1)
-**What happened:** DB connection poisoning meant ALL `fetch_dcp_setbacks` calls returned empty. Cannot validate DCP data availability for any LGA.
+1. **Unit count signal:** If we can get the number of strata lots (SP plan has N lots), high count (>6) = apartment, low count (2-4) = townhouse. Not currently available from Cadastre API.
+2. **Building footprint:** If we detect a single large building footprint = apartment. Multiple small footprints = townhouse. Requires SAMGeo structure detection (granny flat pipeline).
+3. **Lot area per unit:** If total lot / unit count < 200m² = apartment. If > 200m² = likely townhouse. Requires unit count.
+4. **Accept ambiguity for v1:** Return `strata_type: "apartment_or_townhouse"` with lot_area, and let the intelligence brief present both possibilities. Honest about uncertainty.
 
-**After fixing Finding 1:** Re-run spike to validate:
-- Inner West addresses → DCP data should be present
-- Non-onboarded LGAs → DCP should be absent with gap disclosure
-- Boundary suburb LGA slugs → correct slug → correct DCP data
+**Recommendation for v1:** Option 4 (accept ambiguity). Show "This is a strata property on a [X]m² lot. It may be an apartment or a townhouse complex. Check the strata plan for unit count." Stage 2 can add SAMGeo building detection to disambiguate.
 
 ---
 
-## Compound Constraint Validation
+## 3. LGA Detection — 100% Accurate
 
-| Rule | Fired? | Correct? | Notes |
-|---|---|---|---|
-| heritage_flood | Yes (Windsor) | Yes | Heritage item + 100AEP flood overlay |
-| heritage_bushfire | No | Expected — no test address had both | Need address with heritage HCA + bushfire |
-| tod_heritage | No | Expected — no TOD overlay in test data | `tod_precinct` layer may not be populated |
-| zone_permits_higher_density | Yes (3 addresses) | Yes | R3 Summer Hill, R4 Lakemba, R3 Baulkham Hills |
-| marginal_lot_size | No | ISSUE — Wollongong lot_size overlay=449 but VG lot_area=499.5 | Two different lot area sources disagree |
-| da_shadow_interaction | No | Cannot test — zero DAs returned | Blocked by Finding 4 |
+14 addresses returned an LGA slug. All correct:
 
-**Marginal lot size discrepancy:** The spatial_overlays `lot_size` layer shows 449m² for Wollongong, but VG API returns 499.5m². The compound constraint checks `overlay.value_numeric` but `calc_feasibility` uses `valuation.lot_area_m2`. These are different numbers from different sources. The schema must decide which is authoritative.
+| Suburb | Expected | Got | Correct? |
+|--------|----------|-----|----------|
+| Marrickville (x8) | marrickville | marrickville | Yes |
+| Leichhardt (x2) | leichhardt | leichhardt | Yes |
+| Summer Hill | ashfield | ashfield | Yes |
+| Ashfield | ashfield | ashfield | Yes |
+| Wahroonga | ku_ring_gai | ku_ring_gai | Yes |
+| Stanmore (boundary) | marrickville | marrickville | Yes |
+| Dulwich Hill (boundary) | marrickville | marrickville | Yes |
 
----
+6 addresses returned `None` — all correctly, because those LGAs (Blue Mountains, Georges River, Hawkesbury, City of Sydney, Cumberland, Penrith) are not in `ZONE_EPI_TO_LGA_SLUG`. This is by design — DCP setbacks only exist for onboarded councils.
 
-## Schema Design Implications
-
-1. **Heritage source tracking** — must record `portal`, `postgis`, or `both`
-2. **Per-section loading state** — `available | loading | not_available | error`
-3. **Lot area source** — must specify whether from Cadastre overlay, VG API, or survey
-4. **Compound constraints** must check controls AND overlays for heritage
-5. **DB connection** — autocommit or per-function error isolation, non-negotiable
-6. **Shadow** — either async or cached, cannot gate free tier at 20s
+**No spatial fix needed for v1.** The EPI-name matching is sufficient for current coverage.
 
 ---
 
-## Next Steps
+## 4. Timing Analysis
 
-1. **Fix DB connection issue** — add `autocommit=True` in orchestrator (Finding 1)
-2. **Re-run spike** with fixed DB connection to validate DCP + heritage PostGIS
-3. **Debug nearby DAs** — test with known high-volume LGA (Finding 4)
-4. **Find heritage+bushfire test address** — spatial query or manual research
-5. **Decide shadow strategy** — async vs cache vs paid-only
-6. **Proceed to Stage 1** with these findings informing schema design
+| Step | Avg (s) | Max (s) | % of total | Notes |
+|------|---------|---------|------------|-------|
+| resolve | 0.47 | 0.72 | 2% | Planning Portal address + lot API |
+| controls | 0.48 | 1.44 | 2% | Portal layerintersect |
+| valuation | 0.20 | 0.67 | 1% | NSW SIX Maps valuation API |
+| strata | 1.28 | 10.09 | 5% | Cadastre API — one timeout |
+| overlays | 2.74 | 8.26 | 11% | PostGIS spatial queries (biggest DB cost) |
+| DAs (local DB) | 0.08 | 0.68 | <1% | Bounding box + Haversine — fast |
+| heritage DB | 0.11 | 0.88 | <1% | PostGIS heritage query |
+| LEP DB | 0.01 | 0.08 | <1% | Fast |
+| DCP DB | 0.06 | 0.15 | <1% | Fast |
+| LGA | 0.00 | 0.00 | <1% | In-memory string match |
+| **shadow** | **18.64** | **33.12** | **77%** | Railway geometric model — dominates |
+
+### Why shadow is slow and nothing else is
+
+Shadow is the ONLY satellite product wired into the intelligence brief pipeline. It makes an HTTP POST to Railway (`PYTHON_API_URL/pipeline/shadow`), which runs:
+1. pybdshadow geometric shadow polygon calculation for multiple sun positions (solstice/equinox x morning/midday/afternoon)
+2. pvlib solar position calculation for each time point
+3. Building envelope model from LEP height limits
+4. Result assembly and response
+
+The other satellite products (granny flat, solar yield, flood truth, threat radar, climate risk) are NOT called — they are separate standalone pipelines not yet integrated into the intelligence brief. Shadow was already part of the conveyancing report, so it transferred over when the intelligence brief was built on top of the conveyancing orchestrator.
+
+Everything else is either a fast API call (<0.5s per portal endpoint) or a PostGIS query (<0.1s for indexed spatial lookups). The overlay queries are the slowest DB operation at 2.74s avg because they run multiple ST_Contains/ST_Intersects checks across large polygon datasets.
+
+### Optimisation opportunities
+
+1. **Parallelisation (DONE — PR #382):** Shadow + all DB queries now run concurrently via ThreadPoolExecutor. Saves ~3-5s wall time.
+2. **Shadow caching:** Same address with same height limit = same shadow result. Cache in `shadow_reports` table with TTL. Would eliminate 18s for repeat lookups.
+3. **Overlay query batching:** Currently runs 5+ sequential PostGIS queries (environmental, classified road, TOD, APU, key sites). Could batch into a single SQL with UNION ALL.
+4. **Strata API timeout:** One address took 10s on Cadastre API. Add circuit breaker or reduce timeout from 10s to 5s with retry.
+5. **Future satellite products:** When granny flat / flood truth / climate risk are wired in, they MUST run in the parallel fan-out (ThreadPoolExecutor), not sequentially. Each adds 5-30s if serial.
+
+---
+
+## 5. Data Availability
+
+### DAs: 18/20 addresses had nearby DAs
+
+Only Katoomba (0) and Kurrajong Heights (0) had no DAs — rural/regional areas with very few applications in the 50K-row local DB. All Inner West addresses had 1-8 DAs within 200m. The PR #382 local DB query at 0.08s avg is working as designed (vs 18s from the old live ePlanning API call).
+
+### Heritage PostGIS: 7/20 addresses
+
+Heritage items found near: Marrickville (#1), Wahroonga (#5), Leichhardt (#6, #17), Dulwich Hill (#8), Summer Hill (#10), Windsor (#18). This depends on the `spatial_overlays` heritage layer having features near the lat/lng. 13 addresses had no nearby heritage in PostGIS — but some of these DID have heritage items from the Planning Portal (`controls.heritage_items`). The two sources are complementary:
+- Portal heritage = items affecting THIS lot (from layerintersect)
+- PostGIS heritage = items NEAR this lot (from spatial proximity query)
+
+Both are useful for the intelligence brief. The `heritage_postgis_only` compound rule fires when PostGIS finds heritage that the portal missed — a genuine data gap signal.
+
+### DCP setbacks: 14/20 addresses
+
+All Inner West + Ku-ring-gai addresses returned DCP setbacks. The 6 without are non-onboarded LGAs (correct behaviour — DCP tab shows interest form for those).
+
+### Valuation: 18/20 addresses
+
+Two addresses returned None for lot_area and land_value:
+- 88 Marrickville Rd (#14) — SP2 Infrastructure zoning, likely a rail corridor or utility lot
+- 123 Bells Line of Road (#15) — rural, possibly the VG API doesn't cover this propId
+
+---
+
+## 6. Schema Implications for Stage 1
+
+Based on these findings:
+
+1. **Strata classification field:** Use `strata_type ENUM ('apartment', 'development', 'ambiguous', 'not_strata')` with `strata_lot_area_m2` and `strata_source` fields. Don't force binary apartment/development for v1.
+
+2. **Compound constraints:** Store fired rules as JSONB array, not boolean flags. Rules will evolve and new combinations will be discovered. Schema: `compound_constraints JSONB DEFAULT '[]'`.
+
+3. **Overlay data:** Store both `overlay_coverage` (set of layer types ingested for this LGA) and `overlay_hits` (features that actually intersect). The distinction matters for "clear" vs "not mapped" display.
+
+4. **Shadow result:** Store as optional JSONB. 77% of runtime — caching is the biggest optimisation win. Include `shadow_computed_at` timestamp for cache invalidation.
+
+5. **DA snapshot:** Store nearby DA count and nearest DA at report generation time. DAs change — the count at report time is what the user paid for.
+
+---
+
+## 7. Demo-Ready Addresses (for Inner West Nest meeting)
+
+Based on spike results, these Inner West addresses show the most data and are good demo candidates:
+
+| Address | Why it's good for demo |
+|---------|----------------------|
+| 100 Stanmore Rd, Stanmore | R2, 467m², DCP setbacks, 8 nearby DAs, shadow, boundary suburb correctly resolved |
+| 42 Norton St, Leichhardt | E1 mixed use, full DCP, heritage in PostGIS, 2 DAs, shadow |
+| 10 Hollands Ave, Marrickville | R2, heritage DB confirmed, 4 DAs, shadow, full DCP |
+| 15 Marrickville Rd, Dulwich Hill | E1, 17m height, FSR 2.2, heritage, 5 DAs — shows density controls |
