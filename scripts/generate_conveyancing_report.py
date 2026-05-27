@@ -301,7 +301,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         parent_strata = any(a.get("hasstratum") == 2 for a in attrs_list)
 
         if sp_lots:
-            plan = sp_lots[0].get("planlabel", "")
+            plan = sp_lots[0].get("planlabel") or ""
             plan_type = "community" if str(plan).startswith("CP") else "strata"
             # Count lots on the same plan — this is the actual unit count
             # from the cadastral register, not an approximation
