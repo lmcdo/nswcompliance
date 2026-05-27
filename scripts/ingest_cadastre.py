@@ -339,7 +339,7 @@ def ingest(
     print(f"\n=== Ingesting {label}: {total_count:,} lots{f' (limit: {limit:,})' if limit else ''} ===")
     if total_count == 0:
         print("  No lots to ingest.")
-        return 0
+        return 0, conn
 
     expected_pages = (effective_count + PAGE_SIZE - 1) // PAGE_SIZE
     print(f"  Pages: ~{expected_pages} (at {PAGE_SIZE}/page)")
