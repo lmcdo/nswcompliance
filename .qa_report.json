@@ -1,117 +1,74 @@
 {
-  "tier": "critical",
-  "justification": "Conveyancing data integrity — wrong former council serves wrong DCP controls silently, heritage misclassification misleads user about conservation area status. User-facing report data.",
-  "commit_hash": "9aca0754",
-  "files": [
-    "services/conveyancing.py",
-    "scripts/generate_conveyancing_report.py",
-    "services/lga_lookup.py",
-    "tests/test_conveyancing_data_integrity.py"
-  ],
+  "tier": "standard",
+  "justification": "DB data migration + single code file change affecting Inner West DCP structured controls display. Standard because: data fix to 39 rows in one table, one-line code change, no new logic paths, but affects production data immediately.",
+  "commit_hash": "27a8461e",
+  "files": ["frontend-nextjs/app/api/dcp/structured-controls/route.ts"],
   "pre_impl": {
-    "existing_data": "SUBURB_TO_FORMER_COUNCIL dict maps suburb names to former council slugs for Inner West DCP setback lookup. heritage_items and heritage_hca lists from portal and PostGIS merged into controls dict for PDF generation.",
-    "assumption_mismatch": "Text-based suburb matching assumes suburb name uniquely identifies an LGA. Boundary suburbs (Stanmore, Newtown, Camperdown, St Peters) span two LGAs — text matching picks the wrong one 50% of the time for these suburbs.",
-    "new_vs_existing": "Applies to all existing and new conveyancing reports. Boundary suburb addresses that previously got wrong DCP data will now get no DCP data (safe direction) or correct DCP data via PostGIS cross-validation.",
-    "external_source_error": "PostGIS cross-validation wrapped in try/except — falls back to text match on any DB failure. Never crashes the pipeline. Logs the fallback with address context for debugging.",
-    "frontend_type": "No frontend type changes — response shape unchanged. heritage_items and heritage_hca are existing list[str] fields.",
-    "user_failure_mode": "Before fix: wrong DCP controls served silently for boundary suburbs, heritage items miscategorised as conservation areas. After fix: boundary suburbs get correct DCP via PostGIS or no DCP (safe), heritage items stay correctly classified."
+    "existing_data": "dcp_setback_controls table — 39 rows with lga='inner_west' (29 deactivated, 10 migrated to correct former council slugs, 5 placeholder rows deactivated)",
+    "assumption_mismatch": "If a former council slug is missing controls that only existed under inner_west, those controls disappear. Verified: all 36 legitimate rows mapped to a target council. 26 car parking rows were duplicates of better data already under former council slugs.",
+    "new_vs_existing": "Applies to existing rows only. UPDATE lga on 10 rows, SET is_current=false on 34 rows. Code change prevents future inner_west queries."
   },
   "functions": [
     {
-      "name": "_validate_former_council_postgis",
-      "file_line": "services/conveyancing.py:97",
-      "input": "Optional[str] text_slug from detect_former_council, float lat/lng coordinates, str address for suburb extraction, str zone_epi for EPI context",
-      "output": "Optional[str] validated lga_slug — confirmed by PostGIS geometry, or None if property is not in the expected LGA boundary",
-      "if_none": "text_slug=None with PostGIS confirming Inner West returns disambiguated slug. text_slug=None with non-IW PostGIS returns None. DB failure returns text_slug unchanged (fallback)."
-    },
-    {
-      "name": "detect_former_council",
-      "file_line": "scripts/generate_conveyancing_report.py:440",
-      "input": "str address (full property address), str zone_epi (EPI name from portal layerintersect, may be empty string)",
-      "output": "Optional[str] lga_slug for dcp_setback_controls — marrickville, leichhardt, ashfield, or other onboarded LGA slug, or None",
-      "if_none": "Empty zone_epi returns None (LGA not identifiable). Inner West with unmapped boundary suburb returns None (PostGIS resolves later)."
-    },
-    {
-      "name": "generate_conveyancing_pdf",
-      "file_line": "services/conveyancing.py:372",
-      "input": "ConveyancingPdfRequest with address, lat, lng, prop_id, report_id — heritage merge logic at lines 500-512 inside this function",
-      "output": "dict with report_id, pdf_url, address, lat, lng — heritage merge mutates controls dict before PDF generation",
-      "if_none": "Empty postgis hca/items lists cause no mutation. Missing heritage keys default to empty list via .get() or []. None in lists not possible (upstream deduplicates)."
+      "name": "getLgaSlugs",
+      "file_line": "route.ts:39",
+      "input": "council string from query param",
+      "output": "string[] of LGA slugs for SQL IN clause",
+      "if_none": "falls through to [normalized] — single slug lookup, correct behavior"
     }
   ],
   "values": [
     {
-      "value": "SUBURB_TO_FORMER_COUNCIL dict keys",
-      "read_at": "scripts/generate_conveyancing_report.py:237",
-      "nullable": "no — static dict, always populated at module load",
-      "guard_at": "scripts/generate_conveyancing_report.py:461 — sorted iteration with substring match",
-      "if_missing": "Boundary suburbs (glebe, alexandria, stanmore, newtown, camperdown, st peters, erskineville) removed — detect_former_council returns None, PostGIS resolves via _validate_former_council_postgis"
-    },
-    {
-      "value": "postgis_lga from lookup_lga result",
-      "read_at": "services/conveyancing.py:132",
-      "nullable": "yes — lookup_lga returns lga_name=None when spatial_overlays has no height layer for the location",
-      "guard_at": "services/conveyancing.py:137 — postgis_lga and postgis_lga != 'inner west' (falsy empty string prevents false override)",
-      "if_missing": "None or empty postgis_lga means PostGIS cannot validate — text match passes through unchanged, no override"
-    },
-    {
-      "value": "controls.heritage_items and controls.heritage_hca",
-      "read_at": "services/conveyancing.py:504-511",
-      "nullable": "yes — controls may not have these keys if portal returned no heritage data",
-      "guard_at": "services/conveyancing.py:504 — .get('heritage_hca') or [] and .get('heritage_items') or []",
-      "if_missing": "Missing keys default to empty list via or []. PostGIS data populates from scratch. No crash, no wrong merge."
+      "value": "COUNCIL_TO_LGA[normalized]",
+      "read_at": "route.ts:42",
+      "nullable": "yes — undefined if not in map",
+      "guard_at": "route.ts:42 — || [normalized] fallback",
+      "if_missing": "returns [council_slug] — correct single-slug behavior"
     }
   ],
   "queries": [
     {
-      "purpose": "PostGIS LGA boundary lookup via spatial_overlays height layer to validate which LGA contains the property coordinates",
-      "file_line": "services/lga_lookup.py:89",
-      "where_clause": "WHERE layer_type = 'height' AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
-      "if_zero": "Returns lga_name=None, lga_slug=None — _validate_former_council_postgis falls back to text match",
-      "if_wrong": "Wrong LGA name would cause wrong override — mitigated by checking postgis_lga against known values ('inner west')"
+      "purpose": "Fetch structured controls for a council + dev_type",
+      "file_line": "route.ts:132-146",
+      "where_clause": "WHERE sc.lga IN ($1) AND sc.dev_type = $2 AND (sc.is_current IS NULL OR sc.is_current = true)",
+      "if_zero": "returns has_controls: false with empty categories — correct",
+      "if_wrong": "previously returned cross-council data due to inner_west LGA slug; now fixed by migrating data to correct slugs and removing inner_west from mapping"
     }
   ],
   "break_it": [
     {
-      "scenario": "Stanmore property on the City of Sydney side gets wrong Marrickville DCP controls because text matching resolves 'stanmore' to 'marrickville'",
-      "what_happens": "User sees Marrickville precinct DCP setback controls for a property that is in City of Sydney — completely wrong planning controls applied",
+      "scenario": "New inner_west rows added in future without former council scoping",
+      "what_happens": "They sit under lga='inner_west' but are never queried (no mapping exists)",
       "mitigated": true,
-      "how": "scripts/generate_conveyancing_report.py:237 — 'stanmore' removed from SUBURB_TO_FORMER_COUNCIL. services/conveyancing.py:97 — PostGIS cross-validation confirms LGA boundary.",
-      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestSuburbMapping::test_stanmore_not_in_suburb_mapping"
+      "how": "Code comment at route.ts:20-25 explains migration. Future data entry should use former council slugs directly.",
+      "repro": "INSERT INTO dcp_setback_controls (lga, ...) VALUES ('inner_west', ...) then GET /api/dcp/structured-controls?council=ashfield"
     },
     {
-      "scenario": "Glebe property mapped to Marrickville former council because 'glebe' was in SUBURB_TO_FORMER_COUNCIL — Glebe is entirely in City of Sydney",
-      "what_happens": "User sees Inner West DCP setback controls for a City of Sydney property — wrong controls, wrong council, wrong planning framework",
+      "scenario": "Deactivated rows (is_current=false) still appear",
+      "what_happens": "Would show duplicate or fabricated junk data in the UI",
       "mitigated": true,
-      "how": "scripts/generate_conveyancing_report.py:237 — 'glebe' removed from SUBURB_TO_FORMER_COUNCIL. services/lga_lookup.py:42 — 'glebe' not in _IW_SUBURB_TO_FORMER either.",
-      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestSuburbMapping::test_glebe_not_in_suburb_mapping"
+      "how": "route.ts:143 — WHERE clause includes AND (sc.is_current IS NULL OR sc.is_current = true)",
+      "repro": "SELECT * FROM dcp_setback_controls WHERE id IN (641, 642, 1134) AND is_current = true — should return 0 rows"
     },
     {
-      "scenario": "Portal heritage item like 'Item I123' reclassified as Heritage Conservation Area when PostGIS also finds HCA on the same lot",
-      "what_happens": "PDF report shows the individual heritage item as a Conservation Area — misleads user about heritage constraints and may trigger wrong compliance requirements",
+      "scenario": "Non-Inner-West council queries return different results after code change",
+      "what_happens": "Other councils see wrong or missing data in DCP controls",
       "mitigated": true,
-      "how": "services/conveyancing.py:500-512 — heritage merge now keeps HCA and items separate. PostGIS HCA goes to heritage_hca only. Portal items never reclassified.",
-      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestHeritageMerge::test_heritage_item_not_reclassified_as_hca"
+      "how": "COUNCIL_TO_LGA is now empty — all councils fall through to [normalized] single-slug lookup, same behavior as before for all 25+ non-Inner-West councils",
+      "repro": "GET /api/dcp/structured-controls?council=waverley — should return same results as before"
     },
     {
-      "scenario": "PostGIS database unreachable during LGA cross-validation — wrong text-matched former council passes through to DCP lookup",
-      "what_happens": "Boundary suburb property gets wrong DCP controls because PostGIS fallback trusts the text match that was the source of the bug",
-      "mitigated": false,
-      "how": "services/conveyancing.py:126 — falls back to text_slug on DB error. For unambiguous suburbs this is correct. For removed boundary suburbs text_slug is None so fallback is safe.",
-      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestPostGISCrossValidation::test_postgis_db_failure_falls_back_to_text_slug"
-    },
-    {
-      "scenario": "Newtown property on the Inner West side gets no DCP data because 'newtown' was removed from text mapping and PostGIS returns undisambiguated 'inner_west' slug",
-      "what_happens": "User sees 'DCP data unavailable' when DCP data does exist for the Marrickville precinct — false negative, but safe direction (no wrong data served)",
+      "scenario": "Query returns zero rows for a former council that previously had inner_west controls",
+      "what_happens": "DCP tab shows 'no structured controls' instead of the expected numeric values",
       "mitigated": true,
-      "how": "services/lga_lookup.py:42 — _IW_SUBURB_TO_FORMER retains boundary suburbs for PostGIS-validated path. lookup_lga disambiguates 'newtown' → 'marrickville' after confirming Inner West via geometry.",
-      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestPostGISCrossValidation::test_postgis_resolves_unmapped_boundary_suburb"
+      "how": "Verified via DB query: ashfield has 8 controls, marrickville has 11, leichhardt has 10 after migration. All migrated rows confirmed present under correct slugs.",
+      "repro": "GET /api/dcp/structured-controls?council=ashfield&dev_type=dwelling_house — should return has_controls: true with 8 controls"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — DB changes already applied to production",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — run conveyancing report for a Glebe address and a Stanmore address to confirm no wrong DCP data is served"
+    "manual_verify": "Yes — verify demo addresses on verify.plotdetect.com.au after Vercel deploy: 129 Ramsay St Haberfield (ashfield), 180 Addison Rd Marrickville (marrickville), 5 Ramsay St Haberfield (ashfield)"
   }
 }
