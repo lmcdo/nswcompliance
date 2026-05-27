@@ -209,7 +209,7 @@ export function DcpStructuredControls({ formerCouncil, devType = 'dwelling_house
                             ) : (
                               <span className="inline-flex items-center gap-0.5 text-xs text-gray-400">
                                 <MinusCircle className="w-3 h-3" />
-                                no rate
+                                assessed on merit
                               </span>
                             )}
                           </div>
