@@ -18,13 +18,11 @@ import { getPool } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 // Map formerCouncil slug → dcp_setback_controls.lga value(s)
-// Most are 1:1 (formerCouncil === lga slug), but Inner West former councils
-// may have controls under both the former council slug AND 'inner_west'.
-const COUNCIL_TO_LGA: Record<string, string[]> = {
-  ashfield: ['ashfield', 'inner_west'],
-  leichhardt: ['leichhardt', 'inner_west'],
-  marrickville: ['marrickville', 'inner_west'],
-};
+// Most are 1:1 (formerCouncil === lga slug).
+// Inner West former councils (ashfield, leichhardt, marrickville) previously
+// also queried 'inner_west', but those rows have been migrated to their
+// correct former council slugs (PR #384).
+const COUNCIL_TO_LGA: Record<string, string[]> = {};
 
 // LGA display names that differ from their dcp_setback_controls.lga slug
 const LGA_NAME_TO_SLUG: Record<string, string> = {
