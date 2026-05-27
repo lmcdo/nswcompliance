@@ -1,88 +1,74 @@
 {
   "tier": "standard",
-  "justification": "Changes pagination strategy for production ingest script. Touches DB queries and API calls. No frontend changes.",
-  "commit_hash": "a7c683c9",
-  "files": ["scripts/ingest_cadastre.py"],
+  "justification": "DB data migration + single code file change affecting Inner West DCP structured controls display. Standard because: data fix to 39 rows in one table, one-line code change, no new logic paths, but affects production data immediately.",
+  "commit_hash": "27a8461e",
+  "files": ["frontend-nextjs/app/api/dcp/structured-controls/route.ts"],
   "pre_impl": {
-    "existing_data": "nsw_cadastre_lots table (2.5M rows). UPSERT on lotidstring — safe for re-runs.",
-    "assumption_mismatch": "If objectid column missing in DB, get_max_objectid() fails with SQL error (visible).",
-    "new_vs_existing": "Applies to new rows only when --resume. Full re-ingest without --resume still works."
+    "existing_data": "dcp_setback_controls table — 39 rows with lga='inner_west' (29 deactivated, 10 migrated to correct former council slugs, 5 placeholder rows deactivated)",
+    "assumption_mismatch": "If a former council slug is missing controls that only existed under inner_west, those controls disappear. Verified: all 36 legitimate rows mapped to a target council. 26 car parking rows were duplicates of better data already under former council slugs.",
+    "new_vs_existing": "Applies to existing rows only. UPDATE lga on 10 rows, SET is_current=false on 34 rows. Code change prevents future inner_west queries."
   },
   "functions": [
     {
-      "name": "get_max_objectid",
-      "file_line": "scripts/ingest_cadastre.py:332",
-      "input": "conn — active psycopg2 database connection object",
-      "output": "int — max objectid or 0",
-      "if_none": "COALESCE returns 0, starts from beginning"
-    },
-    {
-      "name": "fetch_page",
-      "file_line": "scripts/ingest_cadastre.py:87",
-      "input": "where clause string with objectid cursor",
-      "output": "dict with features list from Esri JSON response",
-      "if_none": "Returns {features: []} — loop terminates after 3 empty pages"
+      "name": "getLgaSlugs",
+      "file_line": "route.ts:39",
+      "input": "council string from query param",
+      "output": "string[] of LGA slugs for SQL IN clause",
+      "if_none": "falls through to [normalized] — single slug lookup, correct behavior"
     }
   ],
   "values": [
     {
-      "value": "last_objectid",
-      "read_at": "scripts/ingest_cadastre.py:360",
-      "nullable": "no — initialized to 0",
-      "guard_at": "scripts/ingest_cadastre.py:348 COALESCE(MAX(objectid), 0)",
-      "if_missing": "Starts from objectid > 0 (full ingest)"
-    },
-    {
-      "value": "max_oid from features",
-      "read_at": "scripts/ingest_cadastre.py:384",
-      "nullable": "no — objectid always present in Esri response",
-      "guard_at": "scripts/ingest_cadastre.py:383 .get('objectid', 0) default",
-      "if_missing": "Uses 0, cursor doesn't advance, empty_streak hits 3, loop exits"
+      "value": "COUNCIL_TO_LGA[normalized]",
+      "read_at": "route.ts:42",
+      "nullable": "yes — undefined if not in map",
+      "guard_at": "route.ts:42 — || [normalized] fallback",
+      "if_missing": "returns [council_slug] — correct single-slug behavior"
     }
   ],
   "queries": [
     {
-      "purpose": "Get max objectid for resume cursor",
-      "file_line": "scripts/ingest_cadastre.py:334",
-      "where_clause": "none — aggregate MAX",
-      "if_zero": "COALESCE returns 0 — full ingest from start",
-      "if_wrong": "Would skip lots with lower objectid — but objectid is monotonic"
-    },
-    {
-      "purpose": "Count remaining lots for ETA",
-      "file_line": "scripts/ingest_cadastre.py:358",
-      "where_clause": "(1=1) AND objectid > {last_objectid}",
-      "if_zero": "Prints 0 remaining, loop exits on first empty page",
-      "if_wrong": "Only affects ETA display, not data correctness"
+      "purpose": "Fetch structured controls for a council + dev_type",
+      "file_line": "route.ts:132-146",
+      "where_clause": "WHERE sc.lga IN ($1) AND sc.dev_type = $2 AND (sc.is_current IS NULL OR sc.is_current = true)",
+      "if_zero": "returns has_controls: false with empty categories — correct",
+      "if_wrong": "previously returned cross-council data due to inner_west LGA slug; now fixed by migrating data to correct slugs and removing inner_west from mapping"
     }
   ],
   "break_it": [
     {
-      "scenario": "FeatureServer doesn't support orderByFields on objectid",
-      "what_happens": "Pages return in arbitrary order, cursor advances past some lots, gaps in data",
+      "scenario": "New inner_west rows added in future without former council scoping",
+      "what_happens": "They sit under lga='inner_west' but are never queried (no mapping exists)",
       "mitigated": true,
-      "how": "Tested: API returns ordered results with objectid ASC. UPSERT means re-runs fill gaps.",
-      "repro": "Run with --limit 5000 --resume, verify objectid range is contiguous"
+      "how": "Code comment at route.ts:20-25 explains migration. Future data entry should use former council slugs directly.",
+      "repro": "INSERT INTO dcp_setback_controls (lga, ...) VALUES ('inner_west', ...) then GET /api/dcp/structured-controls?council=ashfield"
     },
     {
-      "scenario": "objectid has gaps (non-contiguous), cursor skips valid lots",
-      "what_happens": "No impact — cursor uses > not =, so gaps are irrelevant",
+      "scenario": "Deactivated rows (is_current=false) still appear",
+      "what_happens": "Would show duplicate or fabricated junk data in the UI",
       "mitigated": true,
-      "how": "WHERE objectid > X returns next batch regardless of gaps",
-      "repro": "Check DB: SELECT COUNT(DISTINCT objectid) vs MAX(objectid)-MIN(objectid)"
+      "how": "route.ts:143 — WHERE clause includes AND (sc.is_current IS NULL OR sc.is_current = true)",
+      "repro": "SELECT * FROM dcp_setback_controls WHERE id IN (641, 642, 1134) AND is_current = true — should return 0 rows"
     },
     {
-      "scenario": "DB connection drops mid-ingest (Supabase IO budget)",
-      "what_happens": "Retry loop reconnects (5 attempts, 30s*n backoff). If all fail, raises.",
+      "scenario": "Non-Inner-West council queries return different results after code change",
+      "what_happens": "Other councils see wrong or missing data in DCP controls",
       "mitigated": true,
-      "how": "scripts/ingest_cadastre.py:393-405 — reconnect_db + retry loop",
-      "repro": "Run during known IO budget exhaustion window"
+      "how": "COUNCIL_TO_LGA is now empty — all councils fall through to [normalized] single-slug lookup, same behavior as before for all 25+ non-Inner-West councils",
+      "repro": "GET /api/dcp/structured-controls?council=waverley — should return same results as before"
+    },
+    {
+      "scenario": "Query returns zero rows for a former council that previously had inner_west controls",
+      "what_happens": "DCP tab shows 'no structured controls' instead of the expected numeric values",
+      "mitigated": true,
+      "how": "Verified via DB query: ashfield has 8 controls, marrickville has 11, leichhardt has 10 after migration. All migrated rows confirmed present under correct slugs.",
+      "repro": "GET /api/dcp/structured-controls?council=ashfield&dev_type=dwelling_house — should return has_controls: true with 8 controls"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — DB changes already applied to production",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Run --scope all --resume --limit 5000 and verify rows increase"
+    "manual_verify": "Yes — verify demo addresses on verify.plotdetect.com.au after Vercel deploy: 129 Ramsay St Haberfield (ashfield), 180 Addison Rd Marrickville (marrickville), 5 Ramsay St Haberfield (ashfield)"
   }
 }
