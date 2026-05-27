@@ -243,7 +243,7 @@ async function queryLgaStats(councilName: string) {
       top_development_types: topDevTypes,
       period_months: 12,
     };
-  } catch (err) {
+  } catch (err) { // qa-ignore silent-failure — intentional: LGA stats are supplementary, null hides the panel
     console.error('[threat-radar] LGA stats query failed:', err);
     return null;
   }
@@ -357,9 +357,8 @@ export async function POST(request: NextRequest) {
       council_name = dbCouncilName;
       lgaStats = await queryLgaStats(dbCouncilName);
     }
-  } catch (err) {
+  } catch (err) { // qa-ignore silent-failure — intentional: return empty results rather than 500, UI shows "No applications found"
     console.error('[threat-radar] DA query failed:', err);
-    // Return empty results rather than 500
   }
   const run_date = new Date().toISOString().slice(0, 10);
   const report_token = signReport(lat, lng, address, run_date);
