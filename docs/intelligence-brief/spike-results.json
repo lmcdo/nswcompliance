@@ -1,1877 +1,2802 @@
-{
-  "run_date": "2026-05-26T20:40:49.840306",
-  "total_addresses": 20,
-  "total_elapsed_s": 580.5,
-  "regulatory_freshness": [
-    "SEPP: missing min_lot_size for secondary_dwelling \u2014 fallback 450m\u00b2 in use",
-    "SEPP: missing max_floor_area for secondary_dwelling \u2014 fallback 60m\u00b2 in use",
-    "TAX: query failed \u2014 relation \"tax_thresholds\" does not exist\nLINE 2:             SELECT tax_year FROM tax_thresholds\n                                         ^\n"
-  ],
-  "summary": {
-    "issues_total": 0,
-    "compound_constraints_fired": 4,
-    "avg_time_per_address_s": 29.0
+[
+  {
+    "index": 1,
+    "address": "10 Hollands Avenue, Marrickville NSW 2204",
+    "test_type": "heritage_flood",
+    "expected": "heritage HCA + flood overlay both present",
+    "raw_data": {
+      "prop_id": 1953939,
+      "lat": -33.91097941234436,
+      "lng": 151.14822641399996,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "9.5",
+        "fsr": "0.6",
+        "heritage_items": [
+          "Inter-War Group Heritage Conservation Area\u2014Hollands Avenue; Jocelyn Avenue and Woodbury Street Significance: Local"
+        ],
+        "heritage_hca": [
+          "Inter-War Group Heritage Conservation Area\u2014Hollands Avenue; Jocelyn Avenue and Woodbury Street Significance: Local"
+        ],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 202.3,
+        "land_value": 1330000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 1160000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1230000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 1170000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1270000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1330000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP387618"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 0,
+      "proximity_m": {
+        "biodiversity": 118
+      },
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 1,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 4,
+      "nearest_da": {
+        "number": "PAN-566269",
+        "distance_m": 7,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.5,
+      "controls": 0.29,
+      "valuation": 0.49,
+      "strata": 0.24,
+      "lga": 0.0,
+      "overlays": 4.86,
+      "heritage_db": 0.08,
+      "lep_db": 0.0,
+      "dcp_db": 0.15,
+      "das_db": 0.06,
+      "shadow": 33.12
+    }
   },
-  "results": [
-    {
-      "address": "1 Thompson Square, Windsor NSW 2756",
-      "category": "heritage_flood",
-      "expected": {
-        "heritage": true,
-        "flood": true,
-        "compound_heritage_flood": true
-      },
-      "notes": "Historic town square on Hawkesbury floodplain. DB confirmed heritage + flood overlay.",
-      "timing": {
-        "resolve_address": 0.39,
-        "controls": 0.46,
-        "valuation": 0.16,
-        "overlays": 4.12,
-        "strata": 0.2,
-        "lga_detection": 0.0,
-        "nearby_das": 3.58,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 31.23,
-        "feasibility": 0.0,
-        "total": 40.16
-      },
-      "data": {
-        "prop_id": 2368760,
-        "lat": -33.60416698715414,
-        "lng": 150.82235348124996,
-        "has_lot_wkt": true,
-        "zone": "E2",
-        "height": "10",
-        "fsr": null,
-        "heritage_items_count": 3,
-        "zone_epi": "Hawkesbury Local Environmental Plan 2012",
-        "lot_area_m2": 645.0,
-        "land_value": 623000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "flood",
-          "lot_size"
-        ],
-        "overlay_count": 14,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "flood",
-          "height",
-          "heritage",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "wetlands",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP196531",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 3,
-        "headroom_keys": [
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2"
-        ]
-      },
-      "compound_constraints": [
-        {
-          "id": "heritage_flood",
-          "description": "Heritage item/HCA in flood planning area \u2014 floor level mitigation may require Heritage NSW concurrence",
-          "severity": "warning",
-          "heritage_type": "unknown",
-          "flood_type": "2000AEP"
-        }
-      ],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "12 Victoria Road, Marrickville NSW 2204",
-      "category": "flood_only",
-      "expected": {
-        "heritage": false,
-        "flood": true,
-        "compound_heritage_flood": false
-      },
-      "notes": "Flood + key_sites but no heritage. Negative test for heritage+flood compound.",
-      "timing": {
-        "resolve_address": 0.46,
-        "controls": 1.04,
-        "valuation": 0.85,
-        "overlays": 3.88,
-        "strata": 0.26,
-        "lga_detection": 0.0,
-        "nearby_das": 2.48,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.02,
-        "shadow": 26.62,
-        "feasibility": 0.0,
-        "total": 35.63
-      },
-      "data": {
-        "prop_id": 3415854,
-        "lat": -33.90846247691906,
-        "lng": 151.16390942099662,
-        "has_lot_wkt": true,
-        "zone": "MU1",
-        "height": "23",
-        "fsr": "2",
-        "heritage_items_count": 0,
-        "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 6580.0,
-        "land_value": 33600000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "flood",
-          "key_sites"
-        ],
-        "overlay_count": 3,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": true,
-        "plan_label": "SP81199",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "apartment_strata",
-      "lga_detection": {
-        "text_slug": "marrickville",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "160 Francis St, Richmond NSW 2753",
-      "category": "flood_biodiversity",
-      "expected": {
-        "flood": true,
-        "biodiversity": true
-      },
-      "notes": "Hawkesbury floodplain, biodiversity overlap.",
-      "timing": {
-        "resolve_address": 0.39,
-        "controls": 0.74,
-        "valuation": 0.16,
-        "overlays": 6.66,
-        "strata": 0.15,
-        "lga_detection": 0.0,
-        "nearby_das": 2.65,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 15.49,
-        "feasibility": 0.0,
-        "total": 26.26
-      },
-      "data": {
-        "prop_id": 2354869,
-        "lat": -33.59295065142744,
-        "lng": 150.74611462869623,
-        "has_lot_wkt": true,
+  {
+    "index": 2,
+    "address": "5 River Street, Marrickville NSW 2204",
+    "test_type": "heritage_flood",
+    "expected": "near Cooks River, flood + possible heritage",
+    "raw_data": {
+      "prop_id": 1958337,
+      "lat": -33.910830183618515,
+      "lng": 151.14761215574998,
+      "has_lot_wkt": true,
+      "controls": {
         "zone": "R2",
-        "height": "10",
-        "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "Hawkesbury Local Environmental Plan 2012",
-        "lot_area_m2": 607.0,
-        "land_value": 627000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "flood",
-          "lot_size"
-        ],
-        "overlay_count": 7,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "flood",
-          "height",
-          "heritage",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "wetlands",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP38881",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "4 Martins Ln, Freemans Reach NSW 2756",
-      "category": "bushfire_flood",
-      "expected": {
-        "bushfire": true,
-        "flood": true
-      },
-      "notes": "Bushfire + flood in Hawkesbury. DB confirmed both layers.",
-      "timing": {
-        "resolve_address": 0.37,
-        "controls": 0.47,
-        "valuation": 0.15,
-        "overlays": 4.64,
-        "strata": 0.13,
-        "lga_detection": 0.0,
-        "nearby_das": 2.87,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 19.32,
-        "feasibility": 0.0,
-        "total": 27.97
-      },
-      "data": {
-        "prop_id": 2349606,
-        "lat": -33.55838076910532,
-        "lng": 150.80905939166666,
-        "has_lot_wkt": true,
-        "zone": "RU2",
-        "height": "10",
-        "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "Hawkesbury Local Environmental Plan 2012",
-        "lot_area_m2": null,
-        "land_value": null,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "bushfire",
-          "flood",
-          "lot_size"
-        ],
-        "overlay_count": 11,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "flood",
-          "height",
-          "heritage",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "wetlands",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP751665",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 1,
-        "headroom_keys": []
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "14 Dobroyd Lane, Haberfield NSW 2045",
-      "category": "heritage_only",
-      "expected": {
-        "heritage": true,
-        "flood": false,
-        "bushfire": false
-      },
-      "notes": "Inner West heritage, full DCP available. Negative for compound constraints.",
-      "timing": {
-        "resolve_address": 0.41,
-        "controls": 0.53,
-        "valuation": 0.13,
-        "overlays": 0.72,
-        "strata": 0.5,
-        "lga_detection": 0.0,
-        "nearby_das": 5.47,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.02,
-        "shadow": 14.41,
-        "feasibility": 0.0,
-        "total": 22.21
-      },
-      "data": {
-        "prop_id": 1296458,
-        "lat": -33.870980326005764,
-        "lng": 151.14797025783332,
-        "has_lot_wkt": true,
-        "zone": "R2",
-        "height": "7",
-        "fsr": "0.5",
-        "heritage_items_count": 1,
+        "zone_full": "Low Density Residential",
         "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 1133.8,
-        "land_value": 5090000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "lot_size"
-        ],
-        "overlay_count": 2,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP507731",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "ashfield",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "10 Terry St, Balmain NSW 2041",
-      "category": "heritage_key_sites",
-      "expected": {
-        "heritage": true,
-        "key_sites": true
-      },
-      "notes": "Heritage Conservation Area + key sites in Balmain.",
-      "timing": {
-        "resolve_address": 0.63,
-        "controls": 0.3,
-        "valuation": 0.17,
-        "overlays": 0.66,
-        "strata": 0.2,
-        "lga_detection": 0.0,
-        "nearby_das": 2.55,
-        "dcp_setbacks": 0.03,
-        "heritage_postgis": 0.02,
-        "shadow": 19.57,
-        "feasibility": 0.0,
-        "total": 24.13
-      },
-      "data": {
-        "prop_id": 1937449,
-        "lat": -33.85733070860538,
-        "lng": 151.1713834734,
-        "has_lot_wkt": true,
-        "zone": "R1",
-        "height": null,
-        "fsr": "0.5",
-        "heritage_items_count": 1,
-        "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 177.0,
-        "land_value": 2140000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "key_sites",
-          "lot_size"
-        ],
-        "overlay_count": 3,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP2015",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "leichhardt",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "100 Wardell Rd, Dulwich Hill NSW 2203",
-      "category": "boundary_suburb",
-      "expected": {
-        "lga_slug": "marrickville",
-        "flood": true
-      },
-      "notes": "Dulwich Hill \u2014 boundary between Marrickville/Ashfield. Tests detect_former_council accuracy.",
-      "timing": {
-        "resolve_address": 0.66,
-        "controls": 0.72,
-        "valuation": 0.13,
-        "overlays": 0.58,
-        "strata": 0.69,
-        "lga_detection": 0.0,
-        "nearby_das": 2.4,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.03,
-        "shadow": 14.21,
-        "feasibility": 0.0,
-        "total": 19.44
-      },
-      "data": {
-        "prop_id": 4210515,
-        "lat": -33.913394839989365,
-        "lng": 151.13713226425926,
-        "has_lot_wkt": true,
-        "zone": "RE1",
-        "height": null,
-        "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 379.4,
-        "land_value": 21800.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "flood"
-        ],
-        "overlay_count": 4,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP370667",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 3,
-        "headroom_keys": [
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "marrickville",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "1 Stanmore Road, Stanmore NSW 2048",
-      "category": "boundary_suburb",
-      "expected": {
-        "lga_slug": "marrickville"
-      },
-      "notes": "Stanmore \u2014 boundary suburb. detect_former_council should map correctly.",
-      "timing": {
-        "resolve_address": 0.4,
-        "controls": 0.87,
-        "valuation": 0.12,
-        "overlays": 10.57,
-        "strata": 0.25,
-        "lga_detection": 0.0,
-        "nearby_das": 2.81,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.01,
-        "shadow": 20.08,
-        "feasibility": 0.0,
-        "total": 35.13
-      },
-      "data": {
-        "prop_id": 1966423,
-        "lat": -33.896459964955234,
-        "lng": 151.161875977,
-        "has_lot_wkt": true,
-        "zone": "R1",
-        "height": "14",
-        "fsr": "0.6",
-        "heritage_items_count": 0,
-        "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 525.7,
-        "land_value": 1810000.0,
-        "overlay_types": [],
-        "overlay_count": 0,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": true,
-        "plan_label": "SP30364",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "strata_house",
-      "lga_detection": {
-        "text_slug": "marrickville",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "1 Smith St, Summer Hill NSW 2130",
-      "category": "boundary_suburb",
-      "expected": {
-        "lga_slug": "ashfield"
-      },
-      "notes": "Summer Hill \u2014 Ashfield former council area.",
-      "timing": {
-        "resolve_address": 0.44,
-        "controls": 0.37,
-        "valuation": 0.17,
-        "overlays": 4.02,
-        "strata": 0.54,
-        "lga_detection": 0.0,
-        "nearby_das": 2.79,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.02,
-        "shadow": 14.71,
-        "feasibility": 0.0,
-        "total": 23.08
-      },
-      "data": {
-        "prop_id": 1305957,
-        "lat": -33.89111783899188,
-        "lng": 151.1349870217,
-        "has_lot_wkt": true,
-        "zone": "R3",
-        "height": "12.5",
-        "fsr": "0.7",
-        "heritage_items_count": 0,
-        "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 3415.0,
-        "land_value": 11600000.0,
-        "overlay_types": [
-          "lot_size"
-        ],
-        "overlay_count": 1,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": true,
-        "plan_label": "SP49675",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
-        ]
-      },
-      "compound_constraints": [
-        {
-          "id": "zone_permits_higher_density",
-          "description": "Zone R3 permits additional development types: multi_dwelling_housing, residential_flat_building. Controls shown are for dwelling house only.",
-          "severity": "info"
-        }
-      ],
-      "strata_classification": "apartment_strata",
-      "lga_detection": {
-        "text_slug": "ashfield",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "65 Ernest Street, Lakemba NSW 2195",
-      "category": "strata_apartment_r4",
-      "expected": {
-        "zone_prefix": "R4",
-        "higher_density_advisory": true
-      },
-      "notes": "R4 zone, height 23m, FSR 69 \u2014 likely apartment strata. Tests zone advisory + strata heuristic.",
-      "timing": {
-        "resolve_address": 0.4,
-        "controls": 0.25,
-        "valuation": 0.13,
-        "overlays": 0.92,
-        "strata": 0.24,
-        "lga_detection": 0.0,
-        "nearby_das": 2.71,
-        "dcp_setbacks": 0.03,
-        "heritage_postgis": 0.02,
-        "shadow": 20.23,
-        "feasibility": 0.0,
-        "total": 24.93
-      },
-      "data": {
-        "prop_id": 1414776,
-        "lat": -33.925008004872,
-        "lng": 151.07423428429684,
-        "has_lot_wkt": true,
-        "zone": "R4",
-        "height": "23",
-        "fsr": "1.7",
-        "heritage_items_count": 0,
-        "zone_epi": "Canterbury-Bankstown Local Environmental Plan 2023",
-        "lot_area_m2": 398.58,
-        "land_value": 968000.0,
-        "overlay_types": [
-          "lot_size"
-        ],
-        "overlay_count": 1,
-        "covered_layers": [
-          "acid_sulfate",
-          "active_street_frontages",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "riparian",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP12298",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [
-        {
-          "id": "zone_permits_higher_density",
-          "description": "Zone R4 permits additional development types: residential_flat_building, shop_top_housing. Controls shown are for dwelling house only.",
-          "severity": "info"
-        }
-      ],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "canterbury_bankstown",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "3 Orchard St, Baulkham Hills NSW 2153",
-      "category": "suburban_house",
-      "expected": {
-        "is_strata": false
-      },
-      "notes": "Standard suburban house \u2014 should NOT be classified as strata.",
-      "timing": {
-        "resolve_address": 1.36,
-        "controls": 0.27,
-        "valuation": 0.13,
-        "overlays": 2.74,
-        "strata": 0.41,
-        "lga_detection": 0.0,
-        "nearby_das": 2.64,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 19.9,
-        "feasibility": 0.0,
-        "total": 27.47
-      },
-      "data": {
-        "prop_id": 607962,
-        "lat": -33.76308188342603,
-        "lng": 150.9977042066,
-        "has_lot_wkt": true,
-        "zone": "R3",
-        "height": "9",
-        "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "The Hills Local Environmental Plan 2019",
-        "lot_area_m2": 719.0,
-        "land_value": 1250000.0,
-        "overlay_types": [
-          "lot_size"
-        ],
-        "overlay_count": 1,
-        "covered_layers": [
-          "acid_sulfate",
-          "active_street_frontages",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "landslide",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP815153",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [
-        {
-          "id": "zone_permits_higher_density",
-          "description": "Zone R3 permits additional development types: multi_dwelling_housing, residential_flat_building. Controls shown are for dwelling house only.",
-          "severity": "info"
-        }
-      ],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "41 Porter St, North Wollongong NSW 2500",
-      "category": "marginal_lot",
-      "expected": {
-        "lot_size_overlay": 449
-      },
-      "notes": "lot_size overlay shows 449 \u2014 marginal for 450m\u00b2 SEPP secondary dwelling threshold.",
-      "timing": {
-        "resolve_address": 0.42,
-        "controls": 0.46,
-        "valuation": 0.16,
-        "overlays": 1.25,
-        "strata": 0.19,
-        "lga_detection": 0.0,
-        "nearby_das": 2.62,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 23.88,
-        "feasibility": 0.0,
-        "total": 29.0
-      },
-      "data": {
-        "prop_id": 1180309,
-        "lat": -34.4127141215915,
-        "lng": 150.88786515342858,
-        "has_lot_wkt": true,
-        "zone": "R2",
-        "height": "9",
-        "fsr": "0.5",
-        "heritage_items_count": 0,
-        "zone_epi": "Wollongong Local Environmental Plan 2009",
-        "lot_area_m2": 499.5,
-        "land_value": 589000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "lot_size"
-        ],
-        "overlay_count": 2,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "flood",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "riparian",
-          "zone"
-        ],
-        "is_strata": true,
-        "plan_label": "SP77492",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
-        ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "strata_house",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "39 Denison Rd, Lewisham NSW 2049",
-      "category": "r2_with_biodiversity",
-      "expected": {
-        "zone_prefix": "R2",
-        "biodiversity": true
-      },
-      "notes": "R2 zone + biodiversity overlay. Tests that R2 does NOT trigger higher density advisory.",
-      "timing": {
-        "resolve_address": 0.37,
-        "controls": 0.97,
-        "valuation": 0.13,
-        "overlays": 2.8,
-        "strata": 0.21,
-        "lga_detection": 0.0,
-        "nearby_das": 2.65,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.02,
-        "shadow": 16.81,
-        "feasibility": 0.0,
-        "total": 23.98
-      },
-      "data": {
-        "prop_id": 1947968,
-        "lat": -33.8957777110578,
-        "lng": 151.14715577919998,
-        "has_lot_wkt": true,
-        "zone": "R2",
         "height": "9.5",
         "fsr": "0.6",
-        "heritage_items_count": 0,
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 246.6,
+        "land_value": 1310000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 1140000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1210000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 1150000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1250000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1310000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP900304"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 0,
+      "proximity_m": {
+        "biodiversity": 63
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 7,
+      "nearest_da": {
+        "number": "PAN-566269",
+        "distance_m": 64,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.43,
+      "controls": 0.16,
+      "valuation": 0.15,
+      "strata": 0.23,
+      "lga": 0.0,
+      "overlays": 2.85,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.09,
+      "das_db": 0.03,
+      "shadow": 14.78
+    }
+  },
+  {
+    "index": 3,
+    "address": "21 Illawarra Road, Marrickville NSW 2204",
+    "test_type": "heritage_flood",
+    "expected": "Marrickville heritage area near flood zone",
+    "raw_data": {
+      "prop_id": 1954663,
+      "lat": -33.90331928470111,
+      "lng": 151.16307545799998,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
         "zone_epi": "Inner West Local Environmental Plan 2022",
-        "lot_area_m2": 398.58,
+        "height": "9.5",
+        "fsr": "0.6",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 297.2,
+        "land_value": 1370000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 1200000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1270000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 1210000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1310000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1370000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP214368"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 1,
+      "proximity_m": {
+        "biodiversity": 1247
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 4,
+      "nearest_da": {
+        "number": "PAN-548818",
+        "distance_m": 148,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.6,
+      "controls": 0.28,
+      "valuation": 0.67,
+      "strata": 0.25,
+      "lga": 0.0,
+      "overlays": 1.22,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.06,
+      "das_db": 0.03,
+      "shadow": 19.98
+    }
+  },
+  {
+    "index": 4,
+    "address": "1 Station Street, Katoomba NSW 2780",
+    "test_type": "heritage_bushfire",
+    "expected": "heritage item in bushfire-prone area",
+    "raw_data": {
+      "prop_id": 3127712,
+      "lat": -33.706747002780986,
+      "lng": 150.31391830044444,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Blue Mountains Local Environmental Plan 2015",
+        "height": "8",
+        "fsr": "0.35",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 1547.0,
+        "land_value": 568000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 600000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 610000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 580000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 580000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 568000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP63636",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP63636"
+      },
+      "overlay_types": [
+        "active_street_frontages",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "riparian",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {
+        "riparian": 163
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 0,
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "apartment",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.42,
+      "controls": 0.58,
+      "valuation": 0.15,
+      "strata": 0.26,
+      "lga": 0.0,
+      "overlays": 1.4,
+      "heritage_db": 0.88,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.04,
+      "shadow": 26.38
+    }
+  },
+  {
+    "index": 5,
+    "address": "15 Fox Valley Road, Wahroonga NSW 2076",
+    "test_type": "heritage_bushfire",
+    "expected": "Ku-ring-gai heritage + bushfire prone land",
+    "raw_data": {
+      "prop_id": 4115343,
+      "lat": -33.7312610170357,
+      "lng": 151.10580500689656,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "C2",
+        "zone_full": "Environmental Conservation",
+        "zone_epi": "Ku-ring-gai Local Environmental Plan 2015",
+        "height": null,
+        "fsr": null,
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 2.352,
+        "land_value": 2310000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 2030000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 2440000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 2310000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 2310000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 2310000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "address_heuristic",
+        "parent_has_strata": false,
+        "plan_label": null
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "active_street_frontages",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "riparian",
+        "zone"
+      ],
+      "overlay_count": 4,
+      "proximity_m": {},
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 0,
+        "item_count": 1
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 2,
+      "nearest_da": {
+        "number": "PAN-598752",
+        "distance_m": 69,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [
+      {
+        "rule": "heritage_postgis_only",
+        "note": "Heritage detected in PostGIS but NOT in portal controls \u2014 possible gap in portal data"
+      }
+    ],
+    "strata_classification": "not_strata",
+    "lga_slug": "ku_ring_gai",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.37,
+      "controls": 0.26,
+      "valuation": 0.17,
+      "strata": 10.09,
+      "lga": 0.0,
+      "overlays": 2.93,
+      "heritage_db": 0.07,
+      "lep_db": 0.0,
+      "dcp_db": 0.1,
+      "das_db": 0.04,
+      "shadow": 19.42
+    }
+  },
+  {
+    "index": 6,
+    "address": "8 Marion Street, Leichhardt NSW 2040",
+    "test_type": "tod_heritage",
+    "expected": "near Leichhardt station, heritage area",
+    "raw_data": {
+      "prop_id": 1930492,
+      "lat": -33.88411681396573,
+      "lng": 151.15593999579997,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R1",
+        "zone_full": "General Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": null,
+        "fsr": "0.5",
+        "heritage_items": [
+          "Semi-detached house, including interiors Significance: Local"
+        ],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 183.4,
+        "land_value": 970000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 905000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 944000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 882000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 970000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 970000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP6032",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP6032"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 3,
+      "proximity_m": {
+        "biodiversity": 560
+      },
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 0,
+        "item_count": 1
+      },
+      "lep_clause_count": 4,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 7,
+      "nearest_da": {
+        "number": "PAN-546759",
+        "distance_m": 62,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "development",
+    "lga_slug": "leichhardt",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.47,
+      "controls": 0.49,
+      "valuation": 0.12,
+      "strata": 0.78,
+      "lga": 0.0,
+      "overlays": 4.27,
+      "heritage_db": 0.07,
+      "lep_db": 0.08,
+      "dcp_db": 0.11,
+      "das_db": 0.04,
+      "shadow": 17.87
+    }
+  },
+  {
+    "index": 7,
+    "address": "100 Stanmore Road, Stanmore NSW 2048",
+    "test_type": "boundary_lga",
+    "expected": "Marrickville former council",
+    "raw_data": {
+      "prop_id": 1966464,
+      "lat": -33.89849204744244,
+      "lng": 151.16711213320002,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "9.5",
+        "fsr": "0.6",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 467.9,
         "land_value": 1680000.0,
-        "overlay_types": [
-          "biodiversity"
-        ],
-        "overlay_count": 1,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP907167",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 1560000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1650000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 1560000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1640000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1680000.0
+          }
         ]
       },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "marrickville",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
-    },
-    {
-      "address": "279 Covan Creek Road, Lake Bathurst NSW 2580",
-      "category": "rural_no_dcp",
-      "expected": {
-        "dcp_available": false
-      },
-      "notes": "Rural property \u2014 no DCP coverage expected. Tests gap disclosure.",
-      "timing": {
-        "resolve_address": 0.72,
-        "controls": 0.54,
-        "valuation": 0.2,
-        "overlays": 0.97,
-        "strata": 0.54,
-        "lga_detection": 0.0,
-        "nearby_das": 3.11,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 26.28,
-        "feasibility": 0.0,
-        "total": 32.38
-      },
-      "data": {
-        "prop_id": 447035,
-        "lat": -35.002116096744835,
-        "lng": 149.618607812,
-        "has_lot_wkt": true,
-        "zone": "RU2",
-        "height": null,
-        "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "Goulburn Mulwaree Local Environmental Plan 2009",
-        "lot_area_m2": null,
-        "land_value": null,
-        "overlay_types": [
-          "biodiversity",
-          "bushfire",
-          "lot_size"
-        ],
-        "overlay_count": 4,
-        "covered_layers": [
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "fsr",
-          "height",
-          "heritage",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
+      "strata": {
         "is_strata": false,
-        "plan_label": "DP252635",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 1,
-        "headroom_keys": []
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP315030"
       },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 0,
+      "proximity_m": {
+        "biodiversity": 1276
       },
-      "issues": []
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 8,
+      "nearest_da": {
+        "number": "PAN-595865",
+        "distance_m": 43,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
     },
-    {
-      "address": "45 River Rd, Ermington NSW 2115",
-      "category": "suburban_full_data",
-      "expected": {
-        "zone_prefix": "R2"
-      },
-      "notes": "Standard suburban lot with full overlay data. Happy path baseline.",
-      "timing": {
-        "resolve_address": 0.48,
-        "controls": 0.5,
-        "valuation": 0.17,
-        "overlays": 4.15,
-        "strata": 0.3,
-        "lga_detection": 0.0,
-        "nearby_das": 3.23,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 15.5,
-        "feasibility": 0.0,
-        "total": 24.35
-      },
-      "data": {
-        "prop_id": 845584,
-        "lat": -33.81946812197146,
-        "lng": 151.05338477,
-        "has_lot_wkt": true,
-        "zone": "R2",
-        "height": "9",
-        "fsr": "0.5",
-        "heritage_items_count": 0,
-        "zone_epi": "Parramatta Local Environmental Plan 2023",
-        "lot_area_m2": 1056.0,
-        "land_value": 1640000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "lot_size"
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.31,
+      "controls": 0.18,
+      "valuation": 0.16,
+      "strata": 0.25,
+      "lga": 0.0,
+      "overlays": 1.34,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.1,
+      "das_db": 0.03,
+      "shadow": 15.27
+    }
+  },
+  {
+    "index": 8,
+    "address": "15 Marrickville Road, Dulwich Hill NSW 2203",
+    "test_type": "boundary_lga",
+    "expected": "Marrickville former council",
+    "raw_data": {
+      "prop_id": 4003248,
+      "lat": -33.90426461188947,
+      "lng": 151.14277932806507,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "E1",
+        "zone_full": "Local Centre",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "17",
+        "fsr": "2.2",
+        "heritage_items": [
+          "Dulwich Hill Commercial Precinct Heritage Conservation Area Significance: Local"
         ],
-        "overlay_count": 2,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
+        "heritage_hca": [
+          "Dulwich Hill Commercial Precinct Heritage Conservation Area Significance: Local"
         ],
-        "is_strata": false,
-        "plan_label": "DP36566",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 470.5,
+        "land_value": 3780000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 3360000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 4160000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 3780000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 3780000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 3780000.0
+          }
         ]
       },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP73541",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP73541"
       },
-      "issues": []
-    },
-    {
-      "address": "20 Punt Rd, Gladesville NSW 2111",
-      "category": "coastal_multi",
-      "expected": {
-        "coastal": true
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {},
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 1,
+        "item_count": 0
       },
-      "notes": "Coastal environment + coastal use + acid sulfate. Tests multiple coastal layers.",
-      "timing": {
-        "resolve_address": 0.34,
-        "controls": 0.53,
-        "valuation": 0.12,
-        "overlays": 1.12,
-        "strata": 0.18,
-        "lga_detection": 0.0,
-        "nearby_das": 25.05,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.03,
-        "shadow": 19.96,
-        "feasibility": 0.0,
-        "total": 47.33
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 5,
+      "nearest_da": {
+        "number": "PAN-586594",
+        "distance_m": 147,
+        "status": "Determined"
       },
-      "data": {
-        "prop_id": 3447481,
-        "lat": -33.83782111942869,
-        "lng": 151.1279158822,
-        "has_lot_wkt": true,
-        "zone": "R2",
-        "height": "9.5",
-        "fsr": "0.5",
-        "heritage_items_count": 0,
-        "zone_epi": "Ryde Local Environmental Plan 2014",
-        "lot_area_m2": 433.9,
-        "land_value": 1850000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "lot_size"
-        ],
-        "overlay_count": 2,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP19287",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
         ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
+      }
     },
-    {
-      "address": "15 King Street, Newcastle NSW 2300",
-      "category": "heritage_regional",
-      "expected": {
-        "heritage": true
-      },
-      "notes": "Regional heritage item \u2014 not Inner West. Tests heritage outside primary LGA.",
-      "timing": {
-        "resolve_address": 0.5,
-        "controls": 0.93,
-        "valuation": 0.17,
-        "overlays": 0.73,
-        "strata": 0.31,
-        "lga_detection": 0.0,
-        "nearby_das": 2.7,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 27.5,
-        "feasibility": 0.0,
-        "total": 32.86
-      },
-      "data": {
-        "prop_id": 233054,
-        "lat": -32.92752371228087,
-        "lng": 151.77571686214284,
-        "has_lot_wkt": true,
+    "compound_constraints_fired": [],
+    "strata_classification": "development",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.72,
+      "controls": 0.34,
+      "valuation": 0.11,
+      "strata": 0.22,
+      "lga": 0.0,
+      "overlays": 2.08,
+      "heritage_db": 0.07,
+      "lep_db": 0.0,
+      "dcp_db": 0.09,
+      "das_db": 0.04,
+      "shadow": 18.56
+    }
+  },
+  {
+    "index": 9,
+    "address": "5/1 Treacy Street, Hurstville NSW 2220",
+    "test_type": "strata_apartment",
+    "expected": "strata confirmed, is_apartment = True",
+    "raw_data": {
+      "prop_id": 4241915,
+      "lat": -33.968099035976905,
+      "lng": 151.10878707857302,
+      "has_lot_wkt": true,
+      "controls": {
         "zone": "MU1",
+        "zone_full": "Mixed Use",
+        "zone_epi": "Georges River Local Environmental Plan 2021",
+        "height": "23",
+        "fsr": "3",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 1555.0,
+        "land_value": 9760000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 9830000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 10700000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 9750000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 9760000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 9760000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP91614",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP91614"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "riparian",
+        "zone"
+      ],
+      "overlay_count": 0,
+      "proximity_m": {
+        "riparian": 2208
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 2,
+      "nearest_da": {
+        "number": "PAN-524230",
+        "distance_m": 97,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "apartment",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.62,
+      "controls": 0.25,
+      "valuation": 0.17,
+      "strata": 0.29,
+      "lga": 0.0,
+      "overlays": 0.93,
+      "heritage_db": 0.07,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.04,
+      "shadow": 16.38
+    }
+  },
+  {
+    "index": 10,
+    "address": "3/22 Carlton Crescent, Summer Hill NSW 2130",
+    "test_type": "strata_townhouse",
+    "expected": "strata but NOT apartment (small lot, low unit count)",
+    "raw_data": {
+      "prop_id": 3013957,
+      "lat": -33.89094995667677,
+      "lng": 151.13898788768418,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "E1",
+        "zone_full": "Local Centre",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
         "height": "10",
         "fsr": "1.5",
-        "heritage_items_count": 2,
-        "zone_epi": "Newcastle Local Environmental Plan 2012",
-        "lot_area_m2": 1107.0,
-        "land_value": 1730000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "lot_size"
-        ],
-        "overlay_count": 4,
-        "covered_layers": [
-          "acid_sulfate",
-          "active_street_frontages",
-          "additional_permitted_uses",
-          "anef",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 2140.0,
+        "land_value": 8460000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 8500000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 9310000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 8460000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 8460000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 8460000.0
+          }
+        ]
+      },
+      "strata": {
         "is_strata": true,
-        "plan_label": "SP1533",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
+        "strata_plan": "SP70678",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP70678"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {
+        "biodiversity": 460
+      },
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 1,
+        "item_count": 1
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 6,
+      "nearest_da": {
+        "number": "PAN-590317",
+        "distance_m": 31,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [
+      {
+        "rule": "heritage_postgis_only",
+        "note": "Heritage detected in PostGIS but NOT in portal controls \u2014 possible gap in portal data"
+      }
+    ],
+    "strata_classification": "apartment",
+    "lga_slug": "ashfield",
+    "issues": [
+      "STRATA MISCLASSIFICATION: classified as apartment but expected townhouse/development (lot_area=2140.0)"
+    ],
+    "timing_s": {
+      "resolve": 0.48,
+      "controls": 0.41,
+      "valuation": 0.17,
+      "strata": 0.25,
+      "lga": 0.0,
+      "overlays": 1.07,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.06,
+      "das_db": 0.04,
+      "shadow": 18.14
+    }
+  },
+  {
+    "index": 11,
+    "address": "2/45 Alt Street, Ashfield NSW 2131",
+    "test_type": "community_title",
+    "expected": "may be community title (CP not SP)",
+    "raw_data": {
+      "prop_id": 1291953,
+      "lat": -33.88393150649118,
+      "lng": 151.124925971,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R3",
+        "zone_full": "Medium Density Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "12.5",
+        "fsr": "0.7",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 2055.0,
+        "land_value": 6420000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 9880000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 7900000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 6840000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 6420000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 6420000.0
+          }
         ]
       },
-      "compound_constraints": [],
-      "strata_classification": "strata_house",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP221",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP221"
       },
-      "issues": []
-    },
-    {
-      "address": "23 Pittwater Road, Manly NSW 2095",
-      "category": "heritage_key_sites_regional",
-      "expected": {
-        "heritage": true,
-        "key_sites": true
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 0,
+      "proximity_m": {
+        "biodiversity": 1815
       },
-      "notes": "Heritage + key sites in Manly. Regional compound test.",
-      "timing": {
-        "resolve_address": 0.45,
-        "controls": 0.35,
-        "valuation": 0.41,
-        "overlays": 1.06,
-        "strata": 0.3,
-        "lga_detection": 0.0,
-        "nearby_das": 2.9,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.34,
-        "shadow": 14.12,
-        "feasibility": 0.0,
-        "total": 19.93
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
       },
-      "data": {
-        "prop_id": 747668,
-        "lat": -33.793347204928054,
-        "lng": 151.28526493119998,
-        "has_lot_wkt": true,
-        "zone": "E1",
-        "height": "15",
-        "fsr": "2",
-        "heritage_items_count": 2,
-        "zone_epi": "Manly Local Environmental Plan 2013",
-        "lot_area_m2": 1145.0,
-        "land_value": 7840000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "key_sites"
-        ],
-        "overlay_count": 3,
-        "covered_layers": [
-          "acid_sulfate",
-          "active_street_frontages",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "foreshore_building_line",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "landslide",
-          "littoral_rainforest",
-          "lot_size",
-          "riparian",
-          "wetlands",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP307310",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 4,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2"
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 1,
+      "nearest_da": {
+        "number": "PAN-564423",
+        "distance_m": 151,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
         ]
-      },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
-      },
-      "issues": []
+      }
     },
-    {
-      "address": "10 Lucinda Ave, Wahroonga NSW 2076",
-      "category": "biodiversity_suburban",
-      "expected": {
-        "biodiversity": true
-      },
-      "notes": "Biodiversity overlay in upper North Shore. Possible bushfire proximity.",
-      "timing": {
-        "resolve_address": 0.41,
-        "controls": 0.34,
-        "valuation": 0.13,
-        "overlays": 4.19,
-        "strata": 1.14,
-        "lga_detection": 0.0,
-        "nearby_das": 3.0,
-        "dcp_setbacks": 0.02,
-        "heritage_postgis": 0.02,
-        "shadow": 19.85,
-        "feasibility": 0.0,
-        "total": 29.1
-      },
-      "data": {
-        "prop_id": 702973,
-        "lat": -33.71957106250168,
-        "lng": 151.11120732914284,
-        "has_lot_wkt": true,
+    "compound_constraints_fired": [],
+    "strata_classification": "apartment",
+    "lga_slug": "ashfield",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.39,
+      "controls": 0.39,
+      "valuation": 0.2,
+      "strata": 0.19,
+      "lga": 0.0,
+      "overlays": 2.93,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.07,
+      "das_db": 0.03,
+      "shadow": 15.36
+    }
+  },
+  {
+    "index": 12,
+    "address": "35 Denison Road, Dulwich Hill NSW 2203",
+    "test_type": "zone_advisory",
+    "expected": "R3 zone permits medium density but has single dwelling",
+    "raw_data": {
+      "prop_id": 1948108,
+      "lat": -33.902330853494604,
+      "lng": 151.13952159226668,
+      "has_lot_wkt": true,
+      "controls": {
         "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
         "height": "9.5",
-        "fsr": "0.3",
-        "heritage_items_count": 0,
-        "zone_epi": "Ku-ring-gai Local Environmental Plan 2015",
-        "lot_area_m2": 919.7,
-        "land_value": 1490000.0,
-        "overlay_types": [
-          "acid_sulfate",
-          "biodiversity",
-          "lot_size"
-        ],
-        "overlay_count": 3,
-        "covered_layers": [
-          "acid_sulfate",
-          "active_street_frontages",
-          "additional_permitted_uses",
-          "anef",
-          "biodiversity",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "riparian",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP304855",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 5,
-        "headroom_keys": [
-          "fsr_numeric",
-          "land_value",
-          "land_value_display",
-          "land_value_per_m2",
-          "land_value_per_m2_display",
-          "lot_area_display",
-          "lot_area_m2",
-          "max_gfa_display",
-          "max_gfa_m2",
-          "subdivision_feasible",
-          "subdivision_note"
+        "fsr": "0.6",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 221.6,
+        "land_value": 1130000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 958000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1030000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 993000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1070000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1130000.0
+          }
         ]
       },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": "ku_ring_gai",
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP192086"
       },
-      "issues": []
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 1,
+      "proximity_m": {},
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 5,
+      "nearest_da": {
+        "number": "PAN-611702",
+        "distance_m": 48,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
     },
-    {
-      "address": "512 Crescent Head Road, South Kempsey NSW 2440",
-      "category": "regional_rural",
-      "expected": {},
-      "notes": "Regional address \u2014 tests pipeline handles non-metro addresses.",
-      "timing": {
-        "resolve_address": 0.5,
-        "controls": 0.86,
-        "valuation": 0.71,
-        "overlays": 1.99,
-        "strata": 0.26,
-        "lga_detection": 0.0,
-        "nearby_das": 3.1,
-        "dcp_setbacks": 0,
-        "heritage_postgis": 0.02,
-        "shadow": 27.06,
-        "feasibility": 0.0,
-        "total": 34.5
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.36,
+      "controls": 0.7,
+      "valuation": 0.13,
+      "strata": 0.42,
+      "lga": 0.0,
+      "overlays": 0.59,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.06,
+      "das_db": 0.03,
+      "shadow": 17.84
+    }
+  },
+  {
+    "index": 13,
+    "address": "22 Pile Street, Marrickville NSW 2204",
+    "test_type": "marginal_lot",
+    "expected": "lot area near SEPP 450m\u00b2 threshold",
+    "raw_data": {
+      "prop_id": 1962905,
+      "lat": -33.904302369745736,
+      "lng": 151.14923474485715,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R1",
+        "zone_full": "General Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "14",
+        "fsr": "0.6",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
       },
-      "data": {
-        "prop_id": 1732473,
-        "lat": -31.121001120649165,
-        "lng": 152.872034883625,
-        "has_lot_wkt": true,
-        "zone": "R5",
+      "valuation": {
+        "lot_area_m2": 2068.0,
+        "land_value": 7450000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 7540000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 7960000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 7450000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 7450000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 7450000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP10214",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP10214"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 1,
+      "proximity_m": {
+        "biodiversity": 221
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 1,
+      "nearest_da": {
+        "number": "PAN-563045",
+        "distance_m": 119,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "apartment",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.48,
+      "controls": 0.34,
+      "valuation": 0.14,
+      "strata": 0.26,
+      "lga": 0.0,
+      "overlays": 5.05,
+      "heritage_db": 0.09,
+      "lep_db": 0.0,
+      "dcp_db": 0.1,
+      "das_db": 0.03,
+      "shadow": 15.3
+    }
+  },
+  {
+    "index": 14,
+    "address": "88 Marrickville Road, Marrickville NSW 2204",
+    "test_type": "da_shadow",
+    "expected": "recent DAs within 200m",
+    "raw_data": {
+      "prop_id": 4603955,
+      "lat": -33.915854292009044,
+      "lng": 151.16179612412782,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "SP2",
+        "zone_full": "Infrastructure",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
         "height": null,
         "fsr": null,
-        "heritage_items_count": 0,
-        "zone_epi": "Kempsey Local Environmental Plan 2013",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
         "lot_area_m2": null,
         "land_value": null,
-        "overlay_types": [
-          "acid_sulfate",
-          "bushfire",
-          "lot_size"
-        ],
-        "overlay_count": 4,
-        "covered_layers": [
-          "acid_sulfate",
-          "additional_permitted_uses",
-          "anef",
-          "bushfire",
-          "classified_road",
-          "coastal_environment_area",
-          "coastal_land_application",
-          "coastal_use_area",
-          "coastal_wetlands",
-          "fire_history",
-          "fsr",
-          "height",
-          "heritage",
-          "key_sites",
-          "land_reservation",
-          "littoral_rainforest",
-          "lot_size",
-          "zone"
-        ],
-        "is_strata": false,
-        "plan_label": "DP814461",
-        "da_count": 0,
-        "dcp_available": false,
-        "heritage_postgis": {
-          "has_heritage": false,
-          "hca_count": 0,
-          "item_count": 0
-        },
-        "shadow_available": true,
-        "shadow_scenarios": 5,
-        "feasibility_items": 1,
-        "headroom_keys": []
+        "val_base_date": null,
+        "val_history": []
       },
-      "compound_constraints": [],
-      "strata_classification": "not_strata",
-      "lga_detection": {
-        "text_slug": null,
-        "spatial_error": "current transaction is aborted, commands ignored until end of transaction block\n"
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "DP1302736",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "DP1302736"
       },
-      "issues": []
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {
+        "biodiversity": 786
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 1,
+      "nearest_da": {
+        "number": "PAN-502721",
+        "distance_m": 62,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "strata_unknown",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.53,
+      "controls": 0.44,
+      "valuation": 0.12,
+      "strata": 0.24,
+      "lga": 0.0,
+      "overlays": 0.82,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.06,
+      "das_db": 0.03,
+      "shadow": 18.12
     }
-  ]
-}
+  },
+  {
+    "index": 15,
+    "address": "123 Bells Line of Road, Kurrajong Heights NSW 2758",
+    "test_type": "rural_no_dcp",
+    "expected": "no DCP setbacks available",
+    "raw_data": {
+      "prop_id": 4592320,
+      "lat": -33.51509021796603,
+      "lng": 150.62938255784613,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "C4",
+        "zone_full": "Environmental Living",
+        "zone_epi": "Hawkesbury Local Environmental Plan 2012",
+        "height": "10",
+        "fsr": null,
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": null,
+        "land_value": null,
+        "val_base_date": null,
+        "val_history": []
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP418887"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "flood",
+        "height",
+        "heritage",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "wetlands",
+        "zone"
+      ],
+      "overlay_count": 5,
+      "proximity_m": {
+        "wetlands": 1375
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 0,
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.47,
+      "controls": 1.44,
+      "valuation": 0.15,
+      "strata": 6.29,
+      "lga": 0.0,
+      "overlays": 8.26,
+      "heritage_db": 0.15,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.68,
+      "shadow": 21.82
+    }
+  },
+  {
+    "index": 16,
+    "address": "15 Petersham Road, Marrickville NSW 2204",
+    "test_type": "happy_path",
+    "expected": "full data available: zone, height, FSR, heritage, DCP",
+    "raw_data": {
+      "prop_id": 1962548,
+      "lat": -33.90387896939108,
+      "lng": 151.15472404357143,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": "9.5",
+        "fsr": "0.6",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 246.6,
+        "land_value": 1370000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 1200000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 1270000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 1210000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 1310000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 1370000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP5964"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {
+        "biodiversity": 665
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 5,
+      "nearest_da": {
+        "number": "PAN-621176",
+        "distance_m": 44,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "not_strata",
+    "lga_slug": "marrickville",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.5,
+      "controls": 0.38,
+      "valuation": 0.22,
+      "strata": 0.55,
+      "lga": 0.0,
+      "overlays": 4.89,
+      "heritage_db": 0.08,
+      "lep_db": 0.0,
+      "dcp_db": 0.15,
+      "das_db": 0.06,
+      "shadow": 15.64
+    }
+  },
+  {
+    "index": 17,
+    "address": "42 Norton Street, Leichhardt NSW 2040",
+    "test_type": "happy_path",
+    "expected": "full data available \u2014 Leichhardt DCP",
+    "raw_data": {
+      "prop_id": 1932936,
+      "lat": -33.886587240104106,
+      "lng": 151.15718673979998,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "E1",
+        "zone_full": "Local Centre",
+        "zone_epi": "Inner West Local Environmental Plan 2022",
+        "height": null,
+        "fsr": "1",
+        "heritage_items": [
+          "Excelsior Subdivision Heritage Conservation Area Significance: Local"
+        ],
+        "heritage_hca": [
+          "Excelsior Subdivision Heritage Conservation Area Significance: Local"
+        ],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 161.8,
+        "land_value": 832000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 869000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 924000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 876000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 832000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 832000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP38838",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP38838"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 3,
+      "proximity_m": {
+        "biodiversity": 377
+      },
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 1,
+        "item_count": 0
+      },
+      "lep_clause_count": 4,
+      "has_dcp_setbacks": true,
+      "dcp_setback_keys": [
+        "caveat",
+        "clause_ref",
+        "dcp_name",
+        "dcp_url",
+        "dev_type_scope",
+        "is_da_path",
+        "sd_setbacks",
+        "section",
+        "setbacks",
+        "zone_filter_applied",
+        "zones_applicable"
+      ],
+      "nearby_da_count": 2,
+      "nearest_da": {
+        "number": "PAN-528518",
+        "distance_m": 99,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "development",
+    "lga_slug": "leichhardt",
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.44,
+      "controls": 0.9,
+      "valuation": 0.17,
+      "strata": 0.27,
+      "lga": 0.0,
+      "overlays": 2.85,
+      "heritage_db": 0.07,
+      "lep_db": 0.08,
+      "dcp_db": 0.05,
+      "das_db": 0.04,
+      "shadow": 17.41
+    }
+  },
+  {
+    "index": 18,
+    "address": "1 George Street, Windsor NSW 2756",
+    "test_type": "multi_overlay",
+    "expected": "flood + possibly bushfire, multiple overlays",
+    "raw_data": {
+      "prop_id": 3392888,
+      "lat": -33.6048242992435,
+      "lng": 150.82413388239996,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "R2",
+        "zone_full": "Low Density Residential",
+        "zone_epi": "Hawkesbury Local Environmental Plan 2012",
+        "height": "10",
+        "fsr": null,
+        "heritage_items": [
+          "Thompson Square Conservation Area",
+          "Thompson Square Conservation Area Significance: Local",
+          "Former School of Arts Significance: State"
+        ],
+        "heritage_hca": [
+          "Thompson Square Conservation Area",
+          "Thompson Square Conservation Area Significance: Local"
+        ],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 542.7,
+        "land_value": 433000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 402000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 510000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 433000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 433000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 433000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": false,
+        "strata_plan": null,
+        "plan_type": null,
+        "source": "cadastre",
+        "parent_has_strata": false,
+        "plan_label": "DP420926"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "flood",
+        "height",
+        "heritage",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "wetlands",
+        "zone"
+      ],
+      "overlay_count": 9,
+      "proximity_m": {
+        "biodiversity": 64,
+        "wetlands": 569
+      },
+      "heritage_postgis": {
+        "has_heritage": true,
+        "hca_count": 1,
+        "item_count": 1
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 2,
+      "nearest_da": {
+        "number": "PAN-557868",
+        "distance_m": 198,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [
+      {
+        "rule": "heritage_hca_flood",
+        "note": "Heritage conservation area + flood zone \u2014 demolition constraints conflict with flood resilience requirements",
+        "heritage_source": "portal_hca",
+        "flood_source": "postgis"
+      }
+    ],
+    "strata_classification": "not_strata",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.39,
+      "controls": 0.33,
+      "valuation": 0.19,
+      "strata": 0.16,
+      "lga": 0.0,
+      "overlays": 1.94,
+      "heritage_db": 0.06,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.04,
+      "shadow": 15.81
+    }
+  },
+  {
+    "index": 19,
+    "address": "50 Pitt Street, Sydney NSW 2000",
+    "test_type": "clean_lot",
+    "expected": "CBD \u2014 no heritage HCA, no flood, no bushfire",
+    "raw_data": {
+      "prop_id": 2040300,
+      "lat": -33.86699928462296,
+      "lng": 151.20889600645452,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "SP5",
+        "zone_full": "Metropolitan Centre",
+        "zone_epi": "Sydney Local Environmental Plan 2012",
+        "height": null,
+        "fsr": "8",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 682.8,
+        "land_value": 19200000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 14400000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 16500000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 18700000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 19200000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 19200000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP12981",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP12981"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "active_street_frontages",
+        "additional_permitted_uses",
+        "anef",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "zone"
+      ],
+      "overlay_count": 1,
+      "proximity_m": {},
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 10,
+      "nearest_da": {
+        "number": "PAN-555384",
+        "distance_m": 23,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "development",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.48,
+      "controls": 0.37,
+      "valuation": 0.15,
+      "strata": 0.23,
+      "lga": 0.0,
+      "overlays": 0.59,
+      "heritage_db": 0.07,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.11,
+      "shadow": 16.62
+    }
+  },
+  {
+    "index": 20,
+    "address": "10 Parramatta Road, Granville NSW 2142",
+    "test_type": "recently_rezoned",
+    "expected": "may show zone change from recent LEP amendment",
+    "raw_data": {
+      "prop_id": 3945567,
+      "lat": -33.82985638580098,
+      "lng": 151.01122972509933,
+      "has_lot_wkt": true,
+      "controls": {
+        "zone": "E3",
+        "zone_full": "Productivity Support",
+        "zone_epi": "Parramatta Local Environmental Plan 2023",
+        "height": "15",
+        "fsr": "2",
+        "heritage_items": [],
+        "heritage_hca": [],
+        "tod_area": false,
+        "flood_epi": false,
+        "housing_sepp": false
+      },
+      "valuation": {
+        "lot_area_m2": 1660.0,
+        "land_value": 6330000.0,
+        "val_base_date": "1 July 2025",
+        "val_history": [
+          {
+            "year": "1 July 2021",
+            "value": 4420000.0
+          },
+          {
+            "year": "1 July 2022",
+            "value": 6630000.0
+          },
+          {
+            "year": "1 July 2023",
+            "value": 6630000.0
+          },
+          {
+            "year": "1 July 2024",
+            "value": 6630000.0
+          },
+          {
+            "year": "1 July 2025",
+            "value": 6330000.0
+          }
+        ]
+      },
+      "strata": {
+        "is_strata": true,
+        "strata_plan": "SP93089",
+        "plan_type": "strata",
+        "source": "cadastre",
+        "parent_has_strata": true,
+        "plan_label": "SP93089"
+      },
+      "overlay_types": [
+        "acid_sulfate",
+        "additional_permitted_uses",
+        "anef",
+        "biodiversity",
+        "bushfire",
+        "classified_road",
+        "coastal_environment_area",
+        "coastal_land_application",
+        "coastal_use_area",
+        "coastal_wetlands",
+        "fire_history",
+        "foreshore_building_line",
+        "fsr",
+        "height",
+        "heritage",
+        "key_sites",
+        "land_reservation",
+        "littoral_rainforest",
+        "lot_size",
+        "zone"
+      ],
+      "overlay_count": 2,
+      "proximity_m": {
+        "biodiversity": 1781
+      },
+      "heritage_postgis": {
+        "has_heritage": false,
+        "hca_count": 0,
+        "item_count": 0
+      },
+      "lep_clause_count": 0,
+      "has_dcp_setbacks": false,
+      "nearby_da_count": 4,
+      "nearest_da": {
+        "number": "PAN-594781",
+        "distance_m": 111,
+        "status": "Determined"
+      },
+      "shadow": {
+        "has_result": true,
+        "keys": [
+          "adg_compliant",
+          "construction_change_detected",
+          "construction_change_score",
+          "height_m",
+          "height_source",
+          "lep_name",
+          "lga_name",
+          "lga_slug",
+          "lot_polygon",
+          "north_proxy_polygon",
+          "scenarios",
+          "worst_case_scenario"
+        ]
+      }
+    },
+    "compound_constraints_fired": [],
+    "strata_classification": "apartment",
+    "lga_slug": null,
+    "issues": [],
+    "timing_s": {
+      "resolve": 0.47,
+      "controls": 1.1,
+      "valuation": 0.18,
+      "strata": 4.08,
+      "lga": 0.0,
+      "overlays": 3.93,
+      "heritage_db": 0.07,
+      "lep_db": 0.0,
+      "dcp_db": 0.0,
+      "das_db": 0.07,
+      "shadow": 18.97
+    }
+  }
+]
