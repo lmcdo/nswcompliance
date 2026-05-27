@@ -1,30 +1,135 @@
 {
-  "tier": "minor",
-  "justification": "One-line fix: return tuple instead of bare int from early exit path. No logic change, no new code paths.",
-  "commit_hash": "42c3a3c4",
-  "files": ["scripts/ingest_cadastre.py"],
+  "tier": "critical",
+  "justification": "Intelligence brief schema contract — every downstream stage builds on these types. Wrong null semantics or missing fields cascade into wrong data served to users.",
+  "commit_hash": "8bf252a2",
+  "files": [
+    "services/intelligence_brief.py",
+    "tests/test_intelligence_brief_schema.py"
+  ],
   "pre_impl": {
-    "existing_data": "ingest() returns (int, conn) tuple; early exit at line 342 returned bare 0, causing TypeError in main()",
-    "assumption_mismatch": "N/A — trivial fix aligning return type with function contract",
-    "new_vs_existing": "No new code. Changed `return 0` to `return 0, conn` at line 342."
+    "existing_data": "Inherits from conveyancing pipeline: controls dict, valuation dict, strata dict, overlays list, DAs list, shadow dict. All shapes validated against spike-results.json (20 real addresses).",
+    "assumption_mismatch": "If upstream functions change return shapes (e.g. strata dict gains new fields), DataField wrappers pass through — no schema break. If fields are removed, compute_confidence_summary still walks correctly (ignores non-DataField attributes).",
+    "new_vs_existing": "Schema-only — no database writes. Models are consumed by Stage 2 orchestrator which will populate them from live API calls. Fixtures use realistic data from spike results.",
+    "external_source_error": "Every external source error is handled by _safe_call wrapper: returns DataField(value=None, confidence=not_available, reason=error_string). Never raises. Never silently returns empty list as success.",
+    "frontend_type": "Frontend types not yet created — Stage 2 will generate TypeScript types from these Pydantic models via model_json_schema().",
+    "user_failure_mode": "If schema is wrong: wrong data served silently (worst case), or extra='forbid' catches unexpected fields at serialisation time (best case). All 4 fixture briefs validate the schema against real data shapes."
   },
-  "break_it": [
+  "functions": [
     {
-      "scenario": "FeatureServer returns count=0 for a valid where clause",
-      "what_happens": "ingest() now returns (0, conn) — main() unpacks cleanly, conn.close() succeeds",
-      "mitigated": true,
-      "how": "Return type matches function signature: (int, connection)",
-      "repro": "Run with --where \"lotidstring = 'NONEXISTENT'\" to trigger count=0 path"
+      "name": "classify_strata",
+      "file_line": "services/intelligence_brief.py:454",
+      "input": "strata_info dict from detect_strata upstream function plus lot_area_m2 Optional[float] from VG API",
+      "output": "StrataType enum with four states — NOT_STRATA, APARTMENT, DEVELOPMENT, or AMBIGUOUS based on lot area thresholds",
+      "if_none": "None lot_area returns AMBIGUOUS (honest about uncertainty, not crash). Empty dict returns NOT_STRATA (is_strata defaults falsy)."
+    },
+    {
+      "name": "_zone_prefix",
+      "file_line": "services/intelligence_brief.py:484",
+      "input": "Optional[str] zone string from parse_controls, e.g. 'R2 Low Density Residential' or None or empty",
+      "output": "str — uppercase zone prefix like 'R2' or 'RU2', or empty string on None/empty input",
+      "if_none": "None returns empty string. Empty string returns empty string. Whitespace-only returns empty string. Prevents the IndexError from empty-split."
+    },
+    {
+      "name": "_safe_call",
+      "file_line": "services/intelligence_brief.py:146",
+      "input": "Callable fn (zero-arg), str source_name for logging, ConfidenceLevel confidence_on_success for the result wrapper",
+      "output": "DataField — always returned, never raises. On success: value=fn() result with given confidence. On exception: value=None with not_available confidence and error reason.",
+      "if_none": "fn() returning None is a valid success (authoritative confidence preserved). fn() raising any Exception is caught and wrapped as not_available."
+    },
+    {
+      "name": "_sanitise",
+      "file_line": "services/intelligence_brief.py:495",
+      "input": "Optional[str] value from external API response (Planning Portal, ePlanning, Cadastre) that may contain HTML",
+      "output": "Optional[str] with all HTML tags stripped via regex, null bytes removed, and whitespace trimmed. None passthrough preserved.",
+      "if_none": "None input returns None (passthrough). Empty string returns empty string. Only-tags input returns empty string."
+    },
+    {
+      "name": "compute_confidence_summary",
+      "file_line": "services/intelligence_brief.py:504",
+      "input": "DevelopmentBrief or RenovationBrief instance — walks all nested fields recursively to find DataField instances",
+      "output": "ConfidenceSummary with integer counts per confidence level (authoritative, extracted, estimated, derived, not_available, stale) plus total",
+      "if_none": "Walks all fields recursively via Pydantic model_fields. Non-DataField attributes silently skipped. Empty brief results in total=0."
+    },
+    {
+      "name": "collect_gaps",
+      "file_line": "services/intelligence_brief.py:546",
+      "input": "DevelopmentBrief or RenovationBrief instance — walks all nested fields recursively to find not_available DataFields",
+      "output": "list[GapEntry] — one entry per DataField with confidence=not_available, including the dotted field path and reason string",
+      "if_none": "No not_available fields returns empty list. Recursively walks nested BaseModel instances and lists of BaseModels."
     }
   ],
-  "adversarial_notes": [
-    "Scanner flagged float(shape_area) at line 234 — false positive: guarded by `if shape_area is None: continue` at line 224",
-    "Scanner flagged data.get('features', []) at line 355 — false positive: data is from response.json(), features is always list or absent"
+  "values": [
+    {
+      "value": "strata_info.is_strata",
+      "read_at": "services/intelligence_brief.py:460",
+      "nullable": "no — defaults to False via dict.get() falsy check",
+      "guard_at": "services/intelligence_brief.py:460 — if not strata_info.get('is_strata')",
+      "if_missing": "Classified as NOT_STRATA — safe default (no development analysis skipped for non-strata)"
+    },
+    {
+      "value": "lot_area_m2",
+      "read_at": "services/intelligence_brief.py:468",
+      "nullable": "yes — can be None from VG API failure or rural lots without valuation",
+      "guard_at": "services/intelligence_brief.py:468 — if lot_area_m2 is not None",
+      "if_missing": "Classified as AMBIGUOUS — honest about uncertainty rather than wrong classification"
+    },
+    {
+      "value": "zone string from controls",
+      "read_at": "services/intelligence_brief.py:489",
+      "nullable": "yes — portal may not return zone for some lot types",
+      "guard_at": "services/intelligence_brief.py:489 — if not zone or not zone.strip()",
+      "if_missing": "Returns empty string — no crash, no misleading value, downstream code handles empty gracefully"
+    }
+  ],
+  "queries": "N/A — schema-only stage, no database queries. Stage 2 will add query tracing.",
+  "break_it": [
+    {
+      "scenario": "Strata townhouse on 2140m2 parent lot classified as apartment instead of development-capable property",
+      "what_happens": "User sees RenovationBrief (no DCP controls, no granny flat analysis) instead of DevelopmentBrief with full development potential",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:468 — four-state StrataType with AMBIGUOUS for 400-2500m2. Spike finding (Carlton Cres) drove this design.",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestStrataClassification::test_ambiguous_mid_range"
+    },
+    {
+      "scenario": "Empty zone string from Planning Portal causes IndexError when code calls split on empty string and accesses index zero",
+      "what_happens": "500 error on any address where Planning Portal returns empty or missing zone field in the layerintersect response",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:489-492 — _zone_prefix guards against None, empty, whitespace. Returns empty string safely.",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestZonePrefix::test_empty_string"
+    },
+    {
+      "scenario": "Non-numeric prop_id string like 'abc' or SQL injection attempt '1; DROP TABLE' causes unhandled ValueError from int() conversion",
+      "what_happens": "500 internal server error instead of 422 validation error — user sees generic crash instead of actionable message",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:185 — Pydantic Field(pattern=r'^\\d{1,12}$') rejects non-numeric prop_id at request validation time before any code runs",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestInputValidation::test_prop_id_non_numeric"
+    },
+    {
+      "scenario": "PostGIS database down — overlay query fails, response looks like 'no environmental constraints' because empty list returned silently",
+      "what_happens": "User sees clean environmental report when data was actually unavailable — dangerous false negative for flood/bushfire",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:146-167 — _safe_call catches exception, returns DataField(confidence=not_available). collect_gaps surfaces it. check_minimum_viable refuses brief if too many fields failed.",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestSafeCall::test_exception_caught"
+    },
+    {
+      "scenario": "XSS payload in DA description from ePlanning API like '<script>alert(1)</script>' rendered in frontend without escaping",
+      "what_happens": "Script execution in user's browser if frontend uses dangerouslySetInnerHTML on any string field from the brief",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:495-501 — _sanitise strips HTML tags and null bytes from all external API strings before including in response",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestSanitise::test_html_tags_stripped"
+    },
+    {
+      "scenario": "Response includes undocumented field added by future code change that breaks the strict frontend TypeScript type contract",
+      "what_happens": "Frontend TypeScript compilation error or runtime crash on unexpected field in the JSON response",
+      "mitigated": true,
+      "how": "DevelopmentBrief and RenovationBrief use model_config = ConfigDict(extra='forbid'). Pydantic raises ValidationError on any extra field during serialisation.",
+      "repro": "pytest tests/test_intelligence_brief_schema.py::TestFixtureValidation::test_development_brief_forbids_extra_fields"
+    }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — fix is in error handling path only hit when count=0"
+    "manual_verify": "No — all verification is automated via 86 unit tests"
   }
 }
