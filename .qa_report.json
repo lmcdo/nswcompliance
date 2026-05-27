@@ -1,25 +1,95 @@
 {
-  "tier": "minor",
-  "justification": "Single string literal change in UI component — 'no rate' to 'assessed on merit'. No logic change, no new code paths.",
-  "commit_hash": "17d9fc44",
-  "files": ["frontend-nextjs/components/compliance/DcpStructuredControls.tsx"],
+  "tier": "standard",
+  "justification": "Threat radar LGA stats showing 0 due to council_name mismatch between Planning Portal and DA table. Shadow map zoom fix and redundant aerial tile removal.",
+  "commit_hash": "ac079ff9",
+  "files": [
+    "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts",
+    "frontend-nextjs/components/reports/ShadowMap.tsx",
+    "frontend-nextjs/components/tools/ShadowTool.tsx"
+  ],
   "pre_impl": {
-    "existing_data": "DCP structured controls displayed in assessment DCP tab. Controls with null value_min and value_max show this label.",
-    "assumption_mismatch": "None — purely cosmetic label change."
+    "existing_data": "LGA stats panel queries development_applications with .eq('council_name', councilName) where councilName comes from Planning Portal lga_name field. Nearby DAs found via spatial bounding box from same table.",
+    "assumption_mismatch": "Planning Portal returns 'Inner West' but DA table stores 'Inner West Council'. Case-sensitive .eq() never matches, so LGA stats always return 0 for councils with name suffix mismatch.",
+    "new_vs_existing": "Affects all threat radar searches. Previously showed 0 LGA-wide stats for any council where Planning Portal name differs from ePlanning API name.",
+    "external_source_error": "queryLgaStats wrapped in try/catch, returns null on error. queryNearbyApplications also try/catch. Both non-fatal — page renders with empty stats or no apps.",
+    "frontend_type": "No type changes. ShadowMap initialViewState changed from fixed zoom to bounds-based. AerialTile import and usage removed from ShadowTool.",
+    "user_failure_mode": "Before: LGA stats panel showed 0 applications despite DAs being listed below. After: stats panel shows correct LGA-wide totals using the DB's own council_name value."
   },
+  "functions": [
+    {
+      "name": "POST /api/satellite/threat-radar/search",
+      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:260",
+      "input": "NextRequest with JSON body { address: string }",
+      "output": "JSON response with applications array, lga_stats object, council_name, lat, lng",
+      "if_none": "Empty applications array and null lgaStats returned — UI shows 'No applications found' message"
+    },
+    {
+      "name": "queryLgaStats",
+      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:182",
+      "input": "string councilName — exact value from DB column",
+      "output": "LGA stats object with total_applications, approval_rate, avg_determination_days, or null on error",
+      "if_none": "Returns null — LGA stats panel not rendered in UI"
+    },
+    {
+      "name": "ShadowMap",
+      "file_line": "frontend-nextjs/components/reports/ShadowMap.tsx:79",
+      "input": "center [lng, lat], lotPolygon GeoJSON, shadowOnLot GeoJSON collection",
+      "output": "MapLibre map with lot boundary, shadow polygon, and optional north proxy overlay",
+      "if_none": "No lotPolygon: falls back to center coordinates at zoom 19. No shadowOnLot: shadow layer not rendered."
+    }
+  ],
+  "values": [
+    {
+      "value": "dbCouncilName from nearby DA results",
+      "read_at": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:355",
+      "nullable": "yes — no nearby DAs means no CouncilName to extract, falls back to Planning Portal council_name",
+      "guard_at": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:355 — applications.find(a => a.CouncilName)?.CouncilName ?? council_name",
+      "if_missing": "Falls back to Planning Portal council_name — same behaviour as before the fix, stats may show 0 but no crash"
+    },
+    {
+      "value": "bbox from lot polygon for ShadowMap zoom",
+      "read_at": "frontend-nextjs/components/reports/ShadowMap.tsx:90",
+      "nullable": "yes — getBBox returns null when lotPolygon is null or has no coordinates",
+      "guard_at": "frontend-nextjs/components/reports/ShadowMap.tsx:101 — ternary: bbox ? bounds-based view : center + zoom fallback",
+      "if_missing": "Falls back to center coordinates at zoom 19 instead of lot-fitted bounds"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "LGA-wide aggregate stats from development_applications for the council containing the searched property",
+      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:187",
+      "where_clause": ".eq('council_name', councilName).gte('lodgement_date', since).limit(5000)",
+      "if_zero": "Returns total_applications=0, approval_rate=null — UI shows 0 in LGA stats panel (the bug this fix addresses)",
+      "if_wrong": "Wrong council_name would show stats for wrong LGA — mitigated by extracting council_name from DAs in the same table"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Label text overflows the fixed-width container on narrow screens",
-      "what_happens": "Text wraps or gets clipped in the 100px value column",
+      "scenario": "Planning Portal returns 'Inner West' but DA table stores 'Inner West Council' — .eq() case-sensitive match returns 0 rows",
+      "what_happens": "User sees '0 total applications' in LGA stats panel while 30+ DAs are listed individually below — contradictory and misleading",
       "mitigated": true,
-      "how": "DcpStructuredControls.tsx:210 — text-xs class keeps 'assessed on merit' within bounds (15 chars vs 7 before, still fits 100px at 12px font)",
-      "repro": "Load /assessment for any Leichhardt address, inspect the setback rows at 320px viewport width"
+      "how": "route.ts:355 — extract council_name from nearby DAs (same table), pass exact DB value to queryLgaStats",
+      "repro": "Search any Inner West address on /reports/threat-radar and check LGA stats panel"
+    },
+    {
+      "scenario": "No nearby DAs found within 500m so dbCouncilName extraction returns undefined, falls back to Planning Portal name",
+      "what_happens": "LGA stats may still show 0 if Planning Portal name doesn't match DB — but this is a rare edge case (no nearby DAs means stats panel is less important)",
+      "mitigated": false,
+      "how": "Fallback to council_name from Planning Portal. Could be improved by querying a distinct council_name from DA table for the LGA, but adds complexity for minimal benefit.",
+      "repro": "Search a rural NSW address with no DAs within 500m on /reports/threat-radar — check if LGA stats panel shows 0"
+    },
+    {
+      "scenario": "ShadowMap lotPolygon is null — getBBox returns null, initialViewState falls back to center coordinates",
+      "what_happens": "Map shows at zoom 19 centered on the property instead of fitted to lot bounds — acceptable fallback, user still sees the correct location",
+      "mitigated": true,
+      "how": "ShadowMap.tsx:101 — ternary fallback to center + zoom 19 when bbox is null",
+      "repro": "Run shadow analysis for an address where Planning Portal lot geometry API returns null — map should center on coordinates at zoom 19"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No"
+    "manual_verify": "Yes — search an Inner West address on /reports/threat-radar and confirm LGA stats panel shows non-zero total"
   }
 }
