@@ -303,6 +303,9 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         if sp_lots:
             plan = sp_lots[0].get("planlabel", "")
             plan_type = "community" if str(plan).startswith("CP") else "strata"
+            # Count lots on the same plan — this is the actual unit count
+            # from the cadastral register, not an approximation
+            same_plan_lots = [a for a in sp_lots if a.get("planlabel") == plan]
             return {
                 "is_strata": True,
                 "strata_plan": plan,
@@ -310,6 +313,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": True,
                 "plan_label": plan,
                 "lot_number": sp_lots[0].get("lotnumber"),
+                "sp_lot_count": len(same_plan_lots),
             }
 
         # No SP/CP lot, but parent DP has strata built on it — ambiguous
@@ -322,6 +326,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": parent_strata,
                 "plan_label": primary.get("planlabel"),
                 "lot_number": primary.get("lotnumber"),
+                "sp_lot_count": None,
             }
     except Exception as e:
         print(f"  [warn] cadastral query: {e}")
@@ -333,6 +338,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         "parent_has_strata": False,
         "plan_label": None,
         "lot_number": None,
+        "sp_lot_count": None,
     }
 
 
@@ -375,6 +381,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "sp_lot_count": cad["sp_lot_count"],
             }
 
         # Combined: parent has strata AND address looks like a unit
@@ -386,6 +393,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre+address",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "sp_lot_count": None,
             }
 
         # Parent has strata but no unit prefix — whole-building query by planner
@@ -397,6 +405,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "sp_lot_count": None,
             }
 
         # Torrens cadastre result + unit prefix — portal stripped the unit, address wins
@@ -408,6 +417,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre+address",
                 "parent_has_strata": False,
                 "plan_label": cad["plan_label"],
+                "sp_lot_count": None,
             }
 
         # Torrens, no unit prefix — confirmed Torrens title
@@ -419,6 +429,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": False,
                 "plan_label": cad["plan_label"],
+                "sp_lot_count": None,
             }
 
     # Fallback: address heuristic only — could be strata or company title
@@ -429,6 +440,7 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
         "source": "address_heuristic",
         "parent_has_strata": False,
         "plan_label": None,
+        "sp_lot_count": None,
     }
 
 

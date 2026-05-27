@@ -198,12 +198,12 @@ def evaluate_compound_constraints(controls: dict, overlays: list, heritage_postg
     has_flood_postgis = "flood" in overlay_types
     has_bushfire = "bushfire" in overlay_types
 
-    # Heritage HCA + Flood
-    if has_heritage_hca and (has_flood_epi or has_flood_postgis):
+    # Heritage (HCA or item) + Flood
+    if (has_heritage_hca or has_heritage_item) and (has_flood_epi or has_flood_postgis):
         fired.append({
-            "rule": "heritage_hca_flood",
-            "note": "Heritage conservation area + flood zone — demolition constraints conflict with flood resilience requirements",
-            "heritage_source": "portal_hca",
+            "rule": "heritage_flood",
+            "note": "Heritage item/HCA + flood zone — demolition constraints conflict with flood resilience requirements",
+            "heritage_source": "portal_hca" if has_heritage_hca else "portal_item",
             "flood_source": "epi" if has_flood_epi else "postgis",
         })
 
@@ -241,21 +241,30 @@ def evaluate_compound_constraints(controls: dict, overlays: list, heritage_postg
 
 def classify_strata(strata_info: dict, valuation: dict) -> str:
     """
-    Proposed heuristic:
-      is_apartment = strata AND (lot_area > 1500 OR unit_count > 4)
-    Since we don't have unit_count, use lot_area only for now.
+    Classify strata properties using sp_lot_count from the Cadastre API.
+
+    The NSW Cadastre returns individual SP/CP lot features for every lot
+    in a strata plan. sp_lot_count is the actual registered lot count
+    for the plan — not an approximation.
+
+    Classification:
+      >6 lots on the same plan  → apartment (high-density block)
+      2-6 lots                  → development (townhouse/villa — GF potential)
+      1 lot or no count         → strata_unknown (can't determine from lot count alone)
     """
     if not strata_info.get("is_strata"):
         return "not_strata"
 
-    lot_area = valuation.get("lot_area_m2")
-    if lot_area is None:
-        return "strata_unknown"  # can't classify without lot area
+    sp_lot_count = strata_info.get("sp_lot_count")
+    if sp_lot_count is None:
+        return "strata_unknown"
 
-    if lot_area > 1500:
+    if sp_lot_count > 6:
         return "apartment"
+    elif sp_lot_count >= 2:
+        return "development"  # townhouse/villa — can do GF etc.
     else:
-        return "development"  # likely townhouse/villa — can do GF etc.
+        return "strata_unknown"  # single lot edge case
 
 
 def run_spike(include_shadow: bool = True):

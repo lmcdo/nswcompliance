@@ -29,11 +29,11 @@
 
 - **Heritage + bushfire (Katoomba, Wahroonga):** The rule checks `controls["heritage_hca"]` (conservation areas from portal), but the portal returned heritage *items* not *HCA* for these addresses. The bushfire overlay is also only checked against `overlay_types` which is LGA-level coverage, not property-level intersection.
 
-### Fix required
+### Fix applied (PR #384)
 
-1. Compound constraint rules should check `heritage_items` (any heritage) not just `heritage_hca` (conservation areas) for the bushfire interaction
-2. Bushfire/flood presence should be checked against actual `overlays` results (features list), not `overlay_types` (LGA coverage set)
-3. Portal `flood_epi` flag from `parse_controls` should be the primary flood signal (it checks the portal's Flood Planning layer directly)
+1. **DONE:** `heritage_flood` rule now fires on `heritage_items` OR `heritage_hca` (was HCA-only). Rule renamed from `heritage_hca_flood` to `heritage_flood`. Heritage source tracked in output.
+2. **Not a bug:** Bushfire/flood check was already using property-level PostGIS intersection (`overlays` list), not LGA coverage (`overlay_types`). The spike initially misread the distinction — see clarification below.
+3. Portal `flood_epi` flag was already the primary flood signal — no change needed.
 
 ### Clarification: overlay_types vs overlay features
 
@@ -59,14 +59,15 @@ An urban Marrickville lot with 0 environmental overlay features is expected — 
 
 The 1,500m² threshold catches high-rise apartments (large parent lot = apartment block) but also catches townhouse complexes on large strata-subdivided lots. 3/22 Carlton Crescent is a strata townhouse on a 2,140m² parent lot — the heuristic sees "strata + big lot" and concludes apartment, but it's a townhouse with its own ground-floor access and potential for a granny flat.
 
-### Fix options
+### Fix applied (PR #384)
 
-1. **Unit count signal:** If we can get the number of strata lots (SP plan has N lots), high count (>6) = apartment, low count (2-4) = townhouse. Not currently available from Cadastre API.
-2. **Building footprint:** If we detect a single large building footprint = apartment. Multiple small footprints = townhouse. Requires SAMGeo structure detection (granny flat pipeline).
-3. **Lot area per unit:** If total lot / unit count < 200m² = apartment. If > 200m² = likely townhouse. Requires unit count.
-4. **Accept ambiguity for v1:** Return `strata_type: "apartment_or_townhouse"` with lot_area, and let the intelligence brief present both possibilities. Honest about uncertainty.
+The Cadastre API already returns individual SP/CP lot features for every lot in a strata plan. `get_cadastral_info` now counts lots sharing the same `planlabel` and returns `sp_lot_count`. `classify_strata` uses this directly:
 
-**Recommendation for v1:** Option 4 (accept ambiguity). Show "This is a strata property on a [X]m² lot. It may be an apartment or a townhouse complex. Check the strata plan for unit count." Stage 2 can add SAMGeo building detection to disambiguate.
+- **>6 lots** → `apartment` (high-density block)
+- **2-6 lots** → `development` (townhouse/villa — GF potential)
+- **1 lot or no count** → `strata_unknown`
+
+Carlton Cres (3 lots on same SP) now correctly classifies as `development`.
 
 ---
 

@@ -1,26 +1,85 @@
 {
-  "tier": "minor",
-  "justification": "Spike script + findings doc. No production code changes. Read-only queries against existing DB and APIs.",
-  "commit_hash": "pending",
-  "files": ["scripts/intelligence_brief_spike.py", "docs/intelligence-brief/spike-findings.md", "docs/intelligence-brief/spike-results.json"],
+  "tier": "standard",
+  "justification": "Two logic functions changed (compound constraints + strata classification via Cadastre sp_lot_count). No DB schema changes, no UI changes, no new API endpoints.",
+  "commit_hash": "7c100199",
+  "files": [
+    "scripts/intelligence_brief_spike.py",
+    "scripts/generate_conveyancing_report.py",
+    "tests/test_intelligence_brief_spike.py",
+    "docs/intelligence-brief/spike-findings.md"
+  ],
   "pre_impl": {
-    "existing_data": "All queries read existing tables (development_applications, spatial_overlays, dcp_setback_controls) and external APIs (Planning Portal, VG, Cadastre, Railway shadow)",
-    "assumption_mismatch": "N/A — read-only spike",
-    "new_vs_existing": "No writes. No schema changes."
+    "existing_data": "NSW Cadastre API (sp_lots features), spatial_overlays PostGIS table, Planning Portal controls",
+    "assumption_mismatch": "If Cadastre buffer returns SP lots from adjacent strata schemes, sp_lot_count would over-count. Mitigated by filtering on matching planlabel.",
+    "new_vs_existing": "classify_strata now reads sp_lot_count from strata_info dict instead of lot_area from valuation. Applies to all future calls. No stored data changes."
   },
+  "functions": [
+    {
+      "name": "evaluate_compound_constraints",
+      "file_line": "intelligence_brief_spike.py:187",
+      "input": "controls dict (from parse_controls), overlays list (from get_unique_overlays), heritage_postgis dict",
+      "output": "list of fired constraint dicts",
+      "if_none": "Empty controls -> no rules fire -> empty list (correct)"
+    },
+    {
+      "name": "classify_strata",
+      "file_line": "intelligence_brief_spike.py:242",
+      "input": "strata_info dict (from detect_strata), valuation dict",
+      "output": "str: apartment | development | not_strata | strata_unknown",
+      "if_none": "sp_lot_count=None -> returns strata_unknown (safe fallback)"
+    },
+    {
+      "name": "get_cadastral_info",
+      "file_line": "generate_conveyancing_report.py:261",
+      "input": "lat float (WGS84), lng float (WGS84) — property coordinates",
+      "output": "dict with sp_lot_count added (int or None)",
+      "if_none": "API error -> except block returns sp_lot_count: None -> classify_strata returns strata_unknown"
+    }
+  ],
+  "values": [
+    {
+      "value": "sp_lot_count",
+      "read_at": "intelligence_brief_spike.py:255",
+      "nullable": "yes",
+      "guard_at": "intelligence_brief_spike.py:253 — returns strata_unknown if None",
+      "if_missing": "Strata classified as unknown instead of apartment/development — safe fallback"
+    },
+    {
+      "value": "has_heritage_item",
+      "read_at": "intelligence_brief_spike.py:192",
+      "nullable": "no (bool from controls.get with default empty)",
+      "guard_at": "intelligence_brief_spike.py:192 — bool() wraps the value",
+      "if_missing": "False -> heritage_flood rule doesn't fire for this source — correct"
+    }
+  ],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "Planning Portal rate-limits spike requests (429)",
-      "what_happens": "Controls come back empty for affected addresses, rest of pipeline continues",
+      "scenario": "Cadastre 20m buffer picks up SP lots from two different strata plans (adjacent buildings)",
+      "what_happens": "sp_lot_count inflated -> townhouse misclassified as apartment",
       "mitigated": true,
-      "how": "3s delay between addresses. Script handles empty controls gracefully.",
-      "repro": "Run with sleep(0) between addresses"
+      "how": "generate_conveyancing_report.py:308 — same_plan_lots filters by matching planlabel before counting",
+      "repro": "Query Cadastre at coordinates between two adjacent strata buildings, verify sp_lot_count only counts lots from one plan"
+    },
+    {
+      "scenario": "Portal returns both heritage_hca AND heritage_items for same property",
+      "what_happens": "heritage_flood rule fires once with heritage_source=portal_hca (HCA takes precedence in the conditional)",
+      "mitigated": true,
+      "how": "intelligence_brief_spike.py:201-208 — conditional checks HCA first, item second. Only one rule fires.",
+      "repro": "Call evaluate_compound_constraints with both heritage_hca and heritage_items populated plus flood_epi=True"
+    },
+    {
+      "scenario": "Cadastre API returns 0 features (timeout, empty area, offshore point)",
+      "what_happens": "sp_lots empty -> sp_lot_count never set in strata path -> falls through to non-strata return with sp_lot_count: None",
+      "mitigated": true,
+      "how": "generate_conveyancing_report.py:329-337 — fallback return has sp_lot_count: None",
+      "repro": "Call get_cadastral_info with coordinates in Sydney Harbour"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Results already captured in spike-results.json"
+    "manual_verify": "No"
   }
 }
