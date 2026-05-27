@@ -1,135 +1,117 @@
 {
   "tier": "critical",
-  "justification": "Intelligence brief schema contract — every downstream stage builds on these types. Wrong null semantics or missing fields cascade into wrong data served to users.",
-  "commit_hash": "8bf252a2",
+  "justification": "Conveyancing data integrity — wrong former council serves wrong DCP controls silently, heritage misclassification misleads user about conservation area status. User-facing report data.",
+  "commit_hash": "9aca0754",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_intelligence_brief_schema.py"
+    "services/conveyancing.py",
+    "scripts/generate_conveyancing_report.py",
+    "services/lga_lookup.py",
+    "tests/test_conveyancing_data_integrity.py"
   ],
   "pre_impl": {
-    "existing_data": "Inherits from conveyancing pipeline: controls dict, valuation dict, strata dict, overlays list, DAs list, shadow dict. All shapes validated against spike-results.json (20 real addresses).",
-    "assumption_mismatch": "If upstream functions change return shapes (e.g. strata dict gains new fields), DataField wrappers pass through — no schema break. If fields are removed, compute_confidence_summary still walks correctly (ignores non-DataField attributes).",
-    "new_vs_existing": "Schema-only — no database writes. Models are consumed by Stage 2 orchestrator which will populate them from live API calls. Fixtures use realistic data from spike results.",
-    "external_source_error": "Every external source error is handled by _safe_call wrapper: returns DataField(value=None, confidence=not_available, reason=error_string). Never raises. Never silently returns empty list as success.",
-    "frontend_type": "Frontend types not yet created — Stage 2 will generate TypeScript types from these Pydantic models via model_json_schema().",
-    "user_failure_mode": "If schema is wrong: wrong data served silently (worst case), or extra='forbid' catches unexpected fields at serialisation time (best case). All 4 fixture briefs validate the schema against real data shapes."
+    "existing_data": "SUBURB_TO_FORMER_COUNCIL dict maps suburb names to former council slugs for Inner West DCP setback lookup. heritage_items and heritage_hca lists from portal and PostGIS merged into controls dict for PDF generation.",
+    "assumption_mismatch": "Text-based suburb matching assumes suburb name uniquely identifies an LGA. Boundary suburbs (Stanmore, Newtown, Camperdown, St Peters) span two LGAs — text matching picks the wrong one 50% of the time for these suburbs.",
+    "new_vs_existing": "Applies to all existing and new conveyancing reports. Boundary suburb addresses that previously got wrong DCP data will now get no DCP data (safe direction) or correct DCP data via PostGIS cross-validation.",
+    "external_source_error": "PostGIS cross-validation wrapped in try/except — falls back to text match on any DB failure. Never crashes the pipeline. Logs the fallback with address context for debugging.",
+    "frontend_type": "No frontend type changes — response shape unchanged. heritage_items and heritage_hca are existing list[str] fields.",
+    "user_failure_mode": "Before fix: wrong DCP controls served silently for boundary suburbs, heritage items miscategorised as conservation areas. After fix: boundary suburbs get correct DCP via PostGIS or no DCP (safe), heritage items stay correctly classified."
   },
   "functions": [
     {
-      "name": "classify_strata",
-      "file_line": "services/intelligence_brief.py:454",
-      "input": "strata_info dict from detect_strata upstream function plus lot_area_m2 Optional[float] from VG API",
-      "output": "StrataType enum with four states — NOT_STRATA, APARTMENT, DEVELOPMENT, or AMBIGUOUS based on lot area thresholds",
-      "if_none": "None lot_area returns AMBIGUOUS (honest about uncertainty, not crash). Empty dict returns NOT_STRATA (is_strata defaults falsy)."
+      "name": "_validate_former_council_postgis",
+      "file_line": "services/conveyancing.py:97",
+      "input": "Optional[str] text_slug from detect_former_council, float lat/lng coordinates, str address for suburb extraction, str zone_epi for EPI context",
+      "output": "Optional[str] validated lga_slug — confirmed by PostGIS geometry, or None if property is not in the expected LGA boundary",
+      "if_none": "text_slug=None with PostGIS confirming Inner West returns disambiguated slug. text_slug=None with non-IW PostGIS returns None. DB failure returns text_slug unchanged (fallback)."
     },
     {
-      "name": "_zone_prefix",
-      "file_line": "services/intelligence_brief.py:484",
-      "input": "Optional[str] zone string from parse_controls, e.g. 'R2 Low Density Residential' or None or empty",
-      "output": "str — uppercase zone prefix like 'R2' or 'RU2', or empty string on None/empty input",
-      "if_none": "None returns empty string. Empty string returns empty string. Whitespace-only returns empty string. Prevents the IndexError from empty-split."
+      "name": "detect_former_council",
+      "file_line": "scripts/generate_conveyancing_report.py:440",
+      "input": "str address (full property address), str zone_epi (EPI name from portal layerintersect, may be empty string)",
+      "output": "Optional[str] lga_slug for dcp_setback_controls — marrickville, leichhardt, ashfield, or other onboarded LGA slug, or None",
+      "if_none": "Empty zone_epi returns None (LGA not identifiable). Inner West with unmapped boundary suburb returns None (PostGIS resolves later)."
     },
     {
-      "name": "_safe_call",
-      "file_line": "services/intelligence_brief.py:146",
-      "input": "Callable fn (zero-arg), str source_name for logging, ConfidenceLevel confidence_on_success for the result wrapper",
-      "output": "DataField — always returned, never raises. On success: value=fn() result with given confidence. On exception: value=None with not_available confidence and error reason.",
-      "if_none": "fn() returning None is a valid success (authoritative confidence preserved). fn() raising any Exception is caught and wrapped as not_available."
-    },
-    {
-      "name": "_sanitise",
-      "file_line": "services/intelligence_brief.py:495",
-      "input": "Optional[str] value from external API response (Planning Portal, ePlanning, Cadastre) that may contain HTML",
-      "output": "Optional[str] with all HTML tags stripped via regex, null bytes removed, and whitespace trimmed. None passthrough preserved.",
-      "if_none": "None input returns None (passthrough). Empty string returns empty string. Only-tags input returns empty string."
-    },
-    {
-      "name": "compute_confidence_summary",
-      "file_line": "services/intelligence_brief.py:504",
-      "input": "DevelopmentBrief or RenovationBrief instance — walks all nested fields recursively to find DataField instances",
-      "output": "ConfidenceSummary with integer counts per confidence level (authoritative, extracted, estimated, derived, not_available, stale) plus total",
-      "if_none": "Walks all fields recursively via Pydantic model_fields. Non-DataField attributes silently skipped. Empty brief results in total=0."
-    },
-    {
-      "name": "collect_gaps",
-      "file_line": "services/intelligence_brief.py:546",
-      "input": "DevelopmentBrief or RenovationBrief instance — walks all nested fields recursively to find not_available DataFields",
-      "output": "list[GapEntry] — one entry per DataField with confidence=not_available, including the dotted field path and reason string",
-      "if_none": "No not_available fields returns empty list. Recursively walks nested BaseModel instances and lists of BaseModels."
+      "name": "generate_conveyancing_pdf",
+      "file_line": "services/conveyancing.py:372",
+      "input": "ConveyancingPdfRequest with address, lat, lng, prop_id, report_id — heritage merge logic at lines 500-512 inside this function",
+      "output": "dict with report_id, pdf_url, address, lat, lng — heritage merge mutates controls dict before PDF generation",
+      "if_none": "Empty postgis hca/items lists cause no mutation. Missing heritage keys default to empty list via .get() or []. None in lists not possible (upstream deduplicates)."
     }
   ],
   "values": [
     {
-      "value": "strata_info.is_strata",
-      "read_at": "services/intelligence_brief.py:460",
-      "nullable": "no — defaults to False via dict.get() falsy check",
-      "guard_at": "services/intelligence_brief.py:460 — if not strata_info.get('is_strata')",
-      "if_missing": "Classified as NOT_STRATA — safe default (no development analysis skipped for non-strata)"
+      "value": "SUBURB_TO_FORMER_COUNCIL dict keys",
+      "read_at": "scripts/generate_conveyancing_report.py:237",
+      "nullable": "no — static dict, always populated at module load",
+      "guard_at": "scripts/generate_conveyancing_report.py:461 — sorted iteration with substring match",
+      "if_missing": "Boundary suburbs (glebe, alexandria, stanmore, newtown, camperdown, st peters, erskineville) removed — detect_former_council returns None, PostGIS resolves via _validate_former_council_postgis"
     },
     {
-      "value": "lot_area_m2",
-      "read_at": "services/intelligence_brief.py:468",
-      "nullable": "yes — can be None from VG API failure or rural lots without valuation",
-      "guard_at": "services/intelligence_brief.py:468 — if lot_area_m2 is not None",
-      "if_missing": "Classified as AMBIGUOUS — honest about uncertainty rather than wrong classification"
+      "value": "postgis_lga from lookup_lga result",
+      "read_at": "services/conveyancing.py:132",
+      "nullable": "yes — lookup_lga returns lga_name=None when spatial_overlays has no height layer for the location",
+      "guard_at": "services/conveyancing.py:137 — postgis_lga and postgis_lga != 'inner west' (falsy empty string prevents false override)",
+      "if_missing": "None or empty postgis_lga means PostGIS cannot validate — text match passes through unchanged, no override"
     },
     {
-      "value": "zone string from controls",
-      "read_at": "services/intelligence_brief.py:489",
-      "nullable": "yes — portal may not return zone for some lot types",
-      "guard_at": "services/intelligence_brief.py:489 — if not zone or not zone.strip()",
-      "if_missing": "Returns empty string — no crash, no misleading value, downstream code handles empty gracefully"
+      "value": "controls.heritage_items and controls.heritage_hca",
+      "read_at": "services/conveyancing.py:504-511",
+      "nullable": "yes — controls may not have these keys if portal returned no heritage data",
+      "guard_at": "services/conveyancing.py:504 — .get('heritage_hca') or [] and .get('heritage_items') or []",
+      "if_missing": "Missing keys default to empty list via or []. PostGIS data populates from scratch. No crash, no wrong merge."
     }
   ],
-  "queries": "N/A — schema-only stage, no database queries. Stage 2 will add query tracing.",
+  "queries": [
+    {
+      "purpose": "PostGIS LGA boundary lookup via spatial_overlays height layer to validate which LGA contains the property coordinates",
+      "file_line": "services/lga_lookup.py:89",
+      "where_clause": "WHERE layer_type = 'height' AND ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
+      "if_zero": "Returns lga_name=None, lga_slug=None — _validate_former_council_postgis falls back to text match",
+      "if_wrong": "Wrong LGA name would cause wrong override — mitigated by checking postgis_lga against known values ('inner west')"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Strata townhouse on 2140m2 parent lot classified as apartment instead of development-capable property",
-      "what_happens": "User sees RenovationBrief (no DCP controls, no granny flat analysis) instead of DevelopmentBrief with full development potential",
+      "scenario": "Stanmore property on the City of Sydney side gets wrong Marrickville DCP controls because text matching resolves 'stanmore' to 'marrickville'",
+      "what_happens": "User sees Marrickville precinct DCP setback controls for a property that is in City of Sydney — completely wrong planning controls applied",
       "mitigated": true,
-      "how": "services/intelligence_brief.py:468 — four-state StrataType with AMBIGUOUS for 400-2500m2. Spike finding (Carlton Cres) drove this design.",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestStrataClassification::test_ambiguous_mid_range"
+      "how": "scripts/generate_conveyancing_report.py:237 — 'stanmore' removed from SUBURB_TO_FORMER_COUNCIL. services/conveyancing.py:97 — PostGIS cross-validation confirms LGA boundary.",
+      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestSuburbMapping::test_stanmore_not_in_suburb_mapping"
     },
     {
-      "scenario": "Empty zone string from Planning Portal causes IndexError when code calls split on empty string and accesses index zero",
-      "what_happens": "500 error on any address where Planning Portal returns empty or missing zone field in the layerintersect response",
+      "scenario": "Glebe property mapped to Marrickville former council because 'glebe' was in SUBURB_TO_FORMER_COUNCIL — Glebe is entirely in City of Sydney",
+      "what_happens": "User sees Inner West DCP setback controls for a City of Sydney property — wrong controls, wrong council, wrong planning framework",
       "mitigated": true,
-      "how": "services/intelligence_brief.py:489-492 — _zone_prefix guards against None, empty, whitespace. Returns empty string safely.",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestZonePrefix::test_empty_string"
+      "how": "scripts/generate_conveyancing_report.py:237 — 'glebe' removed from SUBURB_TO_FORMER_COUNCIL. services/lga_lookup.py:42 — 'glebe' not in _IW_SUBURB_TO_FORMER either.",
+      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestSuburbMapping::test_glebe_not_in_suburb_mapping"
     },
     {
-      "scenario": "Non-numeric prop_id string like 'abc' or SQL injection attempt '1; DROP TABLE' causes unhandled ValueError from int() conversion",
-      "what_happens": "500 internal server error instead of 422 validation error — user sees generic crash instead of actionable message",
+      "scenario": "Portal heritage item like 'Item I123' reclassified as Heritage Conservation Area when PostGIS also finds HCA on the same lot",
+      "what_happens": "PDF report shows the individual heritage item as a Conservation Area — misleads user about heritage constraints and may trigger wrong compliance requirements",
       "mitigated": true,
-      "how": "services/intelligence_brief.py:185 — Pydantic Field(pattern=r'^\\d{1,12}$') rejects non-numeric prop_id at request validation time before any code runs",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestInputValidation::test_prop_id_non_numeric"
+      "how": "services/conveyancing.py:500-512 — heritage merge now keeps HCA and items separate. PostGIS HCA goes to heritage_hca only. Portal items never reclassified.",
+      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestHeritageMerge::test_heritage_item_not_reclassified_as_hca"
     },
     {
-      "scenario": "PostGIS database down — overlay query fails, response looks like 'no environmental constraints' because empty list returned silently",
-      "what_happens": "User sees clean environmental report when data was actually unavailable — dangerous false negative for flood/bushfire",
-      "mitigated": true,
-      "how": "services/intelligence_brief.py:146-167 — _safe_call catches exception, returns DataField(confidence=not_available). collect_gaps surfaces it. check_minimum_viable refuses brief if too many fields failed.",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestSafeCall::test_exception_caught"
+      "scenario": "PostGIS database unreachable during LGA cross-validation — wrong text-matched former council passes through to DCP lookup",
+      "what_happens": "Boundary suburb property gets wrong DCP controls because PostGIS fallback trusts the text match that was the source of the bug",
+      "mitigated": false,
+      "how": "services/conveyancing.py:126 — falls back to text_slug on DB error. For unambiguous suburbs this is correct. For removed boundary suburbs text_slug is None so fallback is safe.",
+      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestPostGISCrossValidation::test_postgis_db_failure_falls_back_to_text_slug"
     },
     {
-      "scenario": "XSS payload in DA description from ePlanning API like '<script>alert(1)</script>' rendered in frontend without escaping",
-      "what_happens": "Script execution in user's browser if frontend uses dangerouslySetInnerHTML on any string field from the brief",
+      "scenario": "Newtown property on the Inner West side gets no DCP data because 'newtown' was removed from text mapping and PostGIS returns undisambiguated 'inner_west' slug",
+      "what_happens": "User sees 'DCP data unavailable' when DCP data does exist for the Marrickville precinct — false negative, but safe direction (no wrong data served)",
       "mitigated": true,
-      "how": "services/intelligence_brief.py:495-501 — _sanitise strips HTML tags and null bytes from all external API strings before including in response",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestSanitise::test_html_tags_stripped"
-    },
-    {
-      "scenario": "Response includes undocumented field added by future code change that breaks the strict frontend TypeScript type contract",
-      "what_happens": "Frontend TypeScript compilation error or runtime crash on unexpected field in the JSON response",
-      "mitigated": true,
-      "how": "DevelopmentBrief and RenovationBrief use model_config = ConfigDict(extra='forbid'). Pydantic raises ValidationError on any extra field during serialisation.",
-      "repro": "pytest tests/test_intelligence_brief_schema.py::TestFixtureValidation::test_development_brief_forbids_extra_fields"
+      "how": "services/lga_lookup.py:42 — _IW_SUBURB_TO_FORMER retains boundary suburbs for PostGIS-validated path. lookup_lga disambiguates 'newtown' → 'marrickville' after confirming Inner West via geometry.",
+      "repro": "pytest tests/test_conveyancing_data_integrity.py::TestPostGISCrossValidation::test_postgis_resolves_unmapped_boundary_suburb"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — all verification is automated via 86 unit tests"
+    "manual_verify": "Yes — run conveyancing report for a Glebe address and a Stanmore address to confirm no wrong DCP data is served"
   }
 }
