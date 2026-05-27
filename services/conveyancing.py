@@ -78,7 +78,6 @@ from generate_conveyancing_report import (  # noqa: E402
     calc_development_headroom,
     detect_strata,
     detect_former_council,
-    get_nearby_das,
     get_shadow_risk,
     _council_from_zone_epi,
 )
@@ -86,6 +85,7 @@ from conveyancing_db import (  # noqa: E402
     fetch_dcp_setbacks,
     fetch_heritage_postgis,
     fetch_lep_clauses,
+    fetch_nearby_das,
     fetch_sepp_housing_standards,
     fetch_tax_thresholds,
 )
@@ -373,36 +373,61 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         council_name = _council_from_zone_epi(zone_epi)
         dcp_former_council = detect_former_council(req.address, zone_epi)
 
-    # ---------- PDF-exclusive data (always fetched fresh) ----------
+    # ---------- PDF-exclusive data (parallelised) ----------
+    # DAs, shadow, and DB queries are independent — run concurrently.
     das = []
-    if council_name:
-        try:
-            das = get_nearby_das(req.lat, req.lng, council_name=council_name)
-        except Exception as e:
-            logger.warning(f"DA fetch for PDF failed: {e}")
-
     lep_clauses = []
     dcp_setbacks_db = None
     postgis_heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
+    shadow_result = None
     db_url = os.getenv("DATABASE_URL")
-    if db_url:
+
+    def _fetch_db_data():
+        """DB queries: DAs (local), LEP clauses, DCP setbacks, heritage."""
+        _das = []
+        _lep = []
+        _dcp = None
+        _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
+        if not db_url:
+            return _das, _lep, _dcp, _heritage
         conn = None
         try:
             conn = psycopg2.connect(db_url)
             conn.autocommit = True
+            # Nearby DAs from local DB (replaces live ePlanning API)
+            _das = fetch_nearby_das(conn, req.lat, req.lng, council_name=council_name)
             key_sites_clause = controls.get("key_sites_clause")
             epi_name = controls.get("zone_epi", "")
             prop_zone = controls.get("zone", "")
             if key_sites_clause:
-                lep_clauses = fetch_lep_clauses(conn, key_sites_clause, epi_name)
+                _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
             if dcp_former_council:
-                dcp_setbacks_db = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
-            postgis_heritage = fetch_heritage_postgis(conn, req.lat, req.lng, lot_wkt=lot_wkt)
+                _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
+            _heritage = fetch_heritage_postgis(conn, req.lat, req.lng, lot_wkt=lot_wkt)
         except Exception as e:
-            logger.warning(f"DB pre-fetch failed: {e}")
+            logger.warning("DB pre-fetch failed: %s", e)
         finally:
             if conn:
                 conn.close()
+        return _das, _lep, _dcp, _heritage
+
+    def _fetch_shadow():
+        """Shadow risk — calls Railway geometric model (~17s)."""
+        if not resolved_prop_id:
+            return None
+        lep_height = None
+        raw_h = controls.get("height")
+        if raw_h:
+            m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
+            if m:
+                lep_height = float(m.group(1))
+        return get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        db_future = executor.submit(_fetch_db_data)
+        shadow_future = executor.submit(_fetch_shadow)
+        das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
+        shadow_result = shadow_future.result()
 
     # Merge PostGIS heritage
     if postgis_heritage["hca"]:
@@ -413,17 +438,6 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             controls["heritage_hca"] = postgis_heritage["hca"][:]
     elif postgis_heritage["items"] and not controls.get("heritage_items"):
         controls["heritage_items"] = postgis_heritage["items"][:]
-
-    # Shadow
-    shadow_result = None
-    if resolved_prop_id:
-        lep_height = None
-        raw_h = controls.get("height")
-        if raw_h:
-            m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
-            if m:
-                lep_height = float(m.group(1))
-        shadow_result = get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
 
     # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")

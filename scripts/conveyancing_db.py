@@ -20,9 +20,11 @@ Heritage value taxonomy (spatial_overlays.value for layer_type='heritage'):
 """
 from __future__ import annotations
 
+import json
 import logging
+import math
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 import psycopg2
@@ -582,6 +584,105 @@ def fetch_tax_thresholds(
         "premium_rate": float(row[5]) if row[5] else None,
         "source_url": row[6],
     }
+
+
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Haversine distance in metres between two lat/lng points."""
+    R = 6_371_000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def fetch_nearby_das(
+    conn,
+    lat: float,
+    lng: float,
+    council_name: Optional[str] = None,
+    radius_m: int = 200,
+    days: int = 365,
+    limit: int = 10,
+) -> list[dict]:
+    """Query development_applications table for nearby DAs.
+
+    Uses a lat/lon bounding box for indexed pre-filter, then Haversine for
+    precise distance. Returns shape-compatible output with get_nearby_das().
+
+    Never raises — returns empty list on any failure.
+    """
+    since = date.today() - timedelta(days=days)
+    delta = radius_m / 111_000 * 1.2  # degree delta with safety margin
+
+    try:
+        cur = conn.cursor()
+        sql = """
+            SELECT planning_portal_id, address, suburb, application_status,
+                   latitude, longitude, lodgement_date, determination_date,
+                   development_type, cost_of_development
+            FROM development_applications
+            WHERE latitude BETWEEN %s AND %s
+              AND longitude BETWEEN %s AND %s
+              AND (lodgement_date >= %s OR determination_date >= %s)
+        """
+        params: list = [
+            lat - delta, lat + delta,
+            lng - delta, lng + delta,
+            since, since,
+        ]
+        if council_name:
+            sql += " AND council_name = %s"
+            params.append(council_name)
+
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        logger.warning("fetch_nearby_das: %s", e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return []
+
+    nearby = []
+    for row in rows:
+        pid, addr, suburb, status, da_lat, da_lng, lodged, det, dev_type, cost = row
+        if da_lat is None or da_lng is None:
+            continue
+        dist = _haversine_m(lat, lng, float(da_lat), float(da_lng))
+        if dist <= radius_m:
+            # Parse development_type — stored as JSONB array or string
+            desc = ""
+            if dev_type:
+                if isinstance(dev_type, list):
+                    desc = ", ".join(
+                        ((dt.get("DevelopmentType") or "") if isinstance(dt, dict) else str(dt))
+                        for dt in dev_type
+                    )[:120]
+                elif isinstance(dev_type, str):
+                    try:
+                        parsed = json.loads(dev_type)
+                        if isinstance(parsed, list):
+                            desc = ", ".join(
+                                ((dt.get("DevelopmentType") or "") if isinstance(dt, dict) else str(dt))
+                                for dt in parsed
+                            )[:120]
+                    except (json.JSONDecodeError, TypeError):
+                        desc = dev_type[:120]
+
+            nearby.append({
+                "number": pid or "",
+                "address": addr or "",
+                "description": desc,
+                "status": status or "",
+                "lodged": str(lodged)[:10] if lodged else "",
+                "distance_m": round(dist),
+            })
+
+    nearby.sort(key=lambda x: x["distance_m"])
+    return nearby[:limit]
 
 
 def check_regulatory_freshness(conn) -> list[str]:
