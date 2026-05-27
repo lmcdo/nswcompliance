@@ -345,14 +345,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Run nearby apps + LGA aggregate stats in parallel (both non-fatal)
+  // Run nearby apps first, then use the DB's own council_name for LGA stats
+  // (Planning Portal returns "Inner West" but DA table stores "Inner West Council")
   let applications: Application[] = [];
   let lgaStats: Awaited<ReturnType<typeof queryLgaStats>> = null;
   try {
-    [applications, lgaStats] = await Promise.all([
-      queryNearbyApplications(lat, lng),
-      council_name ? queryLgaStats(council_name) : Promise.resolve(null),
-    ]);
+    applications = await queryNearbyApplications(lat, lng);
+    // Extract council_name from the DAs themselves — guaranteed to match the DB column
+    const dbCouncilName = applications.find(a => a.CouncilName)?.CouncilName ?? council_name;
+    if (dbCouncilName) {
+      council_name = dbCouncilName;
+      lgaStats = await queryLgaStats(dbCouncilName);
+    }
   } catch (err) {
     console.error('[threat-radar] DA query failed:', err);
     // Return empty results rather than 500
