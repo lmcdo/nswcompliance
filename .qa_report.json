@@ -1,26 +1,42 @@
 {
   "tier": "minor",
-  "justification": "Spike script + findings doc. No production code changes. Read-only queries against existing DB and APIs.",
-  "commit_hash": "pending",
-  "files": ["scripts/intelligence_brief_spike.py", "docs/intelligence-brief/spike-findings.md", "docs/intelligence-brief/spike-results.json"],
+  "justification": "Single UI-only change — surfacing already-available data fields (name, address) in contaminated land detail panel. No DB, API, or logic changes.",
+  "commit_hash": "7c100199",
+  "files": ["frontend-nextjs/components/compliance/LepControls.tsx"],
   "pre_impl": {
-    "existing_data": "All queries read existing tables (development_applications, spatial_overlays, dcp_setback_controls) and external APIs (Planning Portal, VG, Cadastre, Railway shadow)",
-    "assumption_mismatch": "N/A — read-only spike",
-    "new_vs_existing": "No writes. No schema changes."
+    "existing_data": "constraints.contaminatedLand.nearestSite.name and .address — already populated by nsw-planning-portal.ts:1275-1276",
+    "assumption_mismatch": "Fields may be undefined — guarded with && and ternary",
+    "new_vs_existing": "Display-only, no data mutation"
   },
+  "values": [
+    {
+      "value": "nearestSite.address",
+      "read_at": "LepControls.tsx:520",
+      "nullable": "yes",
+      "guard_at": "LepControls.tsx:519 — && conditional render",
+      "if_missing": "paragraph not rendered, no visual change"
+    },
+    {
+      "value": "nearestSite.name",
+      "read_at": "LepControls.tsx:521",
+      "nullable": "yes",
+      "guard_at": "LepControls.tsx:521 — ternary with empty string fallback",
+      "if_missing": "only address shown, no name prefix"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Planning Portal rate-limits spike requests (429)",
-      "what_happens": "Controls come back empty for affected addresses, rest of pipeline continues",
+      "scenario": "EPA API returns address but no name",
+      "what_happens": "Address shown without name prefix — correct behaviour",
       "mitigated": true,
-      "how": "3s delay between addresses. Script handles empty controls gracefully.",
-      "repro": "Run with sleep(0) between addresses"
+      "how": "LepControls.tsx:521 — ternary: name ? name + ', ' : ''",
+      "repro": "Query a property near a contaminated site with missing SiteName"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Results already captured in spike-results.json"
+    "manual_verify": "Check LEP tab for a property near contaminated land — verify name + address appear"
   }
 }
