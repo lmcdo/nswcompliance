@@ -1,26 +1,26 @@
 {
   "tier": "minor",
-  "justification": "Spike script + findings doc. No production code changes. Read-only queries against existing DB and APIs.",
-  "commit_hash": "pending",
-  "files": ["scripts/intelligence_brief_spike.py", "docs/intelligence-brief/spike-findings.md", "docs/intelligence-brief/spike-results.json"],
+  "justification": "New standalone developer tool script. No production code changes, no DB interaction, no UI changes. Calls external APIs (Anthropic, Brave) for analysis only.",
+  "commit_hash": "7c100199",
+  "files": ["scripts/idea_validator.py", "tests/test_idea_validator.py", "docs/idea-validations/.gitkeep"],
   "pre_impl": {
-    "existing_data": "All queries read existing tables (development_applications, spatial_overlays, dcp_setback_controls) and external APIs (Planning Portal, VG, Cadastre, Railway shadow)",
-    "assumption_mismatch": "N/A — read-only spike",
-    "new_vs_existing": "No writes. No schema changes."
+    "existing_data": "None — standalone tool, does not read or write any project data",
+    "assumption_mismatch": "N/A — no interaction with existing data",
+    "new_vs_existing": "New script only. No changes to existing files."
   },
   "break_it": [
     {
-      "scenario": "Planning Portal rate-limits spike requests (429)",
-      "what_happens": "Controls come back empty for affected addresses, rest of pipeline continues",
+      "scenario": "Claude returns malformed JSON (no closing brace, markdown in response)",
+      "what_happens": "json.loads raises ValueError, script crashes with traceback",
       "mitigated": true,
-      "how": "3s delay between addresses. Script handles empty controls gracefully.",
-      "repro": "Run with sleep(0) between addresses"
+      "how": "idea_validator.py:274 — _extract_json strips markdown fences before parsing",
+      "repro": "Mock Claude response with ```json prefix and verify extraction"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No",
+    "secrets": "No — uses existing ANTHROPIC_API_KEY from .env, optional BRAVE_API_KEY",
     "other_repo": "No",
-    "manual_verify": "Results already captured in spike-results.json"
+    "manual_verify": "Run: python scripts/idea_validator.py 'test idea' (requires ANTHROPIC_API_KEY)"
   }
 }
