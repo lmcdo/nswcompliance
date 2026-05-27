@@ -231,7 +231,7 @@ def build_rows(features: list[dict]) -> list[tuple]:
             attrs.get("planlabel"),
             attrs.get("plannumber"),
             attrs.get("planlotarea"),
-            float(shape_area),
+            float(shape_area) if shape_area is not None else 0.0,
             attrs.get("urbanity"),
             attrs.get("stratumlevel"),
             attrs.get("hasstratum"),
@@ -352,7 +352,7 @@ def ingest(
     while offset < effective_count:
         page_start = time.time()
         data = fetch_page(where, offset, spatial_params)
-        features = data.get("features", [])
+        features = data.get("features") or []
 
         if not features:
             if offset + PAGE_SIZE < effective_count:

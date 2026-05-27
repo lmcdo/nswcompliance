@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One-line fix: return tuple instead of bare int from early exit path. No logic change, no new code paths.",
-  "commit_hash": "f10bcffa",
+  "commit_hash": "42c3a3c4",
   "files": ["scripts/ingest_cadastre.py"],
   "pre_impl": {
     "existing_data": "ingest() returns (int, conn) tuple; early exit at line 342 returned bare 0, causing TypeError in main()",
