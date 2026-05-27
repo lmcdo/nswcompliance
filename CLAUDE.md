@@ -107,6 +107,14 @@ git checkout -b feat/<short-description>
 - Custom jsdom env (`jest.jsdom-env.js`) preserves Node 20+ Web API globals (Response, fetch, etc.)
 - Jest setup (`jest.setup.js`) mocks next/router, next/navigation, window.matchMedia, localStorage
 
+## QA Workflow — Three-Phase Testing (NON-NEGOTIABLE for Critical tier)
+For Critical and Standard tier changes, use the three-phase QA workflow:
+1. `/qa-write` — Write code with defensive patterns (null boundaries, three-state semantics, error isolation). No tests yet.
+2. `/qa-break` — Re-read code adversarially. Find silent wrong results (not crashes). Write break-it scenarios, then tests.
+3. `/qa-verify` — Mutation analysis on tests (would `return []` still pass?). Delete WEAK tests, fill coverage gaps.
+
+The phase separation forces a mode switch from "prove it works" to "prove it's broken" — reduces confirmation bias from writing code and tests in the same mental pass.
+
 ## Code Standards
 - Python: PEP8, type hints, black, pydantic, Google-style docstrings
 - TypeScript: for Next.js frontend
