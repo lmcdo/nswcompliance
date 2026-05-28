@@ -37,7 +37,7 @@ const TIME_SAVINGS = [
     task: 'DCP controls extraction',
     before: '30–60 min',
     after: '10 seconds',
-    description: 'Setbacks, parking rates, landscaping, site coverage — structured with clause citations. 29 LGAs, 999+ numeric rows.',
+    description: 'Setbacks, parking rates, landscaping, site coverage — numeric fields with clause citations. 29 LGAs, 999+ rows. Full structured provisions for 7 councils.',
   },
   {
     task: 'SEPP applicability check',
@@ -197,7 +197,7 @@ export default function PlannersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { stat: '128', label: 'NSW councils', sub: 'Zone + LEP controls' },
-            { stat: '29', label: 'LGAs', sub: 'Structured DCP controls' },
+            { stat: '29', label: 'LGAs', sub: 'DCP numeric controls' },
             { stat: '47,818', label: 'Provisions', sub: 'Extracted & classified' },
             { stat: '71', label: 'LGAs', sub: 'Flood depth data' },
           ].map(({ stat, label, sub }) => (

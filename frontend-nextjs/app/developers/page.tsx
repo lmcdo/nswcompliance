@@ -7,7 +7,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 export const metadata: Metadata = {
   title: 'Property Data API — Structured NSW Planning Controls | PlotDetect',
   description:
-    'API access to structured DCP controls, LEP provisions, zoning data, flood risk, and planning constraints for every NSW address. Built for conveyancing platforms, PropTech, and property analytics.',
+    'API access to DCP numeric controls, LEP provisions, zoning data, flood risk, and planning constraints for every NSW address. Built for conveyancing platforms, PropTech, and property analytics.',
   keywords: [
     'property data api',
     'nsw planning data api',
@@ -57,8 +57,8 @@ const DATA_POINTS = [
     detail: 'FSR, height of buildings, minimum lot size, heritage listings, acid sulfate soil class',
   },
   {
-    label: 'DCP structured controls',
-    detail: 'Setbacks, parking rates, landscaping, site coverage, building separation — 999+ rows across 29 LGAs',
+    label: 'DCP numeric controls',
+    detail: 'Setbacks, parking rates, landscaping, site coverage, building separation — 999+ rows across 29 LGAs. Full structured provisions for 7 councils.',
   },
   {
     label: 'SEPP requirements',
@@ -244,7 +244,7 @@ export default function DevelopersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { stat: '128', label: 'NSW councils', sub: 'Zone + LEP controls' },
-            { stat: '29', label: 'LGAs', sub: 'Structured DCP controls' },
+            { stat: '29', label: 'LGAs', sub: 'DCP numeric controls' },
             { stat: '71', label: 'LGAs', sub: 'Flood depth modelling' },
             { stat: '47,818', label: 'Provisions', sub: 'Extracted & classified' },
           ].map(({ stat, label, sub }) => (
