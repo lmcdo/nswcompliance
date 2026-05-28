@@ -15,7 +15,8 @@ import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
-import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
+// ADG Building Separation Table hidden — setback_rules table empty (never populated with ADG 3F-1 data)
+// import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
@@ -1192,10 +1193,8 @@ export function ComplianceDashboard({
           </CardHeader>
           {!collapsedSections.adg && (
             <CardContent className="pt-4">
-            <ADGBuildingSeparationTable
-              buildingHeight={buildingHeight}
-              developmentType={developmentType}
-            />
+            {/* ADG Building Separation Table hidden — setback_rules table not populated.
+               Re-enable once ADG 3F-1 data is ingested into setback_rules. */}
             </CardContent>
           )}
         </Card>
