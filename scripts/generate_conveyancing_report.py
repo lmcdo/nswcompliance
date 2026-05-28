@@ -237,10 +237,15 @@ ZONE_EPI_TO_LGA_SLUG: dict[str, str] = {
 SUBURB_TO_FORMER_COUNCIL: dict[str, str] = {
     # Marrickville precincts
     "marrickville": "marrickville", "sydenham": "marrickville", "tempe": "marrickville",
-    "dulwich hill": "marrickville", "st peters": "marrickville", "newtown": "marrickville",
-    "erskineville": "marrickville", "alexandria": "marrickville", "enmore": "marrickville",
-    "stanmore": "marrickville", "petersham": "marrickville", "lewisham": "marrickville",
-    "camperdown": "marrickville", "glebe": "marrickville",
+    "dulwich hill": "marrickville", "enmore": "marrickville",
+    "petersham": "marrickville", "lewisham": "marrickville",
+    # Boundary suburbs (partially IW, partially City of Sydney) — removed from
+    # text matching to prevent misclassification.  PostGIS cross-validation in
+    # conveyancing.py resolves these via geometry instead.
+    # Removed: glebe (City of Sydney), alexandria (City of Sydney),
+    #          erskineville (City of Sydney), camperdown (split IW / CoS),
+    #          stanmore (split IW / CoS), newtown (split IW / CoS),
+    #          st peters (split IW / CoS)
     # Leichhardt precincts
     "leichhardt": "leichhardt", "annandale": "leichhardt", "balmain": "leichhardt",
     "rozelle": "leichhardt", "lilyfield": "leichhardt", "forest lodge": "leichhardt",

@@ -9,7 +9,8 @@ Records: ~3.35M lots statewide
 
 API notes:
   - Returns Esri JSON (rings), NOT GeoJSON (f=geojson returns 503)
-  - OBJECTID-based filtering doesn't work; use where=1=1 + offset pagination
+  - Uses objectid cursor pagination (WHERE objectid > last_id ORDER BY objectid)
+  - Offset pagination breaks at high offsets (empty pages) — do NOT use resultOffset
   - outSR=4326 reprojects from native EPSG:3857 to WGS84
   - Max page size: 2,000
 
@@ -25,6 +26,9 @@ Usage:
 
     # Ingest all NSW (~3.35M lots, ~20-30 min)
     python scripts/ingest_cadastre.py --scope all
+
+    # Resume interrupted ingest (picks up from max objectid in DB)
+    python scripts/ingest_cadastre.py --scope all --resume
 
     # Incremental sync (lots modified since last run)
     python scripts/ingest_cadastre.py --incremental
@@ -85,16 +89,19 @@ def get_count(where: str = "1=1", spatial_params: Optional[dict] = None) -> int:
 
 def fetch_page(
     where: str,
-    offset: int,
     spatial_params: Optional[dict] = None,
 ) -> dict:
-    """Fetch a page of Esri JSON features with retry."""
+    """Fetch a page of Esri JSON features with retry.
+
+    Uses objectid cursor pagination via WHERE clause (not resultOffset,
+    which breaks at high offsets on Esri FeatureServer).
+    """
     params: dict = {
         "where": where,
         "outFields": OUT_FIELDS,
         "returnGeometry": "true",
         "outSR": "4326",
-        "resultOffset": offset,
+        "orderByFields": "objectid ASC",
         "resultRecordCount": PAGE_SIZE,
         "f": "json",
     }
@@ -125,7 +132,7 @@ def fetch_page(
             return {"features": []}
         return data
 
-    print(f"    [skip] failed after 3 retries — offset={offset}")
+    print(f"    [skip] failed after 3 retries — where={where}")
     return {"features": []}
 
 
@@ -231,7 +238,7 @@ def build_rows(features: list[dict]) -> list[tuple]:
             attrs.get("planlabel"),
             attrs.get("plannumber"),
             attrs.get("planlotarea"),
-            float(shape_area),
+            float(shape_area) if shape_area is not None else 0.0,
             attrs.get("urbanity"),
             attrs.get("stratumlevel"),
             attrs.get("hasstratum"),
@@ -324,6 +331,15 @@ def reconnect_db(db_url: str):
     return conn
 
 
+def get_max_objectid(conn) -> int:
+    """Get max objectid already in DB for resume support."""
+    cur = conn.cursor()
+    cur.execute("SELECT COALESCE(MAX(objectid), 0) FROM nsw_cadastre_lots")
+    val = cur.fetchone()[0]
+    cur.close()
+    return val
+
+
 def ingest(
     where: str,
     label: str,
@@ -332,34 +348,67 @@ def ingest(
     db_url: Optional[str] = None,
     limit: Optional[int] = None,
     spatial_params: Optional[dict] = None,
+    resume: bool = False,
 ) -> int:
-    """Paginate through FeatureServer and upsert into DB."""
+    """Paginate through FeatureServer and upsert into DB.
+
+    Uses objectid cursor pagination: each page fetches rows WHERE objectid > last_id
+    ORDER BY objectid ASC. This avoids the Esri empty-page bug at high offsets.
+    """
     total_count = get_count(where, spatial_params)
     effective_count = min(total_count, limit) if limit else total_count
     print(f"\n=== Ingesting {label}: {total_count:,} lots{f' (limit: {limit:,})' if limit else ''} ===")
     if total_count == 0:
         print("  No lots to ingest.")
-        return 0
+        return 0, conn
 
     expected_pages = (effective_count + PAGE_SIZE - 1) // PAGE_SIZE
+
+    # Resume from max objectid in DB
+    last_objectid = 0
+    if resume and conn:
+        last_objectid = get_max_objectid(conn)
+        if last_objectid > 0:
+            remaining = get_count(f"({where}) AND objectid > {last_objectid}", spatial_params)
+            print(f"  Resuming from objectid > {last_objectid:,} ({remaining:,} remaining)")
+            expected_pages = (remaining + PAGE_SIZE - 1) // PAGE_SIZE
+            effective_count = remaining
+
     print(f"  Pages: ~{expected_pages} (at {PAGE_SIZE}/page)")
 
     cur = conn.cursor() if conn else None
-    offset = 0
     ingested = 0
+    page_num = 0
+    empty_streak = 0
     start_time = time.time()
 
-    while offset < effective_count:
+    while True:
+        if limit and ingested >= limit:
+            break
+
         page_start = time.time()
-        data = fetch_page(where, offset, spatial_params)
-        features = data.get("features", [])
+        page_num += 1
+
+        # Build cursor WHERE: base condition + objectid > last seen
+        cursor_where = f"({where}) AND objectid > {last_objectid}"
+        data = fetch_page(cursor_where, spatial_params)
+        features = data.get("features") or []
 
         if not features:
-            if offset + PAGE_SIZE < effective_count:
-                print(f"    [warn] empty page at offset={offset} — skipping")
-                offset += PAGE_SIZE
-                continue
-            break
+            empty_streak += 1
+            if empty_streak >= 3:
+                print(f"    [info] 3 consecutive empty pages — finished")
+                break
+            continue
+
+        empty_streak = 0
+
+        # Track max objectid for next page cursor
+        max_oid = max(
+            (f.get("attributes") or {}).get("objectid") or 0 for f in features
+        )
+        if max_oid > last_objectid:
+            last_objectid = max_oid
 
         rows = build_rows(features)
         if rows and cur and not dry_run:
@@ -384,20 +433,17 @@ def ingest(
         ingested += len(rows)
         elapsed = time.time() - start_time
         page_time = time.time() - page_start
-        pct = min(100.0, (offset + len(features)) / effective_count * 100)
 
         rate = ingested / elapsed if elapsed > 0 else 0
-        remaining = effective_count - (offset + len(features))
-        eta_secs = remaining / rate if rate > 0 else 0
+        remaining_est = max(0, effective_count - ingested)
+        eta_secs = remaining_est / rate if rate > 0 else 0
         eta_str = f"{eta_secs / 60:.1f}min" if eta_secs > 60 else f"{eta_secs:.0f}s"
 
         print(
-            f"    page {offset // PAGE_SIZE + 1}/{expected_pages} "
-            f"({pct:.1f}%) — {len(rows)} rows "
-            f"({page_time:.1f}s) — total: {ingested:,} — ETA: {eta_str}"
+            f"    page {page_num}/{expected_pages} "
+            f"— {len(rows)} rows "
+            f"({page_time:.1f}s) — total: {ingested:,} — oid>{last_objectid:,} — ETA: {eta_str}"
         )
-
-        offset += PAGE_SIZE
 
     elapsed = time.time() - start_time
     print(f"\n  Done: {ingested:,} lots ingested in {elapsed:.1f}s")
@@ -451,6 +497,7 @@ def main():
         help="'sydney' (~1.38M lots) or 'all' (~3.35M lots)"
     )
     parser.add_argument("--incremental", action="store_true", help="Sync lots modified since last run")
+    parser.add_argument("--resume", action="store_true", help="Resume from max objectid in DB")
     parser.add_argument("--limit", type=int, help="Max lots to ingest (for testing)")
     args = parser.parse_args()
 
@@ -515,6 +562,7 @@ def main():
             db_url=db_url,
             limit=args.limit,
             spatial_params=spatial_params,
+            resume=args.resume,
         )
 
     finally:

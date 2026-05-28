@@ -243,7 +243,7 @@ async function queryLgaStats(councilName: string) {
       top_development_types: topDevTypes,
       period_months: 12,
     };
-  } catch (err) {
+  } catch (err) { // qa-ignore silent-failure — intentional: LGA stats are supplementary, null hides the panel
     console.error('[threat-radar] LGA stats query failed:', err);
     return null;
   }
@@ -345,17 +345,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Run nearby apps + LGA aggregate stats in parallel (both non-fatal)
+  // Run nearby apps first, then use the DB's own council_name for LGA stats
+  // (Planning Portal returns "Inner West" but DA table stores "Inner West Council")
   let applications: Application[] = [];
   let lgaStats: Awaited<ReturnType<typeof queryLgaStats>> = null;
   try {
-    [applications, lgaStats] = await Promise.all([
-      queryNearbyApplications(lat, lng),
-      council_name ? queryLgaStats(council_name) : Promise.resolve(null),
-    ]);
-  } catch (err) {
+    applications = await queryNearbyApplications(lat, lng);
+    // Extract council_name from the DAs themselves — guaranteed to match the DB column
+    const dbCouncilName = applications.find(a => a.CouncilName)?.CouncilName ?? council_name;
+    if (dbCouncilName) {
+      council_name = dbCouncilName;
+      lgaStats = await queryLgaStats(dbCouncilName);
+    }
+  } catch (err) { // qa-ignore silent-failure — intentional: return empty results rather than 500, UI shows "No applications found"
     console.error('[threat-radar] DA query failed:', err);
-    // Return empty results rather than 500
   }
   const run_date = new Date().toISOString().slice(0, 10);
   const report_token = signReport(lat, lng, address, run_date);

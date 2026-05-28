@@ -22,10 +22,6 @@ const ShadowMap = dynamic(
   { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded" /> }
 );
 
-const AerialTile = dynamic(
-  () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
-  { ssr: false, loading: () => <div className="w-full bg-gray-100 animate-pulse" style={{ height: 220 }} /> }
-);
 
 interface GeoJSONGeometry {
   type: string;
@@ -645,12 +641,6 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         Worst-case shadow from a maximum-height building on the northern boundary. Geometric model — not satellite imagery.
       </p>
 
-      {/* Aerial view */}
-      {o.lot_polygon && o.lot_polygon.type === 'Polygon' && (
-        <div className="border-t border-gray-100" style={{ height: 220 }}>
-          <AerialTile lat={result.lat} lng={result.lng} lotPolygon={o.lot_polygon as { type: 'Polygon'; coordinates: number[][][] }} />
-        </div>
-      )}
 
       {/* ADG zone note */}
       {isNonResidential && (
