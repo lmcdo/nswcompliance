@@ -42,7 +42,7 @@ function assessSubdivision(data: {
   const { zone_code, lot_area_sqm, min_lot_size_sqm, permitted } = data;
 
   // Industrial/environmental zones
-  if (zone_code.startsWith('IN') || zone_code.startsWith('E') || zone_code.startsWith('W') || zone_code.startsWith('C1') || zone_code === 'SP1' || zone_code === 'SP2') {
+  if (typeof zone_code === 'string' && (zone_code.startsWith('IN') || zone_code.startsWith('E') || zone_code.startsWith('W') || zone_code.startsWith('C1') || zone_code === 'SP1' || zone_code === 'SP2')) {
     return { likely: 'no', reason: `Zone ${zone_code} does not typically permit residential subdivision.` };
   }
 
@@ -89,34 +89,60 @@ export default function SubdivisionCheckPage() {
     try {
       const res = await fetch(`/api/property?address=${encodeURIComponent(address)}`);
       if (!res.ok) throw new Error('Could not look up that address');
-      const data = await res.json();
+      const json = await res.json();
+      const prop = json.data ?? json;
+      const constraints = prop.constraints ?? {};
 
-      const lepRes = await fetch(`/api/lep/permissibility?address=${encodeURIComponent(address)}`);
-      const lepData = lepRes.ok ? await lepRes.json() : null;
+      // Extract zone code from zoneDescription
+      const zoneDesc: string = prop.zoneDescription ?? '';
+      const zoneCodeMatch = zoneDesc.match(/^([A-Z][A-Z0-9]*(?:\.\d+)?)\b/);
+      const zone_code = zoneCodeMatch?.[1] ?? zoneDesc.split(' ')[0] ?? 'Unknown';
+      const zone_name = zoneCodeMatch ? zoneDesc.slice(zoneCodeMatch[0].length).trim() : zoneDesc;
+      const lga = constraints.lga ?? '';
 
-      const permitted = lepData?.permitted ?? data.permitted_uses ?? [];
-      const zone_code = data.zone_code ?? data.zone ?? 'Unknown';
-      const lot_area_sqm = data.lot_area_sqm ?? data.lot_area ?? null;
-      const min_lot_size_sqm = data.min_lot_size_sqm ?? data.min_lot_size ?? null;
+      // Extract lot area from propertyArea string (e.g. "450 m²")
+      const areaMatch = (prop.propertyArea ?? '').match(/([\d.]+)/);
+      const lot_area_sqm = areaMatch ? parseFloat(areaMatch[1]) : null;
+      const min_lot_size_sqm = constraints.minLotSize ?? null;
+
+      // Fetch permissibility for dwelling type check
+      let permitted: string[] = [];
+      if (zone_code !== 'Unknown' && lga) {
+        try {
+          const lepRes = await fetch(
+            `/api/lep/permissibility?zone=${encodeURIComponent(zone_code)}&lga=${encodeURIComponent(lga)}`
+          );
+          if (lepRes.ok) {
+            const lepData = await lepRes.json();
+            if (lepData.covered && lepData.entries) {
+              permitted = lepData.entries
+                .filter((e: { permissibility: string }) => e.permissibility === 'Permitted')
+                .map((e: { development_type: string }) => e.development_type);
+            }
+          }
+        } catch {
+          // Non-fatal
+        }
+      }
 
       const assessment = assessSubdivision({ zone_code, lot_area_sqm, min_lot_size_sqm, permitted });
 
       setResult({
-        address: data.address ?? address,
-        lga: data.lga ?? '',
+        address: prop.address ?? address,
+        lga,
         zone_code,
-        zone_name: data.zone_name ?? data.zone_full ?? '',
+        zone_name,
         lot_area_sqm,
         min_lot_size_sqm,
-        fsr: data.fsr ?? null,
-        height_m: data.height_m ?? data.height ?? null,
+        fsr: constraints.maxFsr ?? null,
+        height_m: constraints.maxHeight ?? null,
         permitted_dwelling_types: permitted.filter((u: string) =>
           ['dwelling', 'dual', 'multi', 'secondary', 'semi', 'attached', 'boarding', 'group'].some(k => u.toLowerCase().includes(k))
         ),
         subdivision_likely: assessment.likely,
         reason: assessment.reason,
-        heritage_item: data.heritage_item ?? false,
-        heritage_conservation_area: data.heritage_conservation_area ?? data.hca ?? false,
+        heritage_item: prop.heritage?.isHeritage ?? false,
+        heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');

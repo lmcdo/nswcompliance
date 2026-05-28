@@ -44,24 +44,53 @@ export default function ZoningCheckPage() {
     try {
       const res = await fetch(`/api/property?address=${encodeURIComponent(address)}`);
       if (!res.ok) throw new Error('Could not look up that address');
-      const data = await res.json();
+      const json = await res.json();
+      const prop = json.data ?? json;
+      const constraints = prop.constraints ?? {};
 
-      // Also fetch LEP controls
-      const lepRes = await fetch(`/api/lep/permissibility?address=${encodeURIComponent(address)}`);
-      const lepData = lepRes.ok ? await lepRes.json() : null;
+      // Extract zone code from zoneDescription (e.g. "R2 Low Density Residential" → "R2")
+      const zoneDesc: string = prop.zoneDescription ?? '';
+      const zoneCodeMatch = zoneDesc.match(/^([A-Z][A-Z0-9]*(?:\.\d+)?)\b/);
+      const zone_code = zoneCodeMatch?.[1] ?? zoneDesc.split(' ')[0] ?? 'Unknown';
+      const zone_name = zoneCodeMatch ? zoneDesc.slice(zoneCodeMatch[0].length).trim() : zoneDesc;
+      const lga = constraints.lga ?? '';
+
+      // Fetch permissibility using zone + lga params (the endpoint requires both)
+      let permitted: string[] = [];
+      let prohibited: string[] = [];
+      if (zone_code !== 'Unknown' && lga) {
+        try {
+          const lepRes = await fetch(
+            `/api/lep/permissibility?zone=${encodeURIComponent(zone_code)}&lga=${encodeURIComponent(lga)}`
+          );
+          if (lepRes.ok) {
+            const lepData = await lepRes.json();
+            if (lepData.covered && lepData.entries) {
+              permitted = lepData.entries
+                .filter((e: { permissibility: string }) => e.permissibility === 'Permitted')
+                .map((e: { development_type: string }) => e.development_type);
+              prohibited = lepData.entries
+                .filter((e: { permissibility: string }) => e.permissibility === 'Prohibited')
+                .map((e: { development_type: string }) => e.development_type);
+            }
+          }
+        } catch {
+          // Non-fatal — permissibility section just won't render
+        }
+      }
 
       setResult({
-        address: data.address ?? address,
-        zone_code: data.zone_code ?? data.zone ?? 'Unknown',
-        zone_name: data.zone_name ?? data.zone_full ?? '',
-        lga: data.lga ?? '',
-        permitted: lepData?.permitted ?? data.permitted_uses ?? [],
-        prohibited: lepData?.prohibited ?? data.prohibited_uses ?? [],
-        fsr: data.fsr ?? null,
-        height_m: data.height_m ?? data.height ?? null,
-        min_lot_size_sqm: data.min_lot_size_sqm ?? data.min_lot_size ?? null,
-        heritage_item: data.heritage_item ?? false,
-        heritage_conservation_area: data.heritage_conservation_area ?? data.hca ?? false,
+        address: prop.address ?? address,
+        zone_code,
+        zone_name,
+        lga,
+        permitted,
+        prohibited,
+        fsr: constraints.maxFsr ?? null,
+        height_m: constraints.maxHeight ?? null,
+        min_lot_size_sqm: constraints.minLotSize ?? null,
+        heritage_item: prop.heritage?.isHeritage ?? false,
+        heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
