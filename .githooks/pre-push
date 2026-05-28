@@ -37,8 +37,9 @@ echo ""
 
 echo "=== [3/4] Validating QA report ==="
 if [ -f .qa_report.json ]; then
-  # Auto-detect changed files vs main so qa_gate can verify diff coverage
-  DIFF_FILES=$(git diff --name-only origin/main...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
+  # Auto-detect changed files vs merge-base (works correctly in worktrees where origin/main may have diverged)
+  MERGE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
+  DIFF_FILES=$(git diff --name-only "$MERGE_BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' 2>/dev/null)
   QA_ARGS=".qa_report.json"
   if [ -n "$DIFF_FILES" ]; then
     QA_ARGS="$QA_ARGS --diff-files $DIFF_FILES"
@@ -62,7 +63,8 @@ echo ""
 echo "=== [4/4] Scanning for liability language ==="
 
 # Scan only NEW lines in user-facing files (not existing reviewed code)
-python scripts/liability_language_check.py --diff-base origin/main 2>&1
+LANG_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
+python scripts/liability_language_check.py --diff-base "$LANG_BASE" 2>&1
 LANG_RESULT=$?
 if [ $LANG_RESULT -ne 0 ]; then
   echo ""
