@@ -1,4 +1,15 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Property Intelligence Reports — NSW',
+  description: 'Eight data-driven property intelligence tools for NSW. Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, conveyancing disclosure, and development monitoring.',
+  openGraph: {
+    title: 'NSW Property Intelligence Reports — PlotDetect',
+    description: 'Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and conveyancing disclosure for any NSW address.',
+    url: '/reports',
+  },
+};
 
 const TOOLS = [
   {
