@@ -9,6 +9,7 @@ import { PRE_DA_HISTORY_LGAS } from '@/lib/lga-data/pre-da-history-lgas'
 import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
+import { ARTICLES } from '@/lib/blog-articles'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://plotdetect.com.au'
@@ -50,20 +51,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/developers`,      priority: 0.8,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/tools/zoning-check`,      priority: 0.9,  changeFrequency: 'weekly' as const, lastModified: now },
     { url: `${base}/tools/subdivision-check`, priority: 0.9,  changeFrequency: 'weekly' as const, lastModified: now },
+    { url: `${base}/reports`,          priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/reports/flood`,   priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/reports/bushfire`, priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/reports/granny-flat`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: now },
+    { url: `${base}/reports/shadow`,  priority: 0.85, changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/reports/solar-yield`, priority: 0.85, changeFrequency: 'weekly' as const, lastModified: now },
+    { url: `${base}/reports/threat-radar`, priority: 0.85, changeFrequency: 'weekly' as const, lastModified: now },
+    { url: `${base}/reports/pre-da-history`, priority: 0.8, changeFrequency: 'weekly' as const, lastModified: now },
+    { url: `${base}/check`,           priority: 0.85, changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/dcp-browse`,      priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/user-guide`,      priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/quick-guide`,     priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog`,            priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
     { url: `${base}/blog/granny-flat`, priority: 0.8,  changeFrequency: 'weekly' as const,  lastModified: now },
-    { url: `${base}/blog/aasb-s2-property-climate-data`,        priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/apra-cpg-229-property-assessment`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/climate-risk-data-provider-australia`,  priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/uninsurable-property-climate-risk`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/is-my-house-in-a-flood-zone-nsw`,      priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/nsw-planning-portal-gaps`,             priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/cdc-vs-da-which-approval-pathway`,     priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/setback-requirements-nsw`,             priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/development-control-plans-explained`,  priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/building-height-limits-nsw`,           priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
-    { url: `${base}/blog/site-analysis-report-explained`,       priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
   ]
+
+  const blogArticlePages = ARTICLES.map(article => ({
+    url: `${base}/blog/${article.slug}`,
+    lastModified: new Date(article.date),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }))
 
   const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({
     url: `${base}/granny-flat/${lga.slug}`,
@@ -126,6 +135,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/browse`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.7 },
     ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages,
     ...shadowPages, ...bushfirePages, ...preDaHistoryPages, ...planningControlsPages,
-    ...conveyancingPages, ...grannyFlatBlogPages,
+    ...conveyancingPages, ...blogArticlePages, ...grannyFlatBlogPages,
   ]
 }

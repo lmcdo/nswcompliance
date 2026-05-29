@@ -11,12 +11,30 @@ import { PostHogProvider } from '@/components/providers/PostHogProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'PlotDetect — NSW Property Intelligence',
+  metadataBase: new URL('https://plotdetect.com.au'),
+  title: {
+    default: 'PlotDetect — NSW Property Intelligence',
+    template: '%s | PlotDetect',
+  },
   description: 'Property hazard checks, planning controls, climate risk scoring, and compliance verification for any NSW address. Flood depth, bushfire BAL, DCP provisions, and satellite analysis from live government data.',
   keywords: 'NSW property intelligence, flood risk NSW, bushfire BAL, climate risk, planning controls, DCP provisions, granny flat eligibility, property compliance',
   icons: {
     icon: '/plotdetect-logo.png',
     apple: '/plotdetect-logo.png',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'PlotDetect',
+    locale: 'en_AU',
+    images: [{ url: '/plotdetect-logo.png', width: 512, height: 512, alt: 'PlotDetect' }],
+  },
+  twitter: {
+    card: 'summary',
+  },
+  alternates: {
+    types: {
+      'application/rss+xml': '/blog/feed.xml',
+    },
   },
 };
 
@@ -34,6 +52,24 @@ export default function RootLayout({
  return (
  <html lang="en">
  <body className={inter.className}>
+ <script
+   type="application/ld+json"
+   dangerouslySetInnerHTML={{
+     __html: JSON.stringify({
+       '@context': 'https://schema.org',
+       '@type': 'Organization',
+       name: 'PlotDetect',
+       url: 'https://plotdetect.com.au',
+       logo: 'https://plotdetect.com.au/plotdetect-logo.png',
+       description: 'NSW property intelligence platform. Planning controls, flood risk, bushfire screening, climate risk, and compliance verification from live government data.',
+       areaServed: {
+         '@type': 'State',
+         name: 'New South Wales',
+         containedInPlace: { '@type': 'Country', name: 'Australia' },
+       },
+     }),
+   }}
+ />
  <PostHogProvider>
  <FeatureFlagProvider>
  <div id="root">
