@@ -635,8 +635,8 @@ Threshold: 30% of Layer A fields = approximately 5+ core fields failed (zone, he
 
 | Stage | Days | Cumulative | Deliverable | Silent Failure Fixes Included |
 |---|---|---|---|---|
-| 1. Contract + Schema | 1.5 | 1.5 | Schema reviewed, fixtures validated | — |
-| 2. Orchestrator | 3.5 | 5 | `/pipeline/intelligence-brief` returns full planning brief (free tier) | Fix A (LGA PostGIS validation) |
+| 1. Contract + Schema ✅ 2026-05-27 | 1.5 | 1.5 | Schema reviewed, fixtures validated (PR #386) | — |
+| 2. Orchestrator 🔧 in progress | 3.5 | 5 | `/pipeline/intelligence-brief` returns full planning brief (free tier) | Fix A (LGA PostGIS validation) |
 | 3. Compound Constraints | 2.5 | 7.5 | Multi-source insights + confidence + gap disclosure | Fix B (zone dev_type advisory) + Fix C (shadow temporal + DA cross-ref) |
 | 4. Satellite + Climate v2 | 10 | 17.5 | Paid tier with satellite evidence + SLR, UHI, ARR, FIRMS, vegetation | Bushfire bbox fix (Stage 2 prep) |
 | 5. LLM Synthesis | 3 | 20.5 | Natural language narrative (paid tier) | — |

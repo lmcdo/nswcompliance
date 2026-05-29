@@ -1,95 +1,145 @@
 {
-  "tier": "standard",
-  "justification": "Threat radar LGA stats showing 0 due to council_name mismatch between Planning Portal and DA table. Shadow map zoom fix and redundant aerial tile removal.",
-  "commit_hash": "ac079ff9",
+  "tier": "critical",
+  "justification": "New API endpoint /pipeline/intelligence-brief — touches data integrity (LGA validation Fix A), strata routing (apartment vs development brief), minimum viable brief rejection. 4 files changed including new test file. Critical because wrong brief type or wrong LGA = wrong data served.",
+  "commit_hash": "pending",
   "files": [
-    "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts",
-    "frontend-nextjs/components/reports/ShadowMap.tsx",
-    "frontend-nextjs/components/tools/ShadowTool.tsx"
+    "services/intelligence_brief.py",
+    "services/compliance_api_server.py",
+    "docs/intelligence-brief/IMPLEMENTATION.md",
+    "tests/test_intelligence_brief_orchestrator.py"
   ],
   "pre_impl": {
-    "existing_data": "LGA stats panel queries development_applications with .eq('council_name', councilName) where councilName comes from Planning Portal lga_name field. Nearby DAs found via spatial bounding box from same table.",
-    "assumption_mismatch": "Planning Portal returns 'Inner West' but DA table stores 'Inner West Council'. Case-sensitive .eq() never matches, so LGA stats always return 0 for councils with name suffix mismatch.",
-    "new_vs_existing": "Affects all threat radar searches. Previously showed 0 LGA-wide stats for any council where Planning Portal name differs from ePlanning API name.",
-    "external_source_error": "queryLgaStats wrapped in try/catch, returns null on error. queryNearbyApplications also try/catch. Both non-fatal — page renders with empty stats or no apps.",
-    "frontend_type": "No type changes. ShadowMap initialViewState changed from fixed zoom to bounds-based. AerialTile import and usage removed from ShadowTool.",
-    "user_failure_mode": "Before: LGA stats panel showed 0 applications despite DAs being listed below. After: stats panel shows correct LGA-wide totals using the DB's own council_name value."
+    "existing_data": "Existing service functions: resolve_address, parse_controls, get_valuation, get_unique_overlays, detect_strata, detect_former_council, get_nearby_das, get_shadow_risk, fetch_dcp_setbacks, fetch_heritage_postgis, fetch_sepp_housing_standards. All called via _safe_call wrapper.",
+    "assumption_mismatch": "parse_controls returns dict with keys like 'zone', 'height', 'fsr' — if key names change upstream, DataField wrapping silently returns None. Mitigated: parity test against conveyancing output.",
+    "new_vs_existing": "New endpoint only — no existing data modified. All queries are read-only SELECT on existing tables.",
+    "external_source_error": "Planning Portal timeout/500 → _safe_call returns DataField(not_available). VG API failure → same. PostGIS timeout → same. Shadow pipeline down → same. Each failure isolated, doesn't cascade.",
+    "frontend_type": "No frontend changes. Backend endpoint only.",
+    "user_failure_mode": "If >30% fields fail: 503 with gap list. If address outside NSW: 422. If address unresolvable: 422. Normal failures: brief returned with not_available fields and gap disclosure."
   },
   "functions": [
     {
-      "name": "POST /api/satellite/threat-radar/search",
-      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:260",
-      "input": "NextRequest with JSON body { address: string }",
-      "output": "JSON response with applications array, lga_stats object, council_name, lat, lng",
-      "if_none": "Empty applications array and null lgaStats returned — UI shows 'No applications found' message"
+      "name": "run_intelligence_brief",
+      "file_line": "services/intelligence_brief.py:631",
+      "input": "IntelligenceBriefRequest (address, optional lat/lng/prop_id, include_satellite bool)",
+      "output": "DevelopmentBrief or RenovationBrief JSON (model_dump)",
+      "if_none": "address is required (min_length=5). If resolve_address returns None lat/lng → 422."
     },
     {
-      "name": "queryLgaStats",
-      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:182",
-      "input": "string councilName — exact value from DB column",
-      "output": "LGA stats object with total_applications, approval_rate, avg_determination_days, or null on error",
-      "if_none": "Returns null — LGA stats panel not rendered in UI"
+      "name": "_validate_former_council_postgis",
+      "file_line": "services/intelligence_brief.py:607",
+      "input": "text_slug (Optional[str]), lat, lng, address",
+      "output": "tuple(validated_slug, advisory_message) — slug may be corrected or None",
+      "if_none": "If DB connection fails → returns (text_slug, None) — trusts text match as fallback"
     },
     {
-      "name": "ShadowMap",
-      "file_line": "frontend-nextjs/components/reports/ShadowMap.tsx:79",
-      "input": "center [lng, lat], lotPolygon GeoJSON, shadowOnLot GeoJSON collection",
-      "output": "MapLibre map with lot boundary, shadow polygon, and optional north proxy overlay",
-      "if_none": "No lotPolygon: falls back to center coordinates at zoom 19. No shadowOnLot: shadow layer not rendered."
+      "name": "_build_planning_controls",
+      "file_line": "services/intelligence_brief.py:721",
+      "input": "controls dict from parse_controls, overlays_data dict",
+      "output": "PlanningControls with 14 DataField-wrapped values",
+      "if_none": "Empty controls dict → all DataField values are None with AUTHORITATIVE confidence (portal returned nothing)"
+    },
+    {
+      "name": "classify_strata",
+      "file_line": "services/intelligence_brief.py:456",
+      "input": "strata_info dict, lot_area_m2 Optional[float]",
+      "output": "StrataType enum (NOT_STRATA, APARTMENT, DEVELOPMENT, AMBIGUOUS)",
+      "if_none": "lot_area_m2=None → AMBIGUOUS (conservative). strata_info empty → NOT_STRATA."
     }
   ],
   "values": [
     {
-      "value": "dbCouncilName from nearby DA results",
-      "read_at": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:355",
-      "nullable": "yes — no nearby DAs means no CouncilName to extract, falls back to Planning Portal council_name",
-      "guard_at": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:355 — applications.find(a => a.CouncilName)?.CouncilName ?? council_name",
-      "if_missing": "Falls back to Planning Portal council_name — same behaviour as before the fix, stats may show 0 but no crash"
+      "value": "controls from parse_controls",
+      "read_at": "services/intelligence_brief.py:682",
+      "nullable": "yes — _safe_call may return DataField(value=None)",
+      "guard_at": "services/intelligence_brief.py:694 — controls_df.value or parse_controls([])",
+      "if_missing": "Falls back to empty controls dict — all planning fields show not_available in brief"
     },
     {
-      "value": "bbox from lot polygon for ShadowMap zoom",
-      "read_at": "frontend-nextjs/components/reports/ShadowMap.tsx:90",
-      "nullable": "yes — getBBox returns null when lotPolygon is null or has no coordinates",
-      "guard_at": "frontend-nextjs/components/reports/ShadowMap.tsx:101 — ternary: bbox ? bounds-based view : center + zoom fallback",
-      "if_missing": "Falls back to center coordinates at zoom 19 instead of lot-fitted bounds"
+      "value": "dcp_former_council from detect_former_council + PostGIS validation",
+      "read_at": "services/intelligence_brief.py:706",
+      "nullable": "yes — may be None if address not in known LGA",
+      "guard_at": "services/intelligence_brief.py:760 — _fetch_dcp_controls checks None and returns None → DCP controls show not_available with reason",
+      "if_missing": "DCP section shows gap: 'Former council could not be determined'"
+    },
+    {
+      "value": "lot_area_m2 from valuation",
+      "read_at": "services/intelligence_brief.py:711",
+      "nullable": "yes — VG API may not return lot area",
+      "guard_at": "services/intelligence_brief.py:711 — used in classify_strata which handles None (returns AMBIGUOUS)",
+      "if_missing": "Strata classification falls to AMBIGUOUS → conservative RenovationBrief. SEPP Housing eligibility check skipped."
+    },
+    {
+      "value": "shadow_raw from get_shadow_risk",
+      "read_at": "services/intelligence_brief.py:728",
+      "nullable": "yes — Railway shadow pipeline may be down",
+      "guard_at": "services/intelligence_brief.py:728 — shadow_df.value (None if failed). _build_neighbourhood handles None shadow → NOT_AVAILABLE",
+      "if_missing": "Shadow section shows not_available with reason 'Shadow pipeline unavailable'"
     }
   ],
   "queries": [
     {
-      "purpose": "LGA-wide aggregate stats from development_applications for the council containing the searched property",
-      "file_line": "frontend-nextjs/app/api/satellite/threat-radar/search/route.ts:187",
-      "where_clause": ".eq('council_name', councilName).gte('lodgement_date', since).limit(5000)",
-      "if_zero": "Returns total_applications=0, approval_rate=null — UI shows 0 in LGA stats panel (the bug this fix addresses)",
-      "if_wrong": "Wrong council_name would show stats for wrong LGA — mitigated by extracting council_name from DAs in the same table"
+      "purpose": "PostGIS LGA validation — cross-check text-based former council against spatial boundary",
+      "file_line": "services/intelligence_brief.py:619",
+      "where_clause": "lookup_lga(lat, lng, conn) — internally queries spatial_overlays WHERE ST_Contains(geom, point)",
+      "if_zero": "Returns text_slug unchanged — trusts text match",
+      "if_wrong": "Wrong LGA returned by PostGIS → wrong former council → wrong DCP controls. Mitigated: PostGIS is authoritative for geometry."
+    },
+    {
+      "purpose": "DCP setback controls for former council",
+      "file_line": "services/intelligence_brief.py:760",
+      "where_clause": "WHERE lga = %s AND is_current = TRUE (via fetch_dcp_setbacks)",
+      "if_zero": "Returns None → DCP section shows not_available gap",
+      "if_wrong": "Wrong lga_slug → wrong DCP controls. Mitigated by Fix A PostGIS validation."
+    },
+    {
+      "purpose": "SEPP Housing standards by zone",
+      "file_line": "services/intelligence_brief.py:770",
+      "where_clause": "%s = ANY(applicable_zones) (via fetch_sepp_housing_standards)",
+      "if_zero": "Empty list → no SEPP standards shown",
+      "if_wrong": "Wrong zone_code → wrong standards. Zone comes from Planning Portal (authoritative)."
     }
   ],
   "break_it": [
     {
-      "scenario": "Planning Portal returns 'Inner West' but DA table stores 'Inner West Council' — .eq() case-sensitive match returns 0 rows",
-      "what_happens": "User sees '0 total applications' in LGA stats panel while 30+ DAs are listed individually below — contradictory and misleading",
-      "mitigated": true,
-      "how": "route.ts:355 — extract council_name from nearby DAs (same table), pass exact DB value to queryLgaStats",
-      "repro": "Search any Inner West address on /reports/threat-radar and check LGA stats panel"
-    },
-    {
-      "scenario": "No nearby DAs found within 500m so dbCouncilName extraction returns undefined, falls back to Planning Portal name",
-      "what_happens": "LGA stats may still show 0 if Planning Portal name doesn't match DB — but this is a rare edge case (no nearby DAs means stats panel is less important)",
+      "scenario": "Planning Portal returns valid JSON but for wrong property (geocode offset 50m near lot boundary)",
+      "what_happens": "Brief shows zone/height/FSR for adjacent lot — user sees plausible but wrong controls for their property",
       "mitigated": false,
-      "how": "Fallback to council_name from Planning Portal. Could be improved by querying a distinct council_name from DA table for the LGA, but adds complexity for minimal benefit.",
-      "repro": "Search a rural NSW address with no DAs within 500m on /reports/threat-radar — check if LGA stats panel shows 0"
+      "how": "Partially mitigated: _validate_coordinates checks NSW bbox. Lot polygon containment check deferred to v2 (requires lot geometry in response).",
+      "repro": "POST /pipeline/intelligence-brief with address near a zone boundary (e.g. where R2 meets R3) and check if zone matches council zoning map"
     },
     {
-      "scenario": "ShadowMap lotPolygon is null — getBBox returns null, initialViewState falls back to center coordinates",
-      "what_happens": "Map shows at zoom 19 centered on the property instead of fitted to lot bounds — acceptable fallback, user still sees the correct location",
+      "scenario": "detect_former_council says 'marrickville' but PostGIS says property is in City of Sydney (Stanmore boundary)",
+      "what_happens": "Without Fix A: wrong DCP setbacks served. With Fix A: PostGIS corrects slug to None, DCP shows not_available with advisory explaining the mismatch",
       "mitigated": true,
-      "how": "ShadowMap.tsx:101 — ternary fallback to center + zoom 19 when bbox is null",
-      "repro": "Run shadow analysis for an address where Planning Portal lot geometry API returns null — map should center on coordinates at zoom 19"
+      "how": "services/intelligence_brief.py:625 — _validate_former_council_postgis returns (None, advisory) when PostGIS disagrees with text match",
+      "repro": "POST with address '1 Stanmore Rd Stanmore NSW' — Fix A gate: check advisory in gaps, DCP should show not_available"
+    },
+    {
+      "scenario": "DCP query returns controls for wrong zone because lot was recently rezoned (R2→R3) but DCP table has no zone column",
+      "what_happens": "User sees dwelling_house setbacks without awareness that multi-dwelling housing is now permitted in R3",
+      "mitigated": false,
+      "how": "Deferred to Stage 3 Fix B (zone dev_type advisory compound constraint). Stage 2 returns DCP controls as-is.",
+      "repro": "POST with R3-zoned address — verify DCP controls returned but no zone advisory yet (Stage 3 will add this)"
+    },
+    {
+      "scenario": "4 of 6 parallel pipeline calls timeout simultaneously (Planning Portal + VG + PostGIS + ePlanning all down)",
+      "what_happens": "_safe_call returns NOT_AVAILABLE for each. check_minimum_viable counts 12+ not_available out of 32 total (37.5%) → 503 with gap list",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:536 — check_minimum_viable rejects brief if <70% available. 503 response includes field count and gap list.",
+      "repro": "Mock all external calls to raise TimeoutError → assert 503 response with correct gap count"
+    },
+    {
+      "scenario": "Strata townhouse (lot_area=450m², is_strata=true) — classify_strata returns AMBIGUOUS, brief uses RenovationBrief (no DCP/SEPP/neighbourhood)",
+      "what_happens": "User misses development potential information because strata townhouse is treated as apartment. Conservative but informationally incomplete.",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:479 — classify_strata returns AMBIGUOUS for 400-2500m² strata lots. AMBIGUOUS → RenovationBrief is the safe default. Strata type is shown in response so user can see the classification.",
+      "repro": "POST with strata townhouse address (e.g. townhouse complex with 450m² lot) — verify brief_type='renovation' and strata.strata_type='ambiguous'"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — search an Inner West address on /reports/threat-radar and confirm LGA stats panel shows non-zero total"
+    "manual_verify": "Yes — POST to /pipeline/intelligence-brief on Railway with an Inner West address (e.g. '10 Smith St Marrickville NSW 2204'). Verify: brief_type=development, planning_controls populated, DCP controls populated with marrickville data, shadow section present, SEPP housing standards present, confidence_summary shows mostly authoritative."
   }
 }

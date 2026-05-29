@@ -16,11 +16,15 @@ POST /pipeline/intelligence-brief
 from __future__ import annotations
 
 import logging
+import os
 import re
+import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
+from pathlib import Path
 from typing import Any, Generic, Literal, Optional, TypeVar
 
 from fastapi import APIRouter, HTTPException
@@ -569,7 +573,727 @@ def collect_gaps(brief) -> list[GapEntry]:
 
 
 # ---------------------------------------------------------------------------
-# Router placeholder — Stage 2 will fill this in
+# Imports from existing conveyancing pipeline — same functions, different output
+# ---------------------------------------------------------------------------
+
+_project_root = Path(__file__).parent.parent
+_scripts_dir = _project_root / "scripts"
+_services_dir = Path(__file__).parent
+sys.path.insert(0, str(_scripts_dir))
+sys.path.insert(0, str(_project_root))
+sys.path.insert(0, str(_services_dir))
+
+from generate_conveyancing_report import (  # noqa: E402
+    resolve_address,
+    get_raw_controls,
+    parse_controls,
+    get_valuation,
+    get_unique_overlays,
+    detect_strata,
+    detect_former_council,
+    get_shadow_risk,
+    _council_from_zone_epi,
+    get_nearby_das,
+)
+from conveyancing_db import (  # noqa: E402
+    fetch_dcp_setbacks,
+    fetch_heritage_postgis,
+    fetch_sepp_housing_standards,
+)
+from lga_lookup import lookup_lga  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# DB connection helper — shared by all DB-dependent calls in this module
+# ---------------------------------------------------------------------------
+
+
+def _get_db_conn():
+    """Get a psycopg2 connection. Raises if DATABASE_URL not set."""
+    import psycopg2
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise EnvironmentError("DATABASE_URL not set")
+    conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
+    conn.autocommit = True
+    return conn
+
+
+# ---------------------------------------------------------------------------
+# LGA validation — Fix A from IMPLEMENTATION.md
+# ---------------------------------------------------------------------------
+
+
+def _validate_former_council_postgis(
+    text_slug: Optional[str],
+    lat: float,
+    lng: float,
+    address: str,
+) -> tuple[Optional[str], Optional[str]]:
+    """Cross-check text-derived LGA slug against PostGIS boundary.
+
+    Returns (validated_slug, advisory_message).
+    advisory_message is populated when PostGIS corrected the text match.
+    """
+    conn = None
+    try:
+        conn = _get_db_conn()
+        lga_result = lookup_lga(lat, lng, conn, address=address)
+    except Exception as e:
+        logger.warning("PostGIS LGA validation failed: %s — trusting text match", e)
+        return text_slug, None
+    finally:
+        if conn:
+            conn.close()
+
+    postgis_lga = (lga_result.get("lga_name") or "").lower()
+    postgis_slug = lga_result.get("lga_slug")
+
+    # Inner West boundary suburbs: text match may resolve to wrong former council
+    if text_slug and text_slug in ("marrickville", "leichhardt", "ashfield"):
+        if postgis_lga and postgis_lga != "inner west":
+            advisory = (
+                f"LGA boundary verified by spatial lookup: text-based detection "
+                f"returned '{text_slug}' but coordinates confirm '{postgis_lga}'. "
+                f"DCP controls may not be available for this LGA."
+            )
+            logger.info("Fix A: %s → PostGIS overrode to %s", text_slug, postgis_lga)
+            return None, advisory
+
+    # Text match returned None but PostGIS says Inner West — resolve
+    if text_slug is None and postgis_lga == "inner west" and postgis_slug:
+        if postgis_slug not in ("inner_west",):
+            advisory = (
+                f"Former council resolved via spatial lookup: '{postgis_slug}' "
+                f"(text-based detection could not determine former council)."
+            )
+            logger.info("Fix A: PostGIS resolved unmapped suburb → %s", postgis_slug)
+            return postgis_slug, advisory
+
+    return text_slug, None
+
+
+# ---------------------------------------------------------------------------
+# Address validation — NSW bbox check
+# ---------------------------------------------------------------------------
+
+
+def _validate_coordinates(lat: float, lng: float) -> Optional[str]:
+    """Check coordinates are within NSW bounding box.
+
+    Returns a warning message if outside, None if OK.
+    """
+    if not (CONFIG.nsw_lat_min <= lat <= CONFIG.nsw_lat_max):
+        return f"Latitude {lat} is outside NSW bounds ({CONFIG.nsw_lat_min} to {CONFIG.nsw_lat_max})"
+    if not (CONFIG.nsw_lng_min <= lng <= CONFIG.nsw_lng_max):
+        return f"Longitude {lng} is outside NSW bounds ({CONFIG.nsw_lng_min} to {CONFIG.nsw_lng_max})"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Data source fetchers — each returns the raw result, _safe_call wraps them
+# ---------------------------------------------------------------------------
+
+
+def _fetch_controls(prop_id: int) -> dict:
+    """Planning Portal: zone, height, FSR, heritage, SEPP overlays."""
+    return parse_controls(get_raw_controls(prop_id))
+
+
+def _fetch_valuation(prop_id: int) -> dict:
+    """VG API: lot area, land value, 5-year history."""
+    return get_valuation(prop_id)
+
+
+def _fetch_overlays(lat: float, lng: float, lot_wkt: Optional[str]) -> dict:
+    """PostGIS spatial_overlays: environmental constraints."""
+    overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt)
+    return {
+        "overlays": overlays,
+        "covered_layers": list(covered_layers),
+        "proximity_m": proximity_m,
+    }
+
+
+def _fetch_strata(address: str, lat: float, lng: float) -> dict:
+    """Cadastre strata detection."""
+    return detect_strata(address, lat, lng)
+
+
+def _fetch_nearby_das(
+    lat: float, lng: float, council_name: Optional[str],
+    radius_m: int, days: int,
+) -> list[dict]:
+    """ePlanning DA API: nearby development applications."""
+    if not council_name:
+        return []
+    return get_nearby_das(lat, lng, council_name, radius_m=radius_m, days=days)
+
+
+def _fetch_shadow(
+    address: str, prop_id: int, lat: float, lng: float,
+    height_m: Optional[float],
+) -> Optional[dict]:
+    """Shadow pipeline via Railway."""
+    return get_shadow_risk(address, prop_id, lat, lng, height_m=height_m)
+
+
+def _fetch_dcp_controls(
+    lga_slug: Optional[str], zone_code: Optional[str],
+) -> Optional[dict]:
+    """PostGIS: DCP setback controls for former council."""
+    if not lga_slug:
+        return None
+    conn = None
+    try:
+        conn = _get_db_conn()
+        return fetch_dcp_setbacks(conn, lga_slug, zone_code)
+    finally:
+        if conn:
+            conn.close()
+
+
+def _fetch_heritage_postgis(
+    lat: float, lng: float, lot_wkt: Optional[str],
+) -> dict:
+    """PostGIS: heritage overlays near lot."""
+    conn = None
+    try:
+        conn = _get_db_conn()
+        return fetch_heritage_postgis(conn, lat, lng, lot_wkt)
+    finally:
+        if conn:
+            conn.close()
+
+
+def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
+    """SEPP Housing standards for this zone."""
+    conn = None
+    try:
+        conn = _get_db_conn()
+        return fetch_sepp_housing_standards(conn, zone_code=zone_code)
+    finally:
+        if conn:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Assembly — convert raw dicts to schema models
+# ---------------------------------------------------------------------------
+
+
+def _build_planning_controls(
+    controls: dict,
+    overlays_data: dict,
+) -> PlanningControls:
+    """Map conveyancing parse_controls output to PlanningControls schema."""
+    today = date.today().isoformat()
+    auth = ConfidenceLevel.AUTHORITATIVE
+
+    overlay_list = overlays_data.get("overlays", []) if overlays_data else []
+
+    # Heritage from portal
+    heritage_items_raw = controls.get("heritage_items") or []
+    heritage_hca_raw = controls.get("heritage_hca") or []
+
+    # SEPP overlays
+    sepp_overlays_raw = controls.get("sepp_overlays") or []
+
+    # Housing SEPP and TOD
+    housing_sepp = controls.get("housing_sepp", False)
+    tod_area = controls.get("tod_area", False)
+
+    # Lot dimensions from valuation/overlays
+    lot_size_str = controls.get("lot_size")
+    lot_area = None
+    if lot_size_str:
+        try:
+            lot_area = float(str(lot_size_str).replace(",", "").replace("m²", "").strip())
+        except (ValueError, TypeError):
+            pass
+
+    return PlanningControls(
+        zone=DataField(value=_sanitise(controls.get("zone")), confidence=auth, source="planning_portal", as_at=today),
+        zone_full=DataField(value=_sanitise(controls.get("zone_full")), confidence=auth, source="planning_portal", as_at=today),
+        zone_epi=DataField(value=_sanitise(controls.get("zone_epi")), confidence=auth, source="planning_portal", as_at=today),
+        legislation_url=DataField(value=controls.get("legislation_url"), confidence=auth, source="planning_portal", as_at=today),
+        height=DataField(value=controls.get("height"), confidence=auth, source="planning_portal", as_at=today),
+        fsr=DataField(value=controls.get("fsr"), confidence=auth, source="planning_portal", as_at=today),
+        lot_size=DataField(value=controls.get("lot_size"), confidence=auth, source="planning_portal", as_at=today),
+        acid_sulfate_class=DataField(value=controls.get("ass_class"), confidence=auth, source="planning_portal", as_at=today),
+        heritage_items=DataField(value=heritage_items_raw, confidence=auth, source="planning_portal", as_at=today),
+        heritage_hca=DataField(value=heritage_hca_raw, confidence=auth, source="planning_portal", as_at=today),
+        sepp_overlays=DataField(value=sepp_overlays_raw, confidence=auth, source="planning_portal", as_at=today),
+        housing_sepp=DataField(value=housing_sepp, confidence=auth, source="planning_portal", as_at=today),
+        tod_area=DataField(value=tod_area, confidence=auth, source="planning_portal", as_at=today),
+        lot_dimensions=DataField(
+            value=LotDimensions(area_m2=lot_area) if lot_area else None,
+            confidence=auth if lot_area else ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal",
+            as_at=today,
+        ),
+    )
+
+
+def _build_dcp_controls(
+    dcp_data: Optional[dict],
+    lga_slug: Optional[str],
+) -> DCPControls:
+    """Map fetch_dcp_setbacks output to DCPControls schema."""
+    today = date.today().isoformat()
+
+    if dcp_data is None:
+        reason = f"DCP controls not yet extracted for '{lga_slug}'" if lga_slug else "Former council could not be determined"
+        return DCPControls(
+            controls=DataField(value=[], confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
+            dcp_name=DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
+            dcp_url=DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
+            section_ref=DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
+        )
+
+    extracted = ConfidenceLevel.EXTRACTED
+    all_setbacks = (dcp_data.get("setbacks") or []) + (dcp_data.get("sd_setbacks") or [])
+
+    controls_list = []
+    for s in all_setbacks:
+        controls_list.append(DCPControl(
+            control_type=s.get("control_type", s.get("type", "")),
+            dev_type=s.get("dev_type", "dwelling_house"),
+            value_min=s.get("value_min") or s.get("requirement"),
+            value_max=s.get("value_max"),
+            unit=s.get("unit", "m"),
+            condition=s.get("notes") or s.get("condition"),
+            source_ref=s.get("clause") or dcp_data.get("clause_ref"),
+        ))
+
+    return DCPControls(
+        controls=DataField(value=controls_list, confidence=extracted, source="plotdetect_dcp", as_at=today),
+        dcp_name=DataField(value=dcp_data.get("dcp_name"), confidence=extracted, source="plotdetect_dcp", as_at=today),
+        dcp_url=DataField(value=dcp_data.get("dcp_url"), confidence=extracted, source="plotdetect_dcp", as_at=today),
+        section_ref=DataField(value=dcp_data.get("section"), confidence=extracted, source="plotdetect_dcp", as_at=today),
+    )
+
+
+def _build_sepp_housing(
+    standards_raw: list[dict],
+    zone_code: Optional[str],
+    lot_area_m2: Optional[float],
+) -> list[SEPPStandard]:
+    """Build SEPP Housing standards list from DB rows."""
+    if not standards_raw:
+        return []
+
+    # Group by development_type
+    by_dev_type: dict[str, dict[str, Any]] = {}
+    for s in standards_raw:
+        dt = s["development_type"]
+        st = s["standard_type"]
+        if dt not in by_dev_type:
+            by_dev_type[dt] = {}
+        by_dev_type[dt][st] = s["numeric_value"]
+
+    results = []
+    for dt, vals in by_dev_type.items():
+        min_lot = vals.get("min_lot_size")
+        eligible = True
+        reason = None
+        if min_lot and lot_area_m2 and lot_area_m2 < min_lot:
+            eligible = False
+            reason = f"Lot area {lot_area_m2:.0f}m² below minimum {min_lot:.0f}m²"
+
+        results.append(SEPPStandard(
+            dev_type=dt,
+            eligible=eligible,
+            min_lot_area_m2=min_lot,
+            max_gfa_m2=vals.get("max_gfa"),
+            max_height_m=vals.get("max_height"),
+            setback_front_m=vals.get("setback_front"),
+            setback_rear_m=vals.get("setback_rear"),
+            setback_side_m=vals.get("setback_side"),
+            reason_ineligible=reason,
+        ))
+    return results
+
+
+def _build_environmental(
+    controls: dict,
+    overlays_data: dict,
+    heritage_postgis: Optional[dict],
+) -> EnvironmentalConstraints:
+    """Map overlays + heritage to EnvironmentalConstraints."""
+    today = date.today().isoformat()
+    auth = ConfidenceLevel.AUTHORITATIVE
+
+    overlay_list = overlays_data.get("overlays", []) if overlays_data else []
+    covered = overlays_data.get("covered_layers", []) if overlays_data else []
+
+    flood_epi = any(
+        o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
+    ) or controls.get("flood_epi", False)
+
+    bushfire_designation = None
+    for o in overlay_list:
+        if o.get("layer_type") == "bushfire":
+            bushfire_designation = o.get("value")
+            break
+    # Portal SEPP overlay fallback
+    for sepp in (controls.get("sepp_overlays") or []):
+        if "bushfire" in (sepp.get("name") or "").lower():
+            bushfire_designation = bushfire_designation or "Bushfire Prone Land"
+
+    env_overlays = [
+        EnvironmentalOverlay(
+            layer_type=o.get("layer_type", ""),
+            value=o.get("value"),
+            instrument=o.get("instrument_key"),
+            lga=o.get("lga"),
+        )
+        for o in overlay_list
+    ]
+
+    return EnvironmentalConstraints(
+        flood_epi=DataField(value=flood_epi, confidence=auth, source="postgis_overlays", as_at=today),
+        overlays=DataField(value=env_overlays, confidence=auth, source="postgis_overlays", as_at=today),
+        overlay_coverage=DataField(value=covered, confidence=auth, source="postgis_overlays", as_at=today),
+        bushfire_designation=DataField(value=bushfire_designation, confidence=auth, source="postgis_overlays", as_at=today),
+        heritage_postgis=DataField(
+            value=heritage_postgis if heritage_postgis and heritage_postgis.get("has_heritage") else None,
+            confidence=auth if heritage_postgis else ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_heritage",
+            as_at=today,
+        ),
+    )
+
+
+def _build_neighbourhood(
+    das: list[dict],
+    shadow_result: Optional[dict],
+) -> Neighbourhood:
+    """Map DA list + shadow to Neighbourhood schema."""
+    today = date.today().isoformat()
+
+    nearby = [
+        NearbyDA(
+            number=d.get("number", ""),
+            address=d.get("address"),
+            distance_m=d.get("distance_m"),
+            status=d.get("status"),
+            dev_type=d.get("description") or d.get("development_type"),
+            lodgement_date=d.get("lodged") or (str(d["lodgement_date"])[:10] if d.get("lodgement_date") else None),
+            cost=d.get("cost_of_development"),
+        )
+        for d in das
+    ]
+
+    shadow_schema = None
+    if shadow_result:
+        scenarios = []
+        for s in shadow_result.get("scenarios", []):
+            scenarios.append(ShadowScenario(
+                date_label=s.get("date_label", ""),
+                time_label=s.get("time_label", ""),
+                sun_altitude_deg=s.get("sun_altitude_deg"),
+                sun_azimuth_deg=s.get("sun_azimuth_deg"),
+                shadow_length_m=s.get("shadow_length_m"),
+                overlap_pct=s.get("overlap_pct"),
+            ))
+        shadow_schema = ShadowResult(
+            height_m=shadow_result.get("height_m"),
+            height_source=shadow_result.get("height_source"),
+            adg_compliant=shadow_result.get("adg_compliant"),
+            scenarios=scenarios,
+            worst_case_scenario=shadow_result.get("worst_case_scenario"),
+        )
+
+    return Neighbourhood(
+        nearby_das=DataField(value=nearby, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today),
+        da_count=DataField(value=len(nearby), confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today),
+        shadow=DataField(
+            value=shadow_schema,
+            confidence=ConfidenceLevel.DERIVED if shadow_schema else ConfidenceLevel.NOT_AVAILABLE,
+            source="shadow_detector",
+            as_at=today,
+            reason="Shadow pipeline unavailable" if not shadow_schema else None,
+        ),
+    )
+
+
+def _build_economics(valuation: dict) -> Economics:
+    """Map VG valuation to Economics schema."""
+    today = date.today().isoformat()
+
+    history = [
+        ValuationHistory(year=h.get("year", ""), value=int(h["value"]) if h.get("value") else None)
+        for h in (valuation.get("val_history") or [])
+    ]
+
+    lv = valuation.get("land_value")
+
+    return Economics(
+        land_value=DataField(
+            value=int(lv) if lv else None,
+            confidence=ConfidenceLevel.AUTHORITATIVE if lv else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service",
+            as_at=valuation.get("val_base_date") or today,
+        ),
+        val_base_date=DataField(
+            value=valuation.get("val_base_date"),
+            confidence=ConfidenceLevel.AUTHORITATIVE if valuation.get("val_base_date") else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service",
+            as_at=today,
+        ),
+        val_history=DataField(value=history, confidence=ConfidenceLevel.AUTHORITATIVE, source="nsw_valuation_service", as_at=today),
+        lot_area_m2=DataField(
+            value=valuation.get("lot_area_m2"),
+            confidence=ConfidenceLevel.AUTHORITATIVE if valuation.get("lot_area_m2") else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service",
+            as_at=today,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Router + endpoint — Stage 2 orchestrator
 # ---------------------------------------------------------------------------
 
 router = APIRouter(prefix="/pipeline", tags=["intelligence"])
+
+
+@router.post("/intelligence-brief")
+def run_intelligence_brief(req: IntelligenceBriefRequest):
+    """
+    Intelligence Brief — on-demand property screening.
+
+    Calls the same data sources as the conveyancing pipeline, restructured
+    into the DataField[T] contract with confidence, source, and as_at on
+    every field. No satellite, no LLM — those are Stages 4 and 5.
+    """
+    start_time = time.monotonic()
+    today = date.today().isoformat()
+
+    # ── 1. Address resolution ────────────────────────────────────────────
+    resolved_prop_id = None
+    lot_wkt = None
+
+    if req.lat and req.lng and req.prop_id:
+        lat, lng = req.lat, req.lng
+        resolved_prop_id = int(req.prop_id)
+    else:
+        try:
+            resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
+        except Exception as e:
+            logger.error("Address resolution failed: %s", e)
+            raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
+
+        if not lat or not lng:
+            raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
+
+    # ── 2. Coordinate validation ─────────────────────────────────────────
+    coord_warning = _validate_coordinates(lat, lng)
+    if coord_warning:
+        raise HTTPException(status_code=422, detail=coord_warning)
+
+    # ── 3. Parallel data fetch — single-level ThreadPoolExecutor ─────────
+    #
+    # Each pipeline is ONE submit() call. No nesting. Each gets .result(timeout=X).
+    # _safe_call wraps each callable so failures return DataField(not_available).
+
+    f_controls = None
+    f_valuation = None
+
+    with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
+        # Planning Portal calls need prop_id
+        if resolved_prop_id:
+            f_controls = pool.submit(
+                _safe_call, lambda: _fetch_controls(resolved_prop_id),
+                "planning_portal", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_valuation = pool.submit(
+                _safe_call, lambda: _fetch_valuation(resolved_prop_id),
+                "nsw_valuation_service", ConfidenceLevel.AUTHORITATIVE,
+            )
+
+        # PostGIS overlays — always available (only needs lat/lng)
+        f_overlays = pool.submit(
+            _safe_call, lambda: _fetch_overlays(lat, lng, lot_wkt),
+            "postgis_overlays", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        # Strata detection
+        f_strata = pool.submit(
+            _safe_call, lambda: _fetch_strata(req.address, lat, lng),
+            "cadastre_strata", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        # Heritage PostGIS
+        f_heritage = pool.submit(
+            _safe_call, lambda: _fetch_heritage_postgis(lat, lng, lot_wkt),
+            "postgis_heritage", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        # Collect results with timeouts
+        controls_df = f_controls.result(timeout=15) if f_controls else DataField(
+            value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal", reason="No prop_id resolved",
+        )
+        valuation_df = f_valuation.result(timeout=15) if f_valuation else DataField(
+            value={"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []},
+            confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service", reason="No prop_id resolved",
+        )
+        overlays_df = f_overlays.result(timeout=10)
+        strata_df = f_strata.result(timeout=10)
+        heritage_df = f_heritage.result(timeout=10)
+
+    controls = controls_df.value or parse_controls([])
+    valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+    overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
+    strata_raw = strata_df.value or {"is_strata": False}
+    heritage_postgis = heritage_df.value
+
+    # ── 4. PostGIS fallbacks (same as conveyancing.py) ───────────────────
+    ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
+    if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
+        controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
+    if not controls.get("lot_size") and "lot_size" in ov_by_type:
+        controls["lot_size"] = ov_by_type["lot_size"].get("value")
+
+    # ── 5. Former council + Fix A (PostGIS LGA validation) ───────────────
+    zone_epi = controls.get("zone_epi", "")
+    council_name = _council_from_zone_epi(zone_epi)
+    dcp_former_council = detect_former_council(req.address, zone_epi)
+    dcp_former_council, lga_advisory = _validate_former_council_postgis(
+        dcp_former_council, lat, lng, req.address,
+    )
+
+    # ── 6. Sequential calls that depend on prior results ─────────────────
+    zone_code = controls.get("zone")
+    lot_area_m2 = valuation.get("lot_area_m2")
+    height_str = controls.get("height")
+    height_m = None
+    if height_str:
+        try:
+            height_m = float(str(height_str).replace("m", "").strip())
+        except (ValueError, TypeError):
+            pass
+
+    with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
+        f_das = pool.submit(
+            _safe_call,
+            lambda: _fetch_nearby_das(lat, lng, council_name, CONFIG.da_radius_m, CONFIG.da_lookback_days),
+            "eplanning_da_api", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_shadow = pool.submit(
+            _safe_call,
+            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m),
+            "shadow_detector", ConfidenceLevel.DERIVED,
+        )
+        f_dcp = pool.submit(
+            _safe_call,
+            lambda: _fetch_dcp_controls(dcp_former_council, zone_code),
+            "plotdetect_dcp", ConfidenceLevel.EXTRACTED,
+        )
+        f_sepp = pool.submit(
+            _safe_call,
+            lambda: _fetch_sepp_housing(zone_code),
+            "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        das_df = f_das.result(timeout=15)
+        shadow_df = f_shadow.result(timeout=20)
+        dcp_df = f_dcp.result(timeout=10)
+        sepp_df = f_sepp.result(timeout=10)
+
+    das_raw = das_df.value or []
+    shadow_raw = shadow_df.value
+    dcp_raw = dcp_df.value
+    sepp_raw = sepp_df.value or []
+
+    # ── 7. Strata classification ─────────────────────────────────────────
+    strata_type = classify_strata(strata_raw, lot_area_m2)
+
+    strata_info = StrataInfo(
+        is_strata=strata_raw.get("is_strata", False),
+        strata_type=strata_type,
+        strata_plan=strata_raw.get("strata_plan"),
+        plan_label=strata_raw.get("plan_label"),
+        source=strata_raw.get("source"),
+        lot_area_m2=lot_area_m2,
+    )
+
+    # ── 8. Assemble brief ────────────────────────────────────────────────
+    planning_controls = _build_planning_controls(controls, overlays_data)
+    dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
+    sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
+    environmental = _build_environmental(controls, overlays_data, heritage_postgis)
+    neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
+    economics = _build_economics(valuation)
+
+    # ── 9. Choose brief type based on strata classification ──────────────
+    is_apartment = strata_type == StrataType.APARTMENT or strata_type == StrataType.AMBIGUOUS
+
+    if is_apartment:
+        brief = RenovationBrief(
+            address=req.address,
+            lat=lat,
+            lng=lng,
+            prop_id=resolved_prop_id,
+            run_date=today,
+            strata=DataField(value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE, source="cadastre_strata", as_at=today),
+            planning_controls=planning_controls,
+            environmental_constraints=environmental,
+            economics=economics,
+            confidence_summary=ConfidenceSummary(),  # placeholder, recomputed below
+        )
+    else:
+        brief = DevelopmentBrief(
+            address=req.address,
+            lat=lat,
+            lng=lng,
+            prop_id=resolved_prop_id,
+            run_date=today,
+            strata=DataField(value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE, source="cadastre_strata", as_at=today),
+            planning_controls=planning_controls,
+            dcp_controls=dcp_controls,
+            sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
+            environmental_constraints=environmental,
+            neighbourhood=neighbourhood,
+            economics=economics,
+            confidence_summary=ConfidenceSummary(),  # placeholder
+        )
+
+    # ── 10. Confidence summary + gaps + minimum viable check ─────────────
+    summary = compute_confidence_summary(brief)
+    gaps = collect_gaps(brief)
+
+    if not check_minimum_viable(summary):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Insufficient data available for this address",
+                "fields_available": summary.total - summary.not_available,
+                "fields_total": summary.total,
+                "fields_failed": summary.not_available,
+                "gaps": [g.model_dump() for g in gaps],
+            },
+        )
+
+    # Update brief with computed summary and gaps
+    brief.confidence_summary = summary
+    brief.gaps = gaps
+
+    # Add LGA advisory to gaps if Fix A corrected
+    if lga_advisory:
+        brief.gaps.append(GapEntry(
+            field="lga_validation",
+            reason=lga_advisory,
+        ))
+
+    elapsed = time.monotonic() - start_time
+    logger.info(
+        "Intelligence brief for %s completed in %.1fs — %d/%d fields available, brief_type=%s",
+        req.address, elapsed, summary.total - summary.not_available, summary.total,
+        brief.brief_type,
+    )
+
+    return brief.model_dump()
