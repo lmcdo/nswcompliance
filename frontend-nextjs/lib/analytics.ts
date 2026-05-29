@@ -50,3 +50,12 @@ export const trackZoneInfoView = (zone: string, council: string) => {
     council
   });
 };
+
+// Track SEO funnel page CTA click
+export const trackFunnelCta = (page: string, cta: string, destination: string) => {
+  posthog.capture('funnel_cta_click', {
+    page,
+    cta,
+    destination
+  });
+};

@@ -25,6 +25,7 @@ try:
     from services.bushfire_prescreen import router as bushfire_router
     from services.conveyancing import router as conveyancing_router
     from services.climate_risk_pipeline import router as climate_risk_router
+    from services.intelligence_brief import router as intelligence_brief_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -38,6 +39,7 @@ except ImportError:
     from bushfire_prescreen import router as bushfire_router
     from conveyancing import router as conveyancing_router
     from climate_risk_pipeline import router as climate_risk_router
+    from intelligence_brief import router as intelligence_brief_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -71,6 +73,7 @@ app.include_router(pre_da_history_router)
 app.include_router(bushfire_router)
 app.include_router(conveyancing_router)
 app.include_router(climate_risk_router)
+app.include_router(intelligence_brief_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()

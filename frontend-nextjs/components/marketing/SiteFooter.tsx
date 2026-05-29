@@ -13,6 +13,12 @@ const TOOL_LINKS = [
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history' },
 ];
 
+const FREE_TOOL_LINKS = [
+  { label: 'Zoning Check', href: '/tools/zoning-check' },
+  { label: 'Subdivision Check', href: '/tools/subdivision-check' },
+  { label: 'CDC Eligibility', href: '/check' },
+];
+
 const PLATFORM_LINKS = [
   { label: 'Verify (Compliance)', href: '/assessment' },
   { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
@@ -28,6 +34,8 @@ const COMPANY_LINKS = [
   { label: 'For Buyers Agents', href: '/for/buyers-agents' },
   { label: 'For Conveyancers', href: '/for/conveyancers' },
   { label: 'For Builders', href: '/for/builders' },
+  { label: 'For Planners', href: '/for/planners' },
+  { label: 'Developers / API', href: '/developers' },
   { label: 'Contact', href: '/contact' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
@@ -64,6 +72,16 @@ export function SiteFooter() {
             Tools
           </p>
           <ul className="space-y-2">
+            {FREE_TOOL_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  {label} <span className="text-teal-500 text-xs">Free</span>
+                </Link>
+              </li>
+            ))}
             {TOOL_LINKS.map(({ label, href }) => (
               <li key={href}>
                 <Link
