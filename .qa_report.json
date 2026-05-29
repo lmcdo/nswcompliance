@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "New API endpoint /pipeline/intelligence-brief — touches data integrity (LGA validation Fix A), strata routing (apartment vs development brief), minimum viable brief rejection. 4 files changed including new test file. Critical because wrong brief type or wrong LGA = wrong data served.",
-  "commit_hash": "pending",
+  "commit_hash": "5eb5a9e7",
   "files": [
     "services/intelligence_brief.py",
     "services/compliance_api_server.py",
@@ -12,38 +12,38 @@
     "existing_data": "Existing service functions: resolve_address, parse_controls, get_valuation, get_unique_overlays, detect_strata, detect_former_council, get_nearby_das, get_shadow_risk, fetch_dcp_setbacks, fetch_heritage_postgis, fetch_sepp_housing_standards. All called via _safe_call wrapper.",
     "assumption_mismatch": "parse_controls returns dict with keys like 'zone', 'height', 'fsr' — if key names change upstream, DataField wrapping silently returns None. Mitigated: parity test against conveyancing output.",
     "new_vs_existing": "New endpoint only — no existing data modified. All queries are read-only SELECT on existing tables.",
-    "external_source_error": "Planning Portal timeout/500 → _safe_call returns DataField(not_available). VG API failure → same. PostGIS timeout → same. Shadow pipeline down → same. Each failure isolated, doesn't cascade.",
-    "frontend_type": "No frontend changes. Backend endpoint only.",
-    "user_failure_mode": "If >30% fields fail: 503 with gap list. If address outside NSW: 422. If address unresolvable: 422. Normal failures: brief returned with not_available fields and gap disclosure."
+    "external_source_error": "Planning Portal timeout/500 → _safe_call returns DataField(not_available) with reason string. VG API failure → same pattern. PostGIS timeout → same. Shadow pipeline down → same. Each failure is isolated per-source and does not cascade to other sources.",
+    "frontend_type": "No frontend changes in this PR — backend endpoint only, no TypeScript types or React components modified",
+    "user_failure_mode": "If >30% fields fail: HTTP 503 with structured gap list showing which sources failed. If address outside NSW bbox: HTTP 422 with coordinate bounds message. If address unresolvable: HTTP 422 with address string. Normal partial failures: brief returned with not_available fields and gap disclosure section."
   },
   "functions": [
     {
       "name": "run_intelligence_brief",
-      "file_line": "services/intelligence_brief.py:631",
-      "input": "IntelligenceBriefRequest (address, optional lat/lng/prop_id, include_satellite bool)",
-      "output": "DevelopmentBrief or RenovationBrief JSON (model_dump)",
-      "if_none": "address is required (min_length=5). If resolve_address returns None lat/lng → 422."
+      "file_line": "services/intelligence_brief.py:1063",
+      "input": "IntelligenceBriefRequest pydantic model with address string, optional lat/lng floats, optional prop_id string, include_satellite bool",
+      "output": "DevelopmentBrief or RenovationBrief serialised via model_dump() as JSON dict with all DataField-wrapped sections",
+      "if_none": "address is required (min_length=5 validated by pydantic). If resolve_address returns None lat/lng → HTTPException 422."
     },
     {
       "name": "_validate_former_council_postgis",
-      "file_line": "services/intelligence_brief.py:607",
-      "input": "text_slug (Optional[str]), lat, lng, address",
-      "output": "tuple(validated_slug, advisory_message) — slug may be corrected or None",
-      "if_none": "If DB connection fails → returns (text_slug, None) — trusts text match as fallback"
+      "file_line": "services/intelligence_brief.py:627",
+      "input": "text_slug Optional[str] from detect_former_council, lat float, lng float, address string for logging context",
+      "output": "tuple of (validated_slug Optional[str], advisory_message Optional[str]) where slug may be corrected to None or different council",
+      "if_none": "If DB connection fails via _get_db_conn → returns (text_slug, None) unchanged, trusting text match as fallback"
     },
     {
       "name": "_build_planning_controls",
-      "file_line": "services/intelligence_brief.py:721",
-      "input": "controls dict from parse_controls, overlays_data dict",
-      "output": "PlanningControls with 14 DataField-wrapped values",
-      "if_none": "Empty controls dict → all DataField values are None with AUTHORITATIVE confidence (portal returned nothing)"
+      "file_line": "services/intelligence_brief.py:785",
+      "input": "controls dict from parse_controls with keys zone/height/fsr/etc, overlays_data dict with overlay list and covered layers",
+      "output": "PlanningControls pydantic model with 14 DataField-wrapped values all tagged authoritative source planning_portal",
+      "if_none": "Empty controls dict → all DataField values are None with AUTHORITATIVE confidence since portal returned empty legitimately"
     },
     {
       "name": "classify_strata",
-      "file_line": "services/intelligence_brief.py:456",
-      "input": "strata_info dict, lot_area_m2 Optional[float]",
-      "output": "StrataType enum (NOT_STRATA, APARTMENT, DEVELOPMENT, AMBIGUOUS)",
-      "if_none": "lot_area_m2=None → AMBIGUOUS (conservative). strata_info empty → NOT_STRATA."
+      "file_line": "services/intelligence_brief.py:458",
+      "input": "strata_info dict with is_strata bool and optional plan_type string, lot_area_m2 Optional[float] from VG valuation",
+      "output": "StrataType enum value: NOT_STRATA for non-strata, APARTMENT for large lots, DEVELOPMENT for small, AMBIGUOUS for 400-2500m2",
+      "if_none": "lot_area_m2=None → AMBIGUOUS (conservative routing to RenovationBrief). strata_info missing is_strata → NOT_STRATA."
     }
   ],
   "values": [
