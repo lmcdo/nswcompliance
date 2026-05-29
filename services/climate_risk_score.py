@@ -41,7 +41,12 @@ from typing import Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+import logging
+
+from services.bushfire_prescreen import _query_rfs_bfpl
 from services.climate_risk_raster import query_narclim_summary, DATA_DIR, NARCLIM_FILES
+
+logger = logging.getLogger(__name__)
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -94,6 +99,7 @@ class HazardScore:
     detail: str               # Human-readable explanation
     confidence: str           # "high" (spatial overlay) or "medium" (projection)
     data_source: str
+    available: bool = True    # False when data source unavailable (not same as no-risk)
 
 
 @dataclass
@@ -130,6 +136,7 @@ class ClimateRiskResult:
                     "detail": h.detail,
                     "confidence": h.confidence,
                     "data_source": h.data_source,
+                    "available": h.available,
                 }
                 for h in self.hazards
             ],
@@ -208,11 +215,37 @@ def _normalize_flood(overlays: dict[str, list[dict]]) -> HazardScore:
     )
 
 
-def _normalize_bushfire(overlays: dict[str, list[dict]]) -> HazardScore:
-    """Bushfire: binary presence in bushfire prone land."""
+def _normalize_bushfire(
+    overlays: dict[str, list[dict]],
+    lat: float | None = None,
+    lng: float | None = None,
+) -> HazardScore:
+    """Bushfire: binary presence in bushfire prone land.
+
+    Falls back to RFS BFPL live API when spatial_overlays has no bushfire data
+    (historical ingest was bbox-limited to Greater Sydney).
+    """
     hits = overlays.get("bushfire", [])
     present = len(hits) > 0
-    # Could differentiate by category (Vegetation Category 1 vs buffer) in V2
+    source = "NSW RFS Bushfire Prone Land Map via spatial_overlays"
+
+    # Fallback: query RFS live API when PostGIS has no data and coords available
+    if not present and lat is not None and lng is not None:
+        try:
+            rfs_result = _query_rfs_bfpl(lat, lng)
+            if rfs_result and rfs_result.get("is_bushfire_prone") is True:
+                present = True
+                source = "NSW RFS Bushfire Prone Land Map (live API fallback)"
+                logger.info(
+                    "Bushfire: spatial_overlays empty, RFS live API returned prone "
+                    "for (%.4f, %.4f)", lat, lng,
+                )
+        except Exception:
+            logger.warning(
+                "Bushfire RFS live API fallback failed for (%.4f, %.4f)",
+                lat, lng, exc_info=True,
+            )
+
     raw = 1.0 if present else 0.0
     return HazardScore(
         hazard="bushfire",
@@ -221,8 +254,8 @@ def _normalize_bushfire(overlays: dict[str, list[dict]]) -> HazardScore:
         weighted_score=raw * WEIGHTS["bushfire"],
         present=present,
         detail=f"Bushfire Prone Land: {'Yes' if present else 'No'}",
-        confidence="high",
-        data_source="NSW RFS Bushfire Prone Land Map via spatial_overlays",
+        confidence="high" if hits else ("medium" if present else "high"),
+        data_source=source,
     )
 
 
@@ -315,6 +348,7 @@ def _normalize_heat(narclim_summary: dict) -> HazardScore:
             detail="NARCliM data not available for this location",
             confidence="low",
             data_source="NARCliM 2.0 (AdaptNSW) — unavailable",
+            available=False,
         )
 
     # Normalize: 0 delta = 0, max_delta = 1.0
@@ -370,15 +404,25 @@ def climate_risk_score(lat: float, lng: float) -> ClimateRiskResult:
     # 3. Normalize each hazard
     hazards = [
         _normalize_flood(overlays),
-        _normalize_bushfire(overlays),
+        _normalize_bushfire(overlays, lat=lat, lng=lng),
         _normalize_coastal(overlays),
         _normalize_landslide(overlays),
         _normalize_fire_history(overlays),
         _normalize_heat(narclim),
     ]
 
-    # 4. Compute composite
-    weighted_sum = sum(h.weighted_score for h in hazards)
+    # 4. Compute composite — exclude unavailable hazards from denominator
+    #    Unavailable = data source missing (not same as "queried, no risk").
+    #    Rescale so available hazards span the full 0-1 range.
+    available_hazards = [h for h in hazards if h.available]
+    if available_hazards:
+        total_available_weight = sum(h.weight for h in available_hazards)
+        weighted_sum = sum(h.weighted_score for h in available_hazards)
+        # Rescale: e.g. 5 of 6 hazards → total_weight=0.835, scale by 1/0.835
+        if total_available_weight > 0:
+            weighted_sum = weighted_sum / total_available_weight
+    else:
+        weighted_sum = 0.0
     interaction = _compute_interaction_bonus(hazards)
     raw_composite = weighted_sum + interaction
 

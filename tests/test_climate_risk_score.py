@@ -372,7 +372,7 @@ class TestCompositeScoreCalculation:
             assert result.band == "Extreme"
 
     def test_narclim_unavailable_graceful(self):
-        """NARCliM failure should not crash — heat score becomes 0."""
+        """NARCliM failure should not crash — heat excluded from denominator."""
         from services.climate_risk_score import climate_risk_score
         with patch("services.climate_risk_score._query_spatial_overlays") as mock_overlays, \
              patch("services.climate_risk_score.query_narclim_summary") as mock_narclim:
@@ -382,8 +382,9 @@ class TestCompositeScoreCalculation:
             heat = next(h for h in result.hazards if h.hazard == "heat")
             assert heat.raw_score == 0.0
             assert heat.present is False
-            # Flood alone: 0.167 × 100 = 17 (weights changed to 6-hazard model)
-            assert result.score == 17
+            assert heat.available is False
+            # Flood alone with 5 available hazards: 0.167 / 0.833 ≈ 0.2 × 100 = 20
+            assert result.score == 20
 
     def test_deterministic(self):
         """Same inputs must produce same output."""
@@ -420,3 +421,105 @@ class TestCompositeScoreCalculation:
             result = climate_risk_score(-33.55, 150.75)
             assert result.score >= 65
             assert result.band in ("High", "Very High", "Extreme")
+
+
+# ── Bug fix: bushfire RFS fallback ──────────────────────────────────────────
+
+class TestBushfireRFSFallback:
+    """Bug 1: spatial_overlays historically bbox-limited to Greater Sydney.
+    Properties outside metro got false negatives. Fix: fall back to RFS live API."""
+
+    def test_fallback_when_overlays_empty(self):
+        """No bushfire in spatial_overlays + RFS says prone → present=True."""
+        with patch("services.climate_risk_score._query_rfs_bfpl") as mock_rfs:
+            mock_rfs.return_value = {
+                "is_bushfire_prone": True,
+                "designation_category": "Vegetation Category 1",
+            }
+            h = _normalize_bushfire({}, lat=-33.5, lng=150.0)
+            assert h.present is True
+            assert h.raw_score == 1.0
+            assert "live API fallback" in h.data_source
+            assert h.confidence == "medium"  # Lower than PostGIS (live API = single query)
+
+    def test_no_fallback_when_overlays_have_data(self):
+        """Bushfire present in spatial_overlays → no RFS call needed."""
+        with patch("services.climate_risk_score._query_rfs_bfpl") as mock_rfs:
+            h = _normalize_bushfire({"bushfire": [{"value": "Cat 1"}]}, lat=-33.5, lng=150.0)
+            mock_rfs.assert_not_called()
+            assert h.present is True
+            assert h.confidence == "high"
+
+    def test_fallback_rfs_says_not_prone(self):
+        """RFS says not prone → present=False (genuine no-risk, not data gap)."""
+        with patch("services.climate_risk_score._query_rfs_bfpl") as mock_rfs:
+            mock_rfs.return_value = {"is_bushfire_prone": False}
+            h = _normalize_bushfire({}, lat=-33.5, lng=150.0)
+            assert h.present is False
+            assert h.raw_score == 0.0
+
+    def test_fallback_rfs_failure_graceful(self):
+        """RFS API failure → present=False (fail-open, not crash)."""
+        with patch("services.climate_risk_score._query_rfs_bfpl") as mock_rfs:
+            mock_rfs.side_effect = ConnectionError("timeout")
+            h = _normalize_bushfire({}, lat=-33.5, lng=150.0)
+            assert h.present is False
+            assert h.raw_score == 0.0
+
+    def test_no_fallback_without_coords(self):
+        """No lat/lng → no fallback attempt."""
+        with patch("services.climate_risk_score._query_rfs_bfpl") as mock_rfs:
+            h = _normalize_bushfire({})
+            mock_rfs.assert_not_called()
+            assert h.present is False
+
+
+# ── Bug fix: unavailable hazard exclusion from denominator ──────────────────
+
+class TestUnavailableHazardExclusion:
+    """Bug 2: missing hazard scored as 0 instead of excluded from weighted sum.
+    A property with all hazards present should score the same whether or not
+    NARCliM data is available for heat."""
+
+    def test_heat_unavailable_does_not_drag_score(self):
+        """Single hazard present, heat unavailable → score reflects only available hazards."""
+        from services.climate_risk_score import climate_risk_score
+        with patch("services.climate_risk_score._query_spatial_overlays") as mock_overlays, \
+             patch("services.climate_risk_score.query_narclim_summary") as mock_narclim:
+            # Only flood present
+            mock_overlays.return_value = {"flood": [{"value": "x"}]}
+            # Heat unavailable
+            mock_narclim.side_effect = ValueError("no data")
+            result = climate_risk_score(-33.87, 151.21)
+            # 5 available hazards, 1 present. Flood=0.167, total=0.833
+            # Rescaled: 0.167/0.833 ≈ 0.2004 × 100 = 20
+            assert result.score == 20
+
+    def test_heat_available_zero_risk_not_excluded(self):
+        """Heat available but delta=0 → still counted in denominator (it's real data)."""
+        from services.climate_risk_score import climate_risk_score
+        with patch("services.climate_risk_score._query_spatial_overlays") as mock_overlays, \
+             patch("services.climate_risk_score.query_narclim_summary") as mock_narclim:
+            mock_overlays.return_value = {"flood": [{"value": "x"}]}
+            mock_narclim.return_value = {"hot_days_delta_2090": 0.0, "hot_days_baseline": 5, "hot_days_late_century_high": 5}
+            result = climate_risk_score(-33.87, 151.21)
+            heat = next(h for h in result.hazards if h.hazard == "heat")
+            assert heat.available is True
+            # 6 available hazards, flood=0.167, total=~1.0
+            # Rescaled: 0.167/1.0 = 0.167 × 100 = 17
+            assert result.score == 17
+
+    def test_available_field_in_to_dict(self):
+        """The available field should appear in serialized output."""
+        result = ClimateRiskResult(
+            score=42, band="High", lat=-33.87, lng=151.21,
+            hazards=[
+                HazardScore(
+                    hazard="heat", raw_score=0.0, weight=0.167,
+                    weighted_score=0.0, present=False, detail="unavailable",
+                    confidence="low", data_source="NARCliM", available=False,
+                )
+            ],
+        )
+        d = result.to_dict()
+        assert d["hazards"][0]["available"] is False
