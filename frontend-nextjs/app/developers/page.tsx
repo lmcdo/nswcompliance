@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Code2, Database, Zap, Lock, ArrowRight, FileJson, Building2, Scale } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 
 export const metadata: Metadata = {
   title: 'Property Data API — Structured NSW Planning Controls | PlotDetect',
@@ -116,18 +117,22 @@ export default function DevelopersPage() {
           overlays — for any NSW address. One API call. JSON response. Clause citations included.
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
-          <Link
+          <TrackedLink
             href="/contact?ref=api"
+            page="developers"
+            cta="hero_request_api"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
             Request API access <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
+          </TrackedLink>
+          <TrackedLink
             href="/assessment"
+            page="developers"
+            cta="hero_see_demo"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             See it in action
-          </Link>
+          </TrackedLink>
         </div>
       </section>
 
@@ -265,12 +270,14 @@ export default function DevelopersPage() {
             We&apos;re onboarding integration partners. Tell us what you&apos;re building and we&apos;ll set up
             a sandbox with your target LGAs.
           </p>
-          <Link
+          <TrackedLink
             href="/contact?ref=api"
+            page="developers"
+            cta="bottom_request_api"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
             Request access <ArrowRight className="w-4 h-4" />
-          </Link>
+          </TrackedLink>
         </div>
       </section>
 

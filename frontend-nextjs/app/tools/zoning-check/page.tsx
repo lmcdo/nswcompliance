@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { MapPin, ArrowRight, CheckCircle2, XCircle, AlertTriangle, Building2 } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
@@ -91,6 +92,14 @@ export default function ZoningCheckPage() {
         min_lot_size_sqm: constraints.minLotSize ?? null,
         heritage_item: prop.heritage?.isHeritage ?? false,
         heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
+      });
+
+      posthog.capture('tool_run', {
+        tool: 'zoning-check',
+        source: 'seo_page',
+        zone: zone_code,
+        lga,
+        has_permissibility: permitted.length > 0,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');

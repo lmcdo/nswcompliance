@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Clock, FileText, Search, CheckSquare, ArrowRight, Layers, BarChart3 } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 
 export const metadata: Metadata = {
   title: 'For Town Planners & Planning Consultants — PlotDetect',
@@ -99,18 +100,22 @@ export default function PlannersPage() {
           applicability, and spatial overlays for any NSW address, instantly.
         </p>
         <div className="flex flex-wrap gap-3 mt-8">
-          <Link
+          <TrackedLink
             href="/assessment"
+            page="planners"
+            cta="hero_try_free"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
             Try it now — free <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
+          </TrackedLink>
+          <TrackedLink
             href="/pricing"
+            page="planners"
+            cta="hero_see_pricing"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             See pricing
-          </Link>
+          </TrackedLink>
         </div>
       </section>
 
@@ -247,12 +252,14 @@ export default function PlannersPage() {
         <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
           Enter any NSW address. See the controls. Decide if it saves you time.
         </p>
-        <Link
+        <TrackedLink
           href="/assessment"
+          page="planners"
+          cta="bottom_open_verify"
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
         >
           Open Verify <ArrowRight className="w-4 h-4" />
-        </Link>
+        </TrackedLink>
       </section>
 
       <SiteFooter />

@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { Scissors, ArrowRight, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
@@ -143,6 +144,16 @@ export default function SubdivisionCheckPage() {
         reason: assessment.reason,
         heritage_item: prop.heritage?.isHeritage ?? false,
         heritage_conservation_area: (prop.heritage?.heritageType ?? '').toLowerCase().includes('conservation'),
+      });
+
+      posthog.capture('tool_run', {
+        tool: 'subdivision-check',
+        source: 'seo_page',
+        zone: zone_code,
+        lga,
+        verdict: assessment.likely,
+        lot_area_sqm,
+        min_lot_size_sqm,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
