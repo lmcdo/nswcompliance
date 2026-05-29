@@ -62,7 +62,7 @@ def evaluate_compound_constraints(
     # ── Rule 1: Heritage HCA + Bushfire ─────────────────────────────────
     if has_heritage_hca and is_bushfire_prone:
         # Check heritage subtype for severity
-        overlay_values = [o.get("value", "") for o in overlays if o.get("layer_type") == "heritage"]
+        overlay_values = [(o.get("value") or "") for o in overlays if o.get("layer_type") == "heritage"]
         postgis_elements = []
         if heritage_postgis and heritage_postgis.get("raw"):
             for r in heritage_postgis["raw"]:
