@@ -514,6 +514,13 @@ export function LepControls({
                   <span className="text-xs font-semibold text-red-800 block">
                     Notified Contaminated Site — {constraints.contaminatedLand.nearestSite.distance}m
                   </span>
+                  {constraints.contaminatedLand.nearestSite.address && (
+                    <p className="text-xs text-red-700 mt-0.5">
+                      {constraints.contaminatedLand.nearestSite.name
+                        ? `${constraints.contaminatedLand.nearestSite.name}, `
+                        : ''}{constraints.contaminatedLand.nearestSite.address}
+                    </p>
+                  )}
                   {constraints.contaminatedLand.nearestSite.managementClass && (
                     <p className="text-xs text-red-700 mt-0.5">
                       Management Class: {constraints.contaminatedLand.nearestSite.managementClass}

@@ -16,7 +16,8 @@ import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
-import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
+// ADG Building Separation Table hidden — setback_rules table empty (never populated with ADG 3F-1 data)
+// import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { PatternBookEligibilityCard } from './PatternBookEligibilityCard';
@@ -1155,12 +1156,8 @@ export function StateLevelControls({
                 <>
                   <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
 
-                  {/* Building Separation Setbacks with Height Input */}
-                  <div className="mt-4">
-                    <ADGBuildingSeparationTable
-                      developmentType={developmentType}
-                    />
-                  </div>
+                  {/* ADG Building Separation Table hidden — setback_rules table not populated.
+                     Re-enable once ADG 3F-1 data is ingested into setback_rules. */}
 
                   {adgStructuredRequirements.length > 0 && (
                     <div className="mt-4">
