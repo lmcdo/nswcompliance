@@ -409,6 +409,7 @@ class DevelopmentBrief(BaseModel):
     neighbourhood: Neighbourhood
     economics: Economics
     compound_constraints: list[CompoundConstraint] = []
+    data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
     confidence_summary: ConfidenceSummary
     narrative: Optional[str] = None
@@ -437,6 +438,7 @@ class RenovationBrief(BaseModel):
     environmental_constraints: EnvironmentalConstraints
     economics: Economics
     compound_constraints: list[CompoundConstraint] = []
+    data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
     confidence_summary: ConfidenceSummary
     disclaimer: str = (
@@ -601,6 +603,11 @@ from conveyancing_db import (  # noqa: E402
     fetch_sepp_housing_standards,
 )
 from lga_lookup import lookup_lga  # noqa: E402
+from compound_constraints import (  # noqa: E402
+    evaluate_compound_constraints,
+    detect_staleness,
+    enrich_gaps_with_verify_url,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1262,9 +1269,58 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             confidence_summary=ConfidenceSummary(),  # placeholder
         )
 
-    # ── 10. Confidence summary + gaps + minimum viable check ─────────────
+    # ── 10. Compound constraints (Stage 3) ─────────────────────────────
+    # Parse min lot size for marginal lot check
+    min_lot_size_m2 = None
+    lot_size_str = controls.get("lot_size")
+    if lot_size_str:
+        try:
+            min_lot_size_m2 = float(str(lot_size_str).replace(",", "").replace("m²", "").strip())
+        except (ValueError, TypeError):
+            pass
+
+    # Nearby DAs as dicts for compound constraint evaluation
+    das_for_compounds = [
+        {"number": d.number, "distance_m": d.distance_m, "status": d.status,
+         "description": d.dev_type, "dev_type": d.dev_type}
+        for d in (neighbourhood.nearby_das.value or [])
+    ]
+
+    compound_constraints = evaluate_compound_constraints(
+        heritage_items=planning_controls.heritage_items.value or [],
+        heritage_hca=planning_controls.heritage_hca.value or [],
+        heritage_postgis=heritage_postgis,
+        bushfire_designation=environmental.bushfire_designation.value,
+        flood_epi=environmental.flood_epi.value or False,
+        tod_area=planning_controls.tod_area.value or False,
+        lot_area_m2=lot_area_m2,
+        min_lot_size_m2=min_lot_size_m2,
+        zone_code=zone_code,
+        nearby_das=das_for_compounds,
+        overlays=[
+            {"layer_type": o.layer_type, "value": o.value}
+            for o in (environmental.overlays.value or [])
+        ],
+    )
+    brief.compound_constraints = compound_constraints
+
+    # ── 11. Staleness detection ──────────────────────────────────────────
+    staleness_warnings = detect_staleness(brief)
+    if staleness_warnings:
+        logger.info("Staleness warnings for %s: %s", req.address, staleness_warnings)
+
+    # ── 12. Confidence summary + gaps + minimum viable check ─────────────
     summary = compute_confidence_summary(brief)
     gaps = collect_gaps(brief)
+
+    # Enrich gaps with verify_url and add LGA advisory
+    gaps = enrich_gaps_with_verify_url(gaps, dcp_former_council)
+
+    if lga_advisory:
+        gaps.append(GapEntry(
+            field="lga_validation",
+            reason=lga_advisory,
+        ))
 
     if not check_minimum_viable(summary):
         raise HTTPException(
@@ -1278,16 +1334,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             },
         )
 
-    # Update brief with computed summary and gaps
+    # Update brief with computed summary, gaps, and staleness warnings
     brief.confidence_summary = summary
     brief.gaps = gaps
-
-    # Add LGA advisory to gaps if Fix A corrected
-    if lga_advisory:
-        brief.gaps.append(GapEntry(
-            field="lga_validation",
-            reason=lga_advisory,
-        ))
+    brief.data_currency_warnings = staleness_warnings
 
     elapsed = time.monotonic() - start_time
     logger.info(
