@@ -14,8 +14,11 @@ export function SiteNav({ maxWidth = 'max-w-5xl' }: SiteNavProps) {
           Plot<span className="text-teal-400">Detect</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link href="/reports" className="text-sm text-slate-400 hover:text-white transition-colors">
-            Tools
+          <Link href="/tools/zoning-check" className="text-sm text-slate-400 hover:text-white transition-colors">
+            Free Tools
+          </Link>
+          <Link href="/reports" className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">
+            Reports
           </Link>
           <Link href="/browse" className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">
             Browse Councils

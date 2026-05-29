@@ -216,6 +216,49 @@ const ARTICLES: {
     category: 'Planning Rules',
     date: '2026-05-20',
   },
+  /* ---- SEO funnel pages ---- */
+  {
+    slug: 'nsw-planning-portal-gaps',
+    title: 'What the NSW Planning Portal doesn\'t tell you',
+    description: '15 data points checked — the Planning Portal covers 5. The gaps include DCP controls, flood depth, permissibility, SEPPs, heritage HCA status, bushfire BAL, and development potential.',
+    category: 'Planning Rules',
+    date: '2026-05-29',
+  },
+  {
+    slug: 'cdc-vs-da-which-approval-pathway',
+    title: 'CDC vs DA: which approval pathway do you need in NSW?',
+    description: 'Complying Development Certificates take 10–20 days. Development Applications take 40–90+ days. How to know which pathway applies, and what blocks the faster option.',
+    category: 'Planning Rules',
+    date: '2026-05-29',
+  },
+  {
+    slug: 'setback-requirements-nsw',
+    title: 'Setback requirements in NSW: front, side & rear setbacks explained',
+    description: 'NSW setback requirements vary by council, zone, lot width, and development type. How front, side, and rear setbacks work under DCPs, and where to find them.',
+    category: 'Planning Rules',
+    date: '2026-05-29',
+  },
+  {
+    slug: 'development-control-plans-explained',
+    title: 'Development Control Plans (DCPs) explained: what they are and why they matter',
+    description: 'A DCP sets the fine-grained rules for development — setbacks, parking, landscaping, and more. How DCPs work, their legal status, and how to read them.',
+    category: 'Planning Rules',
+    date: '2026-05-29',
+  },
+  {
+    slug: 'building-height-limits-nsw',
+    title: 'Building height limits in NSW: how height of buildings controls work',
+    description: 'Height limits are set by the LEP as a mapped numeric control. How height is measured, common limits by zone, Cl 4.6 variations, and how height interacts with FSR and setbacks.',
+    category: 'Planning Rules',
+    date: '2026-05-29',
+  },
+  {
+    slug: 'site-analysis-report-explained',
+    title: 'Site analysis reports explained: what they cover and why they matter',
+    description: 'A site analysis compiles planning controls, spatial constraints, and environmental factors for a property. What it covers, who needs one, and how automated analysis works.',
+    category: 'Property Research',
+    date: '2026-05-29',
+  },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
