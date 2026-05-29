@@ -224,6 +224,76 @@ def _evaluate_da_shadow_interaction(
 
 
 # ---------------------------------------------------------------------------
+# Satellite compound constraints — evaluated when satellite data present
+# ---------------------------------------------------------------------------
+
+
+def evaluate_satellite_constraints(
+    *,
+    granny_flat_structures: Optional[int],
+    nearby_das: list[dict],
+    flood_epi: bool,
+    flood_jrc_pct: Optional[float],
+    flood_wofs_pct: Optional[float],
+) -> list[CompoundConstraint]:
+    """Satellite-dependent compound constraints (Stage 4a).
+
+    Only called when include_satellite=True and satellite data is available.
+    """
+    constraints: list[CompoundConstraint] = []
+
+    # Structure detected but no DA record → potential unapproved structure
+    if granny_flat_structures is not None and granny_flat_structures > 1:
+        # Multiple structures detected — check if any DAs for secondary dwelling
+        has_sd_da = any(
+            "secondary" in (da.get("description") or da.get("dev_type") or "").lower()
+            or "granny" in (da.get("description") or da.get("dev_type") or "").lower()
+            for da in nearby_das
+        )
+        if not has_sd_da:
+            constraints.append(CompoundConstraint(
+                id="structure_no_da_record",
+                description=(
+                    f"{granny_flat_structures} structures detected on lot but no "
+                    f"secondary dwelling DA found in recent records."
+                ),
+                caveat=(
+                    "AI-detected structure count requires user confirmation. "
+                    "The absence of a DA record does not confirm non-compliance — "
+                    "the structure may pre-date digital records or be exempt development."
+                ),
+                severity=CompoundSeverity.INFO,
+                data_sources_used=["granny_flat_detect", "eplanning_da_api"],
+            ))
+
+    # Flood evidence exceeds statutory designation
+    if not flood_epi:
+        sat_flood_detected = False
+        if flood_jrc_pct is not None and flood_jrc_pct > 2.0:
+            sat_flood_detected = True
+        if flood_wofs_pct is not None and flood_wofs_pct > 2.0:
+            sat_flood_detected = True
+
+        if sat_flood_detected:
+            constraints.append(CompoundConstraint(
+                id="flood_evidence_exceeds_statutory",
+                description=(
+                    "Satellite/historical flood evidence detected but property is "
+                    "NOT in a statutory Flood Planning Area."
+                ),
+                caveat=(
+                    "JRC Global Surface Water or DEA WOfS data indicates historical "
+                    "water presence at this location, despite no EPI flood designation. "
+                    "This may reflect localised flooding not captured in statutory mapping."
+                ),
+                severity=CompoundSeverity.WARNING,
+                data_sources_used=["flood_truth", "postgis_overlays"],
+            ))
+
+    return constraints
+
+
+# ---------------------------------------------------------------------------
 # Staleness detection
 # ---------------------------------------------------------------------------
 

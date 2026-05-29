@@ -189,6 +189,7 @@ class IntelligenceBriefRequest(BaseModel):
     lng: Optional[float] = Field(None, ge=140.9, le=153.7)
     prop_id: Optional[str] = Field(None, pattern=r"^\d{1,12}$")
     include_satellite: bool = False
+    include_premium: bool = False  # pre_da_history — slow (30-90s), user accepts latency
 
     @field_validator("address")
     @classmethod
@@ -357,6 +358,86 @@ class Economics(BaseModel):
     lot_area_m2: DataField[Optional[float]]
 
 
+# ---------------------------------------------------------------------------
+# Satellite section models — Stage 4a
+# ---------------------------------------------------------------------------
+
+
+class BushfireDetail(BaseModel):
+    """Bushfire pre-screen from RFS BFPL + PostGIS cross-overlays."""
+
+    category: Optional[str] = None  # Vegetation Category 1/2/3, buffer
+    bal_estimate: Optional[str] = None
+    vegetation_type: Optional[str] = None
+    cross_overlays: Optional[dict] = None  # flood, heritage, zone intersections
+    confidence: Optional[str] = None
+
+
+class FloodDetail(BaseModel):
+    """Multi-source flood analysis beyond statutory EPI flag."""
+
+    epi_flood: Optional[bool] = None
+    jrc_occurrence_pct: Optional[float] = None  # JRC 1984-2021
+    wofs_frequency_pct: Optional[float] = None  # DEA WOfS
+    bom_gauge_distance_km: Optional[float] = None
+    flood_studies: Optional[list[dict]] = None
+    confidence: Optional[str] = None
+
+
+class ClimateRiskDetail(BaseModel):
+    """Composite climate risk score (6-hazard)."""
+
+    score: Optional[int] = None  # 1-100
+    band: Optional[str] = None  # Low/Moderate/High/Very High/Extreme
+    hazards: Optional[list[dict]] = None
+    interaction_bonus: Optional[float] = None
+    methodology_version: Optional[str] = None
+
+
+class GrannyFlatDetection(BaseModel):
+    """Detection-only granny flat result (no confirmation step)."""
+
+    structure_count: Optional[int] = None
+    sepp_eligible: Optional[bool] = None
+    sepp_ineligible_reason: Optional[str] = None
+    lot_area_m2: Optional[float] = None
+    confirmation_required: bool = True  # always true — user must confirm in standalone tool
+
+
+class PreDAHistoryDetail(BaseModel):
+    """Pre-DA site history timeline (premium tier)."""
+
+    timeline: Optional[list[dict]] = None
+    heritage_flag: Optional[bool] = None
+    council: Optional[str] = None
+    data_quality_note: Optional[str] = None
+
+
+class SatelliteData(BaseModel):
+    """Container for all satellite/paid-tier pipeline results."""
+
+    bushfire: DataField[Optional[BushfireDetail]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="bushfire_prescreen", reason="Satellite data not requested",
+    )
+    flood: DataField[Optional[FloodDetail]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="flood_truth", reason="Satellite data not requested",
+    )
+    climate_risk: DataField[Optional[ClimateRiskDetail]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="climate_risk_score", reason="Satellite data not requested",
+    )
+    granny_flat: DataField[Optional[GrannyFlatDetection]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="granny_flat_detect", reason="Satellite data not requested",
+    )
+    pre_da_history: DataField[Optional[PreDAHistoryDetail]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="pre_da_history", reason="Premium data not requested",
+    )
+
+
 class CompoundConstraint(BaseModel):
     """Cross-layer insight that only emerges from combining data."""
 
@@ -408,6 +489,7 @@ class DevelopmentBrief(BaseModel):
     environmental_constraints: EnvironmentalConstraints
     neighbourhood: Neighbourhood
     economics: Economics
+    satellite: Optional[SatelliteData] = None
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
@@ -437,6 +519,7 @@ class RenovationBrief(BaseModel):
     planning_controls: PlanningControls
     environmental_constraints: EnvironmentalConstraints
     economics: Economics
+    satellite: Optional[SatelliteData] = None
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
@@ -605,9 +688,36 @@ from conveyancing_db import (  # noqa: E402
 from lga_lookup import lookup_lga  # noqa: E402
 from compound_constraints import (  # noqa: E402
     evaluate_compound_constraints,
+    evaluate_satellite_constraints,
     detect_staleness,
     enrich_gaps_with_verify_url,
 )
+
+# Satellite pipeline imports — each is optional; _safe_call handles ImportError at call time
+try:
+    from bushfire_prescreen import run_bushfire, BushfireRequest  # noqa: E402
+except ImportError:
+    from services.bushfire_prescreen import run_bushfire, BushfireRequest  # noqa: E402
+
+try:
+    from flood_truth import run_flood, FloodRequest  # noqa: E402
+except ImportError:
+    from services.flood_truth import run_flood, FloodRequest  # noqa: E402
+
+try:
+    from climate_risk_score import climate_risk_score as _climate_risk_score_fn  # noqa: E402
+except ImportError:
+    from services.climate_risk_score import climate_risk_score as _climate_risk_score_fn  # noqa: E402
+
+try:
+    from granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
+except ImportError:
+    from services.granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
+
+try:
+    from pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
+except ImportError:
+    from services.pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -782,6 +892,175 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
     finally:
         if conn:
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Satellite fetchers — Stage 4a
+# ---------------------------------------------------------------------------
+
+
+def _fetch_bushfire(
+    address: str, lat: float, lng: float,
+    prop_id: Optional[str], report_id: str,
+) -> dict:
+    """Bushfire pre-screen via RFS BFPL + PostGIS."""
+    import uuid
+    req = BushfireRequest(
+        address=address, lat=lat, lng=lng,
+        prop_id=prop_id, report_id=report_id,
+    )
+    return run_bushfire(req)
+
+
+def _fetch_flood(
+    address: str, lat: float, lng: float,
+    prop_id: Optional[str], report_id: str,
+) -> dict:
+    """Multi-source flood analysis."""
+    req = FloodRequest(
+        address=address, lat=lat, lng=lng,
+        prop_id=prop_id, report_id=report_id,
+    )
+    return run_flood(req)
+
+
+def _fetch_climate_risk(lat: float, lng: float) -> dict:
+    """Composite climate risk score (6-hazard)."""
+    result = _climate_risk_score_fn(lat, lng)
+    return result.to_dict()
+
+
+def _fetch_granny_flat_detect(
+    address: str, lat: float, lng: float,
+    prop_id: str,
+) -> dict:
+    """Granny flat structure detection (step 1 only — no confirmation)."""
+    req = GrannyFlatDetectRequest(
+        address=address, lat=lat, lng=lng,
+        prop_id=prop_id,
+    )
+    result = detect_structures(req)
+    # Return the Pydantic model as dict
+    if hasattr(result, "model_dump"):
+        return result.model_dump()
+    return result
+
+
+def _fetch_pre_da_history(
+    address: str, lot_area_m2: Optional[float],
+) -> dict:
+    """Pre-DA site history (premium, 30-90s)."""
+    req = PreDAHistoryRequest(
+        address=address, lot_area_m2=lot_area_m2,
+    )
+    return run_pre_da_history(req)
+
+
+def _build_satellite_data(
+    bushfire_raw: Optional[dict],
+    flood_raw: Optional[dict],
+    climate_raw: Optional[dict],
+    granny_flat_raw: Optional[dict],
+    pre_da_raw: Optional[dict],
+) -> SatelliteData:
+    """Assemble satellite pipeline results into SatelliteData model."""
+    today = date.today().isoformat()
+
+    # Bushfire
+    bushfire_detail = None
+    if bushfire_raw:
+        outputs = bushfire_raw.get("outputs") or {}
+        rfs = outputs.get("rfs") or {}
+        bushfire_detail = BushfireDetail(
+            category=rfs.get("category"),
+            bal_estimate=rfs.get("bal_estimate"),
+            vegetation_type=rfs.get("vegetation_type"),
+            cross_overlays=outputs.get("cross_overlays"),
+            confidence=bushfire_raw.get("confidence"),
+        )
+
+    # Flood
+    flood_detail = None
+    if flood_raw:
+        outputs = flood_raw.get("outputs") or {}
+        flood_detail = FloodDetail(
+            epi_flood=outputs.get("epi_flood"),
+            jrc_occurrence_pct=outputs.get("jrc_occurrence_pct"),
+            wofs_frequency_pct=outputs.get("wofs_frequency_pct"),
+            bom_gauge_distance_km=outputs.get("bom_gauge_distance_km"),
+            flood_studies=outputs.get("flood_studies"),
+            confidence=flood_raw.get("confidence"),
+        )
+
+    # Climate risk
+    climate_detail = None
+    if climate_raw:
+        climate_detail = ClimateRiskDetail(
+            score=climate_raw.get("score"),
+            band=climate_raw.get("band"),
+            hazards=climate_raw.get("hazards"),
+            interaction_bonus=climate_raw.get("interaction_bonus"),
+            methodology_version=climate_raw.get("methodology_version"),
+        )
+
+    # Granny flat (detection only)
+    gf_detail = None
+    if granny_flat_raw:
+        gf_detail = GrannyFlatDetection(
+            structure_count=granny_flat_raw.get("samgeo_structure_count"),
+            sepp_eligible=granny_flat_raw.get("sepp_eligible"),
+            sepp_ineligible_reason=granny_flat_raw.get("sepp_ineligible_reason"),
+            lot_area_m2=granny_flat_raw.get("lot_area_m2"),
+            confirmation_required=True,
+        )
+
+    # Pre-DA history
+    pre_da_detail = None
+    if pre_da_raw:
+        pre_da_detail = PreDAHistoryDetail(
+            timeline=pre_da_raw.get("timeline"),
+            heritage_flag=pre_da_raw.get("heritage_flag"),
+            council=pre_da_raw.get("council"),
+            data_quality_note=pre_da_raw.get("data_quality_note"),
+        )
+
+    return SatelliteData(
+        bushfire=DataField(
+            value=bushfire_detail,
+            confidence=ConfidenceLevel.AUTHORITATIVE if bushfire_detail and bushfire_detail.category else ConfidenceLevel.NOT_AVAILABLE,
+            source="bushfire_prescreen",
+            as_at=today,
+            reason=None if bushfire_detail else "Bushfire pre-screen failed or not requested",
+        ),
+        flood=DataField(
+            value=flood_detail,
+            confidence=ConfidenceLevel.ESTIMATED if flood_detail else ConfidenceLevel.NOT_AVAILABLE,
+            source="flood_truth",
+            as_at=today,
+            reason=None if flood_detail else "Flood analysis failed or not requested",
+        ),
+        climate_risk=DataField(
+            value=climate_detail,
+            confidence=ConfidenceLevel.ESTIMATED if climate_detail else ConfidenceLevel.NOT_AVAILABLE,
+            source="climate_risk_score",
+            as_at=today,
+            reason=None if climate_detail else "Climate risk score failed or not requested",
+        ),
+        granny_flat=DataField(
+            value=gf_detail,
+            confidence=ConfidenceLevel.ESTIMATED if gf_detail else ConfidenceLevel.NOT_AVAILABLE,
+            source="granny_flat_detect",
+            as_at=today,
+            reason=None if gf_detail else "Granny flat detection failed or not requested",
+        ),
+        pre_da_history=DataField(
+            value=pre_da_detail,
+            confidence=ConfidenceLevel.ESTIMATED if pre_da_detail else ConfidenceLevel.NOT_AVAILABLE,
+            source="pre_da_history",
+            as_at=today,
+            reason=None if pre_da_detail else "Pre-DA history not requested or failed",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1216,7 +1495,69 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     dcp_raw = dcp_df.value
     sepp_raw = sepp_df.value or []
 
-    # ── 7. Strata classification ─────────────────────────────────────────
+    # ── 7. Satellite pipeline fetch (Stage 4a) — gated on include_satellite ──
+    satellite_data = None
+    bushfire_raw = None
+    flood_raw_sat = None
+    climate_raw = None
+    granny_flat_raw = None
+    pre_da_raw = None
+
+    if req.include_satellite:
+        import uuid
+        report_id = str(uuid.uuid4())
+
+        with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
+            f_bushfire = pool.submit(
+                _safe_call,
+                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_flood_sat = pool.submit(
+                _safe_call,
+                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "flood_truth", ConfidenceLevel.ESTIMATED,
+            )
+            f_climate = pool.submit(
+                _safe_call,
+                lambda: _fetch_climate_risk(lat, lng),
+                "climate_risk_score", ConfidenceLevel.ESTIMATED,
+            )
+            f_granny = pool.submit(
+                _safe_call,
+                lambda: _fetch_granny_flat_detect(req.address, lat, lng, str(resolved_prop_id or 0)),
+                "granny_flat_detect", ConfidenceLevel.ESTIMATED,
+            )
+
+            # Pre-DA history: only when include_premium, separate timeout
+            f_pre_da = None
+            if req.include_premium:
+                f_pre_da = pool.submit(
+                    _safe_call,
+                    lambda: _fetch_pre_da_history(req.address, lot_area_m2),
+                    "pre_da_history", ConfidenceLevel.ESTIMATED,
+                )
+
+            bushfire_df = f_bushfire.result(timeout=CONFIG.timeout_postgis + 5)
+            flood_sat_df = f_flood_sat.result(timeout=20)
+            climate_df = f_climate.result(timeout=10)
+            granny_df = f_granny.result(timeout=30)
+            pre_da_df = f_pre_da.result(timeout=CONFIG.timeout_satellite + 5) if f_pre_da else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="pre_da_history", reason="Premium data not requested",
+            )
+
+        bushfire_raw = bushfire_df.value
+        flood_raw_sat = flood_sat_df.value
+        climate_raw = climate_df.value
+        granny_flat_raw = granny_df.value
+        pre_da_raw = pre_da_df.value
+
+        satellite_data = _build_satellite_data(
+            bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
+        )
+
+    # ── 8. Strata classification ─────────────────────────────────────────
     strata_type = classify_strata(strata_raw, lot_area_m2)
 
     strata_info = StrataInfo(
@@ -1250,6 +1591,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             planning_controls=planning_controls,
             environmental_constraints=environmental,
             economics=economics,
+            satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),  # placeholder, recomputed below
         )
     else:
@@ -1266,6 +1608,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
+            satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),  # placeholder
         )
 
@@ -1302,6 +1645,19 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             for o in (environmental.overlays.value or [])
         ],
     )
+    # Satellite compound constraints (only when satellite data present)
+    if satellite_data:
+        flood_detail = (satellite_data.flood.value if satellite_data.flood.value else None)
+        gf_detail = (satellite_data.granny_flat.value if satellite_data.granny_flat.value else None)
+        sat_constraints = evaluate_satellite_constraints(
+            granny_flat_structures=gf_detail.structure_count if gf_detail else None,
+            nearby_das=das_for_compounds,
+            flood_epi=environmental.flood_epi.value or False,
+            flood_jrc_pct=flood_detail.jrc_occurrence_pct if flood_detail else None,
+            flood_wofs_pct=flood_detail.wofs_frequency_pct if flood_detail else None,
+        )
+        compound_constraints.extend(sat_constraints)
+
     brief.compound_constraints = compound_constraints
 
     # ── 11. Staleness detection ──────────────────────────────────────────
