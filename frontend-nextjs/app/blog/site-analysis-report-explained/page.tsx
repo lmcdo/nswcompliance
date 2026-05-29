@@ -207,7 +207,7 @@ export default function SiteAnalysisReportPage() {
         </p>
         <p className="text-slate-600 leading-relaxed">
           A site analysis is not a planning assessment. It does not interpret whether a proposed
-          development is likely to be approved. It gathers the raw data — the controls, overlays,
+          development is likely to receive consent. It gathers the raw data — the controls, overlays,
           and constraints — that a professional then interprets in context.
         </p>
       </section>
@@ -344,7 +344,7 @@ export default function SiteAnalysisReportPage() {
             },
             {
               gap: 'Relying solely on the s10.7 certificate',
-              impact: 'The certificate is necessary but not sufficient. DCP controls, flood depth, and development potential are not included.',
+              impact: 'The certificate is necessary but incomplete. DCP controls, flood depth, and development potential are not included.',
             },
           ].map(({ gap, impact }) => (
             <div key={gap} className="rounded-xl border border-slate-200 p-4">

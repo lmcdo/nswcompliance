@@ -227,7 +227,7 @@ export default function DCPExplainedPage() {
       <section id="what-dcps-cover" className="mb-10">
         <h2 className="text-xl font-bold text-slate-900 mb-3">What a DCP typically covers</h2>
         <p className="text-slate-600 mb-3 leading-relaxed">
-          DCPs are comprehensive. A single DCP can run to hundreds of pages covering every aspect
+          DCPs are wide-ranging. A single DCP can run to hundreds of pages covering every aspect
           of development design and assessment. The most commonly referenced controls are:
         </p>
         <DCPContentsGrid />

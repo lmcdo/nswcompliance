@@ -300,7 +300,7 @@ export default function PlanningPortalGapsPage() {
                   ['DCP setbacks, parking, landscaping', 'Council DCP document (PDF on council website)'],
                   ['Permitted land uses', 'LEP Land Use Table (legislation.nsw.gov.au)'],
                   ['Flood depth at return periods', 'Council flood studies (request from council)'],
-                  ['Bushfire Attack Level', 'Formal BAL assessment (certified assessor)'],
+                  ['Bushfire Attack Level', 'Formal BAL assessment (accredited assessor)'],
                   ['Heritage conservation area', 'Council heritage maps or s10.7 certificate'],
                   ['SEPP applicability', 'Read the relevant SEPP (legislation.nsw.gov.au)'],
                   ['Development potential', 'Planning consultant or site analysis'],

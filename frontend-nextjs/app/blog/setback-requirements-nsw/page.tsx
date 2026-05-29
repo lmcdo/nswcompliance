@@ -297,7 +297,7 @@ export default function SetbackRequirementsNSWPage() {
           Many councils use a &ldquo;prevailing setback&rdquo; approach rather than a fixed number.
           This means the required front setback is the average of the front setbacks of the
           buildings on either side of your lot, or within a specified distance along the street.
-          The logic is that new development should sit in line with existing buildings.
+          The logic is that new development sits in line with existing buildings.
         </p>
         <p className="text-slate-600 leading-relaxed">
           Where the DCP specifies both a minimum setback <em>and</em> a prevailing setback rule,

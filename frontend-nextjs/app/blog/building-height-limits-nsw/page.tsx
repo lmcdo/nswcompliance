@@ -325,7 +325,7 @@ export default function BuildingHeightLimitsPage() {
           Clause 4.6 of the Standard Instrument LEP provides a mechanism to vary development
           standards (including height). An applicant must demonstrate that compliance with the
           standard is &ldquo;unreasonable or unnecessary in the circumstances&rdquo; and that
-          there are &ldquo;sufficient environmental planning grounds&rdquo; for the variation.
+          there are environmental planning grounds that justify the variation.
         </p>
         <p className="text-slate-600 mb-3 leading-relaxed">
           The test was clarified by the Court of Appeal in <em>Wehbe v Pittwater Council</em>
@@ -336,7 +336,7 @@ export default function BuildingHeightLimitsPage() {
         <p className="text-slate-600 leading-relaxed">
           Height variations above certain thresholds require concurrence from the Department of
           Planning. Variations above 10% of a mapped LEP height limit are scrutinised more
-          closely. Variations of 40% or more are very rarely approved.
+          closely. Variations of 40% or more are very rarely granted.
         </p>
       </section>
 
