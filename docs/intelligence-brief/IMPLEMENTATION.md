@@ -209,11 +209,39 @@ If latency is a validated problem with real users (not hypothetical), THEN add a
 
 After satellite results, evaluate satellite-dependent rules from Stage 3.1. Append to compound_constraints array.
 
-**Verification:**
-- Free user → satellite fields null, no satellite compound constraints
-- Paid user → satellite fields populated (where data available)
-- One pipeline timeout → other pipelines still return, failed one shows not_available
-- Match: satellite results from brief match standalone pipeline calls for same address
+**4.4 Climate v2 additions (extend climate_risk_score from 5-hazard to 9+ hazard)**
+
+Wire these alongside existing satellite pipelines. All use `_safe_call`. All return `DataField`.
+
+| Source | Gap # | Data Source | Effort | Confidence |
+|--------|-------|-------------|--------|------------|
+| Sea level rise projections | #3 | AdaptNSW 2025 via SEED WFS | 2 days | authoritative (gov scenario) |
+| Urban heat island (Phase 1) | #4 | NSW SEED UHI mesh block, ArcGIS REST | 2 days | authoritative (Landsat-derived, gov-published) |
+| ARR design rainfall | #7 | ARR Data Hub REST API (any lat/lon) | 1 day | authoritative (BoM/ARR) |
+| FIRMS fire proximity | #8 | NASA FIRMS REST API, VIIRS 375m | 0.5 day | estimated (satellite observation) |
+| Vegetation/fuel load | #6 | samgeo extension (already in use for granny_flat) | 3 days | estimated (70-80%) |
+
+Pre-Stage 4 bug fix (integrate into Stage 2): bushfire bbox limited to Greater Sydney in spatial_overlays — fall back to live RFS API when outside bbox.
+
+Pre-Stage 4 bug fix (integrate into Stage 3): landslide data already in spatial_overlays but not wired into climate_risk_score — add as input.
+
+**Parallel track (runs alongside Stage 5, not blocking):**
+- xarray multi-GCM ensemble: NARCliM 2.0 has 10 members, we use 1. Pre-compute ensemble stats (min/median/max/P10/P90) to PostGIS via batch job. Brief queries PostGIS rows, not raw NetCDF. 1 week. Biggest credibility upgrade for APRA/AASB S2 scenario requirements.
+
+**Stage 7 additions:**
+- whitebox-tools (MIT): DEM-based watershed delineation + slope analysis. NSW 5m LiDAR from SEED. Pre-compute per-lot terrain metrics to PostGIS. 1 week.
+- xarray ERA5-Land soil moisture: reactive clay/ground movement risk indicator. Pre-compute temporal stats to PostGIS. 3 days.
+
+**Key constraint:** Heavy processing (xarray, whitebox-tools, rasterio thermal) is always pre-computed to PostGIS by batch jobs. The intelligence brief request path only queries PostGIS. No raw raster processing in-request.
+
+Repos identified by repo-research v2 (2026-05-28): xarray (Apache-2.0), whitebox-tools (MIT), rasterio (BSD-3), samgeo (MIT).
+
+**Verification (extends base Stage 4 gate):**
+- SLR: coastal property shows current zone + 2050/2100 projected inundation
+- UHI: Sydney metro property shows mesh block UHI delta vs rural baseline
+- ARR: location IFD matches Bureau published tables
+- FIRMS: property near 2019-20 fire perimeter shows satellite-detected events
+- Vegetation: bushland-adjacent property shows higher fuel load than cleared suburban lot
 
 ---
 
@@ -607,18 +635,19 @@ Threshold: 30% of Layer A fields = approximately 5+ core fields failed (zone, he
 
 | Stage | Days | Cumulative | Deliverable | Silent Failure Fixes Included |
 |---|---|---|---|---|
-| 1. Contract + Schema | 1.5 | 1.5 | Schema reviewed, fixtures validated | — |
-| 2. Orchestrator | 3.5 | 5 | `/pipeline/intelligence-brief` returns full planning brief (free tier) | Fix A (LGA PostGIS validation) |
+| 1. Contract + Schema ✅ 2026-05-27 | 1.5 | 1.5 | Schema reviewed, fixtures validated (PR #386) | — |
+| 2. Orchestrator 🔧 in progress | 3.5 | 5 | `/pipeline/intelligence-brief` returns full planning brief (free tier) | Fix A (LGA PostGIS validation) |
 | 3. Compound Constraints | 2.5 | 7.5 | Multi-source insights + confidence + gap disclosure | Fix B (zone dev_type advisory) + Fix C (shadow temporal + DA cross-ref) |
-| 4. Satellite Integration | 3 | 10.5 | Paid tier with satellite evidence | — |
-| 5. LLM Synthesis | 3 | 13.5 | Natural language narrative (paid tier) | — |
-| 6. Pre-Computation + Bulk | 5 | 18.5 | Prospector + batch endpoints | — |
-| 7. Data Source Expansion | 5 | 23.5 | School, contamination, easements, cost proxy | — |
-| 8. Production Hardening | 3 | 26.5 | Auth, billing, monitoring, legal review | — |
+| 4. Satellite + Climate v2 | 10 | 17.5 | Paid tier with satellite evidence + SLR, UHI, ARR, FIRMS, vegetation | Bushfire bbox fix (Stage 2 prep) |
+| 5. LLM Synthesis | 3 | 20.5 | Natural language narrative (paid tier) | — |
+| 5.5 Multi-GCM ensemble (parallel) | 5 | — | xarray ensemble stats pre-computed to PostGIS | — |
+| 6. Pre-Computation + Bulk | 5 | 25.5 | Prospector + batch endpoints | — |
+| 7. Data Source Expansion | 8 | 33.5 | School, contamination, easements, cost proxy + whitebox hydrology, ERA5 soil moisture | — |
+| 8. Production Hardening | 3 | 36.5 | Auth, billing, monitoring, legal review | — |
 
-**Net addition from silent failure fixes: +1 day** (0.5 day Fix A in Stage 2, 0.5 day Fixes B+C in Stage 3). Total: 26.5 days.
+**Net addition from silent failure fixes: +1 day.** Climate v2 additions: +10 days. Total: ~36.5 days.
 
-**Demo-ready for Hamada: after Stage 2 (day 5).** Planning brief with DCP controls, shadow analysis, SEPP eligibility, all overlays, nearby DAs, land value, LGA validation — richer than anything else on the market. Satellite and LLM are "coming soon" features to discuss, not demo.
+**Demo-ready for buyer's agents: after Stage 2 (day 5).** Planning brief with DCP controls, shadow analysis, SEPP eligibility, all overlays, nearby DAs, land value, LGA validation — richer than anything else on the market. Satellite, climate v2, and LLM are "coming soon" features to discuss, not demo.
 
 ---
 
