@@ -57,6 +57,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/blog/climate-risk-data-provider-australia`,  priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog/uninsurable-property-climate-risk`,     priority: 0.7, changeFrequency: 'monthly' as const, lastModified: now },
     { url: `${base}/blog/is-my-house-in-a-flood-zone-nsw`,      priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/nsw-planning-portal-gaps`,             priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/cdc-vs-da-which-approval-pathway`,     priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/setback-requirements-nsw`,             priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/development-control-plans-explained`,  priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/building-height-limits-nsw`,           priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/blog/site-analysis-report-explained`,       priority: 0.8, changeFrequency: 'monthly' as const, lastModified: now },
   ]
 
   const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({
