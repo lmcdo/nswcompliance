@@ -252,7 +252,7 @@ export default function PatternBookHomesPage() {
     <article className="max-w-3xl mx-auto px-6 py-16">
       <BlogPostingJsonLd
         title={`Pattern Book homes: the 10-day CDC pathway that could save \$330K`}
-        description={`Pre-approved designs, a 10-day complying development certificate, and estimated \$330K savings per dwelling. How the Pattern Book pathway works.`}
+        description={`Pre-designed Pattern Book homes, a 10-day complying development certificate, and estimated \$330K savings per dwelling. How the Pattern Book pathway works.`}
         slug="pattern-book-homes-nsw-cdc-pathway"
         date="2026-05-20"
       />
