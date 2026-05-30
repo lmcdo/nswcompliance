@@ -332,13 +332,48 @@ class EnvironmentalOverlay(BaseModel):
 
 
 class EnvironmentalConstraints(BaseModel):
-    """Environmental risk layers from PostGIS + portal."""
+    """Environmental risk layers from PostGIS + portal + spatial queries."""
 
     flood_epi: DataField[bool]
     overlays: DataField[list[EnvironmentalOverlay]]
     overlay_coverage: DataField[list[str]]  # layer types ingested for this LGA
     bushfire_designation: DataField[Optional[str]]  # from portal SEPP overlay
     heritage_postgis: DataField[Optional[dict]]  # PostGIS heritage near lot
+
+    # Typed constraint fields — extracted from overlays or portal queries
+    # Default NOT_AVAILABLE until orchestrator wires each source
+    mine_subsidence: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="nsw_spatial_services", reason="Not yet wired in orchestrator",
+    )
+    contaminated_land: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="epa_contaminated_sites", reason="Not yet wired in orchestrator",
+    )
+    drinking_water_catchment: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="sepp_resilience_hazards", reason="Not yet wired in orchestrator",
+    )
+    terrestrial_biodiversity: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    riparian_land: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    wetlands: DataField[Optional[bool]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    anef: DataField[Optional[str]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    coastal_hazards: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="sepp_resilience_hazards", reason="Not yet extracted from overlays",
+    )
 
 
 class Neighbourhood(BaseModel):
@@ -384,14 +419,116 @@ class FloodDetail(BaseModel):
     confidence: Optional[str] = None
 
 
-class ClimateRiskDetail(BaseModel):
-    """Composite climate risk score (6-hazard)."""
+class GeometryRelationship(str, Enum):
+    """How the property relates to a spatial designation."""
 
-    score: Optional[int] = None  # 1-100
-    band: Optional[str] = None  # Low/Moderate/High/Very High/Extreme
-    hazards: Optional[list[dict]] = None
-    interaction_bonus: Optional[float] = None
-    methodology_version: Optional[str] = None
+    INTERSECTS = "intersects"
+    CONTAINS = "contains"
+    PARTIAL = "partial"
+    UNKNOWN = "unknown"
+
+
+class FalsePositiveLikelihood(str, Enum):
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+
+
+class ActionCategory(str, Enum):
+    VERIFY = "verify"
+    INVESTIGATE = "investigate"
+    MONITOR = "monitor"
+
+
+class StatutoryFinding(BaseModel):
+    """Layer 1 — government-designated hazard constraint."""
+
+    hazard: str
+    designation: str
+    source: str
+    legislation_ref: Optional[str] = None
+    as_at: Optional[str] = None
+    confidence: ConfidenceLevel = ConfidenceLevel.AUTHORITATIVE
+    geometry_relationship: GeometryRelationship = GeometryRelationship.UNKNOWN
+    statutory_data_age_days: Optional[int] = None
+
+
+class EmpiricalFinding(BaseModel):
+    """Layer 2 — observed/measured data from authoritative datasets."""
+
+    hazard: str
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    source: str
+    data_date: Optional[str] = None
+    confidence: ConfidenceLevel = ConfidenceLevel.ESTIMATED
+    false_positive_likelihood: FalsePositiveLikelihood = FalsePositiveLikelihood.LOW
+
+
+class ProjectedFinding(BaseModel):
+    """Layer 3 — climate model output (scenario-dependent)."""
+
+    hazard: str
+    value: Optional[float] = None
+    model: Optional[str] = None
+    scenario: Optional[str] = None
+    timeframe: Optional[str] = None
+    confidence: ConfidenceLevel = ConfidenceLevel.ESTIMATED
+
+
+class UnavailableSource(BaseModel):
+    """Source that could not be queried during assessment."""
+
+    source: str
+    reason: str
+
+
+class AssessmentManifest(BaseModel):
+    """Tracks what was assessed and what succeeded."""
+
+    categories_assessed: int = 0
+    sources_queried: int = 0
+    sources_successful: int = 0
+    sources_unavailable: list[UnavailableSource] = []
+    coverage_pct: float = 0.0
+    data_quality_notes: list[str] = []
+
+
+class ActionItem(BaseModel):
+    """Informational action derived from gap alerts, stale data, or unavailable sources."""
+
+    description: str
+    category: ActionCategory
+    recommended_source: Optional[str] = None
+    verify_url: Optional[str] = None
+
+
+class ClimateDisclosureProfile(BaseModel):
+    """Climate Disclosure Profile — replaces composite climate risk score.
+
+    Three epistemological layers with cross-layer gap detection and action register.
+    No composite score. Methodology: CLIMATE_METHODOLOGY_V2.md
+    """
+
+    assessment_date: Optional[str] = None
+    methodology_version: str = "2.0"
+
+    manifest: AssessmentManifest = AssessmentManifest()
+    scope_limitations: list[str] = []
+
+    statutory_findings: list[StatutoryFinding] = []
+    statutory_count: int = 0
+
+    empirical_findings: list[EmpiricalFinding] = []
+
+    projected_findings: list[ProjectedFinding] = []
+
+    gap_alerts: list[CompoundConstraint] = []
+    gap_alert_count: int = 0
+
+    action_register: list[ActionItem] = []
+
+    per_hazard_detail: list[dict] = []
 
 
 class GrannyFlatDetection(BaseModel):
@@ -424,9 +561,9 @@ class SatelliteData(BaseModel):
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="flood_truth", reason="Satellite data not requested",
     )
-    climate_risk: DataField[Optional[ClimateRiskDetail]] = DataField(
+    climate_disclosure: DataField[Optional[ClimateDisclosureProfile]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-        source="climate_risk_score", reason="Satellite data not requested",
+        source="climate_disclosure_profile", reason="Satellite data not requested",
     )
     granny_flat: DataField[Optional[GrannyFlatDetection]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -493,6 +630,7 @@ class DevelopmentBrief(BaseModel):
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
+    scope_limitations: list[str] = []
     confidence_summary: ConfidenceSummary
     narrative: Optional[str] = None
     disclaimer: str = (
@@ -523,6 +661,7 @@ class RenovationBrief(BaseModel):
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
+    scope_limitations: list[str] = []
     confidence_summary: ConfidenceSummary
     disclaimer: str = (
         "This site screening brief is for preliminary research purposes only. "
@@ -992,15 +1131,13 @@ def _build_satellite_data(
             confidence=flood_raw.get("confidence"),
         )
 
-    # Climate risk
-    climate_detail = None
+    # Climate disclosure profile — shim old climate_risk_score output into new structure
+    climate_profile = None
     if climate_raw:
-        climate_detail = ClimateRiskDetail(
-            score=climate_raw.get("score"),
-            band=climate_raw.get("band"),
-            hazards=climate_raw.get("hazards"),
-            interaction_bonus=climate_raw.get("interaction_bonus"),
-            methodology_version=climate_raw.get("methodology_version"),
+        hazards_raw = climate_raw.get("hazards") or []
+        climate_profile = ClimateDisclosureProfile(
+            assessment_date=today,
+            per_hazard_detail=hazards_raw,
         )
 
     # Granny flat (detection only)
@@ -1039,12 +1176,12 @@ def _build_satellite_data(
             as_at=today,
             reason=None if flood_detail else "Flood analysis failed or not requested",
         ),
-        climate_risk=DataField(
-            value=climate_detail,
-            confidence=ConfidenceLevel.ESTIMATED if climate_detail else ConfidenceLevel.NOT_AVAILABLE,
-            source="climate_risk_score",
+        climate_disclosure=DataField(
+            value=climate_profile,
+            confidence=ConfidenceLevel.ESTIMATED if climate_profile else ConfidenceLevel.NOT_AVAILABLE,
+            source="climate_disclosure_profile",
             as_at=today,
-            reason=None if climate_detail else "Climate risk score failed or not requested",
+            reason=None if climate_profile else "Climate disclosure profile failed or not requested",
         ),
         granny_flat=DataField(
             value=gf_detail,
@@ -1237,6 +1374,21 @@ def _build_environmental(
         for o in overlay_list
     ]
 
+    # Extract typed constraint fields from overlay list
+    overlay_types = {o.get("layer_type") for o in overlay_list}
+    has_biodiversity = "biodiversity" in overlay_types
+    has_riparian = "riparian" in overlay_types
+    has_wetlands = "wetlands" in overlay_types
+    anef_value = next(
+        (o.get("value") for o in overlay_list if o.get("layer_type") == "anef"),
+        None,
+    )
+    coastal_layers = {
+        o.get("layer_type"): o.get("value")
+        for o in overlay_list
+        if o.get("layer_type", "").startswith("coastal_") or o.get("layer_type") == "littoral_rainforest"
+    }
+
     return EnvironmentalConstraints(
         flood_epi=DataField(value=flood_epi, confidence=auth, source="postgis_overlays", as_at=today),
         overlays=DataField(value=env_overlays, confidence=auth, source="postgis_overlays", as_at=today),
@@ -1248,6 +1400,44 @@ def _build_environmental(
             source="postgis_heritage",
             as_at=today,
         ),
+        # Typed fields from spatial_overlays — present if layer is in covered list
+        terrestrial_biodiversity=DataField(
+            value=has_biodiversity if "biodiversity" in covered else None,
+            confidence=auth if "biodiversity" in covered else ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_overlays",
+            as_at=today,
+            reason=None if "biodiversity" in covered else "Layer not ingested for this LGA",
+        ),
+        riparian_land=DataField(
+            value=has_riparian if "riparian" in covered else None,
+            confidence=auth if "riparian" in covered else ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_overlays",
+            as_at=today,
+            reason=None if "riparian" in covered else "Layer not ingested for this LGA",
+        ),
+        wetlands=DataField(
+            value=has_wetlands if "wetlands" in covered else None,
+            confidence=auth if "wetlands" in covered else ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_overlays",
+            as_at=today,
+            reason=None if "wetlands" in covered else "Layer not ingested for this LGA",
+        ),
+        anef=DataField(
+            value=anef_value if "anef" in covered else None,
+            confidence=auth if "anef" in covered else ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_overlays",
+            as_at=today,
+            reason=None if "anef" in covered else "Layer not ingested for this LGA",
+        ),
+        coastal_hazards=DataField(
+            value=coastal_layers if coastal_layers else None,
+            confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
+            source="sepp_resilience_hazards",
+            as_at=today,
+            reason=None if coastal_layers else "No coastal hazard overlays at this location",
+        ),
+        # mine_subsidence, contaminated_land, drinking_water_catchment:
+        # defaults to NOT_AVAILABLE until Phase A wires portal queries
     )
 
 
