@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { useRealtimeStream } from '@trigger.dev/react-hooks';
@@ -174,21 +174,133 @@ function formatValue(val: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// Progress bar
+// Elapsed timer hook
 // ---------------------------------------------------------------------------
 
-function ProgressBar({ progress, label }: { progress: number; label?: string }) {
+function useElapsedSeconds(running: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (running) {
+      startRef.current = Date.now();
+      setElapsed(0);
+      const interval = setInterval(() => {
+        if (startRef.current) {
+          setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [running]);
+
+  return elapsed;
+}
+
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+// ---------------------------------------------------------------------------
+// Live status panel — shows elapsed time, section timeline, progress
+// ---------------------------------------------------------------------------
+
+// Expected section order for the timeline
+const EXPECTED_SECTIONS_BASE = [
+  'economics', 'strata', 'environmental_constraints', 'planning_controls',
+];
+const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'neighbourhood'];
+const EXPECTED_SECTIONS_SAT = [
+  'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
+  'satellite.granny_flat', 'satellite.pre_da_history',
+];
+
+function LiveStatusPanel({
+  elapsed,
+  progress,
+  receivedSections,
+  briefType,
+  includeSatellite,
+  state,
+}: {
+  elapsed: number;
+  progress: number;
+  receivedSections: string[];
+  briefType: string | null;
+  includeSatellite: boolean;
+  state: PageState;
+}) {
+  // Build expected section list based on what we know
+  const expectedSections = [
+    ...EXPECTED_SECTIONS_BASE,
+    ...(briefType !== 'renovation' ? EXPECTED_SECTIONS_DEV : []),
+    ...(includeSatellite ? EXPECTED_SECTIONS_SAT : []),
+  ];
+
+  const receivedSet = new Set(receivedSections);
+
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-slate-500">{label ?? 'Generating brief...'}</span>
-        <span className="text-xs font-medium text-slate-700">{progress}%</span>
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+      {/* Header with elapsed time and progress */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          {state !== 'complete' && (
+            <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
+          )}
+          <span className="text-sm font-medium text-slate-900">
+            {state === 'triggering' ? 'Starting...' : state === 'complete' ? 'Complete' : 'Generating brief'}
+          </span>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-slate-500 tabular-nums">{formatElapsed(elapsed)}</span>
+          <span className="font-medium text-slate-700 tabular-nums">{progress}%</span>
+        </div>
       </div>
-      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
         <div
           className="h-full bg-teal-500 rounded-full transition-all duration-500 ease-out"
           style={{ width: `${progress}%` }}
         />
+      </div>
+
+      {/* Section timeline */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {expectedSections.map((section) => {
+          const received = receivedSet.has(section);
+          const label = SECTION_LABELS[section]?.label ?? section;
+          const isSatellite = section.startsWith('satellite.');
+
+          return (
+            <div
+              key={section}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
+                received
+                  ? 'bg-teal-50 text-teal-800'
+                  : 'bg-slate-50 text-slate-400'
+              }`}
+            >
+              <span className="flex-shrink-0">
+                {received ? (
+                  <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : state !== 'complete' ? (
+                  <div className={`w-3 h-3 rounded-full border ${isSatellite ? 'border-slate-300' : 'border-slate-300'}`} />
+                ) : (
+                  <svg className="w-3 h-3 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
+              <span className="truncate">{label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -298,6 +410,10 @@ function IntelligenceBriefInner() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
+
+  // Elapsed timer — starts on trigger, stops on complete/error
+  const timerRunning = state === 'triggering' || state === 'streaming';
+  const elapsed = useElapsedSeconds(timerRunning);
 
   // Stream subscription — only active when we have runId + accessToken
   const { parts, error: streamError } = useRealtimeStream<BriefEvent>(
@@ -471,26 +587,31 @@ function IntelligenceBriefInner() {
               )}
             </div>
             {state === 'complete' && (
-              <button
-                onClick={handleReset}
-                className="text-sm text-teal-600 hover:text-teal-800"
-              >
-                New brief
-              </button>
+              <div className="flex items-center gap-3">
+                {completeEvent && (
+                  <span className="text-xs text-slate-400">
+                    {completeEvent.data.elapsed_seconds}s
+                  </span>
+                )}
+                <button
+                  onClick={handleReset}
+                  className="text-sm text-teal-600 hover:text-teal-800"
+                >
+                  New brief
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Progress bar — show while streaming */}
+          {/* Live status panel — elapsed time, section timeline, progress */}
           {state !== 'complete' && (
-            <ProgressBar
+            <LiveStatusPanel
+              elapsed={elapsed}
               progress={state === 'triggering' ? 0 : latestProgress}
-              label={
-                state === 'triggering'
-                  ? 'Starting brief generation...'
-                  : sectionEvents.length > 0
-                    ? `Received ${sectionEvents.length} sections — ${SECTION_LABELS[sectionEvents[sectionEvents.length - 1].data.section]?.label ?? sectionEvents[sectionEvents.length - 1].data.section}`
-                    : 'Connecting to data sources...'
-              }
+              receivedSections={sectionEvents.map((e) => e.data.section)}
+              briefType={briefType}
+              includeSatellite={includeSatellite}
+              state={state}
             />
           )}
 
@@ -504,15 +625,6 @@ function IntelligenceBriefInner() {
               />
             ))}
           </div>
-
-          {/* Loading skeleton for next section */}
-          {state === 'streaming' && (
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 animate-pulse">
-              <div className="h-4 bg-slate-200 rounded w-1/3 mb-3" />
-              <div className="h-3 bg-slate-100 rounded w-2/3 mb-2" />
-              <div className="h-3 bg-slate-100 rounded w-1/2" />
-            </div>
-          )}
 
           {/* Complete summary */}
           {completeEvent && <CompleteSummary data={completeEvent.data} />}
