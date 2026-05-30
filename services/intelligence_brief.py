@@ -15,6 +15,7 @@ POST /pipeline/intelligence-brief
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -25,9 +26,10 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 from pathlib import Path
-from typing import Any, Generic, Literal, Optional, TypeVar
+from typing import Any, Generator, Generic, Literal, Optional, TypeVar
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
@@ -1110,6 +1112,149 @@ def _fetch_pre_da_history(
     return run_pre_da_history(req)
 
 
+def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDetail]:
+    """Extract BushfireDetail from raw bushfire prescreen output."""
+    if not bushfire_raw:
+        return None
+    outputs = bushfire_raw.get("outputs") or {}
+    rfs = outputs.get("rfs") or {}
+    return BushfireDetail(
+        category=rfs.get("category"),
+        bal_estimate=rfs.get("bal_estimate"),
+        vegetation_type=rfs.get("vegetation_type"),
+        cross_overlays=outputs.get("cross_overlays"),
+        confidence=bushfire_raw.get("confidence"),
+    )
+
+
+def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
+    """Extract FloodDetail from raw flood truth output."""
+    if not flood_raw:
+        return None
+    outputs = flood_raw.get("outputs") or {}
+    return FloodDetail(
+        epi_flood=outputs.get("epi_flood"),
+        jrc_occurrence_pct=outputs.get("jrc_occurrence_pct"),
+        wofs_frequency_pct=outputs.get("wofs_frequency_pct"),
+        bom_gauge_distance_km=outputs.get("bom_gauge_distance_km"),
+        flood_studies=outputs.get("flood_studies"),
+        confidence=flood_raw.get("confidence"),
+    )
+
+
+def _build_climate_disclosure(
+    climate_raw: Optional[dict],
+    uhi_raw: Optional[dict] = None,
+    arr_raw: Optional[dict] = None,
+    firms_raw: Optional[dict] = None,
+) -> Optional[ClimateDisclosureProfile]:
+    """Build ClimateDisclosureProfile from Phase B data sources."""
+    today = date.today().isoformat()
+    if not (climate_raw or uhi_raw or arr_raw or firms_raw):
+        return None
+
+    hazards_raw = (climate_raw.get("hazards") or []) if climate_raw else []
+    empirical = []
+    sources_queried = 0
+    sources_successful = 0
+    unavailable: list[UnavailableSource] = []
+    quality_notes: list[str] = []
+
+    sources_queried += 1
+    if uhi_raw:
+        sources_successful += 1
+        empirical.append(EmpiricalFinding(
+            hazard="urban_heat_island",
+            value=uhi_raw.get("uhi_intensity"),
+            unit="degrees_c_above_baseline",
+            source="NSW UHGC (2016 meshblock data)",
+            data_date="2016",
+            confidence=ConfidenceLevel.ESTIMATED,
+            false_positive_likelihood=FalsePositiveLikelihood.LOW,
+        ))
+        quality_notes.append("UHI data is 2016 vintage (most recent NSW-wide meshblock dataset)")
+    else:
+        unavailable.append(UnavailableSource(source="nsw_uhgc", reason="Outside UHGC coverage or query failed"))
+
+    sources_queried += 1
+    if arr_raw:
+        sources_successful += 1
+        ifd_val = arr_raw.get("ifd_1pct_60min_mm")
+        if ifd_val is not None:
+            empirical.append(EmpiricalFinding(
+                hazard="extreme_rainfall",
+                value=ifd_val,
+                unit="mm_1pct_aep_60min",
+                source="ARR Data Hub (BOM IFD)",
+                data_date=today,
+                confidence=ConfidenceLevel.ESTIMATED,
+                false_positive_likelihood=FalsePositiveLikelihood.LOW,
+            ))
+    else:
+        unavailable.append(UnavailableSource(source="arr_data_hub", reason="ARR Data Hub query failed"))
+
+    sources_queried += 1
+    if firms_raw is not None:
+        sources_successful += 1
+        if firms_raw.get("hotspot_count", 0) > 0:
+            empirical.append(EmpiricalFinding(
+                hazard="active_fire",
+                value=float(firms_raw["hotspot_count"]),
+                unit="detections",
+                source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
+                data_date=today,
+                confidence=ConfidenceLevel.ESTIMATED,
+                false_positive_likelihood=FalsePositiveLikelihood.MODERATE,
+            ))
+    else:
+        unavailable.append(UnavailableSource(source="nasa_firms", reason="FIRMS API key missing or query failed"))
+
+    if climate_raw:
+        sources_queried += 1
+        sources_successful += 1
+
+    coverage = (sources_successful / sources_queried * 100) if sources_queried > 0 else 0.0
+
+    return ClimateDisclosureProfile(
+        assessment_date=today,
+        manifest=AssessmentManifest(
+            categories_assessed=len(empirical) + len(hazards_raw),
+            sources_queried=sources_queried,
+            sources_successful=sources_successful,
+            sources_unavailable=unavailable,
+            coverage_pct=round(coverage, 1),
+            data_quality_notes=quality_notes,
+        ),
+        per_hazard_detail=hazards_raw,
+        empirical_findings=empirical,
+    )
+
+
+def _build_granny_flat_detail(granny_flat_raw: Optional[dict]) -> Optional[GrannyFlatDetection]:
+    """Extract GrannyFlatDetection from raw detection output."""
+    if not granny_flat_raw:
+        return None
+    return GrannyFlatDetection(
+        structure_count=granny_flat_raw.get("samgeo_structure_count"),
+        sepp_eligible=granny_flat_raw.get("sepp_eligible"),
+        sepp_ineligible_reason=granny_flat_raw.get("sepp_ineligible_reason"),
+        lot_area_m2=granny_flat_raw.get("lot_area_m2"),
+        confirmation_required=True,
+    )
+
+
+def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDetail]:
+    """Extract PreDAHistoryDetail from raw pre-DA output."""
+    if not pre_da_raw:
+        return None
+    return PreDAHistoryDetail(
+        timeline=pre_da_raw.get("timeline"),
+        heritage_flag=pre_da_raw.get("heritage_flag"),
+        council=pre_da_raw.get("council"),
+        data_quality_note=pre_da_raw.get("data_quality_note"),
+    )
+
+
 def _build_satellite_data(
     bushfire_raw: Optional[dict],
     flood_raw: Optional[dict],
@@ -1123,137 +1268,11 @@ def _build_satellite_data(
     """Assemble satellite pipeline results into SatelliteData model."""
     today = date.today().isoformat()
 
-    # Bushfire
-    bushfire_detail = None
-    if bushfire_raw:
-        outputs = bushfire_raw.get("outputs") or {}
-        rfs = outputs.get("rfs") or {}
-        bushfire_detail = BushfireDetail(
-            category=rfs.get("category"),
-            bal_estimate=rfs.get("bal_estimate"),
-            vegetation_type=rfs.get("vegetation_type"),
-            cross_overlays=outputs.get("cross_overlays"),
-            confidence=bushfire_raw.get("confidence"),
-        )
-
-    # Flood
-    flood_detail = None
-    if flood_raw:
-        outputs = flood_raw.get("outputs") or {}
-        flood_detail = FloodDetail(
-            epi_flood=outputs.get("epi_flood"),
-            jrc_occurrence_pct=outputs.get("jrc_occurrence_pct"),
-            wofs_frequency_pct=outputs.get("wofs_frequency_pct"),
-            bom_gauge_distance_km=outputs.get("bom_gauge_distance_km"),
-            flood_studies=outputs.get("flood_studies"),
-            confidence=flood_raw.get("confidence"),
-        )
-
-    # Climate disclosure profile — shim old climate_risk_score output into new structure
-    climate_profile = None
-    if climate_raw or uhi_raw or arr_raw or firms_raw:
-        hazards_raw = (climate_raw.get("hazards") or []) if climate_raw else []
-
-        # Build empirical findings from Phase B data sources
-        empirical = []
-        sources_queried = 0
-        sources_successful = 0
-        unavailable: list[UnavailableSource] = []
-        quality_notes: list[str] = []
-
-        # UHI
-        sources_queried += 1
-        if uhi_raw:
-            sources_successful += 1
-            empirical.append(EmpiricalFinding(
-                hazard="urban_heat_island",
-                value=uhi_raw.get("uhi_intensity"),
-                unit="degrees_c_above_baseline",
-                source="NSW UHGC (2016 meshblock data)",
-                data_date="2016",
-                confidence=ConfidenceLevel.ESTIMATED,
-                false_positive_likelihood=FalsePositiveLikelihood.LOW,
-            ))
-            quality_notes.append("UHI data is 2016 vintage (most recent NSW-wide meshblock dataset)")
-        else:
-            unavailable.append(UnavailableSource(source="nsw_uhgc", reason="Outside UHGC coverage or query failed"))
-
-        # ARR IFD
-        sources_queried += 1
-        if arr_raw:
-            sources_successful += 1
-            ifd_val = arr_raw.get("ifd_1pct_60min_mm")
-            if ifd_val is not None:
-                empirical.append(EmpiricalFinding(
-                    hazard="extreme_rainfall",
-                    value=ifd_val,
-                    unit="mm_1pct_aep_60min",
-                    source="ARR Data Hub (BOM IFD)",
-                    data_date=today,
-                    confidence=ConfidenceLevel.ESTIMATED,
-                    false_positive_likelihood=FalsePositiveLikelihood.LOW,
-                ))
-        else:
-            unavailable.append(UnavailableSource(source="arr_data_hub", reason="ARR Data Hub query failed"))
-
-        # FIRMS
-        sources_queried += 1
-        if firms_raw is not None:
-            sources_successful += 1
-            if firms_raw.get("hotspot_count", 0) > 0:
-                empirical.append(EmpiricalFinding(
-                    hazard="active_fire",
-                    value=float(firms_raw["hotspot_count"]),
-                    unit="detections",
-                    source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
-                    data_date=today,
-                    confidence=ConfidenceLevel.ESTIMATED,
-                    false_positive_likelihood=FalsePositiveLikelihood.MODERATE,
-                ))
-        else:
-            unavailable.append(UnavailableSource(source="nasa_firms", reason="FIRMS API key missing or query failed"))
-
-        # Legacy climate risk (per-hazard scores)
-        if climate_raw:
-            sources_queried += 1
-            sources_successful += 1
-
-        coverage = (sources_successful / sources_queried * 100) if sources_queried > 0 else 0.0
-
-        climate_profile = ClimateDisclosureProfile(
-            assessment_date=today,
-            manifest=AssessmentManifest(
-                categories_assessed=len(empirical) + len(hazards_raw),
-                sources_queried=sources_queried,
-                sources_successful=sources_successful,
-                sources_unavailable=unavailable,
-                coverage_pct=round(coverage, 1),
-                data_quality_notes=quality_notes,
-            ),
-            per_hazard_detail=hazards_raw,
-            empirical_findings=empirical,
-        )
-
-    # Granny flat (detection only)
-    gf_detail = None
-    if granny_flat_raw:
-        gf_detail = GrannyFlatDetection(
-            structure_count=granny_flat_raw.get("samgeo_structure_count"),
-            sepp_eligible=granny_flat_raw.get("sepp_eligible"),
-            sepp_ineligible_reason=granny_flat_raw.get("sepp_ineligible_reason"),
-            lot_area_m2=granny_flat_raw.get("lot_area_m2"),
-            confirmation_required=True,
-        )
-
-    # Pre-DA history
-    pre_da_detail = None
-    if pre_da_raw:
-        pre_da_detail = PreDAHistoryDetail(
-            timeline=pre_da_raw.get("timeline"),
-            heritage_flag=pre_da_raw.get("heritage_flag"),
-            council=pre_da_raw.get("council"),
-            data_quality_note=pre_da_raw.get("data_quality_note"),
-        )
+    bushfire_detail = _build_bushfire_detail(bushfire_raw)
+    flood_detail = _build_flood_detail(flood_raw)
+    climate_profile = _build_climate_disclosure(climate_raw, uhi_raw, arr_raw, firms_raw)
+    gf_detail = _build_granny_flat_detail(granny_flat_raw)
+    pre_da_detail = _build_pre_da_detail(pre_da_raw)
 
     return SatelliteData(
         bushfire=DataField(
@@ -1642,6 +1661,38 @@ def _build_economics(valuation: dict) -> Economics:
 
 
 # ---------------------------------------------------------------------------
+# SSE helpers
+# ---------------------------------------------------------------------------
+
+
+def _sse_event(event: str, data: dict) -> str:
+    """Format a single SSE event with JSON data."""
+    payload = json.dumps(data, default=str)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _resolve_address(req: IntelligenceBriefRequest) -> tuple:
+    """Resolve address to (prop_id, lat, lng, lot_wkt). Raises HTTPException on failure."""
+    if req.lat and req.lng and req.prop_id:
+        return int(req.prop_id), req.lat, req.lng, None
+
+    try:
+        resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
+    except Exception as e:
+        logger.error("Address resolution failed: %s", e)
+        raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
+
+    if not lat or not lng:
+        raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
+
+    coord_warning = _validate_coordinates(lat, lng)
+    if coord_warning:
+        raise HTTPException(status_code=422, detail=coord_warning)
+
+    return resolved_prop_id, lat, lng, lot_wkt
+
+
+# ---------------------------------------------------------------------------
 # Router + endpoint — Stage 2 orchestrator
 # ---------------------------------------------------------------------------
 
@@ -1679,27 +1730,8 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     today = date.today().isoformat()
     timings: list[tuple] = []
 
-    # ── 1. Address resolution ────────────────────────────────────────────
-    resolved_prop_id = None
-    lot_wkt = None
-
-    if req.lat and req.lng and req.prop_id:
-        lat, lng = req.lat, req.lng
-        resolved_prop_id = int(req.prop_id)
-    else:
-        try:
-            resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
-        except Exception as e:
-            logger.error("Address resolution failed: %s", e)
-            raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
-
-        if not lat or not lng:
-            raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
-
-    # ── 2. Coordinate validation ─────────────────────────────────────────
-    coord_warning = _validate_coordinates(lat, lng)
-    if coord_warning:
-        raise HTTPException(status_code=422, detail=coord_warning)
+    # ── 1–2. Address resolution + coordinate validation ──────────────────
+    resolved_prop_id, lat, lng, lot_wkt = _resolve_address(req)
 
     # ── 3. Flattened parallel fetch — single ThreadPoolExecutor ──────────
     #
@@ -2096,3 +2128,525 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     )
 
     return brief.model_dump()
+
+
+# ---------------------------------------------------------------------------
+# SSE streaming endpoint — progressive rendering
+# ---------------------------------------------------------------------------
+
+
+def _generate_brief_sse(
+    req: IntelligenceBriefRequest,
+    resolved_prop_id: Optional[int],
+    lat: float,
+    lng: float,
+    lot_wkt: Optional[str],
+) -> Generator[str, None, None]:
+    """Yield SSE events as intelligence brief sections complete.
+
+    Same data sources and assembly logic as run_intelligence_brief, but yields
+    each section as soon as its source dependencies are satisfied.
+
+    Events:
+      event: metadata   — address, coordinates, run config
+      event: section     — one assembled brief section (economics, strata, etc.)
+      event: complete    — compound constraints, gaps, confidence summary
+      event: error       — unrecoverable error mid-stream
+    """
+    start_time = time.monotonic()
+    today = date.today().isoformat()
+    timings: list[tuple] = []
+    sections_yielded = 0
+
+    # Count expected sections for progress tracking
+    base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
+    dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
+    satellite_sections = 5 if req.include_satellite else 0
+    total_sections = base_sections + satellite_sections + 3  # +3 for dependent (max estimate)
+
+    import uuid
+    report_id = str(uuid.uuid4())
+
+    yield _sse_event("metadata", {
+        "address": req.address, "lat": lat, "lng": lng,
+        "prop_id": resolved_prop_id, "run_date": today,
+        "include_satellite": req.include_satellite,
+        "include_premium": req.include_premium,
+    })
+
+    # ── Submit all independent sources ───────────────────────────────────
+    f_controls = None
+    f_valuation = None
+
+    with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
+
+        if resolved_prop_id:
+            f_controls = pool.submit(
+                _safe_call, lambda: _fetch_controls(resolved_prop_id),
+                "planning_portal", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_valuation = pool.submit(
+                _safe_call, lambda: _fetch_valuation(resolved_prop_id),
+                "nsw_valuation_service", ConfidenceLevel.AUTHORITATIVE,
+            )
+
+        f_overlays = pool.submit(
+            _safe_call, lambda: _fetch_overlays(lat, lng, lot_wkt),
+            "postgis_overlays", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_strata = pool.submit(
+            _safe_call, lambda: _fetch_strata(req.address, lat, lng),
+            "cadastre_strata", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_heritage = pool.submit(
+            _safe_call, lambda: _fetch_heritage_postgis(lat, lng, lot_wkt),
+            "postgis_heritage", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_mine_sub = pool.submit(
+            _safe_call, lambda: _fetch_mine_subsidence(lat, lng),
+            "nsw_spatial_services", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_contam = pool.submit(
+            _safe_call, lambda: _fetch_contaminated_land(lat, lng),
+            "epa_contaminated_sites", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_drinking = pool.submit(
+            _safe_call, lambda: _fetch_drinking_water_catchment(lat, lng),
+            "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        # Satellite — fire immediately if requested
+        f_bushfire = f_flood_sat = f_climate = f_granny = None
+        f_uhi = f_arr = f_firms = None
+
+        if req.include_satellite:
+            f_bushfire = pool.submit(
+                _safe_call,
+                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_flood_sat = pool.submit(
+                _safe_call,
+                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "flood_truth", ConfidenceLevel.ESTIMATED,
+            )
+            f_climate = pool.submit(
+                _safe_call,
+                lambda: _fetch_climate_risk(lat, lng),
+                "climate_risk_score", ConfidenceLevel.ESTIMATED,
+            )
+            f_granny = pool.submit(
+                _safe_call,
+                lambda: _fetch_granny_flat_detect(req.address, lat, lng, str(resolved_prop_id or 0)),
+                "granny_flat_detect", ConfidenceLevel.ESTIMATED,
+            )
+            f_uhi = pool.submit(
+                _safe_call, lambda: _fetch_uhi(lat, lng),
+                "nsw_uhgc", ConfidenceLevel.ESTIMATED,
+            )
+            f_arr = pool.submit(
+                _safe_call, lambda: _fetch_arr_ifd(lat, lng),
+                "arr_data_hub", ConfidenceLevel.ESTIMATED,
+            )
+            f_firms = pool.submit(
+                _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
+                "nasa_firms", ConfidenceLevel.ESTIMATED,
+            )
+
+        # ── Yield economics first (fast, independent) ────────────────────
+        valuation_df = _timed_result(f_valuation, 15, "nsw_valuation_service", timings) if f_valuation else DataField(
+            value={"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []},
+            confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service", reason="No prop_id resolved",
+        )
+        valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+        lot_area_m2 = valuation.get("lot_area_m2")
+
+        economics = _build_economics(valuation)
+        sections_yielded += 1
+        yield _sse_event("section", {
+            "section": "economics", "data": economics.model_dump(),
+            "progress": int(sections_yielded / total_sections * 100),
+        })
+
+        # Submit pre_da now that we have lot_area_m2
+        f_pre_da = None
+        if req.include_satellite and req.include_premium:
+            f_pre_da = pool.submit(
+                _safe_call,
+                lambda: _fetch_pre_da_history(req.address, lot_area_m2),
+                "pre_da_history", ConfidenceLevel.ESTIMATED,
+            )
+
+        # ── Yield strata (depends on cadastre + lot_area_m2) ─────────────
+        strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
+        strata_raw = strata_df.value or {"is_strata": False}
+        strata_type = classify_strata(strata_raw, lot_area_m2)
+        strata_info = StrataInfo(
+            is_strata=strata_raw.get("is_strata", False),
+            strata_type=strata_type,
+            strata_plan=strata_raw.get("strata_plan"),
+            plan_label=strata_raw.get("plan_label"),
+            source=strata_raw.get("source"),
+            lot_area_m2=lot_area_m2,
+        )
+        is_apartment = strata_type == StrataType.APARTMENT or strata_type == StrataType.AMBIGUOUS
+
+        # Update total_sections now we know brief type
+        if is_apartment:
+            total_sections = base_sections + satellite_sections  # no dcp/sepp/neighbourhood
+        else:
+            total_sections = base_sections + 3 + satellite_sections  # +dcp, sepp, neighbourhood
+
+        sections_yielded += 1
+        yield _sse_event("section", {
+            "section": "strata", "data": DataField(
+                value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE,
+                source="cadastre_strata", as_at=today,
+            ).model_dump(),
+            "progress": int(sections_yielded / total_sections * 100),
+            "brief_type": "renovation" if is_apartment else "development",
+        })
+
+        # ── Await portal → submit dependents ─────────────────────────────
+        controls_df = _timed_result(f_controls, 15, "planning_portal", timings) if f_controls else DataField(
+            value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal", reason="No prop_id resolved",
+        )
+        controls = controls_df.value or parse_controls([])
+
+        zone_epi = controls.get("zone_epi", "")
+        zone_code = controls.get("zone")
+        council_name = _council_from_zone_epi(zone_epi)
+        dcp_former_council = detect_former_council(req.address, zone_epi)
+        dcp_former_council, lga_advisory = _validate_former_council_postgis(
+            dcp_former_council, lat, lng, req.address,
+        )
+        height_str = controls.get("height")
+        height_m = None
+        if height_str:
+            try:
+                height_m = float(str(height_str).replace("m", "").strip())
+            except (ValueError, TypeError):
+                pass
+
+        # Submit dependent sources
+        f_das = pool.submit(
+            _safe_call,
+            lambda: _fetch_nearby_das(lat, lng, council_name, CONFIG.da_radius_m, CONFIG.da_lookback_days),
+            "eplanning_da_api", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_shadow = pool.submit(
+            _safe_call,
+            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m),
+            "shadow_detector", ConfidenceLevel.DERIVED,
+        )
+        f_dcp = pool.submit(
+            _safe_call,
+            lambda: _fetch_dcp_controls(dcp_former_council, zone_code),
+            "plotdetect_dcp", ConfidenceLevel.EXTRACTED,
+        )
+        f_sepp = pool.submit(
+            _safe_call,
+            lambda: _fetch_sepp_housing(zone_code),
+            "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
+        )
+
+        # ── Yield environmental (overlays + heritage + env sources) ──────
+        overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
+        heritage_df = _timed_result(f_heritage, 10, "postgis_heritage", timings)
+        mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
+        contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
+        drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
+
+        overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
+        heritage_postgis = heritage_df.value
+        mine_subsidence_raw = mine_sub_df.value
+        contaminated_land_raw = contam_df.value
+        drinking_water_raw = drinking_df.value
+
+        environmental = _build_environmental(
+            controls, overlays_data, heritage_postgis,
+            mine_subsidence_raw=mine_subsidence_raw,
+            contaminated_land_raw=contaminated_land_raw,
+            drinking_water_raw=drinking_water_raw,
+        )
+        sections_yielded += 1
+        yield _sse_event("section", {
+            "section": "environmental_constraints",
+            "data": environmental.model_dump(),
+            "progress": int(sections_yielded / total_sections * 100),
+        })
+
+        # ── Yield planning_controls (portal + overlays for fallbacks) ────
+        # PostGIS fallbacks
+        ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
+        if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
+            controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
+        if not controls.get("lot_size") and "lot_size" in ov_by_type:
+            controls["lot_size"] = ov_by_type["lot_size"].get("value")
+
+        planning_controls = _build_planning_controls(controls, overlays_data)
+        sections_yielded += 1
+        yield _sse_event("section", {
+            "section": "planning_controls",
+            "data": planning_controls.model_dump(),
+            "progress": int(sections_yielded / total_sections * 100),
+        })
+
+        # ── Yield development-only sections ──────────────────────────────
+        dcp_df = _timed_result(f_dcp, 10, "plotdetect_dcp", timings)
+        sepp_df = _timed_result(f_sepp, 10, "housing_sepp_standards", timings)
+        das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
+        shadow_df = _timed_result(f_shadow, 20, "shadow_detector", timings)
+
+        dcp_raw = dcp_df.value
+        sepp_raw = sepp_df.value or []
+        das_raw = das_df.value or []
+        shadow_raw = shadow_df.value
+
+        if not is_apartment:
+            dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "dcp_controls",
+                "data": dcp_controls.model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "sepp_housing",
+                "data": DataField(
+                    value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE,
+                    source="housing_sepp_standards", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "neighbourhood",
+                "data": neighbourhood.model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+        # ── Yield satellite sections individually ────────────────────────
+        bushfire_raw = flood_raw_sat = climate_raw = granny_flat_raw = pre_da_raw = None
+        uhi_raw = arr_raw = firms_raw = None
+
+        if req.include_satellite:
+            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
+            bushfire_raw = bushfire_df.value
+            bushfire_detail = _build_bushfire_detail(bushfire_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.bushfire",
+                "data": DataField(
+                    value=bushfire_detail,
+                    confidence=ConfidenceLevel.AUTHORITATIVE if bushfire_detail and bushfire_detail.category else ConfidenceLevel.NOT_AVAILABLE,
+                    source="bushfire_prescreen", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
+            flood_raw_sat = flood_sat_df.value
+            flood_detail = _build_flood_detail(flood_raw_sat)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.flood",
+                "data": DataField(
+                    value=flood_detail,
+                    confidence=ConfidenceLevel.ESTIMATED if flood_detail else ConfidenceLevel.NOT_AVAILABLE,
+                    source="flood_truth", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
+            arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
+            firms_df = _timed_result(f_firms, 18, "nasa_firms", timings)
+            climate_raw = climate_df.value
+            uhi_raw = uhi_df.value
+            arr_raw = arr_df.value
+            firms_raw = firms_df.value
+            climate_disclosure = _build_climate_disclosure(climate_raw, uhi_raw, arr_raw, firms_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.climate_disclosure",
+                "data": DataField(
+                    value=climate_disclosure,
+                    confidence=ConfidenceLevel.ESTIMATED if climate_disclosure else ConfidenceLevel.NOT_AVAILABLE,
+                    source="climate_disclosure_profile", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            granny_df = _timed_result(f_granny, 30, "granny_flat_detect", timings)
+            granny_flat_raw = granny_df.value
+            granny_detail = _build_granny_flat_detail(granny_flat_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.granny_flat",
+                "data": DataField(
+                    value=granny_detail,
+                    confidence=ConfidenceLevel.ESTIMATED if granny_detail else ConfidenceLevel.NOT_AVAILABLE,
+                    source="granny_flat_detect", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_satellite + 5, "pre_da_history", timings) if f_pre_da else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="pre_da_history", reason="Pre-DA history not requested or not available",
+            )
+            pre_da_raw = pre_da_df.value
+            pre_da_detail = _build_pre_da_detail(pre_da_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.pre_da_history",
+                "data": DataField(
+                    value=pre_da_detail,
+                    confidence=ConfidenceLevel.ESTIMATED if pre_da_detail else ConfidenceLevel.NOT_AVAILABLE,
+                    source="pre_da_history", as_at=today,
+                    reason=None if pre_da_detail else "Pre-DA history not requested or not available",
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+    # ── Final assembly: compound constraints, gaps, confidence ───────────
+    # Build satellite_data for compound constraint evaluation
+    satellite_data = None
+    if req.include_satellite:
+        satellite_data = _build_satellite_data(
+            bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
+            uhi_raw=uhi_raw, arr_raw=arr_raw, firms_raw=firms_raw,
+        )
+
+    # Assemble the full brief for confidence/gaps computation
+    if is_apartment:
+        brief = RenovationBrief(
+            address=req.address, lat=lat, lng=lng,
+            prop_id=resolved_prop_id, run_date=today,
+            strata=DataField(value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE, source="cadastre_strata", as_at=today),
+            planning_controls=planning_controls,
+            environmental_constraints=environmental,
+            economics=economics,
+            satellite=satellite_data,
+            confidence_summary=ConfidenceSummary(),
+        )
+    else:
+        brief = DevelopmentBrief(
+            address=req.address, lat=lat, lng=lng,
+            prop_id=resolved_prop_id, run_date=today,
+            strata=DataField(value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE, source="cadastre_strata", as_at=today),
+            planning_controls=planning_controls,
+            dcp_controls=dcp_controls,
+            sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
+            environmental_constraints=environmental,
+            neighbourhood=neighbourhood,
+            economics=economics,
+            satellite=satellite_data,
+            confidence_summary=ConfidenceSummary(),
+        )
+
+    # Compound constraints
+    min_lot_size_m2 = None
+    lot_size_str = controls.get("lot_size")
+    if lot_size_str:
+        try:
+            min_lot_size_m2 = float(str(lot_size_str).replace(",", "").replace("m\u00b2", "").strip())
+        except (ValueError, TypeError):
+            pass
+
+    das_for_compounds = [
+        {"number": d.number, "distance_m": d.distance_m, "status": d.status,
+         "description": d.dev_type, "dev_type": d.dev_type}
+        for d in (neighbourhood.nearby_das.value or [])
+    ] if not is_apartment else []
+
+    compound_constraints = evaluate_compound_constraints(
+        heritage_items=planning_controls.heritage_items.value or [],
+        heritage_hca=planning_controls.heritage_hca.value or [],
+        heritage_postgis=heritage_postgis,
+        bushfire_designation=environmental.bushfire_designation.value,
+        flood_epi=environmental.flood_epi.value or False,
+        tod_area=planning_controls.tod_area.value or False,
+        lot_area_m2=lot_area_m2,
+        min_lot_size_m2=min_lot_size_m2,
+        zone_code=zone_code,
+        nearby_das=das_for_compounds,
+        overlays=[
+            {"layer_type": o.layer_type, "value": o.value}
+            for o in (environmental.overlays.value or [])
+        ],
+    )
+    if satellite_data:
+        flood_detail = satellite_data.flood.value if satellite_data.flood.value else None
+        gf_detail = satellite_data.granny_flat.value if satellite_data.granny_flat.value else None
+        sat_constraints = evaluate_satellite_constraints(
+            granny_flat_structures=gf_detail.structure_count if gf_detail else None,
+            nearby_das=das_for_compounds,
+            flood_epi=environmental.flood_epi.value or False,
+            flood_jrc_pct=flood_detail.jrc_occurrence_pct if flood_detail else None,
+            flood_wofs_pct=flood_detail.wofs_frequency_pct if flood_detail else None,
+        )
+        compound_constraints.extend(sat_constraints)
+
+    brief.compound_constraints = compound_constraints
+
+    # Staleness, confidence, gaps
+    staleness_warnings = detect_staleness(brief)
+    summary = compute_confidence_summary(brief)
+    gaps = collect_gaps(brief)
+    gaps = enrich_gaps_with_verify_url(gaps, dcp_former_council)
+
+    if lga_advisory:
+        gaps.append(GapEntry(field="lga_validation", reason=lga_advisory))
+
+    elapsed = time.monotonic() - start_time
+    timing_summary = " | ".join(f"{label}={t:.1f}s/{status}" for label, t, status in timings)
+    logger.info(
+        "Intelligence brief SSE for %s completed in %.1fs — %d/%d fields available, brief_type=%s | %s",
+        req.address, elapsed, summary.total - summary.not_available, summary.total,
+        brief.brief_type, timing_summary,
+    )
+
+    yield _sse_event("complete", {
+        "compound_constraints": [c.model_dump() for c in compound_constraints],
+        "data_currency_warnings": staleness_warnings,
+        "gaps": [g.model_dump() for g in gaps],
+        "confidence_summary": summary.model_dump(),
+        "brief_type": brief.brief_type,
+        "elapsed_seconds": round(elapsed, 1),
+        "progress": 100,
+    })
+
+
+@router.post("/intelligence-brief/stream")
+def stream_intelligence_brief(req: IntelligenceBriefRequest):
+    """SSE streaming variant — yields brief sections as data sources complete.
+
+    Same sources and assembly logic as /intelligence-brief, but returns a
+    text/event-stream where each section is emitted as soon as its
+    dependencies are satisfied. Designed for Trigger.dev relay to frontend.
+
+    Events:
+      metadata  — address, coordinates, run config (immediate)
+      section   — one assembled section with progress percentage
+      complete  — compound constraints, gaps, confidence summary (final)
+      error     — unrecoverable error mid-stream
+    """
+    resolved_prop_id, lat, lng, lot_wkt = _resolve_address(req)
+    return StreamingResponse(
+        _generate_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
