@@ -33,13 +33,15 @@ from services.intelligence_brief import (
     _build_economics,
     _validate_coordinates,
     _validate_former_council_postgis,
-    _fetch_mine_subsidence,
-    _fetch_contaminated_land,
-    _fetch_drinking_water_catchment,
     classify_strata,
     compute_confidence_summary,
     collect_gaps,
     check_minimum_viable,
+)
+from services.portal_constraints import (
+    fetch_mine_subsidence,
+    fetch_contaminated_land,
+    fetch_drinking_water_catchment,
 )
 
 
@@ -279,36 +281,36 @@ class TestBuildEnvironmental:
 # ---------------------------------------------------------------------------
 
 class TestFetchMineSubsidence:
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_in_district(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": [{"attributes": {"districtname": "Newcastle", "lastupdate": "2024-06-01"}}]},
         )
-        result = _fetch_mine_subsidence(-32.92, 151.78)
+        result = fetch_mine_subsidence(-32.92, 151.78)
         assert result["in_district"] is True
         assert result["district_name"] == "Newcastle"
         assert result["last_update"] == "2024-06-01"
 
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_outside_district(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": []},
         )
-        result = _fetch_mine_subsidence(-33.87, 151.21)
+        result = fetch_mine_subsidence(-33.87, 151.21)
         assert result is None
 
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_http_error_propagates(self, mock_get):
         mock_get.return_value = MagicMock(status_code=500)
         mock_get.return_value.raise_for_status.side_effect = Exception("500 Server Error")
         with pytest.raises(Exception, match="500"):
-            _fetch_mine_subsidence(-33.87, 151.21)
+            fetch_mine_subsidence(-33.87, 151.21)
 
 
 class TestFetchContaminatedLand:
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_sites_found(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
@@ -329,52 +331,52 @@ class TestFetchContaminatedLand:
                 },
             ]},
         )
-        result = _fetch_contaminated_land(-33.88, 151.20)
+        result = fetch_contaminated_land(-33.88, 151.20)
         assert result["has_notified_sites"] is True
         assert result["site_count"] == 2
         assert result["nearest_site"]["name"] == "Former Gas Works"
         assert result["nearest_site"]["distance_m"] is not None
 
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_no_sites(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": []},
         )
-        result = _fetch_contaminated_land(-33.88, 151.20)
+        result = fetch_contaminated_land(-33.88, 151.20)
         assert result is None
 
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_missing_geometry_still_works(self, mock_get):
         """Site returned but no geometry → distance_m is None, not a crash."""
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": [{"attributes": {"SiteName": "Test"}, "geometry": {}}]},
         )
-        result = _fetch_contaminated_land(-33.88, 151.20)
+        result = fetch_contaminated_land(-33.88, 151.20)
         assert result["has_notified_sites"] is True
         assert result["nearest_site"]["distance_m"] is None
 
 
 class TestFetchDrinkingWaterCatchment:
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_in_catchment(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": [{"attributes": {"EPI_NAME": "Sydney Drinking Water Catchment", "LGA_NAME": "Wollondilly"}}]},
         )
-        result = _fetch_drinking_water_catchment(-34.30, 150.50)
+        result = fetch_drinking_water_catchment(-34.30, 150.50)
         assert result["in_catchment"] is True
         assert result["epi_name"] == "Sydney Drinking Water Catchment"
         assert result["lga_name"] == "Wollondilly"
 
-    @patch("services.intelligence_brief._requests.get")
+    @patch("services.portal_constraints.requests.get")
     def test_outside_catchment(self, mock_get):
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: {"features": []},
         )
-        result = _fetch_drinking_water_catchment(-33.87, 151.21)
+        result = fetch_drinking_water_catchment(-33.87, 151.21)
         assert result is None
 
 

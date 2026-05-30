@@ -1034,134 +1034,14 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Portal constraint fetchers — Phase A (ported from nsw-planning-portal.ts)
+# Portal constraint fetchers — shared module
 # ---------------------------------------------------------------------------
 
-import requests as _requests
-
-_ARCGIS_TIMEOUT = 8  # seconds — same as planning portal timeout
-
-
-def _query_arcgis_point(url: str, lng: float, lat: float, out_fields: str = "*") -> Optional[list[dict]]:
-    """Query an ArcGIS REST service with a point geometry. Returns feature attributes list or None."""
-    params = {
-        "geometry": f"{lng},{lat}",
-        "geometryType": "esriGeometryPoint",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": out_fields,
-        "returnGeometry": "false",
-        "f": "json",
-        "inSR": "4283",
-    }
-    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
-    features = data.get("features") or []
-    return [f.get("attributes", {}) for f in features] if features else []
-
-
-def _query_arcgis_point_buffered(
-    url: str, lng: float, lat: float, distance_m: int, out_fields: str = "*",
-) -> Optional[list[dict]]:
-    """Query an ArcGIS REST service with a point + buffer distance. Returns feature list with geometry."""
-    params = {
-        "geometry": f"{lng},{lat}",
-        "geometryType": "esriGeometryPoint",
-        "spatialRel": "esriSpatialRelIntersects",
-        "distance": str(distance_m),
-        "units": "esriSRUnit_Meter",
-        "outFields": out_fields,
-        "returnGeometry": "true",
-        "f": "json",
-        "inSR": "4283",
-        "orderByFields": "OBJECTID ASC",
-    }
-    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("features") or []
-
-
-def _fetch_mine_subsidence(lat: float, lng: float) -> Optional[dict]:
-    """NSW Mine Subsidence districts — FeatureServer/7 on portal.spatial.nsw.gov.au.
-
-    Returns dict with inDistrict, districtName, lastUpdate or None if outside.
-    """
-    url = "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query"
-    # This endpoint uses wkid 4326, not 4283 — match the TypeScript implementation
-    params = {
-        "f": "json",
-        "geometry": f'{{"x":{lng},"y":{lat},"spatialReference":{{"wkid":4326}}}}',
-        "geometryType": "esriGeometryPoint",
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "districtname,lastupdate",
-        "returnGeometry": "false",
-    }
-    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
-    resp.raise_for_status()
-    data = resp.json()
-    features = data.get("features") or []
-    if not features:
-        return None
-    attrs = features[0].get("attributes", {})
-    return {
-        "in_district": True,
-        "district_name": attrs.get("districtname"),
-        "last_update": attrs.get("lastupdate"),
-    }
-
-
-def _fetch_contaminated_land(lat: float, lng: float) -> Optional[dict]:
-    """EPA contaminated land notified sites within 500m.
-
-    Returns dict with site details and approximate distance, or None if no sites.
-    """
-    import math
-    url = "https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/MapServer/0/query"
-    features = _query_arcgis_point_buffered(
-        url, lng, lat, distance_m=500,
-        out_fields="SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType",
-    )
-    if not features:
-        return None
-    site = features[0]
-    attrs = site.get("attributes", {})
-    geom = site.get("geometry", {})
-    # Approximate distance in metres
-    distance_m = None
-    if geom and "x" in geom and "y" in geom:
-        dx = (geom["x"] - lng) * 111320 * math.cos(lat * math.pi / 180)
-        dy = (geom["y"] - lat) * 110540
-        distance_m = round(math.sqrt(dx * dx + dy * dy))
-    return {
-        "has_notified_sites": True,
-        "site_count": len(features),
-        "nearest_site": {
-            "name": attrs.get("SiteName"),
-            "street": attrs.get("SiteStreet"),
-            "suburb": attrs.get("Suburb"),
-            "management_class": attrs.get("ManagementClass"),
-            "activity_type": attrs.get("ContaminationActivityType"),
-            "distance_m": distance_m,
-        },
-    }
-
-
-def _fetch_drinking_water_catchment(lat: float, lng: float) -> Optional[dict]:
-    """Drinking water catchment area — Protection/MapServer/3.
-
-    Returns dict with epi_name and lga_name, or None if outside catchment.
-    """
-    url = "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/3/query"
-    results = _query_arcgis_point(url, lng, lat, out_fields="EPI_NAME,LGA_NAME")
-    if not results:
-        return None
-    attrs = results[0]
-    return {
-        "in_catchment": True,
-        "epi_name": attrs.get("EPI_NAME"),
-        "lga_name": attrs.get("LGA_NAME"),
-    }
+from services.portal_constraints import (
+    fetch_mine_subsidence as _fetch_mine_subsidence,
+    fetch_contaminated_land as _fetch_contaminated_land,
+    fetch_drinking_water_catchment as _fetch_drinking_water_catchment,
+)
 
 
 # ---------------------------------------------------------------------------
