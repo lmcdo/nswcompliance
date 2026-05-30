@@ -32,17 +32,17 @@ const TOTALS = {
 }
 
 function formatPct(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   return `${value}%`
 }
 
 function formatDays(value: number | null): string {
-  if (value === null) return '-'
+  if (value == null) return '-'
   return `${value}d`
 }
 
 function formatCostShort(value: number | null): string {
-  if (value === null) return '-'
+  if (value == null) return '-'
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `$${Math.round(value / 1_000)}K`
   return `$${value}`

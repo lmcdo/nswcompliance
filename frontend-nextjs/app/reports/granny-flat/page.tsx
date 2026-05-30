@@ -138,7 +138,7 @@ function GrannyFlatPageInner() {
 
   useEffect(() => {
     // Only run step advancement during the detect phase (not confirm)
-    if (state === 'detecting' && detectResult === null) {
+    if (state === 'detecting' && detectResult == null) {
       setDetectStep(0);
       stepTimersRef.current.forEach(clearTimeout);
       stepTimersRef.current = DETECT_STEPS.slice(1).map((s, i) =>
