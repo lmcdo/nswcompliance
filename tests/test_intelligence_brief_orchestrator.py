@@ -33,6 +33,9 @@ from services.intelligence_brief import (
     _build_economics,
     _validate_coordinates,
     _validate_former_council_postgis,
+    _fetch_mine_subsidence,
+    _fetch_contaminated_land,
+    _fetch_drinking_water_catchment,
     classify_strata,
     compute_confidence_summary,
     collect_gaps,
@@ -213,6 +216,166 @@ class TestBuildEnvironmental:
         heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
         env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, heritage)
         assert env.heritage_postgis.value is None
+
+    def test_mine_subsidence_populated(self):
+        mine_data = {"in_district": True, "district_name": "Newcastle", "last_update": "2024-01-01"}
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, mine_subsidence_raw=mine_data)
+        assert env.mine_subsidence.value is True
+        assert env.mine_subsidence.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_mine_subsidence_absent(self):
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, mine_subsidence_raw=None)
+        assert env.mine_subsidence.value is False  # not in district
+        assert env.mine_subsidence.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_contaminated_land_populated(self):
+        contam_data = {"has_notified_sites": True, "site_count": 2, "nearest_site": {"name": "Test", "distance_m": 150}}
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, contaminated_land_raw=contam_data)
+        assert env.contaminated_land.value is True
+        assert env.contaminated_land.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_contaminated_land_absent(self):
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, contaminated_land_raw=None)
+        assert env.contaminated_land.value is False
+
+    def test_drinking_water_populated(self):
+        dw_data = {"in_catchment": True, "epi_name": "Sydney DWC"}
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, drinking_water_raw=dw_data)
+        assert env.drinking_water_catchment.value is True
+        assert env.drinking_water_catchment.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_drinking_water_absent(self):
+        env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None, drinking_water_raw=None)
+        assert env.drinking_water_catchment.value is False
+
+    def test_biodiversity_from_overlays(self):
+        data = {
+            "overlays": [
+                {"layer_type": "biodiversity", "value": "Terrestrial Biodiversity"},
+            ],
+            "covered_layers": ["biodiversity"],
+        }
+        env = _build_environmental({}, data, None)
+        assert env.terrestrial_biodiversity.value is True
+        assert env.terrestrial_biodiversity.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_biodiversity_absent_but_covered(self):
+        data = {
+            "overlays": [],
+            "covered_layers": ["biodiversity"],
+        }
+        env = _build_environmental({}, data, None)
+        assert env.terrestrial_biodiversity.value is False
+
+    def test_biodiversity_not_covered(self):
+        data = {"overlays": [], "covered_layers": []}
+        env = _build_environmental({}, data, None)
+        assert env.terrestrial_biodiversity.value is None
+        assert env.terrestrial_biodiversity.confidence == ConfidenceLevel.NOT_AVAILABLE
+
+
+# ---------------------------------------------------------------------------
+# 4b. Portal constraint fetcher tests (HTTP-mocked)
+# ---------------------------------------------------------------------------
+
+class TestFetchMineSubsidence:
+    @patch("services.intelligence_brief._requests.get")
+    def test_in_district(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": [{"attributes": {"districtname": "Newcastle", "lastupdate": "2024-06-01"}}]},
+        )
+        result = _fetch_mine_subsidence(-32.92, 151.78)
+        assert result["in_district"] is True
+        assert result["district_name"] == "Newcastle"
+        assert result["last_update"] == "2024-06-01"
+
+    @patch("services.intelligence_brief._requests.get")
+    def test_outside_district(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": []},
+        )
+        result = _fetch_mine_subsidence(-33.87, 151.21)
+        assert result is None
+
+    @patch("services.intelligence_brief._requests.get")
+    def test_http_error_propagates(self, mock_get):
+        mock_get.return_value = MagicMock(status_code=500)
+        mock_get.return_value.raise_for_status.side_effect = Exception("500 Server Error")
+        with pytest.raises(Exception, match="500"):
+            _fetch_mine_subsidence(-33.87, 151.21)
+
+
+class TestFetchContaminatedLand:
+    @patch("services.intelligence_brief._requests.get")
+    def test_sites_found(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": [
+                {
+                    "attributes": {
+                        "SiteName": "Former Gas Works",
+                        "SiteStreet": "123 Main St",
+                        "Suburb": "Testville",
+                        "ManagementClass": "Remediation",
+                        "ContaminationActivityType": "Gasworks",
+                    },
+                    "geometry": {"x": 151.21, "y": -33.87},
+                },
+                {
+                    "attributes": {"SiteName": "Old Depot"},
+                    "geometry": {"x": 151.215, "y": -33.875},
+                },
+            ]},
+        )
+        result = _fetch_contaminated_land(-33.88, 151.20)
+        assert result["has_notified_sites"] is True
+        assert result["site_count"] == 2
+        assert result["nearest_site"]["name"] == "Former Gas Works"
+        assert result["nearest_site"]["distance_m"] is not None
+
+    @patch("services.intelligence_brief._requests.get")
+    def test_no_sites(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": []},
+        )
+        result = _fetch_contaminated_land(-33.88, 151.20)
+        assert result is None
+
+    @patch("services.intelligence_brief._requests.get")
+    def test_missing_geometry_still_works(self, mock_get):
+        """Site returned but no geometry → distance_m is None, not a crash."""
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": [{"attributes": {"SiteName": "Test"}, "geometry": {}}]},
+        )
+        result = _fetch_contaminated_land(-33.88, 151.20)
+        assert result["has_notified_sites"] is True
+        assert result["nearest_site"]["distance_m"] is None
+
+
+class TestFetchDrinkingWaterCatchment:
+    @patch("services.intelligence_brief._requests.get")
+    def test_in_catchment(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": [{"attributes": {"EPI_NAME": "Sydney Drinking Water Catchment", "LGA_NAME": "Wollondilly"}}]},
+        )
+        result = _fetch_drinking_water_catchment(-34.30, 150.50)
+        assert result["in_catchment"] is True
+        assert result["epi_name"] == "Sydney Drinking Water Catchment"
+        assert result["lga_name"] == "Wollondilly"
+
+    @patch("services.intelligence_brief._requests.get")
+    def test_outside_catchment(self, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {"features": []},
+        )
+        result = _fetch_drinking_water_catchment(-33.87, 151.21)
+        assert result is None
 
 
 # ---------------------------------------------------------------------------

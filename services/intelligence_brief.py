@@ -1034,6 +1034,137 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Portal constraint fetchers — Phase A (ported from nsw-planning-portal.ts)
+# ---------------------------------------------------------------------------
+
+import requests as _requests
+
+_ARCGIS_TIMEOUT = 8  # seconds — same as planning portal timeout
+
+
+def _query_arcgis_point(url: str, lng: float, lat: float, out_fields: str = "*") -> Optional[list[dict]]:
+    """Query an ArcGIS REST service with a point geometry. Returns feature attributes list or None."""
+    params = {
+        "geometry": f"{lng},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": out_fields,
+        "returnGeometry": "false",
+        "f": "json",
+        "inSR": "4283",
+    }
+    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
+    resp.raise_for_status()
+    data = resp.json()
+    features = data.get("features") or []
+    return [f.get("attributes", {}) for f in features] if features else []
+
+
+def _query_arcgis_point_buffered(
+    url: str, lng: float, lat: float, distance_m: int, out_fields: str = "*",
+) -> Optional[list[dict]]:
+    """Query an ArcGIS REST service with a point + buffer distance. Returns feature list with geometry."""
+    params = {
+        "geometry": f"{lng},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "spatialRel": "esriSpatialRelIntersects",
+        "distance": str(distance_m),
+        "units": "esriSRUnit_Meter",
+        "outFields": out_fields,
+        "returnGeometry": "true",
+        "f": "json",
+        "inSR": "4283",
+        "orderByFields": "OBJECTID ASC",
+    }
+    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("features") or []
+
+
+def _fetch_mine_subsidence(lat: float, lng: float) -> Optional[dict]:
+    """NSW Mine Subsidence districts — FeatureServer/7 on portal.spatial.nsw.gov.au.
+
+    Returns dict with inDistrict, districtName, lastUpdate or None if outside.
+    """
+    url = "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query"
+    # This endpoint uses wkid 4326, not 4283 — match the TypeScript implementation
+    params = {
+        "f": "json",
+        "geometry": f'{{"x":{lng},"y":{lat},"spatialReference":{{"wkid":4326}}}}',
+        "geometryType": "esriGeometryPoint",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "districtname,lastupdate",
+        "returnGeometry": "false",
+    }
+    resp = _requests.get(url, params=params, timeout=_ARCGIS_TIMEOUT)
+    resp.raise_for_status()
+    data = resp.json()
+    features = data.get("features") or []
+    if not features:
+        return None
+    attrs = features[0].get("attributes", {})
+    return {
+        "in_district": True,
+        "district_name": attrs.get("districtname"),
+        "last_update": attrs.get("lastupdate"),
+    }
+
+
+def _fetch_contaminated_land(lat: float, lng: float) -> Optional[dict]:
+    """EPA contaminated land notified sites within 500m.
+
+    Returns dict with site details and approximate distance, or None if no sites.
+    """
+    import math
+    url = "https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/MapServer/0/query"
+    features = _query_arcgis_point_buffered(
+        url, lng, lat, distance_m=500,
+        out_fields="SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType",
+    )
+    if not features:
+        return None
+    site = features[0]
+    attrs = site.get("attributes", {})
+    geom = site.get("geometry", {})
+    # Approximate distance in metres
+    distance_m = None
+    if geom and "x" in geom and "y" in geom:
+        dx = (geom["x"] - lng) * 111320 * math.cos(lat * math.pi / 180)
+        dy = (geom["y"] - lat) * 110540
+        distance_m = round(math.sqrt(dx * dx + dy * dy))
+    return {
+        "has_notified_sites": True,
+        "site_count": len(features),
+        "nearest_site": {
+            "name": attrs.get("SiteName"),
+            "street": attrs.get("SiteStreet"),
+            "suburb": attrs.get("Suburb"),
+            "management_class": attrs.get("ManagementClass"),
+            "activity_type": attrs.get("ContaminationActivityType"),
+            "distance_m": distance_m,
+        },
+    }
+
+
+def _fetch_drinking_water_catchment(lat: float, lng: float) -> Optional[dict]:
+    """Drinking water catchment area — Protection/MapServer/3.
+
+    Returns dict with epi_name and lga_name, or None if outside catchment.
+    """
+    url = "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/3/query"
+    results = _query_arcgis_point(url, lng, lat, out_fields="EPI_NAME,LGA_NAME")
+    if not results:
+        return None
+    attrs = results[0]
+    return {
+        "in_catchment": True,
+        "epi_name": attrs.get("EPI_NAME"),
+        "lga_name": attrs.get("LGA_NAME"),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Satellite fetchers — Stage 4a
 # ---------------------------------------------------------------------------
 
@@ -1064,7 +1195,7 @@ def _fetch_flood(
 
 
 def _fetch_climate_risk(lat: float, lng: float) -> dict:
-    """Composite climate risk score (6-hazard)."""
+    """Per-hazard climate scores (shim feeds into ClimateDisclosureProfile)."""
     result = _climate_risk_score_fn(lat, lng)
     return result.to_dict()
 
@@ -1342,6 +1473,9 @@ def _build_environmental(
     controls: dict,
     overlays_data: dict,
     heritage_postgis: Optional[dict],
+    mine_subsidence_raw: Optional[dict] = None,
+    contaminated_land_raw: Optional[dict] = None,
+    drinking_water_raw: Optional[dict] = None,
 ) -> EnvironmentalConstraints:
     """Map overlays + heritage to EnvironmentalConstraints."""
     today = date.today().isoformat()
@@ -1436,8 +1570,24 @@ def _build_environmental(
             as_at=today,
             reason=None if coastal_layers else "No coastal hazard overlays at this location",
         ),
-        # mine_subsidence, contaminated_land, drinking_water_catchment:
-        # defaults to NOT_AVAILABLE until Phase A wires portal queries
+        mine_subsidence=DataField(
+            value=mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False,
+            confidence=auth,
+            source="nsw_spatial_services",
+            as_at=today,
+        ),
+        contaminated_land=DataField(
+            value=contaminated_land_raw.get("has_notified_sites", False) if contaminated_land_raw else False,
+            confidence=auth,
+            source="epa_contaminated_sites",
+            as_at=today,
+        ),
+        drinking_water_catchment=DataField(
+            value=drinking_water_raw.get("in_catchment", False) if drinking_water_raw else False,
+            confidence=auth,
+            source="sepp_resilience_hazards",
+            as_at=today,
+        ),
     )
 
 
@@ -1607,6 +1757,20 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "postgis_heritage", ConfidenceLevel.AUTHORITATIVE,
         )
 
+        # Portal constraint queries — Phase A (only need lat/lng)
+        f_mine_sub = pool.submit(
+            _safe_call, lambda: _fetch_mine_subsidence(lat, lng),
+            "nsw_spatial_services", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_contam = pool.submit(
+            _safe_call, lambda: _fetch_contaminated_land(lat, lng),
+            "epa_contaminated_sites", ConfidenceLevel.AUTHORITATIVE,
+        )
+        f_drinking = pool.submit(
+            _safe_call, lambda: _fetch_drinking_water_catchment(lat, lng),
+            "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
+        )
+
         # Collect results with timeouts
         controls_df = f_controls.result(timeout=15) if f_controls else DataField(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -1620,12 +1784,18 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         overlays_df = f_overlays.result(timeout=10)
         strata_df = f_strata.result(timeout=10)
         heritage_df = f_heritage.result(timeout=10)
+        mine_sub_df = f_mine_sub.result(timeout=10)
+        contam_df = f_contam.result(timeout=10)
+        drinking_df = f_drinking.result(timeout=10)
 
     controls = controls_df.value or parse_controls([])
     valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
     overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
     strata_raw = strata_df.value or {"is_strata": False}
     heritage_postgis = heritage_df.value
+    mine_subsidence_raw = mine_sub_df.value
+    contaminated_land_raw = contam_df.value
+    drinking_water_raw = drinking_df.value
 
     # ── 4. PostGIS fallbacks (same as conveyancing.py) ───────────────────
     ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
@@ -1763,7 +1933,12 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     planning_controls = _build_planning_controls(controls, overlays_data)
     dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
     sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
-    environmental = _build_environmental(controls, overlays_data, heritage_postgis)
+    environmental = _build_environmental(
+        controls, overlays_data, heritage_postgis,
+        mine_subsidence_raw=mine_subsidence_raw,
+        contaminated_land_raw=contaminated_land_raw,
+        drinking_water_raw=drinking_water_raw,
+    )
     neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
     economics = _build_economics(valuation)
 
