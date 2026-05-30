@@ -411,8 +411,9 @@ function IntelligenceBriefInner() {
   const [runId, setRunId] = useState<string | null>(null);
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
+  const [publicAccessToken, setPublicAccessToken] = useState<string | null>(null);
   const [parts, setParts] = useState<BriefEvent[]>([]);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const stateRef = useRef<PageState>(state);
   stateRef.current = state;
 
@@ -440,83 +441,113 @@ function IntelligenceBriefInner() {
     }
   }, [sectionEvents, briefType]);
 
-  // Connect to SSE stream when we have a runId
+  // Connect directly to Trigger.dev Realtime stream when we have a runId + token
   useEffect(() => {
-    if (!runId || state === 'idle' || state === 'complete' || state === 'error') return;
+    if (!runId || !publicAccessToken || state === 'idle' || state === 'complete' || state === 'error') return;
 
-    console.log('[ib] connecting to stream for run %s', runId);
-    const es = new EventSource(`/api/intelligence-brief/stream?runId=${encodeURIComponent(runId)}`);
-    eventSourceRef.current = es;
+    const ac = new AbortController();
+    abortRef.current = ac;
 
-    es.addEventListener('connected', () => {
-      console.log('[ib] stream connected');
-      setState('streaming');
-    });
+    const connectStream = async () => {
+      const streamUrl = `https://api.trigger.dev/realtime/v1/streams/${runId}/intelligence-brief`;
+      let retries = 0;
+      const maxRetries = 30;
 
-    es.addEventListener('chunk', (evt) => {
-      try {
-        const briefEvent = JSON.parse(evt.data) as BriefEvent;
-        console.log('[ib] chunk: %s', briefEvent.event);
-        setParts((prev) => [...prev, briefEvent]);
+      while (!ac.signal.aborted && retries < maxRetries) {
+        try {
+          const resp = await fetch(streamUrl, {
+            headers: { Authorization: `Bearer ${publicAccessToken}` },
+            signal: ac.signal,
+          });
 
-        if (briefEvent.event === 'section' && state === 'triggering') {
+          if (!resp.ok) {
+            if (resp.status === 404 || resp.status === 400) {
+              retries++;
+              await new Promise(r => setTimeout(r, 2000));
+              continue;
+            }
+            setState('error');
+            setErrorMsg(`Stream error: HTTP ${resp.status}`);
+            return;
+          }
+
           setState('streaming');
+          const reader = resp.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const chunks = buffer.split('\n\n');
+            buffer = chunks.pop() ?? '';
+
+            for (const chunk of chunks) {
+              if (!chunk.trim()) continue;
+              let eventData = '';
+              for (const line of chunk.split('\n')) {
+                if (line.startsWith('data:')) eventData += line.slice(5).trim();
+              }
+              if (!eventData) continue;
+
+              try {
+                let parsed = JSON.parse(eventData);
+                if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+
+                // Handle v2 batch format
+                const events: BriefEvent[] = [];
+                if (parsed.records) {
+                  for (const record of parsed.records) {
+                    let body = typeof record.body === 'string' ? JSON.parse(record.body) : record.body;
+                    if (typeof body === 'string') body = JSON.parse(body);
+                    events.push(body);
+                  }
+                } else {
+                  events.push(parsed);
+                }
+
+                for (const briefEvent of events) {
+                  setParts(prev => [...prev, briefEvent]);
+                  if (briefEvent.event === 'complete') {
+                    setState('complete');
+                    return;
+                  }
+                  if (briefEvent.event === 'error') {
+                    setState('error');
+                    setErrorMsg(briefEvent.data.message);
+                    return;
+                  }
+                }
+              } catch {
+                // Skip unparseable (keepalive pings)
+              }
+            }
+          }
+
+          // Stream ended without complete event — task may have finished
+          if (stateRef.current !== 'complete' && stateRef.current !== 'error') {
+            setState('complete');
+          }
+          return;
+        } catch (err: unknown) {
+          if (ac.signal.aborted) return;
+          retries++;
+          if (retries >= maxRetries) {
+            setState('error');
+            setErrorMsg('Could not connect to stream after 60 seconds.');
+            return;
+          }
+          await new Promise(r => setTimeout(r, 2000));
         }
-        if (briefEvent.event === 'complete') {
-          setState('complete');
-          es.close();
-        }
-        if (briefEvent.event === 'error') {
-          setState('error');
-          setErrorMsg(briefEvent.data.message);
-          es.close();
-        }
-      } catch (err) {
-        console.warn('[ib] failed to parse chunk', evt.data, err);
       }
-    });
-
-    es.addEventListener('run_status', (evt) => {
-      try {
-        const { status } = JSON.parse(evt.data);
-        console.log('[ib] run status: %s', status);
-        if (status === 'EXECUTING' && state === 'triggering') {
-          setState('streaming');
-        }
-        if (status === 'FAILED' || status === 'CANCELED' || status === 'CRASHED') {
-          setState('error');
-          setErrorMsg(`Task ${status.toLowerCase()}`);
-          es.close();
-        }
-      } catch { /* ignore */ }
-    });
-
-    es.addEventListener('done', () => {
-      console.log('[ib] stream done');
-      es.close();
-    });
-
-    es.addEventListener('error', () => {
-      // Don't set error immediately — transient reconnect errors are normal for EventSource
-      console.warn('[ib] EventSource error event (may retry)');
-    });
-
-    // Timeout: if no chunks arrive within 90s, something is wrong.
-    // Only fires if this EventSource is still the active one (not replaced by reset/new run).
-    const timeout = setTimeout(() => {
-      if (eventSourceRef.current === es) {
-        setState('error');
-        setErrorMsg('No data received after 90 seconds. The task may still be running — check the dashboard.');
-        es.close();
-      }
-    }, 90000);
-
-    return () => {
-      clearTimeout(timeout);
-      es.close();
-      eventSourceRef.current = null;
     };
-  }, [runId]); // Only re-run when runId changes
+
+    connectStream();
+
+    return () => { ac.abort(); };
+  }, [runId, publicAccessToken]);
 
   const handleGenerate = useCallback(async () => {
     if (!selectedAddress.trim()) return;
@@ -546,6 +577,7 @@ function IntelligenceBriefInner() {
 
       const data = await res.json();
       console.log('[ib] triggered run %s', data.runId);
+      setPublicAccessToken(data.publicAccessToken);
       setRunId(data.runId);
     } catch (err) {
       setState('error');
@@ -554,12 +586,13 @@ function IntelligenceBriefInner() {
   }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
 
   const handleReset = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
     }
     setState('idle');
     setRunId(null);
+    setPublicAccessToken(null);
     setErrorMsg('');
     setBriefType(null);
     setParts([]);

@@ -2,12 +2,13 @@
  * POST /api/intelligence-brief
  * Body: { address, lat?, lng?, prop_id?, include_satellite?, include_premium? }
  *
- * Triggers the intelligence-brief Trigger.dev task and returns { runId }.
- * The frontend then connects to GET /api/intelligence-brief/stream?runId=xxx
- * for progressive SSE updates (server-side proxy to Trigger.dev Realtime).
+ * Triggers the intelligence-brief Trigger.dev task and returns
+ * { runId, publicAccessToken } so the browser can connect directly
+ * to the Trigger.dev Realtime stream (no server-side proxy needed).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@trigger.dev/sdk/v3';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -37,6 +38,9 @@ export async function POST(request: NextRequest) {
   if (!address?.trim()) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
+
+  // Configure auth with the secret key (needed for createPublicToken)
+  auth.configure({ secretKey: TRIGGER_SECRET });
 
   const triggerResp = await fetch(TRIGGER_API, {
     method: 'POST',
@@ -68,5 +72,14 @@ export async function POST(request: NextRequest) {
   const triggerData = await triggerResp.json();
   const runId: string = triggerData.id;
 
-  return NextResponse.json({ runId });
+  // Generate a scoped public token so the browser can connect directly
+  // to the Trigger.dev Realtime stream without exposing the secret key.
+  const publicAccessToken = await auth.createPublicToken({
+    scopes: {
+      read: { runs: [runId] },
+    },
+    expirationTime: '15m',
+  });
+
+  return NextResponse.json({ runId, publicAccessToken });
 }
