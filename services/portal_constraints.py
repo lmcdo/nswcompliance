@@ -293,21 +293,36 @@ def fetch_coastal(lat: float, lng: float) -> Optional[dict]:
 def fetch_sepp_exclusions(lat: float, lng: float) -> Optional[dict]:
     """SEPP exclusion gates — low/mid-rise (776), complying (92), exempt (93).
 
+    Queries all 3 layers in parallel.
     Returns {"low_mid_rise": bool|None, "complying": bool|None, "exempt": bool|None}.
     Always returns a dict (None values mean query failed for that layer).
     """
-    result = {}
-    for key, field_name in [
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    layers = [
         ("lowMidRiseExclusion", "low_mid_rise"),
         ("complyingExclusion", "complying"),
         ("exemptExclusion", "exempt"),
-    ]:
+    ]
+
+    def _check_layer(key: str) -> Optional[bool]:
         try:
             features = _query_eplanning_point(key, lng, lat, out_fields="LAY_CLASS")
-            result[field_name] = len(features) > 0
+            return len(features) > 0
         except Exception:
             logger.warning("SEPP exclusion layer %s query failed", key)
-            result[field_name] = None
+            return None
+
+    result = {}
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {
+            pool.submit(_check_layer, key): field_name
+            for key, field_name in layers
+        }
+        for fut in as_completed(futures):
+            field_name = futures[fut]
+            result[field_name] = fut.result()
+
     # Only return None if all queries failed
     if all(v is None for v in result.values()):
         return None
@@ -399,12 +414,30 @@ def fetch_arr_ifd(lat: float, lng: float) -> Optional[dict]:
     depths = burst_il.get("data") or []
 
     # Extract the 1% AEP 60-minute depth for gap detection threshold
+    # ARR may return AEP column as "1.0", "1", "1.00", or "1.0%" — normalize
     ifd_1pct_60min = None
     if durations and aep_cols and depths:
         try:
             dur_idx = durations.index(60)
-            aep_idx = aep_cols.index("1.0")
-            ifd_1pct_60min = depths[dur_idx][aep_idx]
+            aep_idx = None
+            for i in range(len(aep_cols)):
+                raw_col = aep_cols[i]
+                if raw_col is None:
+                    continue
+                clean = str(raw_col).strip().rstrip("%")
+                if not clean:
+                    continue
+                parsed = 0.0
+                if clean is not None:
+                    try:
+                        parsed = float(clean)
+                    except (ValueError, TypeError):
+                        continue
+                if parsed == 1.0:
+                    aep_idx = i
+                    break
+            if aep_idx is not None:
+                ifd_1pct_60min = depths[dur_idx][aep_idx]
         except (ValueError, IndexError):
             pass
 
@@ -430,7 +463,7 @@ def fetch_firms_hotspots(
     """
     import csv
     from io import StringIO
-    from datetime import date as _date
+    from datetime import date as _date, timedelta as _timedelta
 
     map_key = os.environ.get("NASA_FIRMS_MAP_KEY")
     if not map_key:
@@ -447,7 +480,8 @@ def fetch_firms_hotspots(
     north = round(lat + lat_offset, 4)
 
     bbox = f"{west},{south},{east},{north}"
-    query_date = _date.today().isoformat()
+    # SP (Standard Product) has 1-2 day processing lag — query from yesterday
+    query_date = (_date.today() - _timedelta(days=1)).isoformat()
 
     url = (
         f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
