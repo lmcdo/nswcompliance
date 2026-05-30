@@ -10,10 +10,13 @@ from unittest.mock import patch, MagicMock
 
 from services.portal_constraints import (
     fetch_anef,
+    fetch_arr_ifd,
     fetch_bushfire_bfpl,
     fetch_coastal,
-    fetch_sepp_exclusions,
     fetch_dual_occ_prohibition,
+    fetch_firms_hotspots,
+    fetch_sepp_exclusions,
+    fetch_uhi,
     query_arcgis_point,
 )
 
@@ -225,4 +228,142 @@ class TestFetchDualOccProhibition:
     def test_query_failure_returns_none(self, mock_get):
         mock_get.side_effect = Exception("timeout")
         result = fetch_dual_occ_prohibition(-33.87, 151.21)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# UHI (Urban Heat Island)
+# ---------------------------------------------------------------------------
+
+class TestFetchUhi:
+    @patch("services.portal_constraints.requests.get")
+    def test_in_uhi_zone(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"features": [{"attributes": {
+                "UHI_16_m": 6.75, "LGA": "Sydney", "Region": "Greater Sydney", "District": "Eastern City",
+            }}]},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_uhi(-33.87, 151.21)
+        assert result["uhi_intensity"] == 6.75
+        assert result["lga"] == "Sydney"
+        assert result["data_year"] == 2016
+
+    @patch("services.portal_constraints.requests.get")
+    def test_outside_coverage(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"features": []},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        assert fetch_uhi(-35.0, 149.0) is None
+
+    @patch("services.portal_constraints.requests.get")
+    def test_null_uhi_value(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"features": [{"attributes": {"UHI_16_m": None, "LGA": "Test"}}]},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        assert fetch_uhi(-33.87, 151.21) is None
+
+
+# ---------------------------------------------------------------------------
+# ARR IFD (Australian Rainfall and Runoff)
+# ---------------------------------------------------------------------------
+
+class TestFetchArrIfd:
+    @patch("services.portal_constraints.requests.get")
+    def test_ifd_data_returned(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"layers": {"BurstIL": {
+                "index": [60, 120],
+                "columns": ["50.0", "1.0"],
+                "data": [[20.5, 85.3], [30.1, 110.0]],
+            }}},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_arr_ifd(-33.87, 151.21)
+        assert result["ifd_1pct_60min_mm"] == 85.3
+        assert result["durations_min"] == [60, 120]
+        assert len(result["depths_mm"]) == 2
+
+    @patch("services.portal_constraints.requests.get")
+    def test_missing_1pct_column(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"layers": {"BurstIL": {
+                "index": [60],
+                "columns": ["50.0", "10.0"],
+                "data": [[20.5, 45.0]],
+            }}},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_arr_ifd(-33.87, 151.21)
+        assert result["ifd_1pct_60min_mm"] is None
+        assert result["durations_min"] == [60]
+
+    @patch("services.portal_constraints.requests.get")
+    def test_empty_layers(self, mock_get):
+        mock_get.return_value = MagicMock(
+            json=lambda: {"layers": {}},
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        assert fetch_arr_ifd(-33.87, 151.21) is None
+
+    @patch("services.portal_constraints.requests.get")
+    def test_request_failure(self, mock_get):
+        mock_get.side_effect = Exception("timeout")
+        assert fetch_arr_ifd(-33.87, 151.21) is None
+
+
+# ---------------------------------------------------------------------------
+# NASA FIRMS
+# ---------------------------------------------------------------------------
+
+class TestFetchFirmsHotspots:
+    @patch.dict("os.environ", {"NASA_FIRMS_MAP_KEY": "testkey123"})
+    @patch("services.portal_constraints.requests.get")
+    def test_detections_returned(self, mock_get):
+        csv_data = (
+            "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,"
+            "satellite,instrument,confidence,version,bright_ti5,frp,daynight,type\n"
+            "-33.85,151.20,320.5,0.4,0.5,2026-05-29,0130,N,VIIRS,nominal,2.0,280.1,1.5,D,2\n"
+            "-33.86,151.21,315.0,0.4,0.5,2026-05-28,1330,N,VIIRS,high,2.0,275.0,2.1,D,2\n"
+        )
+        mock_get.return_value = MagicMock(
+            text=csv_data,
+            status_code=200,
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_firms_hotspots(-33.87, 151.21)
+        assert result["hotspot_count"] == 2
+        assert len(result["detections"]) == 2
+        assert result["detections"][0]["latitude"] == -33.85
+        assert result["detections"][0]["confidence"] == "nominal"
+        assert result["search_days"] == 10
+
+    @patch.dict("os.environ", {"NASA_FIRMS_MAP_KEY": "testkey123"})
+    @patch("services.portal_constraints.requests.get")
+    def test_no_detections(self, mock_get):
+        csv_data = (
+            "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,"
+            "satellite,instrument,confidence,version,bright_ti5,frp,daynight,type\n"
+        )
+        mock_get.return_value = MagicMock(text=csv_data, status_code=200)
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_firms_hotspots(-33.87, 151.21)
+        assert result["hotspot_count"] == 0
+
+    @patch.dict("os.environ", {}, clear=False)
+    def test_no_api_key_returns_none(self):
+        # Ensure key is not set
+        import os
+        os.environ.pop("NASA_FIRMS_MAP_KEY", None)
+        result = fetch_firms_hotspots(-33.87, 151.21)
+        assert result is None
+
+    @patch.dict("os.environ", {"NASA_FIRMS_MAP_KEY": "testkey123"})
+    @patch("services.portal_constraints.requests.get")
+    def test_html_error_returns_none(self, mock_get):
+        mock_get.return_value = MagicMock(text="<!DOCTYPE html><html>Error</html>", status_code=200)
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = fetch_firms_hotspots(-33.87, 151.21)
         assert result is None
