@@ -6,12 +6,13 @@
  * { runId, publicAccessToken } so the frontend can subscribe to
  * the Realtime Stream for progressive rendering.
  *
- * The Trigger.dev task calls the Python SSE endpoint, parses each
- * section, and relays it through briefStream. The frontend consumes
- * this via useRealtimeStream.
+ * The public access token is a JWT signed with the Trigger.dev secret key,
+ * scoped to read the specific run — same pattern the Trigger.dev SDK uses
+ * internally (see @trigger.dev/core/v3/apiClient triggerTask).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { SignJWT } from 'jose';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15; // Only triggers the task — doesn't wait for completion
@@ -26,6 +27,26 @@ interface IntelligenceBriefBody {
   prop_id?: string;
   include_satellite?: boolean;
   include_premium?: boolean;
+}
+
+/**
+ * Generate a public access token (JWT) for the frontend to subscribe
+ * to a specific Trigger.dev run's realtime stream.
+ *
+ * Mirrors the pattern in @trigger.dev/core apiClient.triggerTask():
+ *   - HS256 signed with the secret key
+ *   - Scoped to read:runs:{runId}
+ *   - 1 hour expiry (brief generation takes ~37s, generous margin)
+ */
+async function createPublicAccessToken(runId: string): Promise<string> {
+  const secret = new TextEncoder().encode(TRIGGER_SECRET);
+  return new SignJWT({ scopes: [`read:runs:${runId}`] })
+    .setIssuer('https://id.trigger.dev')
+    .setAudience('https://api.trigger.dev')
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(secret);
 }
 
 export async function POST(request: NextRequest) {
@@ -73,9 +94,8 @@ export async function POST(request: NextRequest) {
   const triggerData = await triggerResp.json();
   const runId: string = triggerData.id;
 
-  // Create a public access token for the frontend to subscribe to this run's stream.
-  // The Trigger.dev REST API returns a publicAccessToken when triggering.
-  const publicAccessToken: string | null = triggerData.publicAccessToken ?? null;
+  // Generate a public access token scoped to this run
+  const publicAccessToken = await createPublicAccessToken(runId);
 
   return NextResponse.json({
     runId,
