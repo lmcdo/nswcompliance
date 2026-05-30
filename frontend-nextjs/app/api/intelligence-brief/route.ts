@@ -34,13 +34,17 @@ interface IntelligenceBriefBody {
  * to a specific Trigger.dev run's realtime stream.
  *
  * Mirrors the pattern in @trigger.dev/core apiClient.triggerTask():
+ *   - Reads x-trigger-jwt-claims from trigger response (contains sub, pub, etc.)
+ *   - Merges claims with read:runs:{runId} scope
  *   - HS256 signed with the secret key
- *   - Scoped to read:runs:{runId}
  *   - 1 hour expiry (brief generation takes ~37s, generous margin)
  */
-async function createPublicAccessToken(runId: string): Promise<string> {
+async function createPublicAccessToken(
+  runId: string,
+  claims: Record<string, unknown> | undefined,
+): Promise<string> {
   const secret = new TextEncoder().encode(TRIGGER_SECRET);
-  return new SignJWT({ scopes: [`read:runs:${runId}`] })
+  return new SignJWT({ ...claims, scopes: [`read:runs:${runId}`] })
     .setIssuer('https://id.trigger.dev')
     .setAudience('https://api.trigger.dev')
     .setProtectedHeader({ alg: 'HS256' })
@@ -91,11 +95,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Read JWT claims from the trigger response — the SDK uses these to
+  // construct a valid public token. Without them, the token is rejected (401).
+  const claimsHeader = triggerResp.headers.get('x-trigger-jwt-claims');
+  const claims = claimsHeader ? JSON.parse(claimsHeader) : undefined;
+
+  // Check if trigger response already includes a JWT (some versions do)
+  const jwtHeader = triggerResp.headers.get('x-trigger-jwt');
+
   const triggerData = await triggerResp.json();
   const runId: string = triggerData.id;
 
-  // Generate a public access token scoped to this run
-  const publicAccessToken = await createPublicAccessToken(runId);
+  // Use the pre-built JWT if available, otherwise generate one with claims
+  const publicAccessToken = jwtHeader ?? await createPublicAccessToken(runId, claims);
 
   return NextResponse.json({
     runId,
