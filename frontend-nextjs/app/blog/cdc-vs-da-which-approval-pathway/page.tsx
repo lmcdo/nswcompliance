@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -138,6 +139,12 @@ function ComparisonTable() {
 export default function CDCvDAPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="CDC vs DA: Which Approval Pathway Do You Need in NSW?"
+        description="Complying Development Certificates take 10-20 days at lower cost. Development Applications take 40-90+ days. Here is how to know which pathway applies to your project, and what blocks the faster option."
+        slug="cdc-vs-da-which-approval-pathway"
+        date="2026-05-20"
+      />
 
       {/* Header */}
       <div className="mb-10">

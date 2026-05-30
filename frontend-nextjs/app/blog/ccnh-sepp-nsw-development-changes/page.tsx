@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -219,6 +220,12 @@ function KeyChangesSummary() {
 export default function CCNHSEPPPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`What is the CC&NH SEPP? How it changes NSW development`}
+        description="The draft Climate Change and Natural Hazards SEPP consolidates flood, bushfire, and coastal planning into one instrument. What it means for development."
+        slug="ccnh-sepp-nsw-development-changes"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -178,6 +179,12 @@ function MetroVsRegionalComparison() {
 export default function RegionalPropertyConveyancingPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="5 things city conveyancers miss on regional property transactions"
+        description="On-site sewage, bushfire BAL, minimum lot sizes, Crown roads, and water rights — the checks that trip up metro-trained conveyancers."
+        slug="regional-property-conveyancing-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

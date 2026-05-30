@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -148,6 +149,12 @@ function WhoNeedsGrid() {
 export default function SiteAnalysisReportPage() {
   return (
     <article className="max-w-2xl mx-auto px-6 py-12">
+      <BlogPostingJsonLd
+        title="Site Analysis Reports Explained: What They Cover and Why They Matter"
+        description="A site analysis report collates planning controls, spatial constraints, and environmental factors for a specific property. This guide explains what a site analysis includes, who needs one, and what data sources feed into it."
+        slug="site-analysis-report-explained"
+        date="2026-05-20"
+      />
       {/* Reverse pyramid — answer first */}
       <h1 className="text-3xl font-bold text-slate-900 mb-4">
         Site Analysis Reports Explained: What They Cover and Why They Matter

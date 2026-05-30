@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -237,6 +238,12 @@ function MinLotSizeExamples() {
 export default function WhatCanIBuildRuralPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="What can I build on 5 acres in NSW? Rural zoning explained"
+        description="RU1, RU2, RU4, R5 — what each rural zone permits, minimum lot sizes by region, and common misunderstandings about rural land use in NSW."
+        slug="what-can-i-build-rural-land-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

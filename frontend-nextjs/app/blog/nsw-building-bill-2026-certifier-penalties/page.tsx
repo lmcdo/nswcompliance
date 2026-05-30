@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -224,6 +225,12 @@ function CommissionPowers() {
 export default function BuildingBillCertifierPenaltiesPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`The NSW Building Bill 2026: \$1.1M certifier penalties and what it means`}
+        description={`Maximum penalties up to \$1.1M, a Building Commission with investigative powers, and mandatory professional standards. What builders and certifiers need to know.`}
+        slug="nsw-building-bill-2026-certifier-penalties"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

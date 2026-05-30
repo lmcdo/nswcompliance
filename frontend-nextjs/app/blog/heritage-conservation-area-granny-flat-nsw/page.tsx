@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -193,6 +194,12 @@ function HcaRequirementsChecklist() {
 export default function HeritageConservationAreaGrannyFlatPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`Heritage conservation areas: why you can't build a granny flat (and what to do)`}
+        description="The SEPP CDC pathway is blocked in heritage conservation areas. What the DA process looks like, what councils require, and what is still possible."
+        slug="heritage-conservation-area-granny-flat-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

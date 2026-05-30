@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CONVEYANCING_LGAS, CONVEYANCING_LGA_SLUG_MAP } from '@/lib/lga-data/conveyancing-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -29,6 +30,11 @@ export default function ConveyancingLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
+        { name: lga.name, href: `/conveyancing/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the CTA */}
       <div className="pt-12 pb-6">

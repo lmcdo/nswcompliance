@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { FloodTool } from '@/components/tools/FloodTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
+import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Flood Risk Check — PlotDetect',
@@ -30,6 +31,11 @@ export default async function FloodPage({ searchParams }: Props) {
 
   return (
     <div>
+      <SoftwareAppJsonLd
+        name="Flood Risk Check"
+        description="Is this NSW property in a flood zone? Cross-referenced flood assessment from government overlays, satellite imagery, river gauges, and council flood models — free for any address."
+        url="/reports/flood"
+      />
       {!hasAddress && <LandingVisibility><ProductLandingV2 product="flood" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <FloodTool />

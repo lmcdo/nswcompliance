@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ShadowTool } from '@/components/tools/ShadowTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
+import { ProductJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Shadow Risk Analyser — PlotDetect',
@@ -30,6 +31,12 @@ export default async function ShadowPage({ searchParams }: Props) {
 
   return (
     <div>
+      <ProductJsonLd
+        name="Shadow Risk Analyser"
+        description="Will a proposed development cast shadows on your property? Solar access analysis across the five ADG test scenarios for any NSW address."
+        url="/reports/shadow"
+        price="39"
+      />
       {!hasAddress && <LandingVisibility><ProductLandingV2 product="shadow" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <ShadowTool />

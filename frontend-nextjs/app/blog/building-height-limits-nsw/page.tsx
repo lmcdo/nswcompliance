@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -103,6 +104,12 @@ function HeightLimitsExamples() {
 export default function BuildingHeightLimitsPage() {
   return (
     <article className="max-w-2xl mx-auto px-6 py-12">
+      <BlogPostingJsonLd
+        title="Building Height Limits in NSW: How Height of Buildings Controls Work"
+        description="Building height limits in NSW are set by the LEP as a mapped numeric control. This guide explains how height is measured, what the height map shows, how height interacts with FSR and setbacks, and where to find the height limit for your property."
+        slug="building-height-limits-nsw"
+        date="2026-05-20"
+      />
       {/* Reverse pyramid — answer first */}
       <h1 className="text-3xl font-bold text-slate-900 mb-4">
         Building Height Limits in NSW: How Height of Buildings Controls Work

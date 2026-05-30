@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -191,6 +192,12 @@ function SEPPvsDCPTable() {
 export default function DCPSetbacksGrannyFlatPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`Why your council's DCP setbacks for granny flats are different`}
+        description="The SEPP gives one set of standards, but council DCPs often impose stricter controls. How to find your actual setback, landscaping, and parking rules."
+        slug="dcp-setbacks-granny-flat-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

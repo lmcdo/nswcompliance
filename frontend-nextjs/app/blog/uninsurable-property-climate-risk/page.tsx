@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Uninsurable Properties: How Climate Risk Is Repricing Australian Real Estate — PlotDetect',
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
 export default function UninsurablePropertyPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Uninsurable properties: how climate risk is repricing Australian real estate"
+        description="Insurance withdrawal, premium spikes, and the emerging data infrastructure that buyers need to assess property-level climate exposure before purchase."
+        slug="uninsurable-property-climate-risk"
+        date="2026-05-17"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

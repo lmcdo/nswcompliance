@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -211,6 +212,12 @@ function BALDecisionDiagram() {
 export default function BushfireBALPropertyBuyersPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Understanding Bushfire Attack Levels (BAL) for property buyers"
+        description={`What BAL ratings mean for building costs and insurance, how they're determined, and how to check before you buy.`}
+        slug="bushfire-attack-level-bal-property-buyers"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

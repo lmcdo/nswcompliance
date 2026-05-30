@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -148,6 +149,12 @@ function ClimateZoneImpact() {
 export default function NatHERSHistoricalWeatherPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="NatHERS ratings use historical weather: 7-star might perform like 5-star by 2050"
+        description="NatHERS simulates energy performance using 1990-2015 weather data. Buildings last 50+ years. The gap between rated and actual performance is growing."
+        slug="nathers-ratings-historical-weather-accuracy"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

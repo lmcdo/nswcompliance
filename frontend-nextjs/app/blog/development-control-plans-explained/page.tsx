@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -139,6 +140,12 @@ function DCPContentsGrid() {
 export default function DCPExplainedPage() {
   return (
     <article className="max-w-2xl mx-auto px-6 py-12">
+      <BlogPostingJsonLd
+        title="Development Control Plans (DCPs) Explained: What They Are and Why They Matter"
+        description="A DCP is the document that sets the fine-grained rules for development in each NSW council area — setbacks, parking, landscaping, building height planes, and more. This guide explains how DCPs work, their legal status, and how to read them."
+        slug="development-control-plans-explained"
+        date="2026-05-20"
+      />
       {/* Reverse pyramid — answer first */}
       <h1 className="text-3xl font-bold text-slate-900 mb-4">
         Development Control Plans (DCPs) Explained

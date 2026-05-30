@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer'
 import { COUNCIL_STATS, DATA_AS_OF } from '@/lib/lga-data/secondary-dwelling-stats'
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Granny Flat Statistics by Council — NSW Secondary Dwelling Data | PlotDetect',
@@ -50,6 +51,12 @@ function formatCostShort(value: number | null): string {
 export default function GrannyFlatBlogIndexPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Granny Flat Statistics by Council — NSW Secondary Dwelling Data"
+        description="Secondary dwelling DA and CDC statistics for 102 NSW councils. Application volumes, CDC pathway rates, processing times, and build costs from NSW Planning Portal data."
+        slug="granny-flat"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -249,6 +250,12 @@ function ApplicabilityCard() {
 export default function PatternBookHomesPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`Pattern Book homes: the 10-day CDC pathway that could save \$330K`}
+        description={`Pre-approved designs, a 10-day complying development certificate, and estimated \$330K savings per dwelling. How the Pattern Book pathway works.`}
+        slug="pattern-book-homes-nsw-cdc-pathway"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

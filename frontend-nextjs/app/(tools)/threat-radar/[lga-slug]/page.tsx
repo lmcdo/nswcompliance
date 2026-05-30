@@ -5,6 +5,7 @@ import { ThreatRadarTool } from '@/components/tools/ThreatRadarTool'
 import { THREAT_RADAR_LGAS, THREAT_RADAR_LGA_SLUG_MAP } from '@/lib/lga-data/threat-radar-lgas'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -33,6 +34,11 @@ export default function ThreatRadarLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Threat Radar', href: '/reports/threat-radar' },
+        { name: lga.name, href: `/threat-radar/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-6">

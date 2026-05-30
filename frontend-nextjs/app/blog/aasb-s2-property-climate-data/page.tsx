@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'AASB S2 and Property-Level Climate Data: What Fund Managers Need — PlotDetect',
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
 export default function AasbS2PropertyDataPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="AASB S2 and property-level climate data: what fund managers need"
+        description="How AASB S2 climate disclosure requirements affect property portfolio reporting, and where to source location-specific physical risk data in Australia."
+        slug="aasb-s2-property-climate-data"
+        date="2026-05-17"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

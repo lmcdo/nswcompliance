@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -83,6 +84,12 @@ function PortalGapsTable() {
 export default function PlanningPortalGapsPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`What the NSW Planning Portal Doesn't Tell You`}
+        description="The NSW Planning Portal shows your zone and LEP maps. It does not show DCP setbacks, flood depth, parking rates, or development potential. Here are the 7 gaps and where to find the missing data."
+        slug="nsw-planning-portal-gaps"
+        date="2026-05-20"
+      />
 
       {/* Header */}
       <div className="mb-10">

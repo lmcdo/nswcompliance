@@ -5,6 +5,7 @@ import { PreDAHistoryTool } from '@/components/tools/PreDAHistoryTool'
 import { PRE_DA_HISTORY_LGAS, PRE_DA_HISTORY_LGA_SLUG_MAP } from '@/lib/lga-data/pre-da-history-lgas'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -45,6 +46,11 @@ export default function PreDaHistoryLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Pre-DA Site History', href: '/reports/pre-da-history' },
+        { name: lga.name, href: `/pre-da-history/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-8">

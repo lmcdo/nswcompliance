@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -144,6 +145,12 @@ function PathwayComparison() {
 export default function CanIBuildGrannyFlatPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Can I build a granny flat on my property in NSW?"
+        description="Quick eligibility check, CDC vs DA pathways, SEPP requirements, and common blockers — heritage, flood, bushfire, strata, and lot size."
+        slug="can-i-build-a-granny-flat-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

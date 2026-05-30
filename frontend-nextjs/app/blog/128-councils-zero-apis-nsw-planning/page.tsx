@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -233,6 +234,12 @@ function DCPFormatVariety() {
 export default function CouncilsZeroApisPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="128 councils, zero APIs: why NSW planning compliance is so hard"
+        description={`Every council has different DCP formats, no standardised data, and no APIs. What the Planning Portal covers, what it doesn't, and what digital planning could look like.`}
+        slug="128-councils-zero-apis-nsw-planning"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">
