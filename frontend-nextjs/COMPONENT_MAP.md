@@ -152,5 +152,36 @@ grep -r "from.*HeritageProvisions" app/ components/
 
 ---
 
-**Last updated:** 2026-04-14
-**Update trigger:** Any time a new component is added to `/assessment` or provision rendering changes
+## Reports - Intelligence Brief
+
+### `/reports/intelligence-brief` - Intelligence Brief Page
+
+**Page Component:** `app/reports/intelligence-brief/page.tsx`
+
+**Component Tree:**
+```
+app/reports/intelligence-brief/page.tsx
+  └─ IntelligenceBriefInner (client component)
+      ├─ AddressAutocomplete (address input)
+      ├─ useRealtimeStream(@trigger.dev/react-hooks) — subscribes to Trigger.dev stream
+      ├─ ProgressBar (progress during streaming)
+      ├─ SectionCard × N (progressive section rendering)
+      └─ CompleteSummary (confidence, constraints, gaps)
+```
+
+**Data Flow:**
+```
+POST /api/intelligence-brief → { runId, publicAccessToken }
+  ↓ triggers Trigger.dev task → calls Python SSE endpoint
+useRealtimeStream(runId, 'intelligence-brief', { accessToken })
+  ↓ receives BriefEvent[] progressively
+SectionCard renders each section as it arrives
+CompleteSummary renders after 'complete' event
+```
+
+**API Route:** `app/api/intelligence-brief/route.ts`
+
+---
+
+**Last updated:** 2026-05-30
+**Update trigger:** Any time a new component is added to `/assessment`, provision rendering changes, or reports routes are added
