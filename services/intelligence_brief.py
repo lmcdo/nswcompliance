@@ -1647,6 +1647,24 @@ def _build_economics(valuation: dict) -> Economics:
 router = APIRouter(prefix="/pipeline", tags=["intelligence"])
 
 
+def _timed_result(future, timeout: float, label: str, timings: list) -> "DataField":
+    """Collect a future's result with timing and graceful timeout handling."""
+    t0 = time.monotonic()
+    try:
+        result = future.result(timeout=timeout)
+    except Exception as e:
+        elapsed = time.monotonic() - t0
+        timings.append((label, elapsed, "TIMEOUT" if "TimeoutError" in type(e).__name__ else "ERROR"))
+        logger.warning("intelligence_brief: %s failed after %.1fs: %s", label, elapsed, e)
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source=label, reason=f"Timeout after {elapsed:.1f}s",
+        )
+    elapsed = time.monotonic() - t0
+    timings.append((label, elapsed, "OK"))
+    return result
+
+
 @router.post("/intelligence-brief")
 def run_intelligence_brief(req: IntelligenceBriefRequest):
     """
@@ -1658,6 +1676,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     """
     start_time = time.monotonic()
     today = date.today().isoformat()
+    timings: list[tuple] = []
 
     # ── 1. Address resolution ────────────────────────────────────────────
     resolved_prop_id = None
@@ -1734,21 +1753,21 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         )
 
         # Collect results with timeouts
-        controls_df = f_controls.result(timeout=15) if f_controls else DataField(
+        controls_df = _timed_result(f_controls, 15, "planning_portal", timings) if f_controls else DataField(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal", reason="No prop_id resolved",
         )
-        valuation_df = f_valuation.result(timeout=15) if f_valuation else DataField(
+        valuation_df = _timed_result(f_valuation, 15, "nsw_valuation_service", timings) if f_valuation else DataField(
             value={"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []},
             confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="nsw_valuation_service", reason="No prop_id resolved",
         )
-        overlays_df = f_overlays.result(timeout=10)
-        strata_df = f_strata.result(timeout=10)
-        heritage_df = f_heritage.result(timeout=10)
-        mine_sub_df = f_mine_sub.result(timeout=10)
-        contam_df = f_contam.result(timeout=10)
-        drinking_df = f_drinking.result(timeout=10)
+        overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
+        strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
+        heritage_df = _timed_result(f_heritage, 10, "postgis_heritage", timings)
+        mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
+        contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
+        drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
 
     controls = controls_df.value or parse_controls([])
     valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
@@ -1810,10 +1829,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
         )
 
-        das_df = f_das.result(timeout=15)
-        shadow_df = f_shadow.result(timeout=20)
-        dcp_df = f_dcp.result(timeout=10)
-        sepp_df = f_sepp.result(timeout=10)
+        das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
+        shadow_df = _timed_result(f_shadow, 20, "shadow_detector", timings)
+        dcp_df = _timed_result(f_dcp, 10, "plotdetect_dcp", timings)
+        sepp_df = _timed_result(f_sepp, 10, "housing_sepp_standards", timings)
 
     das_raw = das_df.value or []
     shadow_raw = shadow_df.value
@@ -1877,14 +1896,14 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                     "pre_da_history", ConfidenceLevel.ESTIMATED,
                 )
 
-            bushfire_df = f_bushfire.result(timeout=CONFIG.timeout_postgis + 5)
-            flood_sat_df = f_flood_sat.result(timeout=20)
-            climate_df = f_climate.result(timeout=10)
-            granny_df = f_granny.result(timeout=30)
-            uhi_df = f_uhi.result(timeout=10)
-            arr_df = f_arr.result(timeout=18)
-            firms_df = f_firms.result(timeout=18)
-            pre_da_df = f_pre_da.result(timeout=CONFIG.timeout_satellite + 5) if f_pre_da else DataField(
+            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
+            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            granny_df = _timed_result(f_granny, 30, "granny_flat_detect", timings)
+            uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
+            arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
+            firms_df = _timed_result(f_firms, 18, "nasa_firms", timings)
+            pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_satellite + 5, "pre_da_history", timings) if f_pre_da else DataField(
                 value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
                 source="pre_da_history", reason="Premium data not requested",
             )
@@ -2047,10 +2066,11 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     brief.data_currency_warnings = staleness_warnings
 
     elapsed = time.monotonic() - start_time
+    timing_summary = " | ".join(f"{label}={t:.1f}s/{status}" for label, t, status in timings)
     logger.info(
-        "Intelligence brief for %s completed in %.1fs — %d/%d fields available, brief_type=%s",
+        "Intelligence brief for %s completed in %.1fs — %d/%d fields available, brief_type=%s | %s",
         req.address, elapsed, summary.total - summary.not_available, summary.total,
-        brief.brief_type,
+        brief.brief_type, timing_summary,
     )
 
     return brief.model_dump()
