@@ -96,6 +96,14 @@ def _make_env_constraints(**overrides):
         overlay_coverage=_auth(["flood", "bushfire", "biodiversity", "heritage"]),
         bushfire_designation=_auth(None),
         heritage_postgis=_auth(None),
+        mine_subsidence=_auth(False),
+        contaminated_land=_auth(False),
+        drinking_water_catchment=_auth(False),
+        terrestrial_biodiversity=_auth(False),
+        riparian_land=_auth(False),
+        wetlands=_auth(False),
+        anef=_auth(None),
+        coastal_hazards=_auth(None),
     )
     defaults.update(overrides)
     return EnvironmentalConstraints(**defaults)

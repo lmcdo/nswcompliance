@@ -18,7 +18,7 @@ from datetime import date
 
 from services.intelligence_brief import (
     BushfireDetail,
-    ClimateRiskDetail,
+    ClimateDisclosureProfile,
     ConfidenceLevel,
     DataField,
     FloodDetail,
@@ -118,7 +118,7 @@ class TestBuildSatelliteData:
         assert sat.bushfire.confidence == ConfidenceLevel.AUTHORITATIVE
         assert sat.flood.value is not None
         assert sat.flood.confidence == ConfidenceLevel.ESTIMATED
-        assert sat.climate_risk.value is not None
+        assert sat.climate_disclosure.value is not None
         assert sat.granny_flat.value is not None
         assert sat.pre_da_history.value is not None
 
@@ -126,7 +126,7 @@ class TestBuildSatelliteData:
         sat = _build_satellite_data(None, None, None, None, None)
         assert sat.bushfire.confidence == ConfidenceLevel.NOT_AVAILABLE
         assert sat.flood.confidence == ConfidenceLevel.NOT_AVAILABLE
-        assert sat.climate_risk.confidence == ConfidenceLevel.NOT_AVAILABLE
+        assert sat.climate_disclosure.confidence == ConfidenceLevel.NOT_AVAILABLE
         assert sat.granny_flat.confidence == ConfidenceLevel.NOT_AVAILABLE
         assert sat.pre_da_history.confidence == ConfidenceLevel.NOT_AVAILABLE
 
@@ -179,14 +179,23 @@ class TestFloodDetail:
 # 4. Climate risk detail
 # ---------------------------------------------------------------------------
 
-class TestClimateRiskDetail:
-    def test_score_and_band(self):
+class TestClimateDisclosureProfile:
+    def test_profile_from_legacy_climate_raw(self):
         sat = _build_satellite_data(None, None, SAMPLE_CLIMATE_RAW, None, None)
-        cr = sat.climate_risk.value
-        assert cr.score == 62
-        assert cr.band == "High"
-        assert len(cr.hazards) == 2
-        assert cr.interaction_bonus == 5.0
+        profile = sat.climate_disclosure.value
+        assert isinstance(profile, ClimateDisclosureProfile)
+        assert profile.methodology_version == "2.0"
+        assert profile.assessment_date is not None
+        # Legacy hazard data preserved in per_hazard_detail
+        assert len(profile.per_hazard_detail) == 2
+        # No composite score fields
+        assert not hasattr(profile, "score")
+        assert not hasattr(profile, "band")
+
+    def test_none_climate_raw(self):
+        sat = _build_satellite_data(None, None, None, None, None)
+        assert sat.climate_disclosure.value is None
+        assert sat.climate_disclosure.confidence == ConfidenceLevel.NOT_AVAILABLE
 
 
 # ---------------------------------------------------------------------------
