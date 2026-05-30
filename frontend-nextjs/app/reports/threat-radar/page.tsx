@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { ThreatRadarTool } from '@/components/tools/ThreatRadarTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
+import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Neighbour Development Threat Radar — PlotDetect',
@@ -30,6 +31,11 @@ export default async function ThreatRadarPage({ searchParams }: Props) {
 
   return (
     <div>
+      <SoftwareAppJsonLd
+        name="Neighbour Development Threat Radar"
+        description="See active development applications and CDCs within 500m of any NSW address. Subscribe for weekly alerts when new applications are lodged."
+        url="/reports/threat-radar"
+      />
       {!hasAddress && <LandingVisibility><ProductLandingV2 product="threat-radar" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <ThreatRadarTool />

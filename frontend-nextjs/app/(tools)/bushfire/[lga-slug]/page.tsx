@@ -5,6 +5,7 @@ import { BushfireTool } from '@/components/tools/BushfireTool'
 import { BUSHFIRE_LGAS, BUSHFIRE_LGA_SLUG_MAP } from '@/lib/lga-data/bushfire-lgas'
 import { FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -45,6 +46,11 @@ export default function BushfireLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Bushfire Pre-Screen', href: '/reports/bushfire' },
+        { name: lga.name, href: `/bushfire/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-8">

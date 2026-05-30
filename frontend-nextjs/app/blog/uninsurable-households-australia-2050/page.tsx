@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -245,6 +246,12 @@ function ReinsuranceDiagram() {
 export default function UninsurableHouseholds2050Page() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="1 in 4 Australian households could be uninsurable by 2050"
+        description={`The trajectory from 520,000 households in affordability stress today to projected 2.7 million by 2050. Which regions, why it's accelerating, and what to check.`}
+        slug="uninsurable-households-australia-2050"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

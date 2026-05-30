@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
+import { SoftwareAppJsonLd } from '@/lib/json-ld';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 
@@ -137,7 +138,7 @@ function GrannyFlatPageInner() {
 
   useEffect(() => {
     // Only run step advancement during the detect phase (not confirm)
-    if (state === 'detecting' && detectResult === null) {
+    if (state === 'detecting' && detectResult == null) {
       setDetectStep(0);
       stepTimersRef.current.forEach(clearTimeout);
       stepTimersRef.current = DETECT_STEPS.slice(1).map((s, i) =>
@@ -1692,8 +1693,15 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
 
 export default function GrannyFlatPage() {
   return (
-    <Suspense>
-      <GrannyFlatPageInner />
-    </Suspense>
+    <>
+      <SoftwareAppJsonLd
+        name="Granny Flat Eligibility Check"
+        description="Can you build a granny flat on your NSW property? Aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate — free for any address."
+        url="/reports/granny-flat"
+      />
+      <Suspense>
+        <GrannyFlatPageInner />
+      </Suspense>
+    </>
   );
 }

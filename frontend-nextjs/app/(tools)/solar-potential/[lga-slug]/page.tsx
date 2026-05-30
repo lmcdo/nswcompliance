@@ -5,6 +5,7 @@ import { SolarYieldTool } from '@/components/tools/SolarYieldTool'
 import { SOLAR_LGAS, SOLAR_LGA_SLUG_MAP } from '@/lib/lga-data/solar-lgas'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -33,6 +34,11 @@ export default function SolarPotentialLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Solar Potential', href: '/reports/solar-yield' },
+        { name: lga.name, href: `/solar-potential/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-8">

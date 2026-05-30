@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Granny Flat Eligibility Check NSW — Free Instant SEPP Housing 2021 Check',
@@ -42,6 +43,11 @@ const FAQS = [
 export default function GrannyFlatHubPage() {
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <SoftwareAppJsonLd
+        name="Granny Flat Eligibility Check NSW"
+        description="Can you build a granny flat on your NSW property? Free instant check — lot size, zoning, heritage, flood, and biodiversity under SEPP Housing 2021. Any NSW address, no signup."
+        url="/granny-flat"
+      />
 
       {/* THE TOOL */}
       <GrannyFlatTool />

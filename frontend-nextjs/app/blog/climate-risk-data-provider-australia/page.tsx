@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Climate Risk Data Providers in Australia: A Comparison — PlotDetect',
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
 export default function ClimateRiskDataProviderPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Climate risk data providers in Australia: a comparison"
+        description="Comparing Australian climate risk data sources — government, commercial, and open-source — for flood, bushfire, coastal, and heat stress assessment."
+        slug="climate-risk-data-provider-australia"
+        date="2026-05-17"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

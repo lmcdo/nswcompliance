@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'APRA CPG 229: Climate Risk Assessment for Property Lending — PlotDetect',
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
 export default function ApraCpg229Page() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="APRA CPG 229: climate risk assessment for property lending"
+        description="A practical guide to meeting APRA CPG 229 requirements for property-secured lending, including physical risk data, scenario analysis, and portfolio screening."
+        slug="apra-cpg-229-property-assessment"
+        date="2026-05-17"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

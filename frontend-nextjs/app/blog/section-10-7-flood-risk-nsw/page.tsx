@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -197,6 +198,12 @@ function InsuranceAsymmetryDiagram() {
 export default function Section107FloodRiskPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`The s10.7 flood data gap: what NSW buyers aren't told`}
+        description={`Your planning certificate says yes or no to flood risk. It doesn't say how deep, how often, or what it costs to insure. Here's what's missing and why.`}
+        slug="section-10-7-flood-risk-nsw"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

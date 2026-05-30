@@ -70,6 +70,25 @@ export default function RootLayout({
      }),
    }}
  />
+ <script
+   type="application/ld+json"
+   dangerouslySetInnerHTML={{
+     __html: JSON.stringify({
+       '@context': 'https://schema.org',
+       '@type': 'WebSite',
+       name: 'PlotDetect',
+       url: 'https://plotdetect.com.au',
+       potentialAction: {
+         '@type': 'SearchAction',
+         target: {
+           '@type': 'EntryPoint',
+           urlTemplate: 'https://plotdetect.com.au/reports/flood?address={search_term_string}',
+         },
+         'query-input': 'required name=search_term_string',
+       },
+     }),
+   }}
+ />
  <PostHogProvider>
  <FeatureFlagProvider>
  <div id="root">

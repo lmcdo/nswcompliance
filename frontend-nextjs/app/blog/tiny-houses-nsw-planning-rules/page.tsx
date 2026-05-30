@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -185,6 +186,12 @@ function ApprovalDecisionTree() {
 export default function TinyHousesNswPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Tiny houses in NSW: what the planning system actually says"
+        description="NSW has no statutory definition of a tiny house. Where yours falls — caravan, manufactured home, or dwelling — determines your entire approval pathway."
+        slug="tiny-houses-nsw-planning-rules"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

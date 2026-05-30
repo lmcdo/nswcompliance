@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { BushfireTool } from '@/components/tools/BushfireTool'
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { LandingVisibility } from '@/components/reports/landing/LandingVisibility'
+import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
   title: 'Bushfire Pre-Screen — PlotDetect',
@@ -30,6 +31,11 @@ export default async function BushfirePage({ searchParams }: Props) {
 
   return (
     <div>
+      <SoftwareAppJsonLd
+        name="Bushfire Pre-Screen"
+        description="Is this NSW property on bushfire prone land? Check BFPL category, estimated BAL band, RFS referral requirements, and 10/50 clearing entitlements for any NSW address — free."
+        url="/reports/bushfire"
+      />
       {!hasAddress && <LandingVisibility><ProductLandingV2 product="bushfire" /></LandingVisibility>}
       <div className="max-w-2xl mx-auto px-4">
         <BushfireTool />

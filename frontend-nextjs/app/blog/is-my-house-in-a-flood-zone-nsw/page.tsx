@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'Is My House in a Flood Zone? How to Check in NSW — PlotDetect',
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
 export default function FloodZoneCheckPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Is my house in a flood zone? How to check in NSW"
+        description="Step-by-step guide to checking flood zone status for any NSW property — free government sources, what the data actually means, and what it misses."
+        slug="is-my-house-in-a-flood-zone-nsw"
+        date="2026-05-17"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

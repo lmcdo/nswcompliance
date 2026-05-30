@@ -5,6 +5,7 @@ import { ShadowTool } from '@/components/tools/ShadowTool'
 import { SHADOW_LGAS, SHADOW_LGA_SLUG_MAP } from '@/lib/lga-data/shadow-lgas'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -33,6 +34,11 @@ export default function ShadowLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Shadow Check', href: '/reports/shadow' },
+        { name: lga.name, href: `/shadow/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-8">

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -151,6 +152,12 @@ function SetbackFactorsGrid() {
 export default function SetbackRequirementsNSWPage() {
   return (
     <article className="max-w-2xl mx-auto px-6 py-12">
+      <BlogPostingJsonLd
+        title={`Setback Requirements in NSW: Front, Side & Rear Setbacks Explained`}
+        description="NSW setback requirements vary by council, zone, lot width, and development type. This guide covers how front, side, and rear setbacks work under DCPs, what triggers different rules, and where to find the controls for your property."
+        slug="setback-requirements-nsw"
+        date="2026-05-20"
+      />
       {/* Reverse pyramid — answer first */}
       <h1 className="text-3xl font-bold text-slate-900 mb-4">
         Setback Requirements in NSW: Front, Side &amp; Rear Setbacks Explained

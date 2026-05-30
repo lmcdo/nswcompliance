@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -241,6 +242,12 @@ function RuralZoneComparisonTable() {
 export default function TreeChangeChecklistPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="The tree change checklist: 7 planning checks before you buy rural"
+        description="Zoning, minimum lot size, bushfire, flood, on-site sewage, water rights, and access — the 7 checks before buying regional property in NSW."
+        slug="tree-change-checklist-nsw-planning"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

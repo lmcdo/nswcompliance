@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -168,6 +169,12 @@ function KeyChangesSummary() {
 export default function ModularPrefabBuildingBillPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Modular and prefab homes in NSW: how the 2026 Building Bill changes everything"
+        description="The Building Bill formally recognises modular construction and creates a new compliance pathway. Before vs after, who benefits, and implementation timeline."
+        slug="modular-prefab-homes-nsw-building-bill-2026"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

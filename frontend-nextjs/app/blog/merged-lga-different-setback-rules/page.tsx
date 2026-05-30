@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -159,6 +160,12 @@ function SetbackComparisonTable() {
 export default function MergedLGASetbackRulesPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Why different setback rules in the same merged LGA"
+        description="NSW council amalgamations left merged LGAs with multiple inherited DCPs. Your neighbour in the same council area can have completely different rules."
+        slug="merged-lga-different-setback-rules"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

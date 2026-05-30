@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { GRANNY_FLAT_LGAS, GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -30,6 +31,11 @@ export default function GrannyFlatLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Granny Flat Eligibility', href: '/granny-flat' },
+        { name: lga.name, href: `/granny-flat/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-6">

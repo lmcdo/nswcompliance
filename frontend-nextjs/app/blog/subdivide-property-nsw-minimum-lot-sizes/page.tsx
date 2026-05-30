@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -199,6 +200,12 @@ function SubdivisionCostBreakdown() {
 export default function SubdividePropertyPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title="Can I subdivide my property in NSW? Minimum lot sizes explained"
+        description="How to find your minimum lot size, the three types of subdivision, common blockers, costs, and the dual occupancy pathway."
+        slug="subdivide-property-nsw-minimum-lot-sizes"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">

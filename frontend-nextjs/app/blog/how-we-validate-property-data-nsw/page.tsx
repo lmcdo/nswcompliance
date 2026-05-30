@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -189,6 +190,12 @@ function RecurringPatterns() {
 export default function HowWeValidatePage() {
   return (
     <article className="prose prose-slate max-w-none">
+      <BlogPostingJsonLd
+        title="How we validate property data before it reaches you"
+        description="Every property screening result goes through a 5-pass validation: data source verification, algorithm checks, edge case hardening, connection safety, and output defensibility."
+        slug="how-we-validate-property-data-nsw"
+        date="2026-05-21"
+      />
       {/* ---- Lead (inverted pyramid: most important info first) ---- */}
       <p className="text-lg text-slate-700 leading-relaxed">
         Every property screening result on this platform goes through a 5-pass

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { VERIFY_LGAS, VERIFY_LGA_SLUG_MAP } from '@/lib/lga-data/verify-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
+import { BreadcrumbJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -29,6 +30,11 @@ export default function PlanningControlsLgaPage(
 
   return (
     <div className="max-w-2xl mx-auto px-6">
+      <BreadcrumbJsonLd items={[
+        { name: 'Home', href: '/' },
+        { name: 'Planning Controls', href: '/assessment' },
+        { name: lga.name, href: `/planning-controls/${lga.slug}` },
+      ]} />
 
       {/* SEO content — above the tool */}
       <div className="pt-12 pb-6">

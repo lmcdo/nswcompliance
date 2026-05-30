@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
+import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title:
@@ -319,6 +320,12 @@ function Form24aBreakdown() {
 export default function QldSellerDisclosureComparisonPage() {
   return (
     <article className="max-w-3xl mx-auto px-6 py-16">
+      <BlogPostingJsonLd
+        title={`QLD seller disclosure regime: what NSW can learn (and what's coming)`}
+        description="Queensland requires sellers to disclose known defects. NSW relies on buyer beware. A state-by-state comparison and what the Productivity Commission recommends."
+        slug="qld-seller-disclosure-nsw-comparison"
+        date="2026-05-20"
+      />
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2 mb-4">
