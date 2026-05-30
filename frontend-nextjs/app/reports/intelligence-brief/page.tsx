@@ -466,10 +466,12 @@ function IntelligenceBriefInner() {
   const sectionEvents = parts.filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
 
-  // Track progress from latest section
-  const latestProgress = sectionEvents.length > 0
-    ? sectionEvents[sectionEvents.length - 1].data.progress
-    : 0;
+  // Track progress — complete event overrides to 100
+  const latestProgress = completeEvent
+    ? 100
+    : sectionEvents.length > 0
+      ? sectionEvents[sectionEvents.length - 1].data.progress
+      : 0;
 
   // Extract brief_type from section events
   useEffect(() => {
