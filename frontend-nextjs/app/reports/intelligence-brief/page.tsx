@@ -198,10 +198,11 @@ function useElapsedSeconds(running: boolean): number {
 }
 
 function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}m ${s}s`;
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}m ${rem}s`;
 }
 
 // ---------------------------------------------------------------------------
@@ -226,17 +227,19 @@ function LiveStatusPanel({
   includeSatellite,
   state,
 }: {
-  elapsed: number;
+  elapsed: number; // integer seconds from timer, or float from server on complete
   progress: number;
   receivedSections: string[];
   briefType: string | null;
   includeSatellite: boolean;
   state: PageState;
 }) {
-  // Build expected section list based on what we know
+  // Build expected section list — show development sections by default
+  // (most properties are houses, not apartments). Remove them if
+  // brief_type confirms renovation.
   const expectedSections = [
     ...EXPECTED_SECTIONS_BASE,
-    ...(briefType !== 'renovation' ? EXPECTED_SECTIONS_DEV : []),
+    ...(briefType === 'renovation' ? [] : EXPECTED_SECTIONS_DEV),
     ...(includeSatellite ? EXPECTED_SECTIONS_SAT : []),
   ];
 
@@ -457,23 +460,38 @@ function IntelligenceBriefInner() {
     }
   }, [runId, accessToken, parts.length, run?.status, streams, streamError]);
 
-  // Update state based on stream events (in useEffect to avoid setState during render)
+  // Update state based on stream events and run status
   useEffect(() => {
-    if (metadataEvent && state === 'triggering') {
-      setState('streaming');
-    }
-    if (completeEvent && state === 'streaming') {
-      setState('complete');
-    }
     if (errorEvent && state !== 'error') {
       setState('error');
       setErrorMsg(errorEvent.data.message);
+      return;
     }
     if (streamError && state !== 'error') {
       setState('error');
       setErrorMsg(streamError.message);
+      return;
     }
-  }, [metadataEvent, completeEvent, errorEvent, streamError, state]);
+    // Transition to streaming as soon as we get any parts
+    if (parts.length > 0 && state === 'triggering') {
+      setState('streaming');
+      return;
+    }
+    // Also transition based on run status (e.g. if run starts but no stream data yet)
+    if (run?.status === 'EXECUTING' && state === 'triggering') {
+      setState('streaming');
+      return;
+    }
+    // Only mark complete when we have the complete event
+    if (completeEvent && state === 'streaming') {
+      setState('complete');
+    }
+    // Handle run failure
+    if (run?.status === 'FAILED' && state !== 'error' && state !== 'complete') {
+      setState('error');
+      setErrorMsg('Brief generation failed on the server');
+    }
+  }, [parts.length, run?.status, completeEvent, errorEvent, streamError, state]);
 
   // Timeout fallback — if no events arrive within 30s of triggering, show error
   useEffect(() => {
@@ -622,33 +640,24 @@ function IntelligenceBriefInner() {
               )}
             </div>
             {state === 'complete' && (
-              <div className="flex items-center gap-3">
-                {completeEvent && (
-                  <span className="text-xs text-slate-400">
-                    {completeEvent.data.elapsed_seconds}s
-                  </span>
-                )}
-                <button
-                  onClick={handleReset}
-                  className="text-sm text-teal-600 hover:text-teal-800"
-                >
-                  New brief
-                </button>
-              </div>
+              <button
+                onClick={handleReset}
+                className="text-sm text-teal-600 hover:text-teal-800"
+              >
+                New brief
+              </button>
             )}
           </div>
 
           {/* Live status panel — elapsed time, section timeline, progress */}
-          {state !== 'complete' && (
-            <LiveStatusPanel
-              elapsed={elapsed}
-              progress={state === 'triggering' ? 0 : latestProgress}
-              receivedSections={sectionEvents.map((e) => e.data.section)}
-              briefType={briefType}
-              includeSatellite={includeSatellite}
-              state={state}
-            />
-          )}
+          <LiveStatusPanel
+            elapsed={state === 'complete' && completeEvent ? completeEvent.data.elapsed_seconds : elapsed}
+            progress={state === 'triggering' ? 0 : latestProgress}
+            receivedSections={sectionEvents.map((e) => e.data.section)}
+            briefType={briefType}
+            includeSatellite={includeSatellite}
+            state={state}
+          />
 
           {/* Section cards — appear as they arrive */}
           <div className="space-y-3">
