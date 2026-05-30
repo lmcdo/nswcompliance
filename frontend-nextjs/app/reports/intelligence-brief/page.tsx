@@ -401,7 +401,7 @@ function IntelligenceBriefInner() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Comprehensive property intelligence report — planning controls, environmental constraints,
+          Property intelligence report covering planning controls, environmental constraints,
           economics, and satellite analysis for any NSW property.
         </p>
       </div>
