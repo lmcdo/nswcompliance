@@ -21,6 +21,7 @@ from services.intelligence_brief import (
     ClimateDisclosureProfile,
     ConfidenceLevel,
     DataField,
+    EmpiricalFinding,
     FloodDetail,
     GrannyFlatDetection,
     PreDAHistoryDetail,
@@ -196,6 +197,63 @@ class TestClimateDisclosureProfile:
         sat = _build_satellite_data(None, None, None, None, None)
         assert sat.climate_disclosure.value is None
         assert sat.climate_disclosure.confidence == ConfidenceLevel.NOT_AVAILABLE
+
+    def test_empirical_uhi_populated(self):
+        uhi = {"uhi_intensity": 6.75, "lga": "Sydney", "region": "Greater Sydney", "district": "Eastern City", "data_year": 2016}
+        sat = _build_satellite_data(None, None, None, None, None, uhi_raw=uhi)
+        profile = sat.climate_disclosure.value
+        assert profile is not None
+        assert len(profile.empirical_findings) == 1
+        assert profile.empirical_findings[0].hazard == "urban_heat_island"
+        assert profile.empirical_findings[0].value == 6.75
+
+    def test_empirical_arr_populated(self):
+        arr = {"durations_min": [60], "aep_pct": ["1.0"], "depths_mm": [[85.3]], "ifd_1pct_60min_mm": 85.3}
+        sat = _build_satellite_data(None, None, None, None, None, arr_raw=arr)
+        profile = sat.climate_disclosure.value
+        assert len(profile.empirical_findings) == 1
+        assert profile.empirical_findings[0].hazard == "extreme_rainfall"
+        assert profile.empirical_findings[0].value == 85.3
+        assert profile.empirical_findings[0].unit == "mm_1pct_aep_60min"
+
+    def test_empirical_firms_with_detections(self):
+        firms = {"hotspot_count": 3, "detections": [{"latitude": -33.87}], "search_days": 10, "search_radius_km": 0.5}
+        sat = _build_satellite_data(None, None, None, None, None, firms_raw=firms)
+        profile = sat.climate_disclosure.value
+        assert len(profile.empirical_findings) == 1
+        assert profile.empirical_findings[0].hazard == "active_fire"
+        assert profile.empirical_findings[0].value == 3.0
+
+    def test_empirical_firms_zero_detections_excluded(self):
+        """FIRMS queried but 0 detections — profile created, no fire empirical finding."""
+        firms = {"hotspot_count": 0, "detections": [], "search_days": 10, "search_radius_km": 0.5}
+        sat = _build_satellite_data(None, None, None, None, None, firms_raw=firms)
+        profile = sat.climate_disclosure.value
+        assert profile is not None  # profile created (FIRMS was queried)
+        assert len(profile.empirical_findings) == 0  # but no fire finding added
+
+    def test_empirical_all_three_combined(self):
+        uhi = {"uhi_intensity": 4.2, "lga": "Parramatta", "data_year": 2016}
+        arr = {"ifd_1pct_60min_mm": 92.1, "durations_min": [60], "aep_pct": ["1.0"], "depths_mm": [[92.1]]}
+        firms = {"hotspot_count": 2, "detections": [{}], "search_days": 10, "search_radius_km": 0.5}
+        sat = _build_satellite_data(None, None, SAMPLE_CLIMATE_RAW, None, None, uhi_raw=uhi, arr_raw=arr, firms_raw=firms)
+        profile = sat.climate_disclosure.value
+        assert len(profile.empirical_findings) == 3
+        hazards = [f.hazard for f in profile.empirical_findings]
+        assert "urban_heat_island" in hazards
+        assert "extreme_rainfall" in hazards
+        assert "active_fire" in hazards
+        # Legacy hazard detail still present
+        assert len(profile.per_hazard_detail) == 2
+
+    def test_empirical_only_no_climate_raw(self):
+        """Empirical data alone triggers profile creation even without climate_raw."""
+        uhi = {"uhi_intensity": 3.5, "lga": "Test", "data_year": 2016}
+        sat = _build_satellite_data(None, None, None, None, None, uhi_raw=uhi)
+        profile = sat.climate_disclosure.value
+        assert profile is not None
+        assert len(profile.per_hazard_detail) == 0  # no climate_raw
+        assert len(profile.empirical_findings) == 1
 
 
 # ---------------------------------------------------------------------------

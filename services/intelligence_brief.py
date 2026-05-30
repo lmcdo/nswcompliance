@@ -1041,6 +1041,9 @@ from services.portal_constraints import (
     fetch_mine_subsidence as _fetch_mine_subsidence,
     fetch_contaminated_land as _fetch_contaminated_land,
     fetch_drinking_water_catchment as _fetch_drinking_water_catchment,
+    fetch_uhi as _fetch_uhi,
+    fetch_arr_ifd as _fetch_arr_ifd,
+    fetch_firms_hotspots as _fetch_firms_hotspots,
 )
 
 
@@ -1112,6 +1115,9 @@ def _build_satellite_data(
     climate_raw: Optional[dict],
     granny_flat_raw: Optional[dict],
     pre_da_raw: Optional[dict],
+    uhi_raw: Optional[dict] = None,
+    arr_raw: Optional[dict] = None,
+    firms_raw: Optional[dict] = None,
 ) -> SatelliteData:
     """Assemble satellite pipeline results into SatelliteData model."""
     today = date.today().isoformat()
@@ -1144,11 +1150,48 @@ def _build_satellite_data(
 
     # Climate disclosure profile — shim old climate_risk_score output into new structure
     climate_profile = None
-    if climate_raw:
-        hazards_raw = climate_raw.get("hazards") or []
+    if climate_raw or uhi_raw or arr_raw or firms_raw:
+        hazards_raw = (climate_raw.get("hazards") or []) if climate_raw else []
+
+        # Build empirical findings from Phase B data sources
+        empirical = []
+        if uhi_raw:
+            empirical.append(EmpiricalFinding(
+                hazard="urban_heat_island",
+                value=uhi_raw.get("uhi_intensity"),
+                unit="degrees_c_above_baseline",
+                source="NSW UHGC (2016 meshblock data)",
+                data_date="2016",
+                confidence=ConfidenceLevel.ESTIMATED,
+                false_positive_likelihood=FalsePositiveLikelihood.LOW,
+            ))
+        if arr_raw:
+            ifd_val = arr_raw.get("ifd_1pct_60min_mm")
+            if ifd_val is not None:
+                empirical.append(EmpiricalFinding(
+                    hazard="extreme_rainfall",
+                    value=ifd_val,
+                    unit="mm_1pct_aep_60min",
+                    source="ARR Data Hub (BOM IFD)",
+                    data_date=today,
+                    confidence=ConfidenceLevel.ESTIMATED,
+                    false_positive_likelihood=FalsePositiveLikelihood.LOW,
+                ))
+        if firms_raw and firms_raw.get("hotspot_count", 0) > 0:
+            empirical.append(EmpiricalFinding(
+                hazard="active_fire",
+                value=float(firms_raw["hotspot_count"]),
+                unit="detections",
+                source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
+                data_date=today,
+                confidence=ConfidenceLevel.ESTIMATED,
+                false_positive_likelihood=FalsePositiveLikelihood.MODERATE,
+            ))
+
         climate_profile = ClimateDisclosureProfile(
             assessment_date=today,
             per_hazard_detail=hazards_raw,
+            empirical_findings=empirical,
         )
 
     # Granny flat (detection only)
@@ -1651,6 +1694,20 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
         )
 
+        # Empirical layer fetchers — Phase B
+        f_uhi = pool.submit(
+            _safe_call, lambda: _fetch_uhi(lat, lng),
+            "nsw_uhgc", ConfidenceLevel.ESTIMATED,
+        )
+        f_arr = pool.submit(
+            _safe_call, lambda: _fetch_arr_ifd(lat, lng),
+            "arr_data_hub", ConfidenceLevel.ESTIMATED,
+        )
+        f_firms = pool.submit(
+            _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
+            "nasa_firms", ConfidenceLevel.ESTIMATED,
+        )
+
         # Collect results with timeouts
         controls_df = f_controls.result(timeout=15) if f_controls else DataField(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -1667,6 +1724,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         mine_sub_df = f_mine_sub.result(timeout=10)
         contam_df = f_contam.result(timeout=10)
         drinking_df = f_drinking.result(timeout=10)
+        uhi_df = f_uhi.result(timeout=10)
+        arr_df = f_arr.result(timeout=18)
+        firms_df = f_firms.result(timeout=18)
 
     controls = controls_df.value or parse_controls([])
     valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
@@ -1676,6 +1736,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     mine_subsidence_raw = mine_sub_df.value
     contaminated_land_raw = contam_df.value
     drinking_water_raw = drinking_df.value
+    uhi_raw = uhi_df.value
+    arr_raw = arr_df.value
+    firms_raw = firms_df.value
 
     # ── 4. PostGIS fallbacks (same as conveyancing.py) ───────────────────
     ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
@@ -1795,6 +1858,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
         satellite_data = _build_satellite_data(
             bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
+            uhi_raw=uhi_raw, arr_raw=arr_raw, firms_raw=firms_raw,
         )
 
     # ── 8. Strata classification ─────────────────────────────────────────

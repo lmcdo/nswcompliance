@@ -1,14 +1,16 @@
 """
-NSW Government ArcGIS portal constraint queries.
+NSW Government portal constraint queries + empirical data fetchers.
 
 Shared module — consumed by intelligence_brief.py and available for
 compliance engine migration. Each function takes (lat, lng) and returns
 a typed dict or None.
 
-Endpoints are public government ArcGIS REST services (no API keys).
+Most endpoints are public government ArcGIS REST services (no API keys).
+NASA FIRMS requires NASA_FIRMS_MAP_KEY env var (free registration).
 """
 import math
 import logging
+import os
 from typing import Optional
 
 import requests
@@ -332,4 +334,155 @@ def fetch_dual_occ_prohibition(lat: float, lng: float) -> Optional[dict]:
         "prohibited": True,
         "epi_name": attrs.get("EPI_NAME"),
         "lga_name": attrs.get("LGA_NAME"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Empirical data fetchers — Phase B (climate disclosure profile Layer 2)
+# ---------------------------------------------------------------------------
+
+def fetch_uhi(lat: float, lng: float) -> Optional[dict]:
+    """NSW Urban Heat Island — UHGC/MapServer/0 (2016 data, meshblock level).
+
+    Returns {"uhi_intensity": float, "lga": str, "region": str, "district": str} or None.
+    """
+    url = (
+        "https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/"
+        "UHGC/UHGC/MapServer/0/query"
+    )
+    results = query_arcgis_point(
+        url, lng, lat, out_fields="UHI_16_m,LGA,Region,District",
+    )
+    if not results:
+        return None
+    attrs = results[0]
+    uhi_val = attrs.get("UHI_16_m")
+    if uhi_val is None:
+        return None
+    return {
+        "uhi_intensity": uhi_val,
+        "lga": attrs.get("LGA"),
+        "region": attrs.get("Region"),
+        "district": attrs.get("District"),
+        "data_year": 2016,
+    }
+
+
+def fetch_arr_ifd(lat: float, lng: float) -> Optional[dict]:
+    """ARR Data Hub — BOM IFD rainfall depths by duration and AEP.
+
+    Returns {"durations_min": [...], "aep_pct": [...], "depths_mm": [[...]], "ifd_1pct_60min_mm": float}
+    or None on failure.
+    """
+    url = "https://data.arr-software.org/"
+    params = {
+        "lat_coord": str(lat),
+        "lon_coord": str(lng),
+        "type": "json",
+        "BoMIFD": "1",
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        logger.warning("ARR Data Hub query failed for (%.4f, %.4f)", lat, lng)
+        return None
+
+    layers = data.get("layers") or {}
+    burst_il = layers.get("BurstIL") or {}
+    if not burst_il:
+        return None
+
+    durations = burst_il.get("index") or []
+    aep_cols = burst_il.get("columns") or []
+    depths = burst_il.get("data") or []
+
+    # Extract the 1% AEP 60-minute depth for gap detection threshold
+    ifd_1pct_60min = None
+    if durations and aep_cols and depths:
+        try:
+            dur_idx = durations.index(60)
+            aep_idx = aep_cols.index("1.0")
+            ifd_1pct_60min = depths[dur_idx][aep_idx]
+        except (ValueError, IndexError):
+            pass
+
+    return {
+        "durations_min": durations,
+        "aep_pct": aep_cols,
+        "depths_mm": depths,
+        "ifd_1pct_60min_mm": ifd_1pct_60min,
+    }
+
+
+_FIRMS_TIMEOUT = 15  # seconds — external API, allow more time
+
+def fetch_firms_hotspots(
+    lat: float, lng: float, buffer_km: float = 0.5, days: int = 10,
+) -> Optional[dict]:
+    """NASA FIRMS active fire detections within buffer of point.
+
+    Uses VIIRS SNPP standard product (SP) for archive data.
+    Requires NASA_FIRMS_MAP_KEY env var.
+
+    Returns {"hotspot_count": int, "detections": [...], "search_days": int} or None.
+    """
+    import csv
+    from io import StringIO
+    from datetime import date as _date
+
+    map_key = os.environ.get("NASA_FIRMS_MAP_KEY")
+    if not map_key:
+        logger.info("NASA_FIRMS_MAP_KEY not set — FIRMS hotspot query skipped")
+        return None
+
+    # Build bounding box from point ± buffer
+    # 1 degree lat ≈ 111km, 1 degree lng ≈ 111km * cos(lat)
+    lat_offset = buffer_km / 111.0
+    lng_offset = buffer_km / (111.0 * math.cos(lat * math.pi / 180))
+    west = round(lng - lng_offset, 4)
+    east = round(lng + lng_offset, 4)
+    south = round(lat - lat_offset, 4)
+    north = round(lat + lat_offset, 4)
+
+    bbox = f"{west},{south},{east},{north}"
+    query_date = _date.today().isoformat()
+
+    url = (
+        f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
+        f"{map_key}/VIIRS_SNPP_SP/{bbox}/{days}/{query_date}"
+    )
+
+    try:
+        resp = requests.get(url, timeout=_FIRMS_TIMEOUT)
+        resp.raise_for_status()
+        text = resp.text.strip()
+    except Exception:
+        logger.warning("NASA FIRMS query failed for (%.4f, %.4f)", lat, lng)
+        return None
+
+    if not text or text.startswith("<!") or text.startswith("{"):
+        # HTML error page or JSON error — not CSV
+        logger.warning("NASA FIRMS returned non-CSV response")
+        return None
+
+    reader = csv.DictReader(StringIO(text))
+    detections = []
+    for row in reader:
+        detections.append({
+            "latitude": float(row.get("latitude", 0)),
+            "longitude": float(row.get("longitude", 0)),
+            "acq_date": row.get("acq_date"),
+            "acq_time": row.get("acq_time"),
+            "confidence": row.get("confidence"),
+            "frp": float(row.get("frp", 0)) if row.get("frp") else None,
+            "daynight": row.get("daynight"),
+        })
+
+    return {
+        "hotspot_count": len(detections),
+        "detections": detections,
+        "search_days": days,
+        "search_radius_km": buffer_km,
     }
