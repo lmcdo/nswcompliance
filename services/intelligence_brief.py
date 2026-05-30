@@ -60,8 +60,9 @@ class BriefConfig:
     da_radius_m: int = 200
     da_lookback_days: int = 365
 
-    # Concurrency
-    max_parallel_sources: int = 6
+    # Concurrency — single pool runs all sources; dependents submitted after
+    # their prerequisite completes, so effective parallelism is ~15-20.
+    max_parallel_sources: int = 20
 
     # Minimum viable brief — refuse if too many fields failed
     min_available_ratio: float = 0.70
@@ -1700,16 +1701,37 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     if coord_warning:
         raise HTTPException(status_code=422, detail=coord_warning)
 
-    # ── 3. Parallel data fetch — single-level ThreadPoolExecutor ─────────
+    # ── 3. Flattened parallel fetch — single ThreadPoolExecutor ──────────
     #
-    # Each pipeline is ONE submit() call. No nesting. Each gets .result(timeout=X).
-    # _safe_call wraps each callable so failures return DataField(not_available).
+    # Dependency graph:
+    #   15 sources need only lat/lng/prop_id → fire immediately
+    #   4 sources need zone_code/zone_epi from planning_portal → wait for portal
+    #   1 source needs lot_area_m2 from valuation → wait for valuation
+    #
+    # All sources run in ONE pool. Dependents are submitted as soon as their
+    # prerequisite completes — not after all independent sources finish.
+    # This cuts worst-case from 85s (3 sequential pools) to ~30s (one pool,
+    # total time ≈ max(portal + slowest_dependent, slowest_independent)).
+
+    import uuid
 
     f_controls = None
     f_valuation = None
+    satellite_data = None
+    bushfire_raw = None
+    flood_raw_sat = None
+    climate_raw = None
+    granny_flat_raw = None
+    pre_da_raw = None
+    uhi_raw = None
+    arr_raw = None
+    firms_raw = None
+    report_id = str(uuid.uuid4())
 
     with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
-        # Planning Portal calls need prop_id
+
+        # ── 3a. Submit all independent sources (only need lat/lng/prop_id) ──
+
         if resolved_prop_id:
             f_controls = pool.submit(
                 _safe_call, lambda: _fetch_controls(resolved_prop_id),
@@ -1720,25 +1742,18 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                 "nsw_valuation_service", ConfidenceLevel.AUTHORITATIVE,
             )
 
-        # PostGIS overlays — always available (only needs lat/lng)
         f_overlays = pool.submit(
             _safe_call, lambda: _fetch_overlays(lat, lng, lot_wkt),
             "postgis_overlays", ConfidenceLevel.AUTHORITATIVE,
         )
-
-        # Strata detection
         f_strata = pool.submit(
             _safe_call, lambda: _fetch_strata(req.address, lat, lng),
             "cadastre_strata", ConfidenceLevel.AUTHORITATIVE,
         )
-
-        # Heritage PostGIS
         f_heritage = pool.submit(
             _safe_call, lambda: _fetch_heritage_postgis(lat, lng, lot_wkt),
             "postgis_heritage", ConfidenceLevel.AUTHORITATIVE,
         )
-
-        # Portal constraint queries — Phase A (only need lat/lng)
         f_mine_sub = pool.submit(
             _safe_call, lambda: _fetch_mine_subsidence(lat, lng),
             "nsw_spatial_services", ConfidenceLevel.AUTHORITATIVE,
@@ -1752,62 +1767,77 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
         )
 
-        # Collect results with timeouts
+        # Satellite sources — fire immediately if requested (only need lat/lng)
+        f_bushfire = None
+        f_flood_sat = None
+        f_climate = None
+        f_granny = None
+        f_uhi = None
+        f_arr = None
+        f_firms = None
+
+        if req.include_satellite:
+            f_bushfire = pool.submit(
+                _safe_call,
+                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_flood_sat = pool.submit(
+                _safe_call,
+                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                "flood_truth", ConfidenceLevel.ESTIMATED,
+            )
+            f_climate = pool.submit(
+                _safe_call,
+                lambda: _fetch_climate_risk(lat, lng),
+                "climate_risk_score", ConfidenceLevel.ESTIMATED,
+            )
+            f_granny = pool.submit(
+                _safe_call,
+                lambda: _fetch_granny_flat_detect(req.address, lat, lng, str(resolved_prop_id or 0)),
+                "granny_flat_detect", ConfidenceLevel.ESTIMATED,
+            )
+            f_uhi = pool.submit(
+                _safe_call, lambda: _fetch_uhi(lat, lng),
+                "nsw_uhgc", ConfidenceLevel.ESTIMATED,
+            )
+            f_arr = pool.submit(
+                _safe_call, lambda: _fetch_arr_ifd(lat, lng),
+                "arr_data_hub", ConfidenceLevel.ESTIMATED,
+            )
+            f_firms = pool.submit(
+                _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
+                "nasa_firms", ConfidenceLevel.ESTIMATED,
+            )
+
+        # ── 3b. Await planning_portal → derive dependents → submit them ────
+        #
+        # Only blocks on the ONE source these 4 dependents need.
+        # Meanwhile, all other independent sources continue running in the pool.
+
         controls_df = _timed_result(f_controls, 15, "planning_portal", timings) if f_controls else DataField(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal", reason="No prop_id resolved",
         )
-        valuation_df = _timed_result(f_valuation, 15, "nsw_valuation_service", timings) if f_valuation else DataField(
-            value={"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []},
-            confidence=ConfidenceLevel.NOT_AVAILABLE,
-            source="nsw_valuation_service", reason="No prop_id resolved",
+        controls = controls_df.value or parse_controls([])
+
+        # Derive parameters for dependent sources
+        zone_epi = controls.get("zone_epi", "")
+        zone_code = controls.get("zone")
+        council_name = _council_from_zone_epi(zone_epi)
+        dcp_former_council = detect_former_council(req.address, zone_epi)
+        dcp_former_council, lga_advisory = _validate_former_council_postgis(
+            dcp_former_council, lat, lng, req.address,
         )
-        overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
-        strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
-        heritage_df = _timed_result(f_heritage, 10, "postgis_heritage", timings)
-        mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
-        contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
-        drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
+        height_str = controls.get("height")
+        height_m = None
+        if height_str:
+            try:
+                height_m = float(str(height_str).replace("m", "").strip())
+            except (ValueError, TypeError):
+                pass
 
-    controls = controls_df.value or parse_controls([])
-    valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
-    overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
-    strata_raw = strata_df.value or {"is_strata": False}
-    heritage_postgis = heritage_df.value
-    mine_subsidence_raw = mine_sub_df.value
-    contaminated_land_raw = contam_df.value
-    drinking_water_raw = drinking_df.value
-    uhi_raw = None
-    arr_raw = None
-    firms_raw = None
-
-    # ── 4. PostGIS fallbacks (same as conveyancing.py) ───────────────────
-    ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
-    if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
-        controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
-    if not controls.get("lot_size") and "lot_size" in ov_by_type:
-        controls["lot_size"] = ov_by_type["lot_size"].get("value")
-
-    # ── 5. Former council + Fix A (PostGIS LGA validation) ───────────────
-    zone_epi = controls.get("zone_epi", "")
-    council_name = _council_from_zone_epi(zone_epi)
-    dcp_former_council = detect_former_council(req.address, zone_epi)
-    dcp_former_council, lga_advisory = _validate_former_council_postgis(
-        dcp_former_council, lat, lng, req.address,
-    )
-
-    # ── 6. Sequential calls that depend on prior results ─────────────────
-    zone_code = controls.get("zone")
-    lot_area_m2 = valuation.get("lot_area_m2")
-    height_str = controls.get("height")
-    height_m = None
-    if height_str:
-        try:
-            height_m = float(str(height_str).replace("m", "").strip())
-        except (ValueError, TypeError):
-            pass
-
-    with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
+        # Submit the 4 sources that depend on planning_portal results
         f_das = pool.submit(
             _safe_call,
             lambda: _fetch_nearby_das(lat, lng, council_name, CONFIG.da_radius_m, CONFIG.da_lookback_days),
@@ -1829,73 +1859,44 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
         )
 
+        # ── 3c. Await valuation → submit pre_da if premium ────────────────
+
+        valuation_df = _timed_result(f_valuation, 15, "nsw_valuation_service", timings) if f_valuation else DataField(
+            value={"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []},
+            confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuation_service", reason="No prop_id resolved",
+        )
+        valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+        lot_area_m2 = valuation.get("lot_area_m2")
+
+        f_pre_da = None
+        if req.include_satellite and req.include_premium:
+            f_pre_da = pool.submit(
+                _safe_call,
+                lambda: _fetch_pre_da_history(req.address, lot_area_m2),
+                "pre_da_history", ConfidenceLevel.ESTIMATED,
+            )
+
+        # ── 3d. Collect all remaining results ──────────────────────────────
+        #
+        # Most independent sources finished while we waited for controls/valuation.
+        # These _timed_result calls return near-instantly for already-complete futures.
+
+        overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
+        strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
+        heritage_df = _timed_result(f_heritage, 10, "postgis_heritage", timings)
+        mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
+        contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
+        drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
+
+        # Dependent sources (submitted after controls)
         das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
         shadow_df = _timed_result(f_shadow, 20, "shadow_detector", timings)
         dcp_df = _timed_result(f_dcp, 10, "plotdetect_dcp", timings)
         sepp_df = _timed_result(f_sepp, 10, "housing_sepp_standards", timings)
 
-    das_raw = das_df.value or []
-    shadow_raw = shadow_df.value
-    dcp_raw = dcp_df.value
-    sepp_raw = sepp_df.value or []
-
-    # ── 7. Satellite pipeline fetch (Stage 4a) — gated on include_satellite ──
-    satellite_data = None
-    bushfire_raw = None
-    flood_raw_sat = None
-    climate_raw = None
-    granny_flat_raw = None
-    pre_da_raw = None
-
-    if req.include_satellite:
-        import uuid
-        report_id = str(uuid.uuid4())
-
-        with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
-            f_bushfire = pool.submit(
-                _safe_call,
-                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
-                "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
-            )
-            f_flood_sat = pool.submit(
-                _safe_call,
-                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
-                "flood_truth", ConfidenceLevel.ESTIMATED,
-            )
-            f_climate = pool.submit(
-                _safe_call,
-                lambda: _fetch_climate_risk(lat, lng),
-                "climate_risk_score", ConfidenceLevel.ESTIMATED,
-            )
-            f_granny = pool.submit(
-                _safe_call,
-                lambda: _fetch_granny_flat_detect(req.address, lat, lng, str(resolved_prop_id or 0)),
-                "granny_flat_detect", ConfidenceLevel.ESTIMATED,
-            )
-
-            # Empirical layer fetchers — Phase B (only need lat/lng)
-            f_uhi = pool.submit(
-                _safe_call, lambda: _fetch_uhi(lat, lng),
-                "nsw_uhgc", ConfidenceLevel.ESTIMATED,
-            )
-            f_arr = pool.submit(
-                _safe_call, lambda: _fetch_arr_ifd(lat, lng),
-                "arr_data_hub", ConfidenceLevel.ESTIMATED,
-            )
-            f_firms = pool.submit(
-                _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
-                "nasa_firms", ConfidenceLevel.ESTIMATED,
-            )
-
-            # Pre-DA history: only when include_premium, separate timeout
-            f_pre_da = None
-            if req.include_premium:
-                f_pre_da = pool.submit(
-                    _safe_call,
-                    lambda: _fetch_pre_da_history(req.address, lot_area_m2),
-                    "pre_da_history", ConfidenceLevel.ESTIMATED,
-                )
-
+        # Satellite results
+        if req.include_satellite:
             bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
             flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
             climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
@@ -1908,21 +1909,42 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                 source="pre_da_history", reason="Premium data not requested",
             )
 
-        bushfire_raw = bushfire_df.value
-        flood_raw_sat = flood_sat_df.value
-        climate_raw = climate_df.value
-        granny_flat_raw = granny_df.value
-        pre_da_raw = pre_da_df.value
-        uhi_raw = uhi_df.value
-        arr_raw = arr_df.value
-        firms_raw = firms_df.value
+            bushfire_raw = bushfire_df.value
+            flood_raw_sat = flood_sat_df.value
+            climate_raw = climate_df.value
+            granny_flat_raw = granny_df.value
+            pre_da_raw = pre_da_df.value
+            uhi_raw = uhi_df.value
+            arr_raw = arr_df.value
+            firms_raw = firms_df.value
 
+    # ── 4. Extract remaining results ────────────────────────────────────
+    overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
+    strata_raw = strata_df.value or {"is_strata": False}
+    heritage_postgis = heritage_df.value
+    mine_subsidence_raw = mine_sub_df.value
+    contaminated_land_raw = contam_df.value
+    drinking_water_raw = drinking_df.value
+    das_raw = das_df.value or []
+    shadow_raw = shadow_df.value
+    dcp_raw = dcp_df.value
+    sepp_raw = sepp_df.value or []
+
+    # ── 5. PostGIS fallbacks (same as conveyancing.py) ───────────────────
+    ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
+    if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
+        controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
+    if not controls.get("lot_size") and "lot_size" in ov_by_type:
+        controls["lot_size"] = ov_by_type["lot_size"].get("value")
+
+    # Build satellite data if requested
+    if req.include_satellite:
         satellite_data = _build_satellite_data(
             bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
             uhi_raw=uhi_raw, arr_raw=arr_raw, firms_raw=firms_raw,
         )
 
-    # ── 8. Strata classification ─────────────────────────────────────────
+    # ── 6. Strata classification ─────────────────────────────────────────
     strata_type = classify_strata(strata_raw, lot_area_m2)
 
     strata_info = StrataInfo(
@@ -1934,7 +1956,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         lot_area_m2=lot_area_m2,
     )
 
-    # ── 8. Assemble brief ────────────────────────────────────────────────
+    # ── 7. Assemble brief ────────────────────────────────────────────────
     planning_controls = _build_planning_controls(controls, overlays_data)
     dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
     sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
@@ -1947,7 +1969,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
     economics = _build_economics(valuation)
 
-    # ── 9. Choose brief type based on strata classification ──────────────
+    # ── 8. Choose brief type based on strata classification ──────────────
     is_apartment = strata_type == StrataType.APARTMENT or strata_type == StrataType.AMBIGUOUS
 
     if is_apartment:
@@ -1982,7 +2004,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             confidence_summary=ConfidenceSummary(),  # placeholder
         )
 
-    # ── 10. Compound constraints (Stage 3) ─────────────────────────────
+    # ── 9. Compound constraints (Stage 3) ──────────────────────────────
     # Parse min lot size for marginal lot check
     min_lot_size_m2 = None
     lot_size_str = controls.get("lot_size")
@@ -2030,12 +2052,12 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
     brief.compound_constraints = compound_constraints
 
-    # ── 11. Staleness detection ──────────────────────────────────────────
+    # ── 10. Staleness detection ─────────────────────────────────────────
     staleness_warnings = detect_staleness(brief)
     if staleness_warnings:
         logger.info("Staleness warnings for %s: %s", req.address, staleness_warnings)
 
-    # ── 12. Confidence summary + gaps + minimum viable check ─────────────
+    # ── 11. Confidence summary + gaps + minimum viable check ────────────
     summary = compute_confidence_summary(brief)
     gaps = collect_gaps(brief)
 
