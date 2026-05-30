@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { useRealtimeRunWithStreams } from '@trigger.dev/react-hooks';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -410,100 +409,28 @@ function IntelligenceBriefInner() {
   const [state, setState] = useState<PageState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [runId, setRunId] = useState<string | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
+  const [parts, setParts] = useState<BriefEvent[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const stateRef = useRef<PageState>(state);
+  stateRef.current = state;
 
   // Elapsed timer — starts on trigger, stops on complete/error
   const timerRunning = state === 'triggering' || state === 'streaming';
   const elapsed = useElapsedSeconds(timerRunning);
 
-  // Stream subscription — only active when we have BOTH runId AND accessToken.
-  // IMPORTANT: useApiClient throws if accessToken is missing and enabled !== false.
-  // So enabled MUST be false whenever accessToken is null.
-  const streamEnabled = !!runId && !!accessToken && (state === 'streaming' || state === 'triggering');
-  const { run, streams, error: streamError } = useRealtimeRunWithStreams<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any,
-    { 'intelligence-brief': BriefEvent }
-  >(
-    runId ?? undefined,
-    {
-      accessToken: accessToken ?? undefined,
-      enabled: streamEnabled,
-    },
-  );
-
-  // Parts from the intelligence-brief stream
-  const parts = streams?.['intelligence-brief'] ?? [];
-
   // Derive state from parts
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
   const sectionEvents = parts.filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
-  const errorEvent = parts.find((p): p is Extract<BriefEvent, { event: 'error' }> => p.event === 'error');
 
   // Track progress from latest section
   const latestProgress = sectionEvents.length > 0
     ? sectionEvents[sectionEvents.length - 1].data.progress
     : 0;
 
-  // Debug logging — fires on every relevant state change
-  useEffect(() => {
-    console.log('[ib] state=%s runId=%s token=%s enabled=%s parts=%d runStatus=%s err=%s',
-      state, runId ? 'set' : 'null', accessToken ? `${accessToken.length}ch` : 'null',
-      String(streamEnabled), parts.length, run?.status ?? 'n/a',
-      streamError?.message ?? 'none');
-  }, [state, runId, accessToken, streamEnabled, parts.length, run?.status, streamError]);
-
-  // Update state based on stream events and run status
-  useEffect(() => {
-    if (errorEvent && state !== 'error') {
-      setState('error');
-      setErrorMsg(errorEvent.data.message);
-      return;
-    }
-    if (streamError && state !== 'error') {
-      setState('error');
-      setErrorMsg(streamError.message);
-      return;
-    }
-    // Transition to streaming as soon as we get any parts
-    if (parts.length > 0 && state === 'triggering') {
-      setState('streaming');
-      return;
-    }
-    // Also transition based on run status (e.g. if run starts but no stream data yet)
-    if (run?.status === 'EXECUTING' && state === 'triggering') {
-      setState('streaming');
-      return;
-    }
-    // Only mark complete when we have the complete event
-    if (completeEvent && state === 'streaming') {
-      setState('complete');
-    }
-    // Handle run failure
-    if (run?.status === 'FAILED' && state !== 'error' && state !== 'complete') {
-      setState('error');
-      setErrorMsg('Brief generation failed on the server');
-    }
-  }, [parts.length, run?.status, completeEvent, errorEvent, streamError, state]);
-
-  // Timeout fallback — if no events arrive within 30s of triggering, show error
-  useEffect(() => {
-    if (state !== 'triggering' || !runId) return;
-    const timeout = setTimeout(() => {
-      if (parts.length === 0) {
-        setState('error');
-        setErrorMsg(
-          'No data received from stream after 30 seconds. The brief may still be generating — check the Trigger.dev dashboard.',
-        );
-      }
-    }, 30000);
-    return () => clearTimeout(timeout);
-  }, [state, runId, parts.length]);
-
-  // Extract brief_type from strata section
+  // Extract brief_type from section events
   useEffect(() => {
     if (!briefType) {
       const strataSection = sectionEvents.find((s) => s.data.brief_type);
@@ -513,14 +440,92 @@ function IntelligenceBriefInner() {
     }
   }, [sectionEvents, briefType]);
 
+  // Connect to SSE stream when we have a runId
+  useEffect(() => {
+    if (!runId || state === 'idle' || state === 'complete' || state === 'error') return;
+
+    console.log('[ib] connecting to stream for run %s', runId);
+    const es = new EventSource(`/api/intelligence-brief/stream?runId=${encodeURIComponent(runId)}`);
+    eventSourceRef.current = es;
+
+    es.addEventListener('connected', () => {
+      console.log('[ib] stream connected');
+      setState('streaming');
+    });
+
+    es.addEventListener('chunk', (evt) => {
+      try {
+        const briefEvent = JSON.parse(evt.data) as BriefEvent;
+        console.log('[ib] chunk: %s', briefEvent.event);
+        setParts((prev) => [...prev, briefEvent]);
+
+        if (briefEvent.event === 'section' && state === 'triggering') {
+          setState('streaming');
+        }
+        if (briefEvent.event === 'complete') {
+          setState('complete');
+          es.close();
+        }
+        if (briefEvent.event === 'error') {
+          setState('error');
+          setErrorMsg(briefEvent.data.message);
+          es.close();
+        }
+      } catch (err) {
+        console.warn('[ib] failed to parse chunk', evt.data, err);
+      }
+    });
+
+    es.addEventListener('run_status', (evt) => {
+      try {
+        const { status } = JSON.parse(evt.data);
+        console.log('[ib] run status: %s', status);
+        if (status === 'EXECUTING' && state === 'triggering') {
+          setState('streaming');
+        }
+        if (status === 'FAILED' || status === 'CANCELED' || status === 'CRASHED') {
+          setState('error');
+          setErrorMsg(`Task ${status.toLowerCase()}`);
+          es.close();
+        }
+      } catch { /* ignore */ }
+    });
+
+    es.addEventListener('done', () => {
+      console.log('[ib] stream done');
+      es.close();
+    });
+
+    es.addEventListener('error', () => {
+      // Don't set error immediately — transient reconnect errors are normal for EventSource
+      console.warn('[ib] EventSource error event (may retry)');
+    });
+
+    // Timeout: if no chunks arrive within 90s, something is wrong.
+    // Only fires if this EventSource is still the active one (not replaced by reset/new run).
+    const timeout = setTimeout(() => {
+      if (eventSourceRef.current === es) {
+        setState('error');
+        setErrorMsg('No data received after 90 seconds. The task may still be running — check the dashboard.');
+        es.close();
+      }
+    }, 90000);
+
+    return () => {
+      clearTimeout(timeout);
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, [runId]); // Only re-run when runId changes
+
   const handleGenerate = useCallback(async () => {
     if (!selectedAddress.trim()) return;
 
     setState('triggering');
     setErrorMsg('');
     setRunId(null);
-    setAccessToken(null);
     setBriefType(null);
+    setParts([]);
 
     try {
       const res = await fetch('/api/intelligence-brief', {
@@ -540,8 +545,8 @@ function IntelligenceBriefInner() {
       }
 
       const data = await res.json();
+      console.log('[ib] triggered run %s', data.runId);
       setRunId(data.runId);
-      setAccessToken(data.publicAccessToken);
     } catch (err) {
       setState('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
@@ -549,11 +554,15 @@ function IntelligenceBriefInner() {
   }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
 
   const handleReset = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
     setState('idle');
     setRunId(null);
-    setAccessToken(null);
     setErrorMsg('');
     setBriefType(null);
+    setParts([]);
     setInputAddress('');
     setSelectedAddress('');
     setSelectedLat(null);
