@@ -418,8 +418,10 @@ function IntelligenceBriefInner() {
   const timerRunning = state === 'triggering' || state === 'streaming';
   const elapsed = useElapsedSeconds(timerRunning);
 
-  // Stream subscription — only active when we have runId + accessToken
-  // Use useRealtimeRunWithStreams to get both run status and stream data
+  // Stream subscription — only active when we have BOTH runId AND accessToken.
+  // IMPORTANT: useApiClient throws if accessToken is missing and enabled !== false.
+  // So enabled MUST be false whenever accessToken is null.
+  const streamEnabled = !!runId && !!accessToken && (state === 'streaming' || state === 'triggering');
   const { run, streams, error: streamError } = useRealtimeRunWithStreams<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     any,
@@ -428,7 +430,7 @@ function IntelligenceBriefInner() {
     runId ?? undefined,
     {
       accessToken: accessToken ?? undefined,
-      enabled: !!runId && !!accessToken && (state === 'streaming' || state === 'triggering'),
+      enabled: streamEnabled,
     },
   );
 
@@ -446,19 +448,13 @@ function IntelligenceBriefInner() {
     ? sectionEvents[sectionEvents.length - 1].data.progress
     : 0;
 
-  // Log stream state for debugging (temporary)
+  // Debug logging — fires on every relevant state change
   useEffect(() => {
-    if (runId && accessToken) {
-      console.log('[intelligence-brief] Stream subscription', {
-        runId,
-        tokenLength: accessToken.length,
-        partsCount: parts.length,
-        runStatus: run?.status,
-        streamKeys: streams ? Object.keys(streams) : [],
-        streamError: streamError?.message,
-      });
-    }
-  }, [runId, accessToken, parts.length, run?.status, streams, streamError]);
+    console.log('[ib] state=%s runId=%s token=%s enabled=%s parts=%d runStatus=%s err=%s',
+      state, runId ? 'set' : 'null', accessToken ? `${accessToken.length}ch` : 'null',
+      String(streamEnabled), parts.length, run?.status ?? 'n/a',
+      streamError?.message ?? 'none');
+  }, [state, runId, accessToken, streamEnabled, parts.length, run?.status, streamError]);
 
   // Update state based on stream events and run status
   useEffect(() => {
