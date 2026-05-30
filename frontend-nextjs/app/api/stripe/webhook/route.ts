@@ -17,9 +17,7 @@ import { Resend } from 'resend';
 // Stripe requires the raw body for signature verification — disable body parsing
 export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-05-27.dahlia',
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
