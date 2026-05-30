@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { useRealtimeStream } from '@trigger.dev/react-hooks';
+import { useRealtimeRunWithStreams } from '@trigger.dev/react-hooks';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -416,14 +416,21 @@ function IntelligenceBriefInner() {
   const elapsed = useElapsedSeconds(timerRunning);
 
   // Stream subscription — only active when we have runId + accessToken
-  const { parts, error: streamError } = useRealtimeStream<BriefEvent>(
-    runId ?? '',
-    'intelligence-brief',
+  // Use useRealtimeRunWithStreams to get both run status and stream data
+  const { run, streams, error: streamError } = useRealtimeRunWithStreams<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any,
+    { 'intelligence-brief': BriefEvent }
+  >(
+    runId ?? undefined,
     {
       accessToken: accessToken ?? undefined,
       enabled: !!runId && !!accessToken && (state === 'streaming' || state === 'triggering'),
     },
   );
+
+  // Parts from the intelligence-brief stream
+  const parts = streams?.['intelligence-brief'] ?? [];
 
   // Derive state from parts
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
@@ -435,6 +442,20 @@ function IntelligenceBriefInner() {
   const latestProgress = sectionEvents.length > 0
     ? sectionEvents[sectionEvents.length - 1].data.progress
     : 0;
+
+  // Log stream state for debugging (temporary)
+  useEffect(() => {
+    if (runId && accessToken) {
+      console.log('[intelligence-brief] Stream subscription', {
+        runId,
+        tokenLength: accessToken.length,
+        partsCount: parts.length,
+        runStatus: run?.status,
+        streamKeys: streams ? Object.keys(streams) : [],
+        streamError: streamError?.message,
+      });
+    }
+  }, [runId, accessToken, parts.length, run?.status, streams, streamError]);
 
   // Update state based on stream events (in useEffect to avoid setState during render)
   useEffect(() => {
@@ -453,6 +474,20 @@ function IntelligenceBriefInner() {
       setErrorMsg(streamError.message);
     }
   }, [metadataEvent, completeEvent, errorEvent, streamError, state]);
+
+  // Timeout fallback — if no events arrive within 30s of triggering, show error
+  useEffect(() => {
+    if (state !== 'triggering' || !runId) return;
+    const timeout = setTimeout(() => {
+      if (parts.length === 0) {
+        setState('error');
+        setErrorMsg(
+          'No data received from stream after 30 seconds. The brief may still be generating — check the Trigger.dev dashboard.',
+        );
+      }
+    }, 30000);
+    return () => clearTimeout(timeout);
+  }, [state, runId, parts.length]);
 
   // Extract brief_type from strata section
   useEffect(() => {
