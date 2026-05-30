@@ -17,6 +17,7 @@ import pytest
 from datetime import date
 
 from services.intelligence_brief import (
+    AssessmentManifest,
     BushfireDetail,
     ClimateDisclosureProfile,
     ConfidenceLevel,
@@ -26,9 +27,14 @@ from services.intelligence_brief import (
     GrannyFlatDetection,
     PreDAHistoryDetail,
     SatelliteData,
+    UnavailableSource,
     _build_satellite_data,
 )
-from services.compound_constraints import evaluate_satellite_constraints
+from services.compound_constraints import (
+    detect_staleness,
+    evaluate_satellite_constraints,
+    EMPIRICAL_STALENESS_THRESHOLDS,
+)
 from services.intelligence_brief import CompoundSeverity
 
 
@@ -254,6 +260,86 @@ class TestClimateDisclosureProfile:
         assert profile is not None
         assert len(profile.per_hazard_detail) == 0  # no climate_raw
         assert len(profile.empirical_findings) == 1
+
+
+# ---------------------------------------------------------------------------
+# 4b. Manifest population
+# ---------------------------------------------------------------------------
+
+class TestAssessmentManifest:
+    def test_all_sources_succeed(self):
+        uhi = {"uhi_intensity": 4.2, "lga": "Test", "data_year": 2016}
+        arr = {"ifd_1pct_60min_mm": 85.0, "durations_min": [60], "aep_pct": ["1.0"], "depths_mm": [[85.0]]}
+        firms = {"hotspot_count": 0, "detections": [], "search_days": 10, "search_radius_km": 0.5}
+        sat = _build_satellite_data(None, None, SAMPLE_CLIMATE_RAW, None, None, uhi_raw=uhi, arr_raw=arr, firms_raw=firms)
+        m = sat.climate_disclosure.value.manifest
+        assert m.sources_queried == 4  # UHI + ARR + FIRMS + legacy climate
+        assert m.sources_successful == 4
+        assert m.coverage_pct == 100.0
+        assert len(m.sources_unavailable) == 0
+
+    def test_partial_failure_tracked(self):
+        """UHI succeeds, ARR and FIRMS fail — manifest tracks unavailable sources."""
+        uhi = {"uhi_intensity": 5.0, "lga": "Test", "data_year": 2016}
+        sat = _build_satellite_data(None, None, None, None, None, uhi_raw=uhi, arr_raw=None, firms_raw=None)
+        m = sat.climate_disclosure.value.manifest
+        assert m.sources_queried == 3  # UHI + ARR + FIRMS (no legacy climate)
+        assert m.sources_successful == 1
+        assert m.coverage_pct == pytest.approx(33.3, abs=0.1)
+        assert len(m.sources_unavailable) == 2
+        unavail_sources = [u.source for u in m.sources_unavailable]
+        assert "arr_data_hub" in unavail_sources
+        assert "nasa_firms" in unavail_sources
+
+    def test_all_fail_manifest_still_present(self):
+        """All empirical sources fail but FIRMS dict is truthy (hotspot_count 0) — FIRMS counts as success."""
+        firms = {"hotspot_count": 0, "detections": [], "search_days": 10, "search_radius_km": 0.5}
+        sat = _build_satellite_data(None, None, None, None, None, firms_raw=firms)
+        m = sat.climate_disclosure.value.manifest
+        assert m.sources_queried == 3
+        assert m.sources_successful == 1  # FIRMS succeeded (returned data, just 0 hotspots)
+
+    def test_uhi_quality_note(self):
+        uhi = {"uhi_intensity": 3.0, "lga": "Test", "data_year": 2016}
+        sat = _build_satellite_data(None, None, None, None, None, uhi_raw=uhi)
+        m = sat.climate_disclosure.value.manifest
+        assert any("2016" in n for n in m.data_quality_notes)
+
+    def test_no_sources_no_manifest(self):
+        """No climate/empirical data → no profile, no manifest."""
+        sat = _build_satellite_data(None, None, None, None, None)
+        assert sat.climate_disclosure.value is None
+
+
+# ---------------------------------------------------------------------------
+# 4c. Empirical staleness detection
+# ---------------------------------------------------------------------------
+
+class TestEmpiricalStaleness:
+    def test_old_uhi_flagged_stale(self):
+        """UHI data_date='2016' should be flagged stale (>3650 days old by 2027)."""
+        uhi = {"uhi_intensity": 5.0, "lga": "Test", "data_year": 2016}
+        sat = _build_satellite_data(None, None, None, None, None, uhi_raw=uhi)
+        profile = sat.climate_disclosure.value
+        finding = profile.empirical_findings[0]
+        # Manually check: 2016-01-01 to today should be > 3650 days
+        from datetime import datetime
+        age = (date.today() - date(2016, 1, 1)).days
+        if age > EMPIRICAL_STALENESS_THRESHOLDS["urban_heat_island"]:
+            warnings = detect_staleness(sat)
+            assert any("urban_heat_island" in w for w in warnings)
+            assert finding.confidence == ConfidenceLevel.STALE
+        else:
+            # UHI data not yet stale (before 2026) — verify no warning
+            warnings = detect_staleness(sat)
+            assert not any("urban_heat_island" in w for w in warnings)
+
+    def test_fresh_arr_not_flagged(self):
+        """Today's ARR data should not be flagged stale."""
+        arr = {"ifd_1pct_60min_mm": 80.0, "durations_min": [60], "aep_pct": ["1.0"], "depths_mm": [[80.0]]}
+        sat = _build_satellite_data(None, None, None, None, None, arr_raw=arr)
+        warnings = detect_staleness(sat)
+        assert not any("extreme_rainfall" in w for w in warnings)
 
 
 # ---------------------------------------------------------------------------

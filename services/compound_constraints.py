@@ -17,6 +17,7 @@ from services.intelligence_brief import (
     CompoundSeverity,
     ConfidenceLevel,
     DataField,
+    EmpiricalFinding,
     GapEntry,
 )
 
@@ -30,6 +31,13 @@ STALENESS_THRESHOLDS = {
     "nsw_valuation_service": 365,    # VG values: 12 months
     "postgis_overlays": 365,         # Spatial overlays: 12 months
     "postgis_heritage": 365,
+}
+
+# Empirical finding staleness — keyed by hazard type, in days
+EMPIRICAL_STALENESS_THRESHOLDS = {
+    "urban_heat_island": 3650,       # 10 years — dataset is 2016, flag after 2026
+    "extreme_rainfall": 365,         # IFD tables updated annually
+    "active_fire": 30,               # FIRMS detections are near-real-time
 }
 
 
@@ -310,23 +318,44 @@ def detect_staleness(brief) -> list[str]:
     today = date.today()
 
     def _walk(obj):
-        if isinstance(obj, DataField):
-            if obj.confidence == ConfidenceLevel.NOT_AVAILABLE:
-                return
-            threshold_days = STALENESS_THRESHOLDS.get(obj.source)
-            if threshold_days is None or not obj.as_at:
+        if isinstance(obj, EmpiricalFinding):
+            threshold_days = EMPIRICAL_STALENESS_THRESHOLDS.get(obj.hazard)
+            if threshold_days is None or not obj.data_date:
                 return
             try:
-                field_date = datetime.strptime(obj.as_at, "%Y-%m-%d").date()
+                # data_date may be "2016" (year only) or "2026-05-30" (full date)
+                if len(obj.data_date) == 4:
+                    field_date = date(int(obj.data_date), 1, 1)
+                else:
+                    field_date = datetime.strptime(obj.data_date, "%Y-%m-%d").date()
             except (ValueError, TypeError):
                 return
             age_days = (today - field_date).days
             if age_days > threshold_days:
                 obj.confidence = ConfidenceLevel.STALE
                 warnings.append(
-                    f"{obj.source}: data is {age_days} days old "
+                    f"empirical/{obj.hazard}: data is {age_days} days old "
                     f"(threshold: {threshold_days} days)"
                 )
+        elif isinstance(obj, DataField):
+            if obj.confidence != ConfidenceLevel.NOT_AVAILABLE:
+                threshold_days = STALENESS_THRESHOLDS.get(obj.source)
+                if threshold_days and obj.as_at:
+                    try:
+                        field_date = datetime.strptime(obj.as_at, "%Y-%m-%d").date()
+                    except (ValueError, TypeError):
+                        field_date = None
+                    if field_date:
+                        age_days = (today - field_date).days
+                        if age_days > threshold_days:
+                            obj.confidence = ConfidenceLevel.STALE
+                            warnings.append(
+                                f"{obj.source}: data is {age_days} days old "
+                                f"(threshold: {threshold_days} days)"
+                            )
+            # Walk into the wrapped value (may contain EmpiricalFinding etc.)
+            if obj.value is not None:
+                _walk(obj.value)
         elif isinstance(obj, BaseModel):
             for field_name in obj.model_fields:
                 _walk(getattr(obj, field_name, None))

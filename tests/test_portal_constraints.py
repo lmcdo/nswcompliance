@@ -313,6 +313,21 @@ class TestFetchArrIfd:
         mock_get.side_effect = Exception("timeout")
         assert fetch_arr_ifd(-33.87, 151.21) is None
 
+    @patch("services.portal_constraints.requests.get")
+    def test_aep_column_variant_formats(self, mock_get):
+        """ARR may return AEP columns as '1', '1.00', or '1.0%' — all should match 1% AEP."""
+        for col_format in ["1", "1.00", "1.0%"]:
+            mock_get.return_value = MagicMock(
+                json=lambda cf=col_format: {"layers": {"BurstIL": {
+                    "index": [60],
+                    "columns": ["50.0", cf],
+                    "data": [[20.5, 88.0]],
+                }}},
+            )
+            mock_get.return_value.raise_for_status = MagicMock()
+            result = fetch_arr_ifd(-33.87, 151.21)
+            assert result["ifd_1pct_60min_mm"] == 88.0, f"Failed for column format: {col_format}"
+
 
 # ---------------------------------------------------------------------------
 # NASA FIRMS

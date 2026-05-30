@@ -1155,7 +1155,15 @@ def _build_satellite_data(
 
         # Build empirical findings from Phase B data sources
         empirical = []
+        sources_queried = 0
+        sources_successful = 0
+        unavailable: list[UnavailableSource] = []
+        quality_notes: list[str] = []
+
+        # UHI
+        sources_queried += 1
         if uhi_raw:
+            sources_successful += 1
             empirical.append(EmpiricalFinding(
                 hazard="urban_heat_island",
                 value=uhi_raw.get("uhi_intensity"),
@@ -1165,7 +1173,14 @@ def _build_satellite_data(
                 confidence=ConfidenceLevel.ESTIMATED,
                 false_positive_likelihood=FalsePositiveLikelihood.LOW,
             ))
+            quality_notes.append("UHI data is 2016 vintage (most recent NSW-wide meshblock dataset)")
+        else:
+            unavailable.append(UnavailableSource(source="nsw_uhgc", reason="Outside UHGC coverage or query failed"))
+
+        # ARR IFD
+        sources_queried += 1
         if arr_raw:
+            sources_successful += 1
             ifd_val = arr_raw.get("ifd_1pct_60min_mm")
             if ifd_val is not None:
                 empirical.append(EmpiricalFinding(
@@ -1177,19 +1192,43 @@ def _build_satellite_data(
                     confidence=ConfidenceLevel.ESTIMATED,
                     false_positive_likelihood=FalsePositiveLikelihood.LOW,
                 ))
-        if firms_raw and firms_raw.get("hotspot_count", 0) > 0:
-            empirical.append(EmpiricalFinding(
-                hazard="active_fire",
-                value=float(firms_raw["hotspot_count"]),
-                unit="detections",
-                source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
-                data_date=today,
-                confidence=ConfidenceLevel.ESTIMATED,
-                false_positive_likelihood=FalsePositiveLikelihood.MODERATE,
-            ))
+        else:
+            unavailable.append(UnavailableSource(source="arr_data_hub", reason="ARR Data Hub query failed"))
+
+        # FIRMS
+        sources_queried += 1
+        if firms_raw is not None:
+            sources_successful += 1
+            if firms_raw.get("hotspot_count", 0) > 0:
+                empirical.append(EmpiricalFinding(
+                    hazard="active_fire",
+                    value=float(firms_raw["hotspot_count"]),
+                    unit="detections",
+                    source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
+                    data_date=today,
+                    confidence=ConfidenceLevel.ESTIMATED,
+                    false_positive_likelihood=FalsePositiveLikelihood.MODERATE,
+                ))
+        else:
+            unavailable.append(UnavailableSource(source="nasa_firms", reason="FIRMS API key missing or query failed"))
+
+        # Legacy climate risk (per-hazard scores)
+        if climate_raw:
+            sources_queried += 1
+            sources_successful += 1
+
+        coverage = (sources_successful / sources_queried * 100) if sources_queried > 0 else 0.0
 
         climate_profile = ClimateDisclosureProfile(
             assessment_date=today,
+            manifest=AssessmentManifest(
+                categories_assessed=len(empirical) + len(hazards_raw),
+                sources_queried=sources_queried,
+                sources_successful=sources_successful,
+                sources_unavailable=unavailable,
+                coverage_pct=round(coverage, 1),
+                data_quality_notes=quality_notes,
+            ),
             per_hazard_detail=hazards_raw,
             empirical_findings=empirical,
         )
@@ -1694,20 +1733,6 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
         )
 
-        # Empirical layer fetchers — Phase B
-        f_uhi = pool.submit(
-            _safe_call, lambda: _fetch_uhi(lat, lng),
-            "nsw_uhgc", ConfidenceLevel.ESTIMATED,
-        )
-        f_arr = pool.submit(
-            _safe_call, lambda: _fetch_arr_ifd(lat, lng),
-            "arr_data_hub", ConfidenceLevel.ESTIMATED,
-        )
-        f_firms = pool.submit(
-            _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
-            "nasa_firms", ConfidenceLevel.ESTIMATED,
-        )
-
         # Collect results with timeouts
         controls_df = f_controls.result(timeout=15) if f_controls else DataField(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -1724,9 +1749,6 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         mine_sub_df = f_mine_sub.result(timeout=10)
         contam_df = f_contam.result(timeout=10)
         drinking_df = f_drinking.result(timeout=10)
-        uhi_df = f_uhi.result(timeout=10)
-        arr_df = f_arr.result(timeout=18)
-        firms_df = f_firms.result(timeout=18)
 
     controls = controls_df.value or parse_controls([])
     valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
@@ -1736,9 +1758,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     mine_subsidence_raw = mine_sub_df.value
     contaminated_land_raw = contam_df.value
     drinking_water_raw = drinking_df.value
-    uhi_raw = uhi_df.value
-    arr_raw = arr_df.value
-    firms_raw = firms_df.value
+    uhi_raw = None
+    arr_raw = None
+    firms_raw = None
 
     # ── 4. PostGIS fallbacks (same as conveyancing.py) ───────────────────
     ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
@@ -1832,6 +1854,20 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                 "granny_flat_detect", ConfidenceLevel.ESTIMATED,
             )
 
+            # Empirical layer fetchers — Phase B (only need lat/lng)
+            f_uhi = pool.submit(
+                _safe_call, lambda: _fetch_uhi(lat, lng),
+                "nsw_uhgc", ConfidenceLevel.ESTIMATED,
+            )
+            f_arr = pool.submit(
+                _safe_call, lambda: _fetch_arr_ifd(lat, lng),
+                "arr_data_hub", ConfidenceLevel.ESTIMATED,
+            )
+            f_firms = pool.submit(
+                _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
+                "nasa_firms", ConfidenceLevel.ESTIMATED,
+            )
+
             # Pre-DA history: only when include_premium, separate timeout
             f_pre_da = None
             if req.include_premium:
@@ -1845,6 +1881,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             flood_sat_df = f_flood_sat.result(timeout=20)
             climate_df = f_climate.result(timeout=10)
             granny_df = f_granny.result(timeout=30)
+            uhi_df = f_uhi.result(timeout=10)
+            arr_df = f_arr.result(timeout=18)
+            firms_df = f_firms.result(timeout=18)
             pre_da_df = f_pre_da.result(timeout=CONFIG.timeout_satellite + 5) if f_pre_da else DataField(
                 value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
                 source="pre_da_history", reason="Premium data not requested",
@@ -1855,6 +1894,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         climate_raw = climate_df.value
         granny_flat_raw = granny_df.value
         pre_da_raw = pre_da_df.value
+        uhi_raw = uhi_df.value
+        arr_raw = arr_df.value
+        firms_raw = firms_df.value
 
         satellite_data = _build_satellite_data(
             bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
