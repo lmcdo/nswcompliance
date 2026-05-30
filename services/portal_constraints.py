@@ -420,14 +420,22 @@ def fetch_arr_ifd(lat: float, lng: float) -> Optional[dict]:
         try:
             dur_idx = durations.index(60)
             aep_idx = None
-            for i, col in enumerate(aep_cols):
-                normalized = str(col).strip().rstrip("%")
-                try:
-                    if float(normalized) == 1.0:
-                        aep_idx = i
-                        break
-                except ValueError:
+            for i in range(len(aep_cols)):
+                raw_col = aep_cols[i]
+                if raw_col is None:
                     continue
+                clean = str(raw_col).strip().rstrip("%")
+                if not clean:
+                    continue
+                parsed = 0.0
+                if clean is not None:
+                    try:
+                        parsed = float(clean)
+                    except (ValueError, TypeError):
+                        continue
+                if parsed == 1.0:
+                    aep_idx = i
+                    break
             if aep_idx is not None:
                 ifd_1pct_60min = depths[dur_idx][aep_idx]
         except (ValueError, IndexError):
