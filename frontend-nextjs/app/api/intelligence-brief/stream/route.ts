@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
 
         while (!streamConnected && !abortController.signal.aborted && retries < maxRetries) {
           try {
+            console.log('[stream-proxy] attempt %d: fetching %s', retries + 1, streamUrl);
             const resp = await fetch(streamUrl, {
               headers: {
                 'Accept': 'text/event-stream',
@@ -61,9 +62,13 @@ export async function GET(request: NextRequest) {
               signal: abortController.signal,
             });
 
+            console.log('[stream-proxy] response: %d %s', resp.status, resp.statusText);
+            console.log('[stream-proxy] headers: %s', JSON.stringify(Object.fromEntries(resp.headers.entries())));
+
             if (!resp.ok) {
-              // Stream not ready yet — task hasn't started writing
               if (resp.status === 404 || resp.status === 400) {
+                const errBody = await resp.text().catch(() => '');
+                console.log('[stream-proxy] not ready (status %d): %s', resp.status, errBody.substring(0, 200));
                 retries++;
                 await new Promise(r => setTimeout(r, 2000));
                 continue;
@@ -82,51 +87,58 @@ export async function GET(request: NextRequest) {
               return;
             }
 
-            // Parse SSE from Trigger.dev and forward to client
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let chunkCount = 0;
 
             while (true) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                console.log('[stream-proxy] reader done after %d chunks, remaining buffer: %s', chunkCount, buffer.substring(0, 200));
+                break;
+              }
 
-              buffer += decoder.decode(value, { stream: true });
+              const raw = decoder.decode(value, { stream: true });
+              chunkCount++;
+              if (chunkCount <= 3) {
+                console.log('[stream-proxy] raw chunk #%d (%d bytes): %s', chunkCount, raw.length, raw.substring(0, 500));
+              }
+              buffer += raw;
 
-              // Parse SSE format: events are separated by double newlines
               const parts = buffer.split('\n\n');
               buffer = parts.pop() ?? '';
 
               for (const part of parts) {
                 if (!part.trim()) continue;
 
-                // Extract data from SSE lines
                 const lines = part.split('\n');
+                let eventType = '';
                 let eventData = '';
 
                 for (const line of lines) {
-                  if (line.startsWith('data:')) {
+                  if (line.startsWith('event:')) {
+                    eventType = line.slice(6).trim();
+                  } else if (line.startsWith('data:')) {
                     eventData += line.slice(5).trim();
                   }
                 }
 
+                console.log('[stream-proxy] SSE event=%s data=%s', eventType || '(none)', eventData.substring(0, 300));
+
                 if (eventData) {
                   try {
-                    // Trigger.dev v2 stream format: the data contains the actual chunk
                     const parsed = JSON.parse(eventData);
 
-                    // v2 format wraps in records/batch
                     if (parsed.records) {
                       for (const record of parsed.records) {
                         const body = typeof record.body === 'string' ? JSON.parse(record.body) : record.body;
                         sendEvent('chunk', body);
                       }
                     } else {
-                      // v1 format: data is the chunk directly
                       sendEvent('chunk', parsed);
                     }
                   } catch {
-                    // Forward raw data if JSON parse fails
                     sendEvent('raw', { data: eventData });
                   }
                 }
@@ -158,7 +170,6 @@ export async function GET(request: NextRequest) {
         }
       };
 
-      // Also poll run status to detect failures
       const pollRunStatus = async () => {
         while (!runFinished && !abortController.signal.aborted) {
           try {
@@ -168,6 +179,7 @@ export async function GET(request: NextRequest) {
             });
             if (resp.ok) {
               const run = await resp.json();
+              console.log('[stream-proxy] run status: %s finished: %s', run.status, run.finishedAt ?? 'no');
               sendEvent('run_status', { status: run.status, finishedAt: run.finishedAt });
               if (run.status === 'FAILED' || run.status === 'CANCELED' || run.status === 'CRASHED') {
                 runFinished = true;
