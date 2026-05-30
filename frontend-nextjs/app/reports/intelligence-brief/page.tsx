@@ -129,6 +129,11 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
 // Generic data renderer — flattens nested objects into readable key-value
 // ---------------------------------------------------------------------------
 
+// Detect DataField wrapper: { value, confidence, source, as_at, reason }
+function isDataField(val: unknown): val is { value: unknown; confidence: string; source: string; as_at?: string; reason?: string | null } {
+  return typeof val === 'object' && val !== null && !Array.isArray(val) && 'confidence' in val && 'source' in val;
+}
+
 function SectionData({ data }: { data: Record<string, unknown> }) {
   const entries = Object.entries(data).filter(
     ([key]) => !['confidence', 'source', 'as_at', 'reason'].includes(key),
@@ -139,13 +144,36 @@ function SectionData({ data }: { data: Record<string, unknown> }) {
   }
 
   return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-      {entries.map(([key, val]) => (
-        <div key={key} className="flex flex-col">
-          <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-          <dd className="text-sm text-slate-900 mt-0.5">{formatValue(val)}</dd>
-        </div>
-      ))}
+    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+      {entries.map(([key, val]) => {
+        // Unwrap DataField: extract .value and show confidence badge
+        if (isDataField(val)) {
+          const df = val;
+          if (df.confidence === 'not_available') {
+            return (
+              <div key={key} className="flex flex-col">
+                <dt className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                  {formatKey(key)} {confidenceBadge('not_available')}
+                </dt>
+                <dd className="text-sm text-slate-400 italic mt-0.5">{df.reason || '—'}</dd>
+              </div>
+            );
+          }
+          return (
+            <div key={key} className="flex flex-col">
+              <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+              <dd className="text-sm text-slate-900 mt-0.5">{formatValue(df.value)}</dd>
+            </div>
+          );
+        }
+
+        return (
+          <div key={key} className="flex flex-col">
+            <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+            <dd className="text-sm text-slate-900 mt-0.5">{formatValue(val)}</dd>
+          </div>
+        );
+      })}
     </dl>
   );
 }
@@ -166,9 +194,21 @@ function formatValue(val: unknown): string {
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) {
     if (val.length === 0) return 'None';
+    // Array of primitives — join them
+    if (val.every(v => typeof v === 'string' || typeof v === 'number')) {
+      return val.join(', ');
+    }
     return `${val.length} item${val.length === 1 ? '' : 's'}`;
   }
-  if (typeof val === 'object') return JSON.stringify(val);
+  if (typeof val === 'object') {
+    // Render simple key-value objects inline
+    const obj = val as Record<string, unknown>;
+    const keys = Object.keys(obj);
+    if (keys.length <= 4) {
+      return keys.map(k => `${formatKey(k)}: ${formatValue(obj[k])}`).join(', ');
+    }
+    return `${keys.length} fields`;
+  }
   return String(val);
 }
 
