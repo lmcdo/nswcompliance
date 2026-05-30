@@ -90,57 +90,54 @@ export async function GET(request: NextRequest) {
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let chunkCount = 0;
 
             while (true) {
               const { done, value } = await reader.read();
-              if (done) {
-                console.log('[stream-proxy] reader done after %d chunks, remaining buffer: %s', chunkCount, buffer.substring(0, 200));
-                break;
-              }
+              if (done) break;
 
-              const raw = decoder.decode(value, { stream: true });
-              chunkCount++;
-              if (chunkCount <= 3) {
-                console.log('[stream-proxy] raw chunk #%d (%d bytes): %s', chunkCount, raw.length, raw.substring(0, 500));
-              }
-              buffer += raw;
+              buffer += decoder.decode(value, { stream: true });
 
+              // SSE events are separated by double newlines
               const parts = buffer.split('\n\n');
               buffer = parts.pop() ?? '';
 
               for (const part of parts) {
                 if (!part.trim()) continue;
 
+                // Extract data lines (skip id:, event:, and : ping keepalives)
                 const lines = part.split('\n');
-                let eventType = '';
                 let eventData = '';
 
                 for (const line of lines) {
-                  if (line.startsWith('event:')) {
-                    eventType = line.slice(6).trim();
-                  } else if (line.startsWith('data:')) {
+                  if (line.startsWith('data:')) {
                     eventData += line.slice(5).trim();
                   }
                 }
 
-                console.log('[stream-proxy] SSE event=%s data=%s', eventType || '(none)', eventData.substring(0, 300));
+                if (!eventData) continue;
 
-                if (eventData) {
-                  try {
-                    const parsed = JSON.parse(eventData);
-
-                    if (parsed.records) {
-                      for (const record of parsed.records) {
-                        const body = typeof record.body === 'string' ? JSON.parse(record.body) : record.body;
-                        sendEvent('chunk', body);
-                      }
-                    } else {
-                      sendEvent('chunk', parsed);
-                    }
-                  } catch {
-                    sendEvent('raw', { data: eventData });
+                try {
+                  // Trigger.dev stream data is double-encoded:
+                  // Wire: data: "{\"event\":\"section\",...}"
+                  // First JSON.parse → string: '{"event":"section",...}'
+                  // Second JSON.parse → object: {event:"section",...}
+                  let parsed = JSON.parse(eventData);
+                  if (typeof parsed === 'string') {
+                    parsed = JSON.parse(parsed);
                   }
+
+                  // v2 batch format
+                  if (parsed.records) {
+                    for (const record of parsed.records) {
+                      let body = typeof record.body === 'string' ? JSON.parse(record.body) : record.body;
+                      if (typeof body === 'string') body = JSON.parse(body);
+                      sendEvent('chunk', body);
+                    }
+                  } else {
+                    sendEvent('chunk', parsed);
+                  }
+                } catch {
+                  // Skip unparseable data (e.g. keepalive pings)
                 }
               }
             }
