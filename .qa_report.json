@@ -1,83 +1,77 @@
 {
   "tier": "standard",
-  "justification": "Dead code removal — 28 files deleted (7 assessment pages, 6 components, 15 services), 2 comment-only edits. 3 feature-flag-gated services restored after incorrect deletion. All deletions verified unreferenced.",
-  "commit_hash": "9271da13",
+  "justification": "Bug fix in data mapping logic — wrong DB field name caused silent data loss for FSR override detection. No new external integrations, no schema changes.",
+  "commit_hash": "cf0ed526",
   "files": [
-    "frontend-nextjs/app/assessment/dashboard/page.tsx",
-    "frontend-nextjs/app/assessment/enhanced/page.tsx",
-    "frontend-nextjs/app/assessment/mockup/page.tsx",
-    "frontend-nextjs/app/assessment/optimized/page.tsx",
-    "frontend-nextjs/app/assessment/professional/page.tsx",
-    "frontend-nextjs/app/assessment/v2/page.tsx",
-    "frontend-nextjs/app/assessment/version-aware/page.tsx",
-    "frontend-nextjs/components/compliance/ADGBuildingSeparationTable.tsx",
-    "frontend-nextjs/components/compliance/CdcEligibilityIndicator.tsx",
-    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
-    "frontend-nextjs/components/compliance/CouncilSetbackGuidance.tsx",
-    "frontend-nextjs/components/compliance/EPAAct415Notice.tsx",
-    "frontend-nextjs/components/compliance/HeritageProvisions.tsx",
-    "frontend-nextjs/components/compliance/PermissibilityChecker.tsx",
-    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
-    "services/authoritative_compliance_api.py",
-    "services/authoritative_migration.py",
-    "services/authoritative_migration_chunk2.py",
-    "services/authoritative_migration_fixed.py",
-    "services/clause_citation_service.py",
-    "services/clause_citation_store.py",
-    "services/database_autoschema_query.py",
-    "services/hierarchy_resolver_cli.py",
-    "services/integrated_multimodal_query.py",
-    "services/modal_inference.py",
-    "services/parking_rates_fetcher.py",
-    "services/precise_setback_calculator.py",
-    "services/property_intelligence.py",
-    "services/version_aware_query.py",
-    "services/version_manager_cli.py",
-    "services/zone_provision_mapper.py"
+    "services/intelligence_brief.py",
+    "tests/test_intelligence_brief_orchestrator.py",
+    "migrations/047_secondary_dwelling_full_standards.sql"
   ],
   "pre_impl": {
-    "existing_data": "Deletion only — no data reads or writes. Triple-verified each file has zero live importers via grep across entire codebase.",
-    "assumption_mismatch": "3 files (enhanced_compliance_api.py, provision_search.py, development_permissions_db.py) were incorrectly identified as dead but are subprocess fallbacks behind feature flags — restored.",
-    "new_vs_existing": "Pure deletion. No new code. 2 files had commented-out import lines removed (ComplianceDashboard.tsx, StateLevelControls.tsx)."
+    "existing_data": "housing_sepp_standards table — LMR types have standard_type='max_fsr', secondary_dwelling has 'max_floor_area'",
+    "assumption_mismatch": "Previous code assumed 'max_gfa' key existed — it never did for LMR types, so max_fsr was always None",
+    "new_vs_existing": "Fix applies to all existing rows — no data migration needed, only code-side field mapping"
   },
   "functions": [
     {
-      "name": "dead code verification",
-      "file_line": "N/A — deletion-only PR",
-      "input": "filename of candidate dead file",
-      "output": "zero grep matches across all .ts/.tsx/.py files confirms safe to delete",
-      "if_none": "if any match found, file is NOT dead and must not be deleted"
+      "name": "_build_sepp_housing",
+      "file_line": "intelligence_brief.py:1469",
+      "input": "list[dict] raw rows from housing_sepp_standards DB query",
+      "output": "list[SEPPStandard] — now correctly populates max_fsr for LMR and max_gfa_m2 for secondary_dwelling",
+      "if_none": "Returns SEPPStandard with max_fsr=None and max_gfa_m2=None — safe, just missing data"
+    },
+    {
+      "name": "_detect_sepp_lep_overrides",
+      "file_line": "intelligence_brief.py:1538",
+      "input": "list[SEPPStandard] + lep_height_m + lep_fsr",
+      "output": "list[SeppLepOverride] — now uses std.max_fsr instead of std.max_gfa_m2",
+      "if_none": "If max_fsr is None, FSR comparison skipped — no false positive"
     }
   ],
-  "values": [],
+  "values": [
+    {
+      "value": "max_fsr",
+      "read_at": "intelligence_brief.py:1499",
+      "nullable": "yes",
+      "guard_at": "intelligence_brief.py:1557 — 'if std.max_fsr and lep_fsr'",
+      "if_missing": "FSR override detection skipped — no false positive"
+    },
+    {
+      "value": "max_gfa",
+      "read_at": "intelligence_brief.py:1497",
+      "nullable": "yes",
+      "guard_at": "N/A — stored directly in model field",
+      "if_missing": "max_gfa_m2=None on SEPPStandard — correct for LMR types"
+    }
+  ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Deleted component is actually imported somewhere missed by grep",
-      "what_happens": "Build fails with 'module not found' — caught immediately by Vercel deploy or local dev",
+      "scenario": "DB has a standard_type that is neither 'max_fsr' nor 'max_floor_area' but represents FSR",
+      "what_happens": "FSR value falls into additional_standards dict, not mapped to max_fsr field",
       "mitigated": true,
-      "how": "Triple grep verification (3 independent agents + manual check). TSC passes. Jest 615/615 pass.",
-      "repro": "npm run build in frontend-nextjs"
+      "how": "Verified against create_housing_sepp_standards.py — all LMR FSR values use 'max_fsr' as standard_type",
+      "repro": "SELECT DISTINCT standard_type FROM housing_sepp_standards WHERE standard_type LIKE '%fsr%'"
     },
     {
-      "scenario": "Deleted Python service is called via subprocess from a route",
-      "what_happens": "Route returns 500 when feature flag is enabled",
+      "scenario": "Frontend HousingSEPPEligibilityCard expects max_gfa_m2 for LMR types",
+      "what_happens": "Would show null instead of FSR value",
       "mitigated": true,
-      "how": "3 feature-flag-gated services were caught and restored. Remaining 15 confirmed zero references.",
-      "repro": "grep -r for each deleted filename across all .ts/.tsx/.py files"
+      "how": "Frontend eligibility route (route.ts:348) already correctly matches on 'max_fsr' standard_type — separate codepath",
+      "repro": "Grep for max_fsr in frontend — confirmed at eligibility/route.ts:348 and HousingSEPPEligibilityCard.tsx:93"
     },
     {
-      "scenario": "Assessment page URLs were bookmarked or linked externally",
-      "what_happens": "User sees Next.js 404 page, no redirect configured to main assessment page.",
-      "mitigated": false,
-      "how": "These were never linked in navigation or sitemap. All 7 are variant pages of /assessment which still exists.",
-      "repro": "Visit /assessment/dashboard, /assessment/v2, etc."
+      "scenario": "Granny flat report page reads max_gfa_m2 from outputs",
+      "what_happens": "No impact — granny flat report uses different data source, not SEPPStandard model",
+      "mitigated": true,
+      "how": "granny-flat/[report_id]/page.tsx reads from pipeline outputs, not intelligence_brief.py",
+      "repro": "Read granny-flat report page — uses outputs.max_gfa_m2 from granny flat pipeline"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Visit /assessment — confirm main assessment page still works. Run full test suite."
+    "manual_verify": "No — all existing data works correctly with the fix, no migration needed"
   }
 }

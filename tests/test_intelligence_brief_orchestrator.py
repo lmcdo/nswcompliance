@@ -178,7 +178,7 @@ class TestBuildSEPPHousing:
     def test_eligible_lot(self):
         raw = [
             {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450.0},
-            {"development_type": "secondary_dwelling", "standard_type": "max_gfa", "numeric_value": 60.0},
+            {"development_type": "secondary_dwelling", "standard_type": "max_floor_area", "numeric_value": 60.0},
         ]
         result = _build_sepp_housing(raw, "R2", 520.0)
         assert len(result) == 1
@@ -710,7 +710,21 @@ class TestBuildSEPPHousingSecondaryDwelling:
         assert len(result) == 1
         assert result[0].dev_type == "secondary_dwelling"
         assert result[0].max_gfa_m2 == 60.0
+        assert result[0].max_fsr is None  # secondary_dwelling has no FSR ratio
         assert result[0].eligible is True
+
+    def test_max_fsr_maps_for_lmr(self):
+        """LMR types use 'max_fsr' standard_type — must map to max_fsr field, not max_gfa_m2."""
+        raw = [
+            {"development_type": "low_rise_medium_density", "standard_type": "min_lot_size", "numeric_value": 600},
+            {"development_type": "low_rise_medium_density", "standard_type": "max_fsr", "numeric_value": 0.65},
+            {"development_type": "low_rise_medium_density", "standard_type": "max_height", "numeric_value": 9.0},
+        ]
+        result = _build_sepp_housing(raw, "R2", 700.0)
+        assert len(result) == 1
+        assert result[0].max_fsr == 0.65
+        assert result[0].max_gfa_m2 is None  # max_fsr is not absolute floor area
+        assert result[0].max_height_m == 9.0
 
     def test_extended_fields_populated(self):
         """Migration 047 standards map to new SEPPStandard fields."""
@@ -772,13 +786,13 @@ class TestSeppLepOverrides:
         assert len(overrides) == 0
 
     def test_secondary_dwelling_skips_fsr(self):
-        """Secondary dwelling max_gfa is absolute (60m²), not FSR ratio — skip FSR comparison."""
+        """Secondary dwelling has max_gfa_m2 (absolute 60m²), not max_fsr — no FSR override."""
         standards = [SEPPStandard(dev_type="secondary_dwelling", eligible=True, max_gfa_m2=60.0)]
         overrides = _detect_sepp_lep_overrides(standards, lep_height_m=None, lep_fsr=0.5)
         assert len(overrides) == 0
 
     def test_lmr_fsr_override_detected(self):
-        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_gfa_m2=0.8)]
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_fsr=0.8)]
         overrides = _detect_sepp_lep_overrides(standards, lep_height_m=None, lep_fsr=0.5)
         assert len(overrides) == 1
         assert overrides[0].control == "fsr"

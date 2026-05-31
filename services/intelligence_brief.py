@@ -268,7 +268,8 @@ class SEPPStandard(BaseModel):
     dev_type: str
     eligible: bool
     min_lot_area_m2: Optional[float] = None
-    max_gfa_m2: Optional[float] = None
+    max_gfa_m2: Optional[float] = None  # Absolute floor area (m²) — secondary_dwelling only
+    max_fsr: Optional[float] = None  # FSR ratio — LMR types only (DB: standard_type='max_fsr')
     max_height_m: Optional[float] = None
     setback_front_m: Optional[float] = None
     setback_rear_m: Optional[float] = None
@@ -1492,8 +1493,10 @@ def _build_sepp_housing(
             eligible = False
             reason = f"Lot area {lot_area_m2:.0f}m² below minimum {min_lot:.0f}m²"
 
-        # max_floor_area (migration 045) maps to max_gfa_m2
-        max_gfa = vals.get("max_gfa") or vals.get("max_floor_area")
+        # max_floor_area (migration 045) maps to max_gfa_m2 (absolute m²)
+        max_gfa = vals.get("max_floor_area")
+        # max_fsr (DB standard_type for LMR types) is an FSR ratio, not absolute area
+        max_fsr = vals.get("max_fsr")
 
         # Lot-size-banded standards — resolve to the matching band
         site_coverage = _select_lot_size_band(vals, lot_area_m2, "max_site_coverage")
@@ -1501,7 +1504,7 @@ def _build_sepp_housing(
 
         # Collect non-standard fields into additional_standards
         known_keys = {
-            "min_lot_size", "max_gfa", "max_floor_area", "max_height",
+            "min_lot_size", "max_fsr", "max_floor_area", "max_height",
             "setback_front", "setback_rear", "setback_side",
             "min_lot_width", "parking_per_dwelling", "min_private_open_space",
         }
@@ -1516,6 +1519,7 @@ def _build_sepp_housing(
             eligible=eligible,
             min_lot_area_m2=min_lot,
             max_gfa_m2=max_gfa,
+            max_fsr=max_fsr,
             max_height_m=vals.get("max_height"),
             setback_front_m=vals.get("setback_front"),
             setback_rear_m=vals.get("setback_rear"),
@@ -1550,17 +1554,13 @@ def _detect_sepp_lep_overrides(
                 lep_value=lep_height_m,
                 sepp_value=std.max_height_m,
             ))
-        if std.max_gfa_m2 and lep_fsr and std.max_gfa_m2 > lep_fsr:
-            # FSR comparison only makes sense for LMR types where max_gfa
-            # is expressed as an FSR ratio, not absolute m². Skip secondary_dwelling
-            # since its max_gfa_m2 is 60m² (absolute), not an FSR ratio.
-            if std.dev_type != "secondary_dwelling":
-                overrides.append(SeppLepOverride(
-                    dev_type=std.dev_type,
-                    control="fsr",
-                    lep_value=lep_fsr,
-                    sepp_value=std.max_gfa_m2,
-                ))
+        if std.max_fsr and lep_fsr and std.max_fsr > lep_fsr:
+            overrides.append(SeppLepOverride(
+                dev_type=std.dev_type,
+                control="fsr",
+                lep_value=lep_fsr,
+                sepp_value=std.max_fsr,
+            ))
     return overrides
 
 
