@@ -492,6 +492,26 @@ export function StateLevelControls({
   // LMR applicability: Stage 2 (R1–R4 within designated regions) OR Stage 1 (R2 statewide, excl. 4 LGAs)
   const isLMRArea = zone && lga ? isLMRApplicable(zone, lga) : false;
 
+  // Extract LEP height and FSR from Planning Portal layers for SEPP-LEP override comparison
+  const heightLayer = propertyData?.planningLayers?.find(
+    (l: any) => l.layerName === 'Height of Buildings Map'
+  );
+  const lepHeight: number | null = (() => {
+    const val = heightLayer?.results?.[0]?.['Maximum Building Height']
+      ?? heightLayer?.results?.[0]?.['MAX_B_H']
+      ?? heightLayer?.results?.[0]?.['B_H']
+      ?? heightLayer?.results?.[0]?.['HEIGHT'];
+    return val != null ? parseFloat(val) : null;
+  })();
+
+  const fsrLayer = propertyData?.planningLayers?.find(
+    (l: any) => l.layerName === 'Floor Space Ratio Map'
+  );
+  const lepFsr: number | null = (() => {
+    const result = fsrLayer?.results?.find((r: any) => r['Floor Space Ratio']);
+    return result ? parseFloat(result['Floor Space Ratio']) : null;
+  })();
+
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
 
@@ -1073,6 +1093,8 @@ export function StateLevelControls({
                 stationDistance={stationDistance}
                 isLMRArea={isLMRArea}
                 strataInfo={strataInfo}
+                lepHeight={lepHeight}
+                lepFsr={lepFsr}
               />
             </CardContent>
           )}
