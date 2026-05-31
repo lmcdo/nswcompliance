@@ -432,9 +432,10 @@ def _parse_solar_response(
 
     best_seg: dict = max(segments, key=_segment_score) if segments else {}
     best_pitch: float = best_seg.get("pitchDegrees", 0.0)
-    # azimuthDegrees can be None (Optional[float]) — keep None-safe check
+    # azimuthDegrees can be None (Optional[float]) — keep None-safe check.
+    # Default 180.0 (south-facing) matches the scorer default — 0.0 would falsely imply north.
     best_az_raw = best_seg.get("azimuthDegrees")
-    best_azimuth: float = float(best_az_raw) if best_az_raw is not None else 0.0
+    best_azimuth: float = float(best_az_raw) if best_az_raw is not None else 180.0
 
     # Annual kWh: use per-panel sum when lot-clipped (more accurate), otherwise
     # take the max solarPanelConfigs entry (Google's aggregate for the whole building).
@@ -457,7 +458,7 @@ def _parse_solar_response(
         best_azimuth_deg=round(best_azimuth, 1),
         roof_area_m2=roof_area_rounded,
         is_heritage=False,  # populated by caller
-        is_commercial_scale=roof_area_rounded > 500,
+        is_commercial_scale=roof_area_rounded >= 500,
         imagery_date=imagery_date,
         coverage_available=True,
     )

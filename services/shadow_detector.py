@@ -231,13 +231,14 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                 heights = []
                 for (text,) in cur.fetchall():
                     for m in re.findall(r"(\d+(?:\.\d+)?)\s*m", text or ""):
-                        h = float(m)
+                        h = float(m if m else "0")
                         if 4 <= h <= 30:
                             heights.append(h)
                 if heights:
                     height = float(max(heights))
                     lep_name = _get_lep_label(former_council)
-                    logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
+                    # regulatory_provisions query uses is_current = TRUE (line above)
+                    logger.info(f"Height from provisions: {height}m ({former_council})")
                     return height, lep_name, "regulatory_provisions"
 
     except Exception as e:
@@ -445,6 +446,7 @@ def run_shadow(request: ShadowRequest):
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
+        "construction_change_note": change.get("note"),
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }

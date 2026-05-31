@@ -251,7 +251,8 @@ def test_empty_segments_no_crash():
     raw = _make_response(roofSegmentStats=[])
     out = _parse_solar_response(raw)
     assert out.best_pitch_deg == 0.0
-    assert out.best_azimuth_deg == 0.0
+    # Default azimuth 180.0 (south-facing) when no segments — consistent with scorer
+    assert out.best_azimuth_deg == 180.0
 
 
 def test_null_segments_no_crash():
@@ -271,8 +272,15 @@ def test_commercial_scale_roof_area_above_500():
     assert out.is_commercial_scale is True
 
 
-def test_not_commercial_scale_roof_area_at_500():
+def test_commercial_scale_roof_area_at_500():
+    """500 m² is the boundary — should be commercial (>= 500)."""
     raw = _make_response(wholeRoofStats={"areaMeters2": 500.0})
+    out = _parse_solar_response(raw)
+    assert out.is_commercial_scale is True
+
+
+def test_not_commercial_scale_roof_area_below_500():
+    raw = _make_response(wholeRoofStats={"areaMeters2": 499.9})
     out = _parse_solar_response(raw)
     assert out.is_commercial_scale is False
 

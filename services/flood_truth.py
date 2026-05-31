@@ -500,6 +500,8 @@ def _parse_bom_observations(xml: str) -> list[tuple[datetime, float]]:
     obs: list[tuple[datetime, float]] = []
     for t, v in pairs:
         try:
+            if v is None:
+                continue
             fv = float(v)
             dt = datetime.fromisoformat(t.strip().replace("Z", "+00:00"))
             obs.append((dt, fv))
@@ -809,7 +811,7 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
             "crs": "EPSG:4326", "resx": str(delta), "resy": str(delta),
         }, timeout=20)
         r.raise_for_status()
-        ct = r.headers.get("Content-Type", "")
+        ct = r.headers.get("Content-Type") or ""
         if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
             return {"dea_wofs_frequency_pct": None}
         with rasterio.open(io.BytesIO(r.content)) as ds:
@@ -995,6 +997,7 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
     Returns ground_elevation_m_ahd (float) or None if unavailable.
     No auth required. Full NSW coverage at 5m resolution.
     """
+    body = None
     try:
         geometry = f'{{"x":{lng},"y":{lat},"spatialReference":{{"wkid":4326}}}}'
         r = requests.get(
@@ -1016,7 +1019,8 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         elevation = float(raw_value)
         return {"ground_elevation_m_ahd": round(elevation, 2)}
     except (ValueError, TypeError):
-        logger.warning(f"DEM identify: non-numeric value {body.get('value')!r}")
+        _raw = body.get("value") if body is not None else "N/A"
+        logger.warning(f"DEM identify: non-numeric value {_raw!r}")
         return {"ground_elevation_m_ahd": None}
     except Exception as e:
         logger.warning(f"DEM identify: {e}")
@@ -1048,7 +1052,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     # Any flood study raster with a 1pct design result confirms site is in flood extent
     flood_studies = internal_outputs.get("flood_studies") or []
     study_in_overlay = any(
-        s.get("design", {}).get("1pct") is not None for s in flood_studies
+        (s.get("design") or {}).get("1pct") is not None for s in flood_studies
     )
     # Backward-compat check for Hawkesbury flat field (from cached reports)
     hawk_100 = internal_outputs.get("hawkesbury_flood_level_100aep")
@@ -1114,8 +1118,6 @@ def _compute_confidence(internal_outputs: dict) -> str:
 
     if spatial_layers >= 3 and wet_seasons >= 1:
         return "high"
-    if spatial_layers >= 2 or wet_seasons >= 2:
-        return "medium"
     if spatial_layers >= 1 or wet_seasons >= 1:
         return "medium"
     return "low"
@@ -1148,8 +1150,8 @@ def _build_data_sources(internal_outputs: dict) -> list:
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
     for study in (internal_outputs.get("flood_studies") or []):
-        name = study.get("study_name", "Unknown")
-        source = study.get("source", "")
+        name = study.get("study_name") or "Unknown"
+        source = study.get("source") or ""
         sources.append(f"{name} — {source} (flood study raster)")
     if internal_outputs.get("ground_elevation_m_ahd") is not None:
         sources.append(_DATA_SOURCE_DEM)
@@ -1223,7 +1225,7 @@ def _normalise_outputs(raw: dict) -> dict:
         in_100yr = True
     # 3. Any flood study raster returned a 1pct design result
     for study in normalised["flood_studies"]:
-        if study.get("design", {}).get("1pct") is not None:
+        if (study.get("design") or {}).get("1pct") is not None:
             in_100yr = True
             break
     # 4. Hawkesbury backward-compat
@@ -1234,11 +1236,11 @@ def _normalise_outputs(raw: dict) -> dict:
     # Compute flood depth from study raster + DEM where both available
     ground_elev = normalised["ground_elevation_m_ahd"]
     for study in normalised["flood_studies"]:
-        for aep_key, entry in study.get("design", {}).items():
+        for aep_key, entry in (study.get("design") or {}).items():
             if entry.get("depth_m") is None and entry.get("level_m_ahd") is not None and ground_elev is not None:
                 computed_depth = entry["level_m_ahd"] - ground_elev
                 entry["depth_m"] = round(max(0.0, computed_depth), 2)
-        for event_year, entry in study.get("historical", {}).items():
+        for event_year, entry in (study.get("historical") or {}).items():
             if entry.get("depth_m") is None and entry.get("level_m_ahd") is not None and ground_elev is not None:
                 computed_depth = entry["level_m_ahd"] - ground_elev
                 entry["depth_m"] = round(max(0.0, computed_depth), 2)

@@ -482,7 +482,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
-    zone = (controls.get("zone") or "").split()[0].upper()
+    _zone_parts = (controls.get("zone") or "").split()
+    zone = _zone_parts[0].upper() if _zone_parts else ""
     has_heritage = bool(controls.get("heritage_items"))
     has_biodiversity = any(o["layer_type"] == "biodiversity" for o in unique_overlays)
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
@@ -538,6 +539,17 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     f"zone objectives and SEPP Housing 2021 zone eligibility. Confirm with council."
                 )
             })
+    else:
+        results.append({
+            "question": "Secondary dwelling (granny flat)",
+            "answer": "Lot area unavailable",
+            "flag": "warn",
+            "basis": (
+                "Lot area data not available from NSW Valuation Service. "
+                "Secondary dwelling eligibility requires lot area ≥ 450 m² "
+                "(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
+            )
+        })
 
     # 2. Subdivision
     min_lot_str = controls.get("lot_size")
@@ -575,6 +587,17 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "flag": "warn",
                 "basis": f"Minimum lot size value could not be parsed ({min_lot_str!r}). Confirm subdivision feasibility directly with council.",
             })
+    elif lot_area is None and not is_strata:
+        results.append({
+            "question": "Torrens title subdivision",
+            "answer": "Lot area unavailable",
+            "flag": "warn",
+            "basis": (
+                "Lot area data not available from NSW Valuation Service. "
+                "Subdivision feasibility requires comparison against LEP minimum lot size. "
+                "Confirm lot dimensions with council or a surveyor."
+            )
+        })
 
     # 3. CDC eligibility (exempt/complying — no DA required)
     if is_strata:
@@ -690,7 +713,7 @@ def calc_development_headroom(controls: dict, valuation: dict) -> dict:
         try:
             # FSR may be "0.5:1" or "0.5" or "84" (sqm — rare)
             fsr_val = float(fsr_str.strip().split(":")[0]) if ":" in fsr_str else float(fsr_str.strip())
-            if fsr_val < 10:  # ratio, not sqm
+            if fsr_val <= 15:  # ratio, not sqm (NSW CBD can reach ~15:1)
                 max_gfa = lot_area * fsr_val
                 out["max_gfa_m2"] = round(max_gfa)
                 out["max_gfa_display"] = f"{round(max_gfa):,} m²"
@@ -2448,7 +2471,8 @@ def generate_pdf(
 
     # Zone objectives — from actual LEP (layerintersect "Land Use" field), not a lookup table.
     # Permitted/prohibited uses table: refer to the LEP instrument directly.
-    zone_code = (controls.get("zone") or "").split()[0].upper()
+    _zc_parts = (controls.get("zone") or "").split()
+    zone_code = _zc_parts[0].upper() if _zc_parts else ""
     zone_full = controls.get("zone_full") or ""
     zone_epi = controls.get("zone_epi") or ""
     legislation_url = controls.get("legislation_url") or ""
@@ -2531,7 +2555,8 @@ def generate_pdf(
         story.append(Spacer(1, 4 * mm))
 
     if not _is_strata:
-        prop_zone = (controls.get("zone") or "").split()[0].upper()
+        _pz_parts = (controls.get("zone") or "").split()
+        prop_zone = _pz_parts[0].upper() if _pz_parts else ""
         dcp_data = dcp_setbacks_db
         # Only flag mismatch when zones_applicable is explicitly populated AND zone is not in it.
         # Empty list means "applies to all residential zones" — no mismatch.
@@ -2929,7 +2954,8 @@ def generate_pdf(
     ))
     story.append(Spacer(1, 2 * mm))
 
-    zone_code_sepp = (controls.get("zone") or "").split()[0].upper()
+    _zs_parts = (controls.get("zone") or "").split()
+    zone_code_sepp = _zs_parts[0].upper() if _zs_parts else ""
     has_classified_road = "classified_road" in unique_by_type
 
     statewide_rows = [["Instrument", "When it applies", "Key implication"]]
