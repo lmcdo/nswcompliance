@@ -16,7 +16,6 @@ import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 // ADG Building Separation Table hidden — setback_rules table empty (never populated with ADG 3F-1 data)
-// import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
