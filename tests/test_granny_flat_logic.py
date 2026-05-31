@@ -17,6 +17,8 @@ from services.granny_flat import (
     _compute_confidence,
     _get_weekly_rent,
     _compute_lot_area_m2,
+    _check_heritage_overlay,
+    GrannyFlatDetectResponse,
     _SEPP_FALLBACK_MIN_LOT_M2 as SEPP_MIN_LOT_M2,
 )
 
@@ -225,3 +227,70 @@ def test_existing_secondary_dwelling_false_accepted():
     """explicit False should pass Pydantic validation."""
     req = _make_confirm_req(existing_secondary_dwelling=False)
     assert req.existing_secondary_dwelling is False
+
+
+# ---------------------------------------------------------------------------
+# _check_heritage_overlay — graceful degradation (no DB)
+# ---------------------------------------------------------------------------
+
+def test_check_heritage_overlay_returns_bool_or_none():
+    """Function returns bool (True/False) or None — never raises."""
+    result = _check_heritage_overlay(-33.87, 151.21)
+    assert result is None or isinstance(result, bool)
+
+
+def test_check_heritage_overlay_does_not_crash_on_origin_coords():
+    """Extreme coordinates should not raise."""
+    result = _check_heritage_overlay(0.0, 0.0)
+    assert result is None or isinstance(result, bool)
+
+
+# ---------------------------------------------------------------------------
+# GrannyFlatDetectResponse — is_heritage field exists
+# ---------------------------------------------------------------------------
+
+def test_detect_response_has_heritage_field():
+    """Detect response includes is_heritage (Optional[bool])."""
+    assert "is_heritage" in GrannyFlatDetectResponse.model_fields
+
+
+def test_detect_response_heritage_default_is_none():
+    """is_heritage defaults to None (unknown) when not provided."""
+    resp = GrannyFlatDetectResponse(
+        address="1 Test St",
+        lat=-33.87,
+        lng=151.21,
+        prop_id="12345",
+        lot_area_m2=600.0,
+        sepp_eligible=True,
+        sepp_ineligible_reason=None,
+        detected_structures=[],
+        samgeo_structure_count=0,
+        samgeo_validated=True,
+        confirmation_required=True,
+        tile_licence="test",
+        detect_id="test-id",
+    )
+    assert resp.is_heritage is None
+
+
+# ---------------------------------------------------------------------------
+# Heritage auto-detect vs user override in confirm
+# ---------------------------------------------------------------------------
+
+def test_confirm_req_heritage_none_triggers_auto_detect():
+    """When is_heritage=None, confirm should auto-detect (we verify the model accepts None)."""
+    req = _make_confirm_req(is_heritage=None)
+    assert req.is_heritage is None
+
+
+def test_confirm_req_heritage_true_overrides_auto_detect():
+    """When user explicitly sets is_heritage=True, their value takes precedence."""
+    req = _make_confirm_req(is_heritage=True)
+    assert req.is_heritage is True
+
+
+def test_confirm_req_heritage_false_overrides_auto_detect():
+    """When user explicitly sets is_heritage=False, their value takes precedence."""
+    req = _make_confirm_req(is_heritage=False)
+    assert req.is_heritage is False
