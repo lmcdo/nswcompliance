@@ -1,94 +1,83 @@
 {
   "tier": "standard",
-  "justification": "New page with DB query (regulatory_definitions), client-side interactive component, JSON-LD schemas, and updates to sitemap/footer/llms.txt. 5 files changed.",
-  "commit_hash": "eced0898",
+  "justification": "Dead code removal — 28 files deleted (7 assessment pages, 6 components, 15 services), 2 comment-only edits. 3 feature-flag-gated services restored after incorrect deletion. All deletions verified unreferenced.",
+  "commit_hash": "9271da13",
   "files": [
-    "frontend-nextjs/app/glossary/page.tsx",
-    "frontend-nextjs/app/glossary/GlossaryClient.tsx",
-    "frontend-nextjs/app/sitemap.ts",
-    "frontend-nextjs/components/marketing/SiteFooter.tsx",
-    "frontend-nextjs/public/llms.txt"
+    "frontend-nextjs/app/assessment/dashboard/page.tsx",
+    "frontend-nextjs/app/assessment/enhanced/page.tsx",
+    "frontend-nextjs/app/assessment/mockup/page.tsx",
+    "frontend-nextjs/app/assessment/optimized/page.tsx",
+    "frontend-nextjs/app/assessment/professional/page.tsx",
+    "frontend-nextjs/app/assessment/v2/page.tsx",
+    "frontend-nextjs/app/assessment/version-aware/page.tsx",
+    "frontend-nextjs/components/compliance/ADGBuildingSeparationTable.tsx",
+    "frontend-nextjs/components/compliance/CdcEligibilityIndicator.tsx",
+    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
+    "frontend-nextjs/components/compliance/CouncilSetbackGuidance.tsx",
+    "frontend-nextjs/components/compliance/EPAAct415Notice.tsx",
+    "frontend-nextjs/components/compliance/HeritageProvisions.tsx",
+    "frontend-nextjs/components/compliance/PermissibilityChecker.tsx",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "services/authoritative_compliance_api.py",
+    "services/authoritative_migration.py",
+    "services/authoritative_migration_chunk2.py",
+    "services/authoritative_migration_fixed.py",
+    "services/clause_citation_service.py",
+    "services/clause_citation_store.py",
+    "services/database_autoschema_query.py",
+    "services/hierarchy_resolver_cli.py",
+    "services/integrated_multimodal_query.py",
+    "services/modal_inference.py",
+    "services/parking_rates_fetcher.py",
+    "services/precise_setback_calculator.py",
+    "services/property_intelligence.py",
+    "services/version_aware_query.py",
+    "services/version_manager_cli.py",
+    "services/zone_provision_mapper.py"
   ],
   "pre_impl": {
-    "existing_data": "Reads from regulatory_definitions table (465+ rows). Table has been stable since Jan 2026. No writes.",
-    "assumption_mismatch": "If table is empty or missing, fetchDefinitions() catches error and returns empty array — page renders with 0 definitions, no crash.",
-    "new_vs_existing": "Read-only query. No data modification."
+    "existing_data": "Deletion only — no data reads or writes. Triple-verified each file has zero live importers via grep across entire codebase.",
+    "assumption_mismatch": "3 files (enhanced_compliance_api.py, provision_search.py, development_permissions_db.py) were incorrectly identified as dead but are subprocess fallbacks behind feature flags — restored.",
+    "new_vs_existing": "Pure deletion. No new code. 2 files had commented-out import lines removed (ComplianceDashboard.tsx, StateLevelControls.tsx)."
   },
   "functions": [
     {
-      "name": "fetchDefinitions",
-      "file_line": "glossary/page.tsx:35",
-      "input": "no parameters — fetches all definitions ordered by term_normalized",
-      "output": "DefinitionRow[] — array of definition objects with term, text, source, tags",
-      "if_none": "returns empty array on error — page renders empty state with 'No definitions match' message"
-    },
-    {
-      "name": "GlossaryClient",
-      "file_line": "glossary/GlossaryClient.tsx:44",
-      "input": "definitions (DefinitionRow[]), tags (string[]), legislationTypes (string[]), letters (string[])",
-      "output": "interactive glossary UI with search, filters, and expandable definitions",
-      "if_none": "empty definitions array shows 'No definitions match' with clear filters button"
+      "name": "dead code verification",
+      "file_line": "N/A — deletion-only PR",
+      "input": "filename of candidate dead file",
+      "output": "zero grep matches across all .ts/.tsx/.py files confirms safe to delete",
+      "if_none": "if any match found, file is NOT dead and must not be deleted"
     }
   ],
-  "values": [
-    {
-      "value": "definitions",
-      "read_at": "glossary/page.tsx:55",
-      "nullable": "no — always returns array (empty on error)",
-      "guard_at": "glossary/page.tsx:44 — try/catch returns []",
-      "if_missing": "page shows 0 definitions, search/filters still render"
-    },
-    {
-      "value": "d.domain_tags",
-      "read_at": "GlossaryClient.tsx:230",
-      "nullable": "yes — nullable in DB schema",
-      "guard_at": "GlossaryClient.tsx:230 — d.domain_tags && d.domain_tags.length > 0",
-      "if_missing": "domain tags section not rendered, no tool CTA shown"
-    },
-    {
-      "value": "d.definition_summary",
-      "read_at": "GlossaryClient.tsx:195",
-      "nullable": "yes — optional field",
-      "guard_at": "GlossaryClient.tsx:195 — fallback to definition_text via ||",
-      "if_missing": "full definition_text shown instead"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Fetch all regulatory definitions for glossary page",
-      "file_line": "glossary/page.tsx:37",
-      "where_clause": "none — fetches all rows ORDER BY term_normalized ASC",
-      "if_zero": "page renders empty state, no crash",
-      "if_wrong": "no WHERE clause means no wrong-scope risk — reads entire table"
-    }
-  ],
+  "values": [],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "Database connection fails during ISR revalidation",
-      "what_happens": "fetchDefinitions catches error, returns empty array. Page shows 0 definitions with working search/filter UI.",
+      "scenario": "Deleted component is actually imported somewhere missed by grep",
+      "what_happens": "Build fails with 'module not found' — caught immediately by Vercel deploy or local dev",
       "mitigated": true,
-      "how": "glossary/page.tsx:44 — try/catch wraps entire query, logs error, returns []",
-      "repro": "Set DATABASE_URL to invalid value, visit /glossary"
+      "how": "Triple grep verification (3 independent agents + manual check). TSC passes. Jest 615/615 pass.",
+      "repro": "npm run build in frontend-nextjs"
     },
     {
-      "scenario": "Definition with null term (first character) breaks alphabet nav",
-      "what_happens": "Could cause undefined in letter set",
+      "scenario": "Deleted Python service is called via subprocess from a route",
+      "what_happens": "Route returns 500 when feature flag is enabled",
       "mitigated": true,
-      "how": "glossary/page.tsx:70 — .filter(Boolean) removes undefined/null values from letters set",
-      "repro": "Insert row with empty term, visit /glossary"
+      "how": "3 feature-flag-gated services were caught and restored. Remaining 15 confirmed zero references.",
+      "repro": "grep -r for each deleted filename across all .ts/.tsx/.py files"
     },
     {
-      "scenario": "XSS via definition_text containing HTML/script tags",
-      "what_happens": "React auto-escapes text content in JSX — no XSS possible. JSON-LD uses JSON.stringify which also escapes.",
-      "mitigated": true,
-      "how": "React JSX text rendering + JSON.stringify both auto-escape HTML entities",
-      "repro": "Insert definition with <script> tag, view page source"
+      "scenario": "Assessment page URLs were bookmarked or linked externally",
+      "what_happens": "User sees Next.js 404 page, no redirect configured to main assessment page.",
+      "mitigated": false,
+      "how": "These were never linked in navigation or sitemap. All 7 are variant pages of /assessment which still exists.",
+      "repro": "Visit /assessment/dashboard, /assessment/v2, etc."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Visit /glossary — confirm definitions load, search works, filters work, expand a definition to see source citation and tool CTA"
+    "manual_verify": "Visit /assessment — confirm main assessment page still works. Run full test suite."
   }
 }
