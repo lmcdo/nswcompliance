@@ -995,6 +995,7 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
     Returns ground_elevation_m_ahd (float) or None if unavailable.
     No auth required. Full NSW coverage at 5m resolution.
     """
+    body = None
     try:
         geometry = f'{{"x":{lng},"y":{lat},"spatialReference":{{"wkid":4326}}}}'
         r = requests.get(
@@ -1016,7 +1017,8 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         elevation = float(raw_value)
         return {"ground_elevation_m_ahd": round(elevation, 2)}
     except (ValueError, TypeError):
-        logger.warning(f"DEM identify: non-numeric value {body.get('value')!r}")
+        _raw = body.get("value") if body is not None else "N/A"
+        logger.warning(f"DEM identify: non-numeric value {_raw!r}")
         return {"ground_elevation_m_ahd": None}
     except Exception as e:
         logger.warning(f"DEM identify: {e}")
@@ -1114,8 +1116,6 @@ def _compute_confidence(internal_outputs: dict) -> str:
 
     if spatial_layers >= 3 and wet_seasons >= 1:
         return "high"
-    if spatial_layers >= 2 or wet_seasons >= 2:
-        return "medium"
     if spatial_layers >= 1 or wet_seasons >= 1:
         return "medium"
     return "low"

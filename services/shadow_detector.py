@@ -445,6 +445,7 @@ def run_shadow(request: ShadowRequest):
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
+        "construction_change_note": change.get("note"),
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }

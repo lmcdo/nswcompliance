@@ -475,7 +475,11 @@ def _detect_structures_samgeo(
 
     structures = []
     for s in raw_structures:
-        x1, y1, x2, y2 = s["bbox_pixel"]
+        bbox = s.get("bbox_pixel")
+        if not bbox or len(bbox) != 4:
+            logger.warning(f"Skipping structure with missing/malformed bbox_pixel: {s}")
+            continue
+        x1, y1, x2, y2 = bbox
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
         if lot_shape_wgs84 is not None:
@@ -977,7 +981,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         and req.main_dwelling_area_m2 is not None
         and req.main_dwelling_area_m2 > 0
     ):
-        residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
+        if req.main_dwelling_area_m2 >= lot_area_m2:
+            granny_flat_buildable = False
+            warnings.append(
+                f"Detected dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²) exceeds "
+                f"lot area ({lot_area_m2:.0f} m²) — likely a detection error. "
+                f"Confirm dwelling footprint manually and re-run."
+            )
+            residual_area_m2 = 0.0
+        else:
+            residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
         if residual_area_m2 < 120:
             granny_flat_buildable = False
             warnings.append(
@@ -1069,21 +1082,21 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         rent_available=weekly_rent is not None,
     )
 
-    # Bug fix: lot area unknown → eligibility unverified → cap at medium
-    if lot_area_m2 is None and confidence == "high":
-        confidence = "medium"
-        confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
-
-    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium.
-    # Covers both the single-outbuilding ambiguity (count == 2) and the multiple-secondary
-    # block (count >= 3) where we conservatively blocked buildability above.
-    if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2 and confidence == "high":
-        confidence = "medium"
-        confidence_reason += (
-            " Eligibility is capped because the status of one or more existing secondary "
+    # Cap confidence to medium when key eligibility inputs are unknown.
+    # Both conditions are checked independently against "high" (not sequentially)
+    # so that both warnings are surfaced even if both apply.
+    cap_reasons = []
+    if lot_area_m2 is None:
+        cap_reasons.append("Lot area could not be verified — eligibility is unconfirmed.")
+    if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2:
+        cap_reasons.append(
+            "Eligibility is capped because the status of one or more existing secondary "
             "structures on this lot could not be confirmed. NSW planning rules only allow one "
             "secondary dwelling per lot."
         )
+    if cap_reasons and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " " + " ".join(cap_reasons)
 
     report_id = req.report_id or str(uuid.uuid4())
 
