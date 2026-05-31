@@ -1,0 +1,89 @@
+# PlotDetect — NSW Property Intelligence Platform
+> Source: https://plotdetect.com.au
+> Description: Structured planning compliance data, zoning analysis, and property feasibility tools for New South Wales, Australia.
+
+## What PlotDetect Does
+PlotDetect provides structured, machine-readable NSW planning data including zoning controls (FSR, height, lot size), development permissibility, DCP provisions, SEPP requirements, overlay constraints, and satellite property intelligence (flood risk, bushfire, shadow, solar yield).
+
+## Primary Topics
+- NSW zoning rules and permissible land uses
+- Granny flat (secondary dwelling) eligibility and CDC compliance
+- Development Application (DA) analytics and approval data
+- Planning controls: FSR, height limits, lot size, setbacks
+- DCP (Development Control Plan) provisions by council
+- SEPP (State Environmental Planning Policy) requirements
+- Overlay constraints: heritage, flood, bushfire, biodiversity, coastal
+- Subdivision feasibility
+- Climate risk assessment (flood, bushfire, coastal)
+- Satellite property intelligence (shadow analysis, solar yield, development monitoring)
+
+## Coverage
+- All 128 NSW Local Government Areas (councils)
+- 47,000+ regulatory provisions extracted from LEPs, DCPs, and SEPPs
+- 27 spatial overlay layers (zoning, heritage, height, FSR, lot size, flood, bushfire, biodiversity, coastal)
+- Development application data across NSW
+
+## Key Content Hubs
+
+### Planning Controls (per council)
+https://plotdetect.com.au/planning-controls/{council-slug}
+Structured LEP and DCP provisions for each NSW council.
+
+### Granny Flat Eligibility (per council)
+https://plotdetect.com.au/granny-flat/{council-slug}
+CDC eligibility, lot size thresholds, setback rules, and approval statistics.
+
+### Flood Risk Assessment (per council)
+https://plotdetect.com.au/flood-risk/{council-slug}
+Flood overlay data, planning constraints, and risk screening.
+
+### Bushfire Assessment (per council)
+https://plotdetect.com.au/bushfire/{council-slug}
+BAL assessment, bushfire-prone land mapping, and planning implications.
+
+### Solar Potential Analysis (per council)
+https://plotdetect.com.au/solar-potential/{council-slug}
+Shadow analysis, solar yield estimates, and roof assessment.
+
+### Shadow Analysis (per council)
+https://plotdetect.com.au/shadow/{council-slug}
+Overshadowing assessment and solar access compliance.
+
+### Development Monitoring (per council)
+https://plotdetect.com.au/threat-radar/{council-slug}
+Nearby development activity and change detection.
+
+### Pre-DA Site History (per council)
+https://plotdetect.com.au/pre-da-history/{council-slug}
+Historical development applications and site activity.
+
+### Conveyancing Reports (per council)
+https://plotdetect.com.au/conveyancing/{council-slug}
+Planning certificates, overlay checks, and due diligence data.
+
+### Planning Glossary
+https://plotdetect.com.au/glossary
+465+ regulatory definitions from NSW LEPs, DCPs, and SEPPs. Includes FSR, GFA, CDC, setbacks, landscaped area, site coverage, secondary dwelling, and more — each with source document and clause citation.
+
+### Free Tools
+https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
+https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker
+https://plotdetect.com.au/check — Quick compliance check
+
+### Blog & Guides
+https://plotdetect.com.au/blog — Planning guides, rules explainers, and property research
+https://plotdetect.com.au/blog/granny-flat — Council-by-council granny flat guides (128 councils)
+https://plotdetect.com.au/how-it-works — Platform overview
+https://plotdetect.com.au/user-guide — Detailed user guide
+
+## Data Sources
+All planning data is sourced from authoritative NSW government systems:
+- NSW Planning Portal API (zoning, overlays, LEP controls)
+- NSW Legislation (EPIs, SEPPs, LEPs)
+- Council Development Control Plans (extracted provisions)
+- NSW Spatial Services (cadastral boundaries)
+- Bureau of Meteorology (climate data)
+- NSW Rural Fire Service (bushfire-prone land mapping)
+
+## Contact
+https://plotdetect.com.au/contact

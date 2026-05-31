@@ -1,0 +1,94 @@
+{
+  "tier": "standard",
+  "justification": "New page with DB query (regulatory_definitions), client-side interactive component, JSON-LD schemas, and updates to sitemap/footer/llms.txt. 5 files changed.",
+  "commit_hash": "eced0898",
+  "files": [
+    "frontend-nextjs/app/glossary/page.tsx",
+    "frontend-nextjs/app/glossary/GlossaryClient.tsx",
+    "frontend-nextjs/app/sitemap.ts",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/public/llms.txt"
+  ],
+  "pre_impl": {
+    "existing_data": "Reads from regulatory_definitions table (465+ rows). Table has been stable since Jan 2026. No writes.",
+    "assumption_mismatch": "If table is empty or missing, fetchDefinitions() catches error and returns empty array — page renders with 0 definitions, no crash.",
+    "new_vs_existing": "Read-only query. No data modification."
+  },
+  "functions": [
+    {
+      "name": "fetchDefinitions",
+      "file_line": "glossary/page.tsx:35",
+      "input": "no parameters — fetches all definitions ordered by term_normalized",
+      "output": "DefinitionRow[] — array of definition objects with term, text, source, tags",
+      "if_none": "returns empty array on error — page renders empty state with 'No definitions match' message"
+    },
+    {
+      "name": "GlossaryClient",
+      "file_line": "glossary/GlossaryClient.tsx:44",
+      "input": "definitions (DefinitionRow[]), tags (string[]), legislationTypes (string[]), letters (string[])",
+      "output": "interactive glossary UI with search, filters, and expandable definitions",
+      "if_none": "empty definitions array shows 'No definitions match' with clear filters button"
+    }
+  ],
+  "values": [
+    {
+      "value": "definitions",
+      "read_at": "glossary/page.tsx:55",
+      "nullable": "no — always returns array (empty on error)",
+      "guard_at": "glossary/page.tsx:44 — try/catch returns []",
+      "if_missing": "page shows 0 definitions, search/filters still render"
+    },
+    {
+      "value": "d.domain_tags",
+      "read_at": "GlossaryClient.tsx:230",
+      "nullable": "yes — nullable in DB schema",
+      "guard_at": "GlossaryClient.tsx:230 — d.domain_tags && d.domain_tags.length > 0",
+      "if_missing": "domain tags section not rendered, no tool CTA shown"
+    },
+    {
+      "value": "d.definition_summary",
+      "read_at": "GlossaryClient.tsx:195",
+      "nullable": "yes — optional field",
+      "guard_at": "GlossaryClient.tsx:195 — fallback to definition_text via ||",
+      "if_missing": "full definition_text shown instead"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch all regulatory definitions for glossary page",
+      "file_line": "glossary/page.tsx:37",
+      "where_clause": "none — fetches all rows ORDER BY term_normalized ASC",
+      "if_zero": "page renders empty state, no crash",
+      "if_wrong": "no WHERE clause means no wrong-scope risk — reads entire table"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Database connection fails during ISR revalidation",
+      "what_happens": "fetchDefinitions catches error, returns empty array. Page shows 0 definitions with working search/filter UI.",
+      "mitigated": true,
+      "how": "glossary/page.tsx:44 — try/catch wraps entire query, logs error, returns []",
+      "repro": "Set DATABASE_URL to invalid value, visit /glossary"
+    },
+    {
+      "scenario": "Definition with null term (first character) breaks alphabet nav",
+      "what_happens": "Could cause undefined in letter set",
+      "mitigated": true,
+      "how": "glossary/page.tsx:70 — .filter(Boolean) removes undefined/null values from letters set",
+      "repro": "Insert row with empty term, visit /glossary"
+    },
+    {
+      "scenario": "XSS via definition_text containing HTML/script tags",
+      "what_happens": "React auto-escapes text content in JSX — no XSS possible. JSON-LD uses JSON.stringify which also escapes.",
+      "mitigated": true,
+      "how": "React JSX text rendering + JSON.stringify both auto-escape HTML entities",
+      "repro": "Insert definition with <script> tag, view page source"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Visit /glossary — confirm definitions load, search works, filters work, expand a definition to see source citation and tool CTA"
+  }
+}
