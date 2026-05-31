@@ -28,4 +28,17 @@ if [ -f "scripts/git-hooks/pre-commit" ]; then
   bash scripts/git-hooks/pre-commit || exit 1
 fi
 
+# Bracket access lint — flag new dict["key"] in services/*.py (should be .get())
+echo ""
+echo "🔍 Running bracket access lint on staged services/ changes..."
+python scripts/lint_bracket_access.py
+BRACKET_EXIT=$?
+if [ "$BRACKET_EXIT" -ne 0 ]; then
+  echo ""
+  echo "❌ Bracket access lint FAILED — new unsafe dict access in staged changes."
+  echo "   Fix with .get() or suppress with  # noqa: bracket-access"
+  exit 1
+fi
+echo "✅ Bracket access lint passed"
+
 echo "✅ Pre-commit checks complete"

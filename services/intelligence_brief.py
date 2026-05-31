@@ -1220,7 +1220,7 @@ def _build_climate_disclosure(
         if firms_raw.get("hotspot_count", 0) > 0:
             empirical.append(EmpiricalFinding(
                 hazard="active_fire",
-                value=float(firms_raw["hotspot_count"]),
+                value=float(firms_raw.get("hotspot_count", 0)),
                 unit="detections",
                 source=f"NASA FIRMS VIIRS ({firms_raw.get('search_days', 10)}d, {firms_raw.get('search_radius_km', 0.5)}km)",
                 data_date=today,
@@ -1700,7 +1700,7 @@ def _build_neighbourhood(
             distance_m=d.get("distance_m"),
             status=d.get("status"),
             dev_type=d.get("description") or d.get("development_type"),
-            lodgement_date=d.get("lodged") or (str(d["lodgement_date"])[:10] if d.get("lodgement_date") else None),
+            lodgement_date=d.get("lodged") or (str(d.get("lodgement_date", ""))[:10] if d.get("lodgement_date") else None),
             cost=d.get("cost_of_development"),
         )
         for d in das
@@ -1744,7 +1744,7 @@ def _build_economics(valuation: dict) -> Economics:
     today = date.today().isoformat()
 
     history = [
-        ValuationHistory(year=h.get("year", ""), value=int(h["value"]) if h.get("value") else None)
+        ValuationHistory(year=h.get("year", ""), value=int(h.get("value")) if h.get("value") else None)
         for h in (valuation.get("val_history") or [])
     ]
 
