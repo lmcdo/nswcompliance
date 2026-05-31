@@ -20,7 +20,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sec.53',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- Max floor area 60m² — Clause 22(1) of SEPP (Exempt and Complying Development Codes) 2008
 -- Note: this standard originates from the Codes SEPP, not Housing SEPP, but is the
@@ -35,6 +35,6 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Exempt and Complying Development Codes) 2008',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572#sec.22',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 COMMIT;

@@ -33,10 +33,14 @@ from services.intelligence_brief import (
     _build_economics,
     _validate_coordinates,
     _validate_former_council_postgis,
+    _detect_sepp_lep_overrides,
+    _select_lot_size_band,
     classify_strata,
     compute_confidence_summary,
     collect_gaps,
     check_minimum_viable,
+    SEPPStandard,
+    SeppLepOverride,
 )
 from services.portal_constraints import (
     fetch_mine_subsidence,
@@ -629,3 +633,162 @@ from services.intelligence_brief import (
     EnvironmentalConstraints, Neighbourhood, Economics,
     StrataInfo, ValuationHistory,
 )
+
+
+# ---------------------------------------------------------------------------
+# Lot-size band selection tests
+# ---------------------------------------------------------------------------
+
+class TestSelectLotSizeBand:
+    """Test _select_lot_size_band for lot-size-banded SEPP standards."""
+
+    def test_under_band(self):
+        vals = {
+            "max_site_coverage_lot_under_900": 50.0,
+            "max_site_coverage_lot_900_to_1500": 40.0,
+            "max_site_coverage_lot_over_1500": 30.0,
+        }
+        assert _select_lot_size_band(vals, 500.0, "max_site_coverage") == 50.0
+
+    def test_mid_band(self):
+        vals = {
+            "max_site_coverage_lot_under_900": 50.0,
+            "max_site_coverage_lot_900_to_1500": 40.0,
+            "max_site_coverage_lot_over_1500": 30.0,
+        }
+        assert _select_lot_size_band(vals, 1000.0, "max_site_coverage") == 40.0
+
+    def test_over_band(self):
+        vals = {
+            "max_site_coverage_lot_under_900": 50.0,
+            "max_site_coverage_lot_900_to_1500": 40.0,
+            "max_site_coverage_lot_over_1500": 30.0,
+        }
+        assert _select_lot_size_band(vals, 2000.0, "max_site_coverage") == 30.0
+
+    def test_no_lot_area(self):
+        vals = {"max_site_coverage_lot_under_900": 50.0}
+        assert _select_lot_size_band(vals, None, "max_site_coverage") is None
+
+    def test_no_banded_keys(self):
+        vals = {"max_height": 3.8}
+        assert _select_lot_size_band(vals, 500.0, "max_site_coverage") is None
+
+    def test_boundary_at_900(self):
+        vals = {
+            "max_site_coverage_lot_under_900": 50.0,
+            "max_site_coverage_lot_900_to_1500": 40.0,
+        }
+        # 900m² should hit the 900_to_1500 band (under uses < threshold)
+        assert _select_lot_size_band(vals, 900.0, "max_site_coverage") == 40.0
+
+    def test_floor_area_bands(self):
+        vals = {
+            "max_total_floor_area_lot_under_600": 330.0,
+            "max_total_floor_area_lot_600_to_900": 380.0,
+            "max_total_floor_area_lot_over_900": 430.0,
+        }
+        assert _select_lot_size_band(vals, 450.0, "max_total_floor_area") == 330.0
+        assert _select_lot_size_band(vals, 700.0, "max_total_floor_area") == 380.0
+        assert _select_lot_size_band(vals, 1200.0, "max_total_floor_area") == 430.0
+
+
+# ---------------------------------------------------------------------------
+# Secondary dwelling standard mapping tests
+# ---------------------------------------------------------------------------
+
+class TestBuildSEPPHousingSecondaryDwelling:
+    """Test _build_sepp_housing with secondary_dwelling standards."""
+
+    def test_max_floor_area_maps_to_max_gfa(self):
+        """Migration 045 uses 'max_floor_area', model field is 'max_gfa_m2'."""
+        raw = [
+            {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450},
+            {"development_type": "secondary_dwelling", "standard_type": "max_floor_area", "numeric_value": 60},
+        ]
+        result = _build_sepp_housing(raw, "R2", 500.0)
+        assert len(result) == 1
+        assert result[0].dev_type == "secondary_dwelling"
+        assert result[0].max_gfa_m2 == 60.0
+        assert result[0].eligible is True
+
+    def test_extended_fields_populated(self):
+        """Migration 047 standards map to new SEPPStandard fields."""
+        raw = [
+            {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450},
+            {"development_type": "secondary_dwelling", "standard_type": "min_lot_width", "numeric_value": 12},
+            {"development_type": "secondary_dwelling", "standard_type": "parking_per_dwelling", "numeric_value": 0},
+            {"development_type": "secondary_dwelling", "standard_type": "max_height", "numeric_value": 3.8},
+            {"development_type": "secondary_dwelling", "standard_type": "min_private_open_space", "numeric_value": 24},
+            {"development_type": "secondary_dwelling", "standard_type": "max_site_coverage_lot_under_900", "numeric_value": 50},
+            {"development_type": "secondary_dwelling", "standard_type": "max_site_coverage_lot_900_to_1500", "numeric_value": 40},
+        ]
+        result = _build_sepp_housing(raw, "R2", 500.0)
+        sd = result[0]
+        assert sd.min_lot_width_m == 12.0
+        assert sd.parking_spaces == 0.0
+        assert sd.max_height_m == 3.8
+        assert sd.min_private_open_space_m2 == 24.0
+        assert sd.max_site_coverage_pct == 50.0  # 500m² < 900 → under band
+
+    def test_ineligible_lot(self):
+        raw = [
+            {"development_type": "secondary_dwelling", "standard_type": "min_lot_size", "numeric_value": 450},
+        ]
+        result = _build_sepp_housing(raw, "R2", 400.0)
+        assert result[0].eligible is False
+        assert "400" in result[0].reason_ineligible
+        assert "450" in result[0].reason_ineligible
+
+
+# ---------------------------------------------------------------------------
+# SEPP-LEP override detection tests
+# ---------------------------------------------------------------------------
+
+class TestSeppLepOverrides:
+    """Test _detect_sepp_lep_overrides — SEPP overrides LEP where more generous."""
+
+    def test_height_override_detected(self):
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_height_m=12.0)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=9.0, lep_fsr=None)
+        assert len(overrides) == 1
+        assert overrides[0].control == "height"
+        assert overrides[0].lep_value == 9.0
+        assert overrides[0].sepp_value == 12.0
+
+    def test_no_override_when_lep_higher(self):
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_height_m=9.0)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=12.0, lep_fsr=None)
+        assert len(overrides) == 0
+
+    def test_no_override_when_equal(self):
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_height_m=9.0)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=9.0, lep_fsr=None)
+        assert len(overrides) == 0
+
+    def test_no_override_when_lep_missing(self):
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_height_m=12.0)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=None, lep_fsr=None)
+        assert len(overrides) == 0
+
+    def test_secondary_dwelling_skips_fsr(self):
+        """Secondary dwelling max_gfa is absolute (60m²), not FSR ratio — skip FSR comparison."""
+        standards = [SEPPStandard(dev_type="secondary_dwelling", eligible=True, max_gfa_m2=60.0)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=None, lep_fsr=0.5)
+        assert len(overrides) == 0
+
+    def test_lmr_fsr_override_detected(self):
+        standards = [SEPPStandard(dev_type="low_rise", eligible=True, max_gfa_m2=0.8)]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=None, lep_fsr=0.5)
+        assert len(overrides) == 1
+        assert overrides[0].control == "fsr"
+
+    def test_multiple_dev_types(self):
+        standards = [
+            SEPPStandard(dev_type="low_rise", eligible=True, max_height_m=12.0),
+            SEPPStandard(dev_type="secondary_dwelling", eligible=True, max_height_m=3.8),
+        ]
+        overrides = _detect_sepp_lep_overrides(standards, lep_height_m=9.0, lep_fsr=None)
+        # Only low_rise should override (12 > 9), not secondary_dwelling (3.8 < 9)
+        assert len(overrides) == 1
+        assert overrides[0].dev_type == "low_rise"
