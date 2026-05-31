@@ -274,6 +274,25 @@ class SEPPStandard(BaseModel):
     setback_rear_m: Optional[float] = None
     setback_side_m: Optional[float] = None
     reason_ineligible: Optional[str] = None
+    # Secondary dwelling extended standards (migration 047)
+    min_lot_width_m: Optional[float] = None
+    parking_spaces: Optional[float] = None
+    min_private_open_space_m2: Optional[float] = None
+    max_site_coverage_pct: Optional[float] = None
+    max_total_floor_area_m2: Optional[float] = None
+    # All raw standards for dev types with non-standard fields
+    additional_standards: Optional[dict[str, float]] = None
+
+
+class SeppLepOverride(BaseModel):
+    """Case where SEPP standard exceeds (overrides) the LEP control."""
+
+    dev_type: str
+    control: str  # "height" or "fsr"
+    lep_value: float
+    sepp_value: float
+    source_clause: Optional[str] = None
+    note: str = "SEPP standard exceeds LEP control — SEPP prevails where more generous"
 
 
 class ShadowScenario(BaseModel):
@@ -626,6 +645,7 @@ class DevelopmentBrief(BaseModel):
     planning_controls: PlanningControls
     dcp_controls: DCPControls
     sepp_housing: DataField[list[SEPPStandard]]
+    sepp_lep_overrides: list[SeppLepOverride] = []
     environmental_constraints: EnvironmentalConstraints
     neighbourhood: Neighbourhood
     economics: Economics
@@ -1410,6 +1430,41 @@ def _build_dcp_controls(
     )
 
 
+def _select_lot_size_band(
+    vals: dict[str, float],
+    lot_area_m2: Optional[float],
+    prefix: str,
+) -> Optional[float]:
+    """Select the correct lot-size-banded value for a property.
+
+    Looks for keys like '{prefix}_lot_under_900', '{prefix}_lot_900_to_1500',
+    '{prefix}_lot_over_1500' and returns the value matching lot_area_m2.
+    Returns None if no banded keys exist or lot area is unknown.
+    """
+    banded = {k: v for k, v in vals.items() if k.startswith(prefix + "_lot_")}
+    if not banded:
+        return None
+    if lot_area_m2 is None:
+        return None
+    for key, value in banded.items():
+        suffix = key[len(prefix) + 1:]  # e.g. "lot_under_900"
+        if "under" in suffix:
+            threshold = float(suffix.split("_")[-1])
+            if lot_area_m2 < threshold:
+                return value
+        elif "over" in suffix:
+            threshold = float(suffix.split("_")[-1])
+            if lot_area_m2 >= threshold:
+                return value
+        elif "to" in suffix:
+            parts = suffix.replace("lot_", "").split("_to_")
+            if len(parts) == 2:
+                low, high = float(parts[0]), float(parts[1])
+                if low <= lot_area_m2 < high:
+                    return value
+    return None
+
+
 def _build_sepp_housing(
     standards_raw: list[dict],
     zone_code: Optional[str],
@@ -1437,18 +1492,76 @@ def _build_sepp_housing(
             eligible = False
             reason = f"Lot area {lot_area_m2:.0f}m² below minimum {min_lot:.0f}m²"
 
+        # max_floor_area (migration 045) maps to max_gfa_m2
+        max_gfa = vals.get("max_gfa") or vals.get("max_floor_area")
+
+        # Lot-size-banded standards — resolve to the matching band
+        site_coverage = _select_lot_size_band(vals, lot_area_m2, "max_site_coverage")
+        total_floor_area = _select_lot_size_band(vals, lot_area_m2, "max_total_floor_area")
+
+        # Collect non-standard fields into additional_standards
+        known_keys = {
+            "min_lot_size", "max_gfa", "max_floor_area", "max_height",
+            "setback_front", "setback_rear", "setback_side",
+            "min_lot_width", "parking_per_dwelling", "min_private_open_space",
+        }
+        banded_prefixes = ("max_site_coverage_lot_", "max_total_floor_area_lot_")
+        additional = {
+            k: v for k, v in vals.items()
+            if k not in known_keys and not any(k.startswith(p) for p in banded_prefixes)
+        }
+
         results.append(SEPPStandard(
             dev_type=dt,
             eligible=eligible,
             min_lot_area_m2=min_lot,
-            max_gfa_m2=vals.get("max_gfa"),
+            max_gfa_m2=max_gfa,
             max_height_m=vals.get("max_height"),
             setback_front_m=vals.get("setback_front"),
             setback_rear_m=vals.get("setback_rear"),
             setback_side_m=vals.get("setback_side"),
             reason_ineligible=reason,
+            min_lot_width_m=vals.get("min_lot_width"),
+            parking_spaces=vals.get("parking_per_dwelling"),
+            min_private_open_space_m2=vals.get("min_private_open_space"),
+            max_site_coverage_pct=site_coverage,
+            max_total_floor_area_m2=total_floor_area,
+            additional_standards=additional if additional else None,
         ))
     return results
+
+
+def _detect_sepp_lep_overrides(
+    sepp_standards: list[SEPPStandard],
+    lep_height_m: Optional[float],
+    lep_fsr: Optional[float],
+) -> list[SeppLepOverride]:
+    """Detect cases where SEPP standard exceeds (overrides) LEP control.
+
+    SEPP prevails only when its value is MORE GENEROUS (strictly greater) than LEP.
+    This is the server-side equivalent of the frontend override detection in PR #437.
+    """
+    overrides: list[SeppLepOverride] = []
+    for std in sepp_standards:
+        if std.max_height_m and lep_height_m and std.max_height_m > lep_height_m:
+            overrides.append(SeppLepOverride(
+                dev_type=std.dev_type,
+                control="height",
+                lep_value=lep_height_m,
+                sepp_value=std.max_height_m,
+            ))
+        if std.max_gfa_m2 and lep_fsr and std.max_gfa_m2 > lep_fsr:
+            # FSR comparison only makes sense for LMR types where max_gfa
+            # is expressed as an FSR ratio, not absolute m². Skip secondary_dwelling
+            # since its max_gfa_m2 is 60m² (absolute), not an FSR ratio.
+            if std.dev_type != "secondary_dwelling":
+                overrides.append(SeppLepOverride(
+                    dev_type=std.dev_type,
+                    control="fsr",
+                    lep_value=lep_fsr,
+                    sepp_value=std.max_gfa_m2,
+                ))
+    return overrides
 
 
 def _build_environmental(
@@ -1992,6 +2105,20 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     planning_controls = _build_planning_controls(controls, overlays_data)
     dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
     sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
+
+    # ── 7b. SEPP-LEP override detection ────────────────────────────────
+    lep_height_m = None
+    lep_fsr_val = None
+    if height_m:
+        lep_height_m = height_m
+    fsr_str = controls.get("fsr")
+    if fsr_str:
+        try:
+            lep_fsr_val = float(str(fsr_str).replace(":1", "").strip())
+        except (ValueError, TypeError):
+            pass
+    sepp_lep_overrides = _detect_sepp_lep_overrides(sepp_housing, lep_height_m, lep_fsr_val)
+
     environmental = _build_environmental(
         controls, overlays_data, heritage_postgis,
         mine_subsidence_raw=mine_subsidence_raw,
@@ -2029,6 +2156,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             planning_controls=planning_controls,
             dcp_controls=dcp_controls,
             sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
+            sepp_lep_overrides=sepp_lep_overrides,
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
@@ -2415,6 +2543,17 @@ def _generate_brief_sse(
             })
 
             sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
+
+            # SEPP-LEP override detection (SSE path)
+            sse_lep_fsr = None
+            fsr_str_sse = controls.get("fsr")
+            if fsr_str_sse:
+                try:
+                    sse_lep_fsr = float(str(fsr_str_sse).replace(":1", "").strip())
+                except (ValueError, TypeError):
+                    pass
+            sepp_lep_overrides = _detect_sepp_lep_overrides(sepp_housing, height_m, sse_lep_fsr)
+
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "sepp_housing",
@@ -2422,6 +2561,7 @@ def _generate_brief_sse(
                     value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE,
                     source="housing_sepp_standards", as_at=today,
                 ).model_dump(),
+                "sepp_lep_overrides": [o.model_dump() for o in sepp_lep_overrides],
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -2547,6 +2687,7 @@ def _generate_brief_sse(
             planning_controls=planning_controls,
             dcp_controls=dcp_controls,
             sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
+            sepp_lep_overrides=sepp_lep_overrides if not is_apartment else [],
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
