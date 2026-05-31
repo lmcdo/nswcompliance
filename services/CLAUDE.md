@@ -14,12 +14,11 @@ Five satellite/ML products are built here. See `~/.claude/plans/pipeline-ideas-l
 
 | Product | File | Status |
 |---|---|---|
-| Rooftop Solar Yield Underwriter | `solar_yield.py` | not started |
-| Construction Shadow Ambush Detector | `shadow_detector.py` | not started |
-| Neighbour Development Threat Radar | `threat_radar.py` | not started |
-| Wet Season Flood Truth Engine | `flood_truth.py` | not started |
-| Granny Flat Yield Predictor | `granny_flat.py` | not started |
-| GEE client (shared) | `gee_client.py` | not started |
+| Rooftop Solar Yield Underwriter | `solar_yield.py` | production |
+| Construction Shadow Ambush Detector | `shadow_detector.py` | production |
+| Neighbour Development Threat Radar | `threat_radar.py` | production |
+| Wet Season Flood Truth Engine | `flood_truth.py` | production |
+| Granny Flat Yield Predictor | `granny_flat.py` | production |
 
 ### Data sources per product
 
