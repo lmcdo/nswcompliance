@@ -25,7 +25,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- 2. No additional parking required
 INSERT INTO housing_sepp_standards (
@@ -38,7 +38,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#pt.3-div.2',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- 3. Maximum building height 3.8m for detached secondary dwelling
 -- Source: Codes SEPP Clause 3.22 (detached development)
@@ -52,7 +52,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Exempt and Complying Development Codes) 2008',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572#sec.3.22',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- 4. Minimum private open space 24m² (min 3m dimension)
 INSERT INTO housing_sepp_standards (
@@ -65,7 +65,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- 5-7. Site coverage limits by lot size band (principal + secondary + ancillary)
 -- Source: Housing SEPP Schedule 1, Part 2
@@ -80,7 +80,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 INSERT INTO housing_sepp_standards (
     development_type, standard_type, numeric_value, unit,
@@ -92,7 +92,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 INSERT INTO housing_sepp_standards (
     development_type, standard_type, numeric_value, unit,
@@ -104,7 +104,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 -- 8-10. Total floor area limits by lot size band (principal + secondary + ancillary)
 -- Source: Housing SEPP Schedule 1, Part 2
@@ -119,7 +119,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 INSERT INTO housing_sepp_standards (
     development_type, standard_type, numeric_value, unit,
@@ -131,7 +131,7 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 INSERT INTO housing_sepp_standards (
     development_type, standard_type, numeric_value, unit,
@@ -143,6 +143,6 @@ INSERT INTO housing_sepp_standards (
     'State Environmental Planning Policy (Housing) 2021',
     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.1',
     '2021-11-29'
-) ON CONFLICT (development_type, standard_type, applicable_zones) DO NOTHING;
+);
 
 COMMIT;
