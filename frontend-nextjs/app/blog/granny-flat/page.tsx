@@ -31,6 +31,26 @@ const TOTALS = {
   das: COUNCIL_STATS.reduce((s, c) => s + c.daTotal, 0),
 }
 
+/* --- Ranking tables (top 10 each, filtered for data quality) --- */
+const MIN_APPS_FOR_RANKING = 10
+
+const TOP_CDC_SPEED = [...COUNCIL_STATS]
+  .filter(c => c.cdcMedianDays != null && c.cdcTotal >= MIN_APPS_FOR_RANKING)
+  .sort((a, b) => a.cdcMedianDays! - b.cdcMedianDays!)
+  .slice(0, 10)
+
+const TOP_CDC_RATIO = [...COUNCIL_STATS]
+  .filter(c => c.cdcRatioPct != null && c.totalApplications >= MIN_APPS_FOR_RANKING)
+  .sort((a, b) => b.cdcRatioPct! - a.cdcRatioPct!)
+  .slice(0, 10)
+
+const TOP_LOWEST_CDC_COST = [...COUNCIL_STATS]
+  .filter(c => c.cdcMedianCost != null && c.cdcTotal >= MIN_APPS_FOR_RANKING)
+  .sort((a, b) => a.cdcMedianCost! - b.cdcMedianCost!)
+  .slice(0, 10)
+
+const TOP_HIGHEST_VOLUME = SORTED_BY_VOLUME.slice(0, 10)
+
 function formatPct(value: number | null): string {
   if (value == null) return 'N/A'
   return `${value}%`
@@ -98,6 +118,150 @@ export default function GrannyFlatBlogIndexPage() {
           <p className="text-2xl font-bold text-amber-700 mt-1">{TOTALS.das.toLocaleString()}</p>
         </div>
       </div>
+
+      {/* --- Ranking leaderboards --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Fastest CDC processing */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-1">
+            Fastest CDC processing
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Councils with the shortest median CDC turnaround (minimum {MIN_APPS_FOR_RANKING} CDCs)
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">#</th>
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">Council</th>
+                <th className="text-right py-2 px-2 font-semibold text-teal-700">Median days</th>
+                <th className="text-right py-2 pl-2 font-semibold text-slate-500">CDCs</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-700">
+              {TOP_CDC_SPEED.map((c, i) => (
+                <tr key={c.slug} className="border-b border-slate-50">
+                  <td className="py-2 pr-2 text-slate-400 font-medium">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <Link href={`/blog/granny-flat/${c.slug}`} className="font-medium text-slate-900 hover:text-teal-600 transition-colors">
+                      {c.shortName}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-2 text-right font-bold text-teal-700">{c.cdcMedianDays}d</td>
+                  <td className="py-2 pl-2 text-right text-slate-500">{c.cdcTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Highest CDC ratio */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-1">
+            Highest CDC pathway usage
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Councils where the largest share of granny flat applications use the CDC pathway (minimum {MIN_APPS_FOR_RANKING} applications)
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">#</th>
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">Council</th>
+                <th className="text-right py-2 px-2 font-semibold text-teal-700">CDC %</th>
+                <th className="text-right py-2 pl-2 font-semibold text-slate-500">Total</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-700">
+              {TOP_CDC_RATIO.map((c, i) => (
+                <tr key={c.slug} className="border-b border-slate-50">
+                  <td className="py-2 pr-2 text-slate-400 font-medium">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <Link href={`/blog/granny-flat/${c.slug}`} className="font-medium text-slate-900 hover:text-teal-600 transition-colors">
+                      {c.shortName}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-2 text-right font-bold text-teal-700">{c.cdcRatioPct}%</td>
+                  <td className="py-2 pl-2 text-right text-slate-500">{c.totalApplications}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Lowest CDC cost */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-1">
+            Lowest median CDC cost
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Councils with the lowest self-reported median CDC build cost (minimum {MIN_APPS_FOR_RANKING} CDCs)
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">#</th>
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">Council</th>
+                <th className="text-right py-2 px-2 font-semibold text-teal-700">Median cost</th>
+                <th className="text-right py-2 pl-2 font-semibold text-slate-500">CDCs</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-700">
+              {TOP_LOWEST_CDC_COST.map((c, i) => (
+                <tr key={c.slug} className="border-b border-slate-50">
+                  <td className="py-2 pr-2 text-slate-400 font-medium">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <Link href={`/blog/granny-flat/${c.slug}`} className="font-medium text-slate-900 hover:text-teal-600 transition-colors">
+                      {c.shortName}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-2 text-right font-bold text-teal-700">{formatCostShort(c.cdcMedianCost)}</td>
+                  <td className="py-2 pl-2 text-right text-slate-500">{c.cdcTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Highest volume */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-1">
+            Most granny flat applications
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Councils with the highest total secondary dwelling application volume
+          </p>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">#</th>
+                <th className="text-left py-2 pr-2 font-semibold text-slate-700">Council</th>
+                <th className="text-right py-2 px-2 font-semibold text-teal-700">Applications</th>
+                <th className="text-right py-2 pl-2 font-semibold text-slate-500">CDC %</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-700">
+              {TOP_HIGHEST_VOLUME.map((c, i) => (
+                <tr key={c.slug} className="border-b border-slate-50">
+                  <td className="py-2 pr-2 text-slate-400 font-medium">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <Link href={`/blog/granny-flat/${c.slug}`} className="font-medium text-slate-900 hover:text-teal-600 transition-colors">
+                      {c.shortName}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-2 text-right font-bold text-teal-700">{c.totalApplications}</td>
+                  <td className="py-2 pl-2 text-right text-slate-500">{formatPct(c.cdcRatioPct)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-400 mb-10">
+        Rankings derived from NSW Planning Portal open data as of {DATA_AS_OF}. Cost is self-reported at lodgement.
+        CDC time is median calendar days from submission to determination. Minimum sample size of {MIN_APPS_FOR_RANKING} applications for ranking inclusion.
+      </p>
 
       {/* Council table */}
       <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-6 mb-10">
