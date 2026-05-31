@@ -41,22 +41,35 @@ def test_haversine_is_symmetric():
     assert a == pytest.approx(b, rel=1e-9)
 
 
-def test_haversine_sydney_to_newcastle_approx():
-    """Great-circle Sydney CBD → Newcastle ~117 km."""
+def test_haversine_sydney_to_newcastle():
+    """Great-circle Sydney CBD → Newcastle ≈ 117.4 km (verified against external calculator)."""
     d = _haversine(-33.87, 151.21, -32.93, 151.78)
-    assert 110_000 < d < 130_000
+    assert d == pytest.approx(117_400, rel=0.02)  # ±2%
 
 
-def test_haversine_sydney_to_wollongong_approx():
-    """Great-circle Sydney CBD → Wollongong ~75 km."""
+def test_haversine_sydney_to_wollongong():
+    """Great-circle Sydney CBD → Wollongong ≈ 67.9 km."""
     d = _haversine(-33.87, 151.21, -34.42, 150.89)
-    assert 65_000 < d < 85_000
+    assert d == pytest.approx(67_878, rel=0.02)
 
 
-def test_haversine_returns_metres():
-    """Result is in metres, not km."""
-    d = _haversine(-33.87, 151.21, -33.87, 151.22)  # ~1 degree lng ≈ ~98m at Sydney
-    assert d == pytest.approx(98 * 10, abs=500)  # rough sanity, not exact
+def test_haversine_returns_metres_not_km():
+    """Known small distance: ~0.01° lng at Sydney ≈ 935m."""
+    d = _haversine(-33.87, 151.21, -33.87, 151.22)
+    assert d == pytest.approx(935, rel=0.05)  # ±5% for Mercator
+
+
+def test_haversine_uses_correct_formula():
+    """Verify sqrt(1-a) term — mutating to sqrt(1+a) must fail.
+    Known: antipodal points (0,0) to (0,180) = half circumference ≈ 20_015_087m."""
+    d = _haversine(0.0, 0.0, 0.0, 180.0)
+    assert d == pytest.approx(20_015_087, rel=0.001)
+
+
+def test_haversine_earth_radius_6371km():
+    """90° arc from equator to pole = pi/2 * R ≈ 10_007_543m."""
+    d = _haversine(0.0, 0.0, 90.0, 0.0)
+    assert d == pytest.approx(10_007_543, rel=0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +110,20 @@ def test_normalise_council_map_has_no_duplicate_values_for_same_key():
     """All lowercase keys in _COUNCIL_NAME_MAP are unique."""
     keys = list(_COUNCIL_NAME_MAP.keys())
     assert len(keys) == len(set(keys))
+
+
+def test_normalise_council_every_key_resolves():
+    """Every key in _COUNCIL_NAME_MAP must produce the mapped value, not fallthrough."""
+    for key, expected in _COUNCIL_NAME_MAP.items():
+        result = _normalise_council(key)
+        assert result == expected, f"_normalise_council({key!r}) = {result!r}, expected {expected!r}"
+
+
+def test_normalise_council_every_key_case_insensitive():
+    """UPPER and Title case must also resolve for every map key."""
+    for key, expected in _COUNCIL_NAME_MAP.items():
+        assert _normalise_council(key.upper()) == expected, f"UPPER({key!r}) failed"
+        assert _normalise_council(key.title()) == expected, f"Title({key!r}) failed"
 
 
 # ---------------------------------------------------------------------------
@@ -213,8 +240,10 @@ def _make_req(**kwargs) -> SubscribeRequest:
 
 
 def test_validate_email_valid_passes():
+    """Valid email must not raise and must preserve the email value."""
     req = _make_req(email="user@example.com")
-    req.validate_email()  # must not raise
+    req.validate_email()
+    assert req.email == "user@example.com"
 
 
 def test_validate_email_no_at_raises():
@@ -239,12 +268,11 @@ def test_validate_email_empty_raises():
 # _lookup_property_context — structure/contract tests (no DB)
 # ---------------------------------------------------------------------------
 
-def test_lookup_property_context_returns_expected_keys():
-    """Even on DB failure, result has all expected keys with None defaults."""
+def test_lookup_property_context_returns_expected_keys_with_none_values():
+    """On DB failure, result has all expected keys with None defaults."""
     result = _lookup_property_context(-33.87, 151.21)
-    assert "zone" in result
-    assert "tod_precinct" in result
-    assert "tod_type" in result
+    assert set(result.keys()) == {"zone", "tod_precinct", "tod_type"}
+    assert all(v is None for v in result.values())
 
 
 def test_lookup_property_context_no_db_returns_nulls():
