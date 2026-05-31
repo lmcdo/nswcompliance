@@ -5,7 +5,7 @@ import { FloodTool } from '@/components/tools/FloodTool'
 import { FLOOD_LGAS, FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas'
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
-import { BreadcrumbJsonLd } from '@/lib/json-ld'
+import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -101,6 +101,13 @@ export default function FloodRiskLgaPage(
       </div>
 
       {/* Schema markup */}
+      <DatasetJsonLd
+        name={`Flood Risk Data — ${lga.name}, NSW`}
+        description={`Flood risk assessment data for ${lga.name} including statutory flood planning area boundaries${lga.ariScenarios.length > 0 ? ', ARI flood scenarios' : ''}, and planning constraints. Sourced from NSW Planning Portal spatial overlays.`}
+        url={`/flood-risk/${lga.slug}`}
+        spatialCoverage={`${lga.name}, New South Wales, Australia`}
+        variableMeasured={['Flood planning area', 'Flood prone land', ...(lga.ariScenarios.length > 0 ? ['ARI flood levels'] : [])]}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

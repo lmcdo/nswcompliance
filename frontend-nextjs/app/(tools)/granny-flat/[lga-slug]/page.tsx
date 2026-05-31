@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { GRANNY_FLAT_LGAS, GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
-import { BreadcrumbJsonLd } from '@/lib/json-ld'
+import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -97,6 +97,13 @@ export default function GrannyFlatLgaPage(
       </div>
 
       {/* Schema markup */}
+      <DatasetJsonLd
+        name={`Granny Flat Eligibility Data — ${lga.name}, NSW`}
+        description={`Secondary dwelling (granny flat) eligibility data for ${lga.name} including zoning, minimum lot size, heritage items, flood overlays, and biodiversity constraints. Sourced from NSW Planning Portal and SEPP Housing 2021.`}
+        url={`/granny-flat/${lga.slug}`}
+        spatialCoverage={`${lga.name}, New South Wales, Australia`}
+        variableMeasured={['Zoning', 'Lot size', 'Heritage items', 'Flood planning area', 'Biodiversity', 'Acid sulfate soils']}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

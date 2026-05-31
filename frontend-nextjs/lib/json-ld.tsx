@@ -136,3 +136,142 @@ export function SoftwareAppJsonLd({
     />
   );
 }
+
+/** Dataset schema for structured planning data pages. */
+export function DatasetJsonLd({
+  name,
+  description,
+  url,
+  spatialCoverage,
+  variableMeasured,
+  license = 'https://creativecommons.org/licenses/by/4.0/',
+}: {
+  name: string;
+  description: string;
+  url: string;
+  spatialCoverage: string;
+  variableMeasured?: string[];
+  license?: string;
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Dataset',
+          name,
+          description,
+          url: `${BASE_URL}${url}`,
+          creator: PUBLISHER,
+          license,
+          spatialCoverage: {
+            '@type': 'Place',
+            name: spatialCoverage,
+          },
+          ...(variableMeasured && {
+            variableMeasured: variableMeasured.map((v) => ({
+              '@type': 'PropertyValue',
+              name: v,
+            })),
+          }),
+        }),
+      }}
+    />
+  );
+}
+
+/** DefinedTerm schema for planning glossary entries. */
+export function DefinedTermJsonLd({
+  name,
+  description,
+  url,
+  inDefinedTermSet,
+}: {
+  name: string;
+  description: string;
+  url: string;
+  inDefinedTermSet?: string;
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'DefinedTerm',
+          name,
+          description,
+          url: `${BASE_URL}${url}`,
+          ...(inDefinedTermSet && {
+            inDefinedTermSet: {
+              '@type': 'DefinedTermSet',
+              name: inDefinedTermSet,
+              url: `${BASE_URL}/glossary`,
+            },
+          }),
+        }),
+      }}
+    />
+  );
+}
+
+/** HowTo schema for procedural/guide pages. */
+export function HowToJsonLd({
+  name,
+  description,
+  steps,
+}: {
+  name: string;
+  description: string;
+  steps: { name: string; text: string }[];
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name,
+          description,
+          step: steps.map((s, i) => ({
+            '@type': 'HowToStep',
+            position: i + 1,
+            name: s.name,
+            text: s.text,
+          })),
+        }),
+      }}
+    />
+  );
+}
+
+/** DefinedTermSet schema for the glossary index page. */
+export function DefinedTermSetJsonLd({
+  name,
+  description,
+  url,
+  termCount,
+}: {
+  name: string;
+  description: string;
+  url: string;
+  termCount?: number;
+}) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'DefinedTermSet',
+          name,
+          description,
+          url: `${BASE_URL}${url}`,
+          ...(termCount && { numberOfItems: termCount }),
+        }),
+      }}
+    />
+  );
+}

@@ -5,7 +5,7 @@ import { BushfireTool } from '@/components/tools/BushfireTool'
 import { BUSHFIRE_LGAS, BUSHFIRE_LGA_SLUG_MAP } from '@/lib/lga-data/bushfire-lgas'
 import { FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
-import { BreadcrumbJsonLd } from '@/lib/json-ld'
+import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -105,6 +105,13 @@ export default function BushfireLgaPage(
       </div>
 
       {/* Schema markup */}
+      <DatasetJsonLd
+        name={`Bushfire Risk Data — ${lga.name}, NSW`}
+        description={`Bushfire risk assessment data for ${lga.name} including bush fire prone land mapping, estimated BAL bands, RFS referral requirements, and 10/50 vegetation clearing entitlements. Sourced from NSW RFS and Planning Portal.`}
+        url={`/bushfire/${lga.slug}`}
+        spatialCoverage={`${lga.name}, New South Wales, Australia`}
+        variableMeasured={['Bush fire prone land', 'BAL band', 'Vegetation category', 'RFS referral requirement']}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
