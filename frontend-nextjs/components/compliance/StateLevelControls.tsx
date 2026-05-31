@@ -17,7 +17,6 @@ import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 // ADG Building Separation Table hidden — setback_rules table empty (never populated with ADG 3F-1 data)
-// import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { PatternBookEligibilityCard } from './PatternBookEligibilityCard';
