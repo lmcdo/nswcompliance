@@ -62,6 +62,18 @@ interface StrataInfo {
   strataUnit: string | null;
 }
 
+interface SeppLepOverride {
+  developmentType: string;
+  displayName: string;
+  metric: string;
+  seppValue: number;
+  lepValue: number;
+  seppWins: boolean;
+  unit: string;
+  sourceClause: string;
+  note: string;
+}
+
 interface HousingSEPPEligibilityCardProps {
   zoneCode: string;
   lotSize: number;
@@ -69,6 +81,8 @@ interface HousingSEPPEligibilityCardProps {
   stationDistance?: number;
   isLMRArea?: boolean;
   strataInfo?: StrataInfo;
+  lepHeight?: number | null;
+  lepFsr?: number | null;
 }
 
 // Format standard type for display
@@ -285,9 +299,12 @@ export function HousingSEPPEligibilityCard({
   stationDistance,
   isLMRArea,
   strataInfo,
+  lepHeight,
+  lepFsr,
 }: HousingSEPPEligibilityCardProps) {
   const [data, setData] = useState<{
     eligibleTypes: EligibilityResult[];
+    overrides: SeppLepOverride[] | null;
     propertyInfo: Record<string, unknown>;
     totalChecked: number;
     eligibleCount: number;
@@ -315,7 +332,9 @@ export function HousingSEPPEligibilityCard({
             lotSize,
             lotWidth,
             stationDistance,
-            isLMRArea
+            isLMRArea,
+            lepHeight: lepHeight ?? undefined,
+            lepFsr: lepFsr ?? undefined,
           })
         });
 
@@ -337,7 +356,7 @@ export function HousingSEPPEligibilityCard({
     };
 
     fetchEligibility();
-  }, [zoneCode, lotSize, lotWidth, stationDistance, isLMRArea]);
+  }, [zoneCode, lotSize, lotWidth, stationDistance, isLMRArea, lepHeight, lepFsr]);
 
   // Loading state
   if (loading) {
@@ -475,6 +494,46 @@ export function HousingSEPPEligibilityCard({
               </>
             )}
           </Button>
+        )}
+
+        {/* SEPP-LEP Override Comparison */}
+        {data.overrides && data.overrides.length > 0 && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="w-4 h-4 text-amber-600" />
+              <h4 className="text-sm font-semibold text-amber-900">
+                SEPP standards exceed LEP controls
+              </h4>
+            </div>
+            <p className="text-xs text-amber-700 mb-2">
+              Where a Housing SEPP standard is more generous than the LEP, the SEPP standard applies (derived comparison — verify with a planning professional).
+            </p>
+            <div className="space-y-1">
+              {data.overrides.map((override, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between py-1.5 px-2 bg-white rounded border border-amber-100"
+                >
+                  <div className="text-xs text-gray-700">
+                    <span className="font-medium">{override.displayName}</span>
+                    <span className="text-gray-400 mx-1">—</span>
+                    <span>{override.metric === 'max_height' ? 'Height' : 'FSR'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-gray-400 line-through font-mono">
+                      LEP {override.lepValue}{override.unit}
+                    </span>
+                    <span className="text-amber-800 font-semibold font-mono">
+                      SEPP {override.seppValue}{override.unit}
+                    </span>
+                    <span className="text-gray-400 font-mono">
+                      §{override.sourceClause}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Footer with explanation */}

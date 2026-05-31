@@ -33,6 +33,18 @@ interface EligibilityResult {
   legislationUrl: string;
 }
 
+interface SeppLepOverride {
+  developmentType: string;
+  displayName: string;
+  metric: string;
+  seppValue: number;
+  lepValue: number;
+  seppWins: boolean;
+  unit: string;
+  sourceClause: string;
+  note: string;
+}
+
 // Human-readable names for development types
 // Terminology includes common names used by homeowners, developers, and professionals
 const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string }> = {
@@ -99,6 +111,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { zoneCode, lotSize, lotWidth, stationDistance, isLMRArea, address, lga, coordinates } = validation.data;
+
+    // Optional LEP values for SEPP-LEP override detection
+    const lepHeight: number | null = typeof body.lepHeight === 'number' ? body.lepHeight : null;
+    const lepFsr: number | null = typeof body.lepFsr === 'number' ? body.lepFsr : null;
 
     // Normalize zone code (e.g., "R2 Low Density Residential" -> "R2")
     const zone = zoneCode.split(' ')[0].toUpperCase();
@@ -302,16 +318,66 @@ export async function POST(request: NextRequest) {
       return a.displayName.localeCompare(b.displayName);
     });
 
+    // SEPP-LEP override detection: compare Housing SEPP standards against LEP values
+    // Rule: SEPP standard applies UNLESS LEP is MORE GENEROUS (higher height/FSR favours applicant)
+    const overrides: SeppLepOverride[] = [];
+    if (lepHeight !== null || lepFsr !== null) {
+      for (const [devType, standards] of Object.entries(standardsByType)) {
+        const typeInfo = developmentTypeInfo[devType];
+        if (!typeInfo.applicableZones.includes(zone)) continue;
+
+        const displayInfo = DEVELOPMENT_TYPE_NAMES[devType] || { name: devType, description: '' };
+
+        for (const std of standards) {
+          if (std.standardType === 'max_height' && lepHeight !== null) {
+            const seppVal = std.numericValue;
+            if (seppVal > lepHeight) {
+              overrides.push({
+                developmentType: devType,
+                displayName: displayInfo.name,
+                metric: 'max_height',
+                seppValue: seppVal,
+                lepValue: lepHeight,
+                seppWins: true,
+                unit: 'm',
+                sourceClause: std.sourceClause,
+                note: `SEPP Housing allows ${seppVal}m vs LEP ${lepHeight}m for ${displayInfo.name}`,
+              });
+            }
+          }
+          if (std.standardType === 'max_fsr' && lepFsr !== null) {
+            const seppVal = std.numericValue;
+            if (seppVal > lepFsr) {
+              overrides.push({
+                developmentType: devType,
+                displayName: displayInfo.name,
+                metric: 'max_fsr',
+                seppValue: seppVal,
+                lepValue: lepFsr,
+                seppWins: true,
+                unit: ':1',
+                sourceClause: std.sourceClause,
+                note: `SEPP Housing allows ${seppVal}:1 vs LEP ${lepFsr}:1 for ${displayInfo.name}`,
+              });
+            }
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         eligibleTypes: eligibilityResults,
+        overrides: overrides.length > 0 ? overrides : null,
         propertyInfo: {
           zoneCode: zone,
           lotSize,
           lotWidth,
           stationDistance,
-          isLMRArea: inLMRArea
+          isLMRArea: inLMRArea,
+          lepHeight,
+          lepFsr,
         },
         totalChecked: eligibilityResults.length,
         eligibleCount: eligibilityResults.filter(r => r.isEligible).length
