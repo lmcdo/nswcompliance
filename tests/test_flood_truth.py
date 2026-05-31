@@ -27,6 +27,8 @@ from services.flood_truth import (
     _normalise_outputs,
     _build_s1_gap_warning,
     _build_data_sources,
+    _build_compound_risk_notes,
+    _COMPOUND_LAYER_TYPES,
     _s1b_gap_affected,
     _query_epi_overlay,  # for DataDate coercion test (monkey-patched)
     _jrc_tile_url,
@@ -704,3 +706,73 @@ def test_normalise_outputs_hawkesbury_absent_returns_none():
     out = _normalise_outputs(raw)
     assert out.get("hawkesbury_flood_level_100aep") is None
     assert out.get("hawkesbury_flood_study") is None
+
+
+# ---------------------------------------------------------------------------
+# Compound risk layers
+# ---------------------------------------------------------------------------
+
+def test_compound_risk_notes_empty_when_no_layers():
+    assert _build_compound_risk_notes([]) == []
+
+
+def test_compound_risk_notes_heritage():
+    notes = _build_compound_risk_notes(["heritage"])
+    assert len(notes) == 1
+    assert "heritage" in notes[0].lower()
+
+
+def test_compound_risk_notes_all_four():
+    notes = _build_compound_risk_notes(["heritage", "riparian", "wetlands", "landslide"])
+    assert len(notes) == 4
+
+
+def test_compound_risk_notes_unknown_layer_skipped():
+    notes = _build_compound_risk_notes(["heritage", "unknown_layer"])
+    assert len(notes) == 1
+
+
+def test_normalise_outputs_includes_compound_fields():
+    """Compound risk keys present in normalised output even when all None."""
+    raw = {"epi_flood_class": "none", "data_currency": "2025-01-01"}
+    out = _normalise_outputs(raw)
+    assert out["compound_risk_layers"] == []
+    assert out["compound_risk_notes"] == []
+    for lt in _COMPOUND_LAYER_TYPES:
+        assert f"compound_{lt}" in out
+
+
+def test_normalise_outputs_compound_heritage_populated():
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "data_currency": "2025-01-01",
+        "compound_heritage": "Heritage Conservation Area",
+    }
+    out = _normalise_outputs(raw)
+    assert out["compound_heritage"] == "Heritage Conservation Area"
+    assert "heritage" in out["compound_risk_layers"]
+    assert len(out["compound_risk_notes"]) == 1
+
+
+def test_normalise_outputs_compound_multiple_layers():
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "data_currency": "2025-01-01",
+        "compound_heritage": "HCA",
+        "compound_landslide": "Landslide Susceptibility",
+    }
+    out = _normalise_outputs(raw)
+    assert set(out["compound_risk_layers"]) == {"heritage", "landslide"}
+    assert len(out["compound_risk_notes"]) == 2
+
+
+def test_data_sources_includes_compound_when_present():
+    raw = _outputs(compound_heritage="HCA")
+    sources = _build_data_sources(raw)
+    assert any("heritage" in s for s in sources)
+
+
+def test_data_sources_excludes_compound_when_absent():
+    raw = _outputs()
+    sources = _build_data_sources(raw)
+    assert not any("heritage" in s for s in sources)

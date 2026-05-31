@@ -787,6 +787,43 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
             conn.close()
 
 
+_COMPOUND_LAYER_TYPES = ("heritage", "riparian", "wetlands", "landslide")
+
+
+def _query_compound_risk_layers(lat: float, lng: float) -> dict:
+    """
+    Query spatial_overlays for layers that compound flood risk:
+    - heritage: mitigation options constrained by heritage controls
+    - riparian: flood pathway + setback complexity
+    - wetlands: flood storage areas — misidentifying as buildable underestimates risk
+    - landslide: flood + slope = debris flow risk
+    """
+    result = {f"compound_{lt}": None for lt in _COMPOUND_LAYER_TYPES}
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
+            cur.execute(
+                """
+                SELECT DISTINCT layer_type, value, instrument_key
+                FROM spatial_overlays
+                WHERE layer_type = ANY(%s)
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                """,
+                (list(_COMPOUND_LAYER_TYPES), lng, lat),
+            )
+            for row in cur.fetchall():
+                lt = row["layer_type"]
+                result[f"compound_{lt}"] = row["value"] or True
+    except Exception as e:
+        logger.warning(f"Compound risk layer query: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return result
+
+
 _WOFS_HARD_TIMEOUT = 25  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
 
 
@@ -1137,6 +1174,31 @@ def _build_s1_gap_warning(internal_outputs: dict) -> str:
     )
 
 
+_COMPOUND_RISK_DESCRIPTIONS = {
+    "heritage": (
+        "Property is within a heritage conservation area or is individually heritage-listed. "
+        "Flood mitigation options (raising, barriers, demolition) may be constrained by heritage controls."
+    ),
+    "riparian": (
+        "Property is on or adjacent to mapped riparian land. "
+        "Riparian corridors are natural flood pathways with additional setback requirements."
+    ),
+    "wetlands": (
+        "Property is within or adjacent to a mapped wetland area. "
+        "Wetlands function as natural flood storage — development may increase flood risk to neighbouring properties."
+    ),
+    "landslide": (
+        "Property is within a mapped landslide-prone area. "
+        "Flood saturation on slopes creates compound debris-flow risk beyond standard flood modelling."
+    ),
+}
+
+
+def _build_compound_risk_notes(compound_risks: list) -> list:
+    """Return factual notes for each active compound risk layer."""
+    return [_COMPOUND_RISK_DESCRIPTIONS[lt] for lt in compound_risks if lt in _COMPOUND_RISK_DESCRIPTIONS]
+
+
 def _build_data_sources(internal_outputs: dict) -> list:
     sources = ["NSW SEED EPI WFS"]
     if internal_outputs.get("ses_in_flood_planning_area") is not None:
@@ -1155,6 +1217,9 @@ def _build_data_sources(internal_outputs: dict) -> list:
         sources.append(f"{name} — {source} (flood study raster)")
     if internal_outputs.get("ground_elevation_m_ahd") is not None:
         sources.append(_DATA_SOURCE_DEM)
+    for lt in _COMPOUND_LAYER_TYPES:
+        if internal_outputs.get(f"compound_{lt}") is not None:
+            sources.append(f"NSW ePlanning spatial_overlays ({lt})")
     sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
@@ -1244,6 +1309,16 @@ def _normalise_outputs(raw: dict) -> dict:
             if entry.get("depth_m") is None and entry.get("level_m_ahd") is not None and ground_elev is not None:
                 computed_depth = entry["level_m_ahd"] - ground_elev
                 entry["depth_m"] = round(max(0.0, computed_depth), 2)
+
+    # Compound risk layers — heritage, riparian, wetlands, landslide
+    compound_risks = []
+    for lt in _COMPOUND_LAYER_TYPES:
+        val = raw.get(f"compound_{lt}")
+        normalised[f"compound_{lt}"] = val
+        if val is not None:
+            compound_risks.append(lt)
+    normalised["compound_risk_layers"] = compound_risks
+    normalised["compound_risk_notes"] = _build_compound_risk_notes(compound_risks)
 
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
@@ -1358,8 +1433,9 @@ def run_flood(req: FloodRequest):
     ds_ses = DataSourceQuery("SES / Council flood study", "local:spatial_overlays", coord_params)
     ds_studies = DataSourceQuery("Flood study rasters", "local:flood_study_rasters", coord_params)
     ds_dem = DataSourceQuery("NSW 5m DEM", _DEM_IDENTIFY_URL, coord_params)
+    ds_compound = DataSourceQuery("Compound risk layers", "local:spatial_overlays", coord_params)
 
-    with ThreadPoolExecutor(max_workers=9) as pool:
+    with ThreadPoolExecutor(max_workers=10) as pool:
         f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
         f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
         f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
@@ -1368,6 +1444,7 @@ def run_flood(req: FloodRequest):
         f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
         f_studies = pool.submit(_query_flood_study_rasters, req.lat, req.lng)
         f_dem  = pool.submit(_query_ground_elevation, req.lat, req.lng)
+        f_compound = pool.submit(_query_compound_risk_layers, req.lat, req.lng)
         epi  = f_epi.result()
         ems  = f_ems.result()
         jrc  = f_jrc.result()
@@ -1376,6 +1453,7 @@ def run_flood(req: FloodRequest):
         wofs = f_wofs.result()
         studies = f_studies.result()
         dem  = f_dem.result()
+        compound = f_compound.result()
 
     # Audit trail: record responses
     ds_epi.record_response(epi, features_returned=0 if epi.get("epi_flood_class") in (None, "none") else 1)
@@ -1386,6 +1464,8 @@ def run_flood(req: FloodRequest):
     ds_ses.record_response(ses, features_returned=1 if ses.get("ses_in_flood_planning_area") else 0)
     ds_studies.record_response(studies, features_returned=len(studies.get("flood_studies") or []))
     ds_dem.record_response(dem, features_returned=1 if dem.get("ground_elevation_m_ahd") is not None else 0)
+    compound_count = sum(1 for v in compound.values() if v is not None)
+    ds_compound.record_response(compound, features_returned=compound_count)
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -1394,7 +1474,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom, **ses, **wofs, **studies, **dem,
+        **epi, **ems, **jrc, **bom, **ses, **wofs, **studies, **dem, **compound,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
@@ -1414,7 +1494,7 @@ def run_flood(req: FloodRequest):
         report_id=req.report_id,
         pipeline_name="flood",
         input_params=inputs,
-        data_sources=[ds_epi, ds_ems, ds_jrc, ds_wofs, ds_bom, ds_ses, ds_studies, ds_dem],
+        data_sources=[ds_epi, ds_ems, ds_jrc, ds_wofs, ds_bom, ds_ses, ds_studies, ds_dem, ds_compound],
         output_summary=outputs,
         disclaimer_version=get_current_disclaimer_version("flood"),
         intermediate_calculations={

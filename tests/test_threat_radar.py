@@ -21,6 +21,7 @@ from services.threat_radar import (
     _haversine,
     _normalise_council,
     _filter_nearby,
+    _lookup_property_context,
     _COUNCIL_NAME_MAP,
     ALERT_RADIUS_M,
 )
@@ -232,3 +233,23 @@ def test_validate_email_empty_raises():
     req = _make_req(email="@")
     with pytest.raises(ValueError):
         req.validate_email()
+
+
+# ---------------------------------------------------------------------------
+# _lookup_property_context — structure/contract tests (no DB)
+# ---------------------------------------------------------------------------
+
+def test_lookup_property_context_returns_expected_keys():
+    """Even on DB failure, result has all expected keys with None defaults."""
+    result = _lookup_property_context(-33.87, 151.21)
+    assert "zone" in result
+    assert "tod_precinct" in result
+    assert "tod_type" in result
+
+
+def test_lookup_property_context_no_db_returns_nulls():
+    """Without DATABASE_URL, function gracefully returns None for all fields."""
+    result = _lookup_property_context(-33.87, 151.21)
+    assert result["zone"] is None
+    assert result["tod_precinct"] is None
+    assert result["tod_type"] is None

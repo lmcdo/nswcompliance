@@ -57,6 +57,39 @@ def _get_conn():
     )
 
 
+def _lookup_property_context(lat: float, lng: float) -> dict:
+    """Query spatial_overlays for subscriber's zone and TOD precinct status."""
+    result = {"zone": None, "tod_precinct": None, "tod_type": None}
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
+            cur.execute(
+                """
+                SELECT value, layer_type
+                FROM spatial_overlays
+                WHERE layer_type IN ('zone', 'tod_precinct', 'tod_accelerated')
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                ORDER BY layer_type, currency_date DESC
+                """,
+                (lng, lat),
+            )
+            for row in cur.fetchall():
+                lt = row["value"]
+                if row["layer_type"] == "zone":
+                    result["zone"] = lt
+                elif row["layer_type"] in ("tod_precinct", "tod_accelerated"):
+                    result["tod_precinct"] = True
+                    result["tod_type"] = row["layer_type"]
+    except Exception as e:
+        logger.warning(f"Property context lookup: {e}")
+    finally:
+        if conn:
+            conn.close()
+    return result
+
+
 def _haversine(lat1, lng1, lat2, lng2) -> float:
     R = 6_371_000
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -250,6 +283,7 @@ def check(req: CheckRequest):
     inputs = sub.get("inputs") or {}
     council = inputs.get("council_name","")
     seen = set(inputs.get("seen_application_numbers") or [])
+    property_context = _lookup_property_context(float(sub["lat"]), float(sub["lng"]))  # noqa: bracket-access (NOT NULL DB columns)
     if not council:
         raise HTTPException(422, "council_name missing from subscription")
 
@@ -298,6 +332,7 @@ def check(req: CheckRequest):
             "new_applications": [],
             "total_nearby": 0,
             "checked_at": None,
+            "property_context": property_context,
             "api_error": "NSW ePlanning API unavailable — check will retry next run",
         }
 
@@ -354,6 +389,7 @@ def check(req: CheckRequest):
             "radius_m": ALERT_RADIUS_M,
             "window_days": WINDOW_DAYS,
             "api_available": True,
+            "property_context": property_context,
         },
     )
 
@@ -364,6 +400,7 @@ def check(req: CheckRequest):
         "new_applications": new_apps,
         "total_nearby": len(nearby),
         "checked_at": checked_at,
+        "property_context": property_context,
     }
 
 
