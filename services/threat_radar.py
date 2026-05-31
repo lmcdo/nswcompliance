@@ -281,7 +281,7 @@ def check(req: CheckRequest):
         raise HTTPException(404, "Subscription not found")
 
     inputs = sub.get("inputs") or {}
-    council = inputs.get("council_name","")
+    council = inputs.get("council_name") or ""
     seen = set(inputs.get("seen_application_numbers") or [])
     property_context = _lookup_property_context(float(sub["lat"]), float(sub["lng"]))  # noqa: bracket-access (NOT NULL DB columns)
     if not council:
@@ -339,7 +339,7 @@ def check(req: CheckRequest):
     nearby = _filter_nearby(apps, sub["lat"], sub["lng"])
     new_apps = []
     for app in nearby:
-        num = app.get("PlanningPortalApplicationNumber") or app.get("ApplicationNumber","")
+        num = app.get("PlanningPortalApplicationNumber") or app.get("ApplicationNumber") or ""
         if num and num not in seen:
             new_apps.append(app); seen.add(num)
 
