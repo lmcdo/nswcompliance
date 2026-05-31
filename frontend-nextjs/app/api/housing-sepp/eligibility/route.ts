@@ -71,6 +71,10 @@ const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string
   residential_flat_r3r4_outer: {
     name: 'Mid-Rise Apartments (Near Station)',
     description: 'Up to 4-storey apartments 400-800m from a train station — Transit Oriented Development'
+  },
+  secondary_dwelling: {
+    name: 'Secondary Dwelling (Granny Flat)',
+    description: 'A self-contained dwelling on the same lot as a principal dwelling — max 60m² floor area'
   }
 };
 

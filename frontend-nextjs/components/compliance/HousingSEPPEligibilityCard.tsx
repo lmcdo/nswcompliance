@@ -78,12 +78,20 @@ function formatStandardType(standardType: string): string {
     min_lot_width: 'Min Lot Width',
     max_fsr: 'Max FSR',
     max_height: 'Max Building Height',
+    max_floor_area: 'Max Floor Area',
     parking_per_dwelling: 'Parking per Dwelling',
     min_subdivision_lot: 'Min Subdivision Lot',
     min_subdivision_width: 'Min Subdivision Width',
     max_storeys: 'Max Storeys',
     min_landscaped_area_percent: 'Min Landscaped Area',
-    min_deep_soil_percent: 'Min Deep Soil Zone'
+    min_deep_soil_percent: 'Min Deep Soil Zone',
+    min_private_open_space: 'Min Private Open Space',
+    max_site_coverage_lot_under_900: 'Max Site Coverage',
+    max_site_coverage_lot_900_to_1500: 'Max Site Coverage',
+    max_site_coverage_lot_over_1500: 'Max Site Coverage',
+    max_total_floor_area_lot_under_600: 'Max Total Floor Area',
+    max_total_floor_area_lot_600_to_900: 'Max Total Floor Area',
+    max_total_floor_area_lot_over_900: 'Max Total Floor Area',
   };
   return labels[standardType] || standardType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -108,8 +116,37 @@ function formatValue(value: number, unit: string): string {
   }
 }
 
-function EligibilityRow({ result }: { result: EligibilityResult }) {
+/**
+ * Filter lot-size-banded standards to show only the band matching the property's lot size.
+ * E.g., for a 500m² lot, show max_site_coverage_lot_under_900 but not the 900-1500 or >1500 variants.
+ */
+function filterStandardsForLotSize(standards: DevelopmentStandard[], lotSize: number): DevelopmentStandard[] {
+  // Determine which lot-size band suffix to keep for each banded standard
+  const bandedPrefixes = ['max_site_coverage_lot_', 'max_total_floor_area_lot_'];
+
+  return standards.filter(std => {
+    const matchedPrefix = bandedPrefixes.find(p => std.standardType.startsWith(p));
+    if (!matchedPrefix) return true; // Not a banded standard — keep it
+
+    const suffix = std.standardType.slice(matchedPrefix.length);
+
+    if (matchedPrefix === 'max_site_coverage_lot_') {
+      if (lotSize < 900) return suffix === 'under_900';
+      if (lotSize < 1500) return suffix === '900_to_1500';
+      return suffix === 'over_1500';
+    }
+    if (matchedPrefix === 'max_total_floor_area_lot_') {
+      if (lotSize < 600) return suffix === 'under_600';
+      if (lotSize < 900) return suffix === '600_to_900';
+      return suffix === 'over_900';
+    }
+    return true;
+  });
+}
+
+function EligibilityRow({ result, lotSize }: { result: EligibilityResult; lotSize: number }) {
   const [expanded, setExpanded] = useState(false);
+  const filteredStandards = filterStandardsForLotSize(result.standards, lotSize);
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
@@ -171,7 +208,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
               <div className="text-xs font-medium text-gray-500 mb-1">
                 Development Standards (Clause references)
               </div>
-              {result.standards.map((std, idx) => (
+              {filteredStandards.map((std, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between py-1 px-2 rounded hover:bg-white/50"
@@ -414,7 +451,7 @@ export function HousingSEPPEligibilityCard({
         {/* Eligibility results */}
         <div className="space-y-2">
           {visibleResults.map((result) => (
-            <EligibilityRow key={result.developmentType} result={result} />
+            <EligibilityRow key={result.developmentType} result={result} lotSize={lotSize} />
           ))}
         </div>
 
