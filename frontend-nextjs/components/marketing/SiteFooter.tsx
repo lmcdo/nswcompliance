@@ -25,6 +25,7 @@ const PLATFORM_LINKS = [
   { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
   { label: 'Climate Risk', href: '/climate-risk' },
   { label: 'Browse Councils', href: '/browse' },
+  { label: 'Planning Glossary', href: '/glossary' },
   { label: 'Insights', href: '/blog' },
 ];
 
