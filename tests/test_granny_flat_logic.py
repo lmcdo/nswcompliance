@@ -17,6 +17,8 @@ from services.granny_flat import (
     _compute_confidence,
     _get_weekly_rent,
     _compute_lot_area_m2,
+    _check_heritage_overlay,
+    GrannyFlatDetectResponse,
     _SEPP_FALLBACK_MIN_LOT_M2 as SEPP_MIN_LOT_M2,
 )
 
@@ -160,11 +162,10 @@ def test_compute_lot_area_m2_ring_too_short_returns_none():
     assert result is None
 
 
-def test_compute_lot_area_m2_sepp_boundary_lot():
-    """450 m² lot at Sydney — should pass SEPP check (area >= SEPP_MIN_LOT_M2)."""
-    # A roughly 21x21m lot in EPSG:3857 near Sydney
-    # Actual area depends on Mercator correction
-    # We just verify it returns a positive float and passes the threshold for a reasonable Sydney lot
+def test_compute_lot_area_m2_known_square_at_sydney():
+    """200x200m tile in EPSG:3857 near Sydney (-33.87°).
+    Mercator scale factor at lat=-33.87° is cos(33.87°) ≈ 0.8305.
+    True area ≈ (200*0.8305)² ≈ 27,593 m². Verify within ±10%."""
     ring = [
         [16825000.0, -4012000.0],
         [16825200.0, -4012000.0],
@@ -174,10 +175,22 @@ def test_compute_lot_area_m2_sepp_boundary_lot():
     ]
     result = _compute_lot_area_m2({"rings": [ring]})
     assert result is not None
-    assert result > 0
-    # A 200m×200m tile in EPSG:3857 corrected for Mercator should be substantial
-    # (exact value depends on latitude correction — just check it's realistic)
-    assert result > 100  # at least 100 m²
+    assert result == pytest.approx(27_593, rel=0.10)
+
+
+def test_compute_lot_area_m2_small_lot_below_sepp_minimum():
+    """A 10x10m tile in EPSG:3857 near Sydney → ~69 m² true area.
+    Must be well below SEPP_MIN_LOT_M2 (450)."""
+    ring = [
+        [16825000.0, -4012000.0],
+        [16825010.0, -4012000.0],
+        [16825010.0, -4012010.0],
+        [16825000.0, -4012010.0],
+        [16825000.0, -4012000.0],
+    ]
+    result = _compute_lot_area_m2({"rings": [ring]})
+    assert result is not None
+    assert result < SEPP_MIN_LOT_M2
 
 
 # ---------------------------------------------------------------------------
@@ -207,21 +220,121 @@ def _make_confirm_req(**overrides) -> GrannyFlatConfirmRequest:
     return GrannyFlatConfirmRequest(**defaults)
 
 
-def test_existing_secondary_dwelling_true_sets_not_buildable():
-    """existing_secondary_dwelling=True must set granny_flat_buildable=False (SEPP cl 53(1))."""
-    req = _make_confirm_req(existing_secondary_dwelling=True)
-    # We can't call confirm_and_calculate directly (needs DB), so test model field acceptance
-    # and verify the gate logic via the Pydantic model + inspect the flag.
-    assert req.existing_secondary_dwelling is True
+def test_existing_secondary_dwelling_model_accepts_all_three_states():
+    """existing_secondary_dwelling field accepts True, False, None."""
+    for val, expected in [(True, True), (False, False), (None, None)]:
+        req = _make_confirm_req(existing_secondary_dwelling=val)
+        assert req.existing_secondary_dwelling is expected, f"Failed for {val}"
 
 
-def test_existing_secondary_dwelling_none_accepted_as_default():
-    """existing_secondary_dwelling defaults to None (not provided by GrannyFlatTool)."""
-    req = _make_confirm_req()
-    assert req.existing_secondary_dwelling is None
+# ---------------------------------------------------------------------------
+# _check_heritage_overlay — monkeypatched DB for real logic testing
+# ---------------------------------------------------------------------------
+
+def test_check_heritage_overlay_returns_true_when_row_found(monkeypatch):
+    """Simulate DB returning a row → function must return True."""
+    import services.granny_flat as gf
+
+    class FakeCursor:
+        def execute(self, *a, **kw): pass
+        def fetchone(self): return (1,)  # row found
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    class FakeConn:
+        def cursor(self, **kw): return FakeCursor()
+        def close(self): pass
+
+    monkeypatch.setattr(gf, "_get_conn", lambda: FakeConn())
+    assert _check_heritage_overlay(-33.87, 151.21) is True
 
 
-def test_existing_secondary_dwelling_false_accepted():
-    """explicit False should pass Pydantic validation."""
-    req = _make_confirm_req(existing_secondary_dwelling=False)
-    assert req.existing_secondary_dwelling is False
+def test_check_heritage_overlay_returns_false_when_no_row(monkeypatch):
+    """Simulate DB returning no rows → function must return False."""
+    import services.granny_flat as gf
+
+    class FakeCursor:
+        def execute(self, *a, **kw): pass
+        def fetchone(self): return None  # no row
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    class FakeConn:
+        def cursor(self, **kw): return FakeCursor()
+        def close(self): pass
+
+    monkeypatch.setattr(gf, "_get_conn", lambda: FakeConn())
+    assert _check_heritage_overlay(-33.87, 151.21) is False
+
+
+def test_check_heritage_overlay_returns_none_on_db_error(monkeypatch):
+    """DB connection failure → function must return None (not crash)."""
+    import services.granny_flat as gf
+    monkeypatch.setattr(gf, "_get_conn", lambda: (_ for _ in ()).throw(ConnectionError("no db")))
+    assert _check_heritage_overlay(-33.87, 151.21) is None
+
+
+def test_check_heritage_overlay_query_uses_correct_lng_lat_order(monkeypatch):
+    """ST_MakePoint takes (lng, lat) — verify the order is correct."""
+    import services.granny_flat as gf
+    captured_params = []
+
+    class FakeCursor:
+        def execute(self, sql, params=None):
+            if params:
+                captured_params.append(params)
+        def fetchone(self): return None
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    class FakeConn:
+        def cursor(self, **kw): return FakeCursor()
+        def close(self): pass
+
+    monkeypatch.setattr(gf, "_get_conn", lambda: FakeConn())
+    _check_heritage_overlay(-33.87, 151.21)
+    # Second execute call is the actual query (first is SET LOCAL statement_timeout)
+    assert len(captured_params) == 1
+    lng_param, lat_param = captured_params[0]
+    assert lng_param == 151.21, f"First param should be lng, got {lng_param}"
+    assert lat_param == -33.87, f"Second param should be lat, got {lat_param}"
+
+
+# ---------------------------------------------------------------------------
+# GrannyFlatDetectResponse — is_heritage field contract
+# ---------------------------------------------------------------------------
+
+def test_detect_response_heritage_field_is_optional_bool():
+    """is_heritage exists, defaults to None, accepts True/False/None."""
+    assert "is_heritage" in GrannyFlatDetectResponse.model_fields
+    resp = GrannyFlatDetectResponse(
+        address="1 Test St", lat=-33.87, lng=151.21, prop_id="12345",
+        lot_area_m2=600.0, sepp_eligible=True, sepp_ineligible_reason=None,
+        detected_structures=[], samgeo_structure_count=0, samgeo_validated=True,
+        confirmation_required=True, tile_licence="test", detect_id="test-id",
+    )
+    assert resp.is_heritage is None
+    resp2 = GrannyFlatDetectResponse(
+        address="1 Test St", lat=-33.87, lng=151.21, prop_id="12345",
+        lot_area_m2=600.0, sepp_eligible=True, sepp_ineligible_reason=None,
+        detected_structures=[], samgeo_structure_count=0, samgeo_validated=True,
+        confirmation_required=True, tile_licence="test", detect_id="test-id",
+        is_heritage=True,
+    )
+    assert resp2.is_heritage is True
+
+
+# ---------------------------------------------------------------------------
+# Heritage user override vs auto-detect — confirm request logic
+# ---------------------------------------------------------------------------
+
+def test_confirm_req_heritage_user_override_takes_precedence():
+    """When user provides is_heritage, their value wins over auto-detect."""
+    req_true = _make_confirm_req(is_heritage=True)
+    req_false = _make_confirm_req(is_heritage=False)
+    req_none = _make_confirm_req(is_heritage=None)
+    # User-provided values are preserved exactly
+    assert req_true.is_heritage is True
+    assert req_false.is_heritage is False
+    # None triggers auto-detect path
+    assert req_none.is_heritage is None

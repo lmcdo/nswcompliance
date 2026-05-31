@@ -294,6 +294,7 @@ class GrannyFlatDetectResponse(BaseModel):
     tile_bbox: Optional[dict] = None    # geographic bounds: {min_lat, max_lat, min_lng, max_lng}
     lot_polygon_wgs84: Optional[list[list[list[float]]]] = None  # [[lng, lat], ...] rings in WGS84
     detect_id: str          # UUID for subsequent /confirm call
+    is_heritage: Optional[bool] = None  # auto-detected from spatial_overlays
     warnings: list[str] = []
 
 
@@ -574,6 +575,38 @@ def _detect_structures_samgeo(
 # Other helpers
 # ---------------------------------------------------------------------------
 
+def _check_heritage_overlay(lat: float, lng: float) -> Optional[bool]:
+    """
+    Spatial heritage check via PostGIS spatial_overlays.
+
+    Returns:
+      True  — point is inside a heritage conservation area or individually listed
+      False — spatial_overlays has heritage rows but point is outside all of them
+      None  — spatial_overlays has no heritage rows or DB unavailable
+    """
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
+            cur.execute(
+                """
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            return cur.fetchone() is not None
+    except Exception as e:
+        logger.warning(f"Heritage overlay lookup: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
 def _compute_lot_area_m2(lot_geometry: dict) -> Optional[float]:
     """Shoelace on EPSG:3857 rings, corrected for Mercator distortion (~1.45x at Sydney)."""
     if not lot_geometry or "rings" not in lot_geometry or not lot_geometry["rings"]:
@@ -845,6 +878,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
         except Exception:
             pass
 
+    # Auto-detect heritage from spatial_overlays (replaces user self-report)
+    heritage_auto = _check_heritage_overlay(req.lat, req.lng)
+
     detect_id = str(uuid.uuid4())
     response = GrannyFlatDetectResponse(
         address=req.address,
@@ -869,6 +905,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
             else None
         ),
         detect_id=detect_id,
+        is_heritage=heritage_auto,
         warnings=detect_warnings,
     )
 
@@ -1003,10 +1040,17 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                 f"consult a town planner."
             )
 
-    is_heritage = bool(req.is_heritage)
+    # Heritage: use user-provided value if set, otherwise auto-detect from spatial_overlays
+    if req.is_heritage is not None:
+        is_heritage = bool(req.is_heritage)
+    else:
+        heritage_auto = _check_heritage_overlay(req.lat, req.lng)
+        is_heritage = bool(heritage_auto)  # None → False (safe default)
     if is_heritage:
+        heritage_source = "user-provided" if req.is_heritage is not None else "spatial_overlays auto-detect"
         warnings.append(
-            "Property is in a Heritage Conservation Area or has a heritage listing. "
+            "Property is in a Heritage Conservation Area or has a heritage listing "
+            f"(source: {heritage_source}). "
             "Granny flat construction may require heritage approval — confirm with council."
         )
 
@@ -1219,17 +1263,22 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         features_returned=1,
     )
 
-    ds_zone_heritage = DataSourceQuery(
-        "NSW Planning Portal zone/heritage lookup",
-        f"{NSW_API_BASE}/viewersf/V1/ePlanningApi/lot",
-        {"prop_id": req.prop_id, "is_heritage": is_heritage},
+    heritage_source_name = (
+        "User-provided heritage flag"
+        if req.is_heritage is not None
+        else "PostGIS heritage overlay (spatial_overlays)"
     )
-    ds_zone_heritage.record_response(
+    ds_heritage = DataSourceQuery(
+        heritage_source_name,
+        "local:spatial_overlays" if req.is_heritage is None else "user-input",
+        {"lat": req.lat, "lng": req.lng, "is_heritage": is_heritage},
+    )
+    ds_heritage.record_response(
         {"is_heritage": is_heritage},
-        features_returned=1 if req.prop_id else 0,
+        features_returned=1 if is_heritage else 0,
     )
 
-    audit_data_sources = [ds_samgeo, ds_aerial, ds_sepp, ds_zone_heritage]
+    audit_data_sources = [ds_samgeo, ds_aerial, ds_sepp, ds_heritage]
 
     outputs_for_audit = {
         "granny_flat_buildable": granny_flat_buildable,

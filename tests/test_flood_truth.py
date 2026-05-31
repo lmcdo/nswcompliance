@@ -27,6 +27,8 @@ from services.flood_truth import (
     _normalise_outputs,
     _build_s1_gap_warning,
     _build_data_sources,
+    _build_compound_risk_notes,
+    _COMPOUND_LAYER_TYPES,
     _s1b_gap_affected,
     _query_epi_overlay,  # for DataDate coercion test (monkey-patched)
     _jrc_tile_url,
@@ -219,11 +221,11 @@ def test_signal_jrc_zero_not_treated_as_low():
 # _compute_confidence — null trap
 # ---------------------------------------------------------------------------
 
-def test_confidence_null_wet_seasons_no_crash():
-    """wet_seasons_checked=null must not raise TypeError (was .get(key, 0) null trap)."""
+def test_confidence_null_wet_seasons_returns_low():
+    """wet_seasons_checked=null: no SAR data, no sources → low (not crash)."""
     out = _outputs(wet_seasons_checked=None)
     result = _compute_confidence(out)
-    assert result in ("high", "medium", "low")
+    assert result == "low"
 
 
 def test_confidence_no_sources_no_sar_returns_low():
@@ -555,8 +557,7 @@ def test_normalise_outputs_epi_label_recomputed_when_null():
         "epi_flood_label": None,   # null in DB — written before label field was added
     }
     result = _normalise_outputs(raw)
-    assert result["epi_flood_label"] is not None
-    assert "flood" in result["epi_flood_label"].lower()
+    assert result["epi_flood_label"] == "Flood Planning Area"
 
 
 def test_normalise_outputs_epi_label_preserved_when_present():
@@ -650,26 +651,28 @@ def test_hawkesbury_missing_raster_dir_returns_null_gracefully(monkeypatch):
     assert result.get("hawkesbury_flood_level_100aep") is None
 
 
-def test_hawkesbury_result_has_all_nine_aep_fields(monkeypatch):
-    """null_result always contains all 9 AEP keys (contract stability).
+def test_hawkesbury_result_has_all_nine_aep_fields_with_none_values(monkeypatch):
+    """null_result always contains all 9 AEP keys with None values (contract stability).
     rasterio is required for raster tests — skip if unavailable."""
     import services.flood_truth as ft
     pytest.importorskip("rasterio")
     monkeypatch.setitem(ft.FLOOD_STUDIES["hawkesbury"], "dir", "/nonexistent")
     result = ft._query_flood_study_rasters(-33.6134, 150.8130)
     for k in ft.HAWKESBURY_AEP_FILES:
-        assert f"hawkesbury_flood_level_{k}" in result
+        key = f"hawkesbury_flood_level_{k}"
+        assert key in result, f"Missing key: {key}"
+        assert result[key] is None, f"{key} should be None for nonexistent dir, got {result[key]}"
 
 
-def test_signal_hawk_100aep_present_counts_as_in_overlay():
-    """hawkesbury_flood_level_100aep not None → at least 'low' signal."""
+def test_signal_hawk_100aep_present_counts_as_low():
+    """hawkesbury_flood_level_100aep not None → 'low' (single overlay source, no corroboration)."""
     out = _outputs(
         epi_flood_class="none",
         ses_in_flood_planning_area=None,
         hawkesbury_flood_level_100aep=17.34,
     )
     signal = _compute_flood_signal(out)
-    assert signal in ("low", "moderate", "elevated"), f"Expected overlay signal, got {signal!r}"
+    assert signal == "low"
 
 
 def test_signal_all_three_overlay_sources_absent_returns_unavailable():
@@ -704,3 +707,76 @@ def test_normalise_outputs_hawkesbury_absent_returns_none():
     out = _normalise_outputs(raw)
     assert out.get("hawkesbury_flood_level_100aep") is None
     assert out.get("hawkesbury_flood_study") is None
+
+
+# ---------------------------------------------------------------------------
+# Compound risk layers
+# ---------------------------------------------------------------------------
+
+def test_compound_risk_notes_empty_when_no_layers():
+    assert _build_compound_risk_notes([]) == []
+
+
+def test_compound_risk_notes_heritage():
+    notes = _build_compound_risk_notes(["heritage"])
+    assert len(notes) == 1
+    assert "heritage" in notes[0].lower()
+
+
+def test_compound_risk_notes_all_four():
+    notes = _build_compound_risk_notes(["heritage", "riparian", "wetlands", "landslide"])
+    assert len(notes) == 4
+
+
+def test_compound_risk_notes_unknown_layer_skipped():
+    notes = _build_compound_risk_notes(["heritage", "unknown_layer"])
+    assert len(notes) == 1
+
+
+def test_normalise_outputs_includes_compound_fields():
+    """Compound risk keys present in normalised output even when all None."""
+    raw = {"epi_flood_class": "none", "data_currency": "2025-01-01"}
+    out = _normalise_outputs(raw)
+    assert out["compound_risk_layers"] == []
+    assert out["compound_risk_notes"] == []
+    for lt in _COMPOUND_LAYER_TYPES:
+        assert f"compound_{lt}" in out
+
+
+def test_normalise_outputs_compound_heritage_populated():
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "data_currency": "2025-01-01",
+        "compound_heritage": "Heritage Conservation Area",
+    }
+    out = _normalise_outputs(raw)
+    assert out["compound_heritage"] == "Heritage Conservation Area"
+    assert "heritage" in out["compound_risk_layers"]
+    assert len(out["compound_risk_notes"]) == 1
+
+
+def test_normalise_outputs_compound_multiple_layers():
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "data_currency": "2025-01-01",
+        "compound_heritage": "HCA",
+        "compound_landslide": "Landslide Susceptibility",
+    }
+    out = _normalise_outputs(raw)
+    assert set(out["compound_risk_layers"]) == {"heritage", "landslide"}
+    assert len(out["compound_risk_notes"]) == 2
+
+
+def test_data_sources_includes_compound_when_present():
+    raw = _outputs(compound_heritage="HCA")
+    sources = _build_data_sources(raw)
+    assert any("heritage" in s.lower() for s in sources)
+    # Must be a specific source string, not just any match
+    heritage_sources = [s for s in sources if "heritage" in s.lower()]
+    assert len(heritage_sources) == 1
+
+
+def test_data_sources_excludes_compound_when_absent():
+    raw = _outputs()
+    sources = _build_data_sources(raw)
+    assert not any("heritage" in s for s in sources)

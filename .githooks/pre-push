@@ -73,5 +73,69 @@ if [ $LANG_RESULT -ne 0 ]; then
   exit 1
 fi
 
+# ── 5. Mutation testing (opt-in) ─────────────────────────────────────────────
+# Set MUTMUT=1 to enable. Runs mutmut on changed services/*.py files only.
+# Reports mutation score but does NOT block push (informational).
+# Requires: WSL with /tmp/mutmut_venv (see scripts/run_mutation_tests.sh)
+
+if [ "${MUTMUT:-0}" = "1" ]; then
+  echo ""
+  echo "=== [5/5] Mutation testing (changed service files) ==="
+  MUTMUT_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
+  CHANGED_SERVICES=$(git diff --name-only "$MUTMUT_BASE"...HEAD -- 'services/*.py' 2>/dev/null | grep -v '__pycache__')
+
+  if [ -z "$CHANGED_SERVICES" ]; then
+    echo "No changed services/*.py files — skipping mutation testing."
+  else
+    # Map service files to their test files
+    for svc in $CHANGED_SERVICES; do
+      base=$(basename "$svc" .py)
+      test_file="tests/test_${base}.py"
+      # Some test files use different naming
+      if [ ! -f "$test_file" ]; then
+        test_file="tests/test_${base}_logic.py"
+      fi
+      if [ ! -f "$test_file" ]; then
+        echo "  No test file found for $svc — skipping"
+        continue
+      fi
+
+      echo "  Mutating: $svc (tests: $test_file)"
+
+      # Run via WSL if available, otherwise skip
+      if command -v wsl >/dev/null 2>&1 && wsl test -x /tmp/mutmut_venv/bin/mutmut 2>/dev/null; then
+        WSL_PATH=$(wsl wslpath -u "$(pwd)" 2>/dev/null || echo "/mnt/$(pwd | sed 's|\\|/|g; s|^\([A-Z]\):|/\L\1|')")
+        wsl bash -c "
+          cd '$WSL_PATH' &&
+          rm -f .mutmut-cache &&
+          /tmp/mutmut_venv/bin/mutmut run \
+            --paths-to-mutate='$svc' \
+            --tests-dir=tests/ \
+            --runner='/tmp/mutmut_venv/bin/python -m pytest $test_file -x -q --no-header --tb=no' \
+            --no-progress 2>&1 | tail -1 &&
+          /tmp/mutmut_venv/bin/python3 -c \"
+import sqlite3
+conn = sqlite3.connect('.mutmut-cache')
+c = conn.cursor()
+c.execute('SELECT status, count(*) FROM Mutant GROUP BY status')
+r = dict(c.fetchall())
+t = sum(r.values())
+k = r.get('ok_killed', 0)
+s = r.get('bad_survived', 0)
+pct = k/t*100 if t else 0
+print(f'  Mutation score: {k}/{t} killed ({pct:.0f}%)')
+conn.close()
+\"
+        " 2>&1
+      else
+        echo "  WSL/mutmut not available — skipping. See scripts/run_mutation_tests.sh for setup."
+      fi
+    done
+  fi
+else
+  echo ""
+  echo "Tip: set MUTMUT=1 to run mutation testing on changed service files."
+fi
+
 echo ""
 echo "All pre-push checks passed."
