@@ -46,6 +46,7 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/assessment`,       priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/conveyancing`, priority: 0.9, changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/climate-risk`,    priority: 0.9,  changeFrequency: 'monthly', lastModified: now },
+        { url: `${base}/glossary`,        priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/tools/zoning-check`,      priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/subdivision-check`, priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/check`,           priority: 0.85, changeFrequency: 'weekly',  lastModified: now },

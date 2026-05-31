@@ -61,6 +61,10 @@ Historical development applications and site activity.
 https://plotdetect.com.au/conveyancing/{council-slug}
 Planning certificates, overlay checks, and due diligence data.
 
+### Planning Glossary
+https://plotdetect.com.au/glossary
+465+ regulatory definitions from NSW LEPs, DCPs, and SEPPs. Includes FSR, GFA, CDC, setbacks, landscaped area, site coverage, secondary dwelling, and more — each with source document and clause citation.
+
 ### Free Tools
 https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
 https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker
