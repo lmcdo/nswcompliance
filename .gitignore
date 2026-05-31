@@ -320,6 +320,7 @@ nul
 *.txt
 !requirements.txt
 !test-trail/*.txt
+!frontend-nextjs/public/llms.txt
 corrupted_*.txt
 filter_*.txt
 dcp_*.txt

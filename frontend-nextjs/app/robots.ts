@@ -10,6 +10,42 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/api/'],
       },
+      // Explicitly allow AI crawlers for Generative Engine Optimization
+      {
+        userAgent: 'GPTBot',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'OAI-SearchBot',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'ChatGPT-User',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'ClaudeBot',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'PerplexityBot',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'Google-Extended',
+        allow: '/',
+        disallow: ['/api/'],
+      },
+      {
+        userAgent: 'Bytespider',
+        allow: '/',
+        disallow: ['/api/'],
+      },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
   }

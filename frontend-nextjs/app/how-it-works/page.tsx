@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { HowToJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
   title: 'How It Works — PlotDetect',
@@ -125,6 +126,17 @@ export default function HowItWorksPage() {
     <main className="min-h-screen bg-white">
       <SiteNav />
 
+      <HowToJsonLd
+        name="How to check NSW planning controls and property constraints with PlotDetect"
+        description="PlotDetect queries live NSW government data sources and satellite imagery to check zoning, flood risk, bushfire status, heritage overlays, and development controls for any NSW property address."
+        steps={[
+          { name: 'Enter a NSW property address', text: 'Type any NSW address into the search bar. PlotDetect resolves it to precise lot coordinates using the NSW Planning Portal geocoder.' },
+          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, flood risk, bushfire pre-screen, planning controls, shadow analysis, solar potential, or development monitoring.' },
+          { name: 'Review live government data', text: 'Results are queried live from NSW Planning Portal, Rural Fire Service, spatial overlays, and council DCPs. Every data source is cited.' },
+          { name: 'Check spatial overlays', text: 'Heritage items, flood planning areas, bushfire-prone land, biodiversity, acid sulfate soils, and coastal zones are checked against 27 spatial layers.' },
+          { name: 'Read the limitations', text: 'Every result includes data source citations, update cadence, and limitations. Results are indicative — always verify with a qualified professional.' },
+        ]}
+      />
       <div className="max-w-3xl mx-auto px-6 py-14">
         <h1 className="text-3xl font-bold text-gray-900 mb-3">How it works</h1>
         <p className="text-gray-500 text-base mb-12 max-w-xl">

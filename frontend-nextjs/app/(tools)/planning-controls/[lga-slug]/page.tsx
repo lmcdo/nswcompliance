@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { VERIFY_LGAS, VERIFY_LGA_SLUG_MAP } from '@/lib/lga-data/verify-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
-import { BreadcrumbJsonLd } from '@/lib/json-ld'
+import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
 
@@ -122,6 +122,13 @@ export default function PlanningControlsLgaPage(
       </div>
 
       {/* Schema markup */}
+      <DatasetJsonLd
+        name={`Planning Controls — ${lga.name}, NSW`}
+        description={`SEPP, LEP, and DCP planning controls for ${lga.name} including setbacks, height limits, floor space ratio, parking rates, landscaping, and heritage constraints. Sourced from NSW Planning Portal and council DCPs.`}
+        url={`/planning-controls/${lga.slug}`}
+        spatialCoverage={`${lga.name}, New South Wales, Australia`}
+        variableMeasured={['Setbacks', 'Height of buildings', 'Floor space ratio', 'Minimum lot size', 'Parking rates', 'Landscaping area', 'Heritage items']}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

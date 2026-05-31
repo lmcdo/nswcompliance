@@ -1,0 +1,98 @@
+{
+  "tier": "standard",
+  "justification": "8 files changed across robots.txt, sitemap restructure, JSON-LD schemas, and LGA page markup. All changes are static metadata/markup — no data queries, no user input processing, no runtime logic changes — but file count requires Standard tier.",
+  "commit_hash": "8c760022",
+  "files": [
+    "frontend-nextjs/app/robots.ts",
+    "frontend-nextjs/app/sitemap.ts",
+    "frontend-nextjs/lib/json-ld.tsx",
+    "frontend-nextjs/public/llms.txt",
+    "frontend-nextjs/app/(tools)/granny-flat/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/flood-risk/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/bushfire/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    ".gitignore"
+  ],
+  "pre_impl": {
+    "existing_data": "No data interaction — all changes are static markup/metadata. LGA pages already had FAQPage + BreadcrumbList JSON-LD; this adds Dataset schema alongside.",
+    "assumption_mismatch": "ariScenarios field on FloodLgaData is string[] — checked .length > 0. If array shape changes, worst case is Dataset description omits ARI mention.",
+    "new_vs_existing": "N/A — no database operations. Schema additions are additive to existing page output."
+  },
+  "functions": [
+    {
+      "name": "DatasetJsonLd",
+      "file_line": "json-ld.tsx:141",
+      "input": "name, description, url, spatialCoverage (string), variableMeasured (optional string[])",
+      "output": "script tag with JSON-LD Dataset markup",
+      "if_none": "variableMeasured is optional — omitted from output if undefined via conditional spread"
+    },
+    {
+      "name": "DefinedTermJsonLd",
+      "file_line": "json-ld.tsx:185",
+      "input": "name, description, url (string), inDefinedTermSet (optional string)",
+      "output": "script tag with JSON-LD DefinedTerm markup",
+      "if_none": "inDefinedTermSet is optional — omitted from output if undefined"
+    },
+    {
+      "name": "HowToJsonLd",
+      "file_line": "json-ld.tsx:220",
+      "input": "name, description (string), steps ({name, text}[])",
+      "output": "script tag with JSON-LD HowTo markup",
+      "if_none": "steps is required — empty array produces empty step list in valid JSON-LD"
+    },
+    {
+      "name": "DefinedTermSetJsonLd",
+      "file_line": "json-ld.tsx:251",
+      "input": "name, description, url (string), termCount (optional number)",
+      "output": "script tag with JSON-LD DefinedTermSet markup",
+      "if_none": "termCount is optional — omitted from output if falsy"
+    },
+    {
+      "name": "generateSitemaps",
+      "file_line": "sitemap.ts:17",
+      "input": "no input — static array of 8 sitemap IDs",
+      "output": "array of 8 {id: number} objects for sitemap index",
+      "if_none": "N/A — static return, no external data dependency"
+    }
+  ],
+  "values": [
+    {
+      "value": "lga.ariScenarios",
+      "read_at": "flood-risk/[lga-slug]/page.tsx:106",
+      "nullable": "no — always string[] per FloodLgaData interface",
+      "guard_at": ".length > 0 check",
+      "if_missing": "Dataset description omits ARI mention, variableMeasured omits ARI entry — still valid"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Sitemap returns empty for unknown id",
+      "what_happens": "Valid empty XML sitemap returned — no user-visible impact, search engines see zero URLs for that segment",
+      "mitigated": true,
+      "how": "sitemap.ts:default — returns empty array which Next.js renders as valid empty sitemap XML. Only IDs 0-7 are registered in generateSitemaps().",
+      "repro": "Visit /sitemap/99.xml — expect valid XML with zero URLs"
+    },
+    {
+      "scenario": "JSON-LD schema has malformed data from LGA props",
+      "what_happens": "Invalid JSON-LD in page source — no user-visible impact, Google structured data validator would flag it",
+      "mitigated": true,
+      "how": "All LGA data is static TypeScript arrays with typed interfaces — no runtime user input reaches schema content. lga is already guarded by notFound() before schema rendering.",
+      "repro": "View page source on any LGA page, paste JSON-LD into Google Rich Results Test"
+    },
+    {
+      "scenario": "llms.txt contains stale URLs after route changes",
+      "what_happens": "AI crawlers follow dead links, get 404s — no data corruption, minor crawl waste",
+      "mitigated": false,
+      "how": "llms.txt is a static file — must be manually updated when routes change. Low risk since routes are stable.",
+      "repro": "Check each URL in llms.txt returns 200"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Check /robots.txt shows AI crawler rules, /sitemap.xml shows sitemap index with 8 entries, /llms.txt is accessible, view-source on any granny-flat LGA page shows Dataset JSON-LD"
+  }
+}
