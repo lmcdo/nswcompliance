@@ -27,6 +27,10 @@ xmltodict==0.14.2
 # Climate risk raster — NARCliM NetCDF sampling
 netCDF4==1.7.2
 
+# Whitebox — DEM/terrain/hydrology analysis (484 tools, MIT, Rust binary)
+# Watershed delineation, pluvial flood susceptibility, shadow/solar from DSM, slope/aspect
+whitebox
+
 # Conveyancing PDF generation
 reportlab==4.4.3
 
