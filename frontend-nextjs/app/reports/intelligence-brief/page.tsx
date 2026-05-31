@@ -517,6 +517,7 @@ function IntelligenceBriefInner() {
           const reader = resp.body!.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
+          const seenIds = new Set<string>();
 
           while (true) {
             const { done, value } = await reader.read();
@@ -528,11 +529,19 @@ function IntelligenceBriefInner() {
 
             for (const chunk of chunks) {
               if (!chunk.trim()) continue;
+
+              // Extract SSE id and data fields
+              let eventId = '';
               let eventData = '';
               for (const line of chunk.split('\n')) {
+                if (line.startsWith('id:')) eventId = line.slice(3).trim();
                 if (line.startsWith('data:')) eventData += line.slice(5).trim();
               }
               if (!eventData) continue;
+
+              // Deduplicate — Trigger.dev replays all events on each connection
+              if (eventId && seenIds.has(eventId)) continue;
+              if (eventId) seenIds.add(eventId);
 
               try {
                 let parsed = JSON.parse(eventData);
