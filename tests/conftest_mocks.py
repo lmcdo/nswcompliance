@@ -69,3 +69,4 @@ except ImportError:
     np_mock.ndarray = type("ndarray", (), {})
     sys.modules["numpy"] = np_mock
     sys.modules["numpy.typing"] = MagicMock()
+    sys.modules["numpy.random"] = MagicMock()

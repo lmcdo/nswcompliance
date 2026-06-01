@@ -1,0 +1,24 @@
+{
+  "_comment": "Mutation test count baselines. Pre-push hook rejects if any service drops below its floor. Update floors upward as coverage improves — never lower them.",
+  "flood_truth": {
+    "test_files": [
+      "tests/test_flood_truth.py",
+      "tests/test_flood_normalise.py",
+      "tests/test_flood_compute.py",
+      "tests/test_flood_queries.py"
+    ],
+    "min_test_count": 470
+  },
+  "threat_radar": {
+    "test_files": [
+      "tests/test_threat_radar_mutation.py"
+    ],
+    "min_test_count": 50
+  },
+  "granny_flat": {
+    "test_files": [
+      "tests/test_granny_flat_mutation.py"
+    ],
+    "min_test_count": 140
+  }
+}

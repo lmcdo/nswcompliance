@@ -1093,12 +1093,22 @@ def _fetch_flood(
     address: str, lat: float, lng: float,
     prop_id: Optional[str], report_id: str,
 ) -> dict:
-    """Multi-source flood analysis."""
+    """Multi-source flood analysis.
+
+    Raises RuntimeError if run_flood returns refused=True (too few sources).
+    _safe_call catches this and wraps it as NOT_AVAILABLE DataField, which
+    feeds into check_minimum_viable naturally.
+    """
     req = FloodRequest(
         address=address, lat=lat, lng=lng,
         prop_id=prop_id, report_id=report_id,
     )
-    return run_flood(req)
+    result = run_flood(req)
+    if result.get("refused"):
+        raise RuntimeError(
+            f"Flood screening refused: {result.get('reason', 'insufficient sources')}"
+        )
+    return result
 
 
 def _fetch_climate_risk(lat: float, lng: float) -> dict:

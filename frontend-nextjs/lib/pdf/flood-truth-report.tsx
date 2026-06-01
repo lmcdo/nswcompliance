@@ -89,7 +89,10 @@ export interface FloodReportData {
   flood_studies?: FloodStudyResult[];
   s1_gap_warning: string | null;
   data_currency: string;
-  flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
+  flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
+  refused?: boolean;
+  refused_reason?: string;
+  data_gaps?: Array<{ source: string; reason: string }>;
   confidence: string;
   data_sources: string[];
   warnings?: string[];
@@ -124,7 +127,8 @@ const SIGNAL_META: Record<string, { label: string; sublabel: string; bg: string;
   none:     { label: 'No flood indicators detected', sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records', bg: GREEN_LIGHT, color: GREEN },
   low:      { label: 'Low flood signal', sublabel: 'Property is within a statutory flood zone — no observed inundation events on record', bg: AMBER_LIGHT, color: AMBER },
   moderate: { label: 'Moderate flood signal', sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing', bg: ORANGE_LIGHT, color: ORANGE },
-  elevated: { label: 'Elevated flood signal', sublabel: 'Multiple independent sources indicate flood exposure — professional flood study advisable', bg: RED_LIGHT, color: RED },
+  elevated:    { label: 'Elevated flood signal', sublabel: 'Multiple independent sources indicate flood exposure — professional flood study advisable', bg: RED_LIGHT, color: RED },
+  unavailable: { label: 'Flood data unavailable', sublabel: 'Statutory flood data could not be retrieved for this address — this does not indicate absence of flood risk', bg: GRAY_100, color: GRAY_500 },
 };
 
 const EPI_CLASS_META: Record<string, { label: string }> = {
@@ -422,6 +426,54 @@ function buildPaidFindings(data: FloodReportData): Finding[] {
 // ---------------------------------------------------------------------------
 
 export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
+  // --- Refused: too few data sources for reliable screening ---
+  if (data.refused) {
+    return (
+      <Document title={`Flood Screening — ${data.address}`} author="PlotDetect">
+        <Page size="A4" style={s.page}>
+          <LogoRow logo_b64={data.logo_b64} />
+          <Text style={s.h1}>Flood Data Summary</Text>
+          <Text style={s.subhead}>{data.address}</Text>
+          <Text style={s.dateText}>Report date: {data.run_date}</Text>
+
+          <View style={{ backgroundColor: GRAY_100, borderRadius: 4, padding: 12, marginTop: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 12, fontWeight: 700, color: GRAY_900, marginBottom: 4 }}>
+              Flood screening could not be generated
+            </Text>
+            <Text style={{ fontSize: 9, color: GRAY_700, lineHeight: 1.5 }}>
+              {data.refused_reason || 'Too few data sources responded to produce a flood screening. Absence of data does not indicate absence of flood risk.'}
+            </Text>
+          </View>
+
+          {(data.data_gaps ?? []).length > 0 && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ fontSize: 10, fontWeight: 700, color: GRAY_900, marginBottom: 6 }}>
+                Data sources that could not be reached
+              </Text>
+              {(data.data_gaps ?? []).map((gap, i) => (
+                <View key={i} style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 8, color: GRAY_500, width: 8 }}>{'\u2022'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 8, fontWeight: 600, color: GRAY_700 }}>{gap.source}</Text>
+                    <Text style={{ fontSize: 7.5, color: GRAY_500, lineHeight: 1.4 }}>{gap.reason}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fcd34d' }}>
+            <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
+              Contact the local council for a Section 10.7 planning certificate (~$53) or request a flood enquiry letter to confirm the flood status of this property.
+            </Text>
+          </View>
+
+          <PlotDetectFooter page={1} total={1} />
+        </Page>
+      </Document>
+    );
+  }
+
   const signal     = data.flood_signal ?? 'none';
   const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.none;
   const isPaid     = data.is_paid === true;
@@ -464,8 +516,26 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           {signalMeta.sublabel}
         </Text>
 
+        {/* Data gaps — shown when signal is unavailable */}
+        {signal === 'unavailable' && (data.data_gaps ?? []).length > 0 && (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 9, fontWeight: 700, color: GRAY_900, marginBottom: 4 }}>
+              Why this data is unavailable
+            </Text>
+            {(data.data_gaps ?? []).map((gap, i) => (
+              <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
+                <Text style={{ fontSize: 7.5, color: GRAY_500, width: 8 }}>{'\u2022'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 7.5, fontWeight: 600, color: GRAY_700 }}>{gap.source}</Text>
+                  <Text style={{ fontSize: 7, color: GRAY_500, lineHeight: 1.4 }}>{gap.reason}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Insurance implication — always shown */}
-        {signal !== 'none' && (
+        {signal !== 'none' && signal !== 'unavailable' && (
           <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fcd34d' }}>
             <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
               Properties with flood indicators typically attract higher building and contents insurance premiums. Request a flood loading quote from your insurer before proceeding with purchase or finance.
@@ -492,7 +562,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         {/* Warnings */}
         {(data.s1_gap_warning || (data.warnings && data.warnings.length > 0)) && (
           <View style={{ marginTop: 8 }}>
-            {data.s1_gap_warning && (
+            {!!data.s1_gap_warning && (
               <View style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, paddingVertical: 6, paddingHorizontal: 8, marginBottom: 4, borderRadius: 2 }}>
                 <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{data.s1_gap_warning}</Text>
               </View>

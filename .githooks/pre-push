@@ -4,6 +4,7 @@
 #
 # Checks:
 #   1. Python unit tests (369+ tests)
+#   1b. Mutation test count baselines (ratchet — counts never drop)
 #   2. Frontend Jest tests (615+ tests)
 #   3. QA report validation (structure, AST grounding, depth)
 #   4. Liability language scan on changed user-facing files
@@ -14,6 +15,23 @@ set -e
 
 echo "=== [1/4] Running Python unit tests ==="
 python -m pytest tests/ -x -q --tb=short 2>&1
+echo ""
+
+# ── 1b. Mutation test count baselines ────────────────────────────────────────
+
+echo "=== [1b/5] Checking mutation test baselines ==="
+if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
+  python scripts/check_test_baselines.py mutation-baselines.json 2>&1
+  BASELINE_RESULT=$?
+  if [ $BASELINE_RESULT -ne 0 ]; then
+    echo ""
+    echo "Mutation test baseline check FAILED. Push blocked."
+    echo "If tests were intentionally removed, update mutation-baselines.json."
+    exit 1
+  fi
+else
+  echo "  Skipping (no mutation-baselines.json or check script)."
+fi
 echo ""
 
 # ── 2. Frontend Jest tests ──────────────────────────────────────────────────

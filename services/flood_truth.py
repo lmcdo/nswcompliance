@@ -61,7 +61,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Literal, Optional, Union
 
 import psycopg2
 import psycopg2.extras
@@ -72,8 +72,30 @@ from pyproj import Transformer
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 
+# icontract: runtime postcondition assertions for liability-critical functions.
+# Gracefully degrade if not installed (production may not have it yet).
+try:
+    import icontract
+except ImportError:
+    # Provide no-op decorators so the module loads without icontract
+    class _FakeIcontract:
+        @staticmethod
+        def ensure(condition, description="", **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+        @staticmethod
+        def require(condition, description="", **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+    icontract = _FakeIcontract()  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
+
+# Canonical signal enum — used by icontract postconditions AND Hypothesis invariants.
+_VALID_FLOOD_SIGNALS = {"none", "low", "moderate", "elevated", "unavailable"}
 
 PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
 S1_COLLECTION = "sentinel-1-rtc"
@@ -1063,11 +1085,6 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         logger.warning(f"DEM identify: {e}")
         return {"ground_elevation_m_ahd": None}
 
-
-# ---------------------------------------------------------------------------
-# Confidence + data source helpers
-# ---------------------------------------------------------------------------
-
 def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
@@ -1139,6 +1156,10 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     return "none"
 
 
+@icontract.ensure(
+    lambda result: result in {"low", "medium", "high"},
+    description="Confidence must be low/medium/high — invalid value breaks frontend badge rendering.",
+)
 def _compute_confidence(internal_outputs: dict) -> str:
     """
     high   — EPI/SES overlay + EMS + JRC/WOfS + BOM gauge + ≥1 SAR season
@@ -1224,6 +1245,124 @@ def _build_data_sources(internal_outputs: dict) -> list:
     return sources
 
 
+# ---------------------------------------------------------------------------
+# Data gap disclosure + minimum viable screening
+# ---------------------------------------------------------------------------
+
+_MIN_SOURCES_FOR_SCREENING = 3  # of 9 — refuse if fewer respond
+
+_SOURCE_AVAILABILITY_CHECKS: list[tuple[str, object]] = [
+    ("epi",      lambda d: d.get("epi_flood_class") not in (None, "none")),
+    ("ems",      lambda d: d.get("ems_flood_detected") is not None),
+    ("jrc",      lambda d: d.get("jrc_water_occurrence_pct") is not None),
+    ("wofs",     lambda d: d.get("dea_wofs_frequency_pct") is not None),
+    ("bom",      lambda d: d.get("bom_gauge_name") is not None),
+    ("ses",      lambda d: d.get("ses_in_flood_planning_area") is not None),
+    ("studies",  lambda d: bool(d.get("flood_studies"))),
+    ("dem",      lambda d: d.get("ground_elevation_m_ahd") is not None),
+    ("compound", lambda d: any(
+        v is not None
+        for k, v in d.items()
+        if k.startswith("compound_") and k not in ("compound_risk_layers", "compound_risk_notes")
+    )),
+]
+
+
+@icontract.ensure(
+    lambda result: 0 <= result <= 9,
+    description="Source count must be 0-9 — out-of-range would corrupt refuse-to-serve threshold check.",
+)
+def _count_available_sources(internal_outputs: dict) -> int:
+    """Count how many of the 9 data source groups returned usable data."""
+    return sum(1 for _, check in _SOURCE_AVAILABILITY_CHECKS if check(internal_outputs))
+
+
+@icontract.ensure(
+    lambda result: all(
+        isinstance(g, dict) and "source" in g and "reason" in g
+        and isinstance(g["source"], str) and isinstance(g["reason"], str)  # noqa: bracket-access
+        and len(g["reason"]) > 10  # noqa: bracket-access
+        for g in result
+    ),
+    description="Every gap must have non-empty 'source' and 'reason' strings — malformed gaps render blank in PDF.",
+)
+def _build_data_gap_reasons(internal_outputs: dict) -> list[dict]:
+    """Return structured reasons explaining WHY each data source is unavailable.
+
+    Reasons cite regulatory context (EPI revocation, council IP restrictions)
+    rather than generic "no data" messages. This is a defensibility requirement:
+    the user and their solicitor need to understand the structural data gap,
+    not just see a blank field.
+    """
+    gaps: list[dict] = []
+
+    # EPI — two distinct failure modes
+    epi_class = internal_outputs.get("epi_flood_class")
+    data_currency = internal_outputs.get("data_currency")
+    ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
+    has_studies = bool(internal_outputs.get("flood_studies"))
+
+    if data_currency == "query_failed":
+        gaps.append({
+            "source": "NSW EPI Flood Overlay",
+            "reason": "NSW EPI flood mapping service did not respond.",
+        })
+    elif epi_class is None:
+        # EPI query returned no data at all (source never responded or not queried)
+        gaps.append({
+            "source": "NSW EPI Flood Overlay",
+            "reason": "NSW EPI flood mapping data not available for this address.",
+        })
+    elif epi_class == "none" and not ses_queried and not has_studies:
+        # Only show revocation reason when EPI returned "none" AND no local
+        # flood study data exists — mirrors _compute_flood_signal line 1113-1117.
+        # If SES or study data exists, the "none" from EPI is genuinely "not in
+        # a flood zone", not "no coverage".
+        gaps.append({
+            "source": "NSW EPI Flood Overlay",
+            "reason": (
+                "NSW EPI flood mapping does not cover this council area. "
+                "Most councils revoked EPI flood layers in late 2023 "
+                "(SEPP Resilience and Hazards 2021 Flood Planning Amendment)."
+            ),
+        })
+
+    # Remaining sources — simple null checks
+    _SIMPLE_GAPS = [
+        ("ses_in_flood_planning_area", "Council flood study",
+         "No council flood study data available for this area."),
+        ("ground_elevation_m_ahd", "NSW 5m DEM",
+         "Ground elevation data not available from NSW 5m DEM service."),
+        ("jrc_water_occurrence_pct", "JRC Global Surface Water",
+         "JRC Global Surface Water data not available for this location."),
+        ("dea_wofs_frequency_pct", "DEA Water Observations",
+         "DEA Water Observations data not available for this location."),
+        ("bom_gauge_name", "BOM flood gauge",
+         "No BOM flood gauge within 75km of this address."),
+        ("ems_flood_detected", "Copernicus EMS",
+         "Copernicus EMS flood activation data not available."),
+    ]
+    for field, source, reason in _SIMPLE_GAPS:
+        if internal_outputs.get(field) is None:
+            gaps.append({"source": source, "reason": reason})
+
+    # Flood study rasters
+    if not has_studies:
+        gaps.append({
+            "source": "Council flood study rasters",
+            "reason": (
+                "No council-published flood study raster data available. "
+                "Some councils restrict access citing consultant intellectual property."
+            ),
+        })
+
+    return gaps
+
+
+@icontract.ensure(
+    lambda result: result.get("flood_signal") in _VALID_FLOOD_SIGNALS,
+    description="Normalised output must contain a valid flood_signal — frontend renders badge from this value.",
+)
 def _normalise_outputs(raw: dict) -> dict:
     """Convert stored/internal outputs to frontend FloodOutputs contract."""
     # EPI — handle old bool format from early writes
@@ -1371,11 +1510,80 @@ class FloodBatchRequest(BaseModel):
     wet_season_year: int   # e.g. 2022 = Nov 2021 - Mar 2022
 
 
+class DataGap(BaseModel):
+    source: str
+    reason: str
+
+
+class FloodOutputs(BaseModel):
+    """Validated output contract — must match frontend FloodReportData interface."""
+    model_config = {"extra": "allow"}  # allow hawkesbury_flood_level_* dynamic keys
+
+    epi_flood_class: Optional[str] = None
+    epi_flood_label: Optional[str] = None
+    sar_flood_detected: Optional[bool] = None
+    sar_confidence: Optional[str] = None
+    sar_analysis_date: Optional[str] = None
+    ems_flood_detected: Optional[bool] = None
+    ems_activations: Optional[list] = None
+    jrc_water_occurrence_pct: Optional[float] = None
+    jrc_data_year: Optional[int] = None
+    dea_wofs_frequency_pct: Optional[float] = None
+    ses_in_flood_planning_area: Optional[bool] = None
+    ses_flood_class: Optional[str] = None
+    ses_study_name: Optional[str] = None
+    ses_study_lga: Optional[str] = None
+    bom_gauge_name: Optional[str] = None
+    bom_gauge_distance_km: Optional[float] = None
+    bom_last_major_flood_date: Optional[str] = None
+    bom_last_major_flood_peak_m: Optional[float] = None
+    bom_flood_history: list = []
+    flood_study_name: Optional[str] = None
+    flood_study_date: Optional[str] = None
+    s1_gap_warning: Optional[str] = None
+    data_currency: str = "unknown"
+    flood_signal: Literal["none", "low", "moderate", "elevated", "unavailable"]
+    ground_elevation_m_ahd: Optional[float] = None
+    in_100yr_flood_zone: bool = False
+    flood_studies: list = []
+    compound_heritage: Optional[bool] = None
+    compound_riparian: Optional[bool] = None
+    compound_wetlands: Optional[bool] = None
+    compound_landslide: Optional[bool] = None
+    compound_risk_layers: list = []
+    compound_risk_notes: list = []
+
+
+class FloodResponse(BaseModel):
+    """Runtime-validated flood screening response."""
+    address: str
+    lat: float
+    lng: float
+    run_date: str
+    outputs: FloodOutputs
+    confidence: str
+    data_sources: list[str]
+    data_gaps: list[DataGap] = []
+
+
+class FloodRefusedResponse(BaseModel):
+    """Returned when too few data sources responded to produce a screening."""
+    address: str
+    lat: float
+    lng: float
+    run_date: str
+    refused: Literal[True]
+    reason: str
+    available_count: int
+    total_count: int
+    data_gaps: list[DataGap] = []
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/flood")
+@router.post("/flood", response_model=Union[FloodResponse, FloodRefusedResponse])
 def run_flood(req: FloodRequest):
     """
     On-demand flood analysis.
@@ -1416,6 +1624,7 @@ def run_flood(req: FloodRequest):
                 "outputs": _normalise_outputs(cached["outputs"] or {}),
                 "confidence": cached["confidence"],
                 "data_sources": cached["data_sources"] or _DATA_SOURCES_BASE,
+                "data_gaps": _build_data_gap_reasons(cached.get("outputs") or {}),
             }
     except Exception as e:
         logger.warning(f"Cache lookup: {e}")
@@ -1479,6 +1688,32 @@ def run_flood(req: FloodRequest):
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
     inputs = {"lat": req.lat, "lng": req.lng}
+
+    # --- Minimum viable screening: refuse if too few sources responded ---
+    available_count = _count_available_sources(internal_outputs)
+    if available_count < _MIN_SOURCES_FOR_SCREENING:
+        # Still write report for audit trail
+        try:
+            _write_report(
+                req.report_id, req.address, req.lat, req.lng,
+                req.prop_id, inputs, internal_outputs,
+            )
+        except Exception as e:
+            logger.error(f"Flood report DB write failed (refused): {e}")
+        return {
+            "address": req.address, "lat": req.lat, "lng": req.lng,
+            "run_date": date.today().isoformat(),
+            "refused": True,
+            "reason": (
+                f"Insufficient flood data sources to produce a screening. "
+                f"{available_count} of {len(_SOURCE_AVAILABILITY_CHECKS)} sources "
+                f"returned data (minimum {_MIN_SOURCES_FOR_SCREENING} required)."
+            ),
+            "available_count": available_count,
+            "total_count": len(_SOURCE_AVAILABILITY_CHECKS),
+            "data_gaps": _build_data_gap_reasons(internal_outputs),
+        }
+
     try:
         _write_report(
             req.report_id, req.address, req.lat, req.lng,
@@ -1517,6 +1752,7 @@ def run_flood(req: FloodRequest):
         "outputs": _normalise_outputs(internal_outputs),
         "confidence": _compute_confidence(internal_outputs),
         "data_sources": _build_data_sources(internal_outputs),
+        "data_gaps": _build_data_gap_reasons(internal_outputs),
     }
 
 
