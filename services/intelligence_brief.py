@@ -51,6 +51,7 @@ class BriefConfig:
     timeout_shadow: float = 15.0
     timeout_satellite: float = 45.0
     timeout_strata: float = 5.0
+    timeout_terrain: float = 30.0
 
     # NSW bounding box (WGS84)
     nsw_lat_min: float = -37.5
@@ -596,6 +597,10 @@ class SatelliteData(BaseModel):
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="pre_da_history", reason="Premium data not requested",
     )
+    terrain: DataField[Optional[TerrainAnalysisDetail]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="terrain_analysis", reason="Satellite data not requested",
+    )
 
 
 class CompoundConstraint(BaseModel):
@@ -881,6 +886,11 @@ try:
     from pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
 except ImportError:
     from services.pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
+
+try:
+    from terrain_analysis import run_terrain_analysis, TerrainAnalysisDetail  # noqa: E402
+except ImportError:
+    from services.terrain_analysis import run_terrain_analysis, TerrainAnalysisDetail  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -1286,6 +1296,22 @@ def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDet
     )
 
 
+def _fetch_terrain(lat: float, lng: float) -> dict:
+    """Run terrain analysis (slope, aspect, elevation, ruggedness)."""
+    return run_terrain_analysis(lat, lng, include_flood=False)
+
+
+def _build_terrain_detail(terrain_raw: Optional[dict]) -> Optional[TerrainAnalysisDetail]:
+    """Extract TerrainAnalysisDetail from raw terrain output."""
+    if not terrain_raw:
+        return None
+    terrain_fields = terrain_raw.get("terrain") or terrain_raw
+    return TerrainAnalysisDetail(**{
+        k: v for k, v in terrain_fields.items()
+        if k in TerrainAnalysisDetail.model_fields
+    })
+
+
 def _build_satellite_data(
     bushfire_raw: Optional[dict],
     flood_raw: Optional[dict],
@@ -1295,6 +1321,7 @@ def _build_satellite_data(
     uhi_raw: Optional[dict] = None,
     arr_raw: Optional[dict] = None,
     firms_raw: Optional[dict] = None,
+    terrain_raw: Optional[dict] = None,
 ) -> SatelliteData:
     """Assemble satellite pipeline results into SatelliteData model."""
     today = date.today().isoformat()
@@ -1304,6 +1331,7 @@ def _build_satellite_data(
     climate_profile = _build_climate_disclosure(climate_raw, uhi_raw, arr_raw, firms_raw)
     gf_detail = _build_granny_flat_detail(granny_flat_raw)
     pre_da_detail = _build_pre_da_detail(pre_da_raw)
+    terrain_detail = _build_terrain_detail(terrain_raw)
 
     return SatelliteData(
         bushfire=DataField(
@@ -1340,6 +1368,13 @@ def _build_satellite_data(
             source="pre_da_history",
             as_at=today,
             reason=None if pre_da_detail else "Pre-DA history not requested or failed",
+        ),
+        terrain=DataField(
+            value=terrain_detail,
+            confidence=ConfidenceLevel.ESTIMATED if terrain_detail else ConfidenceLevel.NOT_AVAILABLE,
+            source="terrain_analysis",
+            as_at=today,
+            reason=None if terrain_detail else "Terrain analysis failed or not requested",
         ),
     )
 
@@ -1930,6 +1965,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         f_uhi = None
         f_arr = None
         f_firms = None
+        f_terrain = None
 
         if req.include_satellite:
             f_bushfire = pool.submit(
@@ -1963,6 +1999,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             f_firms = pool.submit(
                 _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
                 "nasa_firms", ConfidenceLevel.ESTIMATED,
+            )
+            f_terrain = pool.submit(
+                _safe_call, lambda: _fetch_terrain(lat, lng),
+                "terrain_analysis", ConfidenceLevel.ESTIMATED,
             )
 
         # ── 3b. Await planning_portal → derive dependents → submit them ────
@@ -2059,6 +2099,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
             arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
             firms_df = _timed_result(f_firms, 18, "nasa_firms", timings)
+            terrain_df = _timed_result(f_terrain, CONFIG.timeout_terrain, "terrain_analysis", timings) if f_terrain else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="terrain_analysis", reason="Terrain analysis not requested",
+            )
             pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_satellite + 5, "pre_da_history", timings) if f_pre_da else DataField(
                 value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
                 source="pre_da_history", reason="Premium data not requested",
@@ -2072,6 +2116,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             uhi_raw = uhi_df.value
             arr_raw = arr_df.value
             firms_raw = firms_df.value
+            terrain_raw = terrain_df.value
 
     # ── 4. Extract remaining results ────────────────────────────────────
     overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
@@ -2097,6 +2142,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         satellite_data = _build_satellite_data(
             bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
             uhi_raw=uhi_raw, arr_raw=arr_raw, firms_raw=firms_raw,
+            terrain_raw=terrain_raw,
         )
 
     # ── 6. Strata classification ─────────────────────────────────────────
@@ -2299,7 +2345,7 @@ def _generate_brief_sse(
     # Count expected sections for progress tracking
     base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
     dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
-    satellite_sections = 5 if req.include_satellite else 0
+    satellite_sections = 6 if req.include_satellite else 0
     total_sections = base_sections + satellite_sections + 3  # +3 for dependent (max estimate)
 
     import uuid
@@ -2355,7 +2401,7 @@ def _generate_brief_sse(
 
         # Satellite — fire immediately if requested
         f_bushfire = f_flood_sat = f_climate = f_granny = None
-        f_uhi = f_arr = f_firms = None
+        f_uhi = f_arr = f_firms = f_terrain = None
 
         if req.include_satellite:
             f_bushfire = pool.submit(
@@ -2389,6 +2435,10 @@ def _generate_brief_sse(
             f_firms = pool.submit(
                 _safe_call, lambda: _fetch_firms_hotspots(lat, lng),
                 "nasa_firms", ConfidenceLevel.ESTIMATED,
+            )
+            f_terrain = pool.submit(
+                _safe_call, lambda: _fetch_terrain(lat, lng),
+                "terrain_analysis", ConfidenceLevel.ESTIMATED,
             )
 
         # ── Yield economics first (fast, independent) ────────────────────
@@ -2668,6 +2718,24 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
+            terrain_df = _timed_result(f_terrain, CONFIG.timeout_terrain, "terrain_analysis", timings) if f_terrain else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="terrain_analysis", reason="Terrain analysis not requested",
+            )
+            terrain_raw = terrain_df.value
+            terrain_detail = _build_terrain_detail(terrain_raw)
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.terrain",
+                "data": DataField(
+                    value=terrain_detail,
+                    confidence=ConfidenceLevel.ESTIMATED if terrain_detail else ConfidenceLevel.NOT_AVAILABLE,
+                    source="terrain_analysis", as_at=today,
+                    reason=None if terrain_detail else "Terrain analysis failed or not requested",
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
     # ── Final assembly: compound constraints, gaps, confidence ───────────
     # Build satellite_data for compound constraint evaluation
     satellite_data = None
@@ -2675,6 +2743,7 @@ def _generate_brief_sse(
         satellite_data = _build_satellite_data(
             bushfire_raw, flood_raw_sat, climate_raw, granny_flat_raw, pre_da_raw,
             uhi_raw=uhi_raw, arr_raw=arr_raw, firms_raw=firms_raw,
+            terrain_raw=terrain_raw,
         )
 
     # Assemble the full brief for confidence/gaps computation

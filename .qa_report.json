@@ -1,155 +1,98 @@
 {
-  "tier": "critical",
-  "justification": "PDF report generation (legal document handed to solicitors), flood signal computation affecting insurance/purchase decisions, new refuse-to-serve gate, Pydantic response_model validation — all liability-bearing paths",
-  "commit_hash": "5880fcf7",
+  "tier": "standard",
+  "justification": "New satellite pipeline (terrain analysis) + integration into intelligence brief. No DB writes, no user-facing text beyond disclaimer. 7 files changed/added.",
+  "commit_hash": "c0dfe029",
   "files": [
-    "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
-    "services/flood_truth.py",
+    "services/dem_service.py",
+    "services/terrain_analysis.py",
     "services/intelligence_brief.py",
-    "tests/test_flood_truth.py",
-    ".githooks/pre-push",
-    "mutation-baselines.json",
-    "scripts/check_test_baselines.py"
+    "services/compliance_api_server.py",
+    "tests/conftest_mocks.py",
+    "tests/test_dem_service.py",
+    "tests/test_terrain_analysis.py"
   ],
   "pre_impl": {
-    "existing_data": "flood_truth_reports table (cached results via _check_cache). SIGNAL_META dict in PDF renderer. FloodReportData TS interface. _SOURCE_AVAILABILITY_CHECKS list against internal_outputs dict keys.",
-    "assumption_mismatch": "Old cached reports have no data_gaps field — _build_data_gap_reasons handles gracefully via .get() on all keys. Old cached reports with 0 sources were already served — cache hit path does NOT re-check refused (deliberate: they passed threshold when originally computed).",
-    "new_vs_existing": "New fields (data_gaps, refused) only appear in fresh API responses and cache hits going forward. Old cached rows return data_gaps computed from their existing outputs dict. Frontend must handle data_gaps being absent (optional field in interface).",
-    "external_source_error": "9 data sources each have independent failure modes — all return None on error. _count_available_sources counts non-None responses. _build_data_gap_reasons explains WHY each is None. Pydantic FloodOutputs allows None for all fields except flood_signal (Literal enum).",
-    "frontend_type": "Yes — FloodReportData interface updated: flood_signal union type gains 'unavailable', new optional fields refused/refused_reason/data_gaps. SIGNAL_META gains 'unavailable' entry with gray styling.",
-    "user_failure_mode": "If refuse-to-serve fires: user sees single-page 'Flood Screening Could Not Be Generated' PDF with data gap explanations and council contact info. If unavailable signal: gray banner 'Flood data unavailable' with sublabel. Both are VISIBLE failures — the fix eliminates the previous SILENT failure (green 'No flood indicators')."
+    "existing_data": "No DB interaction. DEM data fetched from GA WCS + SIX Maps (HTTP). Intelligence brief adds terrain as optional satellite section.",
+    "assumption_mismatch": "If GA WCS endpoint changes format or goes offline: SIX Maps fallback. If both fail: terrain section shows NOT_AVAILABLE, brief continues.",
+    "new_vs_existing": "New pipeline only. Existing intelligence briefs unaffected unless include_satellite=true.",
+    "external_source_error": "N/A (Standard tier)",
+    "frontend_type": "N/A (Standard tier)",
+    "user_failure_mode": "N/A (Standard tier)"
   },
   "functions": [
     {
-      "name": "_count_available_sources",
-      "file_line": "services/flood_truth.py:1275",
-      "input": "dict internal_outputs containing keys from all 9 flood query functions",
-      "output": "int between 0 and 9 — count of sources that returned usable non-None data",
-      "if_none": "Empty dict input returns 0, which triggers the refuse-to-serve threshold gate"
+      "name": "fetch_dem_region",
+      "file_line": "dem_service.py:199",
+      "input": "float lat, float lng, float buffer_m — from intelligence brief orchestrator",
+      "output": "io.BytesIO containing GeoTIFF — consumed by terrain_analysis._run_terrain_chain",
+      "if_none": "Raises RuntimeError, caught by _safe_call in intelligence_brief"
     },
     {
-      "name": "_build_data_gap_reasons",
-      "file_line": "services/flood_truth.py:1289",
-      "input": "dict internal_outputs containing keys from all 9 flood query functions",
-      "output": "list[dict] with source and reason string keys — fed to API response and PDF renderer",
-      "if_none": "Empty dict input returns full gap list with all sources flagged as unavailable"
+      "name": "run_terrain_analysis",
+      "file_line": "terrain_analysis.py:391",
+      "input": "float lat, float lng, bool include_flood — from _fetch_terrain in intelligence_brief",
+      "output": "dict with terrain/flood_susceptibility keys — consumed by _build_terrain_detail",
+      "if_none": "Returns TerrainResponse with error field set; _build_terrain_detail returns None"
     },
     {
-      "name": "run_flood",
-      "file_line": "services/flood_truth.py:1587",
-      "input": "FloodRequest pydantic model with address, lat, lng, prop_id, report_id fields",
-      "output": "Union[FloodResponse, FloodRefusedResponse] dict validated by Pydantic response_model on the FastAPI decorator",
-      "if_none": "FloodRequest fields are all required — Pydantic rejects None at request boundary"
+      "name": "_build_terrain_detail",
+      "file_line": "intelligence_brief.py:1294",
+      "input": "Optional[dict] terrain_raw — from _timed_result",
+      "output": "Optional[TerrainAnalysisDetail] — fed into SatelliteData.terrain DataField",
+      "if_none": "Returns None when input is None, DataField confidence=NOT_AVAILABLE in SatelliteData"
     },
     {
-      "name": "FloodTruthReportDocument",
-      "file_line": "frontend-nextjs/lib/pdf/flood-truth-report.tsx:430",
-      "input": "FloodReportData props object with optional refused boolean and data_gaps array fields",
-      "output": "Single-page PDF with gray 'could not be generated' banner plus data_gaps bullet list",
-      "if_none": "refused_reason defaults to generic 'too few sources' message; data_gaps defaults to empty array"
-    },
-    {
-      "name": "_fetch_flood",
-      "file_line": "services/intelligence_brief.py:1092",
-      "input": "FloodRequest constructed from intelligence brief orchestrator address and coordinates",
-      "output": "dict flood result on success, or raises RuntimeError if run_flood returned refused",
-      "if_none": "_safe_call wrapper catches RuntimeError and converts to DataField with NOT_AVAILABLE confidence"
+      "name": "_fetch_terrain",
+      "file_line": "intelligence_brief.py:1290",
+      "input": "float lat, float lng — from orchestrator",
+      "output": "dict — consumed by _build_terrain_detail",
+      "if_none": "Raises caught by _safe_call then DataField(NOT_AVAILABLE)"
     }
   ],
   "values": [
     {
-      "value": "flood_signal",
-      "read_at": "flood-truth-report.tsx:425",
-      "nullable": "yes (null from API)",
-      "guard_at": "flood-truth-report.tsx:425 — data.flood_signal ?? 'none'",
-      "if_missing": "Falls back to 'none' which has green SIGNAL_META entry"
+      "value": "terrain_raw",
+      "read_at": "intelligence_brief.py:2108 (sync), 2720 (SSE)",
+      "nullable": "yes",
+      "guard_at": "intelligence_brief.py:1294 — _build_terrain_detail checks if not terrain_raw",
+      "if_missing": "Terrain section shows NOT_AVAILABLE in brief, no crash"
     },
     {
-      "value": "data.refused",
-      "read_at": "flood-truth-report.tsx:430",
-      "nullable": "yes (undefined when not refused)",
-      "guard_at": "flood-truth-report.tsx:430 — if (data.refused) early return",
-      "if_missing": "undefined is falsy — continues to normal render path (correct)"
-    },
-    {
-      "value": "data.data_gaps",
-      "read_at": "flood-truth-report.tsx:460",
-      "nullable": "yes (undefined for old responses)",
-      "guard_at": "flood-truth-report.tsx:460 — data.data_gaps?.map(...)",
-      "if_missing": "Optional chaining — no gaps rendered, not misleading"
-    },
-    {
-      "value": "epi_flood_class",
-      "read_at": "services/flood_truth.py:1266",
-      "nullable": "yes (None when EPI service unreachable)",
-      "guard_at": "services/flood_truth.py:1271-1288 — three-way check: query_failed vs None vs 'none'",
-      "if_missing": "None triggers 'EPI data not available' gap reason"
-    },
-    {
-      "value": "available_count",
-      "read_at": "services/flood_truth.py:1500",
-      "nullable": "no (always int from _count_available_sources)",
-      "guard_at": "services/flood_truth.py:1501 — compared against _MIN_SOURCES_FOR_SCREENING",
-      "if_missing": "N/A — always computed"
+      "value": "terrain_detail",
+      "read_at": "intelligence_brief.py:1321 (in _build_satellite_data)",
+      "nullable": "yes",
+      "guard_at": "intelligence_brief.py:1378 — confidence=NOT_AVAILABLE if terrain_detail is None",
+      "if_missing": "SatelliteData.terrain DataField has NOT_AVAILABLE confidence"
     }
   ],
-  "queries": [
-    {
-      "purpose": "Check flood report cache",
-      "file_line": "services/flood_truth.py:1420",
-      "where_clause": "WHERE prop_id = $1 AND address = $2 AND run_date > now() - interval '30 days'",
-      "if_zero": "Proceeds to fresh computation — normal path",
-      "if_wrong": "Returns stale cached result — mitigated by 30-day TTL"
-    },
-    {
-      "purpose": "Write flood report for audit trail (refused path)",
-      "file_line": "services/flood_truth.py:1505",
-      "where_clause": "INSERT — no WHERE",
-      "if_zero": "N/A for INSERT",
-      "if_wrong": "Report written with incomplete data — this IS the audit trail. Wrapped in try/except."
-    }
-  ],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "Old cached report has 0 sources but cache hit path serves it without refuse-to-serve check",
-      "what_happens": "User gets a low-confidence report that today's code would refuse to serve",
+      "scenario": "GA WCS returns valid HTTP 200 but with XML error body (not TIFF)",
+      "what_happens": "_is_tiff check fails, falls back to SIX Maps, terrain still works",
       "mitigated": true,
-      "how": "Deliberate: cache hit preserves original decision. 30-day TTL bounds the risk window. As caches expire they recompute with refuse-to-serve.",
-      "repro": "Pre-populate flood_truth_reports with null outputs + recent run_date, then call run_flood"
+      "how": "dem_service.py:111,134 — _is_tiff validates magic bytes before accepting response",
+      "repro": "monkeypatch requests.get to return XML with 200 status — assert fallback triggers"
     },
     {
-      "scenario": "Frontend receives 'refused' but PDF generation code path doesn't check it — crashes or renders empty",
-      "what_happens": "PDF render error or blank page served to user with no flood information",
+      "scenario": "whitebox tool returns non-zero exit code (corrupt DEM, missing binary)",
+      "what_happens": "_run_tool raises RuntimeError, caught by try/except in run_terrain_analysis — TerrainResponse.error set",
       "mitigated": true,
-      "how": "flood-truth-report.tsx:430 — early return renders single-page refused document before any field access",
-      "repro": "Call PDF render with {refused: true, refused_reason: 'test', data_gaps: [{source: 'X', reason: 'Y'}]}"
+      "how": "terrain_analysis.py:197-202 — _run_tool checks return code; terrain_analysis.py:260 catches and returns error response",
+      "repro": "Mock whitebox slope to return 1 — assert RuntimeError raised"
     },
     {
-      "scenario": "EPI returns class='none' for genuinely non-flood address but gap says 'EPI revoked'",
-      "what_happens": "User told coverage doesn't exist when actually their address is just clear",
+      "scenario": "DEM raster has all NoData values (ocean, outside coverage)",
+      "what_happens": "numpy operations on all-NaN array: nanmean=NaN, min/max=NaN — terrain detail has None values",
       "mitigated": true,
-      "how": "flood_truth.py:1276 — revocation reason only fires when epi_class=='none' AND no SES AND no studies",
-      "repro": "_build_data_gap_reasons({epi_flood_class: 'none', ses_in_flood_planning_area: False, flood_studies: [{'x':1}]}) -> no EPI gap"
-    },
-    {
-      "scenario": "Pydantic FloodOutputs rejects valid response because new field added to _normalise_outputs but not to model",
-      "what_happens": "500 error on every flood request — complete service outage for all users",
-      "mitigated": true,
-      "how": "FloodOutputs uses model_config={'extra':'allow'}. Contract snapshot test catches key changes.",
-      "repro": "Add key to _normalise_outputs without FloodOutputs update -> test_normalise_outputs_contract_keys fails"
-    },
-    {
-      "scenario": "Intelligence brief silently omits flood data when refused — user thinks flood is clear",
-      "what_happens": "Brief served without flood section, user assumes no risk",
-      "mitigated": true,
-      "how": "intelligence_brief.py:1095 — _fetch_flood raises RuntimeError on refused. _safe_call wraps as NOT_AVAILABLE. check_minimum_viable may 503 the brief.",
-      "repro": "Stub all flood sources to None -> call intelligence brief -> refused propagation"
+      "how": "terrain_analysis.py uses np.nanmean/nanmin/nanmax which return NaN for all-NaN input; _aspect_to_compass handles NaN as flat",
+      "repro": "Would need rasterio integration test with synthetic all-nodata TIFF"
     }
   ],
   "post_merge": {
-    "db_reset": "No — no schema changes",
-    "secrets": "No — no new env vars",
-    "other_repo": "No — FloodTool.tsx already handles unavailable",
-    "manual_verify": "Yes — generate PDF with flood_signal='unavailable' and verify gray banner, not green"
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "POST /pipeline/terrain-analysis with Sydney coordinates to verify live DEM fetch"
   }
 }
