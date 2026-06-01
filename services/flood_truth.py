@@ -192,7 +192,7 @@ _FLOOD_STUDIES_BASE = os.path.join(os.path.dirname(__file__), "..", "data", "flo
 
 FLOOD_STUDIES: dict[str, dict] = {
     "hawkesbury": {
-        "XXnameXX": "Hawkesbury FRMSP 2025",
+        "name": "Hawkesbury FRMSP 2025",
         "source": "NSW Reconstruction Authority",
         "dir": os.environ.get(
             "HAWKESBURY_RASTER_DIR",

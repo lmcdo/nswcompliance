@@ -2015,13 +2015,13 @@ def test_db_contract_pydantic_validates_normalised():
 # ===========================================================================
 
 def test_flood_studies_dict_has_name_key():
-    """Every FLOOD_STUDIES entry must have a name key (either 'name' or legacy 'XXnameXX').
+    """Every FLOOD_STUDIES entry must have a name key (either 'name' or legacy 'name').
     Mutant #12: key rename would break study identification in _query_flood_study_rasters."""
     from services.flood_truth import FLOOD_STUDIES
     for study_key, study in FLOOD_STUDIES.items():
-        has_name = "name" in study or "XXnameXX" in study
+        has_name = "name" in study or "name" in study
         assert has_name, f"FLOOD_STUDIES['{study_key}'] missing name key"
-        name_val = study.get("name") or study.get("XXnameXX")
+        name_val = study.get("name") or study.get("name")
         assert isinstance(name_val, str) and len(name_val) > 0
 
 
@@ -2029,7 +2029,7 @@ def test_flood_studies_hawkesbury_values_exact():
     """Hawkesbury FLOOD_STUDIES values must match — mutant #13 changes values."""
     from services.flood_truth import FLOOD_STUDIES
     hawk = FLOOD_STUDIES["hawkesbury"]
-    name_val = hawk.get("name") or hawk.get("XXnameXX")
+    name_val = hawk.get("name") or hawk.get("name")
     assert name_val == "Hawkesbury FRMSP 2025"
     assert hawk["source"] == "NSW Reconstruction Authority"
 
