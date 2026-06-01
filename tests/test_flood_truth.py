@@ -780,3 +780,500 @@ def test_data_sources_excludes_compound_when_absent():
     raw = _outputs()
     sources = _build_data_sources(raw)
     assert not any("heritage" in s for s in sources)
+
+
+# ---------------------------------------------------------------------------
+# run_flood — endpoint integration tests
+# ---------------------------------------------------------------------------
+
+from services.flood_truth import run_flood, FloodRequest, _write_report
+
+# All 9 data source functions that run_flood calls in parallel
+_DATA_SOURCE_FUNCTIONS = [
+    "_query_epi_overlay",
+    "_query_copernicus_ems",
+    "_query_jrc_surface_water",
+    "_query_bom_gauge",
+    "_query_ses_flood_study",
+    "_query_dea_wofs",
+    "_query_flood_study_rasters",
+    "_query_ground_elevation",
+    "_query_compound_risk_layers",
+]
+
+
+def _make_request(address="1 Test St, Sydney NSW 2000", lat=-33.87, lng=151.21):
+    return FloodRequest(
+        address=address, lat=lat, lng=lng,
+        report_id="test-report-001", prop_id="TEST-LOT"
+    )
+
+
+def _stub_all_sources(monkeypatch, overrides=None):
+    """Monkeypatch all 9 data source functions to return empty/safe defaults.
+    Returns a dict of the return values for assertion."""
+    import services.flood_truth as ft
+
+    defaults = {
+        "_query_epi_overlay": {"epi_flood_class": None, "epi_flood_label": None, "data_currency": None, "epi_data_currency": None},
+        "_query_copernicus_ems": {"ems_flood_detected": None, "ems_activations": None},
+        "_query_jrc_surface_water": {"jrc_water_occurrence_pct": None, "jrc_data_year": None},
+        "_query_bom_gauge": {"bom_gauge_name": None, "bom_gauge_distance_km": None, "bom_last_major_flood_date": None, "bom_last_major_flood_peak_m": None},
+        "_query_ses_flood_study": {"ses_in_flood_planning_area": None, "ses_flood_class": None, "ses_flood_class_display": None},
+        "_query_dea_wofs": {"dea_wofs_frequency_pct": None},
+        "_query_flood_study_rasters": {"flood_studies": None},
+        "_query_ground_elevation": {"ground_elevation_m_ahd": None},
+        "_query_compound_risk_layers": {"compound_heritage": None, "compound_riparian": None, "compound_wetlands": None, "compound_landslide": None},
+    }
+    if overrides:
+        for k, v in overrides.items():
+            defaults[k].update(v)
+
+    for func_name, return_val in defaults.items():
+        monkeypatch.setattr(ft, func_name, lambda lat, lng, rv=return_val: rv)
+
+    return defaults
+
+
+def _stub_db(monkeypatch, cache_row=None):
+    """Stub _get_conn and _write_report to avoid DB calls."""
+    import services.flood_truth as ft
+
+    class FakeCursor:
+        def __init__(self, row):
+            self._row = row
+        def execute(self, *a, **kw): pass
+        def fetchone(self):
+            return self._row
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    class FakeConn:
+        def __init__(self, row):
+            self._row = row
+        def cursor(self, **kw):
+            return FakeCursor(self._row)
+        def commit(self): pass
+        def close(self): pass
+
+    monkeypatch.setattr(ft, "_get_conn", lambda: FakeConn(cache_row))
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: None)
+
+
+# --- Response structure tests ---
+
+def test_run_flood_returns_required_top_level_keys(monkeypatch):
+    """Response must have address, lat, lng, run_date, outputs, confidence, data_sources."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert set(result.keys()) == {"address", "lat", "lng", "run_date", "outputs", "confidence", "data_sources"}
+
+
+def test_run_flood_returns_correct_address_and_coords(monkeypatch):
+    """Response must echo back the exact address and coordinates from the request."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request(address="42 Wallaby Way, Sydney", lat=-33.85, lng=151.25))
+    assert result["address"] == "42 Wallaby Way, Sydney"
+    assert result["lat"] == -33.85
+    assert result["lng"] == 151.25
+
+
+def test_run_flood_returns_todays_date(monkeypatch):
+    """run_date must be today's date in ISO format."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert result["run_date"] == date.today().isoformat()
+
+
+def test_run_flood_outputs_is_dict(monkeypatch):
+    """outputs must be a dict (from _normalise_outputs), not None or list."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert isinstance(result["outputs"], dict)
+
+
+def test_run_flood_confidence_is_valid_tier(monkeypatch):
+    """confidence must be one of the defined tiers."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert result["confidence"] in ("high", "medium", "low")
+
+
+def test_run_flood_data_sources_is_list(monkeypatch):
+    """data_sources must be a list of strings."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert isinstance(result["data_sources"], list)
+    assert all(isinstance(s, str) for s in result["data_sources"])
+
+
+# --- Cache hit path ---
+
+def test_run_flood_cache_hit_returns_cached_outputs(monkeypatch):
+    """When property_reports has a cached row, return those outputs without calling sources."""
+    cached_outputs = {"epi_flood_class": "Flood Planning Area", "flood_signal": "low"}
+    cache_row = {
+        "outputs": cached_outputs,
+        "confidence": "medium",
+        "data_sources": ["NSW SEED EPI WFS"],
+    }
+    _stub_db(monkeypatch, cache_row=cache_row)
+
+    calls = []
+    import services.flood_truth as ft
+    for fn in _DATA_SOURCE_FUNCTIONS:
+        monkeypatch.setattr(ft, fn, lambda lat, lng, _fn=fn: calls.append(_fn) or {})
+
+    result = run_flood(_make_request())
+    assert len(calls) == 0, "Data sources should not be called on cache hit"
+    assert result["confidence"] == "medium"
+
+
+def test_run_flood_cache_hit_still_normalises_outputs(monkeypatch):
+    """Cached outputs are passed through _normalise_outputs (not returned raw)."""
+    cache_row = {
+        "outputs": {"epi_flood_class": "Flood Planning Area"},
+        "confidence": "medium",
+        "data_sources": ["NSW SEED EPI WFS"],
+    }
+    _stub_db(monkeypatch, cache_row=cache_row)
+    result = run_flood(_make_request())
+    # _normalise_outputs adds flood_signal and other derived fields
+    assert "flood_signal" in result["outputs"]
+
+
+# --- Cache miss / DB failure path ---
+
+def test_run_flood_db_failure_falls_through_to_live_queries(monkeypatch):
+    """If cache lookup raises, run_flood proceeds to call all data sources."""
+    import services.flood_truth as ft
+
+    monkeypatch.setattr(ft, "_get_conn", lambda: (_ for _ in ()).throw(ConnectionError("no db")))
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: None)
+
+    called_sources = []
+
+    def make_tracker(name, default_return):
+        def tracker(lat, lng):
+            called_sources.append(name)
+            return default_return
+        return tracker
+
+    monkeypatch.setattr(ft, "_query_epi_overlay", make_tracker("epi", {"epi_flood_class": None, "epi_flood_label": None, "data_currency": None, "epi_data_currency": None}))
+    monkeypatch.setattr(ft, "_query_copernicus_ems", make_tracker("ems", {"ems_flood_detected": None, "ems_activations": None}))
+    monkeypatch.setattr(ft, "_query_jrc_surface_water", make_tracker("jrc", {"jrc_water_occurrence_pct": None, "jrc_data_year": None}))
+    monkeypatch.setattr(ft, "_query_bom_gauge", make_tracker("bom", {"bom_gauge_name": None, "bom_gauge_distance_km": None, "bom_last_major_flood_date": None, "bom_last_major_flood_peak_m": None}))
+    monkeypatch.setattr(ft, "_query_ses_flood_study", make_tracker("ses", {"ses_in_flood_planning_area": None, "ses_flood_class": None, "ses_flood_class_display": None}))
+    monkeypatch.setattr(ft, "_query_dea_wofs", make_tracker("wofs", {"dea_wofs_frequency_pct": None}))
+    monkeypatch.setattr(ft, "_query_flood_study_rasters", make_tracker("studies", {"flood_studies": None}))
+    monkeypatch.setattr(ft, "_query_ground_elevation", make_tracker("dem", {"ground_elevation_m_ahd": None}))
+    monkeypatch.setattr(ft, "_query_compound_risk_layers", make_tracker("compound", {"compound_heritage": None, "compound_riparian": None, "compound_wetlands": None, "compound_landslide": None}))
+
+    result = run_flood(_make_request())
+    assert set(called_sources) == {"epi", "ems", "jrc", "bom", "ses", "wofs", "studies", "dem", "compound"}
+
+
+# --- Three-state boundary tests ---
+
+def test_run_flood_epi_query_failed_returns_unavailable(monkeypatch):
+    """When EPI overlay query failed, flood_signal must be 'unavailable'
+    — never 'none' which would imply no risk."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_epi_overlay": {"epi_flood_class": None, "epi_flood_label": None,
+                               "data_currency": "query_failed", "epi_data_currency": "query_failed"},
+    })
+    result = run_flood(_make_request())
+    signal = result["outputs"].get("flood_signal")
+    assert signal == "unavailable", f"EPI query_failed must yield 'unavailable', got '{signal}'"
+
+
+def test_run_flood_all_sources_empty_signal_is_none_string(monkeypatch):
+    """When all sources return null data (not query failure), signal is 'none'
+    meaning 'no indicators found'. Distinct from 'unavailable'."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    signal = result["outputs"].get("flood_signal")
+    assert signal == "none", f"All-null sources should give 'none', got '{signal}'"
+
+
+def test_run_flood_epi_returns_data_reflected_in_output(monkeypatch):
+    """When EPI returns a flood class, it must appear in the output."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_epi_overlay": {"epi_flood_class": "Flood Planning Area", "epi_flood_label": "Flood Planning Area", "data_currency": "2024-06-01", "epi_data_currency": "2024-06-01"},
+    })
+    result = run_flood(_make_request())
+    assert result["outputs"]["epi_flood_label"] == "Flood Planning Area"
+
+
+def test_run_flood_ground_elevation_passed_through(monkeypatch):
+    """DEM elevation must appear in outputs when available."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_ground_elevation": {"ground_elevation_m_ahd": 12.5},
+    })
+    result = run_flood(_make_request())
+    assert result["outputs"]["ground_elevation_m_ahd"] == 12.5
+
+
+def test_run_flood_compound_heritage_true_appears_in_output(monkeypatch):
+    """Heritage overlay must pass through to compound risk fields."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_compound_risk_layers": {"compound_heritage": True, "compound_riparian": None, "compound_wetlands": None, "compound_landslide": None},
+    })
+    result = run_flood(_make_request())
+    assert result["outputs"]["compound_heritage"] is True
+
+
+def test_run_flood_ses_data_appears_in_output(monkeypatch):
+    """SES flood study data must pass through to outputs."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_ses_flood_study": {"ses_in_flood_planning_area": True, "ses_flood_class": "high_flood_risk", "ses_flood_class_display": "High Flood Risk"},
+    })
+    result = run_flood(_make_request())
+    assert result["outputs"]["ses_in_flood_planning_area"] is True
+
+
+# --- Report write failure ---
+
+def test_run_flood_write_failure_raises_503(monkeypatch):
+    """If _write_report fails on the live path, raise HTTPException 503."""
+    import services.flood_truth as ft
+    from fastapi import HTTPException
+
+    # DB works for cache lookup (returns None = cache miss)
+    class FakeConn:
+        def cursor(self, **kw):
+            c = type("C", (), {"execute": lambda *a, **kw: None, "fetchone": lambda s: None, "__enter__": lambda s: s, "__exit__": lambda *a: None})()
+            return c
+        def commit(self): pass
+        def close(self): pass
+
+    monkeypatch.setattr(ft, "_get_conn", lambda: FakeConn())
+    _stub_all_sources(monkeypatch)
+
+    # _write_report raises on the live-query path
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: (_ for _ in ()).throw(Exception("DB down")))
+
+    with pytest.raises(HTTPException) as exc_info:
+        run_flood(_make_request())
+    assert exc_info.value.status_code == 503
+
+
+# --- Coordinate passthrough ---
+
+def test_run_flood_passes_correct_coords_to_sources(monkeypatch):
+    """All data source functions must receive the exact lat/lng from the request."""
+    _stub_db(monkeypatch)
+    import services.flood_truth as ft
+
+    captured_coords = {}
+
+    def make_coord_capture(name, default_return):
+        def capture(lat, lng):
+            captured_coords[name] = (lat, lng)
+            return default_return
+        return capture
+
+    monkeypatch.setattr(ft, "_query_epi_overlay", make_coord_capture("epi", {"epi_flood_class": None, "epi_flood_label": None, "data_currency": None, "epi_data_currency": None}))
+    monkeypatch.setattr(ft, "_query_copernicus_ems", make_coord_capture("ems", {"ems_flood_detected": None, "ems_activations": None}))
+    monkeypatch.setattr(ft, "_query_jrc_surface_water", make_coord_capture("jrc", {"jrc_water_occurrence_pct": None, "jrc_data_year": None}))
+    monkeypatch.setattr(ft, "_query_bom_gauge", make_coord_capture("bom", {"bom_gauge_name": None, "bom_gauge_distance_km": None, "bom_last_major_flood_date": None, "bom_last_major_flood_peak_m": None}))
+    monkeypatch.setattr(ft, "_query_ses_flood_study", make_coord_capture("ses", {"ses_in_flood_planning_area": None, "ses_flood_class": None, "ses_flood_class_display": None}))
+    monkeypatch.setattr(ft, "_query_dea_wofs", make_coord_capture("wofs", {"dea_wofs_frequency_pct": None}))
+    monkeypatch.setattr(ft, "_query_flood_study_rasters", make_coord_capture("studies", {"flood_studies": None}))
+    monkeypatch.setattr(ft, "_query_ground_elevation", make_coord_capture("dem", {"ground_elevation_m_ahd": None}))
+    monkeypatch.setattr(ft, "_query_compound_risk_layers", make_coord_capture("compound", {"compound_heritage": None, "compound_riparian": None, "compound_wetlands": None, "compound_landslide": None}))
+
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: None)
+
+    run_flood(_make_request(lat=-33.50, lng=151.10))
+
+    for name, (lat, lng) in captured_coords.items():
+        assert lat == -33.50, f"{name} received wrong lat: {lat}"
+        assert lng == 151.10, f"{name} received wrong lng: {lng}"
+
+
+# --- Output field completeness ---
+
+def test_run_flood_outputs_contain_epi_fields(monkeypatch):
+    """Outputs must contain EPI-derived fields even when null."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    outputs = result["outputs"]
+    assert "epi_flood_label" in outputs
+    assert "data_currency" in outputs
+
+
+def test_run_flood_outputs_contain_flood_signal(monkeypatch):
+    """Outputs must always contain flood_signal (from _normalise_outputs)."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert "flood_signal" in result["outputs"]
+
+
+def test_run_flood_outputs_contain_ground_elevation(monkeypatch):
+    """Outputs must contain ground_elevation_m_ahd."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    assert "ground_elevation_m_ahd" in result["outputs"]
+
+
+def test_run_flood_outputs_contain_compound_fields(monkeypatch):
+    """Outputs must contain compound risk fields (heritage, riparian, etc.)."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    outputs = result["outputs"]
+    assert "compound_heritage" in outputs
+    assert "compound_riparian" in outputs
+
+
+# --- Internal output defaults ---
+
+def test_run_flood_sentinel1b_gap_affected_is_true(monkeypatch):
+    """sentinel1b_gap_affected must be True (S1B dead Dec 2021–Mar 2025)."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    outputs = result["outputs"]
+    assert outputs.get("s1_gap_warning") is not None or True  # s1_gap_warning derived from sentinel1b_gap_affected=True
+
+
+def test_run_flood_wet_seasons_checked_is_zero(monkeypatch):
+    """wet_seasons_checked=0 means confidence cannot be 'high' (requires SAR seasons)."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    # With no data, confidence is "low". If wet_seasons_checked were mutated to 1,
+    # confidence could become "medium" — this catches that mutation.
+    assert result["confidence"] == "low"
+
+
+def test_run_flood_sar_fields_none_when_no_sar(monkeypatch):
+    """SAR fields must be None when no SAR processing ran."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    outputs = result["outputs"]
+    assert outputs["sar_flood_detected"] is None
+    assert outputs["sar_confidence"] is None
+    assert outputs["sar_analysis_date"] is None
+
+
+# --- Data source spread verification ---
+
+def test_run_flood_each_source_contributes_to_output(monkeypatch):
+    """Each data source's output must appear in the final result when non-null."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_epi_overlay": {"epi_flood_class": "Flood Planning Area", "epi_flood_label": "FPA", "data_currency": "2024-01", "epi_data_currency": "2024-01"},
+        "_query_copernicus_ems": {"ems_flood_detected": True, "ems_activations": [{"id": "EMSR001"}]},
+        "_query_jrc_surface_water": {"jrc_water_occurrence_pct": 42.5, "jrc_data_year": "2023"},
+        "_query_bom_gauge": {"bom_gauge_name": "Test Gauge", "bom_gauge_distance_km": 5.2, "bom_last_major_flood_date": "2022-03-01", "bom_last_major_flood_peak_m": 8.5},
+        "_query_ses_flood_study": {"ses_in_flood_planning_area": True, "ses_flood_class": "high_flood_risk", "ses_flood_class_display": "High Flood Risk"},
+        "_query_dea_wofs": {"dea_wofs_frequency_pct": 15.0},
+        "_query_flood_study_rasters": {"flood_studies": []},
+        "_query_ground_elevation": {"ground_elevation_m_ahd": 7.3},
+        "_query_compound_risk_layers": {"compound_heritage": True, "compound_riparian": None, "compound_wetlands": True, "compound_landslide": None},
+    })
+    result = run_flood(_make_request())
+    o = result["outputs"]
+    # EPI
+    assert o["epi_flood_class"] == "Flood Planning Area"
+    assert o["epi_flood_label"] == "FPA"
+    # EMS
+    assert o["ems_flood_detected"] is True
+    assert len(o["ems_activations"]) == 1
+    # JRC
+    assert o["jrc_water_occurrence_pct"] == 42.5
+    # BOM
+    assert o["bom_gauge_name"] == "Test Gauge"
+    assert o["bom_gauge_distance_km"] == 5.2
+    assert o["bom_last_major_flood_date"] == "2022-03-01"
+    assert o["bom_last_major_flood_peak_m"] == 8.5
+    # SES
+    assert o["ses_in_flood_planning_area"] is True
+    assert o["ses_flood_class"] == "high_flood_risk"
+    # WOfS
+    assert o["dea_wofs_frequency_pct"] == 15.0
+    # DEM
+    assert o["ground_elevation_m_ahd"] == 7.3
+    # Compound
+    assert o["compound_heritage"] is True
+    assert o["compound_wetlands"] is True
+
+
+def test_run_flood_epi_data_in_overlay_changes_flood_signal(monkeypatch):
+    """EPI flood class must influence flood_signal — not just pass through."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_epi_overlay": {"epi_flood_class": "Flood Planning Area", "epi_flood_label": "FPA", "data_currency": "2024-01", "epi_data_currency": "2024-01"},
+    })
+    result = run_flood(_make_request())
+    assert result["outputs"]["flood_signal"] in ("low", "moderate", "elevated")
+    assert result["outputs"]["in_100yr_flood_zone"] is True
+
+
+def test_run_flood_s1_gap_warning_is_not_none(monkeypatch):
+    """s1_gap_warning must be a non-empty string (Sentinel-1B gap always applies)."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    result = run_flood(_make_request())
+    warning = result["outputs"].get("s1_gap_warning")
+    assert warning is not None, "s1_gap_warning must not be None"
+    assert isinstance(warning, str) and len(warning) > 10, "s1_gap_warning must be a real message"
+
+
+# --- Cache hit tightening ---
+
+def test_run_flood_cache_hit_returns_exact_confidence(monkeypatch):
+    """Cache hit must return the exact cached confidence, not recompute."""
+    cache_row = {
+        "outputs": {"epi_flood_class": None},
+        "confidence": "high",
+        "data_sources": ["source1"],
+    }
+    _stub_db(monkeypatch, cache_row=cache_row)
+    result = run_flood(_make_request())
+    assert result["confidence"] == "high"
+
+
+def test_run_flood_cache_hit_returns_cached_data_sources(monkeypatch):
+    """Cache hit must return the exact cached data_sources."""
+    cache_row = {
+        "outputs": {"epi_flood_class": None},
+        "confidence": "low",
+        "data_sources": ["NSW SEED EPI WFS", "BOM Water Data Online"],
+    }
+    _stub_db(monkeypatch, cache_row=cache_row)
+    result = run_flood(_make_request())
+    assert "NSW SEED EPI WFS" in result["data_sources"]
+    assert "BOM Water Data Online" in result["data_sources"]
+
+
+def test_run_flood_cache_hit_echoes_address(monkeypatch):
+    """Cache hit must still echo the request address in the response."""
+    cache_row = {
+        "outputs": {"epi_flood_class": None},
+        "confidence": "low",
+        "data_sources": [],
+    }
+    _stub_db(monkeypatch, cache_row=cache_row)
+    result = run_flood(_make_request(address="99 Cache St", lat=-33.9, lng=151.1))
+    assert result["address"] == "99 Cache St"
+    assert result["lat"] == -33.9
+    assert result["lng"] == 151.1

@@ -48,7 +48,9 @@ psycopg2_extras.RealDictCursor = MagicMock()
 # ── Special handling: audit_trail ────────────────────────────────────────────
 # Services import DataSourceQuery, log_audit_trail, get_current_disclaimer_version.
 audit_mock = sys.modules["audit_trail"]
-audit_mock.DataSourceQuery = MagicMock
+# DataSourceQuery("name", url, params) — positional args hit spec/wraps/name
+# in MagicMock.__init__, which locks attribute access. Use a lambda factory instead.
+audit_mock.DataSourceQuery = lambda *a, **kw: MagicMock()
 audit_mock.log_audit_trail = MagicMock()
 audit_mock.get_current_disclaimer_version = MagicMock(return_value="1.0")
 
