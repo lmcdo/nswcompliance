@@ -1,5 +1,9 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Shell scripts must use LF, even on Windows
+*.sh text eol=lf
+.githooks/* text eol=lf
+
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
