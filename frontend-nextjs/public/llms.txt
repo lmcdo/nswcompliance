@@ -69,6 +69,10 @@ https://plotdetect.com.au/glossary
 https://plotdetect.com.au/planning-standards
 Numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Design Guide. Height limits, lot sizes, floor area, site coverage, parking, setbacks, and ADG design criteria — grouped by development type with clause references to NSW Legislation.
 
+### Open Data
+https://plotdetect.com.au/open-data
+Catalogue of 5 structured NSW planning datasets available on PlotDetect: secondary dwelling statistics (102 councils), regulatory definitions (465+), heritage conservation areas (2,039), SEPP Housing numeric standards (56), and DCP provisions (10,008 actionable). Includes record counts, currency dates, source citations, and data caveats.
+
 ### Free Tools
 https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
 https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker

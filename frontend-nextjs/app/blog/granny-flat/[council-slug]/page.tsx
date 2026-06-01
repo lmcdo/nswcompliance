@@ -283,6 +283,29 @@ export default function CouncilGrannyFlatStatsPage({
         </p>
       </div>
 
+      {/* Quick answer — structured for AI extraction */}
+      <section className="mb-10 rounded-2xl border border-teal-200 bg-teal-50/30 p-6">
+        <h2 className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-2">
+          Quick answer
+        </h2>
+        <p className="text-sm text-slate-800 leading-relaxed">
+          {stats.shortName} has received {stats.totalApplications} secondary dwelling
+          applications since {stats.earliestDate?.slice(0, 4) ?? '2021'}.
+          {stats.cdcRatioPct != null && stats.cdcRatioPct > 0 && (
+            <> {stats.cdcRatioPct}% used the CDC pathway.</>
+          )}
+          {stats.cdcMedianDays != null && (
+            <> Median CDC processing time is {stats.cdcMedianDays} days.</>
+          )}
+          {stats.cdcMedianCost != null && (
+            <> Median self-reported CDC build cost is {formatCost(stats.cdcMedianCost)}.</>
+          )}
+          {' '}Under SEPP Housing 2021, secondary dwellings are permitted on lots
+          of at least 450 m{'\u00B2'} in R1, R2, R3, and RU5 zones.
+          {' '}Source: NSW Planning Portal open data as of {DATA_AS_OF}.
+        </p>
+      </section>
+
       {/* TOC */}
       <nav className="mb-10 rounded-2xl border border-slate-200 p-6">
         <p className="text-sm font-semibold text-slate-900 mb-3">In this article</p>
