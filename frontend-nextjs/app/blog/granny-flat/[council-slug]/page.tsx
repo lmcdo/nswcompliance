@@ -56,19 +56,19 @@ export function generateMetadata({
 /* ------------------------------------------------------------------ */
 
 function formatCost(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `$${Math.round(value / 1_000)}K`
   return `$${value.toLocaleString()}`
 }
 
 function formatDays(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   return `${value} days`
 }
 
 function formatPct(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   return `${value}%`
 }
 
@@ -110,7 +110,7 @@ function StatCard({ label, value, note }: { label: string; value: string; note?:
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{label}</p>
       <p className="text-lg font-bold text-slate-900 mt-1">{value}</p>
-      {note && <p className="text-xs text-slate-400 mt-0.5">{note}</p>}
+      {note != null && <p className="text-xs text-slate-400 mt-0.5">{note}</p>}
     </div>
   )
 }
