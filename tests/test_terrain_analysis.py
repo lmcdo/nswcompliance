@@ -37,6 +37,7 @@ from services.terrain_analysis import (
     HAND_STREAM_THRESHOLD,
     _HAND_THRESHOLDS,
     _TWI_THRESHOLDS,
+    _GEOMORPHON_LABELS,
 )
 
 
@@ -246,21 +247,33 @@ class TestTerrainModels:
         assert d.slope_mean_deg is None
         assert d.aspect_direction is None
 
+    def test_terrain_detail_defaults_new_fields(self):
+        d = TerrainAnalysisDetail()
+        assert d.landform_class is None
+        assert d.landform_type is None
+        assert d.daylight_fraction is None
+
     def test_terrain_detail_populated(self):
         d = TerrainAnalysisDetail(
             slope_mean_deg=5.2, slope_max_deg=18.3,
             aspect_dominant_deg=180.0, aspect_direction="S",
             elevation_min_m=10.0, elevation_max_m=45.0,
             elevation_range_m=35.0, terrain_ruggedness=0.03,
+            landform_class=6, landform_type="slope",
+            daylight_fraction=0.92,
         )
         assert d.slope_mean_deg == 5.2
         assert d.aspect_direction == "S"
+        assert d.landform_class == 6
+        assert d.landform_type == "slope"
+        assert d.daylight_fraction == 0.92
 
     def test_terrain_detail_serialise(self):
-        d = TerrainAnalysisDetail(slope_mean_deg=5.2)
+        d = TerrainAnalysisDetail(slope_mean_deg=5.2, landform_type="ridge")
         data = d.model_dump()
         assert data["slope_mean_deg"] == 5.2
         assert data["slope_max_deg"] is None
+        assert data["landform_type"] == "ridge"
 
     def test_flood_disclaimer_default(self):
         f = FloodSusceptibilityDetail()
@@ -311,3 +324,43 @@ class TestConstants:
     def test_twi_thresholds_monotonic_descending(self):
         vals = [_TWI_THRESHOLDS[k] for k in ["very_high", "high", "moderate"]]
         assert vals == sorted(vals, reverse=True), "TWI thresholds must be monotonically decreasing"
+
+
+# ---------------------------------------------------------------------------
+# _GEOMORPHON_LABELS
+# ---------------------------------------------------------------------------
+
+
+class TestGeomorphonLabels:
+    def test_all_10_classes(self):
+        """All 10 geomorphon landform classes are defined."""
+        assert len(_GEOMORPHON_LABELS) == 10
+
+    def test_keys_are_1_to_10(self):
+        assert set(_GEOMORPHON_LABELS.keys()) == set(range(1, 11))
+
+    @pytest.mark.parametrize("val,label", [
+        (1, "flat"),
+        (2, "peak"),
+        (3, "ridge"),
+        (4, "shoulder"),
+        (5, "spur"),
+        (6, "slope"),
+        (7, "hollow"),
+        (8, "footslope"),
+        (9, "valley"),
+        (10, "pit"),
+    ])
+    def test_label_mapping(self, val, label):
+        assert _GEOMORPHON_LABELS[val] == label
+
+    def test_all_labels_unique(self):
+        labels = list(_GEOMORPHON_LABELS.values())
+        assert len(labels) == len(set(labels)), "Geomorphon labels must be unique"
+
+    def test_zero_not_in_labels(self):
+        """0 is NoData in geomorphons output — must not be a valid class."""
+        assert 0 not in _GEOMORPHON_LABELS
+
+    def test_11_not_in_labels(self):
+        assert 11 not in _GEOMORPHON_LABELS

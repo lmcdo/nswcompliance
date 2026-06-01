@@ -66,6 +66,20 @@ _COMPASS_DIRS = [
     (180, "S"), (225, "SW"), (270, "W"), (315, "NW"), (360, "N"),
 ]
 
+# Geomorphon landform classes (whitebox output values when forms=True)
+_GEOMORPHON_LABELS = {
+    1: "flat",
+    2: "peak",
+    3: "ridge",
+    4: "shoulder",
+    5: "spur",
+    6: "slope",
+    7: "hollow",
+    8: "footslope",
+    9: "valley",
+    10: "pit",
+}
+
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -90,6 +104,9 @@ class TerrainAnalysisDetail(BaseModel):
     elevation_range_m: Optional[float] = None
     drainage_direction: Optional[str] = None
     terrain_ruggedness: Optional[float] = None
+    landform_class: Optional[int] = None
+    landform_type: Optional[str] = None
+    daylight_fraction: Optional[float] = None
 
 
 class FloodSusceptibilityDetail(BaseModel):
@@ -223,8 +240,13 @@ def _valid_stats(arr: np.ndarray) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def _run_terrain_chain(work_dir: str) -> dict:
+def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dict:
     """Run terrain analysis tools on dem.tif in work_dir.
+
+    Args:
+        work_dir: Directory containing dem.tif
+        lat: Property latitude (for solar position in time_in_daylight)
+        lng: Property longitude (for solar position in time_in_daylight)
 
     Returns dict with TerrainAnalysisDetail field values.
     """
@@ -239,6 +261,29 @@ def _run_terrain_chain(work_dir: str) -> dict:
 
     # Aspect (degrees clockwise from north)
     _run_tool(wbt.aspect, "dem.tif", "aspect.tif", zfactor=1.0)
+
+    # Geomorphons — landform classification (10 classes)
+    # search=50 cells = 250m at 5m resolution
+    _run_tool(wbt.geomorphons, "dem.tif", "geomorphons.tif", search=50, threshold=0.0, forms=True)
+
+    # Time in daylight — annual terrain-shadow solar access (sunrise–sunset)
+    # Full year, AEST (UTC+10). Output: fraction 0.0–1.0 of daylight hours
+    # not blocked by surrounding terrain.
+    try:
+        _run_tool(
+            wbt.time_in_daylight, "dem.tif", "daylight.tif",
+            lat=lat, long=lng,
+            az_fraction=10.0,
+            max_dist=100.0,
+            utc_offset="+10:00",
+            start_day=1, end_day=365,
+            start_time="sunrise", end_time="sunset",
+        )
+        daylight_ok = True
+    except (RuntimeError, Exception) as e:
+        # time_in_daylight is slow and may fail on some DEMs — non-fatal
+        logger.warning("time_in_daylight failed: %s — skipping", e)
+        daylight_ok = False
 
     # Read and compute stats
     dem_arr = _read_band(work_dir, "dem.tif")
@@ -258,14 +303,30 @@ def _run_terrain_chain(work_dir: str) -> dict:
     else:
         dominant_aspect = float("nan")
 
-    # Drainage direction at centre pixel
+    # Centre pixel for point-specific metrics
     centre_row = dem_arr.shape[0] // 2
     centre_col = dem_arr.shape[1] // 2
+
+    # Drainage direction at centre pixel
     centre_aspect = aspect_arr[centre_row, centre_col]
     drainage_dir = _aspect_to_compass(centre_aspect) if np.isfinite(centre_aspect) else None
 
     # Terrain ruggedness — std dev of slope is a simple proxy
     ruggedness = float(np.nanstd(valid_slope)) if len(valid_slope) > 0 else None
+
+    # Geomorphon landform at centre pixel
+    geomorph_arr = _read_band(work_dir, "geomorphons.tif")
+    centre_geomorph = int(geomorph_arr[centre_row, centre_col])
+    landform_class = centre_geomorph if centre_geomorph in _GEOMORPHON_LABELS else None
+    landform_type = _GEOMORPHON_LABELS.get(centre_geomorph)
+
+    # Daylight fraction at centre pixel
+    daylight_fraction = None
+    if daylight_ok and os.path.exists(os.path.join(work_dir, "daylight.tif")):
+        daylight_arr = _read_band(work_dir, "daylight.tif")
+        centre_daylight = daylight_arr[centre_row, centre_col]
+        if np.isfinite(centre_daylight):
+            daylight_fraction = round(float(centre_daylight), 3)
 
     return {
         "slope_mean_deg": round(float(np.nanmean(valid_slope)), 2) if len(valid_slope) > 0 else None,
@@ -277,6 +338,9 @@ def _run_terrain_chain(work_dir: str) -> dict:
         "elevation_range_m": round(float(np.nanmax(valid_dem) - np.nanmin(valid_dem)), 2) if len(valid_dem) > 0 else None,
         "drainage_direction": drainage_dir,
         "terrain_ruggedness": round(float(ruggedness), 3) if ruggedness is not None else None,
+        "landform_class": landform_class,
+        "landform_type": landform_type,
+        "daylight_fraction": daylight_fraction,
     }
 
 
@@ -417,7 +481,7 @@ def run_terrain_analysis(
             dst.write(data, 1)
 
         # Terrain analysis (500m buffer)
-        result = _run_terrain_chain(work_dir)
+        result = _run_terrain_chain(work_dir, lat=lat, lng=lng)
 
         # Flood susceptibility (larger buffer for catchment context)
         if include_flood:
