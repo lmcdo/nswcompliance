@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "PDF report generation (legal document handed to solicitors), flood signal computation affecting insurance/purchase decisions, new refuse-to-serve gate, Pydantic response_model validation — all liability-bearing paths",
-  "commit_hash": "c0dfe029",
+  "commit_hash": "5880fcf7",
   "files": [
     "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
     "services/flood_truth.py",
@@ -22,21 +22,21 @@
   "functions": [
     {
       "name": "_count_available_sources",
-      "file_line": "services/flood_truth.py:1250",
+      "file_line": "services/flood_truth.py:1275",
       "input": "dict internal_outputs containing keys from all 9 flood query functions",
       "output": "int between 0 and 9 — count of sources that returned usable non-None data",
       "if_none": "Empty dict input returns 0, which triggers the refuse-to-serve threshold gate"
     },
     {
       "name": "_build_data_gap_reasons",
-      "file_line": "services/flood_truth.py:1255",
+      "file_line": "services/flood_truth.py:1289",
       "input": "dict internal_outputs containing keys from all 9 flood query functions",
       "output": "list[dict] with source and reason string keys — fed to API response and PDF renderer",
       "if_none": "Empty dict input returns full gap list with all sources flagged as unavailable"
     },
     {
       "name": "run_flood",
-      "file_line": "services/flood_truth.py:1549",
+      "file_line": "services/flood_truth.py:1587",
       "input": "FloodRequest pydantic model with address, lat, lng, prop_id, report_id fields",
       "output": "Union[FloodResponse, FloodRefusedResponse] dict validated by Pydantic response_model on the FastAPI decorator",
       "if_none": "FloodRequest fields are all required — Pydantic rejects None at request boundary"
