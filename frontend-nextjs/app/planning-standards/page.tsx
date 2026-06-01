@@ -343,7 +343,7 @@ export default async function PlanningStandardsPage() {
         Guide (March 2023). Clause references link to the NSW Legislation website.
         These are state-level standards — individual councils may have additional
         DCP controls. Values are extracted from legislative instruments and
-        cross-referenced against the NSW Planning Portal. Last verified: 2026-05-31.
+        cross-referenced against the NSW Planning Portal. Last checked: 2026-05-31.
       </p>
 
       {/* CTA */}
