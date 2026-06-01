@@ -184,6 +184,7 @@ diagnose_*.py
 /*.json
 !package.json
 !tsconfig.json
+!mutation-baselines.json
 
 # Database backups (large binary files)
 backups/
@@ -496,6 +497,7 @@ scripts/
 !scripts/insert_gap_fill_mid_volume.py
 !scripts/qa_gate.py
 !scripts/qa_report_template.json
+!scripts/check_test_baselines.py
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
 !scripts/numeric_control_review.py

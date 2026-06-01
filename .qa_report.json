@@ -1,26 +1,155 @@
 {
-  "tier": "minor",
-  "justification": "Adds .gitattributes rules to force LF line endings for *.sh and .githooks/* files. No logic changes.",
-  "commit_hash": "191f1608",
+  "tier": "critical",
+  "justification": "PDF report generation (legal document handed to solicitors), flood signal computation affecting insurance/purchase decisions, new refuse-to-serve gate, Pydantic response_model validation — all liability-bearing paths",
+  "commit_hash": "c0dfe029",
   "files": [
-    ".gitattributes"
+    "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
+    "services/flood_truth.py",
+    "services/intelligence_brief.py",
+    "tests/test_flood_truth.py",
+    ".githooks/pre-push",
+    "mutation-baselines.json",
+    "scripts/check_test_baselines.py"
   ],
-  "pre_impl": {},
-  "functions": [],
-  "external_values": [],
-  "queries": [],
+  "pre_impl": {
+    "existing_data": "flood_truth_reports table (cached results via _check_cache). SIGNAL_META dict in PDF renderer. FloodReportData TS interface. _SOURCE_AVAILABILITY_CHECKS list against internal_outputs dict keys.",
+    "assumption_mismatch": "Old cached reports have no data_gaps field — _build_data_gap_reasons handles gracefully via .get() on all keys. Old cached reports with 0 sources were already served — cache hit path does NOT re-check refused (deliberate: they passed threshold when originally computed).",
+    "new_vs_existing": "New fields (data_gaps, refused) only appear in fresh API responses and cache hits going forward. Old cached rows return data_gaps computed from their existing outputs dict. Frontend must handle data_gaps being absent (optional field in interface).",
+    "external_source_error": "9 data sources each have independent failure modes — all return None on error. _count_available_sources counts non-None responses. _build_data_gap_reasons explains WHY each is None. Pydantic FloodOutputs allows None for all fields except flood_signal (Literal enum).",
+    "frontend_type": "Yes — FloodReportData interface updated: flood_signal union type gains 'unavailable', new optional fields refused/refused_reason/data_gaps. SIGNAL_META gains 'unavailable' entry with gray styling.",
+    "user_failure_mode": "If refuse-to-serve fires: user sees single-page 'Flood Screening Could Not Be Generated' PDF with data gap explanations and council contact info. If unavailable signal: gray banner 'Flood data unavailable' with sublabel. Both are VISIBLE failures — the fix eliminates the previous SILENT failure (green 'No flood indicators')."
+  },
+  "functions": [
+    {
+      "name": "_count_available_sources",
+      "file_line": "services/flood_truth.py:1250",
+      "input": "dict internal_outputs containing keys from all 9 flood query functions",
+      "output": "int between 0 and 9 — count of sources that returned usable non-None data",
+      "if_none": "Empty dict input returns 0, which triggers the refuse-to-serve threshold gate"
+    },
+    {
+      "name": "_build_data_gap_reasons",
+      "file_line": "services/flood_truth.py:1255",
+      "input": "dict internal_outputs containing keys from all 9 flood query functions",
+      "output": "list[dict] with source and reason string keys — fed to API response and PDF renderer",
+      "if_none": "Empty dict input returns full gap list with all sources flagged as unavailable"
+    },
+    {
+      "name": "run_flood",
+      "file_line": "services/flood_truth.py:1549",
+      "input": "FloodRequest pydantic model with address, lat, lng, prop_id, report_id fields",
+      "output": "Union[FloodResponse, FloodRefusedResponse] dict validated by Pydantic response_model on the FastAPI decorator",
+      "if_none": "FloodRequest fields are all required — Pydantic rejects None at request boundary"
+    },
+    {
+      "name": "FloodTruthReportDocument",
+      "file_line": "frontend-nextjs/lib/pdf/flood-truth-report.tsx:430",
+      "input": "FloodReportData props object with optional refused boolean and data_gaps array fields",
+      "output": "Single-page PDF with gray 'could not be generated' banner plus data_gaps bullet list",
+      "if_none": "refused_reason defaults to generic 'too few sources' message; data_gaps defaults to empty array"
+    },
+    {
+      "name": "_fetch_flood",
+      "file_line": "services/intelligence_brief.py:1092",
+      "input": "FloodRequest constructed from intelligence brief orchestrator address and coordinates",
+      "output": "dict flood result on success, or raises RuntimeError if run_flood returned refused",
+      "if_none": "_safe_call wrapper catches RuntimeError and converts to DataField with NOT_AVAILABLE confidence"
+    }
+  ],
+  "values": [
+    {
+      "value": "flood_signal",
+      "read_at": "flood-truth-report.tsx:425",
+      "nullable": "yes (null from API)",
+      "guard_at": "flood-truth-report.tsx:425 — data.flood_signal ?? 'none'",
+      "if_missing": "Falls back to 'none' which has green SIGNAL_META entry"
+    },
+    {
+      "value": "data.refused",
+      "read_at": "flood-truth-report.tsx:430",
+      "nullable": "yes (undefined when not refused)",
+      "guard_at": "flood-truth-report.tsx:430 — if (data.refused) early return",
+      "if_missing": "undefined is falsy — continues to normal render path (correct)"
+    },
+    {
+      "value": "data.data_gaps",
+      "read_at": "flood-truth-report.tsx:460",
+      "nullable": "yes (undefined for old responses)",
+      "guard_at": "flood-truth-report.tsx:460 — data.data_gaps?.map(...)",
+      "if_missing": "Optional chaining — no gaps rendered, not misleading"
+    },
+    {
+      "value": "epi_flood_class",
+      "read_at": "services/flood_truth.py:1266",
+      "nullable": "yes (None when EPI service unreachable)",
+      "guard_at": "services/flood_truth.py:1271-1288 — three-way check: query_failed vs None vs 'none'",
+      "if_missing": "None triggers 'EPI data not available' gap reason"
+    },
+    {
+      "value": "available_count",
+      "read_at": "services/flood_truth.py:1500",
+      "nullable": "no (always int from _count_available_sources)",
+      "guard_at": "services/flood_truth.py:1501 — compared against _MIN_SOURCES_FOR_SCREENING",
+      "if_missing": "N/A — always computed"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Check flood report cache",
+      "file_line": "services/flood_truth.py:1420",
+      "where_clause": "WHERE prop_id = $1 AND address = $2 AND run_date > now() - interval '30 days'",
+      "if_zero": "Proceeds to fresh computation — normal path",
+      "if_wrong": "Returns stale cached result — mitigated by 30-day TTL"
+    },
+    {
+      "purpose": "Write flood report for audit trail (refused path)",
+      "file_line": "services/flood_truth.py:1505",
+      "where_clause": "INSERT — no WHERE",
+      "if_zero": "N/A for INSERT",
+      "if_wrong": "Report written with incomplete data — this IS the audit trail. Wrapped in try/except."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Git autocrlf overrides .gitattributes",
-      "what_happens": "Shell scripts still get CRLF, bash fails with $'\\r' errors",
+      "scenario": "Old cached report has 0 sources but cache hit path serves it without refuse-to-serve check",
+      "what_happens": "User gets a low-confidence report that today's code would refuse to serve",
       "mitigated": true,
-      "how": ".gitattributes eol=lf takes precedence over core.autocrlf"
+      "how": "Deliberate: cache hit preserves original decision. 30-day TTL bounds the risk window. As caches expire they recompute with refuse-to-serve.",
+      "repro": "Pre-populate flood_truth_reports with null outputs + recent run_date, then call run_flood"
+    },
+    {
+      "scenario": "Frontend receives 'refused' but PDF generation code path doesn't check it — crashes or renders empty",
+      "what_happens": "PDF render error or blank page served to user with no flood information",
+      "mitigated": true,
+      "how": "flood-truth-report.tsx:430 — early return renders single-page refused document before any field access",
+      "repro": "Call PDF render with {refused: true, refused_reason: 'test', data_gaps: [{source: 'X', reason: 'Y'}]}"
+    },
+    {
+      "scenario": "EPI returns class='none' for genuinely non-flood address but gap says 'EPI revoked'",
+      "what_happens": "User told coverage doesn't exist when actually their address is just clear",
+      "mitigated": true,
+      "how": "flood_truth.py:1276 — revocation reason only fires when epi_class=='none' AND no SES AND no studies",
+      "repro": "_build_data_gap_reasons({epi_flood_class: 'none', ses_in_flood_planning_area: False, flood_studies: [{'x':1}]}) -> no EPI gap"
+    },
+    {
+      "scenario": "Pydantic FloodOutputs rejects valid response because new field added to _normalise_outputs but not to model",
+      "what_happens": "500 error on every flood request — complete service outage for all users",
+      "mitigated": true,
+      "how": "FloodOutputs uses model_config={'extra':'allow'}. Contract snapshot test catches key changes.",
+      "repro": "Add key to _normalise_outputs without FloodOutputs update -> test_normalise_outputs_contract_keys fails"
+    },
+    {
+      "scenario": "Intelligence brief silently omits flood data when refused — user thinks flood is clear",
+      "what_happens": "Brief served without flood section, user assumes no risk",
+      "mitigated": true,
+      "how": "intelligence_brief.py:1095 — _fetch_flood raises RuntimeError on refused. _safe_call wraps as NOT_AVAILABLE. check_minimum_viable may 503 the brief.",
+      "repro": "Stub all flood sources to None -> call intelligence brief -> refused propagation"
     }
   ],
   "post_merge": {
-    "db_reset": "No DB changes",
-    "secrets": "No new secrets needed",
-    "other_repo": "No other repo changes needed",
-    "manual_verify": "Run file scripts/run_mutation_tests.sh to confirm ASCII text not CRLF line endings"
+    "db_reset": "No — no schema changes",
+    "secrets": "No — no new env vars",
+    "other_repo": "No — FloodTool.tsx already handles unavailable",
+    "manual_verify": "Yes — generate PDF with flood_signal='unavailable' and verify gray banner, not green"
   }
 }

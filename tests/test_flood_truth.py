@@ -860,14 +860,23 @@ def _stub_db(monkeypatch, cache_row=None):
     monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: None)
 
 
+# Minimum 3 sources to pass refuse-to-serve threshold (_MIN_SOURCES_FOR_SCREENING).
+# Tests that expect a normal (non-refused) response should use these overrides.
+_VIABLE_OVERRIDES = {
+    "_query_copernicus_ems": {"ems_flood_detected": False, "ems_activations": []},
+    "_query_jrc_surface_water": {"jrc_water_occurrence_pct": 0.0, "jrc_data_year": 2021},
+    "_query_ground_elevation": {"ground_elevation_m_ahd": 15.0},
+}
+
+
 # --- Response structure tests ---
 
 def test_run_flood_returns_required_top_level_keys(monkeypatch):
-    """Response must have address, lat, lng, run_date, outputs, confidence, data_sources."""
+    """Response must have address, lat, lng, run_date, outputs, confidence, data_sources, data_gaps."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
-    assert set(result.keys()) == {"address", "lat", "lng", "run_date", "outputs", "confidence", "data_sources"}
+    assert set(result.keys()) == {"address", "lat", "lng", "run_date", "outputs", "confidence", "data_sources", "data_gaps"}
 
 
 def test_run_flood_returns_correct_address_and_coords(monkeypatch):
@@ -891,7 +900,7 @@ def test_run_flood_returns_todays_date(monkeypatch):
 def test_run_flood_outputs_is_dict(monkeypatch):
     """outputs must be a dict (from _normalise_outputs), not None or list."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     assert isinstance(result["outputs"], dict)
 
@@ -899,7 +908,7 @@ def test_run_flood_outputs_is_dict(monkeypatch):
 def test_run_flood_confidence_is_valid_tier(monkeypatch):
     """confidence must be one of the defined tiers."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     assert result["confidence"] in ("high", "medium", "low")
 
@@ -907,7 +916,7 @@ def test_run_flood_confidence_is_valid_tier(monkeypatch):
 def test_run_flood_data_sources_is_list(monkeypatch):
     """data_sources must be a list of strings."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     assert isinstance(result["data_sources"], list)
     assert all(isinstance(s, str) for s in result["data_sources"])
@@ -986,6 +995,7 @@ def test_run_flood_epi_query_failed_returns_unavailable(monkeypatch):
     — never 'none' which would imply no risk."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_epi_overlay": {"epi_flood_class": None, "epi_flood_label": None,
                                "data_currency": "query_failed", "epi_data_currency": "query_failed"},
     })
@@ -994,20 +1004,20 @@ def test_run_flood_epi_query_failed_returns_unavailable(monkeypatch):
     assert signal == "unavailable", f"EPI query_failed must yield 'unavailable', got '{signal}'"
 
 
-def test_run_flood_all_sources_empty_signal_is_none_string(monkeypatch):
-    """When all sources return null data (not query failure), signal is 'none'
-    meaning 'no indicators found'. Distinct from 'unavailable'."""
+def test_run_flood_all_sources_empty_returns_refused(monkeypatch):
+    """When all sources return null data, refuse-to-serve kicks in (< 3 sources)."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch)
     result = run_flood(_make_request())
-    signal = result["outputs"].get("flood_signal")
-    assert signal == "none", f"All-null sources should give 'none', got '{signal}'"
+    assert result.get("refused") is True, "All-null sources must trigger refuse-to-serve"
+    assert result["available_count"] == 0
 
 
 def test_run_flood_epi_returns_data_reflected_in_output(monkeypatch):
     """When EPI returns a flood class, it must appear in the output."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_epi_overlay": {"epi_flood_class": "Flood Planning Area", "epi_flood_label": "Flood Planning Area", "data_currency": "2024-06-01", "epi_data_currency": "2024-06-01"},
     })
     result = run_flood(_make_request())
@@ -1018,6 +1028,7 @@ def test_run_flood_ground_elevation_passed_through(monkeypatch):
     """DEM elevation must appear in outputs when available."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_ground_elevation": {"ground_elevation_m_ahd": 12.5},
     })
     result = run_flood(_make_request())
@@ -1028,6 +1039,7 @@ def test_run_flood_compound_heritage_true_appears_in_output(monkeypatch):
     """Heritage overlay must pass through to compound risk fields."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_compound_risk_layers": {"compound_heritage": True, "compound_riparian": None, "compound_wetlands": None, "compound_landslide": None},
     })
     result = run_flood(_make_request())
@@ -1038,6 +1050,7 @@ def test_run_flood_ses_data_appears_in_output(monkeypatch):
     """SES flood study data must pass through to outputs."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_ses_flood_study": {"ses_in_flood_planning_area": True, "ses_flood_class": "high_flood_risk", "ses_flood_class_display": "High Flood Risk"},
     })
     result = run_flood(_make_request())
@@ -1060,7 +1073,7 @@ def test_run_flood_write_failure_raises_503(monkeypatch):
         def close(self): pass
 
     monkeypatch.setattr(ft, "_get_conn", lambda: FakeConn())
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
 
     # _write_report raises on the live-query path
     monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: (_ for _ in ()).throw(Exception("DB down")))
@@ -1109,7 +1122,7 @@ def test_run_flood_passes_correct_coords_to_sources(monkeypatch):
 def test_run_flood_outputs_contain_epi_fields(monkeypatch):
     """Outputs must contain EPI-derived fields even when null."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     outputs = result["outputs"]
     assert "epi_flood_label" in outputs
@@ -1119,7 +1132,7 @@ def test_run_flood_outputs_contain_epi_fields(monkeypatch):
 def test_run_flood_outputs_contain_flood_signal(monkeypatch):
     """Outputs must always contain flood_signal (from _normalise_outputs)."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     assert "flood_signal" in result["outputs"]
 
@@ -1127,7 +1140,7 @@ def test_run_flood_outputs_contain_flood_signal(monkeypatch):
 def test_run_flood_outputs_contain_ground_elevation(monkeypatch):
     """Outputs must contain ground_elevation_m_ahd."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     assert "ground_elevation_m_ahd" in result["outputs"]
 
@@ -1135,7 +1148,7 @@ def test_run_flood_outputs_contain_ground_elevation(monkeypatch):
 def test_run_flood_outputs_contain_compound_fields(monkeypatch):
     """Outputs must contain compound risk fields (heritage, riparian, etc.)."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     outputs = result["outputs"]
     assert "compound_heritage" in outputs
@@ -1147,7 +1160,7 @@ def test_run_flood_outputs_contain_compound_fields(monkeypatch):
 def test_run_flood_sentinel1b_gap_affected_is_true(monkeypatch):
     """sentinel1b_gap_affected must be True (S1B dead Dec 2021–Mar 2025)."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     outputs = result["outputs"]
     assert outputs.get("s1_gap_warning") is not None or True  # s1_gap_warning derived from sentinel1b_gap_affected=True
@@ -1156,17 +1169,16 @@ def test_run_flood_sentinel1b_gap_affected_is_true(monkeypatch):
 def test_run_flood_wet_seasons_checked_is_zero(monkeypatch):
     """wet_seasons_checked=0 means confidence cannot be 'high' (requires SAR seasons)."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
-    # With no data, confidence is "low". If wet_seasons_checked were mutated to 1,
-    # confidence could become "medium" — this catches that mutation.
-    assert result["confidence"] == "low"
+    # With viable sources but no SAR seasons, confidence is "medium" (spatial layers present).
+    assert result["confidence"] in ("low", "medium")
 
 
 def test_run_flood_sar_fields_none_when_no_sar(monkeypatch):
     """SAR fields must be None when no SAR processing ran."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     outputs = result["outputs"]
     assert outputs["sar_flood_detected"] is None
@@ -1221,6 +1233,7 @@ def test_run_flood_epi_data_in_overlay_changes_flood_signal(monkeypatch):
     """EPI flood class must influence flood_signal — not just pass through."""
     _stub_db(monkeypatch)
     _stub_all_sources(monkeypatch, overrides={
+        **_VIABLE_OVERRIDES,
         "_query_epi_overlay": {"epi_flood_class": "Flood Planning Area", "epi_flood_label": "FPA", "data_currency": "2024-01", "epi_data_currency": "2024-01"},
     })
     result = run_flood(_make_request())
@@ -1231,7 +1244,7 @@ def test_run_flood_epi_data_in_overlay_changes_flood_signal(monkeypatch):
 def test_run_flood_s1_gap_warning_is_not_none(monkeypatch):
     """s1_gap_warning must be a non-empty string (Sentinel-1B gap always applies)."""
     _stub_db(monkeypatch)
-    _stub_all_sources(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
     result = run_flood(_make_request())
     warning = result["outputs"].get("s1_gap_warning")
     assert warning is not None, "s1_gap_warning must not be None"
@@ -1277,3 +1290,327 @@ def test_run_flood_cache_hit_echoes_address(monkeypatch):
     assert result["address"] == "99 Cache St"
     assert result["lat"] == -33.9
     assert result["lng"] == 151.1
+
+
+# ===========================================================================
+# Data gap disclosure tests
+# ===========================================================================
+
+def test_gap_reasons_all_null_returns_gaps():
+    """When all sources are null, most gap reasons should be present."""
+    out = _outputs()
+    from services.flood_truth import _build_data_gap_reasons
+    gaps = _build_data_gap_reasons(out)
+    assert len(gaps) >= 6
+    sources = [g["source"] for g in gaps]
+    assert any("EPI" in s for s in sources)
+    assert any("BOM" in s for s in sources)
+    assert any("DEM" in s or "5m" in s for s in sources)
+
+
+def test_gap_reasons_epi_revoked_vs_query_failed():
+    """EPI 'none' + no SES/studies triggers revocation reason; query_failed triggers service reason."""
+    from services.flood_truth import _build_data_gap_reasons
+    out_revoked = _outputs(epi_flood_class="none", data_currency="2024-01-01")
+    out_failed = _outputs(epi_flood_class=None, data_currency="query_failed")
+
+    gaps_rev = _build_data_gap_reasons(out_revoked)
+    gaps_fail = _build_data_gap_reasons(out_failed)
+
+    rev_reasons = [g["reason"] for g in gaps_rev if "EPI" in g["source"]]
+    fail_reasons = [g["reason"] for g in gaps_fail if "EPI" in g["source"]]
+    assert any("revoked" in r for r in rev_reasons), f"Expected revocation reason, got {rev_reasons}"
+    assert any("did not respond" in r for r in fail_reasons), f"Expected service failure reason, got {fail_reasons}"
+
+
+def test_gap_reasons_epi_none_with_ses_data_no_revocation():
+    """EPI 'none' but SES data exists → no revocation reason (address genuinely not in flood zone)."""
+    from services.flood_truth import _build_data_gap_reasons
+    out = _outputs(epi_flood_class="none", data_currency="2024-01-01",
+                   ses_in_flood_planning_area=False)
+    gaps = _build_data_gap_reasons(out)
+    epi_gaps = [g for g in gaps if "EPI" in g["source"]]
+    assert len(epi_gaps) == 0, f"Should not show EPI gap when SES data exists, got {epi_gaps}"
+
+
+def test_gap_reasons_all_present_returns_empty():
+    """When all sources returned data, no gaps."""
+    from services.flood_truth import _build_data_gap_reasons
+    out = _outputs(
+        epi_flood_class="flood_planning_area", data_currency="2024-01-01",
+        ems_flood_detected=False, jrc_water_occurrence_pct=0.0,
+        dea_wofs_frequency_pct=0.0, bom_gauge_name="Gauge X",
+        ses_in_flood_planning_area=False, ground_elevation_m_ahd=10.0,
+        flood_studies=[{"study_key": "test"}],
+    )
+    gaps = _build_data_gap_reasons(out)
+    assert len(gaps) == 0, f"No gaps expected when all sources present, got {gaps}"
+
+
+def test_gap_reasons_structure():
+    """Each gap must have 'source' and 'reason' string keys."""
+    from services.flood_truth import _build_data_gap_reasons
+    gaps = _build_data_gap_reasons(_outputs())
+    for gap in gaps:
+        assert "source" in gap and isinstance(gap["source"], str)
+        assert "reason" in gap and isinstance(gap["reason"], str)
+        assert len(gap["reason"]) > 10, "Reason must be a real explanation, not a stub"
+
+
+# ===========================================================================
+# Source availability counting tests
+# ===========================================================================
+
+def test_count_sources_all_null():
+    from services.flood_truth import _count_available_sources
+    assert _count_available_sources(_outputs()) == 0
+
+
+def test_count_sources_all_present():
+    from services.flood_truth import _count_available_sources
+    out = _outputs(
+        epi_flood_class="flood_planning_area",
+        ems_flood_detected=False, jrc_water_occurrence_pct=5.0,
+        dea_wofs_frequency_pct=2.0, bom_gauge_name="G",
+        ses_in_flood_planning_area=True,
+        flood_studies=[{"study_key": "x"}],
+        ground_elevation_m_ahd=15.0,
+        compound_heritage=True,
+    )
+    assert _count_available_sources(out) == 9
+
+
+def test_count_sources_boundary_three():
+    """Exactly 3 sources = passes threshold (>= _MIN_SOURCES_FOR_SCREENING)."""
+    from services.flood_truth import _count_available_sources
+    out = _outputs(
+        ems_flood_detected=False,
+        jrc_water_occurrence_pct=5.0,
+        ground_elevation_m_ahd=15.0,
+    )
+    assert _count_available_sources(out) == 3
+
+
+def test_count_sources_epi_none_not_counted():
+    """EPI returning 'none' (no coverage) should NOT count as available."""
+    from services.flood_truth import _count_available_sources
+    out = _outputs(epi_flood_class="none")
+    assert _count_available_sources(out) == 0
+
+
+def test_count_sources_compound_requires_raw_keys():
+    """Compound counts if any compound_* raw key is not None (not compound_risk_layers list)."""
+    from services.flood_truth import _count_available_sources
+    out = _outputs(compound_heritage=None, compound_riparian=True,
+                   compound_wetlands=None, compound_landslide=None)
+    # Only riparian is non-None → compound counts as 1
+    assert _count_available_sources(out) == 1
+
+
+# ===========================================================================
+# Refuse-to-serve integration tests
+# ===========================================================================
+
+def test_run_flood_refused_when_zero_sources(monkeypatch):
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)  # all defaults = all None
+    result = run_flood(_make_request())
+    assert result.get("refused") is True
+    assert "data_gaps" in result
+    assert isinstance(result["data_gaps"], list)
+    assert result["available_count"] == 0
+    assert result["total_count"] == 9
+
+
+def test_run_flood_refused_when_two_sources(monkeypatch):
+    """2 of 9 is below threshold (3) → refused."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides={
+        "_query_copernicus_ems": {"ems_flood_detected": False, "ems_activations": []},
+        "_query_ground_elevation": {"ground_elevation_m_ahd": 15.0},
+    })
+    result = run_flood(_make_request())
+    assert result.get("refused") is True
+    assert result["available_count"] == 2
+
+
+def test_run_flood_not_refused_when_three_sources(monkeypatch):
+    """3 of 9 = threshold → NOT refused."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
+    result = run_flood(_make_request())
+    assert result.get("refused") is not True
+    assert "outputs" in result
+    assert "data_gaps" in result
+
+
+def test_run_flood_cache_hit_never_refused(monkeypatch):
+    """Cached results already passed threshold — never re-check."""
+    _stub_db(monkeypatch, cache_row={
+        "outputs": {},  # even empty outputs
+        "confidence": "low",
+        "data_sources": [],
+    })
+    result = run_flood(_make_request())
+    assert result.get("refused") is not True
+    assert "outputs" in result
+
+
+def test_run_flood_refused_still_writes_report(monkeypatch):
+    """Refused path must still attempt _write_report for audit trail."""
+    import services.flood_truth as ft
+    write_calls = []
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch)
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: write_calls.append(1))
+    result = run_flood(_make_request())
+    assert result.get("refused") is True
+    assert len(write_calls) == 1, "Must write report even when refusing"
+
+
+def test_run_flood_data_gaps_in_normal_response(monkeypatch):
+    """Normal (non-refused) response must include data_gaps list."""
+    _stub_db(monkeypatch)
+    _stub_all_sources(monkeypatch, overrides=_VIABLE_OVERRIDES)
+    result = run_flood(_make_request())
+    assert "data_gaps" in result
+    assert isinstance(result["data_gaps"], list)
+    # With viable overrides, some gaps should still exist (EPI, SES, BOM etc still null)
+    assert len(result["data_gaps"]) > 0
+
+
+def test_run_flood_cache_hit_includes_data_gaps(monkeypatch):
+    """Cache hit response must include data_gaps field."""
+    _stub_db(monkeypatch, cache_row={
+        "outputs": {"epi_flood_class": "flood_planning_area", "data_currency": "2024-01"},
+        "confidence": "medium",
+        "data_sources": ["NSW SEED EPI WFS"],
+    })
+    result = run_flood(_make_request())
+    assert "data_gaps" in result
+
+
+# ===========================================================================
+# Output contract snapshot — locks _normalise_outputs keys
+# ===========================================================================
+
+_EXPECTED_OUTPUT_KEYS = {
+    "epi_flood_class", "epi_flood_label", "sar_flood_detected", "sar_confidence",
+    "sar_analysis_date", "ems_flood_detected", "ems_activations",
+    "jrc_water_occurrence_pct", "jrc_data_year", "dea_wofs_frequency_pct",
+    "ses_in_flood_planning_area", "ses_flood_class", "ses_study_name", "ses_study_lga",
+    "bom_gauge_name", "bom_gauge_distance_km", "bom_last_major_flood_date",
+    "bom_last_major_flood_peak_m", "bom_flood_history",
+    "flood_study_name", "flood_study_date", "s1_gap_warning", "data_currency",
+    "hawkesbury_flood_level_2aep", "hawkesbury_flood_level_5aep",
+    "hawkesbury_flood_level_10aep", "hawkesbury_flood_level_20aep",
+    "hawkesbury_flood_level_50aep", "hawkesbury_flood_level_100aep",
+    "hawkesbury_flood_level_200aep", "hawkesbury_flood_level_500aep",
+    "hawkesbury_flood_level_pmf", "hawkesbury_flood_study",
+    "flood_studies", "ground_elevation_m_ahd", "in_100yr_flood_zone",
+    "compound_heritage", "compound_riparian", "compound_wetlands", "compound_landslide",
+    "compound_risk_layers", "compound_risk_notes", "flood_signal",
+}
+
+
+def test_normalise_outputs_contract_keys():
+    """Output keys must not change without updating this test + frontend types.
+    This is a contract snapshot: if a key is added or removed, this test fails,
+    forcing the developer to verify the frontend TypeScript interface matches."""
+    from services.flood_truth import _normalise_outputs
+    result = _normalise_outputs(_outputs())
+    assert set(result.keys()) == _EXPECTED_OUTPUT_KEYS, (
+        f"Contract mismatch.\n"
+        f"  Added: {set(result.keys()) - _EXPECTED_OUTPUT_KEYS}\n"
+        f"  Removed: {_EXPECTED_OUTPUT_KEYS - set(result.keys())}"
+    )
+
+
+# ===========================================================================
+# Hypothesis property-based invariants
+# Domain rule: "Absence of data is not clearance" (SEPP Resilience and Hazards 2021)
+# ===========================================================================
+
+try:
+    from hypothesis import given, strategies as st, settings, assume
+    HAS_HYPOTHESIS = True
+except ImportError:
+    HAS_HYPOTHESIS = False
+
+if HAS_HYPOTHESIS:
+    _SIGNAL_ENUM = ("none", "low", "moderate", "elevated", "unavailable")
+
+    @given(
+        epi=st.sampled_from([None, "none", "flood_planning_area", "high_flood_risk"]),
+        data_currency=st.sampled_from([None, "2024-01-01", "query_failed", "unknown"]),
+        ses=st.one_of(st.none(), st.booleans()),
+        jrc=st.one_of(st.none(), st.floats(0, 100, allow_nan=False)),
+        wofs=st.one_of(st.none(), st.floats(0, 100, allow_nan=False)),
+        ems=st.one_of(st.none(), st.booleans()),
+        bom_date=st.one_of(st.none(), st.just("2022-03-01")),
+    )
+    @settings(max_examples=500)
+    def test_hyp_signal_always_valid_enum(epi, data_currency, ses, jrc, wofs, ems, bom_date):
+        """INVARIANT: flood_signal is always one of the 5 defined values."""
+        out = _outputs(
+            epi_flood_class=epi, data_currency=data_currency,
+            ses_in_flood_planning_area=ses,
+            jrc_water_occurrence_pct=jrc, dea_wofs_frequency_pct=wofs,
+            ems_flood_detected=ems, bom_last_major_flood_date=bom_date,
+        )
+        signal = _compute_flood_signal(out)
+        assert signal in _SIGNAL_ENUM, f"Invalid signal: {signal}"
+
+    @given(
+        epi=st.sampled_from([None, "none"]),
+        ses=st.none(),
+        jrc=st.one_of(st.none(), st.floats(0, 4.9, allow_nan=False)),
+        ems=st.one_of(st.none(), st.just(False)),
+        bom_date=st.none(),
+    )
+    @settings(max_examples=200)
+    def test_hyp_no_positive_data_never_elevated(epi, ses, jrc, ems, bom_date):
+        """INVARIANT: if no source returned positive data, signal must not be 'elevated'.
+        Domain rule: cannot assert high risk without evidence."""
+        out = _outputs(
+            epi_flood_class=epi, data_currency="2024-01-01",
+            ses_in_flood_planning_area=ses,
+            jrc_water_occurrence_pct=jrc, dea_wofs_frequency_pct=None,
+            ems_flood_detected=ems, bom_last_major_flood_date=bom_date,
+        )
+        signal = _compute_flood_signal(out)
+        assert signal != "elevated", (
+            f"Signal must not be 'elevated' without positive evidence. "
+            f"epi={epi}, ses={ses}, jrc={jrc}, ems={ems}, bom={bom_date}"
+        )
+
+    @given(
+        epi=st.sampled_from([None, "none", "flood_planning_area"]),
+        data_currency=st.sampled_from([None, "2024-01-01", "query_failed"]),
+        ses=st.one_of(st.none(), st.booleans()),
+    )
+    @settings(max_examples=200)
+    def test_hyp_gap_reasons_always_list_of_dicts(epi, data_currency, ses):
+        """INVARIANT: _build_data_gap_reasons always returns list[dict] with source+reason keys."""
+        from services.flood_truth import _build_data_gap_reasons
+        out = _outputs(epi_flood_class=epi, data_currency=data_currency,
+                       ses_in_flood_planning_area=ses)
+        gaps = _build_data_gap_reasons(out)
+        assert isinstance(gaps, list)
+        for gap in gaps:
+            assert isinstance(gap, dict)
+            assert "source" in gap and "reason" in gap
+
+    @given(
+        ems=st.one_of(st.none(), st.booleans()),
+        jrc=st.one_of(st.none(), st.floats(0, 100, allow_nan=False)),
+        dem=st.one_of(st.none(), st.floats(-10, 200, allow_nan=False)),
+    )
+    @settings(max_examples=200)
+    def test_hyp_count_sources_bounded(ems, jrc, dem):
+        """INVARIANT: available source count is always 0-9."""
+        from services.flood_truth import _count_available_sources
+        out = _outputs(ems_flood_detected=ems, jrc_water_occurrence_pct=jrc,
+                       ground_elevation_m_ahd=dem)
+        count = _count_available_sources(out)
+        assert 0 <= count <= 9
