@@ -562,7 +562,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         {/* Warnings */}
         {(data.s1_gap_warning || (data.warnings && data.warnings.length > 0)) && (
           <View style={{ marginTop: 8 }}>
-            {data.s1_gap_warning && (
+            {!!data.s1_gap_warning && (
               <View style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, paddingVertical: 6, paddingHorizontal: 8, marginBottom: 4, borderRadius: 2 }}>
                 <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{data.s1_gap_warning}</Text>
               </View>

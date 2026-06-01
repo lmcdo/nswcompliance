@@ -40,8 +40,8 @@ def main() -> int:
         if service.startswith("_"):
             continue
 
-        test_files = config.get("test_files", [])
-        min_count = config.get("min_test_count", 0)
+        test_files = config.get("test_files") or []
+        min_count = config.get("min_test_count") or 0
 
         # Filter to files that actually exist
         existing = [f for f in test_files if Path(f).exists()]
