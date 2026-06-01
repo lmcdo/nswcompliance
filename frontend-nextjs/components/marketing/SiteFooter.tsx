@@ -27,6 +27,7 @@ const PLATFORM_LINKS = [
   { label: 'Browse Councils', href: '/browse' },
   { label: 'Planning Glossary', href: '/glossary' },
   { label: 'SEPP Housing Standards', href: '/planning-standards' },
+  { label: 'Open Data', href: '/open-data' },
   { label: 'Insights', href: '/blog' },
 ];
 

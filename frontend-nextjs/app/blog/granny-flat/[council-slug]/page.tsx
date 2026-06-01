@@ -56,19 +56,19 @@ export function generateMetadata({
 /* ------------------------------------------------------------------ */
 
 function formatCost(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
   if (value >= 1_000) return `$${Math.round(value / 1_000)}K`
   return `$${value.toLocaleString()}`
 }
 
 function formatDays(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   return `${value} days`
 }
 
 function formatPct(value: number | null): string {
-  if (value === null) return 'N/A'
+  if (value == null) return 'N/A'
   return `${value}%`
 }
 
@@ -110,7 +110,7 @@ function StatCard({ label, value, note }: { label: string; value: string; note?:
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{label}</p>
       <p className="text-lg font-bold text-slate-900 mt-1">{value}</p>
-      {note && <p className="text-xs text-slate-400 mt-0.5">{note}</p>}
+      {note != null && <p className="text-xs text-slate-400 mt-0.5">{note}</p>}
     </div>
   )
 }
@@ -282,6 +282,29 @@ export default function CouncilGrannyFlatStatsPage({
           )}
         </p>
       </div>
+
+      {/* Quick answer — structured for AI extraction */}
+      <section className="mb-10 rounded-2xl border border-teal-200 bg-teal-50/30 p-6">
+        <h2 className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-2">
+          Quick answer
+        </h2>
+        <p className="text-sm text-slate-800 leading-relaxed">
+          {stats.shortName} has received {stats.totalApplications} secondary dwelling
+          applications since {stats.earliestDate?.slice(0, 4) ?? '2021'}.
+          {stats.cdcRatioPct != null && stats.cdcRatioPct > 0 && (
+            <> {stats.cdcRatioPct}% used the CDC pathway.</>
+          )}
+          {stats.cdcMedianDays != null && (
+            <> Median CDC processing time is {stats.cdcMedianDays} days.</>
+          )}
+          {stats.cdcMedianCost != null && (
+            <> Median self-reported CDC build cost is {formatCost(stats.cdcMedianCost)}.</>
+          )}
+          {' '}Under SEPP Housing 2021, secondary dwellings are permitted on lots
+          of at least 450 m{'\u00B2'} in R1, R2, R3, and RU5 zones.
+          {' '}Source: NSW Planning Portal open data as of {DATA_AS_OF}.
+        </p>
+      </section>
 
       {/* TOC */}
       <nav className="mb-10 rounded-2xl border border-slate-200 p-6">
