@@ -27,7 +27,7 @@ PlotDetect provides structured, machine-readable NSW planning data including zon
 
 ### Planning Controls (per council)
 https://plotdetect.com.au/planning-controls/{council-slug}
-Structured LEP and DCP provisions for each NSW council.
+Structured LEP and DCP provisions for each NSW council. Councils with deep DCP extraction show topic-grouped provision counts (heritage, parking, setbacks, height, landscaping, etc.) with sample provision text.
 
 ### Granny Flat Eligibility (per council)
 https://plotdetect.com.au/granny-flat/{council-slug}
