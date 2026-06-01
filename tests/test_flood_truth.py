@@ -660,8 +660,10 @@ def test_hawkesbury_result_has_all_nine_aep_fields_with_none_values(monkeypatch)
     pytest.importorskip("rasterio")
     monkeypatch.setitem(ft.FLOOD_STUDIES["hawkesbury"], "dir", "/nonexistent")
     result = ft._query_flood_study_rasters(-33.6134, 150.8130)
-    for k in ft.HAWKESBURY_AEP_FILES:
-        key = f"hawkesbury_flood_level_{k}"
+    # Output keys use ARI naming (2aep, 5aep, ...) via _HAWK_AEP_MAP, not design dict keys
+    expected_suffixes = ["2aep", "5aep", "10aep", "20aep", "50aep", "100aep", "200aep", "500aep", "pmf"]
+    for suffix in expected_suffixes:
+        key = f"hawkesbury_flood_level_{suffix}"
         assert key in result, f"Missing key: {key}"
         assert result[key] is None, f"{key} should be None for nonexistent dir, got {result[key]}"
 

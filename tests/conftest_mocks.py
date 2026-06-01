@@ -63,6 +63,7 @@ if isinstance(requests_mock, MagicMock):
 # flood_truth.py does `Transformer.from_crs(...)`.
 pyproj_mock = sys.modules["pyproj"]
 transformer_instance = MagicMock()
+transformer_instance.transform = MagicMock(return_value=(0.0, 0.0))
 pyproj_mock.Transformer.from_crs = MagicMock(return_value=transformer_instance)
 
 # ── Special handling: psycopg2.extras.RealDictCursor ─────────────────────────

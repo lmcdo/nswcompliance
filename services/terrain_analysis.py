@@ -325,7 +325,7 @@ def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dic
     if daylight_ok and os.path.exists(os.path.join(work_dir, "daylight.tif")):
         daylight_arr = _read_band(work_dir, "daylight.tif")
         centre_daylight = daylight_arr[centre_row, centre_col]
-        if np.isfinite(centre_daylight):
+        if centre_daylight is not None and np.isfinite(centre_daylight):
             daylight_fraction = round(float(centre_daylight), 3)
 
     return {

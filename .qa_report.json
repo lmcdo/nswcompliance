@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New satellite pipeline (terrain analysis) + integration into intelligence brief. No DB writes, no user-facing text beyond disclaimer. 7 files changed/added.",
-  "commit_hash": "c0dfe029",
+  "commit_hash": "3b3550a3",
   "files": [
     "services/dem_service.py",
     "services/terrain_analysis.py",
@@ -29,21 +29,21 @@
     },
     {
       "name": "run_terrain_analysis",
-      "file_line": "terrain_analysis.py:391",
+      "file_line": "terrain_analysis.py:455",
       "input": "float lat, float lng, bool include_flood — from _fetch_terrain in intelligence_brief",
       "output": "dict with terrain/flood_susceptibility keys — consumed by _build_terrain_detail",
       "if_none": "Returns TerrainResponse with error field set; _build_terrain_detail returns None"
     },
     {
       "name": "_build_terrain_detail",
-      "file_line": "intelligence_brief.py:1294",
+      "file_line": "intelligence_brief.py:1304",
       "input": "Optional[dict] terrain_raw — from _timed_result",
       "output": "Optional[TerrainAnalysisDetail] — fed into SatelliteData.terrain DataField",
       "if_none": "Returns None when input is None, DataField confidence=NOT_AVAILABLE in SatelliteData"
     },
     {
       "name": "_fetch_terrain",
-      "file_line": "intelligence_brief.py:1290",
+      "file_line": "intelligence_brief.py:1299",
       "input": "float lat, float lng — from orchestrator",
       "output": "dict — consumed by _build_terrain_detail",
       "if_none": "Raises caught by _safe_call then DataField(NOT_AVAILABLE)"
