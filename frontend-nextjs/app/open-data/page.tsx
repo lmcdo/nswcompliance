@@ -38,7 +38,7 @@ const DATASETS = [
       'Year-over-year volumes',
     ],
     caveats:
-      'Cost is self-reported at lodgement. DA status is "Determined" only — the portal does not distinguish approved from refused.',
+      'Cost is self-reported at lodgement. DA status is "Determined" only — the portal does not distinguish between granted and refused outcomes.',
   },
   {
     name: 'NSW Planning Regulatory Definitions',
