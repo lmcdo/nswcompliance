@@ -1,144 +1,26 @@
 {
-  "tier": "standard",
-  "justification": "Enriches 3 satellite pipelines with spatial_overlays data: threat radar zone/TOD context, flood truth compound risk layers (heritage/riparian/wetlands/landslide), granny flat heritage auto-detect. All read-only queries, no schema changes.",
-  "commit_hash": "b983e4b8",
+  "tier": "minor",
+  "justification": "Adds .gitattributes rules to force LF line endings for *.sh and .githooks/* files. No logic changes.",
+  "commit_hash": "191f1608",
   "files": [
-    "services/granny_flat.py",
-    "services/threat_radar.py",
-    "services/flood_truth.py",
-    "tests/test_granny_flat_logic.py",
-    "tests/test_threat_radar.py",
-    "tests/test_flood_truth.py"
+    ".gitattributes"
   ],
-  "pre_impl": {
-    "existing_data": "spatial_overlays table with layer_types: zone, tod_precinct, tod_accelerated, heritage, riparian, wetlands, landslide. 27 layer types ingested for ~33 LGAs.",
-    "assumption_mismatch": "If spatial_overlays has no rows for a layer_type at a given point → returns None or False. No crash, no wrong data. Over-reporting (false positive) preferred over under-reporting.",
-    "new_vs_existing": "Read-only queries. Applies to all requests immediately. No writes to existing tables."
-  },
-  "functions": [
-    {
-      "name": "_check_heritage_overlay",
-      "file_line": "granny_flat.py:577",
-      "input": "lat: float property latitude and lng: float property longitude from detect/confirm request",
-      "output": "Optional[bool] → True (in heritage), False (not in heritage), None (DB unavailable)",
-      "if_none": "Returns None on DB failure — treated as False (safe default, no heritage warning shown)"
-    },
-    {
-      "name": "_lookup_property_context",
-      "file_line": "threat_radar.py:60",
-      "input": "lat: float subscriber latitude and lng: float subscriber longitude from subscription row",
-      "output": "dict with zone/tod_precinct/tod_type — all nullable string or bool values",
-      "if_none": "Returns dict with zone=None, tod_precinct=None, tod_type=None on any DB failure"
-    },
-    {
-      "name": "_query_compound_risk_layers",
-      "file_line": "flood_truth.py:790",
-      "input": "lat: float property latitude and lng: float property longitude from flood request",
-      "output": "dict with compound_heritage/riparian/wetlands/landslide — all nullable values",
-      "if_none": "Returns dict with all compound_* keys set to None on any DB failure"
-    },
-    {
-      "name": "_build_compound_risk_notes",
-      "file_line": "flood_truth.py:1198",
-      "input": "compound_risks: list of string layer type names from normalised outputs",
-      "output": "list[str] — factual descriptions of each active compound risk layer",
-      "if_none": "Returns empty list when compound_risks list is empty or has no known layers"
-    }
-  ],
-  "values": [
-    {
-      "value": "heritage_auto (detect)",
-      "read_at": "granny_fat.py:883",
-      "nullable": "yes — None means DB unavailable",
-      "guard_at": "granny_flat.py:907 — passed directly to response as Optional[bool]",
-      "if_missing": "Frontend receives is_heritage=None (unknown status)"
-    },
-    {
-      "value": "heritage_auto (confirm)",
-      "read_at": "granny_flat.py:1047",
-      "nullable": "yes — None means DB unavailable",
-      "guard_at": "granny_flat.py:1048 — bool(None) → False, safe default",
-      "if_missing": "Heritage warning not shown — false negative is the safe direction"
-    },
-    {
-      "value": "property_context (threat radar)",
-      "read_at": "threat_radar.py:286",
-      "nullable": "no — always returns dict with nullable inner values on any failure path",
-      "guard_at": "_lookup_property_context returns default dict on any exception at threat_radar.py:82",
-      "if_missing": "Response includes property_context with all None values — frontend shows no zone/TOD info"
-    },
-    {
-      "value": "compound (flood truth)",
-      "read_at": "flood_truth.py:1416",
-      "nullable": "no — always returns dict with nullable inner values on any failure path",
-      "guard_at": "_query_compound_risk_layers returns default dict on any exception at flood_truth.py:812",
-      "if_missing": "All compound_* fields are None in output — no compound risk notes generated"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Check if property is within a heritage conservation area or individually listed",
-      "file_line": "granny_flat.py:588",
-      "where_clause": "layer_type = 'heritage' AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326))",
-      "if_zero": "Returns False — property is not in a heritage area",
-      "if_wrong": "Over-reports heritage (false positive) — acceptable, warning says confirm with council"
-    },
-    {
-      "purpose": "Look up subscriber zone and TOD precinct status for threat radar context",
-      "file_line": "threat_radar.py:68",
-      "where_clause": "layer_type IN ('zone', 'tod_precinct', 'tod_accelerated') AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326))",
-      "if_zero": "All fields remain None — graceful degradation, no zone/TOD info shown",
-      "if_wrong": "Zone value could be stale — acceptable since it is read-only enrichment context"
-    },
-    {
-      "purpose": "Look up compound flood risk layers (heritage, riparian, wetlands, landslide)",
-      "file_line": "flood_truth.py:803",
-      "where_clause": "layer_type = ANY(heritage,riparian,wetlands,landslide) AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326))",
-      "if_zero": "All compound_* fields are None — no compound risk notes generated in output",
-      "if_wrong": "Over-reports compound risk (false positive) — better than under-reporting"
-    }
-  ],
+  "pre_impl": {},
+  "functions": [],
+  "external_values": [],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "spatial_overlays has no heritage rows (empty table or heritage layer not ingested)",
-      "what_happens": "fetchone() returns None → function returns False. Heritage warning not shown.",
+      "scenario": "Git autocrlf overrides .gitattributes",
+      "what_happens": "Shell scripts still get CRLF, bash fails with $'\\r' errors",
       "mitigated": true,
-      "how": "granny_flat.py:594 — fetchone() is not None evaluates to False, safe default",
-      "repro": "pytest tests/test_granny_flat_logic.py::test_check_heritage_overlay_returns_bool_or_none"
-    },
-    {
-      "scenario": "Heritage overlay data is stale (HCA removed but spatial_overlays not updated)",
-      "what_happens": "Property flagged as heritage when it's no longer listed. User sees unnecessary heritage warning.",
-      "mitigated": true,
-      "how": "granny_flat.py:1044 — user can override via is_heritage=False in confirm call. Warning text says 'confirm with council'.",
-      "repro": "Set is_heritage=False in confirm request — user-provided value takes precedence over auto-detect"
-    },
-    {
-      "scenario": "User provides is_heritage=True but spatial_overlays shows no heritage",
-      "what_happens": "User's explicit value takes precedence. Heritage warning shown with source='user-provided'.",
-      "mitigated": true,
-      "how": "granny_flat.py:1044 — if req.is_heritage is not None: uses user value, skips auto-detect",
-      "repro": "pytest tests/test_granny_flat_logic.py::test_confirm_req_heritage_true_overrides_auto_detect"
-    },
-    {
-      "scenario": "spatial_overlays has no zone or tod_precinct rows for subscriber location (threat radar zone/TOD lookup fails)",
-      "what_happens": "_lookup_property_context returns {zone: None, tod_precinct: None, tod_type: None}. Response includes property_context with all null values.",
-      "mitigated": true,
-      "how": "threat_radar.py:82 — try/except wraps entire query, returns default dict with None values on any failure",
-      "repro": "pytest tests/test_threat_radar.py::test_lookup_property_context_no_db_returns_nulls"
-    },
-    {
-      "scenario": "Compound risk layer query returns stale data after overlay update",
-      "what_happens": "Property flagged for heritage/riparian/wetlands/landslide when overlay has been updated. Over-reports risk (false positive).",
-      "mitigated": true,
-      "how": "flood_truth.py:803 — compound risk is additive context only, does not change flood_signal or confidence calculations",
-      "repro": "pytest tests/test_flood_truth.py::test_normalise_outputs_compound_heritage_populated"
+      "how": ".gitattributes eol=lf takes precedence over core.autocrlf"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "No"
+    "db_reset": "No DB changes",
+    "secrets": "No new secrets needed",
+    "other_repo": "No other repo changes needed",
+    "manual_verify": "Run file scripts/run_mutation_tests.sh to confirm ASCII text not CRLF line endings"
   }
 }
