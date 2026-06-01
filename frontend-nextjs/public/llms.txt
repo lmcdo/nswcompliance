@@ -65,6 +65,10 @@ Planning certificates, overlay checks, and due diligence data.
 https://plotdetect.com.au/glossary
 465+ regulatory definitions from NSW LEPs, DCPs, and SEPPs. Includes FSR, GFA, CDC, setbacks, landscaped area, site coverage, secondary dwelling, and more — each with source document and clause citation.
 
+### SEPP Housing Standards
+https://plotdetect.com.au/planning-standards
+Numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Design Guide. Height limits, lot sizes, floor area, site coverage, parking, setbacks, and ADG design criteria — grouped by development type with clause references to NSW Legislation.
+
 ### Free Tools
 https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
 https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker

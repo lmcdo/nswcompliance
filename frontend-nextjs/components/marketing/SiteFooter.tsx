@@ -26,6 +26,7 @@ const PLATFORM_LINKS = [
   { label: 'Climate Risk', href: '/climate-risk' },
   { label: 'Browse Councils', href: '/browse' },
   { label: 'Planning Glossary', href: '/glossary' },
+  { label: 'SEPP Housing Standards', href: '/planning-standards' },
   { label: 'Insights', href: '/blog' },
 ];
 
