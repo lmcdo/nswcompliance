@@ -1529,7 +1529,7 @@ class FloodResponse(BaseModel):
 
 
 class FloodRefusedResponse(BaseModel):
-    """Returned when too few data sources responded for a reliable screening."""
+    """Returned when too few data sources responded to produce a screening."""
     address: str
     lat: float
     lng: float
@@ -1667,7 +1667,7 @@ def run_flood(req: FloodRequest):
             "run_date": date.today().isoformat(),
             "refused": True,
             "reason": (
-                f"Insufficient flood data sources for reliable screening. "
+                f"Insufficient flood data sources to produce a screening. "
                 f"{available_count} of {len(_SOURCE_AVAILABILITY_CHECKS)} sources "
                 f"returned data (minimum {_MIN_SOURCES_FOR_SCREENING} required)."
             ),

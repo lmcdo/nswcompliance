@@ -441,7 +441,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
               Flood screening could not be generated
             </Text>
             <Text style={{ fontSize: 9, color: GRAY_700, lineHeight: 1.5 }}>
-              {data.refused_reason || 'Too few data sources responded for a reliable screening. Absence of data does not indicate absence of flood risk.'}
+              {data.refused_reason || 'Too few data sources responded to produce a flood screening. Absence of data does not indicate absence of flood risk.'}
             </Text>
           </View>
 
