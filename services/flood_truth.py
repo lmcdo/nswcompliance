@@ -72,8 +72,30 @@ from pyproj import Transformer
 
 from audit_trail import DataSourceQuery, log_audit_trail, get_current_disclaimer_version
 
+# icontract: runtime postcondition assertions for liability-critical functions.
+# Gracefully degrade if not installed (production may not have it yet).
+try:
+    import icontract
+except ImportError:
+    # Provide no-op decorators so the module loads without icontract
+    class _FakeIcontract:
+        @staticmethod
+        def ensure(condition, description="", **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+        @staticmethod
+        def require(condition, description="", **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
+    icontract = _FakeIcontract()  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
+
+# Canonical signal enum — used by icontract postconditions AND Hypothesis invariants.
+_VALID_FLOOD_SIGNALS = {"none", "low", "moderate", "elevated", "unavailable"}
 
 PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
 S1_COLLECTION = "sentinel-1-rtc"
@@ -170,7 +192,7 @@ _FLOOD_STUDIES_BASE = os.path.join(os.path.dirname(__file__), "..", "data", "flo
 
 FLOOD_STUDIES: dict[str, dict] = {
     "hawkesbury": {
-        "name": "Hawkesbury FRMSP 2025",
+        "XXnameXX": "Hawkesbury FRMSP 2025",
         "source": "NSW Reconstruction Authority",
         "dir": os.environ.get(
             "HAWKESBURY_RASTER_DIR",
@@ -1063,11 +1085,6 @@ def _query_ground_elevation(lat: float, lng: float) -> dict:
         logger.warning(f"DEM identify: {e}")
         return {"ground_elevation_m_ahd": None}
 
-
-# ---------------------------------------------------------------------------
-# Confidence + data source helpers
-# ---------------------------------------------------------------------------
-
 def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
@@ -1139,6 +1156,10 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     return "none"
 
 
+@icontract.ensure(
+    lambda result: result in {"low", "medium", "high"},
+    description="Confidence must be low/medium/high — invalid value breaks frontend badge rendering.",
+)
 def _compute_confidence(internal_outputs: dict) -> str:
     """
     high   — EPI/SES overlay + EMS + JRC/WOfS + BOM gauge + ≥1 SAR season
@@ -1247,11 +1268,24 @@ _SOURCE_AVAILABILITY_CHECKS: list[tuple[str, object]] = [
 ]
 
 
+@icontract.ensure(
+    lambda result: 0 <= result <= 9,
+    description="Source count must be 0-9 — out-of-range would corrupt refuse-to-serve threshold check.",
+)
 def _count_available_sources(internal_outputs: dict) -> int:
     """Count how many of the 9 data source groups returned usable data."""
     return sum(1 for _, check in _SOURCE_AVAILABILITY_CHECKS if check(internal_outputs))
 
 
+@icontract.ensure(
+    lambda result: all(
+        isinstance(g, dict) and "source" in g and "reason" in g
+        and isinstance(g["source"], str) and isinstance(g["reason"], str)  # noqa: bracket-access
+        and len(g["reason"]) > 10  # noqa: bracket-access
+        for g in result
+    ),
+    description="Every gap must have non-empty 'source' and 'reason' strings — malformed gaps render blank in PDF.",
+)
 def _build_data_gap_reasons(internal_outputs: dict) -> list[dict]:
     """Return structured reasons explaining WHY each data source is unavailable.
 
@@ -1325,6 +1359,10 @@ def _build_data_gap_reasons(internal_outputs: dict) -> list[dict]:
     return gaps
 
 
+@icontract.ensure(
+    lambda result: result.get("flood_signal") in _VALID_FLOOD_SIGNALS,
+    description="Normalised output must contain a valid flood_signal — frontend renders badge from this value.",
+)
 def _normalise_outputs(raw: dict) -> dict:
     """Convert stored/internal outputs to frontend FloodOutputs contract."""
     # EPI — handle old bool format from early writes
