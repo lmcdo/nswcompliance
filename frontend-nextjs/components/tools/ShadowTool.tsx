@@ -6,6 +6,8 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { EmailGate } from '@/components/reports/EmailGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
 
@@ -254,9 +256,12 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
             paidReportId ? (
               <ShadowPaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <ShadowLockedPreviewCard result={result} />
+              <EmailGate address={result.address} product="shadow-detector">
+                <ShadowLockedPreviewCard result={result} />
+              </EmailGate>
             )
           ) : null}
+          <PostResultEmailStrip address={result.address} product="shadow-detector" />
           <ToolCrossSell currentTool="shadow-detector" address={result.address} />
         </>
       )}

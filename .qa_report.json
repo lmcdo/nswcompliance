@@ -1,83 +1,98 @@
 {
   "tier": "Standard",
-  "justification": "Replaces WaitlistButton with CheckoutButton across 7 tool components + 6 test files. No DB changes, no new API routes — uses existing Stripe checkout routes. Payment flow is critical path but logic is simple (POST + redirect). Not Critical because no new backend logic, no data model changes.",
-  "commit_hash": "c0dfe029",
+  "justification": "Standard: 3 new UI components (EmailGate, BlogEmailCapture, intelligence-brief checkout) + integration across 7 tool pages + 1 layout + 6 test files updated + 2 new test files. No DB changes. All lead API calls use existing endpoint. Intelligence brief checkout copies proven pattern from 8 existing routes.",
+  "commit_hash": "1e1741a9",
   "files": [
-    "frontend-nextjs/components/reports/CheckoutButton.tsx",
-    "frontend-nextjs/components/reports/PaywallGate.tsx",
+    "frontend-nextjs/components/reports/EmailGate.tsx",
+    "frontend-nextjs/components/marketing/BlogEmailCapture.tsx",
+    "frontend-nextjs/app/api/stripe/checkout/intelligence-brief/route.ts",
+    "frontend-nextjs/app/blog/layout.tsx",
     "frontend-nextjs/components/tools/FloodTool.tsx",
     "frontend-nextjs/components/tools/ShadowTool.tsx",
     "frontend-nextjs/components/tools/SolarYieldTool.tsx",
     "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
-    "frontend-nextjs/components/tools/ThreatRadarTool.tsx",
     "frontend-nextjs/components/tools/ConveyancingTool.tsx",
     "frontend-nextjs/components/tools/PreDAHistoryTool.tsx",
+    "frontend-nextjs/__tests__/components/reports/EmailGate.test.tsx",
+    "frontend-nextjs/__tests__/components/marketing/BlogEmailCapture.test.tsx",
     "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx",
     "frontend-nextjs/__tests__/components/tools/ShadowTool-paywall.test.tsx",
     "frontend-nextjs/__tests__/components/tools/ShadowTool.test.tsx",
     "frontend-nextjs/__tests__/components/tools/SolarYieldTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool-paywall.test.tsx",
-    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool.test.tsx"
+    "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Stripe price IDs in Vercel env vars. Existing checkout API routes at /api/stripe/checkout/{product}. No DB interaction.",
-    "assumption_mismatch": "If STRIPE_*_PRICE_ID env var is not set, checkout route returns 500 'Payment not configured'. CheckoutButton shows the error message to user.",
-    "new_vs_existing": "Frontend-only change. No existing data affected."
+    "existing_data": "lead API table (canibuildit_leads) — new rows only. localStorage key 'plotdetect_email'. Stripe sessions via existing checkout pattern.",
+    "assumption_mismatch": "If lead API is down, email capture silently fails — user still sees content (EmailGate unlocks optimistically). No data loss, just missed lead capture.",
+    "new_vs_existing": "New leads only. EmailGate localStorage is per-browser. No existing rows affected."
   },
   "functions": [
     {
-      "name": "CheckoutButton",
-      "file_line": "CheckoutButton.tsx:25",
-      "input": "checkoutPath (string), body (Record<string,string>), priceLabel (string), requiresEmail? (boolean)",
-      "output": "Renders button, POSTs to checkoutPath, redirects to Stripe checkout_url",
-      "if_none": "If checkout_url is null/undefined in response, shows 'No checkout URL returned' error"
+      "name": "EmailGate",
+      "file_line": "components/reports/EmailGate.tsx:24",
+      "input": "address: string, product: string, children: ReactNode",
+      "output": "renders email form or children based on localStorage",
+      "if_none": "address='' still works — sends empty value to lead API"
+    },
+    {
+      "name": "BlogEmailCapture",
+      "file_line": "components/marketing/BlogEmailCapture.tsx:11",
+      "input": "no external props — renders self-contained email capture form",
+      "output": "renders email form, POSTs to /api/canibuildit/lead with interest_type='blog-subscriber'",
+      "if_none": "N/A — no external inputs"
+    },
+    {
+      "name": "POST /api/stripe/checkout/intelligence-brief",
+      "file_line": "app/api/stripe/checkout/intelligence-brief/route.ts:17",
+      "input": "{ address: string, prop_id?: string, email?: string }",
+      "output": "JSON response with checkout_url string for Stripe redirect",
+      "if_none": "address missing → 400. prop_id/email optional."
     }
   ],
   "values": [
     {
-      "value": "report_id / job_id",
-      "read_at": "Each tool component at CheckoutButton prop",
-      "nullable": "yes — result.report_id is optional",
-      "guard_at": "Fallback to empty string: { report_id: result.report_id ?? '' }",
-      "if_missing": "Stripe checkout route returns 400, CheckoutButton shows error"
+      "value": "localStorage 'plotdetect_email'",
+      "read_at": "EmailGate.tsx:33",
+      "nullable": "yes",
+      "guard_at": "EmailGate.tsx:34 — if (stored) checks before unlocking",
+      "if_missing": "User sees email gate form — correct behavior"
     },
     {
-      "value": "checkout_url",
-      "read_at": "CheckoutButton.tsx:56",
-      "nullable": "yes",
-      "guard_at": "CheckoutButton.tsx:57 — explicit null check",
-      "if_missing": "User sees 'No checkout URL returned' error"
+      "value": "STRIPE_INTELLIGENCE_BRIEF_PRICE_ID",
+      "read_at": "intelligence-brief/route.ts:34",
+      "nullable": "yes (env var)",
+      "guard_at": "intelligence-brief/route.ts:35-38 — returns 500 'Payment not configured'",
+      "if_missing": "Checkout blocked with error — correct behavior"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "report_id is undefined when user clicks Buy",
-      "what_happens": "POST body has report_id='', route returns 400, user sees error",
+      "scenario": "User clears localStorage between EmailGate unlock and checkout — sees gate again on refresh",
+      "what_happens": "User re-enters email, content re-appears. Duplicate lead entry in DB.",
       "mitigated": true,
-      "how": "CheckoutButton.tsx:62 — error displayed, not silent",
-      "repro": "Run flood check with API returning no report_id → click Buy"
+      "how": "EmailGate.tsx:44 — stores on submit, re-reads on mount. Duplicate leads are harmless.",
+      "repro": "Open flood tool → enter email → clear localStorage → refresh → gate re-appears"
     },
     {
-      "scenario": "STRIPE_*_PRICE_ID env var not set",
-      "what_happens": "Route returns 500 'Payment not configured', user sees error",
-      "mitigated": true,
-      "how": "Each route.ts checks priceId. All IDs confirmed set except Verify/Intelligence Brief (no checkout enabled).",
-      "repro": "Remove STRIPE_FLOOD_TRUTH_PRICE_ID → click Buy"
+      "scenario": "BlogEmailCapture on blog index page (/blog) — double CTA alongside per-post CTA",
+      "what_happens": "Users see email capture on listing page too. Redundant but not harmful.",
+      "mitigated": false,
+      "how": "blog/layout.tsx wraps all children. Low priority — could add pathname check later.",
+      "repro": "Navigate to /blog → scroll to bottom → see BlogEmailCapture"
     },
     {
-      "scenario": "User clicks Buy while Stripe rate-limits (429) due to rapid re-clicks",
-      "what_happens": "Stripe checkout route returns 500, user sees 'Failed to create checkout session'",
+      "scenario": "Intelligence brief checkout without STRIPE_INTELLIGENCE_BRIEF_PRICE_ID env var",
+      "what_happens": "Returns 500 'Payment not configured'. Console logs the error.",
       "mitigated": true,
-      "how": "CheckoutButton.tsx:90 — button disabled during loading state prevents rapid clicks. Error state re-enables button for retry.",
-      "repro": "Click Buy rapidly 10+ times in <1s → observe only 1 request fires, button stays disabled"
+      "how": "intelligence-brief/route.ts:35-38 — explicit env var check before Stripe API call",
+      "repro": "POST /api/stripe/checkout/intelligence-brief body={address:'test'} without env var"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — uses existing STRIPE_*_PRICE_ID env vars",
+    "secrets": "STRIPE_INTELLIGENCE_BRIEF_PRICE_ID env var must be set in Vercel for intelligence brief checkout",
     "other_repo": "No",
-    "manual_verify": "Visit each tool page in Vercel preview, run analysis, click Buy, verify Stripe checkout loads"
+    "manual_verify": "Check EmailGate on flood/shadow/solar/granny-flat/conveyancing/pre-da-history tool pages. Check BlogEmailCapture on any blog post. Check /blog index for double-CTA."
   }
 }

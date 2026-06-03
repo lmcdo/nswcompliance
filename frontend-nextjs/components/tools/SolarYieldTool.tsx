@@ -6,6 +6,8 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { EmailGate } from '@/components/reports/EmailGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
 
@@ -314,9 +316,12 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
             paidReportId ? (
               <PaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <SolarLockedPreviewCard outputs={report.outputs} address={report.address} reportId={report.report_id} />
+              <EmailGate address={report.address} product="solar-yield">
+                <SolarLockedPreviewCard outputs={report.outputs} address={report.address} reportId={report.report_id} />
+              </EmailGate>
             )
           ) : null}
+          <PostResultEmailStrip address={report.address} product="solar-yield" />
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
       )}

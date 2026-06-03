@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { BreadcrumbJsonLd } from '@/lib/json-ld';
+import { BlogEmailCapture } from '@/components/marketing/BlogEmailCapture';
 
 export const metadata: Metadata = {
   title: 'Insights — PlotDetect',
@@ -16,7 +17,12 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
         { name: 'Blog', href: '/blog' },
       ]} />
       <SiteNav maxWidth="max-w-5xl" />
-      <main>{children}</main>
+      <main>
+        {children}
+        <div className="max-w-3xl mx-auto px-4">
+          <BlogEmailCapture />
+        </div>
+      </main>
       <SiteFooter />
     </div>
   );

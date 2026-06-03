@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { EmailGate } from '@/components/reports/EmailGate';
 import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -406,46 +408,48 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </Section>
           )}
 
-          {/* PDF upsell */}
-          <div className="border border-gray-200 rounded-xl p-6 bg-white">
-            <h3 className="text-base font-semibold text-gray-900 mb-2">
-              Full Conveyancing Planning Disclosure Report
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              A 10-15 page PDF report suitable for conveyancing due diligence,
-              including DCP setback controls, shadow risk analysis, heritage detail,
-              nearby DA summaries, and development headroom calculations with clause citations.
-            </p>
+          {/* PDF upsell — email-gated */}
+          <EmailGate address={result.address} product="conveyancing">
+            <div className="border border-gray-200 rounded-xl p-6 bg-white">
+              <h3 className="text-base font-semibold text-gray-900 mb-2">
+                Full Conveyancing Planning Disclosure Report
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                A 10-15 page PDF report suitable for conveyancing due diligence,
+                including DCP setback controls, shadow risk analysis, heritage detail,
+                nearby DA summaries, and development headroom calculations with clause citations.
+              </p>
 
-            <FreePaidComparison
-              free={[
-                'LEP zone, height, FSR, lot size',
-                'Environmental and hazard overlays',
-                'SEPP overlay identification',
-                'Title type detection',
-                'Heritage status',
-                'Development feasibility screening',
-              ]}
-              paid={[
-                'DCP setback controls with clause references',
-                'Shadow risk analysis (ADG compliance)',
-                'Full nearby DA summary with descriptions',
-                'LEP key sites clause interpretation',
-                'PostGIS heritage conservation area detail',
-                'Land value history (5 years)',
-                'Development headroom calculations',
-                'Professional-grade PDF with data citations',
-              ]}
-            />
-
-            <div className="mt-5">
-              <CheckoutButton
-                checkoutPath="/api/stripe/checkout/conveyancing"
-                body={{ report_id: result.report_id ?? '', address: result.address }}
-                priceLabel="$49"
+              <FreePaidComparison
+                free={[
+                  'LEP zone, height, FSR, lot size',
+                  'Environmental and hazard overlays',
+                  'SEPP overlay identification',
+                  'Title type detection',
+                  'Heritage status',
+                  'Development feasibility screening',
+                ]}
+                paid={[
+                  'DCP setback controls with clause references',
+                  'Shadow risk analysis (ADG compliance)',
+                  'Full nearby DA summary with descriptions',
+                  'LEP key sites clause interpretation',
+                  'PostGIS heritage conservation area detail',
+                  'Land value history (5 years)',
+                  'Development headroom calculations',
+                  'Professional-grade PDF with data citations',
+                ]}
               />
+
+              <div className="mt-5">
+                <CheckoutButton
+                  checkoutPath="/api/stripe/checkout/conveyancing"
+                  body={{ report_id: result.report_id ?? '', address: result.address }}
+                  priceLabel="$49"
+                />
+              </div>
             </div>
-          </div>
+          </EmailGate>
 
           {/* Data sources */}
           <div className="text-center pt-4">
@@ -462,6 +466,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           </div>
 
           {/* Cross-sell */}
+          <PostResultEmailStrip address={result.address} product="conveyancing" />
           <ToolCrossSell currentTool="conveyancing" address={result.address} />
         </div>
       )}

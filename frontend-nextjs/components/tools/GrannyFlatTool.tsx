@@ -7,6 +7,8 @@ import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { EmailGate } from '@/components/reports/EmailGate';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
 
 const GRANNY_FLAT_STEPS: TransparencyStep[] = [
@@ -542,12 +544,14 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                   <p className="text-sm text-red-700">{errorMsg}</p>
                 </div>
               )}
-              <LockedPreviewCard
-                lga_name={eligibility.lga_name}
-                address={eligibility.address ?? address}
-                detectId={eligibility.detect_id}
-              />
-              <FreePaidComparison />
+              <EmailGate address={eligibility.address ?? address} product="granny-flat">
+                <LockedPreviewCard
+                  lga_name={eligibility.lga_name}
+                  address={eligibility.address ?? address}
+                  detectId={eligibility.detect_id}
+                />
+                <FreePaidComparison />
+              </EmailGate>
             </>
           ) : null}
 
@@ -780,9 +784,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         </div>
       )}
 
-      {/* Cross-sell — after result */}
+      {/* Email capture + cross-sell — after result */}
       {pageState === 'result' && eligibility && (
-        <ToolCrossSell currentTool="granny-flat" address={eligibility.address ?? address} />
+        <>
+          <PostResultEmailStrip address={eligibility.address ?? address} product="granny-flat" />
+          <ToolCrossSell currentTool="granny-flat" address={eligibility.address ?? address} />
+        </>
       )}
 
       {/* Social proof — idle only */}

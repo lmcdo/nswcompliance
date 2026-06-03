@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { EmailGate } from '@/components/reports/EmailGate';
 import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -269,9 +271,12 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <FloodLockedPreviewCard result={result} />
+              <EmailGate address={result.address} product="flood-truth">
+                <FloodLockedPreviewCard result={result} />
+              </EmailGate>
             )
           ) : null}
+          <PostResultEmailStrip address={result.address} product="flood-truth" />
           <ToolCrossSell currentTool="flood-truth" address={result.address} />
         </>
       )}

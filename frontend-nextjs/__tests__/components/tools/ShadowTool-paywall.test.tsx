@@ -59,6 +59,14 @@ jest.mock('@/components/reports/CheckoutButton', () => ({
   ),
 }));
 
+jest.mock('@/components/reports/EmailGate', () => ({
+  EmailGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('@/components/reports/PostResultEmailStrip', () => ({
+  PostResultEmailStrip: () => null,
+}));
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------

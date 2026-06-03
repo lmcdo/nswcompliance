@@ -35,6 +35,14 @@ jest.mock('@/components/reports/CheckoutButton', () => ({
   CheckoutButton: () => null,
 }));
 
+jest.mock('@/components/reports/EmailGate', () => ({
+  EmailGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('@/components/reports/PostResultEmailStrip', () => ({
+  PostResultEmailStrip: () => null,
+}));
+
 // AddressAutocomplete — simple input passthrough for testing
 jest.mock('@/components/reports/AddressAutocomplete', () => ({
   AddressAutocomplete: ({
