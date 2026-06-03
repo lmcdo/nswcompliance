@@ -1,138 +1,134 @@
 {
-  "tier": "critical",
-  "justification": "Constraint arithmetic engine + lot dimensions port + shadow continuous function + contributions integration. Produces user-facing yield/binding-constraint outputs and wires new data sources into intelligence brief pipeline.",
-  "commit_hash": "6f3feaff",
+  "tier": "standard",
+  "justification": "New feature wiring existing backend engine to frontend — 7 files changed, DB queries involved, but engine logic itself is unchanged and already tested (103 tests in PR #460)",
+  "commit_hash": "87acc795",
   "files": [
     "services/constraint_arithmetic.py",
-    "services/lot_dimensions.py",
-    "services/intelligence_brief.py",
-    "tests/test_constraint_arithmetic.py",
-    "tests/test_lot_dimensions.py"
+    "services/compliance_api_server.py",
+    "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "tests/test_constraint_arithmetic_endpoint.py"
   ],
   "pre_impl": {
-    "existing_data": "Reads from DevelopmentBrief models (PlanningControls, DCPControls, SEPPStandard, SeppLepOverride, ShadowResult, LotDimensions). No DB queries. Lot geometry from Portal /lot API. Contributions from Portal /cp API.",
-    "assumption_mismatch": "If height/FSR strings have unexpected format, _parse_numeric returns None and gap is disclosed. If DCP control_type names don't match expected keys, controls are skipped and gap disclosed. If lot geometry has <4 points, returns None. If /cp returns empty, contributions field is NOT_AVAILABLE.",
-    "new_vs_existing": "constraint_arithmetic.py and lot_dimensions.py are new pure-function modules. intelligence_brief.py modified to wire lot geometry, contributions, and import new modules.",
-    "external_source_error": "fetch_lot_geometry: try/except returns None on failure. _fetch_contributions: try/except returns None on failure. Both wrapped in _safe_call in pipeline.",
-    "frontend_type": "No frontend changes. ContributionsResult, ContributionPlan, HousingProductivityContribution are new Pydantic models — frontend will need types when wired.",
-    "user_failure_mode": "If any computation fails, ConstraintArithmeticResult with confidence='low' and populated gaps[] is returned. Lot dimensions None = area-only fallback. Contributions None = NOT_AVAILABLE DataField. No crash, no silent wrong answer."
+    "existing_data": "dcp_setback_controls (lga, control_type, value_min/max, is_current), housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones)",
+    "assumption_mismatch": "If no DCP/SEPP rows exist for a given LGA/zone, empty arrays sent to engine — engine handles gracefully with 'data gaps' list",
+    "new_vs_existing": "Read-only queries — no writes. Engine is pure function returning computed result",
+    "external_source_error": "Railway returns non-200 → 502 to client → error state in component (amber card with 'unavailable' message)",
+    "frontend_type": "New ConstraintArithmeticResult interface mirrors Python model exactly",
+    "user_failure_mode": "If Railway down: amber card 'Development yield computation unavailable'. If DB error: empty DCP/SEPP → engine computes with gaps → low confidence badge"
   },
   "functions": [
     {
-      "name": "compute_constraint_arithmetic",
-      "file_line": "services/constraint_arithmetic.py:237",
-      "input": "lot_area_m2: float, dev_type: str, lep_height_str/lep_fsr_str: Optional[str], lot_dimensions: Optional[LotDimensions], dcp_controls: list[DCPControl], sepp_standards: list[SEPPStandard], sepp_lep_overrides: list[SeppLepOverride], shadow_result: Optional[ShadowResult]",
-      "output": "ConstraintArithmeticResult Pydantic model containing binding_constraint enum, realistic_dwellings int, computation steps chain list, gaps list, and confidence level string",
-      "if_none": "Each None input adds a gap entry to the result. Zero data produces confidence 'low' with no yield computed."
+      "name": "constraint_arithmetic_endpoint",
+      "file_line": "services/constraint_arithmetic.py:FastAPI endpoint",
+      "input": "ConstraintArithmeticRequest pydantic model validated by FastAPI framework",
+      "output": "ConstraintArithmeticResult pydantic model enforced by response_model decorator",
+      "if_none": "Pydantic returns 422 for missing required fields (lot_area_m2, dev_type)"
     },
     {
-      "name": "calculate_lot_dimensions",
-      "file_line": "services/lot_dimensions.py:49",
-      "input": "Optional dict geometry containing rings key with nested EPSG:3857 coordinate arrays from NSW Planning Portal",
-      "output": "Optional LotDimensions Pydantic model with area_m2, frontage_m, depth_m, and is_corner fields populated from polygon",
-      "if_none": "Returns None if geometry is None, rings list is empty, first ring is empty, or fewer than 3 unique points after closing-point dedup"
+      "name": "POST /api/constraint-arithmetic",
+      "file_line": "frontend-nextjs/app/api/constraint-arithmetic/route.ts:32",
+      "input": "JSON body from client component",
+      "output": "{ success: true, data: ConstraintArithmeticResult } or error",
+      "if_none": "Returns 400 if lot_area_m2 missing or <= 0"
     },
     {
-      "name": "fetch_lot_geometry",
-      "file_line": "services/lot_dimensions.py:31",
-      "input": "prop_id string representing the NSW Planning Portal property ID used to query the lot endpoint",
-      "output": "Optional dict containing raw geometry with rings key in EPSG:3857, or None on any failure",
-      "if_none": "Returns None on network error, HTTP error, empty response list, or missing geometry key in response"
+      "name": "fetchDcpControls",
+      "file_line": "route.ts:124",
+      "input": "pool, formerCouncil string, zone string",
+      "output": "DCPControl[] — may be empty",
+      "if_none": "Returns [] if formerCouncil is falsy or query errors"
     },
     {
-      "name": "_fetch_contributions",
-      "file_line": "services/intelligence_brief.py:1026",
-      "input": "prop_id integer for the NSW Planning Portal property used to query the contributions plan endpoint",
-      "output": "Optional ContributionsResult Pydantic model containing s7.12 plan names with PDF URLs and optional HPC overlay details",
-      "if_none": "Returns None on network error, HTTP error, or when response contains no contribution plans and no HPC overlay"
+      "name": "fetchSeppStandards",
+      "file_line": "route.ts:176",
+      "input": "pool connection, optional zone string for filtering",
+      "output": "SEPPStandard[] — grouped by dev_type",
+      "if_none": "Returns [] on query error; queries all standards if no zone prefix"
     },
     {
-      "name": "_build_planning_controls",
-      "file_line": "services/intelligence_brief.py:1463",
-      "input": "controls dict from portal, overlays_data dict from PostGIS, and optional lot_geometry dict from Portal lot endpoint",
-      "output": "PlanningControls Pydantic model with lot_dimensions now populated with frontage_m and depth_m from polygon geometry when available",
-      "if_none": "If lot_geometry is None or calculate_lot_dimensions returns None, falls back to area-only LotDimensions parsed from lot_size string"
-    },
-    {
-      "name": "_identify_binding_constraint",
-      "file_line": "services/constraint_arithmetic.py:683",
-      "input": "GFA values from FSR and height paths, setback-only footprint, final footprint, max storeys, coverage cap, landscaping reduction, shadow flag, and lot area",
-      "output": "Optional tuple of ConstraintType enum value and human-readable label string identifying the single most limiting constraint",
-      "if_none": "Returns None if no constraint candidates exist, meaning no data was available to compute any constraint path"
+      "name": "computeSeppLepOverrides",
+      "file_line": "route.ts:270",
+      "input": "SEPPStandard[], lepHeight number|null, lepFsr number|null",
+      "output": "SeppLepOverride[] — overrides where SEPP > LEP",
+      "if_none": "Returns [] if no standards have values exceeding LEP"
     }
   ],
   "values": [
     {
-      "value": "lot_geometry (from Portal /lot)",
-      "read_at": "services/intelligence_brief.py:2026 (pool.submit)",
-      "nullable": "yes — fetch may fail or prop_id may be None",
-      "guard_at": "services/intelligence_brief.py:1506 — calculate_lot_dimensions returns None, falls back to area-only",
-      "if_missing": "Frontage and depth are None. Area from lot_size string only. Constraint arithmetic uses _estimate_lot_dimensions fallback."
+      "value": "PYTHON_API_URL",
+      "read_at": "route.ts:18",
+      "nullable": "yes",
+      "guard_at": "route.ts:44 — returns 503 if not configured",
+      "if_missing": "503 error → component shows amber error card"
     },
     {
-      "value": "contributions (from Portal /cp)",
-      "read_at": "services/intelligence_brief.py:2030 (pool.submit)",
-      "nullable": "yes — fetch may fail or return empty",
-      "guard_at": "services/intelligence_brief.py:2324 — DataField with NOT_AVAILABLE confidence",
-      "if_missing": "DevelopmentBrief.contributions is DataField with None value and NOT_AVAILABLE confidence"
+      "value": "maxHeight / maxFsr",
+      "read_at": "route.ts:79-80",
+      "nullable": "yes",
+      "guard_at": "route.ts:79 — null-checked with != null before String()",
+      "if_missing": "Passed as null to engine → engine reports data gaps"
     },
     {
-      "value": "effective_overlap (shadow continuous)",
-      "read_at": "services/constraint_arithmetic.py:508",
-      "nullable": "no — computed from scenario overlap_pct values",
-      "guard_at": "services/constraint_arithmetic.py:513 — only applies if > SHADOW_OVERLAP_MIN (0.20)",
-      "if_missing": "N/A — defaults to 0.0 if no scenarios have overlap_pct"
+      "value": "result (component state)",
+      "read_at": "ConstraintArithmeticCard.tsx:102",
+      "nullable": "yes",
+      "guard_at": "ConstraintArithmeticCard.tsx:180 — returns null if no result",
+      "if_missing": "Component renders nothing"
     },
     {
-      "value": "depth_amplifier (shadow)",
-      "read_at": "services/constraint_arithmetic.py:523",
-      "nullable": "no — defaults to 1.0",
-      "guard_at": "services/constraint_arithmetic.py:524-526 — only amplifies if lot_depth > 0 and shadow_len > 0 and ratio > 0.5",
-      "if_missing": "N/A — always 1.0 when lot dimensions or shadow length unavailable"
+      "value": "formerCouncil",
+      "read_at": "route.ts:129",
+      "nullable": "yes",
+      "guard_at": "route.ts:129 — returns [] if falsy",
+      "if_missing": "No DCP controls sent → engine computes without setbacks"
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "Fetch DCP setback controls for the LGA",
+      "file_line": "route.ts:132-138",
+      "where_clause": "WHERE lga = $1 AND is_current = TRUE",
+      "if_zero": "Empty array → engine computes without setback data, reports gap",
+      "if_wrong": "Wrong LGA match would return wrong setbacks — mitigated by exact match on formerCouncil.toLowerCase()"
+    },
+    {
+      "purpose": "Fetch SEPP Housing standards for zone",
+      "file_line": "route.ts:186-200",
+      "where_clause": "WHERE $1 = ANY(applicable_zones) or no WHERE (all standards)",
+      "if_zero": "Empty array → no SEPP overrides computed, engine uses LEP values only",
+      "if_wrong": "Zone prefix mismatch could miss standards — mitigated by splitting on space and uppercasing"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Lot geometry with 3 points (triangle + closing) — valid or rejected?",
-      "what_happens": "4 points in ring, closing point removed, 3 unique points remain — valid polygon, area computed via shoelace",
+      "scenario": "Railway Python API is down or unreachable",
+      "what_happens": "User sees amber card: 'Development yield computation unavailable'",
       "mitigated": true,
-      "how": "services/lot_dimensions.py:62 — len(rings[0]) < 4 rejects, but triangle with closing = 4 points passes. Shoelace handles 3-point polygon correctly.",
-      "repro": "pytest tests/test_lot_dimensions.py::TestEdgeCases::test_three_points_triangle"
+      "how": "route.ts:89-96 catches non-ok responses, returns 502; component:165-178 renders error state",
+      "repro": "Set PYTHON_API_URL to invalid URL, load assessment page with valid address"
     },
     {
-      "scenario": "Circular import between lot_dimensions.py and intelligence_brief.py at module load time",
-      "what_happens": "ImportError raised during module collection preventing any test or runtime from loading",
+      "scenario": "formerCouncil is null (some addresses lack this mapping)",
+      "what_happens": "No DCP controls fetched → engine runs without setbacks → realistic_gfa higher than reality",
       "mitigated": true,
-      "how": "lot_dimensions.py uses TYPE_CHECKING guard for top-level import, deferred runtime import inside calculate_lot_dimensions()",
-      "repro": "pytest tests/test_lot_dimensions.py — would fail at collection if circular import existed"
+      "how": "Engine reports 'DCP setback data not available' in gaps array; confidence drops to medium/low",
+      "repro": "Search an address where formerCouncil is not set in the property response"
     },
     {
-      "scenario": "Noon scenario has lower overlap than morning — which is used?",
-      "what_happens": "Noon overlap preferred over worst-case. If noon is 15% (below 20% MIN), no reduction even if morning is 80%",
-      "mitigated": true,
-      "how": "services/constraint_arithmetic.py:508 — noon_overlap used when available, worst_overlap only as fallback",
-      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_noon_scenario_preferred"
-    },
-    {
-      "scenario": "/cp endpoint returns unexpected schema (missing 'cp' key)",
-      "what_happens": "_fetch_contributions handles gracefully — .get('cp') returns None, or {} returns None, empty plans list",
-      "mitigated": true,
-      "how": "services/intelligence_brief.py:1035 — (data.get('cp') or {}).get('results') or []",
-      "repro": "Manual: curl with invalid prop_id returns empty results, not error"
-    },
-    {
-      "scenario": "Shadow depth_amplifier exceeds cap when shadow_length >> lot_depth",
-      "what_happens": "depth_amplifier has min(0.25, ...) cap, and final shadow_gfa_loss has min(..., max_shadow_loss) cap",
-      "mitigated": true,
-      "how": "services/constraint_arithmetic.py:526 — min(0.25, ...) caps amplifier; line 531 — min(..., max_shadow_loss) caps total loss",
-      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_depth_amplifier_increases_reduction"
+      "scenario": "Zone prefix extraction fails (unusual zone format like 'SP3 - Tourism')",
+      "what_happens": "SEPP standards query may miss applicable standards if zone prefix doesn't match applicable_zones array",
+      "mitigated": false,
+      "how": "Partial mitigation: if no zone provided, ALL standards returned. But wrong prefix could miss matches",
+      "repro": "Test with zone='SP3 - Tourism' and check if SEPP standards are returned"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No",
+    "secrets": "No — uses existing PYTHON_API_URL env var",
     "other_repo": "No",
-    "manual_verify": "No — pure computation + data fetch wiring. Full test coverage (103 new tests)."
+    "manual_verify": "No — 7 endpoint tests cover all data availability paths; component handles loading/error/null/partial states"
   }
 }

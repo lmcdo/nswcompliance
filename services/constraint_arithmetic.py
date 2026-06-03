@@ -19,6 +19,7 @@ import math
 from enum import Enum
 from typing import Optional
 
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from services.intelligence_brief import (
@@ -31,6 +32,8 @@ from services.intelligence_brief import (
     SeppLepOverride,
     ShadowResult,
 )
+
+router = APIRouter(tags=["constraint-arithmetic"])
 
 
 # ---------------------------------------------------------------------------
@@ -823,4 +826,57 @@ def compute_from_brief(
         sepp_standards=sepp_list,
         sepp_lep_overrides=brief.sepp_lep_overrides,
         shadow_result=shadow,
+    )
+
+
+# ---------------------------------------------------------------------------
+# FastAPI endpoint — lightweight wrapper for frontend calls
+# ---------------------------------------------------------------------------
+
+
+class ConstraintArithmeticRequest(BaseModel):
+    """Request body for /constraint-arithmetic endpoint."""
+
+    lot_area_m2: float
+    dev_type: str = "dwelling_house"
+    lep_height_str: Optional[str] = None
+    lep_fsr_str: Optional[str] = None
+    frontage_m: Optional[float] = None
+    depth_m: Optional[float] = None
+    dcp_controls: list[DCPControl] = []
+    sepp_standards: list[SEPPStandard] = []
+    sepp_lep_overrides: list[SeppLepOverride] = []
+
+
+@router.post(
+    "/constraint-arithmetic",
+    response_model=ConstraintArithmeticResult,
+)
+async def constraint_arithmetic_endpoint(
+    req: ConstraintArithmeticRequest,
+) -> ConstraintArithmeticResult:
+    """Compute constraint arithmetic from pre-gathered property data.
+
+    The frontend gathers LEP/DCP/SEPP data and posts it here.
+    This endpoint runs the pure computation and returns the result.
+    No DB queries or API calls — all data is in the request body.
+    """
+    lot_dims = None
+    if req.frontage_m or req.depth_m:
+        lot_dims = LotDimensions(
+            area_m2=req.lot_area_m2,
+            frontage_m=req.frontage_m,
+            depth_m=req.depth_m,
+            is_corner=False,
+        )
+
+    return compute_constraint_arithmetic(
+        lot_area_m2=req.lot_area_m2,
+        dev_type=req.dev_type,
+        lep_height_str=req.lep_height_str,
+        lep_fsr_str=req.lep_fsr_str,
+        lot_dimensions=lot_dims,
+        dcp_controls=req.dcp_controls,
+        sepp_standards=req.sepp_standards,
+        sepp_lep_overrides=req.sepp_lep_overrides,
     )

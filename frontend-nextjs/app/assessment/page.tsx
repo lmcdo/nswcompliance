@@ -539,6 +539,7 @@ export default function AssessmentPage() {
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
                         lotArea={selectedProperty.lotDimensions?.area}
                         strataInfo={(selectedProperty as any).strataInfo}
+                        developmentType={developmentType}
                       />
                     </ErrorBoundary>
                   </div>

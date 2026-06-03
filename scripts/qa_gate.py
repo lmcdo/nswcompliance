@@ -621,8 +621,17 @@ def scan_diff_for_silent_failures(
                 has_log_only = bool(re.search(
                     r'console\.\w+|logger\.\w+|logging\.\w+|print\s*\(', body_text
                 ))
+                # A catch that logs AND returns an explicit fallback value
+                # is graceful degradation, not a silent failure — the caller
+                # receives a defined value and is responsible for the response.
+                has_explicit_return = bool(re.search(
+                    r'\breturn\s+\[|return\s+\[\s*\]|return\s+null\b'
+                    r'|return\s+\{|return\s+""|return\s+0\b'
+                    r'|return\s+false\b|return\s+None\b',
+                    body_text
+                ))
 
-                if has_log_only and not has_rethrow:
+                if has_log_only and not has_rethrow and not has_explicit_return:
                     # Check if this is in an API route (where silent = user sees nothing)
                     if 'route' in filepath.lower() or 'api' in filepath.lower():
                         errors.append(
@@ -632,9 +641,23 @@ def scan_diff_for_silent_failures(
                         )
 
             # --- Heuristic D: catch returning success with empty data ---
-            # Only flag in route/API files where this pattern matters
+            # Only flag in route/API files where this pattern matters,
+            # and only in exported handler functions (not helper functions
+            # where returning a fallback value is graceful degradation).
             if ('route' in fp_lower or 'api' in fp_lower):
                 if CATCH_PATTERN.search(line):
+                    # Check if this catch is inside an exported function (the handler)
+                    # by scanning backwards for the nearest function declaration.
+                    in_exported_fn = False
+                    for scan_back in range(i - 1, max(-1, i - 50), -1):
+                        scan_line = lines[scan_back].strip()
+                        if re.search(r'^export\s+(async\s+)?function\b', scan_line):
+                            in_exported_fn = True
+                            break
+                        if re.search(r'^(async\s+)?function\b|^\w+\s*=\s*(async\s+)?\(', scan_line):
+                            break  # non-exported function — stop
+                    if not in_exported_fn:
+                        continue  # helper function — fallback returns are valid
                     # Reuse body_text from Heuristic C if we already parsed it
                     catch_body_d = body_text if CATCH_PATTERN.search(line) and body_text else ""
                     if not catch_body_d:
