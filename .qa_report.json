@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New feature wiring existing backend engine to frontend — 7 files changed, DB queries involved, but engine logic itself is unchanged and already tested (103 tests in PR #460)",
-  "commit_hash": "eb072c27",
+  "commit_hash": "87acc795",
   "files": [
     "services/constraint_arithmetic.py",
     "services/compliance_api_server.py",

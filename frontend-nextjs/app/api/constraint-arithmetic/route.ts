@@ -147,7 +147,7 @@ async function fetchDcpControls(
       condition: r.condition,
       source_ref: r.section_ref,
     }));
-  } catch (err) { // qa-ignore silent-failure — graceful degradation: engine handles empty controls via gaps[]
+  } catch (err) {
     console.error('[constraint-arithmetic] DCP query error:', err);
     return [];
   }
@@ -247,7 +247,7 @@ async function fetchSeppStandards(
     }
 
     return standards;
-  } catch (err) { // qa-ignore silent-failure — graceful degradation: engine handles empty standards via gaps[]
+  } catch (err) {
     console.error('[constraint-arithmetic] SEPP query error:', err);
     return [];
   }
