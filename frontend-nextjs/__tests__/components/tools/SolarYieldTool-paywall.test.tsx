@@ -3,7 +3,7 @@
  *
  * After a result with coverage_available=true:
  *   - SolarLockedPreviewCard renders with blurred financial values
- *   - WaitlistButton shown (no Stripe checkout)
+ *   - CheckoutButton shown for Stripe checkout
  *
  * After payment success URL params:
  *   - PaidDownloadCTA renders instead of SolarLockedPreviewCard
@@ -54,9 +54,9 @@ jest.mock('@/components/tools/OperationalTransparency', () => ({
   OperationalTransparency: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: ({ interestType }: { interestType: string }) => (
-    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: ({ priceLabel }: { priceLabel: string }) => (
+    <button data-testid="checkout-btn">Buy report — {priceLabel}</button>
   ),
 }));
 
@@ -151,8 +151,8 @@ describe('SolarYieldTool — LockedPreviewCard after result', () => {
     await runReport();
     // "Your solar financials" is the unique heading in the LockedPreviewCard
     expect(screen.getByText('Your solar financials')).toBeInTheDocument();
-    // WaitlistButton replaces Stripe checkout
-    expect(screen.getByTestId('waitlist-btn-solar-yield')).toBeInTheDocument();
+    // CheckoutButton shown for Stripe checkout
+    expect(screen.getByTestId('checkout-btn')).toBeInTheDocument();
   });
 
   it('shows all blurred preview rows', async () => {

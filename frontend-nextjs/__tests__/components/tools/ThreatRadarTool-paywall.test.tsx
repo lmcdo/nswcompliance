@@ -3,7 +3,7 @@
  *
  * Current UI:
  *   - ALL results shown (no partial gate)
- *   - MonitorPreviewCard with WaitlistButton (no email input / Stripe checkout)
+ *   - MonitorPreviewCard with CheckoutButton for Stripe subscription checkout
  *   - Mock blurred DA card present in MonitorPreviewCard
  *   - FreePaidComparison shown
  *   - DownloadPdfButton and PostResultEmailStrip shown after results
@@ -52,9 +52,9 @@ jest.mock('@/components/reports/ToolCrossSell', () => ({
   ToolCrossSell: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: ({ interestType, label }: { interestType: string; label?: string }) => (
-    <button data-testid={`waitlist-btn-${interestType}`}>{label ?? 'Join waitlist'}</button>
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: ({ label, priceLabel }: { label?: string; priceLabel: string }) => (
+    <button data-testid="checkout-btn">{label ?? `Buy report — ${priceLabel}`}</button>
   ),
 }));
 
@@ -157,18 +157,16 @@ describe('ThreatRadarTool — 6 results', () => {
     expect(screen.getByText(/DA\/2026\/8821/)).toBeInTheDocument();
   });
 
-  it('shows "Weekly DA monitoring — coming soon" in MonitorPreviewCard', async () => {
+  it('shows "Weekly DA monitoring" in MonitorPreviewCard', async () => {
     await runSearch(6);
-    // Text appears in both MonitorPreviewCard and the top-level waitlist section
-    const elements = screen.getAllByText(/Weekly DA monitoring — coming soon/);
+    const elements = screen.getAllByText(/Weekly DA monitoring/);
     expect(elements.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows WaitlistButton in MonitorPreviewCard', async () => {
+  it('shows CheckoutButton in MonitorPreviewCard', async () => {
     await runSearch(6);
-    // WaitlistButton appears in both MonitorPreviewCard and the top-level waitlist section
-    const waitlistBtns = screen.getAllByTestId('waitlist-btn-threat-radar');
-    expect(waitlistBtns.length).toBeGreaterThanOrEqual(1);
+    const checkoutBtns = screen.getAllByTestId('checkout-btn');
+    expect(checkoutBtns.length).toBeGreaterThanOrEqual(1);
   });
 });
 

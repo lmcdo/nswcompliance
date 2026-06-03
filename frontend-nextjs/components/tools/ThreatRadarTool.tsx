@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -310,13 +310,19 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
           </>
         )}
 
-        {/* Waitlist — payments not yet available */}
+        {/* Subscribe to weekly DA monitoring */}
         <div className="border border-teal-200 bg-teal-50 rounded-xl p-5">
-          <p className="text-sm font-medium text-teal-900 mb-1">Weekly DA monitoring — coming soon</p>
+          <p className="text-sm font-medium text-teal-900 mb-1">Weekly DA monitoring</p>
           <p className="text-xs text-teal-700 mb-3">
-            Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address. Join the waitlist to be first in line.
+            Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address.
           </p>
-          <WaitlistButton interestType="threat-radar" address={address} label="Join waitlist" />
+          <CheckoutButton
+            checkoutPath="/api/stripe/checkout/threat-radar-monitor"
+            body={{ address }}
+            priceLabel="$9.99/mo"
+            label="Subscribe — $9.99/mo"
+            requiresEmail
+          />
         </div>
 
         <p className="text-xs text-gray-400 text-center">
@@ -626,12 +632,12 @@ function ThreatBadges({ app }: { app: Application }) {
 // MonitorPreviewCard — forward-anxiety subscription gate
 // ---------------------------------------------------------------------------
 
-function MonitorPreviewCard() {
+function MonitorPreviewCard({ address }: { address: string }) {
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5 space-y-3" data-testid="monitor-preview-card">
       <div>
         <p className="text-sm font-semibold text-teal-900">
-          Weekly DA monitoring — coming soon
+          Weekly DA monitoring
         </p>
         <p className="text-xs text-teal-700 mt-1 leading-relaxed">
           New DAs are lodged every week near most addresses.
@@ -662,7 +668,13 @@ function MonitorPreviewCard() {
         Example alert — real applications sent every Monday.
       </p>
 
-      <WaitlistButton interestType="threat-radar" label="Join waitlist" />
+      <CheckoutButton
+        checkoutPath="/api/stripe/checkout/threat-radar-monitor"
+        body={{ address }}
+        priceLabel="$9.99/mo"
+        label="Subscribe — $9.99/mo"
+        requiresEmail
+      />
     </div>
   );
 }
@@ -805,7 +817,7 @@ function SearchResults({
             );
           })}
           {/* Subscribe CTA after all results */}
-          <MonitorPreviewCard />
+          <MonitorPreviewCard address={result.address} />
         </>
       )}
     </div>

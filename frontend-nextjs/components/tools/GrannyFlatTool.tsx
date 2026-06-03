@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -121,9 +121,11 @@ const SEPP_LEGISLATION_URL =
 function LockedPreviewCard({
   lga_name,
   address,
+  detectId,
 }: {
   lga_name: string | null;
   address?: string;
+  detectId?: string | null;
 }) {
   const rows = [
     { label: 'Aerial structure analysis', preview: '1 structure detected' },
@@ -149,7 +151,11 @@ function LockedPreviewCard({
         ))}
       </div>
       <div className="px-5 pb-5 space-y-3">
-        <WaitlistButton interestType="granny-flat" address={address} />
+        <CheckoutButton
+          checkoutPath="/api/stripe/checkout/granny-flat"
+          body={{ job_id: detectId ?? '', address: address ?? '' }}
+          priceLabel="$49"
+        />
       </div>
     </div>
   );
@@ -539,6 +545,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               <LockedPreviewCard
                 lga_name={eligibility.lga_name}
                 address={eligibility.address ?? address}
+                detectId={eligibility.detect_id}
               />
               <FreePaidComparison />
             </>

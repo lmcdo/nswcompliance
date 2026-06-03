@@ -1,6 +1,6 @@
 'use client';
 
-import { WaitlistButton } from './WaitlistButton';
+import { CheckoutButton } from './CheckoutButton';
 
 interface PaywallGateProps {
   tool: 'flood-truth' | 'shadow' | 'solar-yield';
@@ -24,7 +24,9 @@ const TOOL_LABELS: Record<PaywallGateProps['tool'], string> = {
 
 export function PaywallGate({
   tool,
+  reportId,
   address,
+  price,
   alarmHeadline,
   alarmDetail,
   previewItems,
@@ -60,9 +62,13 @@ export function PaywallGate({
         />
       </div>
 
-      {/* Waitlist CTA */}
+      {/* Checkout CTA */}
       <div className="bg-white px-5 pb-5 pt-3">
-        <WaitlistButton interestType={tool} address={address} />
+        <CheckoutButton
+          checkoutPath={`/api/stripe/checkout/${tool}`}
+          body={{ report_id: reportId, address }}
+          priceLabel={`$${price}`}
+        />
       </div>
     </div>
   );

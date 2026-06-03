@@ -31,8 +31,8 @@ jest.mock('@/components/reports/ToolCrossSell', () => ({
   ToolCrossSell: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: () => null,
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: () => null,
 }));
 
 // AddressAutocomplete — simple input passthrough for testing

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -314,7 +314,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
             paidReportId ? (
               <PaidDownloadCTA reportId={paidReportId} />
             ) : (
-              <SolarLockedPreviewCard outputs={report.outputs} />
+              <SolarLockedPreviewCard outputs={report.outputs} address={report.address} reportId={report.report_id} />
             )
           ) : null}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
@@ -591,8 +591,12 @@ function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) 
 
 function SolarLockedPreviewCard({
   outputs,
+  address,
+  reportId,
 }: {
   outputs: SolarYieldOutputs;
+  address: string;
+  reportId?: string;
 }) {
   const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
   const annualKwh       = outputs.annual_kwh_estimate;
@@ -643,7 +647,11 @@ function SolarLockedPreviewCard({
       </div>
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <WaitlistButton interestType="solar-yield" />
+        <CheckoutButton
+          checkoutPath="/api/stripe/checkout/solar-yield"
+          body={{ report_id: reportId ?? '', address }}
+          priceLabel="$19"
+        />
       </div>
     </div>
   );

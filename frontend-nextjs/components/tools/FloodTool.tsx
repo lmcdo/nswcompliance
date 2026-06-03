@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { OperationalTransparency, type TransparencyStep } from '@/components/tools/OperationalTransparency';
@@ -422,7 +422,11 @@ function FloodLockedPreviewCard({
       )}
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <WaitlistButton interestType="flood-truth" address={result.address} />
+        <CheckoutButton
+          checkoutPath="/api/stripe/checkout/flood-truth"
+          body={{ report_id: result.report_id ?? '', address: result.address }}
+          priceLabel="$49"
+        />
       </div>
     </div>
   );

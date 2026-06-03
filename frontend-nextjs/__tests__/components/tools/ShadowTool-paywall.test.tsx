@@ -6,7 +6,7 @@
  *   - Shows first 2 scenario rows as teasers (readable)
  *   - Shows remaining rows blurred
  *   - Shows blurred objection paragraph when overlap detected
- *   - WaitlistButton shown (no Stripe checkout)
+ *   - CheckoutButton shown for Stripe checkout
  *
  * After payment success URL params: ShadowPaidDownloadCTA shown.
  */
@@ -53,9 +53,9 @@ jest.mock('@/components/tools/OperationalTransparency', () => ({
   OperationalTransparency: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: ({ interestType }: { interestType: string }) => (
-    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: ({ priceLabel }: { priceLabel: string }) => (
+    <button data-testid="checkout-btn">Buy report — {priceLabel}</button>
   ),
 }));
 
@@ -142,8 +142,8 @@ describe('ShadowTool — ShadowLockedPreviewCard', () => {
   it('renders after result with report_id', async () => {
     await runShadowCheck();
     expect(screen.getByText('Scenario breakdown')).toBeInTheDocument();
-    // WaitlistButton replaces Stripe checkout
-    expect(screen.getByTestId('waitlist-btn-shadow')).toBeInTheDocument();
+    // CheckoutButton shown for Stripe checkout
+    expect(screen.getByTestId('checkout-btn')).toBeInTheDocument();
   });
 
   it('shows ADG concern in alarm headline for non-compliant result', async () => {

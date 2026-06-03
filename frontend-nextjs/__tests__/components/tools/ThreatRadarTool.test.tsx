@@ -110,14 +110,14 @@ describe('ThreatRadarTool — idle state', () => {
     expect(screen.getByRole('button', { name: 'Check nearby applications' })).toBeDisabled();
   });
 
-  it('waitlist section is visible on initial render', () => {
+  it('subscription section is visible on initial render', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByText(/Weekly DA monitoring — coming soon/i)).toBeInTheDocument();
+    expect(screen.getByText(/Weekly DA monitoring/i)).toBeInTheDocument();
   });
 
-  it('waitlist join button disabled when email is empty', () => {
+  it('subscribe button visible on initial render', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Subscribe/i })).toBeInTheDocument();
   });
 });
 
@@ -283,21 +283,20 @@ describe('ThreatRadarTool — search results', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Waitlist
+// Subscription checkout
 // ---------------------------------------------------------------------------
 
-describe('ThreatRadarTool — waitlist', () => {
+describe('ThreatRadarTool — subscription', () => {
   beforeEach(() => { mockFetch.mockReset(); mockCapture.mockReset(); });
 
-  it('shows waitlist section with join button', () => {
+  it('shows subscription section with subscribe button', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByText(/Weekly DA monitoring — coming soon/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeInTheDocument();
+    expect(screen.getByText(/Weekly DA monitoring/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Subscribe/i })).toBeInTheDocument();
   });
 
-  it('waitlist join button enabled when email is filled', () => {
+  it('shows email input for subscription', () => {
     render(<ThreatRadarTool />);
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), { target: { value: 'user@example.com' } });
-    expect(screen.getByRole('button', { name: /Join waitlist/i })).toBeEnabled();
+    expect(screen.getByPlaceholderText('your@email.com')).toBeInTheDocument();
   });
 });

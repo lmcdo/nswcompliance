@@ -3,7 +3,7 @@
  *
  * After a result with report_id:
  *   - FloodLockedPreviewCard renders with blurred real data values
- *   - WaitlistButton shown (no Stripe checkout)
+ *   - CheckoutButton shown for Stripe checkout
  *
  * Alarm headline varies by flood_signal.
  * After payment success URL params: PaidDownloadCTA shown.
@@ -46,9 +46,9 @@ jest.mock('@/components/tools/OperationalTransparency', () => ({
   OperationalTransparency: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: ({ interestType }: { interestType: string }) => (
-    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: ({ priceLabel }: { priceLabel: string }) => (
+    <button data-testid="checkout-btn">Buy report — {priceLabel}</button>
   ),
 }));
 
@@ -170,8 +170,8 @@ describe('FloodTool — FloodLockedPreviewCard (elevated signal)', () => {
   it('shows FloodLockedPreviewCard with real data rows', async () => {
     await runFloodCheck();
     expect(screen.getByText('Your flood data')).toBeInTheDocument();
-    // WaitlistButton replaces Stripe checkout
-    expect(screen.getByTestId('waitlist-btn-flood-truth')).toBeInTheDocument();
+    // CheckoutButton shown for Stripe checkout
+    expect(screen.getByTestId('checkout-btn')).toBeInTheDocument();
   });
 
   it('shows BOM last major flood date (blurred)', async () => {

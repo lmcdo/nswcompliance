@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 
@@ -411,13 +411,17 @@ function PreDAHistoryToolInner() {
             DA events are sourced from the NSW ePlanning Portal — complete from July 2021.
           </p>
 
-          {/* Waitlist CTA */}
+          {/* Checkout CTA */}
           <div className="p-6 bg-teal-50 border border-teal-200 rounded-lg">
-            <h2 className="text-sm font-semibold text-gray-900 mb-1">Full PDF report — coming soon</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">Full PDF report</h2>
             <p className="text-xs text-gray-500 mb-4">
               Includes the full annotated timeline, DA event detail, heritage assessment, methodology, and disclaimer.
             </p>
-            <WaitlistButton interestType="pre-da-history" address={result?.address} />
+            <CheckoutButton
+              checkoutPath="/api/stripe/checkout/pre-da-history"
+              body={{ report_id: reportId ?? '', address: result?.address ?? '' }}
+              priceLabel="$49"
+            />
           </div>
 
           {/* Run another */}

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { CheckoutButton } from '@/components/reports/CheckoutButton';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
@@ -397,7 +397,11 @@ function ShadowLockedPreviewCard({
       </div>
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <WaitlistButton interestType="shadow" address={result.address} />
+        <CheckoutButton
+          checkoutPath="/api/stripe/checkout/shadow"
+          body={{ report_id: result.report_id ?? '', address: result.address }}
+          priceLabel="$29"
+        />
       </div>
     </div>
   );

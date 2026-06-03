@@ -3,7 +3,7 @@
  *
  * After an eligible result:
  *   - LockedPreviewCard renders with "Your Granny Flat Feasibility Report" heading
- *   - WaitlistButton shown (no Stripe checkout)
+ *   - CheckoutButton shown for Stripe checkout
  *   - FreePaidComparison shown
  *
  * After an ineligible result:
@@ -51,9 +51,9 @@ jest.mock('@/components/reports/ToolCrossSell', () => ({
   ToolCrossSell: () => null,
 }));
 
-jest.mock('@/components/reports/WaitlistButton', () => ({
-  WaitlistButton: ({ interestType }: { interestType: string }) => (
-    <button data-testid={`waitlist-btn-${interestType}`}>Join waitlist</button>
+jest.mock('@/components/reports/CheckoutButton', () => ({
+  CheckoutButton: ({ priceLabel }: { priceLabel: string }) => (
+    <button data-testid="checkout-btn">Buy report — {priceLabel}</button>
   ),
 }));
 
@@ -162,8 +162,8 @@ describe('GrannyFlatTool — eligible result paywall', () => {
   it('shows LockedPreviewCard after eligible result', async () => {
     await runEligibilityCheck(ELIGIBLE_RESULT);
     expect(screen.getByText('Your Granny Flat Feasibility Report')).toBeInTheDocument();
-    // WaitlistButton replaces Stripe checkout
-    expect(screen.getByTestId('waitlist-btn-granny-flat')).toBeInTheDocument();
+    // CheckoutButton shown for Stripe checkout
+    expect(screen.getByTestId('checkout-btn')).toBeInTheDocument();
   });
 
   it('shows blurred preview rows in LockedPreviewCard', async () => {

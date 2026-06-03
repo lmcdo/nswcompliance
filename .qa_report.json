@@ -1,26 +1,83 @@
 {
-  "tier": "minor",
-  "justification": "Adds .gitattributes rules to force LF line endings for *.sh and .githooks/* files. No logic changes.",
-  "commit_hash": "191f1608",
+  "tier": "Standard",
+  "justification": "Replaces WaitlistButton with CheckoutButton across 7 tool components + 6 test files. No DB changes, no new API routes — uses existing Stripe checkout routes. Payment flow is critical path but logic is simple (POST + redirect). Not Critical because no new backend logic, no data model changes.",
+  "commit_hash": "c0dfe029",
   "files": [
-    ".gitattributes"
+    "frontend-nextjs/components/reports/CheckoutButton.tsx",
+    "frontend-nextjs/components/reports/PaywallGate.tsx",
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/components/tools/ShadowTool.tsx",
+    "frontend-nextjs/components/tools/SolarYieldTool.tsx",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "frontend-nextjs/components/tools/ThreatRadarTool.tsx",
+    "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+    "frontend-nextjs/components/tools/PreDAHistoryTool.tsx",
+    "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ShadowTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ShadowTool.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/SolarYieldTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/GrannyFlatTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool-paywall.test.tsx",
+    "frontend-nextjs/__tests__/components/tools/ThreatRadarTool.test.tsx"
   ],
-  "pre_impl": {},
-  "functions": [],
-  "external_values": [],
+  "pre_impl": {
+    "existing_data": "Stripe price IDs in Vercel env vars. Existing checkout API routes at /api/stripe/checkout/{product}. No DB interaction.",
+    "assumption_mismatch": "If STRIPE_*_PRICE_ID env var is not set, checkout route returns 500 'Payment not configured'. CheckoutButton shows the error message to user.",
+    "new_vs_existing": "Frontend-only change. No existing data affected."
+  },
+  "functions": [
+    {
+      "name": "CheckoutButton",
+      "file_line": "CheckoutButton.tsx:25",
+      "input": "checkoutPath (string), body (Record<string,string>), priceLabel (string), requiresEmail? (boolean)",
+      "output": "Renders button, POSTs to checkoutPath, redirects to Stripe checkout_url",
+      "if_none": "If checkout_url is null/undefined in response, shows 'No checkout URL returned' error"
+    }
+  ],
+  "values": [
+    {
+      "value": "report_id / job_id",
+      "read_at": "Each tool component at CheckoutButton prop",
+      "nullable": "yes — result.report_id is optional",
+      "guard_at": "Fallback to empty string: { report_id: result.report_id ?? '' }",
+      "if_missing": "Stripe checkout route returns 400, CheckoutButton shows error"
+    },
+    {
+      "value": "checkout_url",
+      "read_at": "CheckoutButton.tsx:56",
+      "nullable": "yes",
+      "guard_at": "CheckoutButton.tsx:57 — explicit null check",
+      "if_missing": "User sees 'No checkout URL returned' error"
+    }
+  ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Git autocrlf overrides .gitattributes",
-      "what_happens": "Shell scripts still get CRLF, bash fails with $'\\r' errors",
+      "scenario": "report_id is undefined when user clicks Buy",
+      "what_happens": "POST body has report_id='', route returns 400, user sees error",
       "mitigated": true,
-      "how": ".gitattributes eol=lf takes precedence over core.autocrlf"
+      "how": "CheckoutButton.tsx:62 — error displayed, not silent",
+      "repro": "Run flood check with API returning no report_id → click Buy"
+    },
+    {
+      "scenario": "STRIPE_*_PRICE_ID env var not set",
+      "what_happens": "Route returns 500 'Payment not configured', user sees error",
+      "mitigated": true,
+      "how": "Each route.ts checks priceId. All IDs confirmed set except Verify/Intelligence Brief (no checkout enabled).",
+      "repro": "Remove STRIPE_FLOOD_TRUTH_PRICE_ID → click Buy"
+    },
+    {
+      "scenario": "User clicks Buy while Stripe rate-limits (429) due to rapid re-clicks",
+      "what_happens": "Stripe checkout route returns 500, user sees 'Failed to create checkout session'",
+      "mitigated": true,
+      "how": "CheckoutButton.tsx:90 — button disabled during loading state prevents rapid clicks. Error state re-enables button for retry.",
+      "repro": "Click Buy rapidly 10+ times in <1s → observe only 1 request fires, button stays disabled"
     }
   ],
   "post_merge": {
-    "db_reset": "No DB changes",
-    "secrets": "No new secrets needed",
-    "other_repo": "No other repo changes needed",
-    "manual_verify": "Run file scripts/run_mutation_tests.sh to confirm ASCII text not CRLF line endings"
+    "db_reset": "No",
+    "secrets": "No — uses existing STRIPE_*_PRICE_ID env vars",
+    "other_repo": "No",
+    "manual_verify": "Visit each tool page in Vercel preview, run analysis, click Buy, verify Stripe checkout loads"
   }
 }
