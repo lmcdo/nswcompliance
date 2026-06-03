@@ -86,6 +86,8 @@ interface ConstraintArithmeticCardProps {
   maxFsr?: number | null;
   frontage?: number | null;
   depth?: number | null;
+  /** Pre-computed result from intelligence brief — skips independent fetch when provided. */
+  briefData?: ConstraintArithmeticResult | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -98,13 +100,22 @@ export function ConstraintArithmeticCard({
   maxFsr,
   frontage,
   depth,
+  briefData,
 }: ConstraintArithmeticCardProps) {
-  const [result, setResult] = useState<ConstraintArithmeticResult | null>(null);
+  const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSteps, setShowSteps] = useState(false);
 
+  // If briefData is provided, use it directly — no fetch needed
   useEffect(() => {
+    if (briefData) {
+      setResult(briefData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (!lotArea || lotArea <= 0) return;
 
     let cancelled = false;
@@ -147,7 +158,7 @@ export function ConstraintArithmeticCard({
       });
 
     return () => { cancelled = true; };
-  }, [lotArea, devType, zone, formerCouncil, lga, maxHeight, maxFsr, frontage, depth]);
+  }, [lotArea, devType, zone, formerCouncil, lga, maxHeight, maxFsr, frontage, depth, briefData]);
 
   if (loading) {
     return (

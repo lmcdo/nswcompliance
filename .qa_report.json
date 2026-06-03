@@ -1,134 +1,102 @@
 {
   "tier": "standard",
-  "justification": "New feature wiring existing backend engine to frontend — 7 files changed, DB queries involved, but engine logic itself is unchanged and already tested (103 tests in PR #460)",
-  "commit_hash": "87acc795",
+  "justification": "Multi-file refactor: extract shared models, add /full endpoint, simplify frontend route, wire constraint arithmetic into brief. 6 files changed. No DB schema changes, no regulatory data, no user-facing text.",
+  "commit_hash": "ee6638b0",
   "files": [
+    "services/constraint_models.py",
     "services/constraint_arithmetic.py",
-    "services/compliance_api_server.py",
+    "services/intelligence_brief.py",
     "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
     "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "frontend-nextjs/components/compliance/LepControls.tsx",
-    "frontend-nextjs/app/assessment/page.tsx",
     "tests/test_constraint_arithmetic_endpoint.py"
   ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls (lga, control_type, value_min/max, is_current), housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones)",
-    "assumption_mismatch": "If no DCP/SEPP rows exist for a given LGA/zone, empty arrays sent to engine — engine handles gracefully with 'data gaps' list",
-    "new_vs_existing": "Read-only queries — no writes. Engine is pure function returning computed result",
-    "external_source_error": "Railway returns non-200 → 502 to client → error state in component (amber card with 'unavailable' message)",
-    "frontend_type": "New ConstraintArithmeticResult interface mirrors Python model exactly",
-    "user_failure_mode": "If Railway down: amber card 'Development yield computation unavailable'. If DB error: empty DCP/SEPP → engine computes with gaps → low confidence badge"
+    "existing_data": "Reads dcp_setback_controls and housing_sepp_standards via conveyancing_db functions. No writes.",
+    "assumption_mismatch": "If DB functions return unexpected shapes, _fetch_constraint_data_from_db catches the exception and returns empty lists — constraint arithmetic runs with available data, gaps reported.",
+    "new_vs_existing": "No data mutations. Read-only queries + pure computation. Applies to all requests immediately."
   },
   "functions": [
     {
-      "name": "constraint_arithmetic_endpoint",
-      "file_line": "services/constraint_arithmetic.py:FastAPI endpoint",
-      "input": "ConstraintArithmeticRequest pydantic model validated by FastAPI framework",
-      "output": "ConstraintArithmeticResult pydantic model enforced by response_model decorator",
-      "if_none": "Pydantic returns 422 for missing required fields (lot_area_m2, dev_type)"
+      "name": "_fetch_constraint_data_from_db",
+      "file_line": "services/constraint_arithmetic.py:808",
+      "input": "lga: Optional[str], zone: Optional[str], lot_area_m2: float, lep height and fsr strings",
+      "output": "tuple of three lists: DCPControl, SEPPStandard, SeppLepOverride — all empty on failure",
+      "if_none": "Returns ([], [], []) — engine runs without DCP/SEPP data, reports gaps"
     },
     {
-      "name": "POST /api/constraint-arithmetic",
-      "file_line": "frontend-nextjs/app/api/constraint-arithmetic/route.ts:32",
-      "input": "JSON body from client component",
-      "output": "{ success: true, data: ConstraintArithmeticResult } or error",
-      "if_none": "Returns 400 if lot_area_m2 missing or <= 0"
+      "name": "constraint_arithmetic_full",
+      "file_line": "services/constraint_arithmetic.py:918",
+      "input": "ConstraintArithmeticFullRequest (lot_area_m2, zone, lga, LEP strings)",
+      "output": "ConstraintArithmeticResult pydantic model with realistic GFA, dwellings, binding constraint, steps chain",
+      "if_none": "If no zone/lga, DB fetch skipped. If lot_area_m2 missing, pydantic 422."
     },
     {
-      "name": "fetchDcpControls",
-      "file_line": "route.ts:124",
-      "input": "pool, formerCouncil string, zone string",
-      "output": "DCPControl[] — may be empty",
-      "if_none": "Returns [] if formerCouncil is falsy or query errors"
-    },
-    {
-      "name": "fetchSeppStandards",
-      "file_line": "route.ts:176",
-      "input": "pool connection, optional zone string for filtering",
-      "output": "SEPPStandard[] — grouped by dev_type",
-      "if_none": "Returns [] on query error; queries all standards if no zone prefix"
-    },
-    {
-      "name": "computeSeppLepOverrides",
-      "file_line": "route.ts:270",
-      "input": "SEPPStandard[], lepHeight number|null, lepFsr number|null",
-      "output": "SeppLepOverride[] — overrides where SEPP > LEP",
-      "if_none": "Returns [] if no standards have values exceeding LEP"
+      "name": "run_intelligence_brief",
+      "file_line": "services/intelligence_brief.py:1904",
+      "input": "IntelligenceBriefRequest with address, lat, lng — constraint wiring at line 2234",
+      "output": "DevelopmentBrief or RenovationBrief with optional constraint_arithmetic DataField",
+      "if_none": "If lot_area_m2 <= 0 or computation throws, constraint_result = None, field omitted from brief"
     }
   ],
   "values": [
     {
-      "value": "PYTHON_API_URL",
-      "read_at": "route.ts:18",
+      "value": "constraint_result",
+      "read_at": "intelligence_brief.py:2232",
       "nullable": "yes",
-      "guard_at": "route.ts:44 — returns 503 if not configured",
-      "if_missing": "503 error → component shows amber error card"
+      "guard_at": "intelligence_brief.py:2230 — if lot_area_m2 and lot_area_m2 > 0",
+      "if_missing": "constraint_arithmetic field is None in brief — frontend card falls back to independent fetch"
     },
     {
-      "value": "maxHeight / maxFsr",
-      "read_at": "route.ts:79-80",
+      "value": "briefData prop",
+      "read_at": "ConstraintArithmeticCard.tsx:90",
       "nullable": "yes",
-      "guard_at": "route.ts:79 — null-checked with != null before String()",
-      "if_missing": "Passed as null to engine → engine reports data gaps"
-    },
-    {
-      "value": "result (component state)",
-      "read_at": "ConstraintArithmeticCard.tsx:102",
-      "nullable": "yes",
-      "guard_at": "ConstraintArithmeticCard.tsx:180 — returns null if no result",
-      "if_missing": "Component renders nothing"
-    },
-    {
-      "value": "formerCouncil",
-      "read_at": "route.ts:129",
-      "nullable": "yes",
-      "guard_at": "route.ts:129 — returns [] if falsy",
-      "if_missing": "No DCP controls sent → engine computes without setbacks"
+      "guard_at": "ConstraintArithmeticCard.tsx:113 — if (briefData) skip fetch, else fetch independently",
+      "if_missing": "Card fetches from /api/constraint-arithmetic as before — backwards compatible"
     }
   ],
   "queries": [
     {
-      "purpose": "Fetch DCP setback controls for the LGA",
-      "file_line": "route.ts:132-138",
-      "where_clause": "WHERE lga = $1 AND is_current = TRUE",
-      "if_zero": "Empty array → engine computes without setback data, reports gap",
-      "if_wrong": "Wrong LGA match would return wrong setbacks — mitigated by exact match on formerCouncil.toLowerCase()"
+      "purpose": "Fetch DCP setback controls for LGA",
+      "file_line": "conveyancing_db.py:140 (called from constraint_arithmetic.py:866)",
+      "where_clause": "WHERE lga = %s AND is_current = TRUE",
+      "if_zero": "Returns None — dcp_controls list stays empty, gaps reported",
+      "if_wrong": "Wrong LGA slug → empty result (no matching rows)"
     },
     {
       "purpose": "Fetch SEPP Housing standards for zone",
-      "file_line": "route.ts:186-200",
-      "where_clause": "WHERE $1 = ANY(applicable_zones) or no WHERE (all standards)",
-      "if_zero": "Empty array → no SEPP overrides computed, engine uses LEP values only",
-      "if_wrong": "Zone prefix mismatch could miss standards — mitigated by splitting on space and uppercasing"
+      "file_line": "conveyancing_db.py:444 (called from constraint_arithmetic.py:873)",
+      "where_clause": "WHERE %s = ANY(applicable_zones)",
+      "if_zero": "Returns [] — sepp_standards empty, no overrides computed",
+      "if_wrong": "Wrong zone prefix → empty result"
     }
   ],
   "break_it": [
     {
-      "scenario": "Railway Python API is down or unreachable",
-      "what_happens": "User sees amber card: 'Development yield computation unavailable'",
+      "scenario": "Circular import at module load time if intelligence_brief imports compute_constraint_arithmetic at top level",
+      "what_happens": "ImportError crashes Railway service startup",
       "mitigated": true,
-      "how": "route.ts:89-96 catches non-ok responses, returns 502; component:165-178 renders error state",
-      "repro": "Set PYTHON_API_URL to invalid URL, load assessment page with valid address"
+      "how": "intelligence_brief.py:2234 — import is inside function body (lazy). TYPE_CHECKING guard in constraint_arithmetic.py for DevelopmentBrief.",
+      "repro": "python -c 'from services.constraint_arithmetic import router' — would fail if circular"
     },
     {
-      "scenario": "formerCouncil is null (some addresses lack this mapping)",
-      "what_happens": "No DCP controls fetched → engine runs without setbacks → realistic_gfa higher than reality",
+      "scenario": "Frontend sends formerCouncil but /full endpoint expects lga field",
+      "what_happens": "DCP controls not fetched — computation runs without setbacks",
       "mitigated": true,
-      "how": "Engine reports 'DCP setback data not available' in gaps array; confidence drops to medium/low",
-      "repro": "Search an address where formerCouncil is not set in the property response"
+      "how": "route.ts:56 — maps formerCouncil to lga: body.formerCouncil ?? body.lga ?? null",
+      "repro": "POST /api/constraint-arithmetic with formerCouncil='marrickville'"
     },
     {
-      "scenario": "Zone prefix extraction fails (unusual zone format like 'SP3 - Tourism')",
-      "what_happens": "SEPP standards query may miss applicable standards if zone prefix doesn't match applicable_zones array",
-      "mitigated": false,
-      "how": "Partial mitigation: if no zone provided, ALL standards returned. But wrong prefix could miss matches",
-      "repro": "Test with zone='SP3 - Tourism' and check if SEPP standards are returned"
+      "scenario": "DB connection fails in _fetch_constraint_data_from_db",
+      "what_happens": "Exception caught, returns ([], [], []) — computation runs with gaps, not a 500",
+      "mitigated": true,
+      "how": "constraint_arithmetic.py:878 — except Exception catches all, logs warning, returns empty",
+      "repro": "Set DATABASE_URL to invalid, POST /constraint-arithmetic/full — returns result with gaps"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — uses existing PYTHON_API_URL env var",
+    "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — 7 endpoint tests cover all data availability paths; component handles loading/error/null/partial states"
+    "manual_verify": "No — 1754 tests cover all data flow paths including 5 new endpoint tests"
   }
 }

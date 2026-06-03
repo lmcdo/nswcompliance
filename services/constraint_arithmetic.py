@@ -16,18 +16,20 @@ Pure arithmetic on structured data already collected by the intelligence brief p
 from __future__ import annotations
 
 import math
-from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from services.intelligence_brief import DevelopmentBrief
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from services.intelligence_brief import (
+from services.constraint_models import (
+    ConstraintArithmeticResult,
+    ConstraintStep,
+    ConstraintType,
     DCPControl,
-    DCPControls,
-    DevelopmentBrief,
     LotDimensions,
-    PlanningControls,
     SEPPStandard,
     SeppLepOverride,
     ShadowResult,
@@ -71,89 +73,6 @@ SHADOW_OVERLAP_THRESHOLD = 0.40
 # ---------------------------------------------------------------------------
 # Enums and response models
 # ---------------------------------------------------------------------------
-
-
-class ConstraintType(str, Enum):
-    """The types of constraint that can be binding."""
-
-    LEP_HEIGHT = "lep_height"
-    LEP_FSR = "lep_fsr"
-    DCP_SETBACKS = "dcp_setbacks"
-    DCP_SITE_COVERAGE = "dcp_site_coverage"
-    DCP_LANDSCAPING = "dcp_landscaping"
-    DCP_DEEP_SOIL = "dcp_deep_soil"
-    SHADOW_ACCESS = "shadow_access"
-    PARKING = "parking"
-    LOT_SIZE = "lot_size"
-    SEPP_OVERRIDE = "sepp_override"
-
-
-class ConstraintStep(BaseModel):
-    """One step in the constraint arithmetic chain."""
-
-    constraint: ConstraintType
-    label: str
-    input_gfa_m2: Optional[float] = None
-    reduction_m2: Optional[float] = None
-    output_gfa_m2: Optional[float] = None
-    footprint_m2: Optional[float] = None
-    note: str = ""
-
-
-class ConstraintArithmeticResult(BaseModel):
-    """Full result of constraint arithmetic computation."""
-
-    # Inputs echoed back
-    lot_area_m2: float
-    dev_type: str
-    lep_height_m: Optional[float] = None
-    lep_fsr: Optional[float] = None
-
-    # LEP envelope
-    lep_max_gfa_from_fsr_m2: Optional[float] = None
-    lep_max_storeys: Optional[int] = None
-    lep_max_gfa_from_height_m2: Optional[float] = None
-    lep_envelope_gfa_m2: Optional[float] = None  # min of FSR and height paths
-
-    # DCP erosion
-    buildable_footprint_m2: Optional[float] = None
-    setback_front_m: Optional[float] = None
-    setback_rear_m: Optional[float] = None
-    setback_side_m: Optional[float] = None
-    site_coverage_cap_m2: Optional[float] = None
-    landscaping_reduction_m2: Optional[float] = None
-
-    # SEPP override
-    sepp_overrides_applied: list[SeppLepOverride] = []
-    effective_height_m: Optional[float] = None
-    effective_fsr: Optional[float] = None
-
-    # Shadow
-    shadow_storey_reduction: int = 0
-
-    # Parking
-    parking_spaces_required: Optional[float] = None
-    parking_gfa_consumed_m2: Optional[float] = None
-
-    # Final outputs
-    realistic_gfa_m2: Optional[float] = None
-    realistic_dwellings: Optional[int] = None
-    binding_constraint: Optional[ConstraintType] = None
-    binding_constraint_label: str = ""
-
-    # Full chain for transparency
-    steps: list[ConstraintStep] = []
-
-    # Data gaps that limited computation
-    gaps: list[str] = []
-    confidence: str = "low"  # low / medium / high based on data completeness
-
-    disclaimer: str = (
-        "Constraint arithmetic is a preliminary computational estimate only. "
-        "It does not account for merit-based assessment, clause variations, or "
-        "council-specific interpretation. Engage a qualified town planner for "
-        "site-specific assessment."
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -879,4 +798,157 @@ async def constraint_arithmetic_endpoint(
         dcp_controls=req.dcp_controls,
         sepp_standards=req.sepp_standards,
         sepp_lep_overrides=req.sepp_lep_overrides,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Full endpoint — fetches DCP/SEPP from DB, computes overrides, runs engine
+# ---------------------------------------------------------------------------
+
+
+def _fetch_constraint_data_from_db(
+    lga: Optional[str],
+    zone: Optional[str],
+    lot_area_m2: float,
+    lep_height_str: Optional[str],
+    lep_fsr_str: Optional[str],
+) -> tuple[list[DCPControl], list[SEPPStandard], list[SeppLepOverride]]:
+    """Fetch DCP controls, SEPP standards, and overrides from the database.
+
+    Returns (dcp_controls, sepp_standards, sepp_lep_overrides).
+    On any failure, returns empty lists for affected data.
+    """
+    import logging
+    import os
+
+    _logger = logging.getLogger(__name__)
+
+    dcp_controls: list[DCPControl] = []
+    sepp_standards: list[SEPPStandard] = []
+    sepp_lep_overrides: list[SeppLepOverride] = []
+
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url or not (lga or zone):
+        return dcp_controls, sepp_standards, sepp_lep_overrides
+
+    conn = None
+    try:
+        import psycopg2
+
+        sys_path_orig = __import__("sys").path[:]
+        import sys as _sys
+        scripts_dir = str(__import__("pathlib").Path(__file__).resolve().parent.parent / "scripts")
+        if scripts_dir not in _sys.path:
+            _sys.path.insert(0, scripts_dir)
+        try:
+            from conveyancing_db import fetch_dcp_setbacks, fetch_sepp_housing_standards
+        finally:
+            _sys.path[:] = sys_path_orig
+
+        from services.intelligence_brief import (
+            _build_sepp_housing,
+            _detect_sepp_lep_overrides,
+        )
+
+        conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
+        conn.autocommit = True
+
+        # 1. Fetch DCP controls
+        if lga:
+            dcp_raw = fetch_dcp_setbacks(conn, lga, zone)
+            if dcp_raw:
+                all_setbacks = (dcp_raw.get("setbacks") or []) + (dcp_raw.get("sd_setbacks") or [])
+                for s in all_setbacks:
+                    dcp_controls.append(DCPControl(
+                        control_type=s.get("control_type", s.get("type", "")),
+                        dev_type=s.get("dev_type", "dwelling_house"),
+                        value_min=s.get("value_min") or s.get("requirement"),
+                        value_max=s.get("value_max"),
+                        unit=s.get("unit", "m"),
+                        condition=s.get("notes") or s.get("condition"),
+                        source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
+                    ))
+
+        # 2. Fetch SEPP Housing standards
+        if zone:
+            sepp_raw = fetch_sepp_housing_standards(conn, zone_code=zone)
+            sepp_standards = _build_sepp_housing(sepp_raw, zone, lot_area_m2)
+
+        # 3. Compute SEPP-LEP overrides
+        lep_height = _parse_numeric(lep_height_str)
+        lep_fsr = _parse_numeric(lep_fsr_str)
+        sepp_lep_overrides = _detect_sepp_lep_overrides(
+            sepp_standards, lep_height, lep_fsr,
+        )
+
+    except Exception as e:
+        _logger.warning("constraint-arithmetic/full DB fetch failed: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    return dcp_controls, sepp_standards, sepp_lep_overrides
+
+
+class ConstraintArithmeticFullRequest(BaseModel):
+    """Request body for /constraint-arithmetic/full endpoint.
+
+    Unlike the base endpoint, this only needs property identifiers +
+    LEP values. DCP controls, SEPP standards, and overrides are fetched
+    server-side from the database.
+    """
+
+    lot_area_m2: float
+    dev_type: str = "dwelling_house"
+    zone: Optional[str] = None
+    lga: Optional[str] = None  # formerCouncil slug
+    lep_height_str: Optional[str] = None
+    lep_fsr_str: Optional[str] = None
+    frontage_m: Optional[float] = None
+    depth_m: Optional[float] = None
+
+
+@router.post(
+    "/constraint-arithmetic/full",
+    response_model=ConstraintArithmeticResult,
+)
+async def constraint_arithmetic_full(
+    req: ConstraintArithmeticFullRequest,
+) -> ConstraintArithmeticResult:
+    """Compute constraint arithmetic with server-side data gathering.
+
+    Fetches DCP setback controls and SEPP Housing standards from the
+    database, computes SEPP-LEP overrides, then runs the constraint
+    arithmetic engine. The frontend only needs to supply property
+    identifiers and LEP values (from the Planning Portal).
+    """
+    lot_dims = None
+    if req.frontage_m or req.depth_m:
+        lot_dims = LotDimensions(
+            area_m2=req.lot_area_m2,
+            frontage_m=req.frontage_m,
+            depth_m=req.depth_m,
+            is_corner=False,
+        )
+
+    dcp_controls, sepp_standards, sepp_lep_overrides = _fetch_constraint_data_from_db(
+        lga=req.lga,
+        zone=req.zone,
+        lot_area_m2=req.lot_area_m2,
+        lep_height_str=req.lep_height_str,
+        lep_fsr_str=req.lep_fsr_str,
+    )
+
+    return compute_constraint_arithmetic(
+        lot_area_m2=req.lot_area_m2,
+        dev_type=req.dev_type,
+        lep_height_str=req.lep_height_str,
+        lep_fsr_str=req.lep_fsr_str,
+        lot_dimensions=lot_dims,
+        dcp_controls=dcp_controls,
+        sepp_standards=sepp_standards,
+        sepp_lep_overrides=sepp_lep_overrides,
     )
