@@ -35,10 +35,35 @@ for mod_name in _MOCK_MODULES:
     if mod_name not in sys.modules:
         sys.modules[mod_name] = MagicMock()
 
+# ── Special handling: requests exception hierarchy ──────────────────────────
+# dem_service.py catches `requests.RequestException`. MagicMock attributes are
+# not real exception classes, so `except MockObj:` crashes with TypeError.
+# Provide real exception classes so catch clauses work.
+requests_mock = sys.modules["requests"]
+if isinstance(requests_mock, MagicMock):
+
+    class _RequestException(IOError):
+        pass
+
+    class _HTTPError(_RequestException):
+        pass
+
+    class _ConnectionError(_RequestException):
+        pass
+
+    class _Timeout(_RequestException):
+        pass
+
+    requests_mock.RequestException = _RequestException
+    requests_mock.HTTPError = _HTTPError
+    requests_mock.ConnectionError = _ConnectionError
+    requests_mock.Timeout = _Timeout
+
 # ── Special handling: pyproj Transformer ─────────────────────────────────────
 # flood_truth.py does `Transformer.from_crs(...)`.
 pyproj_mock = sys.modules["pyproj"]
 transformer_instance = MagicMock()
+transformer_instance.transform = MagicMock(return_value=(0.0, 0.0))
 pyproj_mock.Transformer.from_crs = MagicMock(return_value=transformer_instance)
 
 # ── Special handling: psycopg2.extras.RealDictCursor ─────────────────────────
@@ -70,3 +95,18 @@ except ImportError:
     sys.modules["numpy"] = np_mock
     sys.modules["numpy.typing"] = MagicMock()
     sys.modules["numpy.random"] = MagicMock()
+
+# ── rasterio: try real import, mock only if unavailable ─────────────────────
+try:
+    import rasterio  # noqa: F401
+except ImportError:
+    rio_mock = MagicMock()
+    sys.modules["rasterio"] = rio_mock
+    sys.modules["rasterio.transform"] = MagicMock()
+    sys.modules["rasterio.crs"] = MagicMock()
+
+# ── whitebox: try real import, mock only if unavailable ─────────────────────
+try:
+    import whitebox  # noqa: F401
+except ImportError:
+    sys.modules["whitebox"] = MagicMock()
