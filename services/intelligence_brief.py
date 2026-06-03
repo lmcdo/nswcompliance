@@ -323,6 +323,30 @@ class ShadowResult(BaseModel):
     )
 
 
+class ContributionPlan(BaseModel):
+    """A single development contributions plan (s7.11 / s7.12)."""
+
+    plan_name: str
+    plan_url: Optional[str] = None
+
+
+class HousingProductivityContribution(BaseModel):
+    """Housing and Productivity Contribution (HPC) overlay."""
+
+    name: Optional[str] = None
+    component: Optional[str] = None  # "BHPC" etc
+    commenced_date: Optional[str] = None
+    ministerial_order_url: Optional[str] = None
+
+
+class ContributionsResult(BaseModel):
+    """Development contributions applicable to a property."""
+
+    plans: list[ContributionPlan] = []
+    hpc: Optional[HousingProductivityContribution] = None
+    lga_name: Optional[str] = None
+
+
 class StrataInfo(BaseModel):
     """Strata classification with four-state type."""
 
@@ -655,6 +679,7 @@ class DevelopmentBrief(BaseModel):
     environmental_constraints: EnvironmentalConstraints
     neighbourhood: Neighbourhood
     economics: Economics
+    contributions: Optional[DataField[ContributionsResult]] = None
     satellite: Optional[SatelliteData] = None
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
@@ -995,6 +1020,53 @@ def _fetch_valuation(prop_id: int) -> dict:
     return get_valuation(prop_id)
 
 
+CP_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/cp"
+
+
+def _fetch_contributions(prop_id: int) -> Optional[ContributionsResult]:
+    """Planning Portal /cp: development contributions plans and HPC overlay."""
+    import requests
+
+    try:
+        r = requests.get(CP_API, params={"id": prop_id, "type": "property"}, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        return None
+
+    plans: list[ContributionPlan] = []
+    lga_name: Optional[str] = None
+
+    cp_results = (data.get("cp") or {}).get("results") or []
+    for entry in cp_results:
+        if not lga_name:
+            lga_name = entry.get("lgaName")
+        for cp in (entry.get("cpResults") or []):
+            plans.append(ContributionPlan(
+                plan_name=cp.get("planName", ""),
+                plan_url=cp.get("planURL"),
+            ))
+
+    hpc: Optional[HousingProductivityContribution] = None
+    icdp_results = (data.get("icdp") or {}).get("results") or []
+    for entry in icdp_results:
+        for res in (entry.get("results") or []):
+            hpc = HousingProductivityContribution(
+                name=res.get("Name"),
+                component=res.get("Component"),
+                commenced_date=res.get("Commenced Date"),
+                ministerial_order_url=res.get("Ministerial Order"),
+            )
+            break
+        if hpc:
+            break
+
+    if not plans and not hpc:
+        return None
+
+    return ContributionsResult(plans=plans, hpc=hpc, lga_name=lga_name)
+
+
 def _fetch_overlays(lat: float, lng: float, lot_wkt: Optional[str]) -> dict:
     """PostGIS spatial_overlays: environmental constraints."""
     overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt)
@@ -1078,6 +1150,10 @@ from services.portal_constraints import (
     fetch_uhi as _fetch_uhi,
     fetch_arr_ifd as _fetch_arr_ifd,
     fetch_firms_hotspots as _fetch_firms_hotspots,
+)
+from services.lot_dimensions import (
+    fetch_lot_geometry,
+    calculate_lot_dimensions,
 )
 
 
@@ -1387,6 +1463,7 @@ def _build_satellite_data(
 def _build_planning_controls(
     controls: dict,
     overlays_data: dict,
+    lot_geometry: Optional[dict] = None,
 ) -> PlanningControls:
     """Map conveyancing parse_controls output to PlanningControls schema."""
     today = date.today().isoformat()
@@ -1405,7 +1482,8 @@ def _build_planning_controls(
     housing_sepp = controls.get("housing_sepp", False)
     tod_area = controls.get("tod_area", False)
 
-    # Lot dimensions from valuation/overlays
+    # Lot dimensions — compute from polygon geometry if available, fall back
+    # to scalar lot_size string from planning portal
     lot_size_str = controls.get("lot_size")
     lot_area = None
     if lot_size_str:
@@ -1413,6 +1491,18 @@ def _build_planning_controls(
             lot_area = float(str(lot_size_str).replace(",", "").replace("m²", "").strip())
         except (ValueError, TypeError):
             pass
+
+    lot_dims = calculate_lot_dimensions(lot_geometry) if lot_geometry else None
+    if lot_dims:
+        # Polygon-derived dimensions — authoritative for frontage/depth.
+        # Prefer portal lot_size for area if available (it's from the valuer).
+        if lot_area and lot_dims.area_m2:
+            lot_dims.area_m2 = lot_area
+        elif lot_area and not lot_dims.area_m2:
+            lot_dims.area_m2 = lot_area
+    elif lot_area:
+        # No polygon — area-only fallback (original behaviour)
+        lot_dims = LotDimensions(area_m2=lot_area)
 
     return PlanningControls(
         zone=DataField(value=_sanitise(controls.get("zone")), confidence=auth, source="planning_portal", as_at=today),
@@ -1429,8 +1519,8 @@ def _build_planning_controls(
         housing_sepp=DataField(value=housing_sepp, confidence=auth, source="planning_portal", as_at=today),
         tod_area=DataField(value=tod_area, confidence=auth, source="planning_portal", as_at=today),
         lot_dimensions=DataField(
-            value=LotDimensions(area_m2=lot_area) if lot_area else None,
-            confidence=auth if lot_area else ConfidenceLevel.NOT_AVAILABLE,
+            value=lot_dims,
+            confidence=auth if lot_dims else ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal",
             as_at=today,
         ),
@@ -1922,6 +2012,8 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
         # ── 3a. Submit all independent sources (only need lat/lng/prop_id) ──
 
+        f_lot_geometry = None
+        f_contributions = None
         if resolved_prop_id:
             f_controls = pool.submit(
                 _safe_call, lambda: _fetch_controls(resolved_prop_id),
@@ -1930,6 +2022,14 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             f_valuation = pool.submit(
                 _safe_call, lambda: _fetch_valuation(resolved_prop_id),
                 "nsw_valuation_service", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_lot_geometry = pool.submit(
+                _safe_call, lambda: fetch_lot_geometry(str(resolved_prop_id)),
+                "planning_portal_lot", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_contributions = pool.submit(
+                _safe_call, lambda: _fetch_contributions(resolved_prop_id),
+                "planning_portal_cp", ConfidenceLevel.AUTHORITATIVE,
             )
 
         f_overlays = pool.submit(
@@ -2083,6 +2183,14 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
         contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
         drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
+        lot_geometry_df = _timed_result(f_lot_geometry, 15, "planning_portal_lot", timings) if f_lot_geometry else DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_lot", reason="No prop_id resolved",
+        )
+        contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_cp", reason="No prop_id resolved",
+        )
 
         # Dependent sources (submitted after controls)
         das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
@@ -2129,6 +2237,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     shadow_raw = shadow_df.value
     dcp_raw = dcp_df.value
     sepp_raw = sepp_df.value or []
+    lot_geometry_raw = lot_geometry_df.value  # Portal lot polygon (EPSG:3857)
 
     # ── 5. PostGIS fallbacks (same as conveyancing.py) ───────────────────
     ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
@@ -2158,7 +2267,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     )
 
     # ── 7. Assemble brief ────────────────────────────────────────────────
-    planning_controls = _build_planning_controls(controls, overlays_data)
+    planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw)
     dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
     sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
 
@@ -2202,6 +2311,15 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             confidence_summary=ConfidenceSummary(),  # placeholder, recomputed below
         )
     else:
+        contributions_raw = contributions_df.value
+        contributions_field = DataField(
+            value=contributions_raw,
+            confidence=ConfidenceLevel.AUTHORITATIVE if contributions_raw else ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_cp",
+            as_at=today,
+            reason=None if contributions_raw else "No contributions plans found for this property",
+        )
+
         brief = DevelopmentBrief(
             address=req.address,
             lat=lat,
@@ -2216,6 +2334,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
+            contributions=contributions_field,
             satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),  # placeholder
         )
@@ -2361,6 +2480,7 @@ def _generate_brief_sse(
     # ── Submit all independent sources ───────────────────────────────────
     f_controls = None
     f_valuation = None
+    f_lot_geometry = None
 
     with ThreadPoolExecutor(max_workers=CONFIG.max_parallel_sources) as pool:
 
@@ -2372,6 +2492,14 @@ def _generate_brief_sse(
             f_valuation = pool.submit(
                 _safe_call, lambda: _fetch_valuation(resolved_prop_id),
                 "nsw_valuation_service", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_lot_geometry = pool.submit(
+                _safe_call, lambda: fetch_lot_geometry(str(resolved_prop_id)),
+                "planning_portal_lot", ConfidenceLevel.AUTHORITATIVE,
+            )
+            f_contributions = pool.submit(
+                _safe_call, lambda: _fetch_contributions(resolved_prop_id),
+                "planning_portal_cp", ConfidenceLevel.AUTHORITATIVE,
             )
 
         f_overlays = pool.submit(
@@ -2552,6 +2680,15 @@ def _generate_brief_sse(
         mine_subsidence_raw = mine_sub_df.value
         contaminated_land_raw = contam_df.value
         drinking_water_raw = drinking_df.value
+        lot_geometry_df = _timed_result(f_lot_geometry, 15, "planning_portal_lot", timings) if f_lot_geometry else DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_lot", reason="No prop_id resolved",
+        )
+        lot_geometry_raw = lot_geometry_df.value
+        contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_cp", reason="No prop_id resolved",
+        )
 
         environmental = _build_environmental(
             controls, overlays_data, heritage_postgis,
@@ -2574,7 +2711,7 @@ def _generate_brief_sse(
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
             controls["lot_size"] = ov_by_type["lot_size"].get("value")
 
-        planning_controls = _build_planning_controls(controls, overlays_data)
+        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw)
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "planning_controls",
@@ -2759,6 +2896,14 @@ def _generate_brief_sse(
             confidence_summary=ConfidenceSummary(),
         )
     else:
+        contributions_raw = contributions_df.value
+        contributions_field = DataField(
+            value=contributions_raw,
+            confidence=ConfidenceLevel.AUTHORITATIVE if contributions_raw else ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_cp",
+            as_at=today,
+            reason=None if contributions_raw else "No contributions plans found for this property",
+        )
         brief = DevelopmentBrief(
             address=req.address, lat=lat, lng=lng,
             prop_id=resolved_prop_id, run_date=today,
@@ -2770,6 +2915,7 @@ def _generate_brief_sse(
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
+            contributions=contributions_field,
             satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),
         )

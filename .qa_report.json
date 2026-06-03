@@ -1,98 +1,138 @@
 {
-  "tier": "standard",
-  "justification": "New satellite pipeline (terrain analysis) + integration into intelligence brief. No DB writes, no user-facing text beyond disclaimer. 7 files changed/added.",
-  "commit_hash": "3b3550a3",
+  "tier": "critical",
+  "justification": "Constraint arithmetic engine + lot dimensions port + shadow continuous function + contributions integration. Produces user-facing yield/binding-constraint outputs and wires new data sources into intelligence brief pipeline.",
+  "commit_hash": "6f3feaff",
   "files": [
-    "services/dem_service.py",
-    "services/terrain_analysis.py",
+    "services/constraint_arithmetic.py",
+    "services/lot_dimensions.py",
     "services/intelligence_brief.py",
-    "services/compliance_api_server.py",
-    "tests/conftest_mocks.py",
-    "tests/test_dem_service.py",
-    "tests/test_terrain_analysis.py"
+    "tests/test_constraint_arithmetic.py",
+    "tests/test_lot_dimensions.py"
   ],
   "pre_impl": {
-    "existing_data": "No DB interaction. DEM data fetched from GA WCS + SIX Maps (HTTP). Intelligence brief adds terrain as optional satellite section.",
-    "assumption_mismatch": "If GA WCS endpoint changes format or goes offline: SIX Maps fallback. If both fail: terrain section shows NOT_AVAILABLE, brief continues.",
-    "new_vs_existing": "New pipeline only. Existing intelligence briefs unaffected unless include_satellite=true.",
-    "external_source_error": "N/A (Standard tier)",
-    "frontend_type": "N/A (Standard tier)",
-    "user_failure_mode": "N/A (Standard tier)"
+    "existing_data": "Reads from DevelopmentBrief models (PlanningControls, DCPControls, SEPPStandard, SeppLepOverride, ShadowResult, LotDimensions). No DB queries. Lot geometry from Portal /lot API. Contributions from Portal /cp API.",
+    "assumption_mismatch": "If height/FSR strings have unexpected format, _parse_numeric returns None and gap is disclosed. If DCP control_type names don't match expected keys, controls are skipped and gap disclosed. If lot geometry has <4 points, returns None. If /cp returns empty, contributions field is NOT_AVAILABLE.",
+    "new_vs_existing": "constraint_arithmetic.py and lot_dimensions.py are new pure-function modules. intelligence_brief.py modified to wire lot geometry, contributions, and import new modules.",
+    "external_source_error": "fetch_lot_geometry: try/except returns None on failure. _fetch_contributions: try/except returns None on failure. Both wrapped in _safe_call in pipeline.",
+    "frontend_type": "No frontend changes. ContributionsResult, ContributionPlan, HousingProductivityContribution are new Pydantic models — frontend will need types when wired.",
+    "user_failure_mode": "If any computation fails, ConstraintArithmeticResult with confidence='low' and populated gaps[] is returned. Lot dimensions None = area-only fallback. Contributions None = NOT_AVAILABLE DataField. No crash, no silent wrong answer."
   },
   "functions": [
     {
-      "name": "fetch_dem_region",
-      "file_line": "dem_service.py:199",
-      "input": "float lat, float lng, float buffer_m — from intelligence brief orchestrator",
-      "output": "io.BytesIO containing GeoTIFF — consumed by terrain_analysis._run_terrain_chain",
-      "if_none": "Raises RuntimeError, caught by _safe_call in intelligence_brief"
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py:237",
+      "input": "lot_area_m2: float, dev_type: str, lep_height_str/lep_fsr_str: Optional[str], lot_dimensions: Optional[LotDimensions], dcp_controls: list[DCPControl], sepp_standards: list[SEPPStandard], sepp_lep_overrides: list[SeppLepOverride], shadow_result: Optional[ShadowResult]",
+      "output": "ConstraintArithmeticResult Pydantic model containing binding_constraint enum, realistic_dwellings int, computation steps chain list, gaps list, and confidence level string",
+      "if_none": "Each None input adds a gap entry to the result. Zero data produces confidence 'low' with no yield computed."
     },
     {
-      "name": "run_terrain_analysis",
-      "file_line": "terrain_analysis.py:455",
-      "input": "float lat, float lng, bool include_flood — from _fetch_terrain in intelligence_brief",
-      "output": "dict with terrain/flood_susceptibility keys — consumed by _build_terrain_detail",
-      "if_none": "Returns TerrainResponse with error field set; _build_terrain_detail returns None"
+      "name": "calculate_lot_dimensions",
+      "file_line": "services/lot_dimensions.py:49",
+      "input": "Optional dict geometry containing rings key with nested EPSG:3857 coordinate arrays from NSW Planning Portal",
+      "output": "Optional LotDimensions Pydantic model with area_m2, frontage_m, depth_m, and is_corner fields populated from polygon",
+      "if_none": "Returns None if geometry is None, rings list is empty, first ring is empty, or fewer than 3 unique points after closing-point dedup"
     },
     {
-      "name": "_build_terrain_detail",
-      "file_line": "intelligence_brief.py:1304",
-      "input": "Optional[dict] terrain_raw — from _timed_result",
-      "output": "Optional[TerrainAnalysisDetail] — fed into SatelliteData.terrain DataField",
-      "if_none": "Returns None when input is None, DataField confidence=NOT_AVAILABLE in SatelliteData"
+      "name": "fetch_lot_geometry",
+      "file_line": "services/lot_dimensions.py:31",
+      "input": "prop_id string representing the NSW Planning Portal property ID used to query the lot endpoint",
+      "output": "Optional dict containing raw geometry with rings key in EPSG:3857, or None on any failure",
+      "if_none": "Returns None on network error, HTTP error, empty response list, or missing geometry key in response"
     },
     {
-      "name": "_fetch_terrain",
-      "file_line": "intelligence_brief.py:1299",
-      "input": "float lat, float lng — from orchestrator",
-      "output": "dict — consumed by _build_terrain_detail",
-      "if_none": "Raises caught by _safe_call then DataField(NOT_AVAILABLE)"
+      "name": "_fetch_contributions",
+      "file_line": "services/intelligence_brief.py:1026",
+      "input": "prop_id integer for the NSW Planning Portal property used to query the contributions plan endpoint",
+      "output": "Optional ContributionsResult Pydantic model containing s7.12 plan names with PDF URLs and optional HPC overlay details",
+      "if_none": "Returns None on network error, HTTP error, or when response contains no contribution plans and no HPC overlay"
+    },
+    {
+      "name": "_build_planning_controls",
+      "file_line": "services/intelligence_brief.py:1463",
+      "input": "controls dict from portal, overlays_data dict from PostGIS, and optional lot_geometry dict from Portal lot endpoint",
+      "output": "PlanningControls Pydantic model with lot_dimensions now populated with frontage_m and depth_m from polygon geometry when available",
+      "if_none": "If lot_geometry is None or calculate_lot_dimensions returns None, falls back to area-only LotDimensions parsed from lot_size string"
+    },
+    {
+      "name": "_identify_binding_constraint",
+      "file_line": "services/constraint_arithmetic.py:683",
+      "input": "GFA values from FSR and height paths, setback-only footprint, final footprint, max storeys, coverage cap, landscaping reduction, shadow flag, and lot area",
+      "output": "Optional tuple of ConstraintType enum value and human-readable label string identifying the single most limiting constraint",
+      "if_none": "Returns None if no constraint candidates exist, meaning no data was available to compute any constraint path"
     }
   ],
   "values": [
     {
-      "value": "terrain_raw",
-      "read_at": "intelligence_brief.py:2108 (sync), 2720 (SSE)",
-      "nullable": "yes",
-      "guard_at": "intelligence_brief.py:1294 — _build_terrain_detail checks if not terrain_raw",
-      "if_missing": "Terrain section shows NOT_AVAILABLE in brief, no crash"
+      "value": "lot_geometry (from Portal /lot)",
+      "read_at": "services/intelligence_brief.py:2026 (pool.submit)",
+      "nullable": "yes — fetch may fail or prop_id may be None",
+      "guard_at": "services/intelligence_brief.py:1506 — calculate_lot_dimensions returns None, falls back to area-only",
+      "if_missing": "Frontage and depth are None. Area from lot_size string only. Constraint arithmetic uses _estimate_lot_dimensions fallback."
     },
     {
-      "value": "terrain_detail",
-      "read_at": "intelligence_brief.py:1321 (in _build_satellite_data)",
-      "nullable": "yes",
-      "guard_at": "intelligence_brief.py:1378 — confidence=NOT_AVAILABLE if terrain_detail is None",
-      "if_missing": "SatelliteData.terrain DataField has NOT_AVAILABLE confidence"
+      "value": "contributions (from Portal /cp)",
+      "read_at": "services/intelligence_brief.py:2030 (pool.submit)",
+      "nullable": "yes — fetch may fail or return empty",
+      "guard_at": "services/intelligence_brief.py:2324 — DataField with NOT_AVAILABLE confidence",
+      "if_missing": "DevelopmentBrief.contributions is DataField with None value and NOT_AVAILABLE confidence"
+    },
+    {
+      "value": "effective_overlap (shadow continuous)",
+      "read_at": "services/constraint_arithmetic.py:508",
+      "nullable": "no — computed from scenario overlap_pct values",
+      "guard_at": "services/constraint_arithmetic.py:513 — only applies if > SHADOW_OVERLAP_MIN (0.20)",
+      "if_missing": "N/A — defaults to 0.0 if no scenarios have overlap_pct"
+    },
+    {
+      "value": "depth_amplifier (shadow)",
+      "read_at": "services/constraint_arithmetic.py:523",
+      "nullable": "no — defaults to 1.0",
+      "guard_at": "services/constraint_arithmetic.py:524-526 — only amplifies if lot_depth > 0 and shadow_len > 0 and ratio > 0.5",
+      "if_missing": "N/A — always 1.0 when lot dimensions or shadow length unavailable"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "GA WCS returns valid HTTP 200 but with XML error body (not TIFF)",
-      "what_happens": "_is_tiff check fails, falls back to SIX Maps, terrain still works",
+      "scenario": "Lot geometry with 3 points (triangle + closing) — valid or rejected?",
+      "what_happens": "4 points in ring, closing point removed, 3 unique points remain — valid polygon, area computed via shoelace",
       "mitigated": true,
-      "how": "dem_service.py:111,134 — _is_tiff validates magic bytes before accepting response",
-      "repro": "monkeypatch requests.get to return XML with 200 status — assert fallback triggers"
+      "how": "services/lot_dimensions.py:62 — len(rings[0]) < 4 rejects, but triangle with closing = 4 points passes. Shoelace handles 3-point polygon correctly.",
+      "repro": "pytest tests/test_lot_dimensions.py::TestEdgeCases::test_three_points_triangle"
     },
     {
-      "scenario": "whitebox tool returns non-zero exit code (corrupt DEM, missing binary)",
-      "what_happens": "_run_tool raises RuntimeError, caught by try/except in run_terrain_analysis — TerrainResponse.error set",
+      "scenario": "Circular import between lot_dimensions.py and intelligence_brief.py at module load time",
+      "what_happens": "ImportError raised during module collection preventing any test or runtime from loading",
       "mitigated": true,
-      "how": "terrain_analysis.py:197-202 — _run_tool checks return code; terrain_analysis.py:260 catches and returns error response",
-      "repro": "Mock whitebox slope to return 1 — assert RuntimeError raised"
+      "how": "lot_dimensions.py uses TYPE_CHECKING guard for top-level import, deferred runtime import inside calculate_lot_dimensions()",
+      "repro": "pytest tests/test_lot_dimensions.py — would fail at collection if circular import existed"
     },
     {
-      "scenario": "DEM raster has all NoData values (ocean, outside coverage)",
-      "what_happens": "numpy operations on all-NaN array: nanmean=NaN, min/max=NaN — terrain detail has None values",
+      "scenario": "Noon scenario has lower overlap than morning — which is used?",
+      "what_happens": "Noon overlap preferred over worst-case. If noon is 15% (below 20% MIN), no reduction even if morning is 80%",
       "mitigated": true,
-      "how": "terrain_analysis.py uses np.nanmean/nanmin/nanmax which return NaN for all-NaN input; _aspect_to_compass handles NaN as flat",
-      "repro": "Would need rasterio integration test with synthetic all-nodata TIFF"
+      "how": "services/constraint_arithmetic.py:508 — noon_overlap used when available, worst_overlap only as fallback",
+      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_noon_scenario_preferred"
+    },
+    {
+      "scenario": "/cp endpoint returns unexpected schema (missing 'cp' key)",
+      "what_happens": "_fetch_contributions handles gracefully — .get('cp') returns None, or {} returns None, empty plans list",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py:1035 — (data.get('cp') or {}).get('results') or []",
+      "repro": "Manual: curl with invalid prop_id returns empty results, not error"
+    },
+    {
+      "scenario": "Shadow depth_amplifier exceeds cap when shadow_length >> lot_depth",
+      "what_happens": "depth_amplifier has min(0.25, ...) cap, and final shadow_gfa_loss has min(..., max_shadow_loss) cap",
+      "mitigated": true,
+      "how": "services/constraint_arithmetic.py:526 — min(0.25, ...) caps amplifier; line 531 — min(..., max_shadow_loss) caps total loss",
+      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_depth_amplifier_increases_reduction"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "POST /pipeline/terrain-analysis with Sydney coordinates to verify live DEM fetch"
+    "manual_verify": "No — pure computation + data fetch wiring. Full test coverage (103 new tests)."
   }
 }
