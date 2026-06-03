@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LandUseZoningCard } from './LandUseZoningCard';
+import { ConstraintArithmeticCard } from './ConstraintArithmeticCard';
 import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
@@ -22,6 +23,7 @@ interface LepControlsProps {
   formerCouncil?: string;
   lotArea?: number;
   strataInfo?: StrataInfo;
+  developmentType?: string;
 }
 
 export function LepControls({
@@ -31,6 +33,7 @@ export function LepControls({
   formerCouncil,
   lotArea,
   strataInfo,
+  developmentType,
 }: LepControlsProps) {
   const lepName = constraints?.lga 
     ? `${constraints.lga} Local Environmental Plan 2022` 
@@ -179,6 +182,21 @@ export function LepControls({
           )}
         </CardContent>
       </Card>
+
+      {/* Constraint Arithmetic — development yield estimate */}
+      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && (
+        <ConstraintArithmeticCard
+          lotArea={lotArea}
+          devType={developmentType || 'dwelling_house'}
+          zone={constraints?.zone ?? undefined}
+          formerCouncil={formerCouncil}
+          lga={constraints?.lga ?? undefined}
+          maxHeight={constraints?.maxHeight}
+          maxFsr={constraints?.maxFsr}
+          frontage={propertyData?.lotDimensions?.frontage ?? null}
+          depth={propertyData?.lotDimensions?.depth ?? null}
+        />
+      )}
 
       {/* Environmental Constraints Card */}
       <Card className="border-blue-200 bg-blue-50/30">
