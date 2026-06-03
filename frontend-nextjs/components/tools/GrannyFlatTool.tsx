@@ -471,7 +471,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           </div>
 
           {/* Check breakdown — 6 spatial + 1 pending structure check */}
-          {eligibility.checks && (() => {
+          {eligibility.checks != null && (() => {
             const passCount = Object.values(eligibility.checks!).filter(v => v === 'pass').length;
             const failCount = Object.values(eligibility.checks!).filter(v => v === 'fail').length;
             return (
@@ -585,7 +585,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">LEP planning controls</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {eligibility.height_of_buildings && (
+                {eligibility.height_of_buildings != null && (
                   <div>
                     <p className="text-xs text-gray-400">Height of buildings</p>
                     <p className="text-sm font-medium text-gray-900">{eligibility.height_of_buildings}</p>

@@ -789,7 +789,7 @@ function SearchResults({
                   {lodged && (
                     <span className="text-xs text-gray-400">Lodged {lodged}</span>
                   )}
-                  {determined && (
+                  {determined != null && (
                     <span className="text-xs text-gray-400">Determined {determined}</span>
                   )}
                   {cost && (

@@ -319,7 +319,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
                     <div>
                       <p className="text-sm font-medium text-gray-900 capitalize">
                         {ov.layer_type.replace(/_/g, ' ')}
-                        {ov.value && <span className="text-gray-500 font-normal"> &mdash; {ov.value}</span>}
+                        {ov.value != null && <span className="text-gray-500 font-normal"> &mdash; {ov.value}</span>}
                       </p>
                       {ov.note && <p className="text-xs text-gray-500 mt-0.5">{ov.note}</p>}
                     </div>

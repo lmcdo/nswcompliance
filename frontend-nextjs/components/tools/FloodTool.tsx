@@ -601,7 +601,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* Warnings — compact */}
       {(o.s1_gap_warning || (result.warnings && result.warnings.length > 0)) && (
         <div className="px-5 py-3 bg-amber-50 border-t border-amber-100">
-          {o.s1_gap_warning && <p className="text-xs text-amber-700">{o.s1_gap_warning}</p>}
+          {o.s1_gap_warning != null && <p className="text-xs text-amber-700">{o.s1_gap_warning}</p>}
           {result.warnings?.map((w, i) => (
             <p key={i} className="text-xs text-amber-700">{w}</p>
           ))}
