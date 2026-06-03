@@ -415,7 +415,7 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
                 Full Conveyancing Planning Disclosure Report
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                A 10-15 page PDF report suitable for conveyancing due diligence,
+                A 10-15 page PDF report covering conveyancing due diligence,
                 including DCP setback controls, shadow risk analysis, heritage detail,
                 nearby DA summaries, and development headroom calculations with clause citations.
               </p>
