@@ -214,11 +214,17 @@ class ValuationHistory(BaseModel):
     value: Optional[int] = None  # dollars
 
 
-class LotDimensions(BaseModel):
-    area_m2: Optional[float] = None
-    frontage_m: Optional[float] = None
-    depth_m: Optional[float] = None
-    is_corner: Optional[bool] = None
+from services.constraint_models import (
+    ConstraintArithmeticResult,
+    ConstraintStep,
+    ConstraintType,
+    DCPControl,
+    LotDimensions,
+    SEPPStandard,
+    SeppLepOverride,
+    ShadowResult,
+    ShadowScenario,
+)
 
 
 class PlanningControls(BaseModel):
@@ -242,18 +248,6 @@ class PlanningControls(BaseModel):
     lot_dimensions: DataField[Optional[LotDimensions]]
 
 
-class DCPControl(BaseModel):
-    """Single DCP control value."""
-
-    control_type: str  # front_setback, rear_setback, etc.
-    dev_type: str  # dwelling_house, secondary_dwelling, etc.
-    value_min: Optional[float] = None
-    value_max: Optional[float] = None
-    unit: Optional[str] = None
-    condition: Optional[str] = None
-    source_ref: Optional[str] = None
-
-
 class DCPControls(BaseModel):
     """DCP setback and development controls."""
 
@@ -261,66 +255,6 @@ class DCPControls(BaseModel):
     dcp_name: DataField[Optional[str]]
     dcp_url: DataField[Optional[str]]
     section_ref: DataField[Optional[str]]
-
-
-class SEPPStandard(BaseModel):
-    """SEPP Housing standard for a development type."""
-
-    dev_type: str
-    eligible: bool
-    min_lot_area_m2: Optional[float] = None
-    max_gfa_m2: Optional[float] = None  # Absolute floor area (m²) — secondary_dwelling only
-    max_fsr: Optional[float] = None  # FSR ratio — LMR types only (DB: standard_type='max_fsr')
-    max_height_m: Optional[float] = None
-    setback_front_m: Optional[float] = None
-    setback_rear_m: Optional[float] = None
-    setback_side_m: Optional[float] = None
-    reason_ineligible: Optional[str] = None
-    # Secondary dwelling extended standards (migration 047)
-    min_lot_width_m: Optional[float] = None
-    parking_spaces: Optional[float] = None
-    min_private_open_space_m2: Optional[float] = None
-    max_site_coverage_pct: Optional[float] = None
-    max_total_floor_area_m2: Optional[float] = None
-    # All raw standards for dev types with non-standard fields
-    additional_standards: Optional[dict[str, float]] = None
-
-
-class SeppLepOverride(BaseModel):
-    """Case where SEPP standard exceeds (overrides) the LEP control."""
-
-    dev_type: str
-    control: str  # "height" or "fsr"
-    lep_value: float
-    sepp_value: float
-    source_clause: Optional[str] = None
-    note: str = "SEPP standard exceeds LEP control — SEPP prevails where more generous"
-
-
-class ShadowScenario(BaseModel):
-    """Shadow analysis for a single sun position."""
-
-    date_label: str  # "Jun 21 (winter solstice)"
-    time_label: str  # "9:00 AM", "12:00 PM", "3:00 PM"
-    sun_altitude_deg: Optional[float] = None
-    sun_azimuth_deg: Optional[float] = None
-    shadow_length_m: Optional[float] = None
-    overlap_pct: Optional[float] = None
-
-
-class ShadowResult(BaseModel):
-    """Geometric shadow analysis result."""
-
-    height_m: Optional[float] = None
-    height_source: Optional[str] = None
-    adg_compliant: Optional[bool] = None
-    scenarios: list[ShadowScenario] = []
-    worst_case_scenario: Optional[str] = None
-    temporal_caveat: str = (
-        "Shadow analysis reflects current height controls only. "
-        "Does not account for approved or pending development applications "
-        "on adjacent lots."
-    )
 
 
 class ContributionPlan(BaseModel):
@@ -681,6 +615,7 @@ class DevelopmentBrief(BaseModel):
     economics: Economics
     contributions: Optional[DataField[ContributionsResult]] = None
     satellite: Optional[SatelliteData] = None
+    constraint_arithmetic: Optional[DataField[ConstraintArithmeticResult]] = None
     compound_constraints: list[CompoundConstraint] = []
     data_currency_warnings: list[str] = []
     gaps: list[GapEntry] = []
@@ -2284,6 +2219,26 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             pass
     sepp_lep_overrides = _detect_sepp_lep_overrides(sepp_housing, lep_height_m, lep_fsr_val)
 
+    # ── 7c. Constraint arithmetic — binding constraint + realistic yield ──
+    constraint_result = None
+    if lot_area_m2 and lot_area_m2 > 0:
+        try:
+            from services.constraint_arithmetic import compute_constraint_arithmetic
+
+            lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            constraint_result = compute_constraint_arithmetic(
+                lot_area_m2=lot_area_m2,
+                dev_type="dwelling_house",
+                lep_height_str=controls.get("max_height"),
+                lep_fsr_str=fsr_str,
+                lot_dimensions=lot_dims_for_ca,
+                dcp_controls=dcp_controls.controls.value if dcp_controls.controls.value else [],
+                sepp_standards=sepp_housing,
+                sepp_lep_overrides=sepp_lep_overrides,
+            )
+        except Exception as e:
+            logger.warning("Constraint arithmetic computation failed: %s", e)
+
     environmental = _build_environmental(
         controls, overlays_data, heritage_postgis,
         mine_subsidence_raw=mine_subsidence_raw,
@@ -2320,6 +2275,15 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             reason=None if contributions_raw else "No contributions plans found for this property",
         )
 
+        constraint_arithmetic_field = None
+        if constraint_result is not None:
+            constraint_arithmetic_field = DataField(
+                value=constraint_result,
+                confidence=ConfidenceLevel.DERIVED,
+                source="constraint_arithmetic_engine",
+                as_at=today,
+            )
+
         brief = DevelopmentBrief(
             address=req.address,
             lat=lat,
@@ -2335,6 +2299,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             neighbourhood=neighbourhood,
             economics=economics,
             contributions=contributions_field,
+            constraint_arithmetic=constraint_arithmetic_field,
             satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),  # placeholder
         )
