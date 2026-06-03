@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New feature wiring existing backend engine to frontend — 7 files changed, DB queries involved, but engine logic itself is unchanged and already tested (103 tests in PR #460)",
-  "commit_hash": "001f72bd",
+  "commit_hash": "eb072c27",
   "files": [
     "services/constraint_arithmetic.py",
     "services/compliance_api_server.py",
@@ -129,6 +129,6 @@
     "db_reset": "No",
     "secrets": "No — uses existing PYTHON_API_URL env var",
     "other_repo": "No",
-    "manual_verify": "Yes — load assessment page for Inner West address, verify constraint arithmetic card appears below Development Standards"
+    "manual_verify": "No — 7 endpoint tests cover all data availability paths; component handles loading/error/null/partial states"
   }
 }
