@@ -1,138 +1,118 @@
 {
-  "tier": "critical",
-  "justification": "Constraint arithmetic engine + lot dimensions port + shadow continuous function + contributions integration. Produces user-facing yield/binding-constraint outputs and wires new data sources into intelligence brief pipeline.",
+  "tier": "standard",
+  "justification": "New interpretation layer is pure threshold logic over existing metrics — no DB queries, no external APIs, no user-facing text (interpretation consumed by API clients/frontend, not displayed in this service). Additive change: existing TerrainResponse gains optional field, no breaking changes.",
   "commit_hash": "6f3feaff",
-  "files": [
-    "services/constraint_arithmetic.py",
-    "services/lot_dimensions.py",
-    "services/intelligence_brief.py",
-    "tests/test_constraint_arithmetic.py",
-    "tests/test_lot_dimensions.py"
-  ],
+  "files": ["services/terrain_analysis.py", "tests/test_terrain_analysis.py"],
   "pre_impl": {
-    "existing_data": "Reads from DevelopmentBrief models (PlanningControls, DCPControls, SEPPStandard, SeppLepOverride, ShadowResult, LotDimensions). No DB queries. Lot geometry from Portal /lot API. Contributions from Portal /cp API.",
-    "assumption_mismatch": "If height/FSR strings have unexpected format, _parse_numeric returns None and gap is disclosed. If DCP control_type names don't match expected keys, controls are skipped and gap disclosed. If lot geometry has <4 points, returns None. If /cp returns empty, contributions field is NOT_AVAILABLE.",
-    "new_vs_existing": "constraint_arithmetic.py and lot_dimensions.py are new pure-function modules. intelligence_brief.py modified to wire lot geometry, contributions, and import new modules.",
-    "external_source_error": "fetch_lot_geometry: try/except returns None on failure. _fetch_contributions: try/except returns None on failure. Both wrapped in _safe_call in pipeline.",
-    "frontend_type": "No frontend changes. ContributionsResult, ContributionPlan, HousingProductivityContribution are new Pydantic models — frontend will need types when wired.",
-    "user_failure_mode": "If any computation fails, ConstraintArithmeticResult with confidence='low' and populated gaps[] is returned. Lot dimensions None = area-only fallback. Contributions None = NOT_AVAILABLE DataField. No crash, no silent wrong answer."
+    "existing_data": "Reads from terrain_dict (computed in-process by _run_terrain_chain) — no DB interaction",
+    "assumption_mismatch": "If terrain_dict keys are missing, each _interpret_* function is guarded: missing landform/aspect/daylight/elevation/ruggedness -> finding omitted. Missing slope -> entire interpretation returns None.",
+    "new_vs_existing": "New optional field on TerrainResponse — existing callers unaffected (interpretation defaults to None)",
+    "external_source_error": "N/A — no external sources in interpretation layer",
+    "frontend_type": "N/A — TerrainResponse is additive, Optional field",
+    "user_failure_mode": "N/A — interpretation is additive. If it fails, raw terrain data still returned."
   },
   "functions": [
     {
-      "name": "compute_constraint_arithmetic",
-      "file_line": "services/constraint_arithmetic.py:237",
-      "input": "lot_area_m2: float, dev_type: str, lep_height_str/lep_fsr_str: Optional[str], lot_dimensions: Optional[LotDimensions], dcp_controls: list[DCPControl], sepp_standards: list[SEPPStandard], sepp_lep_overrides: list[SeppLepOverride], shadow_result: Optional[ShadowResult]",
-      "output": "ConstraintArithmeticResult Pydantic model containing binding_constraint enum, realistic_dwellings int, computation steps chain list, gaps list, and confidence level string",
-      "if_none": "Each None input adds a gap entry to the result. Zero data produces confidence 'low' with no yield computed."
+      "name": "_build_terrain_interpretation",
+      "file_line": "terrain_analysis.py:818",
+      "input": "dict (terrain metrics from _run_terrain_chain)",
+      "output": "Optional[TerrainInterpretation] model included in TerrainResponse JSON",
+      "if_none": "Returns None if slope_mean_deg missing"
     },
     {
-      "name": "calculate_lot_dimensions",
-      "file_line": "services/lot_dimensions.py:49",
-      "input": "Optional dict geometry containing rings key with nested EPSG:3857 coordinate arrays from NSW Planning Portal",
-      "output": "Optional LotDimensions Pydantic model with area_m2, frontage_m, depth_m, and is_corner fields populated from polygon",
-      "if_none": "Returns None if geometry is None, rings list is empty, first ring is empty, or fewer than 3 unique points after closing-point dedup"
+      "name": "_interpret_gradient",
+      "file_line": "terrain_analysis.py:420",
+      "input": "dict containing slope_mean_deg and slope_max_deg float values",
+      "output": "TerrainFinding Pydantic model with severity GREEN/AMBER/RED",
+      "if_none": "slope values default to 0.0 via or 0.0"
     },
     {
-      "name": "fetch_lot_geometry",
-      "file_line": "services/lot_dimensions.py:31",
-      "input": "prop_id string representing the NSW Planning Portal property ID used to query the lot endpoint",
-      "output": "Optional dict containing raw geometry with rings key in EPSG:3857, or None on any failure",
-      "if_none": "Returns None on network error, HTTP error, empty response list, or missing geometry key in response"
+      "name": "_interpret_landform",
+      "file_line": "terrain_analysis.py:503",
+      "input": "dict containing landform_type string and drainage_direction string",
+      "output": "TerrainFinding with severity from _LANDFORM_SEVERITY dict",
+      "if_none": "landform defaults to flat, drainage to downslope"
     },
     {
-      "name": "_fetch_contributions",
-      "file_line": "services/intelligence_brief.py:1026",
-      "input": "prop_id integer for the NSW Planning Portal property used to query the contributions plan endpoint",
-      "output": "Optional ContributionsResult Pydantic model containing s7.12 plan names with PDF URLs and optional HPC overlay details",
-      "if_none": "Returns None on network error, HTTP error, or when response contains no contribution plans and no HPC overlay"
+      "name": "_interpret_aspect",
+      "file_line": "terrain_analysis.py:543",
+      "input": "dict with aspect_direction, aspect_dominant_deg, slope_mean_deg",
+      "output": "TerrainFinding — slope < 2 = GREEN regardless of aspect",
+      "if_none": "Defaults to aspect_direction=N, aspect_deg=0.0, slope_mean=0.0"
     },
     {
-      "name": "_build_planning_controls",
-      "file_line": "services/intelligence_brief.py:1463",
-      "input": "controls dict from portal, overlays_data dict from PostGIS, and optional lot_geometry dict from Portal lot endpoint",
-      "output": "PlanningControls Pydantic model with lot_dimensions now populated with frontage_m and depth_m from polygon geometry when available",
-      "if_none": "If lot_geometry is None or calculate_lot_dimensions returns None, falls back to area-only LotDimensions parsed from lot_size string"
+      "name": "_interpret_solar",
+      "file_line": "terrain_analysis.py:621",
+      "input": "dict with daylight_fraction (required — only called if not None)",
+      "output": "TerrainFinding with derating percentage in narrative",
+      "if_none": "Not called if daylight_fraction missing (guarded in builder)"
     },
     {
-      "name": "_identify_binding_constraint",
-      "file_line": "services/constraint_arithmetic.py:683",
-      "input": "GFA values from FSR and height paths, setback-only footprint, final footprint, max storeys, coverage cap, landscaping reduction, shadow flag, and lot area",
-      "output": "Optional tuple of ConstraintType enum value and human-readable label string identifying the single most limiting constraint",
-      "if_none": "Returns None if no constraint candidates exist, meaning no data was available to compute any constraint path"
+      "name": "_interpret_elevation",
+      "file_line": "terrain_analysis.py:684",
+      "input": "dict with elevation_min_m, elevation_max_m, elevation_range_m, landform_type",
+      "output": "TerrainFinding — compounds with landform for low-lying variant",
+      "if_none": "Defaults to 0.0 for elevations. Not called if elevation_min_m missing."
+    },
+    {
+      "name": "_interpret_ruggedness",
+      "file_line": "terrain_analysis.py:759",
+      "input": "dict with terrain_ruggedness (required — only called if not None)",
+      "output": "TerrainFinding with std-dev based classification",
+      "if_none": "Not called if terrain_ruggedness missing (guarded in builder)"
     }
   ],
   "values": [
     {
-      "value": "lot_geometry (from Portal /lot)",
-      "read_at": "services/intelligence_brief.py:2026 (pool.submit)",
-      "nullable": "yes — fetch may fail or prop_id may be None",
-      "guard_at": "services/intelligence_brief.py:1506 — calculate_lot_dimensions returns None, falls back to area-only",
-      "if_missing": "Frontage and depth are None. Area from lot_size string only. Constraint arithmetic uses _estimate_lot_dimensions fallback."
+      "value": "slope_mean_deg",
+      "read_at": "terrain_analysis.py:422",
+      "nullable": "yes",
+      "guard_at": "terrain_analysis.py:824 (builder returns None) + :422 (or 0.0)",
+      "if_missing": "Interpretation omitted entirely (returns None)"
     },
     {
-      "value": "contributions (from Portal /cp)",
-      "read_at": "services/intelligence_brief.py:2030 (pool.submit)",
-      "nullable": "yes — fetch may fail or return empty",
-      "guard_at": "services/intelligence_brief.py:2324 — DataField with NOT_AVAILABLE confidence",
-      "if_missing": "DevelopmentBrief.contributions is DataField with None value and NOT_AVAILABLE confidence"
+      "value": "daylight_fraction",
+      "read_at": "terrain_analysis.py:623",
+      "nullable": "yes",
+      "guard_at": "terrain_analysis.py:834 (builder skips solar finding)",
+      "if_missing": "Solar finding omitted from findings list"
     },
     {
-      "value": "effective_overlap (shadow continuous)",
-      "read_at": "services/constraint_arithmetic.py:508",
-      "nullable": "no — computed from scenario overlap_pct values",
-      "guard_at": "services/constraint_arithmetic.py:513 — only applies if > SHADOW_OVERLAP_MIN (0.20)",
-      "if_missing": "N/A — defaults to 0.0 if no scenarios have overlap_pct"
-    },
-    {
-      "value": "depth_amplifier (shadow)",
-      "read_at": "services/constraint_arithmetic.py:523",
-      "nullable": "no — defaults to 1.0",
-      "guard_at": "services/constraint_arithmetic.py:524-526 — only amplifies if lot_depth > 0 and shadow_len > 0 and ratio > 0.5",
-      "if_missing": "N/A — always 1.0 when lot dimensions or shadow length unavailable"
+      "value": "landform_type",
+      "read_at": "terrain_analysis.py:505",
+      "nullable": "yes",
+      "guard_at": "terrain_analysis.py:830 (builder skips landform finding)",
+      "if_missing": "Landform finding omitted from findings list"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Lot geometry with 3 points (triangle + closing) — valid or rejected?",
-      "what_happens": "4 points in ring, closing point removed, 3 unique points remain — valid polygon, area computed via shoelace",
+      "scenario": "Unknown landform_type string not in _LANDFORM_SEVERITY dict",
+      "what_happens": "Falls back to AMBER severity via dict.get default, uses slope narrative template",
       "mitigated": true,
-      "how": "services/lot_dimensions.py:62 — len(rings[0]) < 4 rejects, but triangle with closing = 4 points passes. Shoelace handles 3-point polygon correctly.",
-      "repro": "pytest tests/test_lot_dimensions.py::TestEdgeCases::test_three_points_triangle"
+      "how": "terrain_analysis.py:507-508 — _LANDFORM_SEVERITY.get(lf, TerrainSeverity.AMBER) + _LANDFORM_NARRATIVES.get(lf, _LANDFORM_NARRATIVES[slope])",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretLandform::test_unknown_landform_defaults_amber"
     },
     {
-      "scenario": "Circular import between lot_dimensions.py and intelligence_brief.py at module load time",
-      "what_happens": "ImportError raised during module collection preventing any test or runtime from loading",
+      "scenario": "Slope exactly at boundary (e.g. mean=5.0, max=10.0) — off-by-one in threshold",
+      "what_happens": "Could classify as wrong tier, affecting action_trigger and cost advice",
       "mitigated": true,
-      "how": "lot_dimensions.py uses TYPE_CHECKING guard for top-level import, deferred runtime import inside calculate_lot_dimensions()",
-      "repro": "pytest tests/test_lot_dimensions.py — would fail at collection if circular import existed"
+      "how": "Boundary tests: test_boundary_gentle_moderate, test_boundary_moderate_steep verify < vs >= behavior",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretGradient::test_boundary_gentle_moderate"
     },
     {
-      "scenario": "Noon scenario has lower overlap than morning — which is used?",
-      "what_happens": "Noon overlap preferred over worst-case. If noon is 15% (below 20% MIN), no reduction even if morning is 80%",
+      "scenario": "Aspect on flat site (slope < 2) classified as south-facing RED",
+      "what_happens": "Flat site incorrectly flagged as solar-constrained",
       "mitigated": true,
-      "how": "services/constraint_arithmetic.py:508 — noon_overlap used when available, worst_overlap only as fallback",
-      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_noon_scenario_preferred"
-    },
-    {
-      "scenario": "/cp endpoint returns unexpected schema (missing 'cp' key)",
-      "what_happens": "_fetch_contributions handles gracefully — .get('cp') returns None, or {} returns None, empty plans list",
-      "mitigated": true,
-      "how": "services/intelligence_brief.py:1035 — (data.get('cp') or {}).get('results') or []",
-      "repro": "Manual: curl with invalid prop_id returns empty results, not error"
-    },
-    {
-      "scenario": "Shadow depth_amplifier exceeds cap when shadow_length >> lot_depth",
-      "what_happens": "depth_amplifier has min(0.25, ...) cap, and final shadow_gfa_loss has min(..., max_shadow_loss) cap",
-      "mitigated": true,
-      "how": "services/constraint_arithmetic.py:526 — min(0.25, ...) caps amplifier; line 531 — min(..., max_shadow_loss) caps total loss",
-      "repro": "pytest tests/test_constraint_arithmetic.py::TestShadowImpact::test_depth_amplifier_increases_reduction"
+      "how": "terrain_analysis.py:549 — slope < 2 check runs first, returns GREEN regardless of aspect direction",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretAspect::test_level_site_green"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — pure computation + data fetch wiring. Full test coverage (103 new tests)."
+    "manual_verify": "No — pure logic, no external dependencies"
   }
 }
