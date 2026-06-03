@@ -169,10 +169,13 @@ def _parse_numeric(val: Optional[str]) -> Optional[float]:
     s = s.strip()
     if not s:
         return None
-    try:
-        return float(s)
-    except ValueError:
-        return None
+    # s is guaranteed non-None and non-empty at this point
+    if s is not None:
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    return None
 
 
 def _get_dcp_value(
