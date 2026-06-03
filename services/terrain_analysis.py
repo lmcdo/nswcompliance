@@ -16,6 +16,7 @@ import logging
 import math
 import os
 import tempfile
+from enum import Enum
 from typing import Optional
 
 import numpy as np
@@ -123,8 +124,52 @@ class FloodSusceptibilityDetail(BaseModel):
     disclaimer: str = "Indicative topographic screening only — not a flood study"
 
 
+class TerrainSeverity(str, Enum):
+    """Constraint severity for terrain findings."""
+    GREEN = "green"
+    AMBER = "amber"
+    RED = "red"
+
+
+class TerrainFinding(BaseModel):
+    """Single terrain interpretation with full methodology transparency."""
+    id: str
+    title: str
+    metric: dict
+    classification: str
+    narrative: str
+    methodology: str
+    severity: TerrainSeverity
+    relevance: list[str]
+    action_trigger: Optional[str] = None
+    estimated_cost: Optional[str] = None
+
+
+class TerrainInterpretation(BaseModel):
+    """Structured interpretation of terrain analysis for professional users."""
+    findings: list[TerrainFinding]
+    data_source: str = (
+        "Geoscience Australia 5m DEM (SRTM-derived, ±5m vertical accuracy)"
+    )
+    methodology_note: str = (
+        "Terrain metrics derived from whitebox-tools geomorphometric analysis on a "
+        "500m buffer around the property centroid. Slope and aspect use the Horn (1981) "
+        "finite-difference method. Landform classification uses the Jasiewicz & Stepinski "
+        "(2013) geomorphon algorithm. Daylight fraction computed via annual solar position "
+        "modelling (sunrise–sunset, AEST UTC+10). All values are indicative — site-specific "
+        "survey data should be used for detailed design."
+    )
+    disclaimer: str = (
+        "This analysis is derived from a 5m resolution DEM which cannot resolve features "
+        "smaller than the grid cell. Localised slope variations, retaining walls, and recent "
+        "earthworks are not captured. This is a pre-feasibility screening tool — it does not "
+        "replace a registered surveyor's site survey or a geotechnical investigation."
+    )
+
+
 class TerrainResponse(BaseModel):
     terrain: Optional[TerrainAnalysisDetail] = None
+    interpretation: Optional[TerrainInterpretation] = None
     flood_susceptibility: Optional[FloodSusceptibilityDetail] = None
     error: Optional[str] = None
 
@@ -233,6 +278,567 @@ def _read_band(work_dir: str, filename: str) -> np.ndarray:
 def _valid_stats(arr: np.ndarray) -> np.ndarray:
     """Return array with NaN/inf removed for stats computation."""
     return arr[np.isfinite(arr)]
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — professional-grade findings from raw metrics
+# ---------------------------------------------------------------------------
+
+_SLOPE_METHOD = (
+    "Slope computed using Horn (1981) finite-difference method on 5m DEM cells "
+    "within 500m buffer. Mean and maximum values reported. Slope values at 5m "
+    "resolution may understate localised gradients — a 2m cliff within a single "
+    "cell would not be resolved."
+)
+
+_LANDFORM_METHOD = (
+    "Landform classification via Jasiewicz & Stepinski (2013) geomorphon algorithm "
+    "at 250m search radius (50 cells at 5m resolution). Classification is for the "
+    "property centroid cell — larger sites may span multiple landform types."
+)
+
+_ASPECT_METHOD = (
+    "Dominant aspect computed as the circular mean of all valid aspect values within "
+    "the 500m analysis buffer. Solar implications are qualitative assessments based "
+    "on latitude (~33.8\u00b0S for Sydney) and standard ADG / BASIX performance "
+    "expectations. Actual solar access depends on surrounding built form and "
+    "vegetation, which are not captured in the DEM."
+)
+
+_SOLAR_METHOD = (
+    "Annual daylight fraction computed using whitebox-tools time_in_daylight algorithm. "
+    "Traces the solar azimuth and elevation path for every day of the year (sunrise to "
+    "sunset, AEST UTC+10) and determines the fraction of daylight hours with clear "
+    "line-of-sight to the sun from the site, considering terrain obstruction only. "
+    "Vegetation and built form are not modelled. Maximum shadow-casting distance: "
+    "500m (100 cells at 5m resolution)."
+)
+
+_ELEVATION_METHOD = (
+    "Elevation values extracted from the 5m DEM within the 500m analysis buffer. "
+    "Values in metres above Australian Height Datum (AHD). Absolute elevation "
+    "accuracy is \u00b15m — do not use for flood planning level compliance without "
+    "a registered survey. Relative elevation differences within the buffer are more "
+    "reliable (\u00b11\u20132m) as systematic vertical bias cancels."
+)
+
+_RUGGEDNESS_METHOD = (
+    "Terrain ruggedness computed as the standard deviation of slope values (degrees) "
+    "within the 500m analysis buffer. Captures gradient variability rather than "
+    "magnitude — a consistent steep slope has low ruggedness; an undulating surface "
+    "has high ruggedness. Features smaller than 5m are not resolved."
+)
+
+# Landform severity mapping
+_LANDFORM_SEVERITY = {
+    "flat": TerrainSeverity.GREEN,
+    "spur": TerrainSeverity.GREEN,
+    "ridge": TerrainSeverity.GREEN,
+    "peak": TerrainSeverity.GREEN,
+    "footslope": TerrainSeverity.AMBER,
+    "shoulder": TerrainSeverity.AMBER,
+    "slope": TerrainSeverity.AMBER,
+    "hollow": TerrainSeverity.RED,
+    "valley": TerrainSeverity.RED,
+    "pit": TerrainSeverity.RED,
+}
+
+# Landform narrative templates — keyed by landform_type
+_LANDFORM_NARRATIVES: dict[str, str] = {
+    "flat": (
+        "Geomorphon classification identifies this site as level terrain (flat landform). "
+        "Surface water drains as sheet flow, predominantly towards the {drain}. "
+        "Drainage design can follow standard practices. Foundation conditions are "
+        "typically uniform, though fill and reactive clay soils should still be investigated."
+    ),
+    "footslope": (
+        "This site occupies a footslope position — the transition zone where slope gradient "
+        "decreases and overland flow from upslope accumulates. Surface water drains towards "
+        "the {drain}. Footslope sites commonly receive concentrated runoff from upslope "
+        "catchments, which must be managed through site drainage design. Colluvial (slope-wash) "
+        "soils at footslope positions can be variable in depth and bearing capacity."
+    ),
+    "shoulder": (
+        "This site occupies a shoulder position — the convex transition from ridge crest to "
+        "slope. Drainage is divergent, flowing away from the site predominantly towards the "
+        "{drain}. Shoulder sites are generally well-drained but the convex profile may indicate "
+        "weathered or residual soils with variable depth to bedrock. The transition zone can "
+        "be prone to shallow landslip if disturbed by excavation."
+    ),
+    "slope": (
+        "This site occupies a mid-slope position with drainage flowing predominantly towards "
+        "the {drain}. Cross-slope drainage interception will be required upslope of any "
+        "building footprint to redirect overland flow. Building orientation should consider "
+        "the cross-fall to minimise cut-and-fill asymmetry."
+    ),
+    "spur": (
+        "This site is located on a convex spur — a projecting ridgeline with drainage diverging "
+        "to both sides. The dominant drainage vector is towards the {drain}. Spur positions are "
+        "typically well-drained with lower overland flow risk, but may be exposed to wind and "
+        "have shallow soil profiles over bedrock."
+    ),
+    "ridge": (
+        "This site occupies a ridge crest position with drainage diverging on both sides, "
+        "predominantly towards the {drain}. Ridge sites are typically well-drained with minimal "
+        "overland flow risk. However, soil profiles are often thin with shallow bedrock, which "
+        "may affect foundation design. Wind exposure is elevated — AS 4055 wind classification "
+        "may be higher than surrounding lower-lying sites."
+    ),
+    "peak": (
+        "This site is at a topographic high point (peak landform). Drainage is radially divergent "
+        "with no upslope catchment contributing flow. The site will be fully exposed to prevailing "
+        "winds — wind classification per AS 4055 should be carefully assessed. Soil depth is "
+        "typically minimal at peak positions."
+    ),
+    "hollow": (
+        "This site is located in a terrain hollow — a concave landform where overland flow "
+        "converges. Drainage concentrates towards the {drain}. Hollows are natural flow paths and "
+        "represent the highest overland flood risk in the local terrain. Any development must "
+        "address concentrated stormwater flows through the site. If the hollow aligns with a "
+        "mapped watercourse or overland flow path, additional council controls under their "
+        "flood/stormwater DCP may apply."
+    ),
+    "valley": (
+        "This site is located on a valley floor — the lowest topographic position in the local "
+        "terrain. Drainage from surrounding slopes converges through this position, flowing "
+        "towards the {drain}. Valley floor sites have the highest exposure to concentrated "
+        "overland flow and potential inundation. Floor levels should be set with appropriate "
+        "freeboard above any identified flood planning level. Soils are typically alluvial with "
+        "variable bearing capacity — geotechnical investigation is essential."
+    ),
+    "pit": (
+        "This site is located in a closed topographic depression (pit). Surface water drains "
+        "inward with no natural outlet — ponding will occur during rainfall until infiltration "
+        "or evaporation dissipates standing water. This landform requires engineered drainage "
+        "to provide a positive outfall, or a detention/infiltration system. Council may require "
+        "a stormwater management plan demonstrating that post-development flows do not "
+        "exacerbate ponding on adjacent properties."
+    ),
+}
+
+
+def _interpret_gradient(d: dict) -> TerrainFinding:
+    """Interpret site gradient from slope metrics."""
+    mean = d.get("slope_mean_deg") or 0.0
+    mx = d.get("slope_max_deg") or 0.0
+
+    if mean < 5 and mx < 10:
+        sev = TerrainSeverity.GREEN
+        cls = "Gentle gradient"
+        narr = (
+            f"Mean slope of {mean}\u00b0 across the analysis area with a maximum of "
+            f"{mx}\u00b0 indicates a gently grading site. Standard residential construction "
+            "methods are generally feasible without significant earthworks. Cut-and-fill "
+            "volumes are likely to be minimal."
+        )
+        action = None
+        cost = None
+    elif mean < 10 and mx < 20:
+        sev = TerrainSeverity.AMBER
+        cls = "Moderate gradient"
+        narr = (
+            f"Mean slope of {mean}\u00b0 with a maximum of {mx}\u00b0 indicates a moderately "
+            "grading site. Some cut-and-fill earthworks are likely, and retaining walls may "
+            "be required depending on building footprint orientation. Driveway and access "
+            "grades should be checked against AS 2890.1 (max 1:4 for residential, 1:5 "
+            "desirable). Council may require a geotechnical report for slopes exceeding "
+            "local DCP thresholds (commonly 15\u201320% / 8.5\u201311.3\u00b0)."
+        )
+        action = "Geotechnical report may be required — verify against council DCP slope threshold"
+        cost = "$3,000\u2013$8,000 (geotechnical investigation if required by council DCP)"
+    elif mean < 10:
+        sev = TerrainSeverity.AMBER
+        cls = "Moderate gradient with localised steep zones"
+        narr = (
+            f"Mean slope of {mean}\u00b0 is moderate, but localised grades reach {mx}\u00b0. "
+            "This suggests an undulating site with steep embankments or escarpment edges. "
+            "Building envelopes should avoid the steepest zones. Geotechnical investigation "
+            "is recommended to assess stability of any cut faces, and council is likely to "
+            "require a slope analysis diagram with the DA."
+        )
+        action = "Geotechnical investigation recommended — localised steep zones present"
+        cost = "$3,000\u2013$8,000 (geotechnical investigation)"
+    elif mx < 25:
+        sev = TerrainSeverity.RED
+        cls = "Steep site"
+        narr = (
+            f"Mean slope of {mean}\u00b0 with a maximum of {mx}\u00b0 indicates a steeply "
+            "grading site. Significant earthworks, engineered retaining structures, and "
+            "potentially pier-and-beam or split-level construction will be required. Most "
+            "NSW councils require a geotechnical investigation for sites with mean gradients "
+            "exceeding 15% (8.5\u00b0). Stormwater management will need to address concentrated "
+            "overland flow paths. Construction costs are typically 15\u201330% higher than "
+            "equivalent flat sites."
+        )
+        action = "Geotechnical investigation required"
+        cost = "$5,000\u2013$15,000 (geotechnical investigation + slope stability assessment)"
+    else:
+        sev = TerrainSeverity.RED
+        cls = "Very steep site"
+        narr = (
+            f"Mean slope of {mean}\u00b0 with extreme localised grades of {mx}\u00b0 indicates "
+            "a highly constrained site. Development feasibility depends on the location and "
+            "extent of the steep zones relative to the proposed building envelope. Geotechnical "
+            "investigation is mandatory. Slope stability assessment per AS 4678 (Earth-retaining "
+            "structures) is likely required. Construction costs will be substantially higher "
+            "than flat sites."
+        )
+        action = "Geotechnical investigation required — slope stability assessment per AS 4678"
+        cost = "$5,000\u2013$15,000 (geotechnical investigation + slope stability assessment)"
+
+    return TerrainFinding(
+        id="site_gradient",
+        title="Site Gradient",
+        metric={"slope_mean_deg": mean, "slope_max_deg": mx},
+        classification=cls,
+        narrative=narr,
+        methodology=_SLOPE_METHOD,
+        severity=sev,
+        relevance=["architect", "structural_engineer", "geotechnical_engineer", "quantity_surveyor"],
+        action_trigger=action,
+        estimated_cost=cost,
+    )
+
+
+def _interpret_landform(d: dict) -> TerrainFinding:
+    """Interpret landform characterisation from geomorphon classification."""
+    lf = d.get("landform_type", "flat")
+    drain = d.get("drainage_direction") or "downslope"
+    sev = _LANDFORM_SEVERITY.get(lf, TerrainSeverity.AMBER)
+    narr_template = _LANDFORM_NARRATIVES.get(lf, _LANDFORM_NARRATIVES["slope"])
+    narr = narr_template.format(drain=drain)
+
+    action = None
+    cost = None
+    if lf in ("hollow", "valley"):
+        action = "Overland flow path / flood assessment likely required"
+        cost = (
+            "$2,000\u2013$5,000 (overland flow / stormwater assessment) + "
+            "$3,000\u2013$8,000 (geotechnical investigation)"
+        )
+    elif lf == "pit":
+        action = "Engineered drainage solution required — no natural outfall"
+        cost = (
+            "$2,000\u2013$5,000 (stormwater management plan) + "
+            "$3,000\u2013$8,000 (geotechnical investigation)"
+        )
+    elif lf in ("footslope", "shoulder"):
+        action = "Geotechnical investigation recommended — variable soil profile"
+        cost = "$3,000\u2013$8,000 (geotechnical investigation)"
+
+    return TerrainFinding(
+        id="landform",
+        title="Landform Characterisation",
+        metric={"landform_type": lf, "drainage_direction": drain},
+        classification=f"{lf.title()} landform",
+        narrative=narr,
+        methodology=_LANDFORM_METHOD,
+        severity=sev,
+        relevance=["architect", "civil_engineer", "geotechnical_engineer", "hydraulic_engineer"],
+        action_trigger=action,
+        estimated_cost=cost,
+    )
+
+
+def _interpret_aspect(d: dict) -> TerrainFinding:
+    """Interpret aspect and solar orientation."""
+    aspect_dir = d.get("aspect_direction", "N")
+    aspect_deg = d.get("aspect_dominant_deg", 0.0)
+    slope_mean = d.get("slope_mean_deg", 0.0)
+
+    if slope_mean is not None and slope_mean < 2:
+        sev = TerrainSeverity.GREEN
+        cls = "Effectively level — aspect not material"
+        narr = (
+            f"Mean slope of {slope_mean}\u00b0 is effectively level — the dominant aspect "
+            f"({aspect_deg}\u00b0 / {aspect_dir}) has minimal practical effect on solar "
+            "access or building orientation. ADG solar access requirements (Apartment Design "
+            "Guide, SEPP 65) and BASIX thermal performance can be met through building design "
+            "rather than site orientation."
+        )
+    elif aspect_dir in ("N", "NE", "NW"):
+        sev = TerrainSeverity.GREEN
+        cls = f"{aspect_dir} aspect — favourable solar orientation"
+        narr = (
+            f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a mean slope of "
+            f"{slope_mean}\u00b0. Northern orientation is the most favourable for solar access "
+            "in the Southern Hemisphere. Living areas and private open space oriented towards "
+            f"the {aspect_dir} will receive direct winter sun without terrain obstruction. "
+            "This orientation supports compliance with ADG Objective 4A (solar access) and "
+            "improves BASIX thermal comfort scores."
+        )
+    elif aspect_dir in ("E", "W"):
+        sev = TerrainSeverity.AMBER
+        dir_desc = "morning" if aspect_dir == "E" else "afternoon"
+        opp_desc = "afternoon living areas" if aspect_dir == "E" else "morning"
+        sev = TerrainSeverity.AMBER
+        cls = f"{aspect_dir} aspect — {dir_desc} sun exposure"
+        narr = (
+            f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a mean slope of "
+            f"{slope_mean}\u00b0. {aspect_dir}-facing orientation provides {dir_desc} sun but "
+            "limits midday winter solar penetration to living areas. ADG solar access compliance "
+            "(minimum 2 hours direct sun to 70% of apartments between 9am\u20133pm at mid-winter) "
+            f"may require careful window placement and floor plate orientation. {aspect_dir}-facing "
+            f"sites receive {dir_desc} sun (beneficial for some uses, less so for {opp_desc})."
+        )
+    elif slope_mean is not None and slope_mean >= 10:
+        sev = TerrainSeverity.RED
+        cls = f"Steep {aspect_dir} aspect — significant solar constraint"
+        narr = (
+            f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a steep mean slope "
+            f"of {slope_mean}\u00b0. The combination of steep gradient and south-facing terrain "
+            "significantly reduces direct winter sun — the terrain itself casts shadow across the "
+            "site during low solar elevation angles. ADG solar access requirements may not be "
+            "achievable for multi-unit residential without significant design concessions "
+            "(reduced density, increased setbacks, north-facing courtyards cut into the slope). "
+            "BASIX heating loads will be elevated."
+        )
+    else:
+        sev = TerrainSeverity.AMBER
+        cls = f"{aspect_dir} aspect — reduced solar access"
+        narr = (
+            f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a mean slope of "
+            f"{slope_mean}\u00b0. South-facing slopes in the Southern Hemisphere receive reduced "
+            "direct winter sun, as the terrain partly shadows the site during low solar elevation "
+            "angles (May\u2013July). ADG solar access compliance will require design attention — "
+            "south-facing apartments may struggle to achieve 2 hours direct sun at mid-winter "
+            "without compensatory design measures (larger setbacks, clerestory windows, stepped "
+            "massing). BASIX heating loads will be higher than equivalent north-facing sites."
+        )
+
+    return TerrainFinding(
+        id="aspect_orientation",
+        title="Aspect and Orientation",
+        metric={"aspect_direction": aspect_dir, "aspect_dominant_deg": aspect_deg, "slope_mean_deg": slope_mean},
+        classification=cls,
+        narrative=narr,
+        methodology=_ASPECT_METHOD,
+        severity=sev,
+        relevance=["architect", "sustainability_consultant", "planner"],
+    )
+
+
+def _interpret_solar(d: dict) -> TerrainFinding:
+    """Interpret solar terrain access from daylight fraction."""
+    frac = d["daylight_fraction"]  # noqa: bracket-access
+    pct = round(frac * 100, 1)
+    derate = round((1 - frac) * 100, 0)
+
+    if frac >= 0.90:
+        sev = TerrainSeverity.GREEN
+        cls = "Full terrain solar access"
+        narr = (
+            f"The site receives direct sun for approximately {pct}% of annual daylight hours "
+            f"({frac:.3f} fraction), indicating minimal terrain shadowing. Surrounding topography "
+            "does not materially obstruct solar access. This value reflects terrain-only shadowing "
+            "— built form and vegetation shadows are not included. ADG solar access compliance "
+            "and photovoltaic yield assessments can assume unobstructed terrain conditions."
+        )
+    elif frac >= 0.75:
+        sev = TerrainSeverity.AMBER
+        cls = "Moderate terrain shadowing"
+        narr = (
+            f"The site receives direct sun for approximately {pct}% of annual daylight hours "
+            f"({frac:.3f} fraction), indicating moderate terrain shadowing. Surrounding ridgelines, "
+            "hillsides, or escarpments partially obstruct the solar path during morning or afternoon "
+            "hours, or during winter when solar elevation is low. The 2-hour mid-winter ADG "
+            "requirement should be verified with a detailed shadow analysis that includes terrain. "
+            f"Photovoltaic yield estimates should apply a terrain shading derating of approximately "
+            f"{derate:.0f}%."
+        )
+    elif frac >= 0.60:
+        sev = TerrainSeverity.RED
+        cls = "Significant terrain shadowing"
+        narr = (
+            f"The site receives direct sun for approximately {pct}% of annual daylight hours "
+            f"({frac:.3f} fraction), indicating significant terrain shadowing. The site is likely "
+            "located on a south-facing slope below a ridgeline, or within a valley with restricted "
+            "sky view. ADG solar access compliance will be challenging. Photovoltaic installations "
+            f"will underperform relative to unshaded sites by approximately {derate:.0f}%. "
+            "Heating energy loads will be materially higher."
+        )
+    else:
+        sev = TerrainSeverity.RED
+        cls = "Severe terrain shadowing"
+        narr = (
+            f"The site receives direct sun for approximately {pct}% of annual daylight hours "
+            f"({frac:.3f} fraction), indicating severe terrain shadowing. The site experiences "
+            "substantial solar obstruction from surrounding terrain — likely deep valley, narrow "
+            "gorge, or steep south-facing slope with close ridgeline. ADG solar access requirements "
+            "may not be achievable for multi-unit residential without significant design concessions. "
+            "This level of terrain shading is a material constraint on development feasibility."
+        )
+
+    return TerrainFinding(
+        id="solar_terrain_access",
+        title="Solar Terrain Access",
+        metric={"daylight_fraction": frac, "daylight_pct": pct},
+        classification=cls,
+        narrative=narr,
+        methodology=_SOLAR_METHOD,
+        severity=sev,
+        relevance=["architect", "sustainability_consultant", "solar_designer", "planner"],
+    )
+
+
+def _interpret_elevation(d: dict) -> TerrainFinding:
+    """Interpret elevation position within the local terrain."""
+    elev_min = d.get("elevation_min_m", 0.0)
+    elev_max = d.get("elevation_max_m", 0.0)
+    elev_range = d.get("elevation_range_m", 0.0)
+    lf = d.get("landform_type")
+    low_lying = lf in ("valley", "hollow", "pit")
+
+    if elev_range is not None and elev_range < 3:
+        sev = TerrainSeverity.GREEN
+        cls = "Level site — minimal elevation variation"
+        narr = (
+            f"Elevation ranges from {elev_min}m to {elev_max}m AHD across the analysis area "
+            f"({elev_range}m total variation). This minimal grade change indicates a site "
+            "suitable for single-level slab-on-ground construction. Stormwater grades can be "
+            "achieved with standard falls (1:100 minimum). The elevation should be compared "
+            "against any applicable flood planning level (FPL) for the area."
+        )
+        action = None
+        cost = None
+    elif elev_range is not None and elev_range <= 10 and low_lying:
+        sev = TerrainSeverity.AMBER
+        cls = f"Moderate variation in {lf} position — drainage sensitivity"
+        narr = (
+            f"Elevation ranges from {elev_min}m to {elev_max}m AHD ({elev_range}m variation) "
+            f"in a {lf} position. The low-lying landform combined with moderate grade change "
+            "suggests a site that transitions into a drainage concentration zone. Floor levels "
+            f"should be set with appropriate freeboard. The minimum site elevation of {elev_min}m "
+            "AHD is the critical datum for flood planning level comparison."
+        )
+        action = "Verify minimum elevation against applicable flood planning level"
+        cost = None
+    elif elev_range is not None and elev_range <= 10:
+        sev = TerrainSeverity.AMBER
+        cls = "Moderate elevation variation"
+        narr = (
+            f"Elevation ranges from {elev_min}m to {elev_max}m AHD ({elev_range}m variation). "
+            "This grade change will likely require split-level design, stepped footings, or "
+            "localised retaining walls. Earthworks volume depends on building footprint "
+            "orientation relative to the contours. A contour survey at 0.5m intervals is "
+            "recommended to optimise building placement and minimise cut-and-fill imbalance. "
+            "Retaining walls exceeding 600mm height require engineering design under AS 4678."
+        )
+        action = "Contour survey recommended for design development"
+        cost = "$2,000\u2013$5,000 (contour survey by registered surveyor)"
+    else:
+        sev = TerrainSeverity.RED
+        cls = "Significant elevation variation"
+        narr = (
+            f"Elevation ranges from {elev_min}m to {elev_max}m AHD ({elev_range}m variation). "
+            "This significant grade change indicates a steeply undulating site that will require "
+            "multi-level design, substantial retaining structures, and careful management of "
+            "overland flow paths across the grade change. A detailed contour survey and "
+            "geotechnical investigation are prerequisites for design development."
+        )
+        action = "Contour survey and geotechnical investigation required"
+        cost = (
+            "$2,000\u2013$5,000 (contour survey) + "
+            "$5,000\u2013$15,000 (geotechnical investigation)"
+        )
+
+    return TerrainFinding(
+        id="elevation_position",
+        title="Elevation Position",
+        metric={"elevation_min_m": elev_min, "elevation_max_m": elev_max, "elevation_range_m": elev_range},
+        classification=cls,
+        narrative=narr,
+        methodology=_ELEVATION_METHOD,
+        severity=sev,
+        relevance=["architect", "structural_engineer", "geotechnical_engineer", "hydraulic_engineer"],
+        action_trigger=action,
+        estimated_cost=cost,
+    )
+
+
+def _interpret_ruggedness(d: dict) -> TerrainFinding:
+    """Interpret surface complexity from terrain ruggedness index."""
+    rug = d["terrain_ruggedness"]  # noqa: bracket-access
+
+    if rug < 2.0:
+        sev = TerrainSeverity.GREEN
+        cls = "Uniform surface — consistent gradient"
+        narr = (
+            f"Terrain ruggedness index of {rug}\u00b0 (standard deviation of slope) indicates a "
+            "uniform surface with consistent gradient across the analysis area. The site does not "
+            "exhibit significant undulation, rock outcrops, or abrupt grade changes at the 5m "
+            "resolution. Earthworks volumes are predictable and foundation conditions are likely "
+            "to be consistent across the building footprint."
+        )
+        action = None
+        cost = None
+    elif rug <= 5.0:
+        sev = TerrainSeverity.AMBER
+        cls = "Moderate surface variability"
+        narr = (
+            f"Terrain ruggedness index of {rug}\u00b0 indicates moderate surface variability. "
+            "The site has a mix of gradients — some areas are relatively flat while others are "
+            "steeper, or the surface undulates. This may indicate benched terrain, rock outcrops "
+            "interspersed with soil, or natural terracing. Foundation design should account for "
+            "variable bearing conditions. A detailed contour survey will reveal whether the "
+            "variability is gradual undulation or abrupt changes (e.g. sandstone shelf edges "
+            "common in Sydney Basin geology)."
+        )
+        action = "Contour survey recommended — variable bearing conditions likely"
+        cost = "$2,000\u2013$5,000 (contour survey by registered surveyor)"
+    else:
+        sev = TerrainSeverity.RED
+        cls = "High surface complexity — irregular terrain"
+        narr = (
+            f"Terrain ruggedness index of {rug}\u00b0 indicates high surface complexity. The "
+            "terrain exhibits significant irregular variation in slope — likely rock outcrops, "
+            "escarpment edges, gullies, or highly dissected terrain. This substantially constrains "
+            "building footprint placement and increases construction costs. Individual foundation "
+            "elements may need different bearing conditions. Access road and driveway grades may "
+            "be difficult to achieve within AS 2890.1 limits. A comprehensive geotechnical "
+            "investigation with multiple test locations across the site is recommended."
+        )
+        action = "Comprehensive geotechnical investigation required — multiple test locations"
+        cost = "$5,000\u2013$15,000 (geotechnical investigation with multiple boreholes/test pits)"
+
+    return TerrainFinding(
+        id="surface_complexity",
+        title="Surface Complexity",
+        metric={"terrain_ruggedness": rug},
+        classification=cls,
+        narrative=narr,
+        methodology=_RUGGEDNESS_METHOD,
+        severity=sev,
+        relevance=["architect", "geotechnical_engineer", "quantity_surveyor", "civil_engineer"],
+        action_trigger=action,
+        estimated_cost=cost,
+    )
+
+
+def _build_terrain_interpretation(terrain_dict: dict) -> Optional[TerrainInterpretation]:
+    """Build structured interpretation from raw terrain metrics.
+
+    Pure threshold logic — no LLM, no external calls.
+    Returns None if critical inputs (slope) are missing.
+    """
+    if terrain_dict.get("slope_mean_deg") is None:
+        return None
+
+    findings: list[TerrainFinding] = []
+    findings.append(_interpret_gradient(terrain_dict))
+
+    if terrain_dict.get("landform_type") is not None:
+        findings.append(_interpret_landform(terrain_dict))
+    if terrain_dict.get("aspect_direction") is not None:
+        findings.append(_interpret_aspect(terrain_dict))
+    if terrain_dict.get("daylight_fraction") is not None:
+        findings.append(_interpret_solar(terrain_dict))
+    if terrain_dict.get("elevation_min_m") is not None:
+        findings.append(_interpret_elevation(terrain_dict))
+    if terrain_dict.get("terrain_ruggedness") is not None:
+        findings.append(_interpret_ruggedness(terrain_dict))
+
+    return TerrainInterpretation(findings=findings)
 
 
 # ---------------------------------------------------------------------------
@@ -531,7 +1137,12 @@ def terrain_analysis_endpoint(req: TerrainRequest):
         if "flood_susceptibility" in result and result["flood_susceptibility"]:
             flood = FloodSusceptibilityDetail(**result["flood_susceptibility"])
 
-        return TerrainResponse(terrain=terrain, flood_susceptibility=flood)
+        interpretation = _build_terrain_interpretation(result) if terrain else None
+        return TerrainResponse(
+            terrain=terrain,
+            interpretation=interpretation,
+            flood_susceptibility=flood,
+        )
     except Exception as e:
         logger.exception("Terrain analysis failed for (%.4f, %.4f): %s", req.lat, req.lng, e)
         raise HTTPException(status_code=500, detail=str(e))
