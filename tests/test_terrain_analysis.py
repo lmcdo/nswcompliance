@@ -30,14 +30,25 @@ from services.terrain_analysis import (
     _compute_composite_score,
     _classify_composite,
     _run_tool,
+    _interpret_gradient,
+    _interpret_landform,
+    _interpret_aspect,
+    _interpret_solar,
+    _interpret_elevation,
+    _interpret_ruggedness,
+    _build_terrain_interpretation,
     TerrainAnalysisDetail,
     FloodSusceptibilityDetail,
     TerrainRequest,
     TerrainResponse,
+    TerrainSeverity,
+    TerrainFinding,
+    TerrainInterpretation,
     HAND_STREAM_THRESHOLD,
     _HAND_THRESHOLDS,
     _TWI_THRESHOLDS,
     _GEOMORPHON_LABELS,
+    _LANDFORM_SEVERITY,
 )
 
 
@@ -364,3 +375,522 @@ class TestGeomorphonLabels:
 
     def test_11_not_in_labels(self):
         assert 11 not in _GEOMORPHON_LABELS
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_gradient
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretGradient:
+    def test_gentle_gradient(self):
+        f = _interpret_gradient({"slope_mean_deg": 3.0, "slope_max_deg": 8.0})
+        assert f.severity == TerrainSeverity.GREEN
+        assert f.id == "site_gradient"
+        assert f.action_trigger is None
+        assert f.estimated_cost is None
+        assert "3.0" in f.narrative
+        assert "8.0" in f.narrative
+
+    def test_moderate_gradient(self):
+        f = _interpret_gradient({"slope_mean_deg": 7.0, "slope_max_deg": 15.0})
+        assert f.severity == TerrainSeverity.AMBER
+        assert f.classification == "Moderate gradient"
+        assert f.action_trigger is not None
+        assert f.estimated_cost is not None
+
+    def test_moderate_with_steep_zones(self):
+        """Mean < 10 but max >= 20 → localised steep zones."""
+        f = _interpret_gradient({"slope_mean_deg": 8.0, "slope_max_deg": 22.0})
+        assert f.severity == TerrainSeverity.AMBER
+        assert "localised steep zones" in f.classification.lower()
+
+    def test_steep_site(self):
+        f = _interpret_gradient({"slope_mean_deg": 12.0, "slope_max_deg": 20.0})
+        assert f.severity == TerrainSeverity.RED
+        assert f.classification == "Steep site"
+        assert "AS 2890.1" not in f.classification  # standard is in narrative, not classification
+        assert f.action_trigger is not None
+        assert f.estimated_cost is not None
+
+    def test_very_steep_site(self):
+        f = _interpret_gradient({"slope_mean_deg": 15.0, "slope_max_deg": 30.0})
+        assert f.severity == TerrainSeverity.RED
+        assert f.classification == "Very steep site"
+        assert "AS 4678" in f.narrative
+
+    def test_boundary_gentle_moderate(self):
+        """At exactly mean=5, mx=10 → should be moderate (not gentle)."""
+        f = _interpret_gradient({"slope_mean_deg": 5.0, "slope_max_deg": 10.0})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_boundary_moderate_steep(self):
+        """At exactly mean=10, mx=20 → steep (not moderate)."""
+        f = _interpret_gradient({"slope_mean_deg": 10.0, "slope_max_deg": 20.0})
+        assert f.severity == TerrainSeverity.RED
+
+    def test_none_slope_defaults_zero(self):
+        """Missing slope values default to 0.0 → gentle."""
+        f = _interpret_gradient({})
+        assert f.severity == TerrainSeverity.GREEN
+
+    def test_metric_dict_populated(self):
+        f = _interpret_gradient({"slope_mean_deg": 6.5, "slope_max_deg": 12.0})
+        assert f.metric == {"slope_mean_deg": 6.5, "slope_max_deg": 12.0}
+
+    def test_relevance_includes_architect(self):
+        f = _interpret_gradient({"slope_mean_deg": 3.0, "slope_max_deg": 5.0})
+        assert "architect" in f.relevance
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_landform
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretLandform:
+    @pytest.mark.parametrize("lf,expected_sev", [
+        ("flat", TerrainSeverity.GREEN),
+        ("spur", TerrainSeverity.GREEN),
+        ("ridge", TerrainSeverity.GREEN),
+        ("peak", TerrainSeverity.GREEN),
+        ("footslope", TerrainSeverity.AMBER),
+        ("shoulder", TerrainSeverity.AMBER),
+        ("slope", TerrainSeverity.AMBER),
+        ("hollow", TerrainSeverity.RED),
+        ("valley", TerrainSeverity.RED),
+        ("pit", TerrainSeverity.RED),
+    ])
+    def test_severity_mapping(self, lf, expected_sev):
+        f = _interpret_landform({"landform_type": lf, "drainage_direction": "SE"})
+        assert f.severity == expected_sev
+
+    def test_drainage_direction_in_narrative(self):
+        f = _interpret_landform({"landform_type": "hollow", "drainage_direction": "NW"})
+        assert "NW" in f.narrative
+
+    def test_hollow_has_action_trigger(self):
+        f = _interpret_landform({"landform_type": "hollow"})
+        assert f.action_trigger is not None
+        assert f.estimated_cost is not None
+
+    def test_valley_has_action_trigger(self):
+        f = _interpret_landform({"landform_type": "valley"})
+        assert f.action_trigger is not None
+
+    def test_pit_has_action_trigger(self):
+        f = _interpret_landform({"landform_type": "pit"})
+        assert "no natural outfall" in f.action_trigger.lower()
+
+    def test_flat_no_action(self):
+        f = _interpret_landform({"landform_type": "flat"})
+        assert f.action_trigger is None
+        assert f.estimated_cost is None
+
+    def test_footslope_has_geotech_action(self):
+        f = _interpret_landform({"landform_type": "footslope"})
+        assert f.action_trigger is not None
+        assert "geotechnical" in f.action_trigger.lower()
+
+    def test_default_drainage(self):
+        """Missing drainage_direction defaults to 'downslope'."""
+        f = _interpret_landform({"landform_type": "slope"})
+        assert "downslope" in f.narrative
+
+    def test_unknown_landform_defaults_amber(self):
+        """Unknown landform falls back to AMBER and slope narrative."""
+        f = _interpret_landform({"landform_type": "unknown_type"})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_id_is_landform(self):
+        f = _interpret_landform({"landform_type": "ridge"})
+        assert f.id == "landform"
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_aspect
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretAspect:
+    def test_level_site_green(self):
+        """Slope < 2° → aspect immaterial."""
+        f = _interpret_aspect({"aspect_direction": "S", "aspect_dominant_deg": 180.0, "slope_mean_deg": 1.5})
+        assert f.severity == TerrainSeverity.GREEN
+        assert "level" in f.classification.lower()
+
+    def test_north_favourable(self):
+        f = _interpret_aspect({"aspect_direction": "N", "aspect_dominant_deg": 5.0, "slope_mean_deg": 8.0})
+        assert f.severity == TerrainSeverity.GREEN
+        assert "favourable" in f.classification.lower()
+
+    def test_ne_favourable(self):
+        f = _interpret_aspect({"aspect_direction": "NE", "aspect_dominant_deg": 45.0, "slope_mean_deg": 5.0})
+        assert f.severity == TerrainSeverity.GREEN
+
+    def test_nw_favourable(self):
+        f = _interpret_aspect({"aspect_direction": "NW", "aspect_dominant_deg": 315.0, "slope_mean_deg": 5.0})
+        assert f.severity == TerrainSeverity.GREEN
+
+    def test_east_amber(self):
+        f = _interpret_aspect({"aspect_direction": "E", "aspect_dominant_deg": 90.0, "slope_mean_deg": 5.0})
+        assert f.severity == TerrainSeverity.AMBER
+        assert "morning" in f.classification.lower()
+
+    def test_west_amber(self):
+        f = _interpret_aspect({"aspect_direction": "W", "aspect_dominant_deg": 270.0, "slope_mean_deg": 5.0})
+        assert f.severity == TerrainSeverity.AMBER
+        assert "afternoon" in f.classification.lower()
+
+    def test_south_steep_red(self):
+        """South-facing + steep (≥10°) → RED."""
+        f = _interpret_aspect({"aspect_direction": "S", "aspect_dominant_deg": 180.0, "slope_mean_deg": 12.0})
+        assert f.severity == TerrainSeverity.RED
+
+    def test_south_moderate_amber(self):
+        """South-facing + moderate slope → AMBER."""
+        f = _interpret_aspect({"aspect_direction": "S", "aspect_dominant_deg": 180.0, "slope_mean_deg": 6.0})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_se_steep_red(self):
+        """SE-facing + steep → RED."""
+        f = _interpret_aspect({"aspect_direction": "SE", "aspect_dominant_deg": 135.0, "slope_mean_deg": 10.0})
+        assert f.severity == TerrainSeverity.RED
+
+    def test_sw_moderate_amber(self):
+        f = _interpret_aspect({"aspect_direction": "SW", "aspect_dominant_deg": 225.0, "slope_mean_deg": 5.0})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_raw_values_in_narrative(self):
+        f = _interpret_aspect({"aspect_direction": "E", "aspect_dominant_deg": 92.3, "slope_mean_deg": 7.5})
+        assert "92.3" in f.narrative
+        assert "7.5" in f.narrative
+
+    def test_adg_referenced(self):
+        """All non-level aspects should reference ADG."""
+        f = _interpret_aspect({"aspect_direction": "N", "aspect_dominant_deg": 10.0, "slope_mean_deg": 5.0})
+        assert "ADG" in f.narrative
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_solar
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretSolar:
+    def test_full_access(self):
+        f = _interpret_solar({"daylight_fraction": 0.95})
+        assert f.severity == TerrainSeverity.GREEN
+        assert f.classification == "Full terrain solar access"
+        assert "95.0%" in f.narrative
+
+    def test_moderate_shadowing(self):
+        f = _interpret_solar({"daylight_fraction": 0.82})
+        assert f.severity == TerrainSeverity.AMBER
+        assert f.classification == "Moderate terrain shadowing"
+
+    def test_significant_shadowing(self):
+        f = _interpret_solar({"daylight_fraction": 0.65})
+        assert f.severity == TerrainSeverity.RED
+        assert "Significant" in f.classification
+
+    def test_severe_shadowing(self):
+        f = _interpret_solar({"daylight_fraction": 0.50})
+        assert f.severity == TerrainSeverity.RED
+        assert "Severe" in f.classification
+
+    def test_boundary_full_moderate(self):
+        """Exactly 0.90 → full access (GREEN)."""
+        f = _interpret_solar({"daylight_fraction": 0.90})
+        assert f.severity == TerrainSeverity.GREEN
+
+    def test_boundary_moderate_significant(self):
+        """Exactly 0.75 → moderate (AMBER)."""
+        f = _interpret_solar({"daylight_fraction": 0.75})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_boundary_significant_severe(self):
+        """Exactly 0.60 → significant (RED)."""
+        f = _interpret_solar({"daylight_fraction": 0.60})
+        assert f.severity == TerrainSeverity.RED
+
+    def test_derate_in_narrative(self):
+        """Moderate+ should mention PV derating percentage."""
+        f = _interpret_solar({"daylight_fraction": 0.80})
+        assert "20%" in f.narrative  # 1 - 0.80 = 0.20 → 20%
+
+    def test_fraction_in_narrative(self):
+        f = _interpret_solar({"daylight_fraction": 0.85})
+        assert "0.850" in f.narrative
+        assert "85.0%" in f.narrative
+
+    def test_metric_dict(self):
+        f = _interpret_solar({"daylight_fraction": 0.92})
+        assert f.metric["daylight_fraction"] == 0.92
+        assert f.metric["daylight_pct"] == 92.0
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_elevation
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretElevation:
+    def test_level_site(self):
+        f = _interpret_elevation({"elevation_min_m": 50.0, "elevation_max_m": 51.5, "elevation_range_m": 1.5})
+        assert f.severity == TerrainSeverity.GREEN
+        assert f.action_trigger is None
+
+    def test_moderate_non_lowlying(self):
+        f = _interpret_elevation({"elevation_min_m": 40.0, "elevation_max_m": 47.0, "elevation_range_m": 7.0})
+        assert f.severity == TerrainSeverity.AMBER
+        assert "contour survey" in f.action_trigger.lower()
+
+    def test_moderate_lowlying_valley(self):
+        """Valley + moderate range → AMBER with drainage emphasis."""
+        f = _interpret_elevation({
+            "elevation_min_m": 10.0, "elevation_max_m": 17.0,
+            "elevation_range_m": 7.0, "landform_type": "valley",
+        })
+        assert f.severity == TerrainSeverity.AMBER
+        assert "drainage" in f.classification.lower()
+        assert "flood planning level" in f.action_trigger.lower()
+
+    def test_moderate_lowlying_pit(self):
+        f = _interpret_elevation({
+            "elevation_min_m": 5.0, "elevation_max_m": 10.0,
+            "elevation_range_m": 5.0, "landform_type": "pit",
+        })
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_significant_variation(self):
+        f = _interpret_elevation({"elevation_min_m": 20.0, "elevation_max_m": 35.0, "elevation_range_m": 15.0})
+        assert f.severity == TerrainSeverity.RED
+        assert f.action_trigger is not None
+        assert f.estimated_cost is not None
+
+    def test_boundary_level_moderate(self):
+        """Exactly 3m → moderate (AMBER), not level."""
+        f = _interpret_elevation({"elevation_min_m": 50.0, "elevation_max_m": 53.0, "elevation_range_m": 3.0})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_boundary_moderate_significant(self):
+        """Range > 10m → RED."""
+        f = _interpret_elevation({"elevation_min_m": 30.0, "elevation_max_m": 41.0, "elevation_range_m": 11.0})
+        assert f.severity == TerrainSeverity.RED
+
+    def test_elevation_values_in_narrative(self):
+        f = _interpret_elevation({"elevation_min_m": 22.5, "elevation_max_m": 29.8, "elevation_range_m": 7.3})
+        assert "22.5" in f.narrative
+        assert "29.8" in f.narrative
+        assert "7.3" in f.narrative
+
+    def test_ahd_mentioned(self):
+        f = _interpret_elevation({"elevation_min_m": 50.0, "elevation_max_m": 52.0, "elevation_range_m": 2.0})
+        assert "AHD" in f.narrative
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _interpret_ruggedness
+# ---------------------------------------------------------------------------
+
+
+class TestInterpretRuggedness:
+    def test_uniform_surface(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 1.2})
+        assert f.severity == TerrainSeverity.GREEN
+        assert f.action_trigger is None
+        assert f.estimated_cost is None
+
+    def test_moderate_variability(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 3.5})
+        assert f.severity == TerrainSeverity.AMBER
+        assert f.action_trigger is not None
+
+    def test_high_complexity(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 6.0})
+        assert f.severity == TerrainSeverity.RED
+        assert f.action_trigger is not None
+        assert f.estimated_cost is not None
+
+    def test_boundary_uniform_moderate(self):
+        """Exactly 2.0 → moderate (AMBER)."""
+        f = _interpret_ruggedness({"terrain_ruggedness": 2.0})
+        assert f.severity == TerrainSeverity.AMBER
+
+    def test_boundary_moderate_high(self):
+        """Exactly 5.0 → still moderate (AMBER), 5.01 → RED."""
+        f = _interpret_ruggedness({"terrain_ruggedness": 5.0})
+        assert f.severity == TerrainSeverity.AMBER
+        f2 = _interpret_ruggedness({"terrain_ruggedness": 5.01})
+        assert f2.severity == TerrainSeverity.RED
+
+    def test_value_in_narrative(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 4.7})
+        assert "4.7" in f.narrative
+
+    def test_methodology_references_std_dev(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 1.0})
+        assert "standard deviation" in f.methodology.lower()
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — _build_terrain_interpretation (integration)
+# ---------------------------------------------------------------------------
+
+
+def _full_terrain_dict():
+    """Complete terrain dict that produces all 6 findings."""
+    return {
+        "slope_mean_deg": 8.3,
+        "slope_max_deg": 15.0,
+        "landform_type": "footslope",
+        "drainage_direction": "SE",
+        "aspect_direction": "NE",
+        "aspect_dominant_deg": 42.0,
+        "daylight_fraction": 0.88,
+        "elevation_min_m": 35.0,
+        "elevation_max_m": 43.0,
+        "elevation_range_m": 8.0,
+        "terrain_ruggedness": 3.1,
+    }
+
+
+class TestBuildTerrainInterpretation:
+    def test_full_dict_produces_six_findings(self):
+        interp = _build_terrain_interpretation(_full_terrain_dict())
+        assert interp is not None
+        assert len(interp.findings) == 6
+
+    def test_all_finding_ids_unique(self):
+        interp = _build_terrain_interpretation(_full_terrain_dict())
+        ids = [f.id for f in interp.findings]
+        assert len(ids) == len(set(ids))
+
+    def test_finding_ids_are_expected(self):
+        interp = _build_terrain_interpretation(_full_terrain_dict())
+        ids = {f.id for f in interp.findings}
+        assert ids == {
+            "site_gradient", "landform", "aspect_orientation",
+            "solar_terrain_access", "elevation_position", "surface_complexity",
+        }
+
+    def test_minimal_dict_one_finding(self):
+        """Only slope → only gradient finding."""
+        interp = _build_terrain_interpretation({"slope_mean_deg": 3.0})
+        assert interp is not None
+        assert len(interp.findings) == 1
+        assert interp.findings[0].id == "site_gradient"
+
+    def test_none_slope_returns_none(self):
+        interp = _build_terrain_interpretation({"slope_mean_deg": None})
+        assert interp is None
+
+    def test_missing_slope_returns_none(self):
+        interp = _build_terrain_interpretation({})
+        assert interp is None
+
+    def test_missing_daylight_omits_solar(self):
+        d = _full_terrain_dict()
+        del d["daylight_fraction"]
+        interp = _build_terrain_interpretation(d)
+        ids = {f.id for f in interp.findings}
+        assert "solar_terrain_access" not in ids
+        assert len(interp.findings) == 5
+
+    def test_missing_landform_omits_finding(self):
+        d = _full_terrain_dict()
+        del d["landform_type"]
+        interp = _build_terrain_interpretation(d)
+        ids = {f.id for f in interp.findings}
+        assert "landform" not in ids
+
+    def test_data_source_populated(self):
+        interp = _build_terrain_interpretation(_full_terrain_dict())
+        assert "5m DEM" in interp.data_source
+
+    def test_disclaimer_mentions_surveyor(self):
+        interp = _build_terrain_interpretation(_full_terrain_dict())
+        assert "surveyor" in interp.disclaimer.lower()
+
+    def test_green_findings_no_cost(self):
+        """All GREEN findings must have no cost or action trigger."""
+        d = {
+            "slope_mean_deg": 2.0,
+            "slope_max_deg": 5.0,
+            "landform_type": "flat",
+            "drainage_direction": "E",
+            "aspect_direction": "N",
+            "aspect_dominant_deg": 10.0,
+            "daylight_fraction": 0.95,
+            "elevation_min_m": 50.0,
+            "elevation_max_m": 51.0,
+            "elevation_range_m": 1.0,
+            "terrain_ruggedness": 1.0,
+        }
+        interp = _build_terrain_interpretation(d)
+        for f in interp.findings:
+            assert f.severity == TerrainSeverity.GREEN, f"Expected GREEN for {f.id}, got {f.severity}"
+            assert f.action_trigger is None, f"{f.id} should not have action_trigger"
+            assert f.estimated_cost is None, f"{f.id} should not have estimated_cost"
+
+    def test_red_findings_have_cost_and_action(self):
+        """All RED findings must have cost and action trigger."""
+        d = {
+            "slope_mean_deg": 15.0,
+            "slope_max_deg": 30.0,
+            "terrain_ruggedness": 7.0,
+            "elevation_min_m": 10.0,
+            "elevation_max_m": 25.0,
+            "elevation_range_m": 15.0,
+        }
+        interp = _build_terrain_interpretation(d)
+        red_findings = [f for f in interp.findings if f.severity == TerrainSeverity.RED]
+        assert len(red_findings) >= 2  # gradient + ruggedness + elevation
+        for f in red_findings:
+            assert f.action_trigger is not None, f"{f.id} missing action_trigger"
+            assert f.estimated_cost is not None, f"{f.id} missing estimated_cost"
+
+
+# ---------------------------------------------------------------------------
+# Terrain interpretation — narrative content quality
+# ---------------------------------------------------------------------------
+
+
+class TestNarrativeContent:
+    def test_gradient_embeds_raw_values(self):
+        f = _interpret_gradient({"slope_mean_deg": 8.3, "slope_max_deg": 22.1})
+        assert "8.3" in f.narrative
+        assert "22.1" in f.narrative
+
+    def test_solar_embeds_percentage_and_fraction(self):
+        f = _interpret_solar({"daylight_fraction": 0.82})
+        assert "82.0%" in f.narrative
+        assert "0.820" in f.narrative
+
+    def test_elevation_embeds_ahd_values(self):
+        f = _interpret_elevation({"elevation_min_m": 22.5, "elevation_max_m": 35.0, "elevation_range_m": 12.5})
+        assert "22.5m" in f.narrative
+        assert "35.0m" in f.narrative
+
+    def test_ruggedness_embeds_value(self):
+        f = _interpret_ruggedness({"terrain_ruggedness": 4.7})
+        assert "4.7" in f.narrative
+
+    def test_gradient_methodology_cites_horn(self):
+        f = _interpret_gradient({"slope_mean_deg": 5.0, "slope_max_deg": 10.0})
+        assert "Horn" in f.methodology
+
+    def test_landform_methodology_cites_jasiewicz(self):
+        f = _interpret_landform({"landform_type": "flat"})
+        assert "Jasiewicz" in f.methodology
+
+    def test_aspect_methodology_cites_adg(self):
+        f = _interpret_aspect({"aspect_direction": "E", "aspect_dominant_deg": 90.0, "slope_mean_deg": 5.0})
+        assert "ADG" in f.methodology or "ADG" in f.narrative
+
+    def test_landform_severity_dict_covers_all_10(self):
+        """Every geomorphon label must have a severity mapping."""
+        expected_types = {"flat", "footslope", "shoulder", "slope", "spur",
+                          "ridge", "peak", "hollow", "valley", "pit"}
+        assert set(_LANDFORM_SEVERITY.keys()) == expected_types

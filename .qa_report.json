@@ -1,98 +1,118 @@
 {
   "tier": "standard",
-  "justification": "New satellite pipeline (terrain analysis) + integration into intelligence brief. No DB writes, no user-facing text beyond disclaimer. 7 files changed/added.",
-  "commit_hash": "3b3550a3",
-  "files": [
-    "services/dem_service.py",
-    "services/terrain_analysis.py",
-    "services/intelligence_brief.py",
-    "services/compliance_api_server.py",
-    "tests/conftest_mocks.py",
-    "tests/test_dem_service.py",
-    "tests/test_terrain_analysis.py"
-  ],
+  "justification": "New interpretation layer is pure threshold logic over existing metrics — no DB queries, no external APIs, no user-facing text (interpretation consumed by API clients/frontend, not displayed in this service). Additive change: existing TerrainResponse gains optional field, no breaking changes.",
+  "commit_hash": "6f3feaff",
+  "files": ["services/terrain_analysis.py", "tests/test_terrain_analysis.py"],
   "pre_impl": {
-    "existing_data": "No DB interaction. DEM data fetched from GA WCS + SIX Maps (HTTP). Intelligence brief adds terrain as optional satellite section.",
-    "assumption_mismatch": "If GA WCS endpoint changes format or goes offline: SIX Maps fallback. If both fail: terrain section shows NOT_AVAILABLE, brief continues.",
-    "new_vs_existing": "New pipeline only. Existing intelligence briefs unaffected unless include_satellite=true.",
-    "external_source_error": "N/A (Standard tier)",
-    "frontend_type": "N/A (Standard tier)",
-    "user_failure_mode": "N/A (Standard tier)"
+    "existing_data": "Reads from terrain_dict (computed in-process by _run_terrain_chain) — no DB interaction",
+    "assumption_mismatch": "If terrain_dict keys are missing, each _interpret_* function is guarded: missing landform/aspect/daylight/elevation/ruggedness -> finding omitted. Missing slope -> entire interpretation returns None.",
+    "new_vs_existing": "New optional field on TerrainResponse — existing callers unaffected (interpretation defaults to None)",
+    "external_source_error": "N/A — no external sources in interpretation layer",
+    "frontend_type": "N/A — TerrainResponse is additive, Optional field",
+    "user_failure_mode": "N/A — interpretation is additive. If it fails, raw terrain data still returned."
   },
   "functions": [
     {
-      "name": "fetch_dem_region",
-      "file_line": "dem_service.py:199",
-      "input": "float lat, float lng, float buffer_m — from intelligence brief orchestrator",
-      "output": "io.BytesIO containing GeoTIFF — consumed by terrain_analysis._run_terrain_chain",
-      "if_none": "Raises RuntimeError, caught by _safe_call in intelligence_brief"
+      "name": "_build_terrain_interpretation",
+      "file_line": "terrain_analysis.py:818",
+      "input": "dict (terrain metrics from _run_terrain_chain)",
+      "output": "Optional[TerrainInterpretation] model included in TerrainResponse JSON",
+      "if_none": "Returns None if slope_mean_deg missing"
     },
     {
-      "name": "run_terrain_analysis",
-      "file_line": "terrain_analysis.py:455",
-      "input": "float lat, float lng, bool include_flood — from _fetch_terrain in intelligence_brief",
-      "output": "dict with terrain/flood_susceptibility keys — consumed by _build_terrain_detail",
-      "if_none": "Returns TerrainResponse with error field set; _build_terrain_detail returns None"
+      "name": "_interpret_gradient",
+      "file_line": "terrain_analysis.py:420",
+      "input": "dict containing slope_mean_deg and slope_max_deg float values",
+      "output": "TerrainFinding Pydantic model with severity GREEN/AMBER/RED",
+      "if_none": "slope values default to 0.0 via or 0.0"
     },
     {
-      "name": "_build_terrain_detail",
-      "file_line": "intelligence_brief.py:1304",
-      "input": "Optional[dict] terrain_raw — from _timed_result",
-      "output": "Optional[TerrainAnalysisDetail] — fed into SatelliteData.terrain DataField",
-      "if_none": "Returns None when input is None, DataField confidence=NOT_AVAILABLE in SatelliteData"
+      "name": "_interpret_landform",
+      "file_line": "terrain_analysis.py:503",
+      "input": "dict containing landform_type string and drainage_direction string",
+      "output": "TerrainFinding with severity from _LANDFORM_SEVERITY dict",
+      "if_none": "landform defaults to flat, drainage to downslope"
     },
     {
-      "name": "_fetch_terrain",
-      "file_line": "intelligence_brief.py:1299",
-      "input": "float lat, float lng — from orchestrator",
-      "output": "dict — consumed by _build_terrain_detail",
-      "if_none": "Raises caught by _safe_call then DataField(NOT_AVAILABLE)"
+      "name": "_interpret_aspect",
+      "file_line": "terrain_analysis.py:543",
+      "input": "dict with aspect_direction, aspect_dominant_deg, slope_mean_deg",
+      "output": "TerrainFinding — slope < 2 = GREEN regardless of aspect",
+      "if_none": "Defaults to aspect_direction=N, aspect_deg=0.0, slope_mean=0.0"
+    },
+    {
+      "name": "_interpret_solar",
+      "file_line": "terrain_analysis.py:621",
+      "input": "dict with daylight_fraction (required — only called if not None)",
+      "output": "TerrainFinding with derating percentage in narrative",
+      "if_none": "Not called if daylight_fraction missing (guarded in builder)"
+    },
+    {
+      "name": "_interpret_elevation",
+      "file_line": "terrain_analysis.py:684",
+      "input": "dict with elevation_min_m, elevation_max_m, elevation_range_m, landform_type",
+      "output": "TerrainFinding — compounds with landform for low-lying variant",
+      "if_none": "Defaults to 0.0 for elevations. Not called if elevation_min_m missing."
+    },
+    {
+      "name": "_interpret_ruggedness",
+      "file_line": "terrain_analysis.py:759",
+      "input": "dict with terrain_ruggedness (required — only called if not None)",
+      "output": "TerrainFinding with std-dev based classification",
+      "if_none": "Not called if terrain_ruggedness missing (guarded in builder)"
     }
   ],
   "values": [
     {
-      "value": "terrain_raw",
-      "read_at": "intelligence_brief.py:2108 (sync), 2720 (SSE)",
+      "value": "slope_mean_deg",
+      "read_at": "terrain_analysis.py:422",
       "nullable": "yes",
-      "guard_at": "intelligence_brief.py:1294 — _build_terrain_detail checks if not terrain_raw",
-      "if_missing": "Terrain section shows NOT_AVAILABLE in brief, no crash"
+      "guard_at": "terrain_analysis.py:824 (builder returns None) + :422 (or 0.0)",
+      "if_missing": "Interpretation omitted entirely (returns None)"
     },
     {
-      "value": "terrain_detail",
-      "read_at": "intelligence_brief.py:1321 (in _build_satellite_data)",
+      "value": "daylight_fraction",
+      "read_at": "terrain_analysis.py:623",
       "nullable": "yes",
-      "guard_at": "intelligence_brief.py:1378 — confidence=NOT_AVAILABLE if terrain_detail is None",
-      "if_missing": "SatelliteData.terrain DataField has NOT_AVAILABLE confidence"
+      "guard_at": "terrain_analysis.py:834 (builder skips solar finding)",
+      "if_missing": "Solar finding omitted from findings list"
+    },
+    {
+      "value": "landform_type",
+      "read_at": "terrain_analysis.py:505",
+      "nullable": "yes",
+      "guard_at": "terrain_analysis.py:830 (builder skips landform finding)",
+      "if_missing": "Landform finding omitted from findings list"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "GA WCS returns valid HTTP 200 but with XML error body (not TIFF)",
-      "what_happens": "_is_tiff check fails, falls back to SIX Maps, terrain still works",
+      "scenario": "Unknown landform_type string not in _LANDFORM_SEVERITY dict",
+      "what_happens": "Falls back to AMBER severity via dict.get default, uses slope narrative template",
       "mitigated": true,
-      "how": "dem_service.py:111,134 — _is_tiff validates magic bytes before accepting response",
-      "repro": "monkeypatch requests.get to return XML with 200 status — assert fallback triggers"
+      "how": "terrain_analysis.py:507-508 — _LANDFORM_SEVERITY.get(lf, TerrainSeverity.AMBER) + _LANDFORM_NARRATIVES.get(lf, _LANDFORM_NARRATIVES[slope])",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretLandform::test_unknown_landform_defaults_amber"
     },
     {
-      "scenario": "whitebox tool returns non-zero exit code (corrupt DEM, missing binary)",
-      "what_happens": "_run_tool raises RuntimeError, caught by try/except in run_terrain_analysis — TerrainResponse.error set",
+      "scenario": "Slope exactly at boundary (e.g. mean=5.0, max=10.0) — off-by-one in threshold",
+      "what_happens": "Could classify as wrong tier, affecting action_trigger and cost advice",
       "mitigated": true,
-      "how": "terrain_analysis.py:197-202 — _run_tool checks return code; terrain_analysis.py:260 catches and returns error response",
-      "repro": "Mock whitebox slope to return 1 — assert RuntimeError raised"
+      "how": "Boundary tests: test_boundary_gentle_moderate, test_boundary_moderate_steep verify < vs >= behavior",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretGradient::test_boundary_gentle_moderate"
     },
     {
-      "scenario": "DEM raster has all NoData values (ocean, outside coverage)",
-      "what_happens": "numpy operations on all-NaN array: nanmean=NaN, min/max=NaN — terrain detail has None values",
+      "scenario": "Aspect on flat site (slope < 2) classified as south-facing RED",
+      "what_happens": "Flat site incorrectly flagged as solar-constrained",
       "mitigated": true,
-      "how": "terrain_analysis.py uses np.nanmean/nanmin/nanmax which return NaN for all-NaN input; _aspect_to_compass handles NaN as flat",
-      "repro": "Would need rasterio integration test with synthetic all-nodata TIFF"
+      "how": "terrain_analysis.py:549 — slope < 2 check runs first, returns GREEN regardless of aspect direction",
+      "repro": "pytest tests/test_terrain_analysis.py::TestInterpretAspect::test_level_site_green"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "POST /pipeline/terrain-analysis with Sydney coordinates to verify live DEM fetch"
+    "manual_verify": "No — pure logic, no external dependencies"
   }
 }
