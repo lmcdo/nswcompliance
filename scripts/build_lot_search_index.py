@@ -56,7 +56,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or ""
 
 
 # ---------------------------------------------------------------------------
@@ -284,7 +284,7 @@ def get_lgas_with_dcp(conn) -> list[str]:
     cur = conn.cursor()
     cur.execute("""
         SELECT DISTINCT lga_slug FROM dcp_setback_controls
-        WHERE lga_slug IS NOT NULL
+        WHERE lga_slug IS NOT NULL AND is_current = TRUE
         ORDER BY lga_slug
     """)
     return [r[0] for r in cur.fetchall()]
@@ -306,7 +306,7 @@ def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
     all_setbacks = (dcp_raw.get("setbacks") or []) + (dcp_raw.get("sd_setbacks") or [])
     for s in all_setbacks:
         controls.append(DCPControl(
-            control_type=s.get("control_type", s.get("type", "")),
+            control_type=s.get("control_type") or s.get("type") or "",
             dev_type=s.get("dev_type", "dwelling_house"),
             value_min=s.get("value_min") or s.get("requirement"),
             value_max=s.get("value_max"),
