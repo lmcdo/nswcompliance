@@ -1,102 +1,144 @@
 {
   "tier": "standard",
-  "justification": "Multi-file refactor: extract shared models, add /full endpoint, simplify frontend route, wire constraint arithmetic into brief. 6 files changed. No DB schema changes, no regulatory data, no user-facing text.",
-  "commit_hash": "ee6638b0",
+  "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
+  "commit_hash": "c0586d03",
   "files": [
-    "services/constraint_models.py",
-    "services/constraint_arithmetic.py",
-    "services/intelligence_brief.py",
-    "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_constraint_arithmetic_endpoint.py"
+    "migrations/010_lot_search_index.sql",
+    "scripts/build_lot_search_index.py",
+    "services/lot_search.py",
+    "services/compliance_api_server.py",
+    "frontend-nextjs/app/api/lot-search/route.ts",
+    "tests/test_lot_search.py"
   ],
   "pre_impl": {
-    "existing_data": "Reads dcp_setback_controls and housing_sepp_standards via conveyancing_db functions. No writes.",
-    "assumption_mismatch": "If DB functions return unexpected shapes, _fetch_constraint_data_from_db catches the exception and returns empty lists — constraint arithmetic runs with available data, gaps reported.",
-    "new_vs_existing": "No data mutations. Read-only queries + pure computation. Applies to all requests immediately."
+    "existing_data": "Reads nsw_cadastre_lots (3.2M rows), spatial_overlays (1.1M rows), dcp_setback_controls (1K), housing_sepp_standards (45). Writes to NEW lot_search_index table only.",
+    "assumption_mismatch": "If spatial_overlays has no zone data for an LGA, that LGA is skipped (get_lga_list only returns LGAs with zone overlays). If DCP controls missing, CA columns stay NULL — graceful degradation.",
+    "new_vs_existing": "New table — INSERT only. ON CONFLICT upsert for re-runs."
   },
   "functions": [
     {
-      "name": "_fetch_constraint_data_from_db",
-      "file_line": "services/constraint_arithmetic.py:808",
-      "input": "lga: Optional[str], zone: Optional[str], lot_area_m2: float, lep height and fsr strings",
-      "output": "tuple of three lists: DCPControl, SEPPStandard, SeppLepOverride — all empty on failure",
-      "if_none": "Returns ([], [], []) — engine runs without DCP/SEPP data, reports gaps"
+      "name": "assign_overlays_for_lga",
+      "file_line": "scripts/build_lot_search_index.py:80",
+      "input": "conn + lga_name string from spatial_overlays.lga_name",
+      "output": "Rows written to lot_search_index with overlay columns populated",
+      "if_none": "Returns 0 lots processed, no writes if lga_name matches zero lots"
     },
     {
-      "name": "constraint_arithmetic_full",
-      "file_line": "services/constraint_arithmetic.py:918",
-      "input": "ConstraintArithmeticFullRequest (lot_area_m2, zone, lga, LEP strings)",
-      "output": "ConstraintArithmeticResult pydantic model with realistic GFA, dwellings, binding constraint, steps chain",
-      "if_none": "If no zone/lga, DB fetch skipped. If lot_area_m2 missing, pydantic 422."
+      "name": "compute_constraints_for_lga",
+      "file_line": "scripts/build_lot_search_index.py:320",
+      "input": "conn + lga_slug string from dcp_setback_controls.lga_slug",
+      "output": "Updates CA columns in lot_search_index for lots with zone+area data",
+      "if_none": "Returns 0 if no pending lots, DCP/SEPP cache returns [] for unknown zones"
     },
     {
-      "name": "run_intelligence_brief",
-      "file_line": "services/intelligence_brief.py:1904",
-      "input": "IntelligenceBriefRequest with address, lat, lng — constraint wiring at line 2234",
-      "output": "DevelopmentBrief or RenovationBrief with optional constraint_arithmetic DataField",
-      "if_none": "If lot_area_m2 <= 0 or computation throws, constraint_result = None, field omitted from brief"
+      "name": "_build_where",
+      "file_line": "services/lot_search.py:132",
+      "input": "LotSearchRequest with optional filter fields",
+      "output": "Parameterised SQL WHERE clause string + params list",
+      "if_none": "Returns 'TRUE' with empty params — no filter applied"
+    },
+    {
+      "name": "lot_search",
+      "file_line": "services/lot_search.py:216",
+      "input": "LotSearchRequest POST body from FastAPI",
+      "output": "LotSearchResponse with paginated lots, total_count, query_ms",
+      "if_none": "Returns 200 with empty lots list and total_count=0"
+    },
+    {
+      "name": "lot_search_summary",
+      "file_line": "services/lot_search.py:291",
+      "input": "LotSearchRequest POST body (same filters as lot_search)",
+      "output": "LotSearchSummary with aggregates, distributions, percentiles",
+      "if_none": "Returns 200 with total_lots=0 and None for numeric aggregates"
     }
   ],
   "values": [
     {
-      "value": "constraint_result",
-      "read_at": "intelligence_brief.py:2232",
-      "nullable": "yes",
-      "guard_at": "intelligence_brief.py:2230 — if lot_area_m2 and lot_area_m2 > 0",
-      "if_missing": "constraint_arithmetic field is None in brief — frontend card falls back to independent fetch"
+      "value": "order_col (user-supplied order_by)",
+      "read_at": "services/lot_search.py:218",
+      "nullable": "no — defaults to ca_realistic_gfa_m2",
+      "guard_at": "services/lot_search.py:218 — whitelist check against _ALLOWED_ORDER_COLS",
+      "if_missing": "Falls back to ca_realistic_gfa_m2"
     },
     {
-      "value": "briefData prop",
-      "read_at": "ConstraintArithmeticCard.tsx:90",
-      "nullable": "yes",
-      "guard_at": "ConstraintArithmeticCard.tsx:113 — if (briefData) skip fetch, else fetch independently",
-      "if_missing": "Card fetches from /api/constraint-arithmetic as before — backwards compatible"
+      "value": "lga_name from lot_search_index",
+      "read_at": "services/lot_search.py:237",
+      "nullable": "yes — column allows NULL",
+      "guard_at": "services/lot_search.py:89 — LotSearchResult.lga_name: Optional[str]",
+      "if_missing": "Returned as null in JSON response"
+    },
+    {
+      "value": "lot_area_m2 in build script",
+      "read_at": "scripts/build_lot_search_index.py:102",
+      "nullable": "yes — COALESCE(planlotarea, shape_area) could be NULL if both NULL",
+      "guard_at": "scripts/build_lot_search_index.py:260 — WHERE lot_area_m2 > 0 filters NULLs from CA compute",
+      "if_missing": "Lot inserted with NULL area, excluded from CA compute, CA columns stay NULL"
     }
   ],
   "queries": [
     {
-      "purpose": "Fetch DCP setback controls for LGA",
-      "file_line": "conveyancing_db.py:140 (called from constraint_arithmetic.py:866)",
-      "where_clause": "WHERE lga = %s AND is_current = TRUE",
-      "if_zero": "Returns None — dcp_controls list stays empty, gaps reported",
-      "if_wrong": "Wrong LGA slug → empty result (no matching rows)"
+      "purpose": "Insert base lot data via spatial join with zone overlays",
+      "file_line": "scripts/build_lot_search_index.py:98",
+      "where_clause": "so.layer_type = 'zone' AND so.lga_name = %s AND c.geom IS NOT NULL",
+      "if_zero": "No rows inserted — LGA has no zone overlays, function returns 0",
+      "if_wrong": "Lots from adjacent LGAs could match if zone overlay geometries overlap LGA boundaries — mitigated by DISTINCT ON (lotidstring)"
     },
     {
-      "purpose": "Fetch SEPP Housing standards for zone",
-      "file_line": "conveyancing_db.py:444 (called from constraint_arithmetic.py:873)",
-      "where_clause": "WHERE %s = ANY(applicable_zones)",
-      "if_zero": "Returns [] — sepp_standards empty, no overrides computed",
-      "if_wrong": "Wrong zone prefix → empty result"
+      "purpose": "Parameterised lot search query",
+      "file_line": "services/lot_search.py:228",
+      "where_clause": "Dynamic — built from _build_where() with parameterised %s placeholders",
+      "if_zero": "Returns empty lots list with total_count=0",
+      "if_wrong": "SQL injection prevented by parameterised queries + order_by whitelist"
+    },
+    {
+      "purpose": "Fetch lots pending CA compute",
+      "file_line": "scripts/build_lot_search_index.py:351",
+      "where_clause": "lga_name = %s AND zone_code IS NOT NULL AND lot_area_m2 > 0 AND ca_realistic_gfa_m2 IS NULL",
+      "if_zero": "No computation needed — function returns 0",
+      "if_wrong": "Lots without zone data excluded (correct — CA needs zone for SEPP lookup)"
     }
   ],
   "break_it": [
     {
-      "scenario": "Circular import at module load time if intelligence_brief imports compute_constraint_arithmetic at top level",
-      "what_happens": "ImportError crashes Railway service startup",
+      "scenario": "SQL injection via order_by parameter",
+      "what_happens": "Attacker passes 'DROP TABLE users; --' as order_by",
       "mitigated": true,
-      "how": "intelligence_brief.py:2234 — import is inside function body (lazy). TYPE_CHECKING guard in constraint_arithmetic.py for DevelopmentBrief.",
-      "repro": "python -c 'from services.constraint_arithmetic import router' — would fail if circular"
+      "how": "services/lot_search.py:187 — order_by checked against _ALLOWED_ORDER_COLS whitelist; invalid values fall back to default. order_dir validated by Pydantic regex pattern.",
+      "repro": "POST /lot-search {\"order_by\": \"DROP TABLE users; --\"} → falls back to ca_realistic_gfa_m2"
     },
     {
-      "scenario": "Frontend sends formerCouncil but /full endpoint expects lga field",
-      "what_happens": "DCP controls not fetched — computation runs without setbacks",
+      "scenario": "Lot assigned to wrong LGA when zone overlays from adjacent LGAs overlap",
+      "what_happens": "Lot appears in multiple LGAs' results or gets wrong LGA assignment",
       "mitigated": true,
-      "how": "route.ts:56 — maps formerCouncil to lga: body.formerCouncil ?? body.lga ?? null",
-      "repro": "POST /api/constraint-arithmetic with formerCouncil='marrickville'"
+      "how": "scripts/build_lot_search_index.py:98 — ON CONFLICT (lotidstring) DO UPDATE overwrites with latest LGA processed. Lot has exactly one row in the index.",
+      "repro": "Run overlays for two adjacent LGAs, check lots near boundary"
     },
     {
-      "scenario": "DB connection fails in _fetch_constraint_data_from_db",
-      "what_happens": "Exception caught, returns ([], [], []) — computation runs with gaps, not a 500",
+      "scenario": "DB size exceeds 8GB Supabase limit when indexing all LGAs with geometry",
+      "what_happens": "Writes fail with storage error",
+      "mitigated": false,
+      "how": "Risk flagged in plan — check DB size after Inner West pilot before statewide run. Option: drop geom column from index.",
+      "repro": "Run full build, check pg_database_size()"
+    },
+    {
+      "scenario": "Parameterised lot search returns stale data after overlay re-ingest",
+      "what_happens": "Lot search returns outdated zone/height/FSR values until build script re-runs",
       "mitigated": true,
-      "how": "constraint_arithmetic.py:878 — except Exception catches all, logs warning, returns empty",
-      "repro": "Set DATABASE_URL to invalid, POST /constraint-arithmetic/full — returns result with gaps"
+      "how": "scripts/build_lot_search_index.py — ON CONFLICT upsert overwrites on re-run. computed_at timestamp tracks staleness. Incremental refresh function available.",
+      "repro": "Re-ingest overlays for LGA, query /lot-search before re-running build script — values reflect previous ingest"
+    },
+    {
+      "scenario": "Lots pending CA compute never get computed if zone_code is NULL",
+      "what_happens": "Lots without zone assignment (step 2 failed) are silently excluded from CA compute",
+      "mitigated": true,
+      "how": "scripts/build_lot_search_index.py:351 — WHERE zone_code IS NOT NULL is intentional. Without zone, SEPP lookup is impossible. These lots get overlay data only, CA columns stay NULL, ca_confidence stays NULL.",
+      "repro": "Insert lot into lot_search_index with NULL zone_code, run compute phase — lot skipped"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — new table only, run migration 010 on Supabase",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — 1754 tests cover all data flow paths including 5 new endpoint tests"
+    "manual_verify": "Yes — run migration, then build script for Inner West as pilot"
   }
 }

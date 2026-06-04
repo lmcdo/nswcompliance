@@ -28,6 +28,7 @@ try:
     from services.intelligence_brief import router as intelligence_brief_router
     from services.terrain_analysis import router as terrain_router
     from services.constraint_arithmetic import router as constraint_arithmetic_router
+    from services.lot_search import router as lot_search_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -44,6 +45,7 @@ except ImportError:
     from intelligence_brief import router as intelligence_brief_router
     from terrain_analysis import router as terrain_router
     from constraint_arithmetic import router as constraint_arithmetic_router
+    from lot_search import router as lot_search_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -80,6 +82,7 @@ app.include_router(climate_risk_router)
 app.include_router(intelligence_brief_router)
 app.include_router(terrain_router)
 app.include_router(constraint_arithmetic_router)
+app.include_router(lot_search_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()
