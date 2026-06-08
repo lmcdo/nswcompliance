@@ -30,21 +30,25 @@ TELEGRAM_CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID")
 
 def send_telegram(msg: str) -> None:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("[telegram] skipped — no token or chat_id", file=sys.stderr)
+        print("[telegram] skipped — no token or chat_id")
         return
     # Telegram max message length is 4096 chars
-    if len(msg) > 4000:
+    original_len = len(msg)
+    if original_len > 4000:
         msg = msg[:3950] + "\n\n… (truncated — full output in Railway logs)"
+    print(f"[telegram] sending message ({original_len} chars, truncated={original_len > 4000})")
     try:
         resp = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
             json={"chat_id": TELEGRAM_CHAT_ID, "text": msg},
             timeout=10,
         )
-        if not resp.ok:
-            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+        if resp.ok:
+            print(f"[telegram] sent OK ({resp.status_code})")
+        else:
+            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}")
     except Exception as exc:
-        print(f"[telegram] send failed: {exc}", file=sys.stderr)
+        print(f"[telegram] send failed: {exc}")
 
 
 conn = psycopg2.connect(DATABASE_URL)
