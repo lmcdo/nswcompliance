@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Defensive fix to send_telegram() in 4 monitor scripts: truncate at 4000 chars (Telegram limit 4096), log errors instead of bare except:pass. No logic changes, no new features.",
-  "commit_hash": "f546373c",
+  "commit_hash": "941947cd",
   "files": [
     "scripts/dcp_watchdog.py",
     "scripts/r2_monitor.py",
@@ -47,11 +47,11 @@
       "repro": "Set TELEGRAM_CHAT_ID to invalid value, trigger monitor"
     },
     {
-      "scenario": "Network timeout on Telegram send — monitor hangs",
-      "what_happens": "requests.post raises after 10s timeout, caught by except, logged to stderr",
+      "scenario": "Truncation cuts mid-line in watchdog review list — council name split across truncation boundary",
+      "what_happens": "Truncated message ends with partial council/chapter path, but suffix indicates full output is in Railway logs",
       "mitigated": true,
-      "how": "timeout=10 on all requests.post calls, exception handler logs rather than swallowing",
-      "repro": "Block api.telegram.org at firewall level, trigger monitor"
+      "how": "Suffix appended after truncation: '… (truncated — full output in Railway logs)' directs user to complete data",
+      "repro": "Trigger watchdog with 92+ controls needing review, verify message ends cleanly"
     }
   ],
   "post_merge": {
