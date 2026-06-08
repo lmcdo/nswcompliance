@@ -254,7 +254,7 @@ def _fetch_nsw_legislation_version_http(url: str) -> str | None:
         raise RuntimeError(f"HTTP {resp.status_code}: {url}")
 
     # Check for download response (not HTML)
-    ct = resp.headers.get("Content-Type", "") or ""
+    ct = resp.headers.get("Content-Type") or ""
     if "html" not in ct and "text" not in ct:
         raise DownloadTriggeredError(
             f"Page serves download ({ct}) instead of HTML — "

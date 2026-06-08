@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Defensive fix to send_telegram() in 4 monitor scripts: truncate at 4000 chars (Telegram limit 4096), log errors instead of bare except:pass. No logic changes, no new features.",
-  "commit_hash": "d9941ab1",
+  "commit_hash": "f546373c",
   "files": [
     "scripts/dcp_watchdog.py",
     "scripts/r2_monitor.py",
@@ -9,28 +9,49 @@
     "scripts/legislation_monitor.py"
   ],
   "pre_impl": {
-    "existing_data": "No data access. Only changes alerting output channel (Telegram).",
-    "assumption_mismatch": "N/A — no data flow changes",
-    "new_vs_existing": "N/A — alerting-only change"
+    "existing_data": "No data access. Only changes alerting output channel (Telegram send_telegram function).",
+    "assumption_mismatch": "Assumes Telegram API returns non-2xx on messages over 4096 chars. Verified via Telegram Bot API docs.",
+    "new_vs_existing": "Modifies existing send_telegram functions in all four monitor scripts. No new data flows introduced."
   },
   "functions": [
     {
-      "name": "send_telegram (dcp_watchdog.py)",
+      "name": "send_telegram",
       "file_line": "scripts/dcp_watchdog.py:31",
-      "input": "msg: str",
+      "input": "msg: str — the full alert message text to send via Telegram",
       "output": "None — sends truncated message to Telegram, logs errors to stderr",
-      "if_none": "Logs skip reason if no token/chat_id"
+      "if_none": "Logs skip reason if no TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID env var"
+    },
+    {
+      "name": "send_telegram",
+      "file_line": "scripts/r2_monitor.py:125",
+      "input": "message: str — the full DCP monitor alert message text",
+      "output": "None — sends truncated message to Telegram, logs errors to stderr",
+      "if_none": "Logs skip reason if no token or chat_id configured"
     }
   ],
   "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Message exactly 4000 chars — no truncation needed",
-      "what_happens": "Sent as-is, no truncation suffix appended",
+      "scenario": "Message exactly 4001 chars — truncation triggers",
+      "what_happens": "Message truncated to 3950 chars + suffix, total under 4096",
       "mitigated": true,
-      "how": "Condition is `> 4000`, not `>= 4000`",
-      "repro": "N/A — threshold is correct"
+      "how": "Truncation at 4000 with ~50 char suffix stays under 4096 limit",
+      "repro": "send_telegram('x' * 4001)"
+    },
+    {
+      "scenario": "Telegram API returns 400 Bad Request for other reasons",
+      "what_happens": "Error logged to stderr with HTTP status and response body excerpt",
+      "mitigated": true,
+      "how": "resp.ok check + stderr logging at all 4 call sites",
+      "repro": "Set TELEGRAM_CHAT_ID to invalid value, trigger monitor"
+    },
+    {
+      "scenario": "Network timeout on Telegram send — monitor hangs",
+      "what_happens": "requests.post raises after 10s timeout, caught by except, logged to stderr",
+      "mitigated": true,
+      "how": "timeout=10 on all requests.post calls, exception handler logs rather than swallowing",
+      "repro": "Block api.telegram.org at firewall level, trigger monitor"
     }
   ],
   "post_merge": {
