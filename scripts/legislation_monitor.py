@@ -88,15 +88,20 @@ def send_telegram(message: str) -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
+        print("[telegram] skipped — no token or chat_id", file=sys.stderr)
         return
+    if len(message) > 4000:
+        message = message[:3950] + "\n\n… (truncated — full output in Railway logs)"
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": chat_id, "text": message},
             timeout=10,
         )
-    except Exception:
-        pass
+        if not resp.ok:
+            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+    except Exception as exc:
+        print(f"[telegram] send failed: {exc}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
