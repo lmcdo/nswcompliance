@@ -373,7 +373,7 @@ def _probe_bom_sos2(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
@@ -399,7 +399,7 @@ def _probe_wcs_capabilities(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
@@ -497,19 +497,24 @@ def check_source(source: dict[str, Any]) -> SourceCheckResult:
 # ---------------------------------------------------------------------------
 
 def send_telegram(message: str) -> None:
-    """Send alert via Telegram bot. Silent no-op if creds not configured."""
+    """Send alert via Telegram bot. Logs errors instead of silently swallowing."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
+        print("[telegram] skipped — no token or chat_id", file=sys.stderr)
         return
+    if len(message) > 4000:
+        message = message[:3950] + "\n\n… (truncated — full output in Railway logs)"
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
             timeout=10,
         )
-    except Exception:
-        pass
+        if not resp.ok:
+            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+    except Exception as exc:
+        print(f"[telegram] send failed: {exc}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
