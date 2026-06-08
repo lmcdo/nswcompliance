@@ -1,7 +1,7 @@
 {
-  "tier": "minor",
+  "tier": "standard",
   "justification": "Defensive fix to send_telegram() in 4 monitor scripts: truncate at 4000 chars (Telegram limit 4096), log errors instead of bare except:pass. No logic changes, no new features.",
-  "commit_hash": "6ca61eb2",
+  "commit_hash": "d9941ab1",
   "files": [
     "scripts/dcp_watchdog.py",
     "scripts/r2_monitor.py",

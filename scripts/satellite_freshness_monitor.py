@@ -373,7 +373,7 @@ def _probe_bom_sos2(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type", "") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
@@ -399,7 +399,7 @@ def _probe_wcs_capabilities(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type", "") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
