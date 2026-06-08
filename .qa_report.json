@@ -1,63 +1,31 @@
 {
-  "tier": "standard",
-  "justification": "Defensive fix to send_telegram() in 4 monitor scripts: truncate at 4000 chars (Telegram limit 4096), log errors instead of bare except:pass. No logic changes, no new features.",
-  "commit_hash": "941947cd",
+  "tier": "minor",
+  "justification": "Add missing CI test dependencies (python-dotenv, httpx) and pin fastapi<1.0.0 to prevent starlette httpx2 rename breakage. Config-only change, no logic.",
+  "commit_hash": "PLACEHOLDER",
   "files": [
-    "scripts/dcp_watchdog.py",
-    "scripts/r2_monitor.py",
-    "scripts/satellite_freshness_monitor.py",
-    "scripts/legislation_monitor.py"
+    "requirements-test.txt"
   ],
   "pre_impl": {
-    "existing_data": "No data access. Only changes alerting output channel (Telegram send_telegram function).",
-    "assumption_mismatch": "Assumes Telegram API returns non-2xx on messages over 4096 chars. Verified via Telegram Bot API docs.",
-    "new_vs_existing": "Modifies existing send_telegram functions in all four monitor scripts. No new data flows introduced."
+    "existing_data": "No data access. Only changes CI dependency list.",
+    "assumption_mismatch": "N/A — dependency pinning.",
+    "new_vs_existing": "N/A — no data flows changed."
   },
-  "functions": [
-    {
-      "name": "send_telegram",
-      "file_line": "scripts/dcp_watchdog.py:31",
-      "input": "msg: str — the full alert message text to send via Telegram",
-      "output": "None — sends truncated message to Telegram, logs errors to stderr",
-      "if_none": "Logs skip reason if no TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID env var"
-    },
-    {
-      "name": "send_telegram",
-      "file_line": "scripts/r2_monitor.py:125",
-      "input": "message: str — the full DCP monitor alert message text",
-      "output": "None — sends truncated message to Telegram, logs errors to stderr",
-      "if_none": "Logs skip reason if no token or chat_id configured"
-    }
-  ],
+  "functions": [],
   "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Message exactly 4001 chars — truncation triggers",
-      "what_happens": "Message truncated to 3950 chars + suffix, total under 4096",
+      "scenario": "fastapi 1.0+ releases and CI stays on <1.0.0 — misses new features",
+      "what_happens": "CI uses older fastapi; production may use newer. Acceptable: test deps match current prod.",
       "mitigated": true,
-      "how": "Truncation at 4000 with ~50 char suffix stays under 4096 limit",
-      "repro": "send_telegram('x' * 4001)"
-    },
-    {
-      "scenario": "Telegram API returns 400 Bad Request for other reasons",
-      "what_happens": "Error logged to stderr with HTTP status and response body excerpt",
-      "mitigated": true,
-      "how": "resp.ok check + stderr logging at all 4 call sites",
-      "repro": "Set TELEGRAM_CHAT_ID to invalid value, trigger monitor"
-    },
-    {
-      "scenario": "Truncation cuts mid-line in watchdog review list — council name split across truncation boundary",
-      "what_happens": "Truncated message ends with partial council/chapter path, but suffix indicates full output is in Railway logs",
-      "mitigated": true,
-      "how": "Suffix appended after truncation: '… (truncated — full output in Railway logs)' directs user to complete data",
-      "repro": "Trigger watchdog with 92+ controls needing review, verify message ends cleanly"
+      "how": "Pin matches current production version range (0.116.x). Bump when prod upgrades.",
+      "repro": "pip install fastapi==1.0.0 in CI — would be blocked by pin"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Trigger watchdog via Railway API, verify Telegram message arrives truncated"
+    "manual_verify": "CI green on next push"
   }
 }
