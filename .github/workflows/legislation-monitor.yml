@@ -1,9 +1,10 @@
 name: Legislation Monitor
 
 on:
-  # Schedule disabled — moved to Railway cron (see docs/RAILWAY_MONITORS.md)
-  # schedule:
-  #   - cron: "0 8 * * 1"
+  # Railway cron blocked by Cloudflare (403 on all legislation.nsw.gov.au pages).
+  # Re-enabled here — GitHub Actions IPs are not blocked.
+  schedule:
+    - cron: "0 8 * * 1"
   workflow_dispatch:
 
 env:
