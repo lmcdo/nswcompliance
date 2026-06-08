@@ -1,31 +1,32 @@
 {
   "tier": "minor",
-  "justification": "Add missing CI test dependencies (python-dotenv, httpx) and pin fastapi<1.0.0 to prevent starlette httpx2 rename breakage. Config-only change, no logic.",
+  "justification": "Add CI test deps (python-dotenv, httpx, pin fastapi<1.0.0) + suppress 238 pre-implementation audit trail gap alerts with created_at filter.",
   "commit_hash": "PLACEHOLDER",
   "files": [
-    "requirements-test.txt"
+    "requirements-test.txt",
+    "scripts/satellite_freshness_monitor.py"
   ],
   "pre_impl": {
-    "existing_data": "No data access. Only changes CI dependency list.",
-    "assumption_mismatch": "N/A — dependency pinning.",
-    "new_vs_existing": "N/A — no data flows changed."
+    "existing_data": "Audit trail query reads property_reports + report_audit_trail. Filter excludes pre-May-21 reports that predate audit trail.",
+    "assumption_mismatch": "Assumes all 238 gaps are pre-fix. Verified: zero post-2026-05-21 gaps exist.",
+    "new_vs_existing": "Modifies existing audit gap query. No new data flows."
   },
   "functions": [],
   "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "fastapi 1.0+ releases and CI stays on <1.0.0 — misses new features",
-      "what_happens": "CI uses older fastapi; production may use newer. Acceptable: test deps match current prod.",
+      "scenario": "New audit gap appears after 2026-05-21 — would it be detected?",
+      "what_happens": "Yes. The filter only excludes created_at <= 2026-05-21. Any new report missing audit rows has created_at > 2026-05-21 and is caught.",
       "mitigated": true,
-      "how": "Pin matches current production version range (0.116.x). Bump when prod upgrades.",
-      "repro": "pip install fastapi==1.0.0 in CI — would be blocked by pin"
+      "how": "Filter uses created_at > '2026-05-21', not a rolling window. Future gaps are always detected.",
+      "repro": "Insert a property_report with created_at=now() and no audit row, run monitor"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "CI green on next push"
+    "manual_verify": "Next satellite monitor run should show 0 audit trail gaps"
   }
 }
