@@ -1408,6 +1408,36 @@ def _insert_provision_changes(
         ins("restructure", "_summary")
 
 
+def _auto_verify_controls(
+    cur, conn, council: str, chapter_key: str,
+    reason: str, *, commit: bool = True,
+) -> None:
+    """Auto-verify control rows when extraction confirms no value changes.
+
+    Updates last_verified_at and clears needs_review if it was set.
+    This suppresses false-alarm alerts from PDF republishes/reformats
+    that don't change any numeric control values.
+    """
+    cur.execute(
+        """
+        UPDATE dcp_setback_controls
+        SET needs_review    = FALSE,
+            review_reason   = NULL,
+            last_verified_at = NOW(),
+            reviewed_at     = CASE WHEN needs_review THEN NOW() ELSE reviewed_at END
+        WHERE lga               = %s
+          AND source_chapter_key = %s
+          AND is_current         = TRUE
+        """,
+        (council, chapter_key),
+    )
+    verified = cur.rowcount
+    if verified > 0:
+        print(f"    [CONTROLS] Auto-verified {verified} rows ({reason})")
+    if commit:
+        conn.commit()
+
+
 # ── Per-chapter extraction ──────────────────────────────────────────────────
 
 def extract_chapter(
@@ -1666,12 +1696,18 @@ def extract_chapter(
             print(f"    [SKIP] regeneration_artifact — PDF re-exported with no substantive "
                   f"changes ({n_changed} tiny diffs across {n_same + n_changed} provisions). "
                   f"No DB update.")
+            if not dry_run and not review:
+                _auto_verify_controls(cur, conn, council, chapter_key,
+                                      "regeneration_artifact")
             cur.close()
             return True, None   # not a failure — just nothing to commit
 
         if status == "map_change":
             print(f"    [SKIP] map_change — PDF hash changed but zero text extracted. "
                   f"Flag for manual spatial review.")
+            if not dry_run and not review:
+                _auto_verify_controls(cur, conn, council, chapter_key,
+                                      "map_change")
             cur.close()
             return True, None
 
@@ -1833,26 +1869,40 @@ def extract_chapter(
                      chapter.get("content_hash"), chapter_id),
                 )
 
-                # Flag structured control rows for review when their source
-                # chapter has changed. This closes the gap where provision text
-                # gets re-extracted but dcp_setback_controls values don't.
+                # Smart control flagging: only flag for review when provision
+                # changes include numeric value changes (setbacks, heights, areas).
+                # Text-only changes (rewording, pagination, formatting) auto-verify
+                # the control rows instead of creating false alarm alerts.
                 if not first_extraction:
-                    cur.execute(
-                        """
-                        UPDATE dcp_setback_controls
-                        SET needs_review   = TRUE,
-                            review_reason  = 'chapter_pdf_changed',
-                            reviewed_at    = NULL
-                        WHERE lga               = %s
-                          AND source_chapter_key = %s
-                          AND is_current         = TRUE
-                          AND needs_review       = FALSE
-                        """,
-                        (council, chapter_key),
+                    has_numeric = any(
+                        c.get("has_numeric_change") for c in diff["changed"]
                     )
-                    flagged = cur.rowcount
-                    if flagged > 0:
-                        print(f"    [CONTROLS] Flagged {flagged} dcp_setback_controls rows for review")
+                    has_structural = n_added > 0 or n_removed > 0
+                    if has_numeric or (status == "restructure" and has_structural):
+                        # Substantive change — flag for human review
+                        reason = ("numeric_value_changed" if has_numeric
+                                  else "structural_change")
+                        cur.execute(
+                            """
+                            UPDATE dcp_setback_controls
+                            SET needs_review   = TRUE,
+                                review_reason  = %s,
+                                reviewed_at    = NULL
+                            WHERE lga               = %s
+                              AND source_chapter_key = %s
+                              AND is_current         = TRUE
+                              AND needs_review       = FALSE
+                            """,
+                            (reason, council, chapter_key),
+                        )
+                        flagged = cur.rowcount
+                        if flagged > 0:
+                            print(f"    [CONTROLS] Flagged {flagged} rows for review "
+                                  f"(reason={reason})")
+                    else:
+                        # Non-substantive change — auto-verify controls
+                        _auto_verify_controls(cur, conn, council, chapter_key,
+                                              "text_only_change", commit=False)
 
                 conn.commit()
 
