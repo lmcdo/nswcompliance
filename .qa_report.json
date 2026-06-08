@@ -1,32 +1,85 @@
 {
-  "tier": "minor",
-  "justification": "Add CI test deps (python-dotenv, httpx, pin fastapi<1.0.0) + suppress 238 pre-implementation audit trail gap alerts with created_at filter.",
-  "commit_hash": "PLACEHOLDER",
+  "tier": "standard",
+  "justification": "Modifies DCP extraction flagging logic and watchdog alert classification. Wrong logic could silently suppress real value changes from being reviewed.",
+  "commit_hash": "2172da23",
   "files": [
-    "requirements-test.txt",
-    "scripts/satellite_freshness_monitor.py"
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_watchdog.py",
+    "tests/test_smart_monitor_alerts.py"
   ],
   "pre_impl": {
-    "existing_data": "Audit trail query reads property_reports + report_audit_trail. Filter excludes pre-May-21 reports that predate audit trail.",
-    "assumption_mismatch": "Assumes all 238 gaps are pre-fix. Verified: zero post-2026-05-21 gaps exist.",
-    "new_vs_existing": "Modifies existing audit gap query. No new data flows."
+    "existing_data": "dcp_setback_controls table: needs_review, review_reason, last_verified_at, reviewed_at columns. dcp_chapter_registry table: check_failures column tracks consecutive download failures.",
+    "assumption_mismatch": "Assumes diff changed list has_numeric_change correctly detects all numeric value changes. Verified: _extract_numbers at line 614 matches \\d+(?:\\.\\d+)? with units — covers setbacks, heights, areas, percentages.",
+    "new_vs_existing": "Modifies existing flagging path in extract_chapter(). Adds _auto_verify_controls() helper. No new tables or columns. Applies to all future extractions — existing needs_review=TRUE rows with review_reason=chapter_pdf_changed remain until manually cleared."
   },
-  "functions": [],
-  "values": [],
-  "queries": [],
+  "functions": [
+    {
+      "name": "_auto_verify_controls",
+      "file_line": "scripts/dcp_extract_changed.py:1412",
+      "input": "cursor, connection, council str, chapter_key str, reason str",
+      "output": "UPDATE on dcp_setback_controls: sets needs_review=FALSE, last_verified_at=NOW()",
+      "if_none": "council or chapter_key None would match zero rows — no-op, no error"
+    }
+  ],
+  "values": [
+    {
+      "value": "has_numeric_change",
+      "read_at": "scripts/dcp_extract_changed.py:1268",
+      "nullable": "no — boolean set by _extract_numbers comparison",
+      "guard_at": "scripts/dcp_extract_changed.py:1870 — any() over diff['changed'] list",
+      "if_missing": "Empty changed list → any() returns False → auto-verify path (safe default)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Auto-verify control rows when no numeric changes detected",
+      "file_line": "scripts/dcp_extract_changed.py:1424",
+      "where_clause": "WHERE lga = %s AND source_chapter_key = %s AND is_current = TRUE",
+      "if_zero": "No matching controls — prints nothing, no error",
+      "if_wrong": "Impossible: scoped by exact lga + chapter_key + is_current"
+    },
+    {
+      "purpose": "Find failing chapters with grace period for transient outages",
+      "file_line": "scripts/dcp_watchdog.py:82",
+      "where_clause": "WHERE check_failures >= 3 AND is_active = TRUE",
+      "if_zero": "No failing chapters — no alert sent (correct behavior)",
+      "if_wrong": "Only returns active chapters with 3+ failures — cannot include inactive or recently-recovered chapters"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "New audit gap appears after 2026-05-21 — would it be detected?",
-      "what_happens": "Yes. The filter only excludes created_at <= 2026-05-21. Any new report missing audit rows has created_at > 2026-05-21 and is caught.",
+      "scenario": "Real numeric change (setback 6m -> 4.5m) — would smart flagging catch it?",
+      "what_happens": "_extract_numbers detects ['6'] vs ['4.5'], has_numeric_change=True, flags for review with reason numeric_value_changed",
       "mitigated": true,
-      "how": "Filter uses created_at > '2026-05-21', not a rolling window. Future gaps are always detected.",
-      "repro": "Insert a property_report with created_at=now() and no audit row, run monitor"
+      "how": "scripts/dcp_extract_changed.py:1262-1268 — has_numeric_change computed per-provision in diff_provisions",
+      "repro": "Change a provision numeric value in DB, re-extract, verify needs_review=TRUE"
+    },
+    {
+      "scenario": "Restructure with only text reformatting and no adds/removes — would it false-alarm?",
+      "what_happens": "status=restructure but has_structural=False (0 added, 0 removed), so auto-verified not flagged",
+      "mitigated": true,
+      "how": "Test test_restructure_text_only_no_adds_removes_auto_verifies confirms this path",
+      "repro": "python -m pytest tests/test_smart_monitor_alerts.py::TestSmartFlaggingDecision::test_restructure_text_only_no_adds_removes_auto_verifies"
+    },
+    {
+      "scenario": "Numeric change hidden in a newly added provision (not in changed list)",
+      "what_happens": "In restructure with additions, structural_change reason triggers flag. In ok status, new provisions have no linked control rows anyway.",
+      "mitigated": true,
+      "how": "Structural change flagging covers restructure case. Normal additions are pagination artifacts with no control row linkage.",
+      "repro": "Add a provision with numeric values to a chapter, run extraction in restructure mode"
+    },
+    {
+      "scenario": "Find failing chapters with grace period query returns wrong chapters or misses real failures",
+      "what_happens": "check_failures increments to 1, then 2 on subsequent runs. Alert only fires at >= 3 failures. Transient 1-2 day outages never reach Telegram. Real persistent failures always reach 3+.",
+      "mitigated": true,
+      "how": "scripts/dcp_watchdog.py:82 — WHERE check_failures >= 3 AND is_active = TRUE. R2 content monitor resets check_failures to 0 on successful download, so recovered chapters drop out automatically.",
+      "repro": "Set check_failures=2 for a chapter, run watchdog — should not alert. Set to 3 — should alert."
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Next satellite monitor run should show 0 audit trail gaps"
+    "manual_verify": "Next watchdog run should show severity-tiered alerts. Existing review_reason=chapter_pdf_changed rows appear as STANDARD."
   }
 }
