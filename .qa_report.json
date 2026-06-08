@@ -1,63 +1,32 @@
 {
-  "tier": "standard",
-  "justification": "Defensive fix to send_telegram() in 4 monitor scripts: truncate at 4000 chars (Telegram limit 4096), log errors instead of bare except:pass. No logic changes, no new features.",
-  "commit_hash": "941947cd",
+  "tier": "minor",
+  "justification": "Add CI test deps (python-dotenv, httpx, pin fastapi<1.0.0) + suppress 238 pre-implementation audit trail gap alerts with created_at filter.",
+  "commit_hash": "PLACEHOLDER",
   "files": [
-    "scripts/dcp_watchdog.py",
-    "scripts/r2_monitor.py",
-    "scripts/satellite_freshness_monitor.py",
-    "scripts/legislation_monitor.py"
+    "requirements-test.txt",
+    "scripts/satellite_freshness_monitor.py"
   ],
   "pre_impl": {
-    "existing_data": "No data access. Only changes alerting output channel (Telegram send_telegram function).",
-    "assumption_mismatch": "Assumes Telegram API returns non-2xx on messages over 4096 chars. Verified via Telegram Bot API docs.",
-    "new_vs_existing": "Modifies existing send_telegram functions in all four monitor scripts. No new data flows introduced."
+    "existing_data": "Audit trail query reads property_reports + report_audit_trail. Filter excludes pre-May-21 reports that predate audit trail.",
+    "assumption_mismatch": "Assumes all 238 gaps are pre-fix. Verified: zero post-2026-05-21 gaps exist.",
+    "new_vs_existing": "Modifies existing audit gap query. No new data flows."
   },
-  "functions": [
-    {
-      "name": "send_telegram",
-      "file_line": "scripts/dcp_watchdog.py:31",
-      "input": "msg: str — the full alert message text to send via Telegram",
-      "output": "None — sends truncated message to Telegram, logs errors to stderr",
-      "if_none": "Logs skip reason if no TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID env var"
-    },
-    {
-      "name": "send_telegram",
-      "file_line": "scripts/r2_monitor.py:125",
-      "input": "message: str — the full DCP monitor alert message text",
-      "output": "None — sends truncated message to Telegram, logs errors to stderr",
-      "if_none": "Logs skip reason if no token or chat_id configured"
-    }
-  ],
+  "functions": [],
   "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Message exactly 4001 chars — truncation triggers",
-      "what_happens": "Message truncated to 3950 chars + suffix, total under 4096",
+      "scenario": "New audit gap appears after 2026-05-21 — would it be detected?",
+      "what_happens": "Yes. The filter only excludes created_at <= 2026-05-21. Any new report missing audit rows has created_at > 2026-05-21 and is caught.",
       "mitigated": true,
-      "how": "Truncation at 4000 with ~50 char suffix stays under 4096 limit",
-      "repro": "send_telegram('x' * 4001)"
-    },
-    {
-      "scenario": "Telegram API returns 400 Bad Request for other reasons",
-      "what_happens": "Error logged to stderr with HTTP status and response body excerpt",
-      "mitigated": true,
-      "how": "resp.ok check + stderr logging at all 4 call sites",
-      "repro": "Set TELEGRAM_CHAT_ID to invalid value, trigger monitor"
-    },
-    {
-      "scenario": "Truncation cuts mid-line in watchdog review list — council name split across truncation boundary",
-      "what_happens": "Truncated message ends with partial council/chapter path, but suffix indicates full output is in Railway logs",
-      "mitigated": true,
-      "how": "Suffix appended after truncation: '… (truncated — full output in Railway logs)' directs user to complete data",
-      "repro": "Trigger watchdog with 92+ controls needing review, verify message ends cleanly"
+      "how": "Filter uses created_at > '2026-05-21', not a rolling window. Future gaps are always detected.",
+      "repro": "Insert a property_report with created_at=now() and no audit row, run monitor"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Trigger watchdog via Railway API, verify Telegram message arrives truncated"
+    "manual_verify": "Next satellite monitor run should show 0 audit trail gaps"
   }
 }

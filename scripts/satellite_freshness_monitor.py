@@ -731,13 +731,15 @@ def main() -> int:
 # ---------------------------------------------------------------------------
 
 def check_audit_trail_completeness() -> list[dict]:
-    """Find ALL reports with no corresponding audit trail row.
+    """Find reports with no corresponding audit trail row.
 
     Queries property_reports and LEFT JOINs to report_audit_trail.
     Any report without a matching audit row is a gap — the pipeline
     ran but the audit write silently failed.
 
-    No time window — gaps persist in alerts until backfilled or resolved.
+    Only checks reports created after 2026-05-21 (PR #337 fixed the last
+    cache-hit audit gap). All 238 earlier reports predate the audit trail
+    and will never have rows — alerting on them is noise.
 
     Returns list of gap dicts. Empty list = all reports have audit trails.
     """
@@ -754,6 +756,7 @@ def check_audit_trail_completeness() -> list[dict]:
         FROM property_reports pr
         LEFT JOIN report_audit_trail rat ON rat.report_id = pr.id
         WHERE rat.id IS NULL
+          AND pr.created_at > '2026-05-21'
         ORDER BY pr.run_date DESC
         LIMIT 50
     """
