@@ -9,9 +9,9 @@ git config core.hooksPath .githooks
 ```
 This activates all hooks in `.githooks/`:
 - `commit-msg` — enforces QA tier classification on every commit
-- `pre-commit` — TSC error count gate (baseline 664)
+- `pre-commit` — TSC error count gate (baseline 677)
 - `pre-push` — runs 4 checks, blocks push on failure:
-  1. Python unit tests (369+ tests)
+  1. Python unit tests (1794+ tests)
   2. Frontend Jest tests (615+ tests)
   3. QA report validation (`qa_gate.py` on `.qa_report.json`) — auto-feeds diff files for coverage check, enforces tier floor (>3 files = not Minor), verifies commit_hash matches HEAD
   4. Liability language scan (new lines in user-facing files only)
