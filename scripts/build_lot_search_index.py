@@ -58,6 +58,34 @@ log = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or ""
 
+# ---------------------------------------------------------------------------
+# LGA name → DCP slug mapping
+# ---------------------------------------------------------------------------
+# Merged LGAs store DCP data under former council slugs.
+# Other LGAs may have name mismatches (hyphens, prefixes).
+
+LGA_TO_DCP_SLUGS: dict[str, list[str]] = {
+    "INNER WEST": ["ashfield", "leichhardt", "marrickville"],
+    "CANTERBURY-BANKSTOWN": ["canterbury_bankstown"],
+    "SYDNEY": ["city_of_sydney"],
+    "KU-RING-GAI": ["ku_ring_gai"],
+    "CITY OF PARRAMATTA": ["parramatta"],
+    "THE HILLS SHIRE": ["the_hills"],
+}
+
+
+def lga_name_to_dcp_slugs(lga_name: str, all_dcp_slugs: list[str]) -> list[str]:
+    """Map an overlay LGA name to its DCP slug(s).
+
+    Uses explicit mapping first, then falls back to simple slug conversion.
+    Returns only slugs that actually exist in dcp_setback_controls.
+    """
+    if lga_name in LGA_TO_DCP_SLUGS:
+        return [s for s in LGA_TO_DCP_SLUGS[lga_name] if s in all_dcp_slugs]
+    # Fallback: simple slug conversion
+    slug = lga_name.lower().replace(" ", "_").replace("-", "_")
+    return [slug] if slug in all_dcp_slugs else []
+
 
 # ---------------------------------------------------------------------------
 # Phase 1: Overlay assignment
@@ -331,9 +359,33 @@ def get_lgas_with_dcp(conn) -> list[str]:
     return [r[0] for r in cur.fetchall()]
 
 
+# Reverse mapping: DCP slug → overlay LGA name (built from LGA_TO_DCP_SLUGS)
+_DCP_SLUG_TO_LGA: dict[str, str] = {}
+for _lga, _slugs in LGA_TO_DCP_SLUGS.items():
+    for _s in _slugs:
+        _DCP_SLUG_TO_LGA[_s] = _lga
+
+
 def _lga_slug_to_overlay_name(slug: str) -> str:
-    """Convert DCP lga value (e.g. 'inner_west') to spatial_overlays lga_name ('INNER WEST')."""
+    """Convert DCP lga slug to spatial_overlays lga_name.
+
+    Handles former-council slugs (ashfield → INNER WEST) via explicit mapping,
+    falls back to simple underscore→space conversion.
+    """
+    if slug in _DCP_SLUG_TO_LGA:
+        return _DCP_SLUG_TO_LGA[slug]
     return slug.replace("_", " ").upper()
+
+
+def _parse_numeric(val: any) -> Optional[float]:
+    """Extract a numeric value from a string like '4.0 m minimum' or a raw number."""
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    import re
+    m = re.search(r'[\d.]+', str(val))
+    return float(m.group()) if m else None
 
 
 def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
@@ -349,8 +401,8 @@ def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
         controls.append(DCPControl(
             control_type=s.get("control_type") or s.get("type") or "",
             dev_type=s.get("dev_type", "dwelling_house"),
-            value_min=s.get("value_min") or s.get("requirement"),
-            value_max=s.get("value_max"),
+            value_min=_parse_numeric(s.get("value_min") or s.get("requirement")),
+            value_max=_parse_numeric(s.get("value_max")),
             unit=s.get("unit", "m"),
             condition=s.get("notes") or s.get("condition"),
             source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
@@ -379,7 +431,7 @@ def compute_constraints_for_lga(
         WHERE lga_name = %s
           AND zone_code IS NOT NULL
           AND lot_area_m2 > 0
-          AND ca_realistic_gfa_m2 IS NULL
+          AND computed_at IS NULL
     """, (lga_overlay_name,))
     pending = cur.fetchone()[0]
     log.info("LGA %s (%s): %d lots pending CA compute", lga_slug, lga_overlay_name, pending)
@@ -444,7 +496,7 @@ def compute_constraints_for_lga(
             WHERE lga_name = %s
               AND zone_code IS NOT NULL
               AND lot_area_m2 > 0
-              AND ca_realistic_gfa_m2 IS NULL
+              AND computed_at IS NULL
             ORDER BY lotidstring
             LIMIT %s
         """, (lga_overlay_name, batch_size))
@@ -579,13 +631,13 @@ def main():
         log.info("Found %d LGAs with DCP data", len(dcp_lgas))
 
         if args.lga:
-            # Convert overlay name to slug for DCP lookup
-            target_slug = args.lga.lower().replace(" ", "_")
-            if target_slug in dcp_lgas:
-                dcp_lgas = [target_slug]
+            # Map overlay LGA name to DCP slug(s)
+            target_slugs = lga_name_to_dcp_slugs(args.lga, dcp_lgas)
+            if target_slugs:
+                log.info("LGA %s maps to DCP slugs: %s", args.lga, target_slugs)
+                dcp_lgas = target_slugs
             else:
-                log.warning("LGA %s (%s) has no DCP data, skipping CA compute",
-                            args.lga, target_slug)
+                log.warning("LGA %s has no DCP data, skipping CA compute", args.lga)
                 dcp_lgas = []
 
         total_computed = 0
