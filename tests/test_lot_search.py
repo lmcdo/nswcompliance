@@ -144,7 +144,7 @@ class TestLotSearchEndpoint:
         mock_cur = MagicMock()
         mock_cur.fetchone.return_value = (1,)
         mock_cur.fetchall.return_value = [
-            ("LOT1//DP1", "INNER WEST", "R2", 600.0,
+            ("LOT1//DP1", "INNER WEST", "leichhardt", "R2", 600.0,
              9.0, 0.5, False, False,
              False, None,
              280.0, 1,

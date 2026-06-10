@@ -338,7 +338,29 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
     n = _assign_boolean_flag_batched('acid_sulfate', 'acid_sulfate', lga_name)
     log.info("  Step 8 done: %d acid sulfate flags", n)
     conn.commit()
-    log.info("  Step 8 done: %d acid sulfate flags", cur.rowcount)
+
+    # Step 9: Former council assignment (for merged LGAs)
+    log.info("  Step 9: Assign former council...")
+    cur.execute("""
+        UPDATE lot_search_index lsi
+        SET former_council = sub.former_council
+        FROM (
+            SELECT DISTINCT ON (lsi2.lotidstring)
+                lsi2.lotidstring,
+                LOWER(pb.former_council) as former_council
+            FROM lot_search_index lsi2
+            JOIN dcp_precinct_boundaries pb
+                ON ST_Contains(pb.boundary, ST_Centroid(lsi2.geom))
+            WHERE lsi2.lga_name = %s
+                AND lsi2.former_council IS NULL
+                AND pb.former_council IS NOT NULL
+            ORDER BY lsi2.lotidstring
+        ) sub
+        WHERE lsi.lotidstring = sub.lotidstring
+    """, (lga_name,))
+    fc_count = cur.rowcount
+    conn.commit()
+    log.info("  Step 9 done: %d lots assigned to former councils", fc_count)
 
     return lot_count
 
@@ -384,7 +406,7 @@ def _parse_numeric(val: any) -> Optional[float]:
     if isinstance(val, (int, float)):
         return float(val)
     import re
-    m = re.search(r'[\d.]+', str(val))
+    m = re.search(r'\d+\.?\d*', str(val))
     return float(m.group()) if m else None
 
 
@@ -398,11 +420,20 @@ def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
     controls: list[DCPControl] = []
     all_setbacks = (dcp_raw.get("setbacks") or []) + (dcp_raw.get("sd_setbacks") or [])
     for s in all_setbacks:
+        # Prefer semantic_type (e.g. "front_setback") over control_type ("prescribed")
+        sem_type = s.get("semantic_type") or s.get("control_type") or s.get("type") or ""
+        # Prefer raw numeric value_min over parsing formatted requirement string
+        vmin = s.get("value_min")
+        if vmin is None:
+            vmin = _parse_numeric(s.get("requirement"))
+        vmax = s.get("value_max")
+        if vmax is None:
+            vmax = _parse_numeric(s.get("value_max"))
         controls.append(DCPControl(
-            control_type=s.get("control_type") or s.get("type") or "",
+            control_type=sem_type,
             dev_type=s.get("dev_type", "dwelling_house"),
-            value_min=_parse_numeric(s.get("value_min") or s.get("requirement")),
-            value_max=_parse_numeric(s.get("value_max")),
+            value_min=vmin,
+            value_max=vmax,
             unit=s.get("unit", "m"),
             condition=s.get("notes") or s.get("condition"),
             source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
@@ -446,11 +477,23 @@ def compute_constraints_for_lga(
     dcp_cache: dict[str, list[DCPControl]] = {}
     sepp_raw_cache: dict[str, list[dict]] = {}
 
-    def _get_dcp(zone: str) -> list[DCPControl]:
-        if zone not in dcp_cache:
-            raw = fetch_dcp_setbacks(conn, lga_slug, zone)
-            dcp_cache[zone] = _build_dcp_controls_from_raw(raw)
-        return dcp_cache[zone]
+    def _get_dcp(zone: str, former_council: Optional[str] = None) -> list[DCPControl]:
+        # Use former_council slug for DCP lookup when available (merged LGAs)
+        dcp_slug = former_council or lga_slug
+        cache_key = f"{dcp_slug}:{zone}"
+        if cache_key not in dcp_cache:
+            raw = fetch_dcp_setbacks(conn, dcp_slug, zone)
+            # Also include council-wide controls (e.g. inner_west applies to all)
+            if former_council and former_council != lga_slug:
+                raw_wide = fetch_dcp_setbacks(conn, lga_slug, zone)
+                if raw_wide and raw:
+                    # Merge: council-wide setbacks + former-council-specific setbacks
+                    raw["setbacks"] = (raw.get("setbacks") or []) + (raw_wide.get("setbacks") or [])
+                    raw["sd_setbacks"] = (raw.get("sd_setbacks") or []) + (raw_wide.get("sd_setbacks") or [])
+                elif raw_wide and not raw:
+                    raw = raw_wide
+            dcp_cache[cache_key] = _build_dcp_controls_from_raw(raw)
+        return dcp_cache[cache_key]
 
     def _get_sepp(zone: str, area: float) -> list[SEPPStandard]:
         """Get SEPP standards with per-lot eligibility based on actual area."""
@@ -491,7 +534,7 @@ def compute_constraints_for_lga(
 
     while True:
         cur.execute("""
-            SELECT lotidstring, lot_area_m2, zone_code, lep_height_m, lep_fsr
+            SELECT lotidstring, lot_area_m2, zone_code, lep_height_m, lep_fsr, former_council
             FROM lot_search_index
             WHERE lga_name = %s
               AND zone_code IS NOT NULL
@@ -506,8 +549,8 @@ def compute_constraints_for_lga(
             break
 
         updates = []
-        for lotid, area, zone, height_m, fsr in rows:
-            dcp = _get_dcp(zone)
+        for lotid, area, zone, height_m, fsr, former_council in rows:
+            dcp = _get_dcp(zone, former_council)
             sepp = _get_sepp(zone, area)
             dev_type = _best_dev_type(sepp)
             overrides = _get_overrides(sepp, height_m, fsr)

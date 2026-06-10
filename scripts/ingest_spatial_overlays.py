@@ -89,7 +89,7 @@ LAYER_CONFIG = {
     "zone":         {"service": "Principal_Planning_Layers", "layer_id": 11, "value_field": "SYM_CODE"},
     "heritage":     {"service": "Principal_Planning_Layers", "layer_id": 8,  "value_field": "LAY_CLASS"},  # LAY_CLASS verified 2026-04-19 from ArcGIS layer 8 metadata
     "height":       {"service": "Principal_Planning_Layers", "layer_id": 7,  "value_field": "MAX_B_H_M", "numeric": True},
-    "fsr":          {"service": "Principal_Planning_Layers", "layer_id": 4,  "value_field": "SYM_CODE"},
+    "fsr":          {"service": "Principal_Planning_Layers", "layer_id": 4,  "value_field": "FSR", "numeric": True},
     "lot_size":     {"service": "Principal_Planning_Layers", "layer_id": 14, "value_field": "LOT_SIZE", "numeric": True},
     # Protection layers
     "acid_sulfate": {"service": "Protection", "layer_id": 1,  "value_field": "LAY_CLASS"},

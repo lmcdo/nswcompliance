@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS lot_search_index (
     ca_buildable_footprint_m2 DOUBLE PRECISION,
     ca_lep_envelope_gfa_m2 DOUBLE PRECISION,
     ca_gaps                TEXT[],
+    -- Former council area (for merged LGAs like Inner West → ashfield/leichhardt/marrickville)
+    former_council         TEXT,
     -- Metadata
     computed_at            TIMESTAMPTZ DEFAULT NOW(),
     geom                   geometry(MultiPolygon, 4326)
@@ -46,6 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_lsi_binding ON lot_search_index (ca_binding_const
 
 -- Spatial index for bounding-box and proximity queries
 CREATE INDEX IF NOT EXISTS idx_lsi_geom ON lot_search_index USING GIST (geom);
+
+CREATE INDEX IF NOT EXISTS idx_lsi_former_council ON lot_search_index (former_council);
 
 -- Composite indexes for the most common filter combinations
 CREATE INDEX IF NOT EXISTS idx_lsi_lga_zone_area

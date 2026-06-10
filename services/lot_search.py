@@ -64,6 +64,7 @@ class LotSearchRequest(BaseModel):
 class LotSearchResult(BaseModel):
     lotidstring: str
     lga_name: Optional[str] = None
+    former_council: Optional[str] = None
     zone_code: Optional[str] = None
     lot_area_m2: Optional[float] = None
     lep_height_m: Optional[float] = None
@@ -232,7 +233,7 @@ async def lot_search(req: LotSearchRequest):
         # Fetch page — NULLS LAST so lots with data sort first
         cur.execute(
             f"""
-            SELECT lotidstring, lga_name, zone_code, lot_area_m2,
+            SELECT lotidstring, lga_name, former_council, zone_code, lot_area_m2,
                    lep_height_m, lep_fsr, heritage, flood_prone,
                    bushfire_prone, bushfire_category,
                    ca_realistic_gfa_m2, ca_realistic_dwellings,
@@ -255,25 +256,26 @@ async def lot_search(req: LotSearchRequest):
             LotSearchResult(
                 lotidstring=r[0],
                 lga_name=r[1],
-                zone_code=r[2],
-                lot_area_m2=r[3],
-                lep_height_m=r[4],
-                lep_fsr=r[5],
-                heritage=r[6] or False,
-                flood_prone=r[7] or False,
-                bushfire_prone=r[8] or False,
-                bushfire_category=r[9],
-                ca_realistic_gfa_m2=r[10],
-                ca_realistic_dwellings=r[11],
-                ca_binding_constraint=r[12],
-                ca_confidence=r[13],
-                ca_effective_height_m=r[14],
-                ca_effective_fsr=r[15],
-                ca_buildable_footprint_m2=r[16],
-                ca_setback_front_m=r[17],
-                ca_setback_rear_m=r[18],
-                ca_setback_side_m=r[19],
-                ca_gaps=r[20],
+                former_council=r[2],
+                zone_code=r[3],
+                lot_area_m2=r[4],
+                lep_height_m=r[5],
+                lep_fsr=r[6],
+                heritage=r[7] or False,
+                flood_prone=r[8] or False,
+                bushfire_prone=r[9] or False,
+                bushfire_category=r[10],
+                ca_realistic_gfa_m2=r[11],
+                ca_realistic_dwellings=r[12],
+                ca_binding_constraint=r[13],
+                ca_confidence=r[14],
+                ca_effective_height_m=r[15],
+                ca_effective_fsr=r[16],
+                ca_buildable_footprint_m2=r[17],
+                ca_setback_front_m=r[18],
+                ca_setback_rear_m=r[19],
+                ca_setback_side_m=r[20],
+                ca_gaps=r[21],
             )
             for r in rows
         ]

@@ -1,14 +1,17 @@
 {
   "tier": "standard",
   "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
-  "commit_hash": "220eff0c",
+  "commit_hash": "HEAD",
   "files": [
-    "migrations/010_lot_search_index.sql",
+    "migrations/048_lot_search_index.sql",
     "scripts/build_lot_search_index.py",
+    "scripts/conveyancing_db.py",
+    "scripts/ingest_spatial_overlays.py",
     "services/lot_search.py",
     "services/compliance_api_server.py",
     "frontend-nextjs/app/api/lot-search/route.ts",
-    "tests/test_lot_search.py"
+    "tests/test_lot_search.py",
+    "tests/test_conveyancing_db.py"
   ],
   "pre_impl": {
     "existing_data": "Reads nsw_cadastre_lots (3.2M rows), spatial_overlays (1.1M rows), dcp_setback_controls (1K), housing_sepp_standards (45). Writes to NEW lot_search_index table only.",
