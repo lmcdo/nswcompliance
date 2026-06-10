@@ -849,8 +849,19 @@ except ImportError:
 
 try:
     from terrain_analysis import run_terrain_analysis, TerrainAnalysisDetail  # noqa: E402
-except ImportError:
-    from services.terrain_analysis import run_terrain_analysis, TerrainAnalysisDetail  # noqa: E402
+except (ImportError, ModuleNotFoundError):
+    try:
+        from services.terrain_analysis import run_terrain_analysis, TerrainAnalysisDetail  # noqa: E402
+    except (ImportError, ModuleNotFoundError):
+        # rasterio/whitebox not installed — provide stubs for non-terrain callers
+        from pydantic import BaseModel as _BM
+
+        class TerrainAnalysisDetail(_BM):  # type: ignore[no-redef]
+            """Stub when rasterio unavailable."""
+            slope_mean_deg: Optional[float] = None
+
+        def run_terrain_analysis(*args, **kwargs):  # type: ignore[no-redef]
+            raise RuntimeError("terrain_analysis unavailable — rasterio not installed")
 
 
 # ---------------------------------------------------------------------------
