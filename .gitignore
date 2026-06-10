@@ -437,6 +437,7 @@ scripts/
 !scripts/templates/
 !scripts/templates/sepp_requirement_template.json
 !scripts/ingest_spatial_overlays.py
+!scripts/build_lot_search_index.py
 !scripts/ingest_flood_studies.py
 !scripts/validate_flood_e2e.py
 !scripts/generate_conveyancing_report.py

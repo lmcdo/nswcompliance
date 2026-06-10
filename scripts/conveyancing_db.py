@@ -249,7 +249,11 @@ def fetch_dcp_setbacks(
         entry = {
             "type":         base_label,
             "control_type": control_kind,
+            "semantic_type": ctrl_type,
             "requirement":  requirement,
+            "value_min":    float(vmin) if vmin is not None else None,
+            "value_max":    float(vmax) if vmax is not None else None,
+            "unit":         unit or "m",
             "clause":       section_ref or "",
             "notes":        condition or "",
         }

@@ -273,6 +273,23 @@ class TestSetbackFormatting:
         assert entry["control_type"] == "prescribed"
         assert "6 m minimum" in entry["requirement"]
 
+    def test_semantic_type_and_numeric_values(self):
+        rows = [_make_row(ctrl_type="front_setback", vmin=6.0, vmax=9.0)]
+        result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
+        entry = result["setbacks"][0]
+        assert entry["semantic_type"] == "front_setback"
+        assert entry["value_min"] == 6.0
+        assert entry["value_max"] == 9.0
+        assert entry["unit"] == "m"
+
+    def test_semantic_type_site_derived(self):
+        rows = [_make_row(ctrl_type="rear_setback", vmin=None, vmax=None)]
+        result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
+        entry = result["setbacks"][0]
+        assert entry["semantic_type"] == "rear_setback"
+        assert entry["value_min"] is None
+        assert entry["value_max"] is None
+
     def test_prescribed_min_and_max(self):
         rows = [_make_row(vmin=3.0, vmax=9.0)]
         result = fetch_dcp_setbacks(_mock_conn(rows), "woollahra")
