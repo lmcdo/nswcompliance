@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
-  "commit_hash": "ccbf3844",
+  "commit_hash": "220eff0c",
   "files": [
     "migrations/010_lot_search_index.sql",
     "scripts/build_lot_search_index.py",
@@ -18,14 +18,14 @@
   "functions": [
     {
       "name": "assign_overlays_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:80",
+      "file_line": "scripts/build_lot_search_index.py:107",
       "input": "conn + lga_name string from spatial_overlays.lga_name",
       "output": "Rows written to lot_search_index with overlay columns populated",
       "if_none": "Returns 0 lots processed, no writes if lga_name matches zero lots"
     },
     {
       "name": "compute_constraints_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:361",
+      "file_line": "scripts/build_lot_search_index.py:413",
       "input": "conn + lga_slug string from dcp_setback_controls.lga_slug",
       "output": "Updates CA columns in lot_search_index for lots with zone+area data",
       "if_none": "Returns 0 if no pending lots, DCP/SEPP cache returns [] for unknown zones"
