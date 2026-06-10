@@ -373,7 +373,7 @@ def _probe_bom_sos2(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
@@ -399,7 +399,7 @@ def _probe_wcs_capabilities(url: str, params: dict) -> tuple[int, Any, int]:
     t0 = time.monotonic()
     resp = requests.get(url, params=params, headers=HEADERS, timeout=PROBE_TIMEOUT)
     ms = int((time.monotonic() - t0) * 1000)
-    content_type = resp.headers.get("Content-Type", "")
+    content_type = resp.headers.get("Content-Type") or ""
     is_xml = "xml" in content_type or resp.text.strip().startswith("<?xml")
     if resp.status_code == 200 and is_xml:
         return 200, True, ms
@@ -497,19 +497,28 @@ def check_source(source: dict[str, Any]) -> SourceCheckResult:
 # ---------------------------------------------------------------------------
 
 def send_telegram(message: str) -> None:
-    """Send alert via Telegram bot. Silent no-op if creds not configured."""
+    """Send alert via Telegram bot. Logs to stdout for Railway visibility."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
+        print("[telegram] skipped — no token or chat_id")
         return
+    original_len = len(message)
+    if original_len > 4000:
+        message = message[:3950] + "\n\n… (truncated — full output in Railway logs)"
+    print(f"[telegram] sending message ({original_len} chars, truncated={original_len > 4000})")
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
             timeout=10,
         )
-    except Exception:
-        pass
+        if resp.ok:
+            print(f"[telegram] sent OK ({resp.status_code})")
+        else:
+            print(f"[telegram] HTTP {resp.status_code}: {resp.text[:200]}")
+    except Exception as exc:
+        print(f"[telegram] send failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -722,13 +731,15 @@ def main() -> int:
 # ---------------------------------------------------------------------------
 
 def check_audit_trail_completeness() -> list[dict]:
-    """Find ALL reports with no corresponding audit trail row.
+    """Find reports with no corresponding audit trail row.
 
     Queries property_reports and LEFT JOINs to report_audit_trail.
     Any report without a matching audit row is a gap — the pipeline
     ran but the audit write silently failed.
 
-    No time window — gaps persist in alerts until backfilled or resolved.
+    Only checks reports created after 2026-05-21 (PR #337 fixed the last
+    cache-hit audit gap). All 238 earlier reports predate the audit trail
+    and will never have rows — alerting on them is noise.
 
     Returns list of gap dicts. Empty list = all reports have audit trails.
     """
@@ -745,6 +756,7 @@ def check_audit_trail_completeness() -> list[dict]:
         FROM property_reports pr
         LEFT JOIN report_audit_trail rat ON rat.report_id = pr.id
         WHERE rat.id IS NULL
+          AND pr.created_at > '2026-05-21'
         ORDER BY pr.run_date DESC
         LIMIT 50
     """

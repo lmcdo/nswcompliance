@@ -1,147 +1,85 @@
 {
   "tier": "standard",
-  "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
-  "commit_hash": "233d3097",
+  "justification": "Modifies DCP extraction flagging logic and watchdog alert classification. Wrong logic could silently suppress real value changes from being reviewed.",
+  "commit_hash": "2172da23",
   "files": [
-    "migrations/048_lot_search_index.sql",
-    "scripts/build_lot_search_index.py",
-    "scripts/conveyancing_db.py",
-    "scripts/ingest_spatial_overlays.py",
-    "services/lot_search.py",
-    "services/compliance_api_server.py",
-    "frontend-nextjs/app/api/lot-search/route.ts",
-    "tests/test_lot_search.py",
-    "tests/test_conveyancing_db.py"
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_watchdog.py",
+    "tests/test_smart_monitor_alerts.py"
   ],
   "pre_impl": {
-    "existing_data": "Reads nsw_cadastre_lots (3.2M rows), spatial_overlays (1.1M rows), dcp_setback_controls (1K), housing_sepp_standards (45). Writes to NEW lot_search_index table only.",
-    "assumption_mismatch": "If spatial_overlays has no zone data for an LGA, that LGA is skipped (get_lga_list only returns LGAs with zone overlays). If DCP controls missing, CA columns stay NULL — graceful degradation.",
-    "new_vs_existing": "New table — INSERT only. ON CONFLICT upsert for re-runs."
+    "existing_data": "dcp_setback_controls table: needs_review, review_reason, last_verified_at, reviewed_at columns. dcp_chapter_registry table: check_failures column tracks consecutive download failures.",
+    "assumption_mismatch": "Assumes diff changed list has_numeric_change correctly detects all numeric value changes. Verified: _extract_numbers at line 614 matches \\d+(?:\\.\\d+)? with units — covers setbacks, heights, areas, percentages.",
+    "new_vs_existing": "Modifies existing flagging path in extract_chapter(). Adds _auto_verify_controls() helper. No new tables or columns. Applies to all future extractions — existing needs_review=TRUE rows with review_reason=chapter_pdf_changed remain until manually cleared."
   },
   "functions": [
     {
-      "name": "assign_overlays_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:107",
-      "input": "conn + lga_name string from spatial_overlays.lga_name",
-      "output": "Rows written to lot_search_index with overlay columns populated",
-      "if_none": "Returns 0 lots processed, no writes if lga_name matches zero lots"
-    },
-    {
-      "name": "compute_constraints_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:478",
-      "input": "conn + lga_slug string from dcp_setback_controls.lga_slug",
-      "output": "Updates CA columns in lot_search_index for lots with zone+area data",
-      "if_none": "Returns 0 if no pending lots, DCP/SEPP cache returns [] for unknown zones"
-    },
-    {
-      "name": "_build_where",
-      "file_line": "services/lot_search.py:133",
-      "input": "LotSearchRequest with optional filter fields",
-      "output": "Parameterised SQL WHERE clause string + params list",
-      "if_none": "Returns 'TRUE' with empty params — no filter applied"
-    },
-    {
-      "name": "lot_search",
-      "file_line": "services/lot_search.py:217",
-      "input": "LotSearchRequest POST body from FastAPI",
-      "output": "LotSearchResponse with paginated lots, total_count, query_ms",
-      "if_none": "Returns 200 with empty lots list and total_count=0"
-    },
-    {
-      "name": "lot_search_summary",
-      "file_line": "services/lot_search.py:293",
-      "input": "LotSearchRequest POST body (same filters as lot_search)",
-      "output": "LotSearchSummary with aggregates, distributions, percentiles",
-      "if_none": "Returns 200 with total_lots=0 and None for numeric aggregates"
+      "name": "_auto_verify_controls",
+      "file_line": "scripts/dcp_extract_changed.py:1412",
+      "input": "cursor, connection, council str, chapter_key str, reason str",
+      "output": "UPDATE on dcp_setback_controls: sets needs_review=FALSE, last_verified_at=NOW()",
+      "if_none": "council or chapter_key None would match zero rows — no-op, no error"
     }
   ],
   "values": [
     {
-      "value": "order_col (user-supplied order_by)",
-      "read_at": "services/lot_search.py:219",
-      "nullable": "no — defaults to ca_realistic_gfa_m2",
-      "guard_at": "services/lot_search.py:219 — whitelist check against _ALLOWED_ORDER_COLS",
-      "if_missing": "Falls back to ca_realistic_gfa_m2"
-    },
-    {
-      "value": "lga_name from lot_search_index",
-      "read_at": "services/lot_search.py:238",
-      "nullable": "yes — column allows NULL",
-      "guard_at": "services/lot_search.py:90 — LotSearchResult.lga_name: Optional[str]",
-      "if_missing": "Returned as null in JSON response"
-    },
-    {
-      "value": "lot_area_m2 in build script",
-      "read_at": "scripts/build_lot_search_index.py:102",
-      "nullable": "yes — COALESCE(planlotarea, shape_area) could be NULL if both NULL",
-      "guard_at": "scripts/build_lot_search_index.py:260 — WHERE lot_area_m2 > 0 filters NULLs from CA compute",
-      "if_missing": "Lot inserted with NULL area, excluded from CA compute, CA columns stay NULL"
+      "value": "has_numeric_change",
+      "read_at": "scripts/dcp_extract_changed.py:1268",
+      "nullable": "no — boolean set by _extract_numbers comparison",
+      "guard_at": "scripts/dcp_extract_changed.py:1870 — any() over diff['changed'] list",
+      "if_missing": "Empty changed list → any() returns False → auto-verify path (safe default)"
     }
   ],
   "queries": [
     {
-      "purpose": "Insert base lot data via spatial join with zone overlays",
-      "file_line": "scripts/build_lot_search_index.py:138",
-      "where_clause": "so.layer_type = 'zone' AND so.lga_name = %s AND c.geom IS NOT NULL",
-      "if_zero": "No rows inserted — LGA has no zone overlays, function returns 0",
-      "if_wrong": "Lots from adjacent LGAs could match if zone overlay geometries overlap LGA boundaries — mitigated by DISTINCT ON (lotidstring)"
+      "purpose": "Auto-verify control rows when no numeric changes detected",
+      "file_line": "scripts/dcp_extract_changed.py:1424",
+      "where_clause": "WHERE lga = %s AND source_chapter_key = %s AND is_current = TRUE",
+      "if_zero": "No matching controls — prints nothing, no error",
+      "if_wrong": "Impossible: scoped by exact lga + chapter_key + is_current"
     },
     {
-      "purpose": "Parameterised lot search query",
-      "file_line": "services/lot_search.py:236",
-      "where_clause": "Dynamic — built from _build_where() with parameterised %s placeholders",
-      "if_zero": "Returns empty lots list with total_count=0",
-      "if_wrong": "SQL injection prevented by parameterised queries + order_by whitelist"
-    },
-    {
-      "purpose": "Fetch lots pending CA compute",
-      "file_line": "scripts/build_lot_search_index.py:493",
-      "where_clause": "lga_name = %s AND zone_code IS NOT NULL AND lot_area_m2 > 0 AND ca_realistic_gfa_m2 IS NULL",
-      "if_zero": "No computation needed — function returns 0",
-      "if_wrong": "Lots without zone data excluded (correct — CA needs zone for SEPP lookup)"
+      "purpose": "Find failing chapters with grace period for transient outages",
+      "file_line": "scripts/dcp_watchdog.py:82",
+      "where_clause": "WHERE check_failures >= 3 AND is_active = TRUE",
+      "if_zero": "No failing chapters — no alert sent (correct behavior)",
+      "if_wrong": "Only returns active chapters with 3+ failures — cannot include inactive or recently-recovered chapters"
     }
   ],
   "break_it": [
     {
-      "scenario": "SQL injection via order_by parameter",
-      "what_happens": "Attacker passes 'DROP TABLE users; --' as order_by",
+      "scenario": "Real numeric change (setback 6m -> 4.5m) — would smart flagging catch it?",
+      "what_happens": "_extract_numbers detects ['6'] vs ['4.5'], has_numeric_change=True, flags for review with reason numeric_value_changed",
       "mitigated": true,
-      "how": "services/lot_search.py:187 — order_by checked against _ALLOWED_ORDER_COLS whitelist; invalid values fall back to default. order_dir validated by Pydantic regex pattern.",
-      "repro": "POST /lot-search {\"order_by\": \"DROP TABLE users; --\"} → falls back to ca_realistic_gfa_m2"
+      "how": "scripts/dcp_extract_changed.py:1262-1268 — has_numeric_change computed per-provision in diff_provisions",
+      "repro": "Change a provision numeric value in DB, re-extract, verify needs_review=TRUE"
     },
     {
-      "scenario": "Lot assigned to wrong LGA when zone overlays from adjacent LGAs overlap",
-      "what_happens": "Lot appears in multiple LGAs' results or gets wrong LGA assignment",
+      "scenario": "Restructure with only text reformatting and no adds/removes — would it false-alarm?",
+      "what_happens": "status=restructure but has_structural=False (0 added, 0 removed), so auto-verified not flagged",
       "mitigated": true,
-      "how": "scripts/build_lot_search_index.py:98 — ON CONFLICT (lotidstring) DO UPDATE overwrites with latest LGA processed. Lot has exactly one row in the index.",
-      "repro": "Run overlays for two adjacent LGAs, check lots near boundary"
+      "how": "Test test_restructure_text_only_no_adds_removes_auto_verifies confirms this path",
+      "repro": "python -m pytest tests/test_smart_monitor_alerts.py::TestSmartFlaggingDecision::test_restructure_text_only_no_adds_removes_auto_verifies"
     },
     {
-      "scenario": "DB size exceeds 8GB Supabase limit when indexing all LGAs with geometry",
-      "what_happens": "Writes fail with storage error",
-      "mitigated": false,
-      "how": "Risk flagged in plan — check DB size after Inner West pilot before statewide run. Option: drop geom column from index.",
-      "repro": "Run full build, check pg_database_size()"
+      "scenario": "Numeric change hidden in a newly added provision (not in changed list)",
+      "what_happens": "In restructure with additions, structural_change reason triggers flag. In ok status, new provisions have no linked control rows anyway.",
+      "mitigated": true,
+      "how": "Structural change flagging covers restructure case. Normal additions are pagination artifacts with no control row linkage.",
+      "repro": "Add a provision with numeric values to a chapter, run extraction in restructure mode"
     },
     {
-      "scenario": "Parameterised lot search returns stale data after overlay re-ingest",
-      "what_happens": "Lot search returns outdated zone/height/FSR values until build script re-runs",
+      "scenario": "Find failing chapters with grace period query returns wrong chapters or misses real failures",
+      "what_happens": "check_failures increments to 1, then 2 on subsequent runs. Alert only fires at >= 3 failures. Transient 1-2 day outages never reach Telegram. Real persistent failures always reach 3+.",
       "mitigated": true,
-      "how": "scripts/build_lot_search_index.py — ON CONFLICT upsert overwrites on re-run. computed_at timestamp tracks staleness. Incremental refresh function available.",
-      "repro": "Re-ingest overlays for LGA, query /lot-search before re-running build script — values reflect previous ingest"
-    },
-    {
-      "scenario": "Lots pending CA compute never get computed if zone_code is NULL",
-      "what_happens": "Lots without zone assignment (step 2 failed) are silently excluded from CA compute",
-      "mitigated": true,
-      "how": "scripts/build_lot_search_index.py:351 — WHERE zone_code IS NOT NULL is intentional. Without zone, SEPP lookup is impossible. These lots get overlay data only, CA columns stay NULL, ca_confidence stays NULL.",
-      "repro": "Insert lot into lot_search_index with NULL zone_code, run compute phase — lot skipped"
+      "how": "scripts/dcp_watchdog.py:82 — WHERE check_failures >= 3 AND is_active = TRUE. R2 content monitor resets check_failures to 0 on successful download, so recovered chapters drop out automatically.",
+      "repro": "Set check_failures=2 for a chapter, run watchdog — should not alert. Set to 3 — should alert."
     }
   ],
   "post_merge": {
-    "db_reset": "No — new table only, run migration 010 on Supabase",
+    "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — run migration, then build script for Inner West as pilot"
+    "manual_verify": "Next watchdog run should show severity-tiered alerts. Existing review_reason=chapter_pdf_changed rows appear as STANDARD."
   }
 }
