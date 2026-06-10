@@ -24,7 +24,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
       <p className="text-xs text-gray-500">{label}</p>
       <p className="text-lg font-semibold text-gray-900 mt-0.5">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      {sub != null && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
 }

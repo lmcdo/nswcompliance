@@ -61,8 +61,9 @@ export const DEFAULT_FILTERS: ProspectorFilters = {
 // ---------------------------------------------------------------------------
 
 function parsePositiveNumber(value: string | null): number | null {
-  if (value == null || value.trim() === '') return null;
-  const n = Number(value);
+  const trimmed = value?.trim() ?? '';
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
