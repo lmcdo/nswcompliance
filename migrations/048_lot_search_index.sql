@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS lot_search_index (
     bushfire_category      TEXT,
     acid_sulfate           BOOLEAN DEFAULT FALSE,
     -- Constraint arithmetic results (NULL if not computable)
+    ca_dev_type            TEXT,
     ca_realistic_gfa_m2    DOUBLE PRECISION,
     ca_realistic_dwellings INTEGER,
     ca_binding_constraint  TEXT,

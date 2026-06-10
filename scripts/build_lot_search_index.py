@@ -283,15 +283,15 @@ def get_lgas_with_dcp(conn) -> list[str]:
     """Return LGA slugs that have DCP setback controls in the DB."""
     cur = conn.cursor()
     cur.execute("""
-        SELECT DISTINCT lga_slug FROM dcp_setback_controls
-        WHERE lga_slug IS NOT NULL AND is_current = TRUE
-        ORDER BY lga_slug
+        SELECT DISTINCT lga FROM dcp_setback_controls
+        WHERE lga IS NOT NULL AND is_current = TRUE
+        ORDER BY lga
     """)
     return [r[0] for r in cur.fetchall()]
 
 
 def _lga_slug_to_overlay_name(slug: str) -> str:
-    """Convert DCP lga_slug (e.g. 'inner_west') to spatial_overlays lga_name ('INNER WEST')."""
+    """Convert DCP lga value (e.g. 'inner_west') to spatial_overlays lga_name ('INNER WEST')."""
     return slug.replace("_", " ").upper()
 
 
@@ -346,10 +346,12 @@ def compute_constraints_for_lga(
     if dry_run or pending == 0:
         return pending
 
-    # Caches: DCP/SEPP per (lga, zone) — avoids N identical queries
+    # Caches: DCP per (lga, zone), SEPP raw per zone — avoids N identical queries
+    # SEPP raw is cached, but _build_sepp_housing is called per-lot (uses lot_area_m2
+    # for eligibility checks and lot-size bands — caching the built result would give
+    # wrong eligibility for lots with different areas in the same zone).
     dcp_cache: dict[str, list[DCPControl]] = {}
-    sepp_cache: dict[str, list[SEPPStandard]] = {}
-    override_cache: dict[tuple, list[SeppLepOverride]] = {}
+    sepp_raw_cache: dict[str, list[dict]] = {}
 
     def _get_dcp(zone: str) -> list[DCPControl]:
         if zone not in dcp_cache:
@@ -358,20 +360,38 @@ def compute_constraints_for_lga(
         return dcp_cache[zone]
 
     def _get_sepp(zone: str, area: float) -> list[SEPPStandard]:
-        if zone not in sepp_cache:
-            sepp_raw = fetch_sepp_housing_standards(conn, zone_code=zone)
-            sepp_cache[zone] = _build_sepp_housing(sepp_raw, zone, area)
-        return sepp_cache[zone]
+        """Get SEPP standards with per-lot eligibility based on actual area."""
+        if zone not in sepp_raw_cache:
+            sepp_raw_cache[zone] = fetch_sepp_housing_standards(conn, zone_code=zone)
+        return _build_sepp_housing(sepp_raw_cache[zone], zone, area)
 
     def _get_overrides(
         sepp: list[SEPPStandard],
         height_m: Optional[float],
         fsr: Optional[float],
     ) -> list[SeppLepOverride]:
-        key = (id(sepp), height_m, fsr)
-        if key not in override_cache:
-            override_cache[key] = _detect_sepp_lep_overrides(sepp, height_m, fsr)
-        return override_cache[key]
+        return _detect_sepp_lep_overrides(sepp, height_m, fsr)
+
+    # Dev type priority: highest-density first. When multiple SEPP dev_types are
+    # eligible for a lot (zone permits it + lot area meets min_lot_size), we
+    # compute CA for the most permissive one to show realistic maximum yield.
+    _DEV_TYPE_PRIORITY = [
+        "residential_flat_r3r4_inner",
+        "residential_flat_r3r4_outer",
+        "residential_flat_r1r2",
+        "multi_dwelling",
+        "terraces",
+        "manor_house",
+        "dual_occupancy",
+    ]
+
+    def _best_dev_type(sepp_standards: list[SEPPStandard]) -> str:
+        """Pick the most permissive eligible SEPP dev_type, fallback to dwelling_house."""
+        eligible = [s.dev_type for s in sepp_standards if s.eligible]
+        for dt in _DEV_TYPE_PRIORITY:
+            if dt in eligible:
+                return dt
+        return "dwelling_house"
 
     total_computed = 0
     offset = 0
@@ -396,6 +416,7 @@ def compute_constraints_for_lga(
         for lotid, area, zone, height_m, fsr in rows:
             dcp = _get_dcp(zone)
             sepp = _get_sepp(zone, area)
+            dev_type = _best_dev_type(sepp)
             overrides = _get_overrides(sepp, height_m, fsr)
 
             height_str = str(height_m) if height_m is not None else None
@@ -403,7 +424,7 @@ def compute_constraints_for_lga(
 
             result = compute_constraint_arithmetic(
                 lot_area_m2=area,
-                dev_type="dwelling_house",
+                dev_type=dev_type,
                 lep_height_str=height_str,
                 lep_fsr_str=fsr_str,
                 dcp_controls=dcp,
@@ -424,6 +445,7 @@ def compute_constraints_for_lga(
                 result.buildable_footprint_m2,
                 result.lep_envelope_gfa_m2,
                 result.gaps if result.gaps else None,
+                dev_type,
                 lotid,
             ))
 
@@ -444,11 +466,12 @@ def compute_constraints_for_lga(
                     ca_buildable_footprint_m2 = v.footprint,
                     ca_lep_envelope_gfa_m2    = v.envelope,
                     ca_gaps                   = v.gaps,
+                    ca_dev_type               = v.dev_type,
                     computed_at               = NOW()
                 FROM (VALUES %s) AS v(
                     gfa, dwellings, binding, eff_height, eff_fsr, confidence,
                     sb_front, sb_rear, sb_side, footprint, envelope, gaps,
-                    lotidstring
+                    dev_type, lotidstring
                 )
                 WHERE lsi.lotidstring = v.lotidstring
                 """,
@@ -457,7 +480,8 @@ def compute_constraints_for_lga(
                     "(%s::double precision, %s::int, %s, %s::double precision,"
                     " %s::double precision, %s, %s::double precision,"
                     " %s::double precision, %s::double precision,"
-                    " %s::double precision, %s::double precision, %s::text[], %s)"
+                    " %s::double precision, %s::double precision, %s::text[],"
+                    " %s, %s)"
                 ),
             )
             conn.commit()
