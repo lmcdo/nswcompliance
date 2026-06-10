@@ -362,6 +362,40 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
     conn.commit()
     log.info("  Step 9 done: %d lots assigned to former councils", fc_count)
 
+    # Step 9b: Fallback — nearest precinct boundary for lots outside all precincts.
+    # Precinct boundaries don't tile the full LGA (gaps between precincts),
+    # so use nearest precinct's former_council for the remainder.
+    cur.execute("""
+        SELECT COUNT(*) FROM lot_search_index
+        WHERE lga_name = %s AND former_council IS NULL AND geom IS NOT NULL
+    """, (lga_name,))
+    remaining = cur.fetchone()[0]
+    if remaining > 0:
+        log.info("  Step 9b: %d lots outside precincts — assigning via nearest boundary...", remaining)
+        cur.execute("""
+            UPDATE lot_search_index lsi
+            SET former_council = LOWER(nearest.former_council)
+            FROM (
+                SELECT u.lotidstring,
+                       b.former_council
+                FROM lot_search_index u
+                CROSS JOIN LATERAL (
+                    SELECT former_council, boundary
+                    FROM dcp_precinct_boundaries
+                    WHERE UPPER(lga) = %s AND boundary IS NOT NULL
+                    ORDER BY u.geom <-> boundary
+                    LIMIT 1
+                ) b
+                WHERE u.lga_name = %s
+                  AND u.former_council IS NULL
+                  AND u.geom IS NOT NULL
+            ) nearest
+            WHERE lsi.lotidstring = nearest.lotidstring
+        """, (lga_name, lga_name))
+        fb_count = cur.rowcount
+        conn.commit()
+        log.info("  Step 9b done: %d lots assigned via nearest precinct", fb_count)
+
     return lot_count
 
 

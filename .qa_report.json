@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
-  "commit_hash": "6723f72c",
+  "commit_hash": "233d3097",
   "files": [
     "migrations/048_lot_search_index.sql",
     "scripts/build_lot_search_index.py",
@@ -28,7 +28,7 @@
     },
     {
       "name": "compute_constraints_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:444",
+      "file_line": "scripts/build_lot_search_index.py:478",
       "input": "conn + lga_slug string from dcp_setback_controls.lga_slug",
       "output": "Updates CA columns in lot_search_index for lots with zone+area data",
       "if_none": "Returns 0 if no pending lots, DCP/SEPP cache returns [] for unknown zones"
@@ -81,7 +81,7 @@
   "queries": [
     {
       "purpose": "Insert base lot data via spatial join with zone overlays",
-      "file_line": "scripts/build_lot_search_index.py:98",
+      "file_line": "scripts/build_lot_search_index.py:138",
       "where_clause": "so.layer_type = 'zone' AND so.lga_name = %s AND c.geom IS NOT NULL",
       "if_zero": "No rows inserted — LGA has no zone overlays, function returns 0",
       "if_wrong": "Lots from adjacent LGAs could match if zone overlay geometries overlap LGA boundaries — mitigated by DISTINCT ON (lotidstring)"
@@ -95,7 +95,7 @@
     },
     {
       "purpose": "Fetch lots pending CA compute",
-      "file_line": "scripts/build_lot_search_index.py:459",
+      "file_line": "scripts/build_lot_search_index.py:493",
       "where_clause": "lga_name = %s AND zone_code IS NOT NULL AND lot_area_m2 > 0 AND ca_realistic_gfa_m2 IS NULL",
       "if_zero": "No computation needed — function returns 0",
       "if_wrong": "Lots without zone data excluded (correct — CA needs zone for SEPP lookup)"
