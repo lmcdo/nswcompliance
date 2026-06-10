@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New table + build script + 2 API endpoints + frontend proxy. No existing data modified. Build script writes to new table only. API reads only. Standard tier: new feature, multiple files, no existing data mutation.",
-  "commit_hash": "HEAD",
+  "commit_hash": "6723f72c",
   "files": [
     "migrations/048_lot_search_index.sql",
     "scripts/build_lot_search_index.py",
@@ -28,28 +28,28 @@
     },
     {
       "name": "compute_constraints_for_lga",
-      "file_line": "scripts/build_lot_search_index.py:413",
+      "file_line": "scripts/build_lot_search_index.py:444",
       "input": "conn + lga_slug string from dcp_setback_controls.lga_slug",
       "output": "Updates CA columns in lot_search_index for lots with zone+area data",
       "if_none": "Returns 0 if no pending lots, DCP/SEPP cache returns [] for unknown zones"
     },
     {
       "name": "_build_where",
-      "file_line": "services/lot_search.py:132",
+      "file_line": "services/lot_search.py:133",
       "input": "LotSearchRequest with optional filter fields",
       "output": "Parameterised SQL WHERE clause string + params list",
       "if_none": "Returns 'TRUE' with empty params — no filter applied"
     },
     {
       "name": "lot_search",
-      "file_line": "services/lot_search.py:216",
+      "file_line": "services/lot_search.py:217",
       "input": "LotSearchRequest POST body from FastAPI",
       "output": "LotSearchResponse with paginated lots, total_count, query_ms",
       "if_none": "Returns 200 with empty lots list and total_count=0"
     },
     {
       "name": "lot_search_summary",
-      "file_line": "services/lot_search.py:291",
+      "file_line": "services/lot_search.py:293",
       "input": "LotSearchRequest POST body (same filters as lot_search)",
       "output": "LotSearchSummary with aggregates, distributions, percentiles",
       "if_none": "Returns 200 with total_lots=0 and None for numeric aggregates"
@@ -58,16 +58,16 @@
   "values": [
     {
       "value": "order_col (user-supplied order_by)",
-      "read_at": "services/lot_search.py:218",
+      "read_at": "services/lot_search.py:219",
       "nullable": "no — defaults to ca_realistic_gfa_m2",
-      "guard_at": "services/lot_search.py:218 — whitelist check against _ALLOWED_ORDER_COLS",
+      "guard_at": "services/lot_search.py:219 — whitelist check against _ALLOWED_ORDER_COLS",
       "if_missing": "Falls back to ca_realistic_gfa_m2"
     },
     {
       "value": "lga_name from lot_search_index",
-      "read_at": "services/lot_search.py:237",
+      "read_at": "services/lot_search.py:238",
       "nullable": "yes — column allows NULL",
-      "guard_at": "services/lot_search.py:89 — LotSearchResult.lga_name: Optional[str]",
+      "guard_at": "services/lot_search.py:90 — LotSearchResult.lga_name: Optional[str]",
       "if_missing": "Returned as null in JSON response"
     },
     {
@@ -88,14 +88,14 @@
     },
     {
       "purpose": "Parameterised lot search query",
-      "file_line": "services/lot_search.py:228",
+      "file_line": "services/lot_search.py:236",
       "where_clause": "Dynamic — built from _build_where() with parameterised %s placeholders",
       "if_zero": "Returns empty lots list with total_count=0",
       "if_wrong": "SQL injection prevented by parameterised queries + order_by whitelist"
     },
     {
       "purpose": "Fetch lots pending CA compute",
-      "file_line": "scripts/build_lot_search_index.py:351",
+      "file_line": "scripts/build_lot_search_index.py:459",
       "where_clause": "lga_name = %s AND zone_code IS NOT NULL AND lot_area_m2 > 0 AND ca_realistic_gfa_m2 IS NULL",
       "if_zero": "No computation needed — function returns 0",
       "if_wrong": "Lots without zone data excluded (correct — CA needs zone for SEPP lookup)"
