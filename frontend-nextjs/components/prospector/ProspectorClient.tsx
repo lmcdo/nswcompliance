@@ -50,7 +50,7 @@ async function postFetcher<T>([url, bodyJson]: [string, string]): Promise<T> {
 
 export default function ProspectorClient() {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/prospector';
   const searchParams = useSearchParams();
 
   const filters = useMemo(
@@ -109,17 +109,23 @@ export default function ProspectorClient() {
     JSON.stringify(buildSummaryBody({ ...DEFAULT_FILTERS, lga_name: filters.lga_name })),
   ];
 
+  // shouldRetryOnError: false — the API is rate limited (20 req/60s); SWR's
+  // default exponential-backoff retry would re-POST after a 429 and dig the
+  // user deeper into the limit.
   const search = useSWR<SearchResponse>(searchKey, postFetcher, {
     keepPreviousData: true,
     revalidateOnFocus: false,
+    shouldRetryOnError: false,
   });
   const summary = useSWR<SummaryResponse>(summaryKey, postFetcher, {
     keepPreviousData: true,
     revalidateOnFocus: false,
+    shouldRetryOnError: false,
   });
   const options = useSWR<SummaryResponse>(optionsKey, postFetcher, {
     revalidateOnFocus: false,
     revalidateIfStale: false,
+    shouldRetryOnError: false,
   });
 
   const zoneOptions = useMemo(

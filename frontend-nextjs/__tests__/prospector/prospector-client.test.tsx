@@ -225,7 +225,7 @@ describe('ProspectorClient', () => {
 
   test('numeric filter input commits immediately on blur', async () => {
     renderClient();
-    const input = await screen.findByLabelText('Realistic GFA (m²) maximum');
+    const input = await screen.findByLabelText('Indicative GFA (m²) maximum');
 
     fireEvent.change(input, { target: { value: '600' } });
     fireEvent.blur(input);

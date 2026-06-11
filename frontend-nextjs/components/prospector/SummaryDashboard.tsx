@@ -99,11 +99,11 @@ export function SummaryDashboard({ summary, isLoading }: SummaryDashboardProps) 
           sub={`${caPct}% of matching lots`}
         />
         <StatCard
-          label="Average realistic GFA"
+          label="Average indicative GFA"
           value={summary.avg_gfa_m2 != null ? `${formatNumber(summary.avg_gfa_m2)} m²` : '—'}
         />
         <StatCard
-          label="Median realistic GFA"
+          label="Median indicative GFA"
           value={summary.median_gfa_m2 != null ? `${formatNumber(summary.median_gfa_m2)} m²` : '—'}
           sub={
             summary.p25_gfa_m2 != null && summary.p75_gfa_m2 != null

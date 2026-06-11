@@ -278,7 +278,7 @@ export function FilterPanel({
       />
 
       <RangeInputs
-        label="Realistic GFA (m²)"
+        label="Indicative GFA (m²)"
         min={filters.min_gfa_m2}
         max={filters.max_gfa_m2}
         onMinChange={(min_gfa_m2) => onChange({ min_gfa_m2 })}

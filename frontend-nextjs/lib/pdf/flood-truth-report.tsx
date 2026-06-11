@@ -468,7 +468,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             </Text>
           </View>
 
-          <PlotDetectFooter page={1} total={1} />
+          <PlotDetectFooter reportName="Flood Truth Report" pageNum={1} total={1} />
         </Page>
       </Document>
     );
