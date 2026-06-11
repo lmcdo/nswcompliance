@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds the email capture (conversion) step to /prospector: new SaveSearchCard component posting to the existing /api/verify-interest endpoint with source='prospector', a new PostHog track function, sidebar wiring in ProspectorClient, and a 5-case Jest suite. Four substantive files changed so the tier floor pushes this above Minor. No new API routes, no DB schema changes, no regulatory logic.",
-  "commit_hash": "ec5ec3a0",
+  "commit_hash": "4d36b669",
   "files": [
     "frontend-nextjs/components/prospector/SaveSearchCard.tsx",
     "frontend-nextjs/components/prospector/ProspectorClient.tsx",
@@ -46,6 +46,11 @@
       "value": "API error body data.error from /api/verify-interest non-OK responses",
       "read_at": "frontend-nextjs/components/prospector/SaveSearchCard.tsx handleSubmit catch path",
       "if_missing": "res.json() failure or non-string error falls back to 'Something went wrong — try again' so the user always sees a retryable message"
+    },
+    {
+      "value": "Optional role select value, constrained to ROLE_OPTIONS mirroring the endpoint's VALID_ROLES list",
+      "read_at": "frontend-nextjs/components/prospector/SaveSearchCard.tsx role state in handleSubmit payload and analytics event",
+      "if_missing": "Empty selection is sent as null; the endpoint independently re-validates against VALID_ROLES and stores null for anything unrecognised"
     }
   ],
   "queries": "N/A — no database queries added or changed; the component posts to the existing /api/verify-interest endpoint whose INSERT ... ON CONFLICT upsert is unchanged",

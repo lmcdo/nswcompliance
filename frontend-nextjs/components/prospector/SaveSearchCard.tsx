@@ -17,6 +17,17 @@ import { trackProspectorEmailCapture } from '@/lib/analytics';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Mirrors VALID_ROLES in app/api/verify-interest/route.ts
+const ROLE_OPTIONS = [
+  { value: 'developer', label: 'Developer' },
+  { value: 'planner', label: 'Town planner' },
+  { value: 'architect', label: 'Architect' },
+  { value: 'agent', label: 'Buyers / real estate agent' },
+  { value: 'conveyancer', label: 'Conveyancer' },
+  { value: 'certifier', label: 'Certifier' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 type Status = 'idle' | 'submitting' | 'done' | 'error';
 
 export function SaveSearchCard({
@@ -27,6 +38,7 @@ export function SaveSearchCard({
   filterQuery: string;
 }) {
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -46,6 +58,7 @@ export function SaveSearchCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: trimmed,
+          role: role || null,
           source: 'prospector',
           council_name: lgaName,
           address: filterQuery ? `/prospector?${filterQuery}` : '/prospector',
@@ -61,6 +74,7 @@ export function SaveSearchCard({
       trackProspectorEmailCapture({
         lga: lgaName,
         has_filters: filterQuery.length > 0,
+        role: role || null,
       });
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong — try again');
@@ -99,6 +113,23 @@ export function SaveSearchCard({
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={status === 'submitting'}
         />
+        <label htmlFor="prospector-role" className="sr-only">
+          Your role
+        </label>
+        <select
+          id="prospector-role"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={status === 'submitting'}
+        >
+          <option value="">Your role (optional)</option>
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           disabled={status === 'submitting'}

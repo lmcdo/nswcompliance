@@ -45,9 +45,27 @@ describe('SaveSearchCard', () => {
     expect(url).toBe('/api/verify-interest');
     expect(JSON.parse(opts.body)).toEqual({
       email: 'dev@example.com',
+      role: null,
       source: 'prospector',
       council_name: 'INNER WEST',
       address: '/prospector?zone_codes=R2&heritage=false',
+    });
+  });
+
+  it('includes the selected role in the payload and analytics event', async () => {
+    render(<SaveSearchCard lgaName="INNER WEST" filterQuery="zone_codes=R2" />);
+    fireEvent.change(screen.getByLabelText('Your role'), {
+      target: { value: 'planner' },
+    });
+    fillAndSubmit('planner@example.com');
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.role).toBe('planner');
+    await screen.findByText(/saved/i);
+    expect(trackProspectorEmailCapture).toHaveBeenCalledWith({
+      lga: 'INNER WEST',
+      has_filters: true,
+      role: 'planner',
     });
   });
 
@@ -58,6 +76,7 @@ describe('SaveSearchCard', () => {
     expect(trackProspectorEmailCapture).toHaveBeenCalledWith({
       lga: 'INNER WEST',
       has_filters: true,
+      role: null,
     });
   });
 
@@ -71,6 +90,7 @@ describe('SaveSearchCard', () => {
     expect(trackProspectorEmailCapture).toHaveBeenCalledWith({
       lga: 'INNER WEST',
       has_filters: false,
+      role: null,
     });
   });
 

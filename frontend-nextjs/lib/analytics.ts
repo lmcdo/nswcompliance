@@ -70,6 +70,7 @@ export const trackProspectorSearch = (params: {
 export const trackProspectorEmailCapture = (params: {
   lga: string;
   has_filters: boolean;
+  role: string | null;
 }) => {
   posthog.capture('prospector_email_capture', params);
 };
