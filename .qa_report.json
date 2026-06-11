@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New /prospector UI page (5 components + filter-params lib + 2 test files) over the existing rate-limited lot-search API, plus two build fixes: usePathname null guard and pre-existing flood-truth-report footer prop mismatch. No DB writes, no existing data modified, read-only POST to existing endpoint.",
-  "commit_hash": "61f52e8b",
+  "commit_hash": "50b12c12",
   "files": [
     "frontend-nextjs/app/prospector/page.tsx",
     "frontend-nextjs/components/prospector/ProspectorClient.tsx",

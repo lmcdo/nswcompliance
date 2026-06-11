@@ -44,6 +44,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history: qa_gate.py matches the report hash against the last
+          # 5 branch commits; a depth-1 checkout only sees the merge ref.
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
