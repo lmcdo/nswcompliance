@@ -13,6 +13,7 @@ import { AlertCircle } from 'lucide-react';
 import { trackProspectorSearch } from '@/lib/analytics';
 import { FilterPanel } from '@/components/prospector/FilterPanel';
 import { ResultsTable } from '@/components/prospector/ResultsTable';
+import { SaveSearchCard } from '@/components/prospector/SaveSearchCard';
 import { SummaryDashboard } from '@/components/prospector/SummaryDashboard';
 import {
   DEFAULT_FILTERS,
@@ -186,13 +187,19 @@ export default function ProspectorClient() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Filter sidebar */}
         <aside className="lg:w-72 shrink-0">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 lg:sticky lg:top-4">
-            <FilterPanel
-              filters={filters}
-              zoneOptions={zoneOptions}
-              bindingOptions={bindingOptions}
-              onChange={updateFilters}
-              onReset={() => applyFilters({ ...DEFAULT_FILTERS, lga_name: filters.lga_name })}
+          <div className="lg:sticky lg:top-4 space-y-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <FilterPanel
+                filters={filters}
+                zoneOptions={zoneOptions}
+                bindingOptions={bindingOptions}
+                onChange={updateFilters}
+                onReset={() => applyFilters({ ...DEFAULT_FILTERS, lga_name: filters.lga_name })}
+              />
+            </div>
+            <SaveSearchCard
+              lgaName={filters.lga_name}
+              filterQuery={serializeFilters(filters).toString()}
             />
           </div>
         </aside>

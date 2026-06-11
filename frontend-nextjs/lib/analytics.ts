@@ -65,6 +65,15 @@ export const trackProspectorSearch = (params: {
   posthog.capture('prospector_search', params);
 };
 
+// Track prospector email capture (funnel conversion step: pageview ->
+// prospector_search -> prospector_email_capture)
+export const trackProspectorEmailCapture = (params: {
+  lga: string;
+  has_filters: boolean;
+}) => {
+  posthog.capture('prospector_email_capture', params);
+};
+
 // Track SEO funnel page CTA click
 export const trackFunnelCta = (page: string, cta: string, destination: string) => {
   posthog.capture('funnel_cta_click', {

@@ -1,42 +1,88 @@
 {
-  "tier": "minor",
-  "justification": "Frontend analytics-only change: adds a PostHog 'prospector_search' capture fired from the existing search SWR onSuccess callback on /prospector. No DB queries, no API routes, no regulatory logic, no user-facing text touched. Two files: lib/analytics.ts (new track function following the existing track* pattern) and components/prospector/ProspectorClient.tsx (import + onSuccess wiring).",
-  "commit_hash": "23516549",
+  "tier": "standard",
+  "justification": "Adds the email capture (conversion) step to /prospector: new SaveSearchCard component posting to the existing /api/verify-interest endpoint with source='prospector', a new PostHog track function, sidebar wiring in ProspectorClient, and a 5-case Jest suite. Four substantive files changed so the tier floor pushes this above Minor. No new API routes, no DB schema changes, no regulatory logic.",
+  "commit_hash": "ec5ec3a0",
   "files": [
+    "frontend-nextjs/components/prospector/SaveSearchCard.tsx",
+    "frontend-nextjs/components/prospector/ProspectorClient.tsx",
     "frontend-nextjs/lib/analytics.ts",
-    "frontend-nextjs/components/prospector/ProspectorClient.tsx"
+    "frontend-nextjs/__tests__/prospector/save-search-card.test.tsx"
   ],
-  "pre_impl": {},
-  "functions": "trackProspectorSearch(params) — thin wrapper over posthog.capture('prospector_search', params), same shape as the 7 existing track* functions in lib/analytics.ts",
-  "values": "Event payload fields read from already-fetched SWR data (data.total_count, data.query_ms) and URL-derived filters (lga_name, zone_codes, heritage, flood_prone, page) — all null-coalesced (?? 0 / ?? null)",
-  "queries": "N/A — no database queries; reuses the existing /api/lot-search response, no new fetches",
+  "pre_impl": {
+    "existing_data": "Audited existing email capture before building: /api/verify-interest (verify_interest table, (email, source) unique upsert, Resend notification), /api/dcp-interest, and /api/canibuildit/lead all exist. verify_interest accepts arbitrary source strings (safeSource = source || 'assessment'), so source='prospector' reuses it with zero schema changes.",
+    "assumption_mismatch": "Assumed a dedicated prospector_interest table would be needed; actual codebase already has a generic interest endpoint whose address column (free text, nullable) can carry the saved filter URL. Also assumed click-submit would exercise the regex validation path in tests; jsdom native email constraint validation blocked submission first, so the test submits the form element directly.",
+    "new_vs_existing": "New: SaveSearchCard component, trackProspectorEmailCapture function, test file. Existing reused: /api/verify-interest endpoint and its rate limiting, EMAIL_REGEX pattern copied from that endpoint for client-side parity, serializeFilters from filter-params for the saved search URL, lib/analytics.ts track* pattern."
+  },
+  "functions": [
+    {
+      "name": "SaveSearchCard",
+      "file_line": "frontend-nextjs/components/prospector/SaveSearchCard.tsx:22",
+      "input": "Props lgaName string and filterQuery string from serializeFilters, plus user-typed email from controlled input state",
+      "output": "Renders idle form, submitting, success confirmation, or error states; POSTs JSON to /api/verify-interest and fires prospector_email_capture on success only",
+      "if_none": "Empty filterQuery sends bare /prospector path and has_filters false; invalid email is rejected client-side by regex before any network call happens"
+    },
+    {
+      "name": "trackProspectorEmailCapture",
+      "file_line": "frontend-nextjs/lib/analytics.ts:70",
+      "input": "Object with lga string and has_filters boolean describing the captured search context",
+      "output": "Calls posthog.capture with event name prospector_email_capture and the params object, same pattern as eight existing track functions",
+      "if_none": "If PostHog is uninitialised the capture call buffers or no-ops internally; identical exposure to every existing track function in production"
+    },
+    {
+      "name": "handleSubmit",
+      "file_line": "frontend-nextjs/components/prospector/SaveSearchCard.tsx:33",
+      "input": "Form submit event; reads email state, lgaName and filterQuery props at submission time",
+      "output": "Sets status to done on HTTP 200, or error with the API-provided message or a generic retry message on failure",
+      "if_none": "Non-OK response with unparseable JSON body falls back to generic error text; analytics event is never fired on the failure path"
+    }
+  ],
+  "values": [
+    {
+      "value": "filters.lga_name from URL-parsed ProspectorFilters passed as lgaName prop",
+      "read_at": "frontend-nextjs/components/prospector/ProspectorClient.tsx render of SaveSearchCard in the sidebar",
+      "if_missing": "parseFilters always returns a string (DEFAULT_FILTERS fallback 'INNER WEST'), so lgaName can never be undefined at this boundary"
+    },
+    {
+      "value": "API error body data.error from /api/verify-interest non-OK responses",
+      "read_at": "frontend-nextjs/components/prospector/SaveSearchCard.tsx handleSubmit catch path",
+      "if_missing": "res.json() failure or non-string error falls back to 'Something went wrong — try again' so the user always sees a retryable message"
+    }
+  ],
+  "queries": "N/A — no database queries added or changed; the component posts to the existing /api/verify-interest endpoint whose INSERT ... ON CONFLICT upsert is unchanged",
   "break_it": [
     {
-      "scenario": "onSuccess closure captures stale filters — SWR memoises the options object per hook instance, so the event could report the filters from a previous render while data is from the new search",
-      "what_happens": "Analytics rows would attribute result counts to the wrong filter combination, silently skewing the funnel data",
-      "repro": "Change a filter, inspect the captured event's lga/zone_codes vs the network request body",
-      "mitigated": true,
-      "how": "The component re-renders with new filters before the new searchKey resolves; SWR uses the latest options object at resolution time (options are read per-request, not frozen at mount). keepPreviousData only affects data, not the onSuccess callback identity."
+      "scenario": "verify_interest upsert key is (email, source), so a user who saves one search and later saves a different filter set silently overwrites their previous saved search context",
+      "what_happens": "The address column keeps only the most recent filter URL per email, losing the earlier saved search without telling the user anything",
+      "repro": "Submit the form twice with the same email but different filters, then inspect the verify_interest row for that email and source",
+      "mitigated": false,
+      "how": "Accepted for launch: the lead (email + latest interest) is the asset, not a full saved-search history; a real saved-search feature would need its own table and is out of scope"
     },
     {
-      "scenario": "PostHog not initialised (e.g. NEXT_PUBLIC_POSTHOG_KEY missing in an environment, or capture called before provider init)",
-      "what_happens": "posthog-js queues or no-ops captures before init; no crash, but events from that window may be dropped",
-      "repro": "Unset the PostHog key in a preview deployment and run a search",
+      "scenario": "A bot or hostile client bypasses the client-side regex and posts garbage emails directly, or hammers the form to spam the Resend notification inbox",
+      "what_happens": "Junk rows accumulate in verify_interest and each one emails info@plotdetect.com.au, polluting the lead list this feature exists to build",
+      "repro": "curl -X POST /api/verify-interest with a syntactically valid but fake email in a loop from one IP",
       "mitigated": true,
-      "how": "posthog-js buffers pre-init captures internally; identical exposure to the 7 existing track* calls already in production (address_search etc.) — no new failure mode introduced"
+      "how": "Server re-validates with the same EMAIL_REGEX and returns 400; the (email, source) ON CONFLICT upsert deduplicates repeats, capping rows and limiting notification spam per unique email"
     },
     {
-      "scenario": "Event double-fires on revalidation, inflating search counts vs real user actions",
-      "what_happens": "Funnel step counts would overstate engagement, corrupting the launch metrics this exists to measure",
-      "repro": "Switch tabs away and back, or trigger a focus revalidation",
+      "scenario": "User submits while a filter change is in flight, so the captured filterQuery prop reflects the previous render rather than what the user believes they saved",
+      "what_happens": "The stored /prospector URL would reproduce slightly different results than the table the user was looking at when they submitted",
+      "repro": "Click a filter checkbox and submit the email form in the same instant, then compare the stored address URL to the final page URL",
       "mitigated": true,
-      "how": "revalidateOnFocus is false and shouldRetryOnError is false on this hook, so onSuccess fires exactly once per completed search (landing + each filter change) — which is the intended definition of the event"
+      "how": "filterQuery is derived from the same URL-backed filters object that drives the visible results table, and React renders both from one state pass, so prop and table can only diverge within a single frame"
+    },
+    {
+      "scenario": "PostHog capture throws or the analytics module fails to load after the API call already succeeded",
+      "what_happens": "The lead is stored but the funnel undercounts conversions, making channels look worse than they are in the launch scoreboard",
+      "repro": "Block app.posthog.com in devtools network conditions and submit a valid email on the preview deployment",
+      "mitigated": true,
+      "how": "Success state is set before the track call, so the user experience never degrades; posthog-js buffers or drops silently rather than throwing, and the verify_interest GET endpoint remains the source of truth for lead counts"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A — no database involvement",
-    "secrets": "None — uses the existing NEXT_PUBLIC_POSTHOG_KEY already configured in Vercel",
-    "other_repo": "N/A — frontend-nextjs only",
-    "manual_verify": "After deploy, run one search on /prospector in production and confirm a 'prospector_search' event with correct lga/result_count appears in PostHog Activity; then build the pageview -> prospector_search funnel insight"
+    "db_reset": "N/A — no schema changes; rows accumulate in the existing verify_interest table under source='prospector'",
+    "secrets": "None added — endpoint already uses RESEND_API_KEY and existing Supabase/Upstash env vars configured in Vercel",
+    "other_repo": "N/A — frontend-nextjs only, no cross-repo impact",
+    "manual_verify": "On the preview deployment submit a real email on /prospector, confirm the success state, the info@plotdetect.com.au notification email, the verify_interest row with source='prospector' and the filter URL in address, and a prospector_email_capture event in PostHog Activity"
   }
 }
