@@ -57,7 +57,19 @@ jobs:
       - name: Validate QA report
         run: |
           if [ -f .qa_report.json ]; then
-            python scripts/qa_gate.py .qa_report.json
+            # Feed the PR diff so qa_gate runs diff-coverage, unguarded-query
+            # and null-guard scans — not just structural validation.
+            if [ -n "${{ github.base_ref }}" ]; then
+              DIFF_FILES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+            else
+              DIFF_FILES=$(git diff --name-only HEAD~1 HEAD)
+            fi
+            if [ -n "$DIFF_FILES" ]; then
+              # shellcheck disable=SC2086
+              python scripts/qa_gate.py .qa_report.json --project-dir . --diff-files $DIFF_FILES
+            else
+              python scripts/qa_gate.py .qa_report.json --project-dir .
+            fi
           else
             echo "WARNING: No .qa_report.json found"
             echo "Non-trivial PRs require a QA report."
