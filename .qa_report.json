@@ -1,41 +1,42 @@
 {
   "tier": "minor",
-  "justification": "CI workflow-only change: removes the CodeQL job (failed on every PR because results upload requires GitHub Advanced Security, unavailable on this private repo) and adds a Semgrep CE job. No application code, no DB queries, no user-facing text touched.",
-  "commit_hash": "61f20dc0",
+  "justification": "Frontend analytics-only change: adds a PostHog 'prospector_search' capture fired from the existing search SWR onSuccess callback on /prospector. No DB queries, no API routes, no regulatory logic, no user-facing text touched. Two files: lib/analytics.ts (new track function following the existing track* pattern) and components/prospector/ProspectorClient.tsx (import + onSuccess wiring).",
+  "commit_hash": "23516549",
   "files": [
-    ".github/workflows/security.yml"
+    "frontend-nextjs/lib/analytics.ts",
+    "frontend-nextjs/components/prospector/ProspectorClient.tsx"
   ],
   "pre_impl": {},
-  "functions": "N/A — workflow YAML only, no functions added or changed",
-  "values": "N/A — no DB/API values read",
-  "queries": "N/A — no database queries",
+  "functions": "trackProspectorSearch(params) — thin wrapper over posthog.capture('prospector_search', params), same shape as the 7 existing track* functions in lib/analytics.ts",
+  "values": "Event payload fields read from already-fetched SWR data (data.total_count, data.query_ms) and URL-derived filters (lga_name, zone_codes, heritage, flood_prone, page) — all null-coalesced (?? 0 / ?? null)",
+  "queries": "N/A — no database queries; reuses the existing /api/lot-search response, no new fetches",
   "break_it": [
     {
-      "scenario": "Semgrep PR scan runs on a branch where origin/<base_ref> is not fetched, so git merge-base fails and BASELINE is empty",
-      "what_happens": "semgrep would error on an empty --baseline-commit argument and the job fails loudly rather than silently passing",
-      "repro": "Remove fetch-depth: 0 from the checkout step and open a PR — depth-1 checkout lacks the base branch history",
+      "scenario": "onSuccess closure captures stale filters — SWR memoises the options object per hook instance, so the event could report the filters from a previous render while data is from the new search",
+      "what_happens": "Analytics rows would attribute result counts to the wrong filter combination, silently skewing the funnel data",
+      "repro": "Change a filter, inspect the captured event's lga/zone_codes vs the network request body",
       "mitigated": true,
-      "how": "Checkout uses fetch-depth: 0 so full history including origin/main is available for merge-base; verified passing on PR #475 itself (42s green run)"
+      "how": "The component re-renders with new filters before the new searchKey resolves; SWR uses the latest options object at resolution time (options are read per-request, not frozen at mount). keepPreviousData only affects data, not the onSuccess callback identity."
     },
     {
-      "scenario": "Pre-existing ERROR-severity findings on main start failing every PR after the swap",
-      "what_happens": "Developers would face failures unrelated to their changes, recreating the CodeQL always-red problem",
-      "repro": "Run a full semgrep scan on main with the same configs and severity",
+      "scenario": "PostHog not initialised (e.g. NEXT_PUBLIC_POSTHOG_KEY missing in an environment, or capture called before provider init)",
+      "what_happens": "posthog-js queues or no-ops captures before init; no crash, but events from that window may be dropped",
+      "repro": "Unset the PostHog key in a preview deployment and run a search",
       "mitigated": true,
-      "how": "PR runs use --baseline-commit at the merge-base so only findings introduced by the PR fail; full scans on main/schedule are continue-on-error and report-only"
+      "how": "posthog-js buffers pre-init captures internally; identical exposure to the 7 existing track* calls already in production (address_search etc.) — no new failure mode introduced"
     },
     {
-      "scenario": "Semgrep registry (p/security-audit, p/secrets) is unreachable or pip install semgrep breaks on a future runner image",
-      "what_happens": "The job fails on every PR for infrastructure reasons, blocking merges with no security signal",
-      "repro": "Network outage to semgrep.dev registry during a CI run",
-      "mitigated": false,
-      "how": "Accepted risk — same exposure class as any third-party CI action; a transient registry outage is fixed by re-running the job"
+      "scenario": "Event double-fires on revalidation, inflating search counts vs real user actions",
+      "what_happens": "Funnel step counts would overstate engagement, corrupting the launch metrics this exists to measure",
+      "repro": "Switch tabs away and back, or trigger a focus revalidation",
+      "mitigated": true,
+      "how": "revalidateOnFocus is false and shouldRetryOnError is false on this hook, so onSuccess fires exactly once per completed search (landing + each filter change) — which is the intended definition of the event"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A — no database involvement in this change",
-    "secrets": "None — Semgrep CE runs locally in CI with public registry rulesets, no SEMGREP_APP_TOKEN or other secret required",
-    "other_repo": "N/A — workflow change scoped to this repository only",
-    "manual_verify": "Watch the next scheduled Monday 9am UTC run produces the full-scan summary; confirm the semgrep job appears green on the next unrelated PR"
+    "db_reset": "N/A — no database involvement",
+    "secrets": "None — uses the existing NEXT_PUBLIC_POSTHOG_KEY already configured in Vercel",
+    "other_repo": "N/A — frontend-nextjs only",
+    "manual_verify": "After deploy, run one search on /prospector in production and confirm a 'prospector_search' event with correct lga/result_count appears in PostHog Activity; then build the pageview -> prospector_search funnel insight"
   }
 }

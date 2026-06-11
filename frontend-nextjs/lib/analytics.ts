@@ -51,6 +51,20 @@ export const trackZoneInfoView = (zone: string, council: string) => {
   });
 };
 
+// Track prospector bulk lot search execution (fires per successful search,
+// i.e. on landing and on each filter change — funnel step after pageview)
+export const trackProspectorSearch = (params: {
+  lga: string;
+  zone_codes: string[];
+  has_heritage_filter: boolean;
+  has_flood_filter: boolean;
+  result_count: number;
+  query_ms: number | null;
+  page: number;
+}) => {
+  posthog.capture('prospector_search', params);
+};
+
 // Track SEO funnel page CTA click
 export const trackFunnelCta = (page: string, cta: string, destination: string) => {
   posthog.capture('funnel_cta_click', {

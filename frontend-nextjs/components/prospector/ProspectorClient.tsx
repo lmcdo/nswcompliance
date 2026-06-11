@@ -10,6 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { AlertCircle } from 'lucide-react';
 
+import { trackProspectorSearch } from '@/lib/analytics';
 import { FilterPanel } from '@/components/prospector/FilterPanel';
 import { ResultsTable } from '@/components/prospector/ResultsTable';
 import { SummaryDashboard } from '@/components/prospector/SummaryDashboard';
@@ -116,6 +117,20 @@ export default function ProspectorClient() {
     keepPreviousData: true,
     revalidateOnFocus: false,
     shouldRetryOnError: false,
+    // PostHog funnel step: pageview -> prospector_search -> (capture).
+    // onSuccess fires once per completed search (landing + each filter change);
+    // revalidateOnFocus is off so it does not double-fire on tab switches.
+    onSuccess: (data) => {
+      trackProspectorSearch({
+        lga: filters.lga_name,
+        zone_codes: filters.zone_codes,
+        has_heritage_filter: filters.heritage !== null,
+        has_flood_filter: filters.flood_prone !== null,
+        result_count: data.total_count ?? 0,
+        query_ms: data.query_ms ?? null,
+        page: filters.page,
+      });
+    },
   });
   const summary = useSWR<SummaryResponse>(summaryKey, postFetcher, {
     keepPreviousData: true,
