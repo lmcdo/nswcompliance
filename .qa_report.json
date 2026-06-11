@@ -1,153 +1,41 @@
 {
-  "tier": "standard",
-  "justification": "New /prospector UI page (5 components + filter-params lib + 2 test files) over the existing rate-limited lot-search API, plus two build fixes: usePathname null guard and pre-existing flood-truth-report footer prop mismatch. No DB writes, no existing data modified, read-only POST to existing endpoint.",
-  "commit_hash": "9f4c2e20",
+  "tier": "minor",
+  "justification": "CI workflow-only change: removes the CodeQL job (failed on every PR because results upload requires GitHub Advanced Security, unavailable on this private repo) and adds a Semgrep CE job. No application code, no DB queries, no user-facing text touched.",
+  "commit_hash": "61f20dc0",
   "files": [
-    "frontend-nextjs/app/prospector/page.tsx",
-    "frontend-nextjs/components/prospector/ProspectorClient.tsx",
-    "frontend-nextjs/components/prospector/FilterPanel.tsx",
-    "frontend-nextjs/components/prospector/ResultsTable.tsx",
-    "frontend-nextjs/components/prospector/SummaryDashboard.tsx",
-    "frontend-nextjs/lib/prospector/filter-params.ts",
-    "frontend-nextjs/lib/pdf/flood-truth-report.tsx",
-    "frontend-nextjs/__tests__/prospector/filter-params.test.ts",
-    "frontend-nextjs/__tests__/prospector/prospector-client.test.tsx",
-    "frontend-nextjs/app/api/lot-search/route.ts"
+    ".github/workflows/security.yml"
   ],
-  "pre_impl": {
-    "existing_data": "UI reads lot_search_index exclusively through the existing /api/lot-search Next.js route (Zod-validated, rate limited 20 per 60s, 10s statement timeout). No new queries, no schema changes, no writes anywhere in this PR.",
-    "assumption_mismatch": "Request bodies were verified field-by-field against the route's Zod schema on main: limit 50 within 1-500 cap, min_dwellings integer >=1, order_by restricted to the whitelisted column set, tri-state booleans omitted when indeterminate.",
-    "new_vs_existing": "All five components and the filter-params lib are new files under prospector/ namespaces; the only existing files touched are flood-truth-report.tsx (one footer prop shape fix to unblock the main build) and the shared test setup, so regression surface is the PDF footer render only."
-  },
-  "functions": [
-    {
-      "name": "parseFilters",
-      "file_line": "frontend-nextjs/lib/prospector/filter-params.ts:88",
-      "purpose": "Parses URL search params into typed ProspectorFilters with positive-number and tri-state guards so shared URLs cannot inject invalid API values",
-      "input": "URLSearchParams from the shared or refreshed page URL",
-      "output": "Typed ProspectorFilters object with nulls for absent or invalid params",
-      "if_none": "Empty params object yields DEFAULT_FILTERS so the page renders the unfiltered Inner West result set"
-    },
-    {
-      "name": "serializeFilters",
-      "file_line": "frontend-nextjs/lib/prospector/filter-params.ts:123",
-      "purpose": "Inverse of parseFilters; round-trip tested so browser back/forward and shared links reproduce identical search state",
-      "input": "ProspectorFilters state object after a user filter interaction",
-      "output": "URLSearchParams containing only non-default fields for a clean shareable URL",
-      "if_none": "Default filters serialize to an empty query string and router.push uses bare pathname"
-    },
-    {
-      "name": "buildSearchBody",
-      "file_line": "frontend-nextjs/lib/prospector/filter-params.ts:181",
-      "purpose": "Maps UI filter state to the exact Zod request shape including page-to-offset conversion and omission of empty fields",
-      "input": "ProspectorFilters plus page number for offset pagination",
-      "output": "JSON body matching the route Zod schema with limit 50 and computed offset",
-      "if_none": "Missing optional fields are omitted entirely rather than sent as null, which Zod would reject"
-    },
-    {
-      "name": "applyFilters",
-      "file_line": "frontend-nextjs/components/prospector/ProspectorClient.tsx:65",
-      "purpose": "Pushes filter state into the URL via router.push with null-guarded pathname (build fix) so state survives refresh and sharing",
-      "input": "Next ProspectorFilters object from updateFilters merge",
-      "output": "router.push call updating the URL without scroll reset",
-      "if_none": "Null pathname (pre-fix crash) now falls back to /prospector so navigation never receives null"
-    },
-    {
-      "name": "postFetcher",
-      "file_line": "frontend-nextjs/components/prospector/ProspectorClient.tsx:32",
-      "purpose": "SWR fetcher for POST bodies; paired with shouldRetryOnError false on all three hooks so a 429 from the rate limiter is not amplified by retries",
-      "input": "Tuple of url and JSON body string used as the SWR cache key",
-      "output": "Parsed JSON response typed as SearchResponse or SummaryResponse",
-      "if_none": "Non-OK response throws with the API error message which SWR exposes as hook error for the banner"
-    }
-  ],
-  "values": [
-    {
-      "name": "shouldRetryOnError=false",
-      "where": "ProspectorClient.tsx:115-128",
-      "why": "SWR default exponential backoff would re-POST after a 429 and keep the user rate-limited; surfaced error banner instead",
-      "value": "false on search, summary and options hooks",
-      "read_at": "ProspectorClient.tsx:115-128 SWR config objects",
-      "if_missing": "Default SWR retry re-POSTs after 429 responses and keeps the user inside the rate limit window indefinitely"
-    },
-    {
-      "name": "pathname ?? '/prospector'",
-      "where": "ProspectorClient.tsx:53",
-      "why": "usePathname types as string|null under this Next version; null fallback fixes the Vercel compile failure on line 68",
-      "value": "usePathname() ?? '/prospector'",
-      "read_at": "ProspectorClient.tsx:53 component body",
-      "if_missing": "tsc fails with TS2322 string|null not assignable, which is the exact Vercel build failure this PR fixes"
-    },
-    {
-      "name": "Indicative GFA labels",
-      "where": "FilterPanel.tsx:281, SummaryDashboard.tsx:102-106",
-      "why": "Renamed from Realistic GFA before public launch \u2014 realistic implies an achievability claim the liability framework prohibits",
-      "value": "Indicative GFA wording",
-      "read_at": "FilterPanel.tsx:281 and SummaryDashboard.tsx:102-106 labels",
-      "if_missing": "Realistic GFA implies an achievability claim that conflicts with the liability language framework before public launch"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Search POST to /api/lot-search with filters, pagination offset and whitelisted order_by",
-      "guards": "Zod schema on route plus client-side positive-number parsing; limit capped at 500 server-side",
-      "file_line": "frontend-nextjs/components/prospector/ProspectorClient.tsx:95",
-      "where_clause": "Server-side Zod validation plus lga_name filter; client never constructs SQL"
-    },
-    {
-      "purpose": "Summary POST with summary=true returning aggregate stats for the dashboard cards",
-      "guards": "Same rate limiter bucket; keepPreviousData avoids blank flicker between filter changes",
-      "file_line": "frontend-nextjs/components/prospector/ProspectorClient.tsx:101",
-      "where_clause": "Same validated filter body with summary=true; aggregates computed server-side only"
-    },
-    {
-      "purpose": "Options POST with default filters per LGA so zone and binding constraint lists do not shrink as filters apply",
-      "guards": "revalidateIfStale false caches the option lists for the session",
-      "file_line": "frontend-nextjs/components/prospector/ProspectorClient.tsx:107",
-      "where_clause": "DEFAULT_FILTERS scoped to lga_name only so option lists cover the whole LGA"
-    }
-  ],
+  "pre_impl": {},
+  "functions": "N/A — workflow YAML only, no functions added or changed",
+  "values": "N/A — no DB/API values read",
+  "queries": "N/A — no database queries",
   "break_it": [
     {
-      "scenario": "User changes filters rapidly: each change fires search plus summary POSTs, ~10 interactions exhaust the 20 per 60s rate limiter and every request returns 429",
-      "what_happens": "Error banner renders from search.error or summary.error; with shouldRetryOnError false SWR does not re-POST, so the budget recovers after the window instead of being consumed by retries",
-      "mitigated": "Mitigated in this PR via SWR config",
-      "how": "shouldRetryOnError false on all three SWR hooks; error banner shows the API message instead of retry storms",
-      "repro": "UI action: toggle heritage tri-state and zone checkboxes 12 times within 60 seconds on the preview deploy, watch network tab fill with 429s"
+      "scenario": "Semgrep PR scan runs on a branch where origin/<base_ref> is not fetched, so git merge-base fails and BASELINE is empty",
+      "what_happens": "semgrep would error on an empty --baseline-commit argument and the job fails loudly rather than silently passing",
+      "repro": "Remove fetch-depth: 0 from the checkout step and open a PR — depth-1 checkout lacks the base branch history",
+      "mitigated": true,
+      "how": "Checkout uses fetch-depth: 0 so full history including origin/main is available for merge-base; verified passing on PR #475 itself (42s green run)"
     },
     {
-      "scenario": "Shared URL contains page=99999 or a negative area bound crafted by hand",
-      "what_happens": "parsePositiveNumber and parsePositiveInt drop invalid values to null; huge page yields an offset query the 10s statement timeout backstops and the table shows the empty state",
-      "mitigated": "Mitigated by client-side parse guards and server caps",
-      "how": "parsePositiveNumber/parsePositiveInt null invalid input; server caps limit at 500 and statement timeout backstops large offsets",
-      "repro": "UI action: open /prospector?page=99999&min_area=-5 in the browser and observe empty-state table without console errors"
+      "scenario": "Pre-existing ERROR-severity findings on main start failing every PR after the swap",
+      "what_happens": "Developers would face failures unrelated to their changes, recreating the CodeQL always-red problem",
+      "repro": "Run a full semgrep scan on main with the same configs and severity",
+      "mitigated": true,
+      "how": "PR runs use --baseline-commit at the merge-base so only findings introduced by the PR fail; full scans on main/schedule are continue-on-error and report-only"
     },
     {
-      "scenario": "Summary endpoint returns zone_distribution rows with null zone_code for lots missing zoning data",
-      "what_happens": "zoneOptions filter predicate (z is string, ProspectorClient.tsx:131) removes nulls before sort, so the filter dropdown never renders a blank option that would serialize as an empty zone_codes entry",
-      "mitigated": "Mitigated by the type-guard filter predicate",
-      "how": "type-guard filter predicate strips null zone codes before sorting the dropdown options",
-      "repro": "curl -s -X POST /api/lot-search -d '{\"lga_name\":\"INNER WEST\",\"limit\":1}' with summary=true and inspect zone_distribution for null zone_code rows"
-    },
-    {
-      "scenario": "Flood Truth refused-report page renders the footer with the old page/total prop names after the PDF component API changed",
-      "what_happens": "Previously a silent TS2322 build failure on main blocking every Vercel deploy; now passes reportName plus pageNum matching PlotDetectFooter's signature, verified by tsc zero errors",
-      "mitigated": "Mitigated by the footer prop fix in this PR",
-      "how": "footer call updated to reportName/pageNum prop names; tsc --noEmit now reports zero errors",
-      "repro": "npx tsc --noEmit in frontend-nextjs before the fix reproduces TS2322 at lib/pdf/flood-truth-report.tsx:471"
-    },
-    {
-      "scenario": "Statewide build lands and an LGA has more than 20 distinct zone codes while the options call still serves the LIMIT 20 zone_distribution",
-      "what_happens": "Zone filter silently omits less common zones \u2014 documented as a known follow-up in the launch plan; not fixed here because route.ts aggregation belongs to a separate API change",
-      "mitigated": "Not mitigated here \u2014 tracked as post-merge follow-up",
-      "repro": "After statewide build: POST summary=true for lga_name BLACKTOWN and count zone_distribution rows against SELECT COUNT(DISTINCT zone_code) for that LGA",
-      "how": "Deliberately deferred: requires route.ts aggregation change; recorded in post_merge and the launch plan fix list"
+      "scenario": "Semgrep registry (p/security-audit, p/secrets) is unreachable or pip install semgrep breaks on a future runner image",
+      "what_happens": "The job fails on every PR for infrastructure reasons, blocking merges with no security signal",
+      "repro": "Network outage to semgrep.dev registry during a CI run",
+      "mitigated": false,
+      "how": "Accepted risk — same exposure class as any third-party CI action; a transient registry outage is fixed by re-running the job"
     }
   ],
   "post_merge": {
-    "db_reset": "No database changes in this PR; statement_timeout reset and compute downgrade are tracked separately in the statewide build runbook",
-    "secrets": "No new env vars, keys, or secrets introduced; UI calls the same-origin API route only",
-    "other_repo": "No other repository affected; EnvelopeView and monitor repos untouched by this change",
-    "manual_verify": "Open Vercel preview /prospector, run three searches per launch gate G1, confirm 429 shows banner without retry storm, and check the flood truth refused-report PDF footer renders"
+    "db_reset": "N/A — no database involvement in this change",
+    "secrets": "None — Semgrep CE runs locally in CI with public registry rulesets, no SEMGREP_APP_TOKEN or other secret required",
+    "other_repo": "N/A — workflow change scoped to this repository only",
+    "manual_verify": "Watch the next scheduled Monday 9am UTC run produces the full-scan summary; confirm the semgrep job appears green on the next unrelated PR"
   }
 }
