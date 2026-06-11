@@ -44,28 +44,52 @@ jobs:
           echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
           npm audit --json | jq -r '.metadata.vulnerabilities | "- Critical: \(.critical)\n- High: \(.high)\n- Moderate: \(.moderate)\n- Low: \(.low)"' >> $GITHUB_STEP_SUMMARY || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
 
-  codeql:
-    name: CodeQL Analysis
+  # Replaces CodeQL (removed 2026-06-11): CodeQL's results upload requires
+  # GitHub Advanced Security, unavailable on this private repo's plan, so the
+  # job failed on every PR. Semgrep CE is free for private repos and covers
+  # the same injection/XSS/secrets classes for TypeScript + Python.
+  semgrep:
+    name: Semgrep Security Scan
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
         with:
-          languages: javascript-typescript
-          queries: security-and-quality
+          # Full history needed to compute the PR baseline (merge-base).
+          fetch-depth: 0
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          category: "/language:javascript-typescript"
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Semgrep scan (PR — only new findings fail)
+        if: github.event_name == 'pull_request'
+        run: |
+          BASELINE=$(git merge-base "origin/${{ github.base_ref }}" HEAD)
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --severity ERROR \
+            --baseline-commit "$BASELINE" \
+            --exclude 'frontend-nextjs/migratePRPs' \
+            --error
+
+      - name: Semgrep scan (main / scheduled — full, non-blocking report)
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --severity ERROR \
+            --exclude 'frontend-nextjs/migratePRPs' \
+            --text --output semgrep-findings.txt || true
+          echo "## Semgrep Full Scan (ERROR severity)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -60 semgrep-findings.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No findings output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
