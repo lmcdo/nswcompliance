@@ -192,6 +192,53 @@ Assumptions kept conservative; tune with real data.
 
 ---
 
+## 7A. Paid-data (Geoscape) cost structure — and the rule that protects margin
+
+The §7 economics above assumed free-data products (Planning Portal + free imagery). The data
+verification (June 2026) showed that to make the **footprint / structure-height / setback** signals
+work **per-property and statewide** — i.e. to lift Product B's "change with no matching approval"
+flag and the overshadowing/envelope add-on above the ~12-LGA limit — we need **Geoscape Buildings +
+Building Height Insight Pack** (footprint polygon, area m², roof + eave height as attributes). This
+is the one paid input that materially moves COGS, so the GTM is structured around its price shape.
+
+### Geoscape cost shape (the numbers that drive the design)
+- **Fixed floor:** Team plan ≈ **$300/mo (~$3,600/yr)**. Buildings + height not on the free tier.
+- **Marginal:** ≈ **$0.12 per address** (≈12 credits × $0.01) for a footprint+height lookup.
+- **Free allowance:** ~**1,666 lookups/mo** included before marginal credits bite.
+
+### The margin-protection rule (non-negotiable for the funnel)
+> **Never call Geoscape on free traffic.** The free Snapshot (§2) runs on free data only
+> (Planning Portal zone/height/flood/bushfire + free imagery teaser). The paid Geoscape lookup
+> fires **only at the moment of a paid Product B unlock** (or a paid overshadowing add-on).
+
+This keeps Geoscape COGS **proportional to revenue, not to traffic**. Because the free Snapshot is
+also the SEO/ad/widget engine that draws large non-converting volume, calling Geoscape there would
+burn the $0.12 against visitors who never pay and could blow the fixed floor for nothing.
+
+### Revised unit economics (Product B with Geoscape at paid-unlock only)
+- A B report needs the subject building **±a few neighbours** (overshadowing/setback context) →
+  ~3–6 Geoscape lookups → **~$0.40–$0.70 data COGS per paid report**.
+- B contribution: **$99 − (~$5 cloud/QA + ~$0.70 Geoscape) ≈ ~$93** (was ~$94). **Per-report
+  impact is negligible.** The binding constraint is the **$300/mo fixed floor**, not marginal cost.
+- **Break-even on the floor:** ~**4 partner-net B reports/mo** ($64 net each) covers the $300 Team
+  plan. Anything above that, Geoscape is free margin.
+- **Free gov remedies carry the rest at $0 COGS** and are not gated by Geoscape: ARR/BoM IFD
+  (extreme rainfall), NSW RFS Bush Fire Prone Land MapServer (bushfire), NSW Spatial Digital Twin
+  "EPI Height of Building" layer (neighbour max-height for overshadowing). The per-property
+  **climate/insurance** layer (Product C) is a **third-party reseller pass-through (XDI/Climate
+  Valuation)** — its fee is recovered inside the +$29 add-on price, never on the free tier.
+
+### Phasing implication
+- **Phase 0:** build/test on the Geoscape **free tier (1,666/mo)** — do **not** switch on the Team
+  plan yet. Validate the footprint+height lookup against known addresses within the free allowance.
+- **Phase 1:** switch on the **$300/mo Team plan only once paid B volume clears the ~4-report/mo
+  floor** (the Phase-1 gate already requires 50 paid reports — well past floor). Until then the
+  fixed cost is deferred.
+- **Always:** Geoscape spend is a **variable tied to paid conversions** — it scales down if sales
+  slow, so it can never become an un-recoverable fixed burn.
+
+---
+
 ## 8. Phased rollout — manageable & extendable
 
 Each phase has a **gate**: don't start the next until the gate is met. This keeps it runnable by a
@@ -200,7 +247,8 @@ small team and prevents over-building.
 ### Phase 0 — Foundation (Weeks 1–4)
 - Ship the **free Snapshot** with the conditional teaser (front of every channel).
 - Stand up **Product B checkout** end-to-end (pipeline exists; add the "change with no matching
-  approval" reconciliation flag + consumer framing).
+  approval" reconciliation flag + consumer framing). Wire the **Geoscape footprint+height lookup to
+  fire only on paid unlock** (§7A rule); test on the Geoscape **free tier** — Team plan stays off.
 - Write the **partner one-pager + standard 30% rev-share agreement** + embeddable widget snippet.
 - **Gate:** 20 real Snapshots generated; B report renders correctly for 10 known addresses.
 
@@ -253,6 +301,9 @@ science required, only integration and distribution.
 - **Source + date on every fact; flag uncertainty** rather than smoothing it.
 - Partner agreements: standard revenue-share template, GST-inclusive pricing, clear data-use
   terms.
+- **Paid data (Geoscape/XDI) only on paid conversions** (§7A) — never on free Snapshot traffic, so
+  data COGS stays proportional to revenue. Respect each vendor's licence/attribution terms; confirm
+  resale rights before switching on the Team/reseller tier.
 
 ---
 
