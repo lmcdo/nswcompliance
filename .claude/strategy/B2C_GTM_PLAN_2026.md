@@ -201,10 +201,27 @@ flag and the overshadowing/envelope add-on above the ~12-LGA limit — we need *
 Building Height Insight Pack** (footprint polygon, area m², roof + eave height as attributes). This
 is the one paid input that materially moves COGS, so the GTM is structured around its price shape.
 
-### Geoscape cost shape (the numbers that drive the design)
-- **Fixed floor:** Team plan ≈ **$300/mo (~$3,600/yr)**. Buildings + height not on the free tier.
-- **Marginal:** ≈ **$0.12 per address** (≈12 credits × $0.01) for a footprint+height lookup.
-- **Free allowance:** ~**1,666 lookups/mo** included before marginal credits bite.
+### Geoscape cost shape (confirmed from Hub Subscription screen + credit table, June 2026)
+- **Free:** $0/mo, **20,000 credits/mo, NO overage** (hard cut-off; confirmed in-account). At 12
+  credits/building that's **~1,666 building lookups/mo** — build/test only, see licence below.
+- **Team:** **$300/mo** (or $3,300/yr), **30,000 credits/mo**, overage **$0.015/credit** (incl GST).
+- **Pro:** $1,000/mo, 100,000 credits/mo, overage $0.012/credit.
+- **Per-building cost:** Building Footprint **8 credits** + Building Height **4 credits** = **12
+  credits/building** (same via Clip or Buildings API v2 + `heightsAndRoofs` add-on). At Team overage
+  that's **~$0.18/address**; the 30,000 included credits cover **~2,500 buildings/mo before any
+  overage**.
+
+### Licence — the decisive finding (Geoscape General Terms of Use v2.0, July 2025)
+- **Free is NOT a commercial licence.** The cheapest tier that supports selling is **Team ($300/mo)**.
+- **You MAY** sell a **derived report delivered through your own App/service** — cl. 16.2(b) lets end
+  users use Geoscape Data and Derived Material; our reports surface *derived* facts (e.g. "structure
+  footprint ~X m², height ~Y m"), not raw data dumps.
+- **You MAY NOT** resell, distribute, sublicense, or make Geoscape data/APIs available **on a
+  standalone basis** (cl. 16.2(a)), nor redistribute Hub access commercially (cl. 7.2(g)). So: never
+  expose raw Geoscape records or a "download the data" path to customers — only derived findings.
+- **Currency:** Building Height Insight Pack refreshes **quarterly (Mar/Jun/Sep/Dec), national incl
+  NSW.** Quarterly refresh is materially better than free LiDAR (often years stale) for catching
+  *recent* structures — relevant to Product B's change-detection. (No published per-suburb vintage.)
 
 ### The margin-protection rule (non-negotiable for the funnel)
 > **Never call Geoscape on free traffic.** The free Snapshot (§2) runs on free data only
@@ -213,15 +230,16 @@ is the one paid input that materially moves COGS, so the GTM is structured aroun
 
 This keeps Geoscape COGS **proportional to revenue, not to traffic**. Because the free Snapshot is
 also the SEO/ad/widget engine that draws large non-converting volume, calling Geoscape there would
-burn the $0.12 against visitors who never pay and could blow the fixed floor for nothing.
+burn credits against visitors who never pay and could blow the monthly allowance for nothing.
 
 ### Revised unit economics (Product B with Geoscape at paid-unlock only)
 - A B report needs the subject building **±a few neighbours** (overshadowing/setback context) →
-  ~3–6 Geoscape lookups → **~$0.40–$0.70 data COGS per paid report**.
-- B contribution: **$99 − (~$5 cloud/QA + ~$0.70 Geoscape) ≈ ~$93** (was ~$94). **Per-report
-  impact is negligible.** The binding constraint is the **$300/mo fixed floor**, not marginal cost.
-- **Break-even on the floor:** ~**4 partner-net B reports/mo** ($64 net each) covers the $300 Team
-  plan. Anything above that, Geoscape is free margin.
+  ~3–6 buildings → ~36–72 credits → **within Team's 30,000 included credits, ~400–800 B reports/mo
+  carry $0 marginal cost**; beyond that, overage is **~$0.54–$1.08/report**.
+- B contribution: **$99 − (~$5 cloud/QA + ≤~$1 Geoscape) ≈ ~$93** (was ~$94). **Per-report impact
+  negligible.** Binding constraint is the **$300/mo Team floor**, not marginal cost.
+- **Break-even on the floor:** ~**5 partner-net B reports/mo** ($64 net each) covers the $300 Team
+  plan. Above that, Geoscape is effectively free margin until ~2,500 buildings/mo.
 - **Free gov remedies carry the rest at $0 COGS** and are not gated by Geoscape: ARR/BoM IFD
   (extreme rainfall), NSW RFS Bush Fire Prone Land MapServer (bushfire), NSW Spatial Digital Twin
   "EPI Height of Building" layer (neighbour max-height for overshadowing). The per-property
@@ -229,13 +247,13 @@ burn the $0.12 against visitors who never pay and could blow the fixed floor for
   Valuation)** — its fee is recovered inside the +$29 add-on price, never on the free tier.
 
 ### Phasing implication
-- **Phase 0:** build/test on the Geoscape **free tier (1,666/mo)** — do **not** switch on the Team
-  plan yet. Validate the footprint+height lookup against known addresses within the free allowance.
-- **Phase 1:** switch on the **$300/mo Team plan only once paid B volume clears the ~4-report/mo
-  floor** (the Phase-1 gate already requires 50 paid reports — well past floor). Until then the
-  fixed cost is deferred.
-- **Always:** Geoscape spend is a **variable tied to paid conversions** — it scales down if sales
-  slow, so it can never become an un-recoverable fixed burn.
+- **Phase 0:** build/test on the Geoscape **Free tier (20,000 credits ≈ 1,666 buildings/mo)** — do
+  **not** switch on Team yet, and do **not** sell off Free output (licence). Validate the
+  footprint+height lookup against known addresses within the free allowance.
+- **Phase 1:** switch on the **$300/mo Team plan before the first paid sale** (it is the minimum
+  commercial licence) — the Phase-1 gate (50 paid reports) clears the ~5-report/mo floor immediately.
+- **Always:** Geoscape spend stays a **variable tied to paid conversions** beyond the included
+  credits, so it can never become an un-recoverable fixed burn.
 
 ---
 
@@ -302,8 +320,10 @@ science required, only integration and distribution.
 - Partner agreements: standard revenue-share template, GST-inclusive pricing, clear data-use
   terms.
 - **Paid data (Geoscape/XDI) only on paid conversions** (§7A) — never on free Snapshot traffic, so
-  data COGS stays proportional to revenue. Respect each vendor's licence/attribution terms; confirm
-  resale rights before switching on the Team/reseller tier.
+  data COGS stays proportional to revenue.
+- **Geoscape licence (confirmed):** sell only **derived findings inside our own report/app** (cl.
+  16.2(b)); **never** expose raw Geoscape records or a data-download path, and **never** sell off the
+  Free tier (cl. 16.2(a)/7.2(g) — Team is the minimum commercial licence).
 
 ---
 
