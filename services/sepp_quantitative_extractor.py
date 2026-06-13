@@ -4,43 +4,21 @@ import re
 import json
 
 class SEPPQuantitativeExtractor:
-    """Extract quantitative requirements from SEPP provisions"""
+    """Extract quantitative requirements from SEPP provisions.
 
-    # Known SEPP clause mappings with quantitative values
-    SEPP_MAPPINGS = {
-        'SEPP_HOUSING_2021': {
-            '3.31': {
-                'title': 'Low-rise housing diversity',
-                'min_lot_size': 450,
-                'unit': 'sqm',
-                'context': 'minimum_lot_size'
-            },
-            '3.32': {
-                'title': 'Manor houses',
-                'min_lot_size': 600,
-                'unit': 'sqm',
-                'context': 'minimum_lot_size'
-            },
-            '3.33': {
-                'title': 'Terraces',
-                'min_lot_size': 300,
-                'unit': 'sqm',
-                'context': 'minimum_lot_size'
-            }
-        },
-        'SEPP_EXEMPT_2008': {
-            '2.1': {
-                'title': 'General development requirements',
-                'max_height': 3,
-                'unit': 'm',
-                'context': 'maximum_height'
-            }
-        }
-    }
+    Regulatory values (lot sizes, heights, floor areas) are NEVER hardcoded
+    here — they are read live from the authoritative ``housing_sepp_standards``
+    table, which carries ``source_clause``, ``legislation_url`` and
+    ``effective_date`` for provenance. SEPPs are amended regularly, so any
+    embedded numeric table would be wrong within months (see CLAUDE.md
+    "Regulatory Data — NEVER Hardcode"). When no standard is on file for a
+    clause, lookups return ``None`` so callers surface the absence rather than
+    a stale approximation.
+    """
 
     # Regex patterns for quantitative extraction
     EXTRACTION_PATTERNS = {
-        'lot_size': r'(\d+(?:\.\d+)?)\s*(?:square\s*metres?|sqm|m�|m2)',
+        'lot_size': r'(\d+(?:\.\d+)?)\s*(?:square\s*metres?|sqm|m�|m2)',
         'height': r'(\d+(?:\.\d+)?)\s*(?:metres?|m)\s*(?:high|height|above|maximum)',
         'setback': r'(\d+(?:\.\d+)?)\s*(?:metres?|m)\s*(?:setback|from)',
         'percentage': r'(\d+(?:\.\d+)?)\s*(?:%|percent|per\s*cent)',
@@ -88,30 +66,83 @@ class SEPPQuantitativeExtractor:
         return extractions
 
     def extract_from_sepp_clause(self, sepp_type: str, clause: str) -> Optional[Dict]:
-        """Extract known quantitative values from SEPP clause mappings"""
+        """Look up an authoritative SEPP standard for a clause from the DB.
 
-        if sepp_type in self.SEPP_MAPPINGS and clause in self.SEPP_MAPPINGS[sepp_type]:
-            clause_data = self.SEPP_MAPPINGS[sepp_type][clause]
+        Reads ``housing_sepp_standards`` (NOT a hardcoded table) and returns the
+        most recently effective standard whose ``source_clause`` matches the
+        requested clause. Returns ``None`` when the clause has no standard on
+        file or the DB is unavailable — never a fabricated regulatory value.
 
-            # Convert to standard format
-            if 'min_lot_size' in clause_data:
-                return {
-                    'measurement_context': 'minimum_lot_size',
-                    'numeric_value': clause_data['min_lot_size'],
-                    'unit': clause_data['unit'],
-                    'provision_text': clause_data['title'],
-                    'confidence': 1.0  # Known mappings have highest confidence
-                }
-            elif 'max_height' in clause_data:
-                return {
-                    'measurement_context': 'maximum_height',
-                    'numeric_value': clause_data['max_height'],
-                    'unit': clause_data['unit'],
-                    'provision_text': clause_data['title'],
-                    'confidence': 1.0
-                }
+        Args:
+            sepp_type: SEPP identifier (e.g. ``SEPP_HOUSING_2021``). Used to
+                scope the lookup to the matching ``source_document``.
+            clause: Legislative clause reference as it appears in the provision
+                (e.g. ``53(1)(b)``).
 
-        return None
+        Returns:
+            Dict with ``measurement_context``, ``numeric_value``, ``unit``,
+            ``confidence`` plus provenance (``source_clause``,
+            ``legislation_url``, ``effective_date``), or ``None``.
+        """
+        if not clause:
+            return None
+
+        # Map the SEPP identifier to the document name stored on each row so a
+        # clause from one SEPP cannot match an identically-numbered clause in
+        # another. Unknown identifiers fall through to a clause-only match.
+        doc_filter = None
+        if sepp_type and 'HOUSING' in sepp_type.upper():
+            doc_filter = '%(Housing)%'
+        elif sepp_type and ('EXEMPT' in sepp_type.upper() or 'CODES' in sepp_type.upper()):
+            doc_filter = '%(Exempt and Complying Development Codes)%'
+
+        try:
+            cursor = self.db.cursor()
+            if doc_filter:
+                cursor.execute(
+                    """
+                    SELECT standard_type, numeric_value, unit, source_clause,
+                           source_document, legislation_url, effective_date
+                    FROM housing_sepp_standards
+                    WHERE source_clause = %s
+                      AND source_document ILIKE %s
+                    ORDER BY effective_date DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    (clause, doc_filter),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT standard_type, numeric_value, unit, source_clause,
+                           source_document, legislation_url, effective_date
+                    FROM housing_sepp_standards
+                    WHERE source_clause = %s
+                    ORDER BY effective_date DESC NULLS LAST
+                    LIMIT 1
+                    """,
+                    (clause,),
+                )
+            row = cursor.fetchone()
+            cursor.close()
+        except Exception:
+            # DB unavailable — do not substitute an approximation.
+            return None
+
+        if not row:
+            return None
+
+        standard_type, numeric_value, unit, source_clause, source_document, legislation_url, effective_date = row
+        return {
+            'measurement_context': standard_type,
+            'numeric_value': float(numeric_value) if numeric_value is not None else None,
+            'unit': unit,
+            'provision_text': source_document,
+            'source_clause': source_clause,
+            'legislation_url': legislation_url,
+            'effective_date': effective_date.isoformat() if effective_date else None,
+            'confidence': 1.0,  # Authoritative DB value
+        }
 
     def extract_from_database_provisions(self, sepp_type: str, limit: int = 50) -> List[Dict]:
         """Extract quantitative values from SEPP provisions in database"""
@@ -203,11 +234,14 @@ class SEPPQuantitativeExtractor:
 if __name__ == "__main__":
     extractor = SEPPQuantitativeExtractor()
 
-    # Test known SEPP clause
-    print("Testing SEPP Housing 2021 clause 3.31:")
-    result = extractor.extract_from_sepp_clause('SEPP_HOUSING_2021', '3.31')
+    # Look up an authoritative SEPP standard by clause (value comes from the DB)
+    print("Looking up SEPP Housing 2021 clause 53(1)(b) (min lot for secondary dwelling):")
+    result = extractor.extract_from_sepp_clause('SEPP_HOUSING_2021', '53(1)(b)')
     if result:
         print(f"  Found: {result['numeric_value']} {result['unit']} for {result['measurement_context']}")
+        print(f"  Source: {result['source_clause']} — {result['legislation_url']} (effective {result['effective_date']})")
+    else:
+        print("  No standard on file for that clause (or DB unavailable).")
 
     # Test database extraction
     print("\nTesting database provision extraction:")
