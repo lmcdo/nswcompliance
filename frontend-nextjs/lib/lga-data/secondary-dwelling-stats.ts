@@ -5,7 +5,7 @@
  */
 
 /** ISO date string — when the stats were last generated from the Planning Portal */
-export const DATA_AS_OF = '2026-06-07'
+export const DATA_AS_OF = '2026-06-14'
 
 export interface YearlyStats {
   da_count: number
