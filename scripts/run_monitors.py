@@ -11,6 +11,7 @@ and sends Telegram alerts on failure.
 import os
 import subprocess
 import sys
+import traceback
 
 import requests
 
@@ -34,6 +35,22 @@ MONITORS = {
 }
 
 
+def send_telegram(msg: str) -> None:
+    """Best-effort crash report to Telegram."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": msg[:4000]},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
 def ping_healthcheck(url: str, failed: bool = False) -> None:
     """Ping healthchecks.io endpoint."""
     if not url:
@@ -46,13 +63,21 @@ def ping_healthcheck(url: str, failed: bool = False) -> None:
 
 
 def main() -> int:
+    # Diagnostic: log which env vars are set (names only, not values)
+    diag_keys = ["MONITOR_NAME", "DATABASE_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "HC_PING_URL"]
+    present = [k for k in diag_keys if os.environ.get(k)]
+    missing = [k for k in diag_keys if not os.environ.get(k)]
+    print(f"[run_monitors] Env present: {present}")
+    print(f"[run_monitors] Env missing: {missing}")
+
     monitor_name = os.environ.get("MONITOR_NAME", "").strip()
     if monitor_name not in MONITORS:
-        print(
+        msg = (
             f"Unknown MONITOR_NAME={monitor_name!r}. "
-            f"Expected one of: {', '.join(MONITORS)}",
-            file=sys.stderr,
+            f"Expected one of: {', '.join(MONITORS)}"
         )
+        print(msg, file=sys.stderr)
+        send_telegram(f"🚨 run_monitors: {msg}\nEnv missing: {missing}")
         return 1
 
     config = MONITORS[monitor_name]
@@ -66,8 +91,12 @@ def main() -> int:
         print("[run_monitors] Could not determine outbound IP")
 
     print(f"[run_monitors] Starting: {monitor_name}")
-    result = subprocess.run(config["cmd"], env=os.environ.copy())
+    result = subprocess.run(config["cmd"], env=os.environ.copy(), capture_output=True, text=True)
     exit_code = result.returncode
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr, file=sys.stderr)
 
     # Exit code 0 = healthy, 2 = degraded (still a "successful run" for heartbeat)
     failed = exit_code not in (0, 2)
@@ -75,6 +104,8 @@ def main() -> int:
 
     if failed:
         print(f"[run_monitors] {monitor_name} failed with exit code {exit_code}")
+        stderr_tail = (result.stderr or "")[-2000:]
+        send_telegram(f"🚨 {monitor_name} failed (exit {exit_code})\nEnv missing: {missing}\n{stderr_tail}")
     elif exit_code == 2:
         print(f"[run_monitors] {monitor_name} completed with warnings (exit 2)")
     else:
@@ -84,4 +115,11 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception:
+        tb = traceback.format_exc()
+        print(tb, file=sys.stderr)
+        monitor = os.environ.get("MONITOR_NAME", "unknown")
+        send_telegram(f"🚨 run_monitors CRASH ({monitor}):\n{tb[-3000:]}")
+        sys.exit(1)
