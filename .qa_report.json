@@ -1,30 +1,30 @@
 {
   "tier": "minor",
-  "justification": "Add 2 missing COPY lines to Dockerfile.monitors — pco_client.py (required by legislation monitor --source pco) and regulatory_freshness_monitor.py",
-  "commit_hash": "2a3f144f",
+  "justification": "Add outbound IP logging to run_monitors.py for Railway IP whitelisting verification",
+  "commit_hash": "758fd62c",
   "files": [
-    "Dockerfile.monitors"
+    "scripts/run_monitors.py"
   ],
   "pre_impl": {
     "trivial": true,
-    "reason": "Two COPY lines in Dockerfile, no logic change"
+    "reason": "4-line diagnostic logging addition, no DB queries, no logic change"
   },
-  "functions": "N/A — Dockerfile only",
+  "functions": "main() now logs outbound IP via httpbin.org before starting monitor",
   "values": "N/A",
   "queries": "N/A",
   "break_it": [
     {
-      "scenario": "pco_client.py has additional dependencies not in requirements-monitor.txt",
-      "what_happens": "ImportError at runtime when legislation monitor tries to import pco_client",
-      "repro": "docker build -f Dockerfile.monitors . && docker run --env MONITOR_NAME=legislation <image>",
+      "scenario": "httpbin.org is down or times out",
+      "what_happens": "Exception caught, prints 'Could not determine outbound IP', monitor runs normally",
+      "repro": "Block httpbin.org and run monitor",
       "mitigated": true,
-      "how": "pco_client.py only imports requests (already in requirements-monitor.txt)"
+      "how": "try/except wraps the IP check, monitor proceeds regardless"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Railway will auto-deploy from main — check that monitor-legislation deployment succeeds"
+    "manual_verify": "Trigger Railway cron, read IP from logs"
   }
 }
