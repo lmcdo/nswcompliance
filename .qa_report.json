@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Legislation monitor fallback chain reorder: auto mode now goes PCO then AustLII, skipping Cloudflare-blocked nsw_legislation HTML scraping. Schedule changed from weekly to monthly. No new queries, no DB schema changes.",
-  "commit_hash": "1c749cdf",
+  "commit_hash": "840366a8",
   "files": [
     "scripts/legislation_monitor.py",
     ".github/workflows/legislation-monitor.yml"
