@@ -1,11 +1,10 @@
 name: Legislation Monitor
 
 on:
-  # Monthly check. PCO export → AustLII fallback.
-  # NSW Legislation HTML scraping removed from auto chain — Cloudflare blocks
-  # both Railway and GitHub Actions IPs (Jun 2026).
-  schedule:
-    - cron: "0 8 1 * *"
+  # Scheduled run moved back to Railway cron (--source pco, whitelisted IP).
+  # Cloudflare blocks all GitHub Actions + Railway IPs for HTML scraping,
+  # but PCO export API is whitelisted for Railway IP 149.28.176.81.
+  # Keep workflow_dispatch for manual testing only.
   workflow_dispatch:
 
 env:

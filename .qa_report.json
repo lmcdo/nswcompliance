@@ -1,37 +1,38 @@
 {
   "tier": "minor",
-  "justification": "Populate AustLII URLs for 23 LEPs (DB UPDATE only, no schema change) and add Cloudflare challenge detection to AustLII Playwright fetcher. No new queries beyond the existing monitor flow.",
+  "justification": "Route Railway legislation cron to --source pco (whitelisted IP) and remove GitHub Actions schedule (Cloudflare blocks all datacenter IPs). Two config-only changes, no logic.",
   "commit_hash": "pending",
   "files": [
-    "scripts/legislation_monitor.py"
+    "scripts/run_monitors.py",
+    ".github/workflows/legislation-monitor.yml"
   ],
   "pre_impl": {
     "trivial": true,
-    "reason": "DB UPDATE SET on existing column (austlii_url). Playwright fix adds challenge polling loop identical to existing NSW Legislation function."
+    "reason": "Config-only: add --source pco flag to existing command array, remove cron schedule from workflow. No new queries, no logic changes."
   },
-  "functions": "fetch_as_at_playwright() now polls for Cloudflare challenge resolution before extracting version date, matching the existing pattern in _fetch_nsw_legislation_version_playwright()",
-  "values": "23 austlii_url values populated from verified web search results",
-  "queries": "N/A - no new queries, existing UPDATE instrument_registry SET austlii_url pattern",
+  "functions": "run_monitors.py MONITORS['legislation']['cmd'] now passes --source pco; legislation-monitor.yml drops schedule trigger, keeps workflow_dispatch",
+  "values": "N/A",
+  "queries": "N/A",
   "break_it": [
     {
-      "scenario": "AustLII URL is wrong for an instrument (404 or different LEP)",
-      "what_happens": "Playwright loads the page, finds no version pattern, reports error for that instrument. Does not corrupt DB.",
-      "repro": "Manually change one URL to a bad path and run --dry-run",
+      "scenario": "PCO export API returns 403 from Railway IP",
+      "what_happens": "Monitor exits non-zero, healthchecks.io pings /fail, Telegram alert fires",
+      "repro": "Trigger Railway cron run",
       "mitigated": true,
-      "how": "Per-instrument error handling catches and reports; wrong URL produces error not silent wrong data"
+      "how": "IP 149.28.176.81 confirmed whitelisted by PCO Website Help (2026-05-19). Dead man's switch at 30d+2h grace."
     },
     {
-      "scenario": "Cloudflare challenge loop times out on AustLII (30s not enough)",
-      "what_happens": "RuntimeError raised, caught by check_via_austlii, instrument reported as fetch error",
-      "repro": "Run from a fully blocked IP",
+      "scenario": "GitHub Actions workflow_dispatch still tries --source auto",
+      "what_happens": "Workflow file no longer passes --source, so CLI default (auto) applies. Auto chain: PCO first, then AustLII fallback. Both may fail from GHA IPs but this is manual-only now.",
+      "repro": "Trigger workflow_dispatch from GitHub UI",
       "mitigated": true,
-      "how": "Same error path as before but now with explicit Cloudflare detection rather than misleading 'format changed' message"
+      "how": "GHA workflow is manual-only (no schedule). Railway is the production path."
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - austlii_url already populated via one-off script",
+    "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Trigger workflow_dispatch to confirm all 25 instruments are now checked via AustLII"
+    "manual_verify": "Re-enable Railway cron for legislation monitor, trigger a run to confirm PCO export works"
   }
 }
