@@ -1,0 +1,5 @@
+{
+  "status": "trivial",
+  "timestamp": "2026-06-15T07:00:00Z",
+  "reason": "Adding Telegram crash reporter and env diagnostics to run_monitors.py — no DB queries, no logic change"
+}
