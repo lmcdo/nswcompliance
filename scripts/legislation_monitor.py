@@ -117,15 +117,26 @@ def send_telegram(message: str) -> None:
 # ---------------------------------------------------------------------------
 
 def check_via_pco(instruments: list[dict]) -> dict[str, str | None]:
-    """Check instruments via PCO weekly export feed.
+    """Check instruments via PCO export feed.
+
+    Uses get_changes_since() with a 35-day window so monthly runs never
+    miss amendments.  Falls back to get_weekly_changes() if the custom
+    query fails.
 
     Returns dict of {instrument_key: new_version_string_or_None}.
     Raises on access denied or connection error.
     """
-    from pco_client import PCOAccessDenied, get_weekly_changes
+    from datetime import datetime, timedelta
+    from pco_client import PCOAccessDenied, get_changes_since, get_weekly_changes
 
-    changes = get_weekly_changes()
-    print(f"    PCO: {len(changes)} instruments changed this week")
+    since = (datetime.utcnow() - timedelta(days=35)).strftime("%Y%m%d000000")
+    try:
+        changes = get_changes_since(since)
+        print(f"    PCO: {len(changes)} instruments changed in last 35 days (since {since[:8]})")
+    except Exception as exc:
+        print(f"    PCO: custom date query failed ({exc}), falling back to weekly")
+        changes = get_weekly_changes()
+        print(f"    PCO: {len(changes)} instruments changed this week (fallback)")
 
     # Build lookup: pco_instrument_id → instrument_key
     pco_to_key = {}

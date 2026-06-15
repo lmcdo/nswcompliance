@@ -1,38 +1,37 @@
 {
   "tier": "minor",
-  "justification": "Route Railway legislation cron to --source pco (whitelisted IP) and remove GitHub Actions schedule (Cloudflare blocks all datacenter IPs). Two config-only changes, no logic.",
+  "justification": "Switch PCO query from 7-day to 35-day window so monthly cron never misses amendments. Same API, wider date range, graceful fallback.",
   "commit_hash": "pending",
   "files": [
-    "scripts/run_monitors.py",
-    ".github/workflows/legislation-monitor.yml"
+    "scripts/legislation_monitor.py"
   ],
   "pre_impl": {
     "trivial": true,
-    "reason": "Config-only: add --source pco flag to existing command array, remove cron schedule from workflow. No new queries, no logic changes."
+    "reason": "Swap one PCO client function for another already-built one. No new DB queries, no schema changes."
   },
-  "functions": "run_monitors.py MONITORS['legislation']['cmd'] now passes --source pco; legislation-monitor.yml drops schedule trigger, keeps workflow_dispatch",
+  "functions": "check_via_pco() now calls get_changes_since(35 days) instead of get_weekly_changes(), with fallback to weekly on error",
   "values": "N/A",
   "queries": "N/A",
   "break_it": [
     {
-      "scenario": "PCO export API returns 403 from Railway IP",
-      "what_happens": "Monitor exits non-zero, healthchecks.io pings /fail, Telegram alert fires",
-      "repro": "Trigger Railway cron run",
+      "scenario": "PCO custom date query endpoint returns error or different format",
+      "what_happens": "Exception caught, falls back to get_weekly_changes() with a log line",
+      "repro": "Mock get_changes_since to raise, verify fallback fires",
       "mitigated": true,
-      "how": "IP 149.28.176.81 confirmed whitelisted by PCO Website Help (2026-05-19). Dead man's switch at 30d+2h grace."
+      "how": "try/except with explicit fallback to the previous behaviour"
     },
     {
-      "scenario": "GitHub Actions workflow_dispatch still tries --source auto",
-      "what_happens": "Workflow file no longer passes --source, so CLI default (auto) applies. Auto chain: PCO first, then AustLII fallback. Both may fail from GHA IPs but this is manual-only now.",
-      "repro": "Trigger workflow_dispatch from GitHub UI",
+      "scenario": "35-day window returns thousands of results, slow response",
+      "what_happens": "Larger JSON payload but still a single HTTP GET with 30s timeout in pco_client._request()",
+      "repro": "Run from whitelisted IP after a busy legislative period",
       "mitigated": true,
-      "how": "GHA workflow is manual-only (no schedule). Railway is the production path."
+      "how": "PCO export is pre-filtered server-side; NSW publishes ~5-20 instrument changes per month"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-enable Railway cron for legislation monitor, trigger a run to confirm PCO export works"
+    "manual_verify": "Trigger legislation monitor from Fly.io, confirm log shows '35 days' not 'this week'"
   }
 }
