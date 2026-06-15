@@ -19,7 +19,7 @@ MONITORS = {
         "cmd": ["python", "scripts/satellite_freshness_monitor.py", "--verbose"],
     },
     "legislation": {
-        "cmd": ["python", "scripts/legislation_monitor.py"],
+        "cmd": ["python", "scripts/legislation_monitor.py", "--source", "pco"],
     },
     "dcp-monitor": {
         "cmd": ["python", "scripts/r2_monitor.py"],
