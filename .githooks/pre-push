@@ -3,11 +3,24 @@
 # To bypass in an emergency: git push --no-verify
 #
 # Checks:
-#   1. Python unit tests (369+ tests)
+#   0. Push-to-main guard
+#   1. Python unit tests (1794+ tests)
 #   1b. Mutation test count baselines (ratchet — counts never drop)
 #   2. Frontend Jest tests (615+ tests)
 #   3. QA report validation (structure, AST grounding, depth)
 #   4. Liability language scan on changed user-facing files
+
+# ── 0. Push-to-main guard — force PR workflow ───────────────────────────────
+while read local_ref local_sha remote_ref remote_sha; do
+  if echo "$remote_ref" | grep -qE "refs/heads/(main|master)$"; then
+    echo ""
+    echo "=========================================="
+    echo "  PUSH REJECTED — never push to main"
+    echo "=========================================="
+    echo "  Open a PR: gh pr create"
+    exit 1
+  fi
+done
 
 set -e
 
