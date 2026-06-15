@@ -393,6 +393,19 @@ def fetch_as_at_playwright(url: str) -> str | None:
     page = ctx.new_page()
     try:
         page.goto(url, timeout=45000, wait_until="domcontentloaded")
+
+        # Wait for Cloudflare challenge to resolve (same as NSW Legislation)
+        for attempt in range(6):
+            html = page.content()
+            if "Just a moment" not in html:
+                break
+            print(f"    AustLII Cloudflare challenge, waiting... (attempt {attempt + 1}/6)")
+            time.sleep(5)
+        else:
+            raise RuntimeError(
+                f"AustLII Cloudflare challenge did not resolve after 30s: {url}"
+            )
+
         # Try multiple selectors — AustLII may have redesigned.
         # "As at" is the classic format; "Current version" is an alternative.
         for selector in ["text=As at", "text=Current version", "text=In force", "pre", "h1"]:
@@ -416,9 +429,12 @@ def fetch_as_at_playwright(url: str) -> str | None:
     if m:
         return m.group(1)
 
+    # Log snippet for debugging
+    snippet = html[:300].replace("\n", " ").strip()
     raise RuntimeError(
         f"Playwright loaded page but no version date pattern found — "
-        f"AustLII may have changed format: {url}"
+        f"AustLII may have changed format: {url}\n"
+        f"  HTML snippet: {snippet[:200]}..."
     )
 
 
