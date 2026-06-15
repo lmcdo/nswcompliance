@@ -25,8 +25,8 @@ if [ -n "$DANGEROUS_FILES" ]; then
   SECRETS_FOUND=1
 fi
 
-# Scan staged content for key patterns
-STAGED_SECRETS=$(git diff --cached -U0 | grep -iE '(SUPABASE_SERVICE_ROLE|sk_live_|sk_test_|PRIVATE_KEY|-----BEGIN (RSA |EC )?PRIVATE KEY)' || true)
+# Scan staged content for key patterns (exclude hook files which contain these patterns as search terms)
+STAGED_SECRETS=$(git diff --cached -U0 -- ':!.githooks/*' | grep -iE '(SUPABASE_SERVICE_ROLE|sk_live_|sk_test_|PRIVATE_KEY|-----BEGIN (RSA |EC )?PRIVATE KEY)' || true)
 if [ -n "$STAGED_SECRETS" ]; then
   echo "COMMIT REJECTED — possible secret in staged changes:"
   echo "$STAGED_SECRETS" | head -5
