@@ -1,37 +1,30 @@
 {
   "tier": "minor",
-  "justification": "Switch PCO query from 7-day to 35-day window so monthly cron never misses amendments. Same API, wider date range, graceful fallback.",
-  "commit_hash": "pending",
+  "justification": "Add 2 missing COPY lines to Dockerfile.monitors — pco_client.py (required by legislation monitor --source pco) and regulatory_freshness_monitor.py",
+  "commit_hash": "2a3f144f",
   "files": [
-    "scripts/legislation_monitor.py"
+    "Dockerfile.monitors"
   ],
   "pre_impl": {
     "trivial": true,
-    "reason": "Swap one PCO client function for another already-built one. No new DB queries, no schema changes."
+    "reason": "Two COPY lines in Dockerfile, no logic change"
   },
-  "functions": "check_via_pco() now calls get_changes_since(35 days) instead of get_weekly_changes(), with fallback to weekly on error",
+  "functions": "N/A — Dockerfile only",
   "values": "N/A",
   "queries": "N/A",
   "break_it": [
     {
-      "scenario": "PCO custom date query endpoint returns error or different format",
-      "what_happens": "Exception caught, falls back to get_weekly_changes() with a log line",
-      "repro": "Mock get_changes_since to raise, verify fallback fires",
+      "scenario": "pco_client.py has additional dependencies not in requirements-monitor.txt",
+      "what_happens": "ImportError at runtime when legislation monitor tries to import pco_client",
+      "repro": "docker build -f Dockerfile.monitors . && docker run --env MONITOR_NAME=legislation <image>",
       "mitigated": true,
-      "how": "try/except with explicit fallback to the previous behaviour"
-    },
-    {
-      "scenario": "35-day window returns thousands of results, slow response",
-      "what_happens": "Larger JSON payload but still a single HTTP GET with 30s timeout in pco_client._request()",
-      "repro": "Run from whitelisted IP after a busy legislative period",
-      "mitigated": true,
-      "how": "PCO export is pre-filtered server-side; NSW publishes ~5-20 instrument changes per month"
+      "how": "pco_client.py only imports requests (already in requirements-monitor.txt)"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Trigger legislation monitor from Fly.io, confirm log shows '35 days' not 'this week'"
+    "manual_verify": "Railway will auto-deploy from main — check that monitor-legislation deployment succeeds"
   }
 }
