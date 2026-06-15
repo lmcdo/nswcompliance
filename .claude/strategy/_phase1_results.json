@@ -1,0 +1,82 @@
+[
+  {
+    "name": "DA spatial buffer query (primary pattern)",
+    "status": "PASS",
+    "detail": "7 DAs found"
+  },
+  {
+    "name": "DA cross-reference by PAN number",
+    "status": "PASS",
+    "detail": "7 CHURCH STREET MARRICKVILLE 2204 = Approved"
+  },
+  {
+    "name": "DA date filtering (lexicographic string comparison)",
+    "status": "PASS",
+    "detail": "0 refused DAs since 2024 in Inner West"
+  },
+  {
+    "name": "DA refusal rate aggregation (groupByFieldsForStatistics)",
+    "status": "PASS",
+    "detail": "Inner West 2021+: {'NULL': 1892, 'Approved': 2491, 'Deferred Commencement Consent': 75, 'Refused': 177}, refusal rate=6.5%"
+  },
+  {
+    "name": "DA date format audit (inconsistent lengths)",
+    "status": "PASS",
+    "detail": "Date formats: {\"PAN-123967.LODGEMENT_DATE\": \"14 chars: '20210730000000'\", \"PAN-123967.DETERMINED_DATE\": \"8 chars: '20211215'\", \"PAN-125598.LODGEMENT_DATE\": \"14 chars: '20210728000000'\", \"PAN-125598.DETERMINED_DATE\": \"8 chars: '20211208'\"}"
+  },
+  {
+    "name": "DA X/Y string-to-float parsing",
+    "status": "PASS",
+    "detail": "X=151.15066812, Y=-33.914799707 (valid NSW)"
+  },
+  {
+    "name": "VG spatial query (OBJECTID fix)",
+    "status": "PASS",
+    "detail": "10 properties in Haberfield bbox"
+  },
+  {
+    "name": "VG spatial WITHOUT OBJECTID (expect fail \u2014 confirms the gotcha)",
+    "status": "PASS",
+    "detail": "Confirmed: spatial without OBJECTID fails (as expected)"
+  },
+  {
+    "name": "VG string parsing (value + area)",
+    "status": "PASS",
+    "detail": "val=2660000 from ' $2,660,000', area=651.3 from '651.3 square metres'"
+  },
+  {
+    "name": "VG bbox + geometry check for Haversine post-filter",
+    "status": "PASS",
+    "detail": "20 features, geometry=16824650.4595,-4012631.528000001"
+  },
+  {
+    "name": "VG Sales spatial + date parsing",
+    "status": "PASS",
+    "detail": "5 sales, first: 38 CONNECTICUT AVE, FIVE DOCK NSW 2046 sold 20 September 2017 for $1,600,000"
+  },
+  {
+    "name": "Strata Hub spatial point query",
+    "status": "PASS",
+    "detail": "No strata at this point (valid for some locations)"
+  },
+  {
+    "name": "Strata epoch date parsing (negative timestamps for pre-1970)",
+    "status": "FAIL",
+    "detail": "No pre-1970 strata plans found"
+  },
+  {
+    "name": "Dwelling type classification boundaries",
+    "status": "PASS",
+    "detail": "All classification boundaries correct"
+  },
+  {
+    "name": "DA pagination (resultOffset)",
+    "status": "PASS",
+    "detail": "Page 1: [3087388, 3087398], Page 2: [3087406, 3087466] (no overlap)"
+  },
+  {
+    "name": "VG comparable zone diversity check",
+    "status": "PASS",
+    "detail": "50 total, 48 R2. Zones: {'R2 - Low Density Residential', 'E1 - Local Centre'}"
+  }
+]

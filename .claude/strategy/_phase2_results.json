@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Timeout behaviour (0.001s)",
+    "status": "PASS",
+    "detail": "requests.Timeout raised as expected"
+  },
+  {
+    "name": "Invalid geometry (Pacific Ocean coords)",
+    "status": "PASS",
+    "detail": "0 results as expected"
+  },
+  {
+    "name": "Malformed WHERE clause",
+    "status": "PASS",
+    "detail": "Server returned error: Unable to complete operation."
+  },
+  {
+    "name": "NSW boundary edge (Albury)",
+    "status": "PASS",
+    "detail": "10 DAs near border"
+  },
+  {
+    "name": "VG large bbox (all Sydney)",
+    "status": "FAIL",
+    "detail": "0 results for all of Sydney"
+  },
+  {
+    "name": "Empty results (outback NSW)",
+    "status": "FAIL",
+    "detail": "Error response: {'code': 404, 'message': 'Service ValuerGeneral/ValuerGeneral_UrbanPropertyValue/MapServer not found ', 'details': []}"
+  },
+  {
+    "name": "Null field handling (DA outcomes)",
+    "status": "PASS",
+    "detail": "Null fields: ['ASSESMENT_RESULT', 'DETERMINED_DATE'], Missing keys: []"
+  },
+  {
+    "name": "VG string edge cases (null/zero)",
+    "status": "PASS",
+    "detail": "No null/zero/empty val1_lv records found in sample"
+  },
+  {
+    "name": "Strata empty area (rural)",
+    "status": "PASS",
+    "detail": "10 strata plans (expected 0)"
+  },
+  {
+    "name": "SQL injection attempt",
+    "status": "PASS",
+    "detail": "Server rejected/handled all injection payloads"
+  },
+  {
+    "name": "Future date filter",
+    "status": "PASS",
+    "detail": "0 results for 2099 as expected"
+  },
+  {
+    "name": "Zero resultRecordCount",
+    "status": "PASS",
+    "detail": "0 results (server behaviour documented)"
+  },
+  {
+    "name": "Invalid groupBy field",
+    "status": "PASS",
+    "detail": "Error: Unable to complete operation."
+  },
+  {
+    "name": "Concurrent requests (5 parallel)",
+    "status": "PASS",
+    "detail": "All 5 returned 200"
+  },
+  {
+    "name": "Wrong SRID (3857 for WGS84 coords)",
+    "status": "PASS",
+    "detail": "0 results \u2014 server projected to wrong location"
+  },
+  {
+    "name": "Negative epoch platform safety",
+    "status": "FAIL",
+    "detail": "Pre-1970: OSError: [Errno 22] Invalid argument; 1940: OSError: [Errno 22] Invalid argument"
+  }
+]

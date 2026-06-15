@@ -1,38 +1,30 @@
 {
   "tier": "minor",
-  "justification": "Legislation monitor fallback chain reorder: auto mode now goes PCO → AustLII, skipping Cloudflare-blocked nsw_legislation HTML scraping. Schedule changed from weekly to monthly. No new queries, no DB schema changes, no new data sources.",
-  "commit_hash": "a99d933e",
+  "justification": "Add outbound IP logging to run_monitors.py for Railway IP whitelisting verification",
+  "commit_hash": "765a18ad",
   "files": [
-    "scripts/legislation_monitor.py",
-    ".github/workflows/legislation-monitor.yml"
+    "scripts/run_monitors.py"
   ],
   "pre_impl": {
     "trivial": true,
-    "reason": "No new queries, no new joins, no DB schema changes — only reordering existing fallback chain and updating cron schedule"
+    "reason": "4-line diagnostic logging addition, no DB queries, no logic change"
   },
-  "functions": "main() fallback chain in legislation_monitor.py — auto source now skips nsw_legislation tier, goes PCO → AustLII directly",
-  "values": "N/A — no new values or data transformations",
-  "queries": "N/A — no database query changes; same instrument_registry SELECT, same check_instrument UPDATE logic",
+  "functions": "main() now logs outbound IP via httpbin.org before starting monitor",
+  "values": "N/A",
+  "queries": "N/A",
   "break_it": [
     {
-      "scenario": "PCO export returns empty list (no changes in period) and AustLII also returns no version data — all instruments show as unchanged",
-      "what_happens": "Monitor reports 'no changes' which is correct — no false negatives because AustLII versions are compared against stored versions",
-      "repro": "Run with --dry-run on a quiet week",
+      "scenario": "httpbin.org is down or times out",
+      "what_happens": "Exception caught, prints 'Could not determine outbound IP', monitor runs normally",
+      "repro": "Block httpbin.org and run monitor",
       "mitigated": true,
-      "how": "Existing check_instrument logic already handles None version maps correctly (unchanged result)"
-    },
-    {
-      "scenario": "AustLII also starts blocking datacenter IPs",
-      "what_happens": "All instruments fail, monitor exits with error code 1 and sends Telegram alert",
-      "repro": "Run --source austlii from a blocked IP",
-      "mitigated": true,
-      "how": "Existing error reporting in check_via_austlii catches per-instrument failures and the summary block sends Telegram on any errors"
+      "how": "try/except wraps the IP check, monitor proceeds regardless"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A — no database changes",
-    "secrets": "None — same secrets as before",
+    "db_reset": "N/A",
+    "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Update healthchecks.io period from 7 days to 35 days for the legislation monitor dead man's switch. Optionally trigger workflow_dispatch to confirm AustLII fallback works."
+    "manual_verify": "Trigger Railway cron, read IP from logs"
   }
 }
