@@ -1,10 +1,11 @@
 name: Legislation Monitor
 
 on:
-  # Railway cron blocked by Cloudflare (403 on all legislation.nsw.gov.au pages).
-  # Re-enabled here — GitHub Actions IPs are not blocked.
+  # Monthly check. PCO export → AustLII fallback.
+  # NSW Legislation HTML scraping removed from auto chain — Cloudflare blocks
+  # both Railway and GitHub Actions IPs (Jun 2026).
   schedule:
-    - cron: "0 8 * * 1"
+    - cron: "0 8 1 * *"
   workflow_dispatch:
 
 env:
@@ -35,7 +36,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python scripts/legislation_monitor.py
+        run: python scripts/legislation_monitor.py --source auto
 
   heartbeat:
     needs: [check-instruments]

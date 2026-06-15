@@ -2,24 +2,28 @@
 """
 Legislation Monitor
 ===================
-Weekly check of NSW planning instruments (SEPPs, LEPs) for version changes.
+Monthly check of NSW planning instruments (SEPPs, LEPs) for version changes.
+
+Auto fallback chain: PCO → AustLII
+  NSW Legislation HTML scraping removed from auto chain (Jun 2026) —
+  Cloudflare blocks all datacenter IPs (Railway, GitHub Actions).
+  Still available via explicit --source nsw_legislation.
 
 Primary source: PCO XML export (legislation.nsw.gov.au/export/week)
   - IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help)
   - Must run outside Sydney business hours (agreed condition)
   - Returns JSON list of all instruments updated in last 7 days
 
-Secondary source: NSW Legislation individual pages (legislation.nsw.gov.au)
-  - Plain HTTP with whitelisted IP, Playwright fallback
-  - Extracts point-in-time version dates from instrument pages
-
 Fallback source: AustLII consolidated copies (classic.austlii.edu.au)
   - ~7-day lag vs legislation.nsw.gov.au
   - Scrapes "As at DD Month YYYY" date from HTML
-  - Used when both PCO and NSW Legislation are inaccessible
+
+Manual source: NSW Legislation individual pages (legislation.nsw.gov.au)
+  - Cloudflare-blocked from datacenter IPs as of Jun 2026
+  - Only usable via --source nsw_legislation from whitelisted IP
 
 Usage:
-    python scripts/legislation_monitor.py               # all active instruments
+    python scripts/legislation_monitor.py               # auto: PCO → AustLII
     python scripts/legislation_monitor.py --key sepp_housing_2021
     python scripts/legislation_monitor.py --dry-run
     python scripts/legislation_monitor.py --source pco   # force PCO only
@@ -553,14 +557,14 @@ def check_instrument(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Weekly SEPP/LEP change monitor")
+    parser = argparse.ArgumentParser(description="Monthly SEPP/LEP change monitor")
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
     parser.add_argument(
         "--source", choices=["auto", "pco", "nsw_legislation", "austlii"],
         default="auto",
         help="Force data source (default: auto — try PCO, fall back to "
-             "nsw_legislation, then AustLII)",
+             "AustLII. nsw_legislation only via explicit flag)",
     )
     args = parser.parse_args()
 
@@ -593,6 +597,8 @@ def main():
     print("=" * 60)
 
     # Determine source and fetch version data
+    # Auto chain: PCO → AustLII (nsw_legislation HTML scraping removed from
+    # auto chain — Cloudflare blocks all datacenter IPs as of Jun 2026).
     source_used = args.source
     version_map: dict[str, str | None] = {}
     source_fetch_errors: list[str] = []
@@ -610,23 +616,31 @@ def main():
                 send_telegram(f"Legislation Monitor ERROR\nPCO access failed: {exc}")
                 conn.close()
                 sys.exit(1)
-            # Auto mode — fall back to nsw_legislation (preferred over AustLII)
-            print(f"  PCO unavailable ({exc}), falling back to NSW Legislation...")
-            source_used = "nsw_legislation"
+            # Auto mode — skip nsw_legislation (Cloudflare-blocked), go to AustLII
+            print(f"  PCO unavailable ({exc}), falling back to AustLII...")
+            source_used = "austlii"
 
     if source_used == "nsw_legislation":
+        # Only reached via explicit --source nsw_legislation (not auto)
         print(f"\n  Source: NSW Legislation (legislation.nsw.gov.au) — authoritative")
         try:
             version_map, source_fetch_errors = check_via_nsw_legislation(instruments)
         except Exception as exc:
-            if args.source == "nsw_legislation":
-                # User forced this source — don't fall back
-                print(f"\n  [ERROR] NSW Legislation failed: {exc}")
-                send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
-                conn.close()
-                sys.exit(1)
-            print(f"  NSW Legislation failed ({exc}), falling back to AustLII...")
-            source_used = "austlii"
+            print(f"\n  [ERROR] NSW Legislation failed: {exc}")
+            send_telegram(f"Legislation Monitor ERROR\nNSW Legislation failed: {exc}")
+            conn.close()
+            sys.exit(1)
+        # If every instrument failed, report clearly instead of silent zeros
+        all_none = all(v is None for v in version_map.values())
+        if all_none and source_fetch_errors:
+            print(f"\n  All {len(source_fetch_errors)} instruments failed — NSW Legislation fully blocked")
+            send_telegram(
+                f"Legislation Monitor ERROR (nsw_legislation)\n"
+                f"All {len(source_fetch_errors)} instruments failed (Cloudflare?)\n"
+                + "\n".join(f"  {e}" for e in source_fetch_errors[:5])
+            )
+            conn.close()
+            sys.exit(1)
 
     if source_used == "austlii":
         print(f"\n  Source: AustLII (classic.austlii.edu.au) — ~7-day lag")
