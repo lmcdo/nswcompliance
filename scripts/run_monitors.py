@@ -56,7 +56,14 @@ def main() -> int:
         return 1
 
     config = MONITORS[monitor_name]
-    hc_url = os.environ.get("HC_PING_URL", "")
+    hc_url = os.environ.get("HC_PING_URL") or ""
+
+    # Log outbound IP for whitelisting verification
+    try:
+        ip = requests.get("https://httpbin.org/ip", timeout=10).json().get("origin", "unknown")
+        print(f"[run_monitors] Outbound IP: {ip}")
+    except Exception:
+        print("[run_monitors] Could not determine outbound IP")
 
     print(f"[run_monitors] Starting: {monitor_name}")
     result = subprocess.run(config["cmd"], env=os.environ.copy())
