@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Add Telegram crash reporter to run_monitors.py for Railway cron debugging",
-  "commit_hash": "pending",
+  "commit_hash": "d829d52a",
   "files": [
     "scripts/run_monitors.py"
   ],
