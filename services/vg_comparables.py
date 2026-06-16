@@ -79,7 +79,7 @@ def parse_land_value(val_str) -> Optional[int]:
     if not cleaned:
         return None
     try:
-        return int(cleaned)
+        return int(cleaned) if cleaned is not None else None
     except ValueError:
         return None
 
