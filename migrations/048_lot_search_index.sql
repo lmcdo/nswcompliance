@@ -1,4 +1,4 @@
--- Migration 010: Create lot_search_index table
+-- Migration 048: Create lot_search_index table
 -- Pre-computed spatial join of cadastre lots with overlays + constraint arithmetic results.
 -- Enables sub-second bulk property search for professional "find me lots" queries.
 

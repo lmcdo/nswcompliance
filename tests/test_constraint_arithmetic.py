@@ -680,3 +680,54 @@ class TestMutationResistant:
             dcp_controls=_inner_west_controls(),
         )
         assert result.realistic_dwellings == 5
+
+
+# ===========================================================================
+# 12. No-DCP LEP-envelope GFA (the ~100 non-DCP LGA backfill path)
+# ===========================================================================
+
+class TestNoDcpEnvelope:
+    """Load-bearing assumption of the statewide FSR backfill: the engine yields a
+    usable, low-confidence GFA from FSR/height alone, and stays NULL (never 0) when
+    neither is present. Mutation-resistant exact assertions."""
+
+    def test_fsr_plus_height_no_dcp_gives_fsr_capped_gfa(self):
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str="0.5:1",
+            dcp_controls=[],  # non-DCP LGA
+        )
+        # FSR cap (0.5 * 600 = 300) binds below the height cap (600 * 3 storeys).
+        assert result.lep_envelope_gfa_m2 == 300.0
+        assert result.realistic_gfa_m2 == 300.0
+        assert result.realistic_dwellings == 4
+        assert result.confidence == "low"
+        assert result.binding_constraint.value == "lep_fsr"
+
+    def test_fsr_ratio_and_decimal_parse_identically(self):
+        ratio = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str="0.5:1", dcp_controls=[],
+        )
+        decimal = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str="0.5", dcp_controls=[],
+        )
+        assert ratio.realistic_gfa_m2 == decimal.realistic_gfa_m2 == 300.0
+
+    def test_height_only_no_dcp_uses_height_envelope(self):
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str="9", lep_fsr_str=None, dcp_controls=[],
+        )
+        assert result.realistic_gfa_m2 == 1800.0
+        assert result.confidence == "low"
+
+    def test_no_fsr_no_height_stays_null_not_zero(self):
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str=None, lep_fsr_str=None, dcp_controls=[],
+        )
+        # Three-state: unknown capacity is NULL, never a fabricated 0.
+        assert result.realistic_gfa_m2 is None
+        assert result.lep_envelope_gfa_m2 is None

@@ -332,3 +332,100 @@ class TestBuildHelpers:
         assert controls[0].control_type == "front_setback"
         assert controls[0].value_min == 6.0
         assert controls[0].source_ref == "C1.2"
+
+
+# ---------------------------------------------------------------------------
+# Phase-2 target resolution (decoupling compute from DCP-only)
+# ---------------------------------------------------------------------------
+
+
+class TestResolveComputeTargets:
+    DCP = ["ashfield", "leichhardt", "marrickville", "canterbury_bankstown"]
+
+    def test_non_dcp_single_lga_returns_overlay_name(self):
+        """Guards bug #2: a non-DCP LGA must still be a compute target (not dropped)."""
+        from scripts.build_lot_search_index import resolve_compute_targets
+        assert resolve_compute_targets("BLACKTOWN", False, self.DCP, []) == ["BLACKTOWN"]
+
+    def test_merged_lga_returns_former_council_slugs(self):
+        from scripts.build_lot_search_index import resolve_compute_targets
+        assert resolve_compute_targets("INNER WEST", False, self.DCP, []) == [
+            "ashfield", "leichhardt", "marrickville",
+        ]
+
+    def test_hyphenated_non_dcp_name_round_trips(self):
+        """R1: slug<->overlay round-trip must preserve hyphens (no spelling drift)."""
+        from scripts.build_lot_search_index import (
+            resolve_compute_targets, _lga_slug_to_overlay_name,
+        )
+        target = resolve_compute_targets("QUEANBEYAN-PALERANG REGIONAL", False, [], [])[0]
+        assert _lga_slug_to_overlay_name(target) == "QUEANBEYAN-PALERANG REGIONAL"
+
+    def test_all_lgas_unions_dcp_and_non_dcp(self):
+        from scripts.build_lot_search_index import resolve_compute_targets
+        index = ["INNER WEST", "BLACKTOWN", "BOURKE"]
+        targets = resolve_compute_targets(None, True, self.DCP, index)
+        assert "ashfield" in targets and "leichhardt" in targets and "marrickville" in targets
+        assert "BLACKTOWN" in targets and "BOURKE" in targets
+
+    def test_no_args_returns_empty(self):
+        from scripts.build_lot_search_index import resolve_compute_targets
+        assert resolve_compute_targets(None, False, self.DCP, ["BLACKTOWN"]) == []
+
+
+# ---------------------------------------------------------------------------
+# Urbanity-gated dev_type clamp
+# ---------------------------------------------------------------------------
+
+
+class _Sepp:
+    def __init__(self, dev_type, eligible):
+        self.dev_type = dev_type
+        self.eligible = eligible
+
+
+class TestSelectDevType:
+    def test_rural_no_dcp_is_clamped(self):
+        from scripts.build_lot_search_index import select_dev_type
+        sepp = [_Sepp("multi_dwelling", True)]
+        assert select_dev_type(sepp, [], "R") == "dwelling_house"
+
+    def test_urban_no_dcp_not_clamped(self):
+        from scripts.build_lot_search_index import select_dev_type
+        sepp = [_Sepp("multi_dwelling", True)]
+        assert select_dev_type(sepp, [], "U") == "multi_dwelling"
+
+    def test_rural_with_dcp_not_clamped(self):
+        """Clamp is conditioned on DCP absence — it lifts when DCP is present."""
+        from scripts.build_lot_search_index import select_dev_type
+        sepp = [_Sepp("multi_dwelling", True)]
+        assert select_dev_type(sepp, ["a control"], "R") == "multi_dwelling"
+
+
+# ---------------------------------------------------------------------------
+# Safety guards
+# ---------------------------------------------------------------------------
+
+
+class TestSafetyGuards:
+    def test_recompute_without_scope_exits(self):
+        """--recompute with neither --lga nor --all-lgas must refuse (no unscoped reset)."""
+        from scripts import build_lot_search_index as b
+        with patch.object(b.sys, "argv", ["x", "--phase", "compute", "--recompute"]):
+            with pytest.raises(SystemExit):
+                b.main()
+
+    def test_all_lgas_without_recompute_exits(self):
+        from scripts import build_lot_search_index as b
+        with patch.object(b.sys, "argv", ["x", "--phase", "compute", "--all-lgas"]):
+            with pytest.raises(SystemExit):
+                b.main()
+
+    def test_assign_overlay_aborts_when_overlay_missing(self):
+        """Gate A: assigning FSR with no source overlay must abort, not silently no-op."""
+        from scripts.build_lot_search_index import assign_overlay_for_lga
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        cur.fetchone.return_value = (0,)  # zero overlay rows for the LGA
+        with pytest.raises(SystemExit):
+            assign_overlay_for_lga(conn, "BLACKTOWN", overlay="fsr")
