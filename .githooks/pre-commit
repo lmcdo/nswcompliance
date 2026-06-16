@@ -56,9 +56,7 @@ if [ "$LARGE_FOUND" -ne 0 ]; then
 fi
 
 # ── 4. TSC error count gate ──────────────────────────────────────────────────
-# Bumped 677 -> 682 to match pre-existing drift already on main (this branch adds
-# no TypeScript changes). The gate is a ratchet against *new* errors.
-TSC_BASELINE=682
+TSC_BASELINE=677
 
 cd frontend-nextjs || exit 0
 
