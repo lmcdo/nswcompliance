@@ -285,8 +285,16 @@ def run_conveyancing(req: ConveyancingRequest):
     da_count = 0
     if council_name:
         try:
-            das = get_nearby_das(lat, lng, council_name=council_name)
-            da_count = len(das)
+            import psycopg2
+            _db_url = os.getenv("DATABASE_URL")
+            if _db_url:
+                _conn = psycopg2.connect(_db_url)
+                _conn.autocommit = True
+                try:
+                    das = fetch_nearby_das(_conn, lat, lng, council_name=council_name)
+                    da_count = len(das)
+                finally:
+                    _conn.close()
         except Exception as e:
             logger.warning(f"DA fetch failed: {e}")
 
