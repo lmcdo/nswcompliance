@@ -114,9 +114,9 @@ def test_3_2_da_outcome_lookup():
     da_results_cache = features
     outcomes = {}
     for f in features:
-        a = f.get("attributes", {})
+        a = f.get("attributes") or {}
         result = a.get("ASSESMENT_RESULT") or "NULL"
-        outcomes[result] = outcomes.get(result, 0) + 1
+        outcomes[result] = outcomes.get(result) or 0 + 1
 
     log_result("DA outcome lookup", "PASS",
                f"{len(features)} DAs found. Outcomes: {outcomes}")
@@ -128,7 +128,7 @@ def test_3_2_da_outcome_lookup():
 def test_3_3_null_outcome_propagation():
     """Verify null ASSESMENT_RESULT propagates as 'undetermined', never as 'approved' or 'refused'."""
     null_das = [f for f in da_results_cache
-                if f.get("attributes", {}).get("ASSESMENT_RESULT") is None]
+                if f.get("attributes") or {}.get("ASSESMENT_RESULT") is None]
 
     if not null_das:
         log_result("Null outcome propagation", "PASS",
@@ -137,7 +137,7 @@ def test_3_3_null_outcome_propagation():
 
     # Verify our classification logic handles null correctly
     for da in null_das[:3]:
-        attrs = da.get("attributes", {})
+        attrs = da.get("attributes") or {}
         outcome = attrs.get("ASSESMENT_RESULT")
         status = attrs.get("STATUS") or "unknown"
         pan = attrs.get("PLANNING_PORTAL_APP_NUMBER") or "unknown"
@@ -450,7 +450,7 @@ def test_3_9_temporal_coverage():
     features = data.get("features") or []
 
     if features:
-        earliest = features[0].get("attributes", {}).get("LODGEMENT_DATE", "unknown")
+        earliest = features[0].get("attributes") or {}.get("LODGEMENT_DATE", "unknown")
         # Check our APPROVAL_GAP template mentions pre-digital limitation
         gap_template = (
             "This does not indicate non-compliance — the structure may predate digital records"
@@ -482,7 +482,7 @@ def test_3_10_pan_matching():
     # Get first DA with a PAN
     test_da = None
     for f in da_results_cache:
-        pan = f.get("attributes", {}).get("PLANNING_PORTAL_APP_NUMBER")
+        pan = f.get("attributes") or {}.get("PLANNING_PORTAL_APP_NUMBER")
         if pan:
             test_da = f
             break
@@ -573,9 +573,9 @@ def test_3_12_full_product_b_output():
     das_found = len(da_results_cache)
     outcomes = {}
     for f in da_results_cache:
-        a = f.get("attributes", {})
+        a = f.get("attributes") or {}
         r = a.get("ASSESMENT_RESULT") or "Undetermined"
-        outcomes[r] = outcomes.get(r, 0) + 1
+        outcomes[r] = outcomes.get(r) or 0 + 1
 
     # Step 2: Simulated structure (since SAMGeo not available)
     simulated_structure = {"area_m2": 45.0, "type": "outbuilding"}
@@ -596,7 +596,7 @@ def test_3_12_full_product_b_output():
     # In reality: cross-reference by proximity + development type
     # For this test: check if any approved DA exists nearby
     has_approved_da = any(
-        f.get("attributes", {}).get("ASSESMENT_RESULT") == "Approved"
+        f.get("attributes") or {}.get("ASSESMENT_RESULT") == "Approved"
         for f in da_results_cache
     )
 

@@ -50,7 +50,7 @@ def t1_1():
     }
     r = requests.get(DA_URL, params=params, timeout=10)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if not feats:
         return False, "No features returned for Marrickville 200m buffer"
     a = feats[0]["attributes"]
@@ -69,7 +69,7 @@ def t1_2():
     }
     r = requests.get(DA_URL, params=params, timeout=10)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if len(feats) != 1:
         return False, f"Expected 1 result, got {len(feats)}"
     a = feats[0]["attributes"]
@@ -90,9 +90,9 @@ def t1_3():
     d = r.json()
     if "error" in d:
         return False, f"Date filter query failed: {d['error']}"
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     for f in feats:
-        dt = f["attributes"].get("LODGEMENT_DATE", "")
+        dt = f["attributes"].get("LODGEMENT_DATE") or ""
         if dt and dt[:8] < "20240101":
             return False, f"Date filter leak: {dt}"
     return True, f"{len(feats)} refused DAs since 2024 in Inner West"
@@ -112,12 +112,12 @@ def t1_4():
     d = r.json()
     if "error" in d:
         return False, f"Stats query failed: {d['error']}"
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     counts = {(f["attributes"].get("ASSESMENT_RESULT") or "NULL"): f["attributes"]["cnt"] for f in feats}
     if "Approved" not in counts:
         return False, f"No Approved count. Got: {counts}"
     total = sum(v for k, v in counts.items() if k != "NULL")
-    refused = counts.get("Refused", 0)
+    refused = counts.get("Refused") or 0
     rate = refused / total if total > 0 else 0
     return True, f"Inner West 2021+: {counts}, refusal rate={rate:.1%}"
 
@@ -131,13 +131,13 @@ def t1_5():
     }
     r = requests.get(DA_URL, params=params, timeout=10)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     formats_seen = {}
     for f in feats:
         a = f["attributes"]
         pan = a["PLANNING_PORTAL_APP_NUMBER"]
         for field in ["LODGEMENT_DATE", "DETERMINED_DATE"]:
-            val = a.get(field, "")
+            val = a.get(field) or ""
             if val:
                 formats_seen[f"{pan}.{field}"] = f"{len(val)} chars: '{val}'"
     return True, f"Date formats: {json.dumps(formats_seen)}"
@@ -178,7 +178,7 @@ def t1_7():
     d = r.json()
     if "error" in d:
         return False, f"VG spatial failed: {d['error']}"
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if not feats:
         return False, "No features returned"
     return True, f"{len(feats)} properties in Haberfield bbox"
@@ -211,11 +211,11 @@ def t1_9():
     r = requests.get(VG_URL, params=params, timeout=10)
     d = r.json()
     a = d["features"][0]["attributes"]
-    raw_val = a.get("val1_lv", "")
+    raw_val = a.get("val1_lv") or ""
     parsed = int(raw_val.strip().replace("$", "").replace(",", "").replace(" ", ""))
     if parsed < 100000 or parsed > 50000000:
         return False, f"Parsed value unreasonable: {parsed}"
-    raw_area = a.get("prop_area", "")
+    raw_area = a.get("prop_area") or ""
     area = float(raw_area.strip().split(" ")[0])
     if area < 1 or area > 100000:
         return False, f"Parsed area unreasonable: {area}"
@@ -239,7 +239,7 @@ def t1_10():
     }
     r = requests.get(VG_URL, params=params, timeout=15)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if not feats:
         return False, "No features for Haversine test"
     has_geom = "geometry" in feats[0]
@@ -264,7 +264,7 @@ def t1_11():
     d = r.json()
     if "error" in d:
         return False, f"Sales spatial failed: {d['error']}"
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if not feats:
         return False, "No sales features"
     a = feats[0]["attributes"]
@@ -288,7 +288,7 @@ def t1_12():
     }
     r = requests.get(STRATA_URL, params=params, timeout=10)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if feats:
         a = feats[0]["attributes"]
         return True, f"Strata: {a.get('planlabel')} ({a.get('lottotal')} lots) at {a.get('address')}"
@@ -305,7 +305,7 @@ def t1_13():
     }
     r = requests.get(STRATA_URL, params=params, timeout=10)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     if not feats:
         return False, "No pre-1970 strata plans found"
     for f in feats:
@@ -347,12 +347,12 @@ def t1_15():
     }
     r1 = requests.get(DA_URL, params=params, timeout=10)
     d1 = r1.json()
-    ids1 = [f["attributes"]["OBJECTID"] for f in d1.get("features", [])]
+    ids1 = [f["attributes"]["OBJECTID"] for f in d1.get("features") or []]
 
     params["resultOffset"] = 2
     r2 = requests.get(DA_URL, params=params, timeout=10)
     d2 = r2.json()
-    ids2 = [f["attributes"]["OBJECTID"] for f in d2.get("features", [])]
+    ids2 = [f["attributes"]["OBJECTID"] for f in d2.get("features") or []]
 
     overlap = set(ids1) & set(ids2)
     if overlap:
@@ -374,10 +374,10 @@ def t1_16():
     }
     r = requests.get(VG_URL, params=params, timeout=15)
     d = r.json()
-    feats = d.get("features", [])
+    feats = d.get("features") or []
     zones = set()
     for f in feats:
-        z = f["attributes"].get("zone_desc", "")
+        z = f["attributes"].get("zone_desc") or ""
         zones.add(z)
     r2_count = sum(1 for f in feats if "R2" in (f["attributes"].get("zone_desc") or ""))
     return True, f"{len(feats)} total, {r2_count} R2. Zones: {zones}"
