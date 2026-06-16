@@ -82,10 +82,10 @@ def test_2_3_malformed_where():
     data = resp.json()
     if "error" in data:
         log_result("Malformed WHERE clause", "PASS", f"Server returned error: {data['error'].get('message','')[:80]}")
-    elif len(data.get("features", [])) == 0:
+    elif len(data.get("features") or []) == 0:
         log_result("Malformed WHERE clause", "PASS", "Server returned 0 features (acceptable)")
     else:
-        log_result("Malformed WHERE clause", "FAIL", f"Server returned data despite malformed WHERE: {len(data.get('features',[]))} features")
+        log_result("Malformed WHERE clause", "FAIL", f"Server returned data despite malformed WHERE: {len(data.get('features') or [])} features")
 
 
 # ============================================================
@@ -183,7 +183,7 @@ def test_2_7_null_fields_da():
         return
 
     # Check what null looks like in the response
-    attrs = features[0].get("attributes", {})
+    attrs = features[0].get("attributes") or {}
     null_fields = {k: v for k, v in attrs.items() if v is None}
     missing_fields = [f for f in ["ASSESMENT_RESULT", "DETERMINED_DATE", "COST_OF_DEVELOPMENT"] if f not in attrs]
 
@@ -214,7 +214,7 @@ def test_2_8_vg_string_edge_cases():
     if len(features) > 0:
         samples = []
         for f in features[:3]:
-            a = f.get("attributes", {})
+            a = f.get("attributes") or {}
             samples.append(f"val1_lv={repr(a.get('val1_lv'))}, prop_area={repr(a.get('prop_area'))}")
         log_result("VG string edge cases (null/zero)", "PASS", "; ".join(samples))
     else:

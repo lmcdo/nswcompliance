@@ -743,8 +743,10 @@ def _stub_detect_all(monkeypatch, lot_geometry=None, structures=None,
     # nsw_imagery module
     fake_imagery = MagicMock()
     fake_imagery.fetch_tile_to_file = fake_fetch_tile
-    sys.modules["services.nsw_imagery"] = fake_imagery
-    sys.modules["nsw_imagery"] = fake_imagery
+    # Use monkeypatch.setitem so sys.modules is restored after the test — a raw
+    # assignment leaks the fakes into later tests (e.g. _build_lot_arr's real PIL).
+    monkeypatch.setitem(sys.modules, "services.nsw_imagery", fake_imagery)
+    monkeypatch.setitem(sys.modules, "nsw_imagery", fake_imagery)
 
     # Mock PIL for the tile annotation section inside detect_structures
     # The endpoint does: from PIL import Image, ImageDraw + Image.open(tile_path)
@@ -766,9 +768,9 @@ def _stub_detect_all(monkeypatch, lot_geometry=None, structures=None,
     fake_pil.Image = fake_pil_image
     fake_pil.ImageDraw = fake_pil_draw
 
-    sys.modules["PIL"] = fake_pil
-    sys.modules["PIL.Image"] = fake_pil_image
-    sys.modules["PIL.ImageDraw"] = fake_pil_draw
+    monkeypatch.setitem(sys.modules, "PIL", fake_pil)
+    monkeypatch.setitem(sys.modules, "PIL.Image", fake_pil_image)
+    monkeypatch.setitem(sys.modules, "PIL.ImageDraw", fake_pil_draw)
 
     # _get_conn
     conn = FakeConn(cursor=FakeCursor())
