@@ -13,6 +13,13 @@ Usage:
   python scripts/build_lot_search_index.py --phase overlays     # overlays only
   python scripts/build_lot_search_index.py --phase compute      # CA only
   python scripts/build_lot_search_index.py --dry-run            # show counts
+
+  # Targeted overlay refresh (Step-4 only, no full Phase-1 rebuild):
+  python scripts/build_lot_search_index.py --phase fsr-assign --lga "BLACKTOWN"
+  # Recompute after inputs change (resets computed_at, scoped to the LGA):
+  python scripts/build_lot_search_index.py --phase compute --lga "BLACKTOWN" --recompute
+  # Recompute every LGA incl. non-DCP (low-confidence LEP-envelope GFA):
+  python scripts/build_lot_search_index.py --phase compute --all-lgas --recompute
 """
 from __future__ import annotations
 
@@ -399,6 +406,99 @@ def assign_overlays_for_lga(conn, lga_name: str, dry_run: bool = False) -> int:
     return lot_count
 
 
+# Numeric overlays that can be re-assigned on their own (overlay -> (index column,
+# spatial_overlays layer_type)). Used by the targeted --phase fsr-assign path so an
+# overlay refresh flows into the index without re-running all of Phase 1.
+_ASSIGNABLE_OVERLAYS: dict[str, tuple[str, str]] = {
+    "fsr": ("lep_fsr", "fsr"),
+    "height": ("lep_height_m", "height"),
+}
+
+
+def assign_overlay_for_lga(
+    conn, lga_name: str, overlay: str = "fsr", dry_run: bool = False
+) -> tuple[int, int]:
+    """Re-assign a single numeric overlay (FSR or height) to existing index rows.
+
+    Runs ONLY the centroid ``MAX(value_numeric)`` assignment for one overlay — none
+    of the expensive Phase-1 steps (base insert, flood/bushfire, nearest-precinct
+    KNN, geom rewrite). Use after ingesting/refreshing an overlay so the index picks
+    it up without a full overlay rebuild.
+
+    Returns ``(before_nonnull, after_nonnull)`` for the target column in this LGA.
+    Aborts (SystemExit 2) if the source overlay has no numeric rows for the LGA —
+    that means the overlay was never ingested, and silently leaving the column NULL
+    would hide the gap rather than surface it.
+    """
+    if overlay not in _ASSIGNABLE_OVERLAYS:
+        raise ValueError(
+            f"Unsupported overlay '{overlay}'; expected one of "
+            f"{sorted(_ASSIGNABLE_OVERLAYS)}"
+        )
+    col, layer_type = _ASSIGNABLE_OVERLAYS[overlay]
+    cur = conn.cursor()
+
+    # Guard: the source overlay must exist for this LGA, else assignment is a
+    # silent no-op and the operator should ingest it first.
+    cur.execute(
+        """
+        SELECT COUNT(*) FROM spatial_overlays
+        WHERE layer_type = %s AND lga_name = %s AND value_numeric IS NOT NULL
+        """,
+        (layer_type, lga_name),
+    )
+    overlay_rows = cur.fetchone()[0]
+    if overlay_rows == 0:
+        log.error(
+            'LGA %s: no %s overlay rows in spatial_overlays — ingest first: '
+            'python scripts/ingest_spatial_overlays.py --layer %s --lga "%s"',
+            lga_name, overlay, layer_type, lga_name,
+        )
+        raise SystemExit(2)
+
+    def _nonnull() -> int:
+        cur.execute(
+            f"SELECT COUNT({col}) FROM lot_search_index WHERE lga_name = %s",
+            (lga_name,),
+        )
+        return cur.fetchone()[0]
+
+    before = _nonnull()
+    log.info(
+        "LGA %s: assigning %s from %d overlay rows (before: %d lots have %s)",
+        lga_name, overlay, overlay_rows, before, col,
+    )
+    if dry_run:
+        return before, before
+
+    cur.execute(
+        f"""
+        UPDATE lot_search_index lsi
+        SET {col} = sub.max_val
+        FROM (
+            SELECT lsi2.lotidstring, MAX(so.value_numeric) AS max_val
+            FROM lot_search_index lsi2
+            JOIN spatial_overlays so ON ST_Intersects(ST_Centroid(lsi2.geom), so.geom)
+            WHERE so.layer_type = %s
+              AND so.lga_name = %s
+              AND lsi2.lga_name = %s
+              AND so.value_numeric IS NOT NULL
+            GROUP BY lsi2.lotidstring
+        ) sub
+        WHERE lsi.lotidstring = sub.lotidstring
+        """,
+        (layer_type, lga_name, lga_name),
+    )
+    updated = cur.rowcount  # capture before any later query clobbers cur.rowcount
+    conn.commit()
+    after = _nonnull()
+    log.info(
+        "LGA %s: %s assignment updated %d rows (after: %d lots have %s)",
+        lga_name, overlay, updated, after, col,
+    )
+    return before, after
+
+
 # ---------------------------------------------------------------------------
 # Phase 2: Batch constraint arithmetic compute
 # ---------------------------------------------------------------------------
@@ -431,6 +531,49 @@ def _lga_slug_to_overlay_name(slug: str) -> str:
     if slug in _DCP_SLUG_TO_LGA:
         return _DCP_SLUG_TO_LGA[slug]
     return slug.replace("_", " ").upper()
+
+
+def _get_index_lgas(conn) -> list[str]:
+    """Distinct LGA names already present in lot_search_index."""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT lga_name FROM lot_search_index "
+        "WHERE lga_name IS NOT NULL ORDER BY lga_name"
+    )
+    return [r[0] for r in cur.fetchall()]
+
+
+def resolve_compute_targets(
+    lga_arg: Optional[str],
+    all_lgas: bool,
+    dcp_slugs: list[str],
+    index_lgas: list[str],
+) -> list[str]:
+    """Resolve the Phase-2 compute target list (DCP slugs and/or overlay names).
+
+    A target is passed to ``compute_constraints_for_lga`` and converted back to an
+    overlay name via ``_lga_slug_to_overlay_name``. DCP LGAs are targeted by their
+    DCP slug(s); non-DCP LGAs are targeted by their *overlay name verbatim* (which
+    round-trips unchanged, since overlay names contain no underscores) so they still
+    compute LEP-envelope GFA from FSR/height with empty DCP.
+
+    - ``lga_arg`` set: its DCP slug(s) if any, else ``[lga_arg]`` (non-DCP fallback).
+    - ``all_lgas``: every index LGA — DCP slug(s) where present, overlay name otherwise.
+    - neither: empty (caller falls back to legacy DCP-only behaviour).
+    """
+    if lga_arg:
+        slugs = lga_name_to_dcp_slugs(lga_arg, dcp_slugs)
+        return slugs if slugs else [lga_arg]
+    if all_lgas:
+        targets: list[str] = []
+        seen: set[str] = set()
+        for lga in index_lgas:
+            for t in (lga_name_to_dcp_slugs(lga, dcp_slugs) or [lga]):
+                if t not in seen:
+                    seen.add(t)
+                    targets.append(t)
+        return targets
+    return []
 
 
 def _parse_numeric(val: any) -> Optional[float]:
@@ -475,19 +618,78 @@ def _build_dcp_controls_from_raw(dcp_raw: Optional[dict]) -> list[DCPControl]:
     return controls
 
 
+# Dev type priority: highest-density first. When multiple SEPP dev_types are
+# eligible for a lot (zone permits it + lot area meets min_lot_size), we compute CA
+# for the most permissive one to show realistic maximum yield.
+_DEV_TYPE_PRIORITY = [
+    "residential_flat_r3r4_inner",
+    "residential_flat_r3r4_outer",
+    "residential_flat_r1r2",
+    "multi_dwelling",
+    "terraces",
+    "manor_house",
+    "dual_occupancy",
+]
+
+
+def best_dev_type(sepp_standards: list[SEPPStandard]) -> str:
+    """Most permissive eligible SEPP dev_type, falling back to dwelling_house."""
+    eligible = [s.dev_type for s in sepp_standards if s.eligible]
+    for dt in _DEV_TYPE_PRIORITY:
+        if dt in eligible:
+            return dt
+    return "dwelling_house"
+
+
+def select_dev_type(
+    sepp_standards: list[SEPPStandard],
+    dcp_controls: list[DCPControl],
+    urbanity: Optional[str],
+) -> str:
+    """Choose the dev_type for constraint arithmetic, with the urbanity-gated clamp.
+
+    With no DCP controls for the lot's zone, a *rural* lot (urbanity 'R') is clamped
+    to ``dwelling_house`` — otherwise the most permissive SEPP type could yield an
+    implausible apartment/multi-dwelling count on a paddock, guarded only by a
+    low-confidence flag. The clamp is conditioned on DCP absence, so it lifts
+    automatically once DCP is onboarded for the LGA. Urban/suburban lots are never
+    clamped (they keep realistic maximum yield).
+    """
+    if not dcp_controls and urbanity == "R":
+        return "dwelling_house"
+    return best_dev_type(sepp_standards)
+
+
 def compute_constraints_for_lga(
     conn,
     lga_slug: str,
     batch_size: int = 2000,
     dry_run: bool = False,
+    recompute: bool = False,
 ) -> int:
     """Run constraint arithmetic for all lots in an LGA.
 
     DCP/SEPP data is cached per (lga, zone) to avoid repeated DB queries.
     Returns the number of lots computed.
+
+    With ``recompute=True``, first resets ``computed_at = NULL`` for this LGA so
+    already-stamped lots are re-processed (the only way to recompute after inputs
+    like FSR change — the loop otherwise skips stamped rows). The reset is always
+    scoped to this single LGA; there is no unscoped path.
     """
     lga_overlay_name = _lga_slug_to_overlay_name(lga_slug)
     cur = conn.cursor()
+
+    if recompute and not dry_run:
+        cur.execute(
+            "UPDATE lot_search_index SET computed_at = NULL WHERE lga_name = %s",
+            (lga_overlay_name,),
+        )
+        conn.commit()
+        log.info(
+            "LGA %s (%s): reset computed_at on %d rows for recompute",
+            lga_slug, lga_overlay_name, cur.rowcount,
+        )
 
     # Count lots that need computation
     cur.execute("""
@@ -501,6 +703,12 @@ def compute_constraints_for_lga(
     pending = cur.fetchone()[0]
     log.info("LGA %s (%s): %d lots pending CA compute", lga_slug, lga_overlay_name, pending)
 
+    if pending == 0 and not recompute and not dry_run:
+        log.warning(
+            "LGA %s: 0 lots pending and --recompute not set — nothing to do. "
+            "Lots are already stamped; pass --recompute to re-process.",
+            lga_slug,
+        )
     if dry_run or pending == 0:
         return pending
 
@@ -542,33 +750,13 @@ def compute_constraints_for_lga(
     ) -> list[SeppLepOverride]:
         return _detect_sepp_lep_overrides(sepp, height_m, fsr)
 
-    # Dev type priority: highest-density first. When multiple SEPP dev_types are
-    # eligible for a lot (zone permits it + lot area meets min_lot_size), we
-    # compute CA for the most permissive one to show realistic maximum yield.
-    _DEV_TYPE_PRIORITY = [
-        "residential_flat_r3r4_inner",
-        "residential_flat_r3r4_outer",
-        "residential_flat_r1r2",
-        "multi_dwelling",
-        "terraces",
-        "manor_house",
-        "dual_occupancy",
-    ]
-
-    def _best_dev_type(sepp_standards: list[SEPPStandard]) -> str:
-        """Pick the most permissive eligible SEPP dev_type, fallback to dwelling_house."""
-        eligible = [s.dev_type for s in sepp_standards if s.eligible]
-        for dt in _DEV_TYPE_PRIORITY:
-            if dt in eligible:
-                return dt
-        return "dwelling_house"
-
     total_computed = 0
     offset = 0
 
     while True:
         cur.execute("""
-            SELECT lotidstring, lot_area_m2, zone_code, lep_height_m, lep_fsr, former_council
+            SELECT lotidstring, lot_area_m2, zone_code, lep_height_m, lep_fsr,
+                   former_council, urbanity
             FROM lot_search_index
             WHERE lga_name = %s
               AND zone_code IS NOT NULL
@@ -583,10 +771,10 @@ def compute_constraints_for_lga(
             break
 
         updates = []
-        for lotid, area, zone, height_m, fsr, former_council in rows:
+        for lotid, area, zone, height_m, fsr, former_council, urbanity in rows:
             dcp = _get_dcp(zone, former_council)
             sepp = _get_sepp(zone, area)
-            dev_type = _best_dev_type(sepp)
+            dev_type = select_dev_type(sepp, dcp, urbanity)
             overrides = _get_overrides(sepp, height_m, fsr)
 
             height_str = str(height_m) if height_m is not None else None
@@ -671,11 +859,27 @@ def compute_constraints_for_lga(
 def main():
     parser = argparse.ArgumentParser(description="Build lot_search_index")
     parser.add_argument("--lga", help="Process single LGA (overlay name, e.g. 'INNER WEST')")
-    parser.add_argument("--phase", choices=["overlays", "compute", "all"], default="all",
-                        help="Which phase to run (default: all)")
+    parser.add_argument("--phase", choices=["overlays", "fsr-assign", "compute", "all"],
+                        default="all", help="Which phase to run (default: all)")
+    parser.add_argument("--assign", choices=["fsr", "height"], default="fsr",
+                        help="Overlay to (re)assign for --phase fsr-assign (default: fsr)")
+    parser.add_argument("--recompute", action="store_true",
+                        help="Reset computed_at for the target LGA(s) so already-stamped "
+                             "lots are recomputed. Requires --lga or --all-lgas.")
+    parser.add_argument("--all-lgas", action="store_true",
+                        help="Compute every LGA in the index (incl. non-DCP). Only valid "
+                             "with --recompute; loops per-LGA, never a global reset.")
     parser.add_argument("--batch-size", type=int, default=2000, help="Batch size for CA compute")
     parser.add_argument("--dry-run", action="store_true", help="Show counts only, no writes")
     args = parser.parse_args()
+
+    # Guards: a missing scope must never widen the blast radius of a reset.
+    if args.recompute and not (args.lga or args.all_lgas):
+        parser.error("--recompute requires --lga or --all-lgas (refusing an unscoped reset)")
+    if args.all_lgas and not args.recompute:
+        parser.error("--all-lgas is only valid with --recompute")
+    if args.phase == "fsr-assign" and not args.lga:
+        parser.error("--phase fsr-assign requires --lga")
 
     if not DATABASE_URL:
         log.error("DATABASE_URL or SUPABASE_DB_URL not set")
@@ -701,30 +905,44 @@ def main():
         log.info("Phase 1 complete: %d total lots across %d LGAs (%.1fs)",
                  total_lots, len(lgas), time.time() - t0)
 
+    if args.phase == "fsr-assign":
+        log.info("=== Targeted overlay assignment: %s (LGA %s) ===", args.assign, args.lga)
+        before, after = assign_overlay_for_lga(
+            conn, args.lga, overlay=args.assign, dry_run=args.dry_run,
+        )
+        if not args.dry_run and after == 0:
+            log.error("LGA %s: %s assignment produced 0 — overlay/lga_name mismatch "
+                      "or centroid miss; aborting before compute", args.lga, args.assign)
+            conn.close()
+            sys.exit(3)
+        if not args.dry_run and after == before:
+            log.warning("LGA %s: %s coverage unchanged (%d) — idempotent re-run, or the "
+                        "overlay added nothing new", args.lga, args.assign, after)
+        log.info("Assignment complete: %s coverage %d -> %d", args.assign, before, after)
+
     if args.phase in ("compute", "all"):
         log.info("=== Phase 2: Constraint arithmetic compute ===")
         t1 = time.time()
         dcp_lgas = get_lgas_with_dcp(conn)
         log.info("Found %d LGAs with DCP data", len(dcp_lgas))
 
-        if args.lga:
-            # Map overlay LGA name to DCP slug(s)
-            target_slugs = lga_name_to_dcp_slugs(args.lga, dcp_lgas)
-            if target_slugs:
-                log.info("LGA %s maps to DCP slugs: %s", args.lga, target_slugs)
-                dcp_lgas = target_slugs
-            else:
-                log.warning("LGA %s has no DCP data, skipping CA compute", args.lga)
-                dcp_lgas = []
+        if args.all_lgas:
+            targets = resolve_compute_targets(None, True, dcp_lgas, _get_index_lgas(conn))
+        elif args.lga:
+            targets = resolve_compute_targets(args.lga, False, dcp_lgas, [])
+        else:
+            targets = dcp_lgas  # legacy default: DCP LGAs only
 
+        log.info("Phase 2 targets: %d (recompute=%s)", len(targets), args.recompute)
         total_computed = 0
-        for slug in dcp_lgas:
+        for slug in targets:
             n = compute_constraints_for_lga(
                 conn, slug, batch_size=args.batch_size, dry_run=args.dry_run,
+                recompute=args.recompute,
             )
             total_computed += n
-        log.info("Phase 2 complete: %d lots computed across %d LGAs (%.1fs)",
-                 total_computed, len(dcp_lgas), time.time() - t1)
+        log.info("Phase 2 complete: %d lots computed across %d targets (%.1fs)",
+                 total_computed, len(targets), time.time() - t1)
 
     # Summary
     if not args.dry_run:

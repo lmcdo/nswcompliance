@@ -3,6 +3,11 @@
 # QA railguards (ephemeral per-commit)
 .qa_report.json
 
+# Ad-hoc scratch DB query scripts (may contain connection strings) — never commit
+tmp_db_query.py
+tmp_*.py
+scratch_*.py
+
 # Python virtual environments
 venv/
 venv_linux/
