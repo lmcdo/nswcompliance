@@ -489,11 +489,12 @@ def assign_overlay_for_lga(
         """,
         (layer_type, lga_name, lga_name),
     )
+    updated = cur.rowcount  # capture before any later query clobbers cur.rowcount
     conn.commit()
     after = _nonnull()
     log.info(
         "LGA %s: %s assignment updated %d rows (after: %d lots have %s)",
-        lga_name, overlay, cur.rowcount, after, col,
+        lga_name, overlay, updated, after, col,
     )
     return before, after
 
