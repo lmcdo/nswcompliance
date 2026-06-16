@@ -254,9 +254,9 @@ def get_refusal_rate(
         result = attrs.get("ASSESMENT_RESULT") or "Unknown"
         counts[result] = attrs.get("count", 0)
 
-    approved = counts.get("Approved", 0)
-    refused = counts.get("Refused", 0)
-    deferred = counts.get("Deferred Commencement Consent", 0)
+    approved = counts.get("Approved") or 0
+    refused = counts.get("Refused") or 0
+    deferred = counts.get("Deferred Commencement Consent") or 0
     total = approved + refused + deferred
 
     if total == 0:
