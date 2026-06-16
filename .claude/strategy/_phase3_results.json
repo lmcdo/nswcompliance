@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Coordinate validation (NSW bounds)",
+    "status": "PASS",
+    "detail": "(-33.9113, 151.1553) within NSW bounds"
+  },
+  {
+    "name": "DA outcome lookup",
+    "status": "FAIL",
+    "detail": "Error: {'code': 400, 'message': 'Failed to execute query.', 'details': []}"
+  },
+  {
+    "name": "Null outcome propagation",
+    "status": "PASS",
+    "detail": "No null-outcome DAs in this area (check passed vacuously)"
+  },
+  {
+    "name": "Exempt screening logic (7 cases)",
+    "status": "PASS",
+    "detail": "All classifications correct with \u00b130% uncertainty"
+  },
+  {
+    "name": "Approval gap chain (7 scenarios)",
+    "status": "PASS",
+    "detail": "All 7 scenarios classified correctly"
+  },
+  {
+    "name": "Consumer language audit (5 templates)",
+    "status": "FAIL",
+    "detail": "APPROVAL_GAP: banned words found: ['approved']"
+  },
+  {
+    "name": "Source attribution completeness",
+    "status": "PASS",
+    "detail": "All actionable templates cite source and date"
+  },
+  {
+    "name": "Three-state semantics (4 decision points)",
+    "status": "PASS",
+    "detail": "All decision points have uncertainty/null path"
+  },
+  {
+    "name": "Temporal coverage acknowledgement",
+    "status": "PASS",
+    "detail": "Earliest DA: 20190702000000. APPROVAL_GAP template includes pre-digital caveat."
+  },
+  {
+    "name": "PAN cross-reference accuracy",
+    "status": "FAIL",
+    "detail": "No DA data from step 3.2"
+  },
+  {
+    "name": "Epoch date parsing (Windows-safe)",
+    "status": "PASS",
+    "detail": "All 7 cases parse correctly using timedelta method"
+  },
+  {
+    "name": "Full Product B output",
+    "status": "FAIL",
+    "detail": "Banned words in output: [\".disclaimer: ['approved', 'definitive']\"]"
+  }
+]
