@@ -275,14 +275,19 @@ async function handleSummary(req: LotSearchInput) {
   );
 
   // Data currency: latest successful refresh for the queried LGA (factual "data as of").
+  // Best-effort — never let the provenance lookup break the summary response.
   let indexRefreshedAt: string | null = null;
   if (req.lga_name) {
-    const refreshRes = await query(
-      `SELECT MAX(finished_at) AS at FROM lot_index_refresh_log
-       WHERE lga_name = $1 AND status = 'ok'`,
-      [req.lga_name.toUpperCase()],
-    );
-    indexRefreshedAt = refreshRes.rows[0]?.at ?? null;
+    try {
+      const refreshRes = await query(
+        `SELECT MAX(finished_at) AS at FROM lot_index_refresh_log
+         WHERE lga_name = $1 AND status = 'ok'`,
+        [req.lga_name.toUpperCase()],
+      );
+      indexRefreshedAt = refreshRes?.rows?.[0]?.at ?? null;
+    } catch {
+      indexRefreshedAt = null;
+    }
   }
 
   const queryMs = Date.now() - start;
