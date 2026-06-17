@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-06-15T07:00:00Z",
-  "reason": "Adding Telegram crash reporter and env diagnostics to run_monitors.py — no DB queries, no logic change"
+  "status": "passed",
+  "timestamp": "2026-06-17T00:00:00Z",
+  "target": "Bug 3: lot-area sanity guard in intelligence_brief.py — cross-check VG valuation lot_area_m2 vs Planning Portal cadastral polygon area; distrust VG on divergence (the 4452m2 aggregated-parcel case)",
+  "findings_summary": "lot_area_m2 sourced ONLY from VG valuation (intelligence_brief.py:2117/1854) and marked AUTHORITATIVE with no check. fetch_lot_geometry returns the Portal single-lot polygon (EPSG:3857); calculate_lot_dimensions already returns a NSW-latitude scale-corrected, shoelace polygon area_m2 = the authoritative single-lot cross-check. Both available at assembly (~2192 non-streaming, ~2669 streaming) before all headline consumers (strata 2210, controls 2222, sepp 2224, economics 2266, constraint engine via economics.lot_area_m2). ConfidenceLevel.DERIVED = computed-from-authoritative = correct downgrade. data_currency_warnings populated via staleness_warnings list (2373/2951). Pure helper + wiring at both paths + economics caveat read. Residual limit: if geocode resolves wrong propId entirely, VG and polygon both wrong-but-agree -> not caught (separate geocode-accuracy problem)."
 }
