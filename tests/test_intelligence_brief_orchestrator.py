@@ -203,6 +203,23 @@ class TestBuildDCPControls:
         assert ctrls[1].value_min == 6.5
 
 
+def test_safe_brief_sse_emits_error_event_on_exception(monkeypatch):
+    # Regression: a mid-stream exception must surface as an `error` SSE event,
+    # not silently terminate the stream (which left the UI hanging at last %).
+    from services import intelligence_brief as ib
+
+    def boom(*args, **kwargs):
+        yield ib._sse_event("metadata", {"ok": True})
+        raise RuntimeError("kaboom mid stream")
+
+    monkeypatch.setattr(ib, "_generate_brief_sse", boom)
+    events = list(ib._safe_brief_sse(MagicMock(), None, -33.8, 151.1, None))
+    # The metadata event still passes through, then an error event is appended.
+    assert any("event: metadata" in e for e in events)
+    assert any("event: error" in e for e in events)
+    assert any("kaboom mid stream" in e for e in events)
+
+
 # ---------------------------------------------------------------------------
 # 3. SEPP Housing standards
 # ---------------------------------------------------------------------------
