@@ -77,38 +77,20 @@ def calculate_lot_dimensions(geometry: Optional[dict]) -> Optional[LotDimensions
         return None
 
     area = _shoelace_area(points)
-    boundaries = _extract_boundaries(points)
-    _classify_boundaries(boundaries)
+    if area <= 0:
+        return None
 
-    front = next((b for b in boundaries if b["type"] == "front"), None)  # noqa: bracket-access
-    rear = next((b for b in boundaries if b["type"] == "rear"), None)  # noqa: bracket-access
-    left = next((b for b in boundaries if b["type"] == "side_left"), None)  # noqa: bracket-access
-    right = next((b for b in boundaries if b["type"] == "side_right"), None)  # noqa: bracket-access
-
-    frontage = front["length"] if front else None  # noqa: bracket-access
-    side_l = left["length"] if left else 0.0  # noqa: bracket-access
-    side_r = right["length"] if right else 0.0  # noqa: bracket-access
-
-    if side_l and side_r:
-        depth = (side_l + side_r) / 2.0
-    elif side_l or side_r:
-        depth = side_l or side_r
-    else:
-        depth = None
-
-    is_corner = False
-    if front and rear:
-        # Corner lots often have two "front" boundaries (two street-facing sides).
-        # Heuristic: if front and rear are similar length and both short relative
-        # to sides, it's more likely rectangular. Not attempting corner detection
-        # without street data — would need cadastre road-frontage classification.
-        pass
+    # Frontage/depth from the oriented bounding box (minimum rotated rectangle).
+    # Robust to vertex count and ring order — unlike the old "ring[0] is the
+    # frontage" heuristic, which misclassified real cadastre lots (e.g. a 312 m²
+    # lot reported as 35 m × 7.5 m).
+    frontage, depth = _frontage_depth_obb(points, area)
 
     return LotDimensions(
         area_m2=round(area, 1),
         frontage_m=round(frontage, 1) if frontage else None,
         depth_m=round(depth, 1) if depth else None,
-        is_corner=is_corner,
+        is_corner=False,
     )
 
 
@@ -123,53 +105,93 @@ def _shoelace_area(points: list[tuple[float, float]]) -> float:
     return abs(area) / 2.0
 
 
-def _extract_boundaries(points: list[tuple[float, float]]) -> list[dict]:
-    """Extract boundary segments with length and bearing."""
-    n = len(points)
-    boundaries = []
-    for i in range(n):
-        sx, sy = points[i]
-        ex, ey = points[(i + 1) % n]
-        dx = ex - sx
-        dy = ey - sy
-        length = math.sqrt(dx * dx + dy * dy)
-        bearing = (math.degrees(math.atan2(dx, dy)) + 360) % 360
-        boundaries.append({
-            "type": "unknown",
-            "length": length,
-            "bearing": bearing,
-            "start": (sx, sy),
-            "end": (ex, ey),
-        })
-    return boundaries
+def _frontage_depth_obb(
+    points: list[tuple[float, float]],
+    polygon_area: float,
+) -> tuple[Optional[float], Optional[float]]:
+    """Frontage/depth from the oriented bounding box (minimum rotated rectangle).
 
+    Returns (frontage, depth) where frontage = the shorter side and depth = the
+    longer side. NB: shorter-side-is-frontage is a HEURISTIC — correct for typical
+    deeper-than-wide lots, but not for wide/corner lots. The accurate frontage is
+    the lot edge that faces a road (road-frontage detection via the road network);
+    that is a planned upgrade. Here we return clean *dimensions*; the assignment is
+    the heuristic.
 
-def _classify_boundaries(boundaries: list[dict]) -> None:
-    """Classify boundaries as front, rear, side_left, side_right.
-
-    For 4-edge lots: assumes first boundary is front (matches portal ring order).
-    For irregular: uses bearing-based heuristic (same as TypeScript version).
+    Returns (None, None) when the lot is too irregular for a rectangle to be
+    representative (so the engine's area-based estimate runs). Pure Python — no
+    external geometry dependency (shapely is optional in this stack).
     """
-    # All bracket access below is on dicts we construct in _extract_boundaries  # noqa: bracket-access
-    if len(boundaries) == 4:
-        types = ["front", "side_right", "rear", "side_left"]
-        for b, t in zip(boundaries, types):
-            b["type"] = t  # noqa: bracket-access
-        return
+    rect = _min_area_rect(points)
+    if not rect:
+        return None, None
+    side1, side2 = rect
+    if side1 <= 0 or side2 <= 0:
+        return None, None
+    # If the polygon fills <60% of its bounding rectangle it is too irregular
+    # (L-shape, battle-axe handle) for frontage/depth to be meaningful — defer
+    # to the engine's area-based estimate downstream.
+    if (polygon_area / (side1 * side2)) < 0.6:
+        return None, None
+    return (min(side1, side2), max(side1, side2))
 
-    # Irregular lots: bearing-based classification
-    centroid_y = sum(b["start"][1] for b in boundaries) / len(boundaries)  # noqa: bracket-access
-    centroid_x = sum(b["start"][0] for b in boundaries) / len(boundaries)  # noqa: bracket-access
 
-    for b in boundaries:
-        mid_y = (b["start"][1] + b["end"][1]) / 2.0  # noqa: bracket-access
-        mid_x = (b["start"][0] + b["end"][0]) / 2.0  # noqa: bracket-access
-        bearing = b["bearing"]  # noqa: bracket-access
+def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Andrew's monotone-chain convex hull (counter-clockwise, no repeat)."""
+    pts = sorted(set(points))
+    if len(pts) <= 2:
+        return pts
 
-        # Roughly horizontal (E-W): bearing 45-135 or 225-315
-        is_horizontal = (45 <= bearing < 135) or (225 <= bearing < 315)
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
 
-        if is_horizontal:
-            b["type"] = "front" if mid_y < centroid_y else "rear"  # noqa: bracket-access
-        else:
-            b["type"] = "side_left" if mid_x < centroid_x else "side_right"  # noqa: bracket-access
+    lower: list[tuple[float, float]] = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper: list[tuple[float, float]] = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def _min_area_rect(points: list[tuple[float, float]]) -> Optional[tuple[float, float]]:
+    """Minimum-area bounding rectangle side lengths via rotating calipers.
+
+    The min-area rectangle of a convex polygon always has one side collinear with
+    a hull edge, so we test each edge orientation and keep the smallest-area box.
+    Returns (side_a, side_b) in metres, or None if degenerate.
+    """
+    hull = _convex_hull(points)
+    n = len(hull)
+    if n < 3:
+        return None
+
+    best: Optional[tuple[float, float, float]] = None  # (area, w, h)
+    for i in range(n):
+        ax, ay = hull[i]
+        bx, by = hull[(i + 1) % n]
+        ex, ey = bx - ax, by - ay
+        elen = math.hypot(ex, ey)
+        if elen == 0:
+            continue
+        ux, uy = ex / elen, ey / elen      # edge direction (unit)
+        vx, vy = -uy, ux                   # perpendicular (unit)
+        min_u = min_v = math.inf
+        max_u = max_v = -math.inf
+        for px, py in hull:
+            du = px * ux + py * uy
+            dv = px * vx + py * vy
+            min_u, max_u = min(min_u, du), max(max_u, du)
+            min_v, max_v = min(min_v, dv), max(max_v, dv)
+        w, h = max_u - min_u, max_v - min_v
+        area = w * h
+        if best is None or area < best[0]:
+            best = (area, w, h)
+
+    if best is None:
+        return None
+    return best[1], best[2]
