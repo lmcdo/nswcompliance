@@ -224,7 +224,7 @@ export function ConstraintArithmeticCard({
             </div>
           )}
 
-          {/* After council DCP — secondary, only when geometry is reliable */}
+          {/* After council DCP — secondary, only when lot geometry resolved */}
           {result.dcp_adjusted_gfa_m2 != null && (
             <div className="bg-white border border-teal-200 rounded-lg p-3">
               <div className="text-xs font-medium text-teal-700 mb-1">After council DCP</div>
