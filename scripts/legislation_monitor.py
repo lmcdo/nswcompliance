@@ -53,6 +53,13 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+# Runbook connector — importable both as a package (pytest, repo root) and as a
+# sibling module (when this file is run directly as scripts/legislation_monitor.py).
+try:
+    from scripts.refresh_runbook import build_refresh_runbook
+except ImportError:  # pragma: no cover - direct-run path
+    from refresh_runbook import build_refresh_runbook
+
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
 HEADERS = {
@@ -750,7 +757,10 @@ def main():
             f"{len(changed)} instrument(s) updated:\n\n"
             + "\n\n".join(lines)
             + "\n\nVerify on legislation.nsw.gov.au before updating provisions."
-            + "\nThen run: python scripts/update_instrument_provisions.py --key <key>"
+            # Scoped, ready-to-run refresh chain per changed instrument (LEP =
+            # per-LGA re-ingest+recompute; SEPP = statewide note). Closes the
+            # detection -> recompute loop without auto-executing anything.
+            + build_refresh_runbook([(r.instrument_key, r.instrument_label) for r in changed])
         )
         print(f"\n{msg}")
         send_telegram(msg)

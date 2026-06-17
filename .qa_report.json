@@ -1,37 +1,69 @@
 {
-  "tier": "minor",
-  "justification": "Add Telegram crash reporter to run_monitors.py for Railway cron debugging",
-  "commit_hash": "d829d52a",
+  "tier": "standard",
+  "justification": "Legislation-monitor -> bulk-index refresh connector: maps changed instrument to a scoped, ready-to-run recompute runbook appended to the alert (command-in-alert; no execution, no DB writes at runtime)",
   "files": [
-    "scripts/run_monitors.py"
+    "scripts/refresh_runbook.py",
+    "scripts/legislation_monitor.py",
+    "tests/test_refresh_runbook.py"
   ],
+  "commit_hash": "1838729b",
   "pre_impl": {
-    "trivial": true,
-    "reason": "Diagnostic logging + error reporting, no DB queries, no logic change"
+    "existing_data": "instrument_registry holds 23 LEP and 2 SEPP active keys; lot_search_index.lga_name holds the 128 overlay LGA names the recompute commands must target",
+    "assumption_mismatch": "naive slug-to-LGA transform only resolves 19 of 23 keys; merged or renamed councils (Parramatta, Canterbury-Bankstown, Sutherland Shire, The Hills Shire) need explicit overrides verified against the live overlay names",
+    "new_vs_existing": "new pure module reusing the existing legislation_monitor alert path; it appends text only and runs zero DB or network calls, so the static override map is baked in rather than queried at runtime"
   },
-  "functions": "send_telegram() added; main() logs env var presence and sends failures to Telegram; __main__ wraps in try/except with Telegram crash report",
-  "values": "N/A",
-  "queries": "N/A",
-  "break_it": [
+  "functions": [
     {
-      "scenario": "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set",
-      "what_happens": "send_telegram returns silently, no crash",
-      "repro": "Unset both vars and run monitor",
-      "mitigated": true,
-      "how": "Guard clause checks both vars before attempting POST"
+      "name": "instrument_lga",
+      "file_line": "scripts/refresh_runbook.py:31",
+      "input": "instrument_key string such as bayside_lep_2021 or sepp_housing_2021",
+      "output": "overlay LGA name for an LEP, or None for any statewide SEPP key",
+      "if_none": "returns None for non-LEP keys so the caller emits a statewide note instead of a per-LGA command"
     },
     {
-      "scenario": "Telegram API is down",
-      "what_happens": "POST times out or fails, bare except passes, monitor runs normally",
-      "repro": "Block api.telegram.org and run monitor",
+      "name": "build_refresh_runbook",
+      "file_line": "scripts/refresh_runbook.py:70",
+      "input": "list of changed instrument tuples each holding key and human label",
+      "output": "operator-facing runbook text block appended to the change alert",
+      "if_none": "empty changed list returns an empty string so callers append it unconditionally"
+    },
+    {
+      "name": "_lep_block",
+      "file_line": "scripts/refresh_runbook.py:49",
+      "input": "the LEP label, instrument key, and resolved overlay LGA name",
+      "output": "scoped three-command chain re-ingest then assign then recompute for that LGA",
+      "if_none": "only called when instrument_lga returned a real LGA, so the LGA is never None here"
+    }
+  ],
+  "values": "N/A - emits command strings only; no regulatory values computed or stored",
+  "queries": "N/A - no DB queries in new code; the existing monitor queries are unchanged",
+  "break_it": [
+    {
+      "scenario": "Changed instrument is a merged/renamed council (Parramatta/Canterbury-Bankstown/Sutherland/The Hills)",
+      "what_happens": "Naive slug transform would emit the wrong --lga name, sending a command that processes 0 lots",
+      "repro": "build_refresh_runbook([('parramatta_lep_2023','...')])",
       "mitigated": true,
-      "how": "try/except with pass around the POST call"
+      "how": "_LGA_OVERRIDES dict verified vs lot_search_index.lga_name; regression test test_lep_uses_override_lga_not_naive asserts naive name absent, override present"
+    },
+    {
+      "scenario": "Changed instrument is a statewide SEPP",
+      "what_happens": "A per-LGA recompute command would be nonsensical (SEPP affects all councils)",
+      "repro": "build_refresh_runbook([('sepp_housing_2021','...')])",
+      "mitigated": true,
+      "how": "instrument_lga returns None for non-_lep_ keys -> _sepp_block (statewide note, no build command); test asserts build_lot_search_index.py absent"
+    },
+    {
+      "scenario": "No instruments changed in this monitor run",
+      "what_happens": "Empty runbook string appended to the alert (no-op)",
+      "repro": "build_refresh_runbook([])",
+      "mitigated": true,
+      "how": "returns '' so callers append unconditionally; runbook only reached inside the existing 'if changed' branch anyway"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Wait for next Railway cron run, check Telegram for crash report or success"
+    "manual_verify": "On next Railway legislation_monitor cron with a real change (or forced --dry-run change), confirm the Telegram alert carries the scoped runbook. NOTE: the emitted recompute rebuilds from spatial_overlays, corrupt for ~26 councils (separate pending fix); the runbook re-ingests overlays first so it pulls fresh source, but the FSR ingest field-mapping fix is still outstanding."
   }
 }
