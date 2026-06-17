@@ -142,10 +142,21 @@ class TestBuildPlanningControls:
         assert pc.zone.value is None
         assert pc.zone.confidence == ConfidenceLevel.AUTHORITATIVE  # still authoritative (portal returned nothing)
 
-    def test_lot_dimensions_parsed(self):
-        pc = _build_planning_controls(SAMPLE_CONTROLS, SAMPLE_OVERLAYS_DATA)
+    def test_lot_dimensions_uses_real_area_not_min_lot_size(self):
+        # Regression: area must come from the authoritative lot_area_m2, NOT
+        # controls['lot_size'] (the LEP minimum-lot-size standard). The old code
+        # displayed the min-lot-size as the lot's area.
+        pc = _build_planning_controls(
+            SAMPLE_CONTROLS, SAMPLE_OVERLAYS_DATA, lot_area_m2=612.0
+        )
         assert pc.lot_dimensions.value is not None
-        assert pc.lot_dimensions.value.area_m2 == 450.0
+        assert pc.lot_dimensions.value.area_m2 == 612.0
+        assert pc.lot_dimensions.value.area_m2 != 450.0  # not the min-lot-size
+
+    def test_lot_dimensions_none_without_area_or_geometry(self):
+        # No geometry and no real area → no fabricated area from min-lot-size.
+        pc = _build_planning_controls(SAMPLE_CONTROLS, SAMPLE_OVERLAYS_DATA)
+        assert pc.lot_dimensions.value is None
 
 
 # ---------------------------------------------------------------------------
