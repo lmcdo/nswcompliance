@@ -13,8 +13,6 @@ import pytest
 
 from services.lot_dimensions import (
     _shoelace_area,
-    _extract_boundaries,
-    _classify_boundaries,
     calculate_lot_dimensions,
     fetch_lot_geometry,
     _SCALE_FACTOR,
@@ -72,54 +70,7 @@ class TestShoelaceArea:
 
 
 # ---------------------------------------------------------------------------
-# _extract_boundaries
-# ---------------------------------------------------------------------------
-
-class TestExtractBoundaries:
-    def test_four_edges_from_rectangle(self):
-        pts = [(0, 0), (15, 0), (15, 40), (0, 40)]
-        boundaries = _extract_boundaries(pts)
-        assert len(boundaries) == 4
-
-    def test_lengths_correct(self):
-        pts = [(0, 0), (15, 0), (15, 40), (0, 40)]
-        boundaries = _extract_boundaries(pts)
-        lengths = [b["length"] for b in boundaries]
-        assert lengths[0] == pytest.approx(15.0)  # bottom
-        assert lengths[1] == pytest.approx(40.0)  # right side
-        assert lengths[2] == pytest.approx(15.0)  # top
-        assert lengths[3] == pytest.approx(40.0)  # left side
-
-    def test_bearing_range(self):
-        pts = [(0, 0), (15, 0), (15, 40), (0, 40)]
-        boundaries = _extract_boundaries(pts)
-        for b in boundaries:
-            assert 0 <= b["bearing"] < 360
-
-
-# ---------------------------------------------------------------------------
-# _classify_boundaries
-# ---------------------------------------------------------------------------
-
-class TestClassifyBoundaries:
-    def test_four_edge_classification(self):
-        pts = [(0, 0), (15, 0), (15, 40), (0, 40)]
-        boundaries = _extract_boundaries(pts)
-        _classify_boundaries(boundaries)
-        types = [b["type"] for b in boundaries]
-        assert types == ["front", "side_right", "rear", "side_left"]
-
-    def test_irregular_lot_all_classified(self):
-        """5-sided lot — all boundaries get a type."""
-        pts = [(0, 0), (15, 0), (18, 20), (15, 40), (0, 40)]
-        boundaries = _extract_boundaries(pts)
-        _classify_boundaries(boundaries)
-        for b in boundaries:
-            assert b["type"] in ("front", "rear", "side_left", "side_right")
-
-
-# ---------------------------------------------------------------------------
-# calculate_lot_dimensions — integration
+# calculate_lot_dimensions — integration (frontage/depth via oriented bbox)
 # ---------------------------------------------------------------------------
 
 class TestCalculateLotDimensions:
@@ -158,6 +109,32 @@ class TestCalculateLotDimensions:
         assert result.area_m2 == pytest.approx(4000.0, abs=1.0)
         assert result.frontage_m == pytest.approx(50.0, abs=0.5)
         assert result.depth_m == pytest.approx(80.0, abs=0.5)
+
+    def test_rotated_rectangle(self):
+        """OBB's key advantage: a 15x40 lot rotated 30deg off-axis still resolves
+        to ~15 x ~40 (the old edge-order heuristic could not)."""
+        import math as _m
+        a = _m.radians(30)
+        def _rot(x, y):
+            return (x * _m.cos(a) - y * _m.sin(a), x * _m.sin(a) + y * _m.cos(a))
+        corners = [_rot(0, 0), _rot(15, 0), _rot(15, 40), _rot(0, 40)]
+        ring = [_to_3857(x, y) for x, y in corners] + [_to_3857(*corners[0])]
+        result = calculate_lot_dimensions({"rings": [ring]})
+        assert result is not None
+        assert result.area_m2 == pytest.approx(600.0, abs=1.0)
+        assert result.frontage_m == pytest.approx(15.0, abs=0.5)
+        assert result.depth_m == pytest.approx(40.0, abs=0.5)
+
+    def test_irregular_lot_defers_frontage(self):
+        """An L-shaped lot fills <60% of its bounding box, so frontage/depth are
+        left None (the engine then estimates) — but the area is still computed."""
+        pts = [(0, 0), (20, 0), (20, 5), (5, 5), (5, 20), (0, 20)]
+        ring = [_to_3857(x, y) for x, y in pts] + [_to_3857(*pts[0])]
+        result = calculate_lot_dimensions({"rings": [ring]})
+        assert result is not None
+        assert result.area_m2 == pytest.approx(175.0, abs=1.0)
+        assert result.frontage_m is None
+        assert result.depth_m is None
 
     def test_closing_point_dedup(self):
         """Ring with duplicate closing point is handled."""
