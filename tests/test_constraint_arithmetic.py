@@ -213,22 +213,23 @@ class TestGoldenInnerWest:
         # 30% of 600 = 180
         assert self.result.landscaping_reduction_m2 == 180.0
 
-    def test_final_footprint_after_coverage_then_landscaping(self):
-        """Coverage caps footprint at 300, then landscaping removes 180 -> 120m2."""
-        # After setbacks: 336
-        # Coverage cap: 300 (< 336, so applied)
-        # Landscaping: 300 - 180 = 120
-        # Height GFA: 120 * 3 = 360
-        # FSR GFA: 450
-        # Envelope: min(450, 360) = 360
-        assert self.result.lep_envelope_gfa_m2 == 360.0
+    def test_lep_envelope_is_clean_headline(self):
+        # Headline LEP envelope = min(FSR 450, clean height 600*3=1800) = 450.
+        # DCP erosion no longer drags the envelope down — it feeds dcp_adjusted.
+        assert self.result.lep_envelope_gfa_m2 == 450.0
+
+    def test_dcp_adjusted_after_coverage_then_landscaping(self):
+        """Secondary figure: setbacks->coverage cap 300->landscaping 120, height
+        GFA 120*3=360; min(FSR 450, 360) = 360."""
+        assert self.result.dcp_adjusted_gfa_m2 == 360.0
 
     def test_realistic_gfa(self):
-        assert self.result.realistic_gfa_m2 == 360.0
+        # Headline = the clean LEP envelope (FSR-bound here).
+        assert self.result.realistic_gfa_m2 == 450.0
 
     def test_realistic_dwellings(self):
-        # 360 / 65 = 5.5 -> int = 5
-        assert self.result.realistic_dwellings == 5
+        # 450 / 65 = 6.9 -> int = 6
+        assert self.result.realistic_dwellings == 6
 
     def test_binding_constraint(self):
         # FSR (450m2) < landscaping path (468m2) — FSR is more restrictive
@@ -545,8 +546,9 @@ class TestBindingConstraintVariation:
         )
         assert result.binding_constraint == ConstraintType.LEP_HEIGHT
 
-    def test_setbacks_binding_when_setbacks_large(self):
-        """Very large setbacks on narrow lot -> setbacks bind."""
+    def test_setbacks_erode_dcp_adjusted(self):
+        """Very large setbacks on a narrow lot reduce the secondary dcp_adjusted
+        figure below the headline LEP envelope (binding headline stays FSR/height)."""
         result = compute_constraint_arithmetic(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="22", lep_fsr_str="2.0:1",
@@ -557,10 +559,13 @@ class TestBindingConstraintVariation:
                 _make_dcp("side_setback", 4.0),
             ],
         )
-        assert result.binding_constraint == ConstraintType.DCP_SETBACKS
+        assert result.binding_constraint == ConstraintType.LEP_FSR
+        assert result.dcp_adjusted_gfa_m2 is not None
+        assert result.dcp_adjusted_gfa_m2 < result.realistic_gfa_m2
 
-    def test_coverage_binding(self):
-        """Low site coverage with generous everything else."""
+    def test_coverage_erodes_dcp_adjusted(self):
+        """Low site coverage erodes the secondary dcp_adjusted figure; the headline
+        envelope binding remains the LEP control (FSR/height)."""
         result = compute_constraint_arithmetic(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="22", lep_fsr_str="2.0:1",
@@ -569,7 +574,25 @@ class TestBindingConstraintVariation:
                 _make_dcp("max_site_coverage", 20.0, unit="%"),
             ],
         )
-        assert result.binding_constraint == ConstraintType.DCP_SITE_COVERAGE
+        assert result.binding_constraint == ConstraintType.LEP_FSR
+        assert result.dcp_adjusted_gfa_m2 is not None
+        assert result.dcp_adjusted_gfa_m2 < result.realistic_gfa_m2
+
+    def test_unreliable_geometry_keeps_lep_envelope_headline(self):
+        """Regression (the Penrith=0 case): with no reliable frontage/depth and a
+        heavy landscaping requirement, the headline must stay the LEP envelope —
+        never zero — and the dcp_adjusted secondary is suppressed."""
+        result = compute_constraint_arithmetic(
+            lot_area_m2=600, dev_type="dwelling_house",
+            lep_height_str="8.5", lep_fsr_str="0.5:1",
+            lot_dimensions=None,  # no reliable geometry
+            dcp_controls=[
+                _make_dcp("landscaping_min", 50.0, unit="%"),
+                _make_dcp("front_setback", 6.0),
+            ],
+        )
+        assert result.realistic_gfa_m2 == 300.0  # FSR 0.5 * 600 envelope, not zeroed
+        assert result.dcp_adjusted_gfa_m2 is None  # geometry unreliable → suppressed
 
 
 # ===========================================================================
@@ -588,8 +611,10 @@ class TestParking:
         )
         assert result.parking_spaces_required is not None
         assert result.parking_gfa_consumed_m2 is not None
-        # Parking should reduce final GFA for non-apartment
-        assert result.realistic_gfa_m2 < result.lep_envelope_gfa_m2
+        # Parking reduces the secondary dcp_adjusted figure (not the LEP-envelope
+        # headline) for a non-apartment.
+        assert result.dcp_adjusted_gfa_m2 is not None
+        assert result.dcp_adjusted_gfa_m2 < result.realistic_gfa_m2
 
     def test_apartment_parking_does_not_reduce_gfa(self):
         result = compute_constraint_arithmetic(
@@ -672,14 +697,14 @@ class TestMutationResistant:
         assert result.buildable_footprint_m2 == 336.0  # 12 x 28
 
     def test_dwelling_count_floor_division(self):
-        """360m2 / 65m2 = 5.53 -> 5 dwellings (not 6)."""
+        """Headline dwellings from the LEP envelope: 450m2 / 65m2 = 6.9 -> 6."""
         result = compute_constraint_arithmetic(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="11", lep_fsr_str="0.75:1",
             lot_dimensions=_inner_west_lot(),
             dcp_controls=_inner_west_controls(),
         )
-        assert result.realistic_dwellings == 5
+        assert result.realistic_dwellings == 6
 
 
 # ===========================================================================
