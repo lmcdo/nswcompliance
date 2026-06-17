@@ -859,13 +859,23 @@ def _fetch_constraint_data_from_db(
             if dcp_raw:
                 all_setbacks = (dcp_raw.get("setbacks") or []) + (dcp_raw.get("sd_setbacks") or [])
                 for s in all_setbacks:
+                    # 'requirement' fallback can be free text — coerce to a number
+                    # or None (never force text into the float field), keeping any
+                    # descriptive text as the condition.
+                    raw_min = s.get("value_min")
+                    if raw_min is None:
+                        raw_min = s.get("requirement")
+                    val_min = _parse_numeric(raw_min)
+                    condition = s.get("notes") or s.get("condition")
+                    if val_min is None and isinstance(raw_min, str) and raw_min.strip():
+                        condition = condition or raw_min.strip()
                     dcp_controls.append(DCPControl(
                         control_type=s.get("control_type", s.get("type", "")),
                         dev_type=s.get("dev_type", "dwelling_house"),
-                        value_min=s.get("value_min") or s.get("requirement"),
-                        value_max=s.get("value_max"),
+                        value_min=val_min,
+                        value_max=_parse_numeric(s.get("value_max")),
                         unit=s.get("unit", "m"),
-                        condition=s.get("notes") or s.get("condition"),
+                        condition=condition,
                         source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
                     ))
 
