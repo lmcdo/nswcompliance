@@ -234,6 +234,7 @@ export interface DistributionEntry {
 }
 
 export interface SummaryResponse {
+  index_refreshed_at: string | null;
   total_lots: number;
   lots_with_ca: number;
   avg_area_m2: number | null;

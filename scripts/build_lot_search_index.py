@@ -856,6 +856,27 @@ def compute_constraints_for_lga(
 # ---------------------------------------------------------------------------
 
 
+def _log_refresh(conn, lga, phase, trigger, started_ts, lots, status, dry_run=False):
+    """Record a lot_index_refresh_log row. Best-effort — never aborts the build."""
+    if dry_run:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO lot_index_refresh_log
+                   (lga_name, phase, trigger, started_at, finished_at, lots, status)
+               VALUES (%s, %s, %s, to_timestamp(%s), NOW(), %s, %s)""",
+            (lga, phase, trigger, started_ts, lots, status),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning("refresh-log write failed for %s: %s", lga, e)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build lot_search_index")
     parser.add_argument("--lga", help="Process single LGA (overlay name, e.g. 'INNER WEST')")
@@ -870,6 +891,8 @@ def main():
                         help="Compute every LGA in the index (incl. non-DCP). Only valid "
                              "with --recompute; loops per-LGA, never a global reset.")
     parser.add_argument("--batch-size", type=int, default=2000, help="Batch size for CA compute")
+    parser.add_argument("--trigger", default="manual",
+                        help="Refresh-log trigger label, e.g. 'manual' | 'monitor:<id>' | 'statewide_build'")
     parser.add_argument("--dry-run", action="store_true", help="Show counts only, no writes")
     args = parser.parse_args()
 
@@ -936,11 +959,14 @@ def main():
         log.info("Phase 2 targets: %d (recompute=%s)", len(targets), args.recompute)
         total_computed = 0
         for slug in targets:
+            _t_lga = time.time()
             n = compute_constraints_for_lga(
                 conn, slug, batch_size=args.batch_size, dry_run=args.dry_run,
                 recompute=args.recompute,
             )
             total_computed += n
+            _log_refresh(conn, slug, "compute", args.trigger, _t_lga, n, "ok",
+                         dry_run=args.dry_run)
         log.info("Phase 2 complete: %d lots computed across %d targets (%.1fs)",
                  total_computed, len(targets), time.time() - t1)
 

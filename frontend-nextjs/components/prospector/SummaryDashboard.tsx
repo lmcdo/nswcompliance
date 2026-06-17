@@ -138,6 +138,15 @@ export function SummaryDashboard({ summary, isLoading }: SummaryDashboardProps) 
       </div>
 
       <p className="text-xs text-gray-400 text-right">
+        {summary.index_refreshed_at && (
+          <>
+            Index data refreshed{' '}
+            {new Date(summary.index_refreshed_at).toLocaleDateString('en-AU', {
+              day: 'numeric', month: 'short', year: 'numeric',
+            })}
+            {' · '}
+          </>
+        )}
         Summary query completed in {summary.query_ms} ms
       </p>
     </div>
