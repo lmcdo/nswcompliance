@@ -1410,6 +1410,7 @@ def _build_planning_controls(
     controls: dict,
     overlays_data: dict,
     lot_geometry: Optional[dict] = None,
+    lot_area_m2: Optional[float] = None,
 ) -> PlanningControls:
     """Map conveyancing parse_controls output to PlanningControls schema."""
     today = date.today().isoformat()
@@ -1428,27 +1429,17 @@ def _build_planning_controls(
     housing_sepp = controls.get("housing_sepp", False)
     tod_area = controls.get("tod_area", False)
 
-    # Lot dimensions — compute from polygon geometry if available, fall back
-    # to scalar lot_size string from planning portal
-    lot_size_str = controls.get("lot_size")
-    lot_area = None
-    if lot_size_str:
-        try:
-            lot_area = float(str(lot_size_str).replace(",", "").replace("m²", "").strip())
-        except (ValueError, TypeError):
-            pass
-
+    # Lot dimensions — frontage/depth from the polygon; area from the
+    # authoritative cadastre/valuation lot_area_m2 passed in.
+    # NB: controls["lot_size"] is the LEP minimum-lot-size standard (cl 4.1),
+    # NOT this lot's area — never substitute it for the measured area.
     lot_dims = calculate_lot_dimensions(lot_geometry) if lot_geometry else None
     if lot_dims:
-        # Polygon-derived dimensions — authoritative for frontage/depth.
-        # Prefer portal lot_size for area if available (it's from the valuer).
-        if lot_area and lot_dims.area_m2:
-            lot_dims.area_m2 = lot_area
-        elif lot_area and not lot_dims.area_m2:
-            lot_dims.area_m2 = lot_area
-    elif lot_area:
-        # No polygon — area-only fallback (original behaviour)
-        lot_dims = LotDimensions(area_m2=lot_area)
+        if lot_area_m2:
+            lot_dims.area_m2 = lot_area_m2
+    elif lot_area_m2:
+        # No polygon — area-only fallback
+        lot_dims = LotDimensions(area_m2=lot_area_m2)
 
     return PlanningControls(
         zone=DataField(value=_sanitise(controls.get("zone")), confidence=auth, source="planning_portal", as_at=today),
@@ -2226,7 +2217,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     )
 
     # ── 7. Assemble brief ────────────────────────────────────────────────
-    planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw)
+    planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2)
     dcp_controls = _build_dcp_controls(dcp_raw, dcp_former_council)
     sepp_housing = _build_sepp_housing(sepp_raw, zone_code, lot_area_m2)
 
@@ -2253,7 +2244,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
                 dev_type="dwelling_house",
-                lep_height_str=controls.get("max_height"),
+                lep_height_str=controls.get("height"),
                 lep_fsr_str=fsr_str,
                 lot_dimensions=lot_dims_for_ca,
                 dcp_controls=dcp_controls.controls.value if dcp_controls.controls.value else [],
@@ -2700,7 +2691,7 @@ def _generate_brief_sse(
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
             controls["lot_size"] = ov_by_type["lot_size"].get("value")
 
-        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw)
+        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2)
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "planning_controls",
