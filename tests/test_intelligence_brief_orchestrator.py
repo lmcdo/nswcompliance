@@ -169,6 +169,39 @@ class TestBuildDCPControls:
         dcp = _build_dcp_controls(None, None)
         assert "could not be determined" in dcp.controls.reason
 
+    def test_nonnumeric_requirement_does_not_crash(self):
+        # Regression: some councils (e.g. Penrith, Inner West) store a free-text
+        # 'requirement' like "No maximum site coverage...". The old code forced it
+        # into the numeric value_min field, raising a Pydantic ValidationError that
+        # 500'd the whole brief. It must coerce to None and keep the text as a note.
+        dcp = _build_dcp_controls(
+            {
+                "dcp_name": "Test DCP",
+                "setbacks": [
+                    {
+                        "control_type": "site_coverage",
+                        "dev_type": "dwelling_house",
+                        "requirement": "No maximum site coverage; refer to height limits in the LEP.",
+                        "unit": "%",
+                    },
+                    {
+                        "control_type": "front_setback",
+                        "dev_type": "dwelling_house",
+                        "value_min": "6.5",
+                        "unit": "m",
+                    },
+                ],
+            },
+            "penrith",
+        )
+        ctrls = dcp.controls.value
+        assert len(ctrls) == 2
+        # Non-numeric requirement: coerced to None, text preserved as condition
+        assert ctrls[0].value_min is None
+        assert "No maximum site coverage" in (ctrls[0].condition or "")
+        # Numeric value still parses correctly
+        assert ctrls[1].value_min == 6.5
+
 
 # ---------------------------------------------------------------------------
 # 3. SEPP Housing standards
