@@ -40,6 +40,7 @@ interface ConstraintArithmeticResult {
   parking_spaces_required: number | null;
   parking_gfa_consumed_m2: number | null;
   realistic_gfa_m2: number | null;
+  dcp_adjusted_gfa_m2: number | null;
   realistic_dwellings: number | null;
   binding_constraint: string | null;
   binding_constraint_label: string;
@@ -210,18 +211,29 @@ export function ConstraintArithmeticCard({
       <CardContent className="space-y-4">
         {/* Key metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Realistic GFA */}
+          {/* Maximum GFA — the clean LEP envelope (headline) */}
           {result.realistic_gfa_m2 != null && (
             <div className="bg-white border border-blue-200 rounded-lg p-3">
-              <div className="text-xs font-medium text-blue-600 mb-1">Realistic GFA</div>
+              <div className="text-xs font-medium text-blue-600 mb-1">Maximum GFA</div>
               <div className="text-xl font-bold text-gray-900">
                 {Math.round(result.realistic_gfa_m2).toLocaleString()}m²
               </div>
-              {result.lep_envelope_gfa_m2 != null && (
-                <div className="text-xs text-gray-500 mt-0.5">
-                  of {Math.round(result.lep_envelope_gfa_m2).toLocaleString()}m² LEP envelope
-                </div>
-              )}
+              <div className="text-xs text-gray-500 mt-0.5">
+                LEP envelope (FSR / height)
+              </div>
+            </div>
+          )}
+
+          {/* After council DCP — secondary, only when lot geometry resolved */}
+          {result.dcp_adjusted_gfa_m2 != null && (
+            <div className="bg-white border border-teal-200 rounded-lg p-3">
+              <div className="text-xs font-medium text-teal-700 mb-1">After council DCP</div>
+              <div className="text-xl font-bold text-gray-900">
+                {Math.round(result.dcp_adjusted_gfa_m2).toLocaleString()}m²
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                indicative — after setbacks &amp; landscaping
+              </div>
             </div>
           )}
 
