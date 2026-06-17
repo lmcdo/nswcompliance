@@ -39,6 +39,7 @@ const GROUPS: Group[] = [
   {
     heading: 'Reports (reachable from /reports)',
     items: [
+      { path: '/reports/intelligence-brief', title: 'Property Intelligence Brief', note: 'now linked in hub; 3 B2C services (da_outcome/vg_comparables/strata_lookup) not yet wired', status: 'live' },
       { path: '/reports/conveyancing', title: 'Conveyancing report', status: 'live' },
       { path: '/reports/flood', title: 'Flood risk', status: 'live' },
       { path: '/reports/solar-yield', title: 'Solar yield', status: 'live' },
@@ -47,17 +48,6 @@ const GROUPS: Group[] = [
       { path: '/reports/granny-flat', title: 'Granny flat', status: 'live' },
       { path: '/reports/bushfire', title: 'Bushfire', status: 'live' },
       { path: '/reports/pre-da-history', title: 'Pre-DA site history', status: 'live' },
-    ],
-  },
-  {
-    heading: 'Built but NOT surfaced to users',
-    items: [
-      {
-        path: '/reports/intelligence-brief',
-        title: 'Intelligence brief',
-        note: 'page exists; not linked in the /reports hub; 5 Tier-1 B2C services not wired in yet',
-        status: 'built-unlinked',
-      },
     ],
   },
   {

@@ -13,6 +13,14 @@ export const metadata: Metadata = {
 
 const TOOLS = [
   {
+    href: '/reports/intelligence-brief',
+    title: 'Property Intelligence Brief',
+    tagline: 'Every planning layer for a site — in one live brief.',
+    description:
+      'Zoning, LEP development standards, DCP setback controls, SEPP housing standards, environmental constraints, an indicative development yield, and nearby development activity — assembled live from government data and streamed section by section.',
+    badge: 'Free',
+  },
+  {
     href: '/reports/flood',
     title: 'Flood Risk Check',
     tagline: 'How deep does it flood — not just whether it floods.',
