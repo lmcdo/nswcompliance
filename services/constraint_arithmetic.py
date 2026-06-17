@@ -319,9 +319,6 @@ def compute_constraint_arithmetic(
         result.buildable_footprint_m2 = round(buildable_footprint, 1)
         gaps.append("No DCP setback controls available — footprint not reduced")
 
-    # Track the setback-only footprint for binding constraint comparison
-    setback_only_footprint = buildable_footprint
-
     # -----------------------------------------------------------------------
     # Step 5: DCP site coverage cap
     # -----------------------------------------------------------------------
@@ -385,8 +382,13 @@ def compute_constraint_arithmetic(
     # -----------------------------------------------------------------------
     # Step 7: Compute GFA from height path (now that footprint is known)
     # -----------------------------------------------------------------------
+    clean_height_gfa: Optional[float] = None
     if max_storeys is not None:
+        # Eroded height GFA (DCP-reduced footprint) feeds the secondary
+        # dcp_adjusted figure; clean height GFA (full lot footprint) feeds the
+        # headline LEP envelope and does not depend on the frontage/depth heuristic.
         gfa_from_height = buildable_footprint * max_storeys
+        clean_height_gfa = lot_area_m2 * max_storeys
         result.lep_max_gfa_from_height_m2 = round(gfa_from_height, 1)
         # Update the height step with GFA
         for step in steps:
@@ -401,18 +403,18 @@ def compute_constraint_arithmetic(
     # -----------------------------------------------------------------------
     # Step 8: LEP envelope = min(FSR path, height path)
     # -----------------------------------------------------------------------
-    envelope_gfa: Optional[float] = None
-    if gfa_from_fsr is not None and gfa_from_height is not None:
-        envelope_gfa = min(gfa_from_fsr, gfa_from_height)
-    elif gfa_from_fsr is not None:
-        envelope_gfa = gfa_from_fsr
-    elif gfa_from_height is not None:
-        envelope_gfa = gfa_from_height
+    def _min_opt(a: Optional[float], b: Optional[float]) -> Optional[float]:
+        vals = [v for v in (a, b) if v is not None]
+        return min(vals) if vals else None
 
+    # Headline LEP envelope: FSR cap vs clean height envelope (full footprint).
+    envelope_gfa = _min_opt(gfa_from_fsr, clean_height_gfa)
     if envelope_gfa is not None:
         result.lep_envelope_gfa_m2 = round(envelope_gfa, 1)
 
-    current_gfa = envelope_gfa
+    # DCP-adjusted path (secondary): FSR cap vs eroded height envelope. Shadow and
+    # parking erode this figure further below.
+    current_gfa = _min_opt(gfa_from_fsr, gfa_from_height)
 
     # -----------------------------------------------------------------------
     # Step 9: Shadow access plane — continuous reduction
@@ -544,35 +546,40 @@ def compute_constraint_arithmetic(
     # -----------------------------------------------------------------------
     # Step 11: Realistic yield
     # -----------------------------------------------------------------------
-    realistic_dwellings: Optional[int] = None
-    if current_gfa is not None:
+    # Headline = LEP envelope (reliable, never zero for a buildable lot).
+    if envelope_gfa is not None:
         circulation = (
             CIRCULATION_FACTOR_APARTMENT
             if _is_apartment_type(dev_type)
             else CIRCULATION_FACTOR_HOUSE
         )
-        sellable_gfa = current_gfa * (1 - circulation)
-        realistic_dwellings = max(1, int(sellable_gfa / MIN_DWELLING_GFA_M2))
-        result.realistic_gfa_m2 = round(current_gfa, 1)
-        result.realistic_dwellings = realistic_dwellings
+        result.realistic_gfa_m2 = round(envelope_gfa, 1)
+        result.realistic_dwellings = max(
+            1, int(envelope_gfa * (1 - circulation) / MIN_DWELLING_GFA_M2)
+        )
+
+    # Secondary "after-DCP" figure — only surfaced when lot geometry is reliable
+    # (real frontage/depth) AND the eroded result is plausible (>0). Otherwise we
+    # do not show a DCP-adjusted number rather than show a misleading/zero one.
+    if has_dimensions and current_gfa is not None and current_gfa > 0:
+        result.dcp_adjusted_gfa_m2 = round(current_gfa, 1)
 
     # -----------------------------------------------------------------------
-    # Step 12: Identify binding constraint
+    # Step 12: Binding constraint on the headline (LEP envelope = FSR vs height)
     # -----------------------------------------------------------------------
-    binding = _identify_binding_constraint(
-        gfa_from_fsr=gfa_from_fsr,
-        gfa_from_height=gfa_from_height,
-        setback_footprint=setback_only_footprint,
-        final_footprint=buildable_footprint,
-        max_storeys=max_storeys,
-        site_coverage_cap_m2=result.site_coverage_cap_m2,
-        landscape_reduction_m2=landscape_reduction_m2,
-        shadow_reduction=shadow_reduction,
-        lot_area_m2=lot_area_m2,
-    )
-    if binding:
-        result.binding_constraint = binding[0]
-        result.binding_constraint_label = binding[1]
+    if gfa_from_fsr is not None and clean_height_gfa is not None:
+        if gfa_from_fsr <= clean_height_gfa:
+            result.binding_constraint = ConstraintType.LEP_FSR
+            result.binding_constraint_label = "FSR is the binding control on maximum GFA"
+        else:
+            result.binding_constraint = ConstraintType.LEP_HEIGHT
+            result.binding_constraint_label = "Height limit is the binding control on maximum GFA"
+    elif gfa_from_fsr is not None:
+        result.binding_constraint = ConstraintType.LEP_FSR
+        result.binding_constraint_label = "FSR is the binding control on maximum GFA"
+    elif clean_height_gfa is not None:
+        result.binding_constraint = ConstraintType.LEP_HEIGHT
+        result.binding_constraint_label = "Height limit is the binding control on maximum GFA"
 
     # -----------------------------------------------------------------------
     # Confidence assessment
@@ -870,7 +877,9 @@ def _fetch_constraint_data_from_db(
                     if val_min is None and isinstance(raw_min, str) and raw_min.strip():
                         condition = condition or raw_min.strip()
                     dcp_controls.append(DCPControl(
-                        control_type=s.get("control_type", s.get("type", "")),
+                        # semantic_type = real control (front_setback, ...), not the
+                        # 'prescribed'/'site_derived' kind, so setback lookups match.
+                        control_type=s.get("semantic_type") or s.get("control_type") or s.get("type", ""),
                         dev_type=s.get("dev_type", "dwelling_house"),
                         value_min=val_min,
                         value_max=_parse_numeric(s.get("value_max")),

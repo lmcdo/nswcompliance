@@ -1499,7 +1499,9 @@ def _build_dcp_controls(
         if val_min is None and isinstance(raw_min, str) and raw_min.strip():
             condition = condition or raw_min.strip()
         controls_list.append(DCPControl(
-            control_type=s.get("control_type", s.get("type", "")),
+            # semantic_type is the real control (front_setback, ...); control_type
+            # from fetch_dcp_setbacks is only the 'prescribed'/'site_derived' kind.
+            control_type=s.get("semantic_type") or s.get("control_type") or s.get("type", ""),
             dev_type=s.get("dev_type", "dwelling_house"),
             value_min=val_min,
             value_max=_parse_numeric(s.get("value_max")),

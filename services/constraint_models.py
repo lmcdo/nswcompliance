@@ -167,7 +167,12 @@ class ConstraintArithmeticResult(BaseModel):
     parking_gfa_consumed_m2: Optional[float] = None
 
     # Final outputs
+    # realistic_gfa_m2 = the LEP envelope (FSR cap vs height-as-storeys) — the
+    # reliable headline figure. dcp_adjusted_gfa_m2 = the same envelope after DCP
+    # setbacks/landscaping/site-coverage/shadow/parking erosion — a SECONDARY
+    # figure, populated only when lot geometry is reliable enough to trust it.
     realistic_gfa_m2: Optional[float] = None
+    dcp_adjusted_gfa_m2: Optional[float] = None
     realistic_dwellings: Optional[int] = None
     binding_constraint: Optional[ConstraintType] = None
     binding_constraint_label: str = ""
