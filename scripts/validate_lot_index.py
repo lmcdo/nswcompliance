@@ -122,7 +122,7 @@ def validate_lga(conn, lga: str, n: int) -> dict:
 def _drift_rate(counts: dict) -> float:
     """Drift = (mismatch + live_only) / comparable, ignoring both_null."""
     comparable = sum(v for k, v in counts.items() if k != "both_null")
-    drift = counts.get("mismatch", 0) + counts.get("live_only", 0)
+    drift = (counts.get("mismatch") or 0) + (counts.get("live_only") or 0)
     return (drift / comparable) if comparable else 0.0
 
 
