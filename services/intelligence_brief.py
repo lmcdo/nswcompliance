@@ -2982,6 +2982,28 @@ def _generate_brief_sse(
     })
 
 
+def _safe_brief_sse(
+    req: IntelligenceBriefRequest,
+    resolved_prop_id: Optional[int],
+    lat: float,
+    lng: float,
+    lot_wkt: Optional[str],
+) -> Generator[str, None, None]:
+    """Wrap the brief generator so a mid-stream exception surfaces as an
+    ``error`` SSE event instead of silently terminating the stream. Without
+    this, an exception after streaming started just closed the connection and
+    the UI hung at the last progress percentage with no indication of failure.
+    """
+    try:
+        yield from _generate_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt)
+    except Exception as e:  # convert ANY mid-stream failure into a visible event
+        logger.exception("intelligence brief stream failed mid-generation")
+        yield _sse_event("error", {
+            "error": f"{type(e).__name__}: {str(e)[:300]}",
+            "message": "The brief could not be completed. Please try again.",
+        })
+
+
 @router.post("/intelligence-brief/stream")
 def stream_intelligence_brief(req: IntelligenceBriefRequest):
     """SSE streaming variant — yields brief sections as data sources complete.
@@ -2998,7 +3020,7 @@ def stream_intelligence_brief(req: IntelligenceBriefRequest):
     """
     resolved_prop_id, lat, lng, lot_wkt = _resolve_address(req)
     return StreamingResponse(
-        _generate_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt),
+        _safe_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
