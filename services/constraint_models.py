@@ -174,6 +174,18 @@ class ConstraintArithmeticResult(BaseModel):
     realistic_gfa_m2: Optional[float] = None
     dcp_adjusted_gfa_m2: Optional[float] = None
     realistic_dwellings: Optional[int] = None
+
+    # Dwelling-yield RANGE (the count is a derived illustration of the GFA envelope,
+    # not a single committed number). as_of_right_* = the conservative, always-true
+    # baseline (a single dwelling unless the floor is later lifted by Housing-SEPP/LMR
+    # as-of-right rights). max_permitted_* = the densest permitted form bounded by the
+    # zone tier, i.e. the realistic upside SUBJECT TO a development application. The two
+    # bracket the honest answer; never present the ceiling as achievable without a DA.
+    as_of_right_form: Optional[str] = None
+    as_of_right_dwellings: Optional[int] = None
+    max_permitted_form: Optional[str] = None
+    max_permitted_dwellings: Optional[int] = None
+
     binding_constraint: Optional[ConstraintType] = None
     binding_constraint_label: str = ""
 

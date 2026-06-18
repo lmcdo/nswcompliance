@@ -240,6 +240,7 @@ def compute_constraint_arithmetic(
     *,
     lot_area_m2: float,
     dev_type: str,
+    ceiling_dev_type: Optional[str] = None,
     lep_height_str: Optional[str] = None,
     lep_fsr_str: Optional[str] = None,
     lot_dimensions: Optional[LotDimensions] = None,
@@ -628,15 +629,34 @@ def compute_constraint_arithmetic(
     # -----------------------------------------------------------------------
     # Headline = LEP envelope (reliable, never zero for a buildable lot).
     if envelope_gfa is not None:
-        circulation = (
-            CIRCULATION_FACTOR_APARTMENT
-            if _is_apartment_type(dev_type)
-            else CIRCULATION_FACTOR_HOUSE
-        )
+
+        def _dwellings_for(form: str) -> int:
+            """Dwelling count for a built form against the same LEP envelope.
+
+            The GFA envelope is form-independent; the form only sets the counting
+            method (1 for a house, 2 for a dual occ, envelope ÷ unit size for
+            multi-unit) and the circulation deduction for shared-access forms.
+            """
+            circ = (
+                CIRCULATION_FACTOR_APARTMENT
+                if _is_apartment_type(form)
+                else CIRCULATION_FACTOR_HOUSE
+            )
+            return _dwellings_for_form(
+                form, int(envelope_gfa * (1 - circ) / MIN_DWELLING_GFA_M2)
+            )
+
         result.realistic_gfa_m2 = round(envelope_gfa, 1)
-        result.realistic_dwellings = _dwellings_for_form(
-            dev_type, int(envelope_gfa * (1 - circulation) / MIN_DWELLING_GFA_M2)
-        )
+        # Primary dev_type drives the (conservative) realistic_dwellings — unchanged.
+        result.realistic_dwellings = _dwellings_for(dev_type)
+        # Dwelling-yield RANGE: as-of-right floor (the primary dev_type) and the
+        # permitted ceiling (subject to a DA). The count is a derived illustration of
+        # the envelope, so both ends share the same envelope_gfa.
+        result.as_of_right_form = dev_type
+        result.as_of_right_dwellings = result.realistic_dwellings
+        if ceiling_dev_type:
+            result.max_permitted_form = ceiling_dev_type
+            result.max_permitted_dwellings = _dwellings_for(ceiling_dev_type)
 
     # Secondary "after-DCP" figure — only surfaced when lot geometry is reliable
     # (real frontage/depth) AND the eroded result is plausible (>0). Otherwise we
