@@ -1,54 +1,54 @@
 {
   "tier": "standard",
-  "justification": "Bug 4 Stage 2: replace the silent blank on the apartment/strata brief with an honest scope note explaining why development-capacity analysis is not provided. Factual scope statement only — no advice, no computed yield. Closes Bug 4 as scoped (show strata-appropriate output instead of a silent blank).",
+  "justification": "Restore constraint-arithmetic parity to the streaming Intelligence Brief. The capacity headline (realistic yield / binding constraint / #500 DCP-adjusted GFA) was computed and attached in the non-streaming brief path but had drifted out of the streaming path that the live UI consumes, so the flagship per-address brief silently lacked it on the live path.",
   "files": [
     "services/intelligence_brief.py",
-    "tests/test_strata_scope_note.py"
+    "tests/test_brief_constraint_parity.py"
   ],
   "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "RenovationBrief already has an unused scope_limitations list field; both assembly paths (non-streaming + streaming) constructed it with no scope_limitations, defaulting to an empty list, so apartment/ambiguous briefs showed neither capacity nor any explanation.",
-    "assumption_mismatch": "The 4-stage plan over-scoped this into computed apartment yield + dev_type-by-zone; the proportionality decision deferred those (Stages 3-4) as a product/liability call. Stage 2 is the minimal liability-reducing close.",
-    "new_vs_existing": "Additive: a pure _strata_scope_note(strata_type) helper plus a scope_limitations argument on the two existing RenovationBrief constructions. No yield computed; no change to classification or the development brief path."
+    "existing_data": "The streaming path already builds dcp_controls, sepp_housing, sepp_lep_overrides, planning_controls and has lot_area_m2 + controls in scope before the DevelopmentBrief build, so constraint arithmetic needs no new fetch — it reuses inputs already present, mirroring the non-streaming path.",
+    "assumption_mismatch": "Assumed both brief endpoints were equivalent; they were not. compute_constraint_arithmetic appeared only in run_intelligence_brief, never in _generate_brief_sse — classic dual-path drift on the most important feature.",
+    "new_vs_existing": "No new logic invented: the streaming path now runs the same compute_constraint_arithmetic call, same dev_type and inputs, yields a constraint_arithmetic SSE section, and attaches the field to its DevelopmentBrief — identical to the non-streaming path."
   },
   "functions": [
     {
-      "name": "_strata_scope_note",
-      "file_line": "services/intelligence_brief.py:719",
-      "input": "the StrataType classification computed for this address",
-      "output": "a list holding one honest scope-note string, or an empty list",
-      "if_none": "DEVELOPMENT and NOT_STRATA states return an empty list (no note needed)"
+      "name": "_generate_brief_sse",
+      "file_line": "services/intelligence_brief.py:2583",
+      "input": "the IntelligenceBriefRequest plus resolved prop_id, latitude, longitude and lot well-known-text",
+      "output": "a stream of SSE section events now including a constraint_arithmetic capacity section",
+      "if_none": "when lot_area_m2 is missing or zero the constraint section is skipped and the field stays None"
     }
   ],
-  "values": "N/A - no regulatory values computed or hardcoded; the helper returns fixed factual scope-statement copy, guarded by a test against the pre-pr-review liability vocabulary",
-  "queries": "N/A - no database queries; the helper is a pure function of the StrataType enum value",
+  "values": "N/A - no regulatory values hardcoded; reuses compute_constraint_arithmetic which reads the DCP/SEPP/LEP values already fetched earlier in the same streaming path",
+  "queries": "N/A - no new database queries; the constraint computation reuses dcp_controls, sepp_housing and sepp_lep_overrides already fetched upstream in the streaming path",
   "break_it": [
     {
-      "scenario": "Confirmed apartment lot would otherwise show a silent blank capacity section",
-      "what_happens": "User sees an empty capacity area and may read it as 'no constraints' rather than 'out of scope'",
-      "repro": "_strata_scope_note(StrataType.APARTMENT)",
+      "scenario": "The constraint arithmetic computation raises an exception mid-stream",
+      "what_happens": "Without isolation it would terminate the SSE stream and the user would lose the whole brief",
+      "repro": "force compute_constraint_arithmetic to raise inside _generate_brief_sse",
       "mitigated": true,
-      "how": "returns an explicit scope note; test_scope_note_is_not_a_silent_blank asserts non-empty text for APARTMENT and AMBIGUOUS"
+      "how": "the computation is wrapped in try/except that logs a warning and leaves constraint_field None; the brief continues and still completes"
     },
     {
-      "scenario": "Ambiguous strata status is silently treated as no development potential",
-      "what_happens": "A possibly-developable lot reads as having nothing, a quiet misstatement",
-      "repro": "_strata_scope_note(StrataType.AMBIGUOUS)",
+      "scenario": "An apartment/strata address reaches the streaming assembly",
+      "what_happens": "constraint_field could be referenced where it was never defined, raising NameError",
+      "repro": "run the streaming brief for an is_apartment address",
       "mitigated": true,
-      "how": "distinct AMBIGUOUS note states status could not be determined and what resolves it; test_ambiguous_has_distinct_scope_note"
+      "how": "the constraint block and the DevelopmentBrief that reads constraint_field are both gated on not is_apartment; apartments build a RenovationBrief that does not reference it"
     },
     {
-      "scenario": "Scope copy drifts into advisory or liability-laden language over time",
-      "what_happens": "User-facing strings could imply advice, suitability, or a guarantee",
-      "repro": "any edit to the scope-note strings",
+      "scenario": "Adding a section throws the progress percentage off (exceeds 100)",
+      "what_happens": "Progress bar overshoots because total_sections did not count the new section",
+      "repro": "stream a development brief and watch the emitted progress values",
       "mitigated": true,
-      "how": "test_copy_has_no_banned_liability_language greps every note against the pre-pr-review.md banned-term list and fails on any match"
+      "how": "total_sections raised from +3 to +4 for the non-apartment case and the max-estimate from +3 to +4, so progress stays bounded"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On a known apartment address confirm the brief now shows the scope note instead of an empty capacity section. Stages 3 (computed apartment yield / dev_type-by-zone) and 4 (CTA) are deferred per the proportionality decision in ce-bug4-strata-capacity-salvage-2026-06.md."
+    "manual_verify": "Stream a development address (e.g. Penrith/Haberfield house) via /intelligence-brief/stream and confirm a constraint_arithmetic section event arrives. FRONTEND FOLLOW-UP (separate PR): the brief page does not yet render the constraint_arithmetic section (not in EXPECTED_SECTIONS_DEV / SECTION_LABELS); wire the existing ConstraintArithmeticCard so users see it. Play A (population context) is the subsequent follow-up. Dual-path unification remains the documented root-cause refactor."
   }
 }
