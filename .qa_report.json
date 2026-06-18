@@ -1,37 +1,75 @@
 {
-  "tier": "minor",
-  "justification": "Add Telegram crash reporter to run_monitors.py for Railway cron debugging",
-  "commit_hash": "6f1efcfd",
+  "tier": "standard",
+  "justification": "Lot-area sanity guard on the flagship per-address brief: cross-check the VG valuation lot area against the Planning Portal cadastral polygon and distrust the valuation on material divergence (the 4,452 m2 aggregated-parcel case that fed a confident wrong area + capacity through the whole brief)",
+  "commit_hash": "ff9216a1",
   "files": [
-    "scripts/run_monitors.py"
+    "services/intelligence_brief.py",
+    "tests/test_lot_area_reconciliation.py"
   ],
   "pre_impl": {
-    "trivial": true,
-    "reason": "Diagnostic logging + error reporting, no DB queries, no logic change"
+    "existing_data": "lot_area_m2 was sourced ONLY from the VG valuation and marked AUTHORITATIVE with no check; the Planning Portal lot polygon (fetch_lot_geometry) plus calculate_lot_dimensions already yields a scale-corrected single-lot polygon area that can serve as an authoritative cross-check",
+    "assumption_mismatch": "the VG valuation parcel is not always one lot; it can aggregate multiple lots or resolve to the wrong parcel, so trusting it blindly produces a confident wrong area on the flagship report; the cadastral polygon is the better single-lot authority on divergence",
+    "new_vs_existing": "new pure reconciliation helpers reusing the existing geometry fetch and dimension calculator; wired into both the non-streaming and streaming assembly paths before any consumer, with the streaming geometry await pulled forward so economics is not emitted with an unverified area"
   },
-  "functions": "send_telegram() added; main() logs env var presence and sends failures to Telegram; __main__ wraps in try/except with Telegram crash report",
-  "values": "N/A",
-  "queries": "N/A",
-  "break_it": [
+  "functions": [
     {
-      "scenario": "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set",
-      "what_happens": "send_telegram returns silently, no crash",
-      "repro": "Unset both vars and run monitor",
-      "mitigated": true,
-      "how": "Guard clause checks both vars before attempting POST"
+      "name": "_reconcile_lot_area",
+      "file_line": "services/intelligence_brief.py:1838",
+      "input": "valuation lot area, cadastral polygon area, and a relative tolerance fraction",
+      "output": "named tuple of chosen area, source label, diverged flag, and a note when they disagree",
+      "if_none": "missing or non-positive inputs fall back to whichever source is present, or none when both absent"
     },
     {
-      "scenario": "Telegram API is down",
-      "what_happens": "POST times out or fails, bare except passes, monitor runs normally",
-      "repro": "Block api.telegram.org and run monitor",
+      "name": "_apply_lot_area_reconciliation",
+      "file_line": "services/intelligence_brief.py:1877",
+      "input": "the valuation dict and the raw Planning Portal lot geometry for this address",
+      "output": "warning string for data_currency_warnings on divergence, mutating valuation in place otherwise None",
+      "if_none": "when geometry is absent the polygon area stays None and the valuation area is kept without a caveat"
+    },
+    {
+      "name": "_build_economics",
+      "file_line": "services/intelligence_brief.py:1903",
+      "input": "the valuation dict, now optionally carrying a lot_area_caveat from the reconciliation step",
+      "output": "Economics schema whose lot_area_m2 field is downgraded to DERIVED with the caveat when a mismatch was flagged",
+      "if_none": "no caveat keeps the field AUTHORITATIVE; a None area becomes NOT_AVAILABLE as before"
+    }
+  ],
+  "values": "N/A - no regulatory values are hardcoded; lot area is taken from live VG valuation or computed from the live Planning Portal polygon",
+  "queries": "N/A - no new DB queries; the change reads already-fetched valuation and geometry results",
+  "break_it": [
+    {
+      "scenario": "Valuation returns an aggregated parcel far larger than the actual lot",
+      "what_happens": "Without the guard the brief shows a confident wrong area and overstated capacity on the flagship report",
+      "repro": "_reconcile_lot_area(4452.0, 312.0) or _apply_lot_area_reconciliation with a small-lot geometry",
       "mitigated": true,
-      "how": "try/except with pass around the POST call"
+      "how": "On >25% divergence the geometry area wins, the field is downgraded to DERIVED, and a data_currency_warning is surfaced; covered by test_aggregated_parcel_diverges_and_trusts_geometry"
+    },
+    {
+      "scenario": "Planning Portal lot geometry is missing for the address",
+      "what_happens": "No cross-check is possible and a naive guard could blank the area",
+      "repro": "_apply_lot_area_reconciliation(valuation, None)",
+      "mitigated": true,
+      "how": "Geometry None leaves the valuation area in place with no caveat (test_no_geometry_keeps_valuation_returns_no_warning)"
+    },
+    {
+      "scenario": "Streaming path emits the economics section before geometry is awaited",
+      "what_happens": "The economics SSE event would carry an unverified valuation area",
+      "repro": "Run _generate_brief_sse for an address whose valuation aggregates lots",
+      "mitigated": true,
+      "how": "The lot-geometry await + reconciliation were pulled forward to run before _build_economics in the streaming path; the later duplicate await was removed"
+    },
+    {
+      "scenario": "Valuation and geometry agree within tolerance",
+      "what_happens": "A too-eager guard would needlessly downgrade confidence on a correct area",
+      "repro": "_reconcile_lot_area(312.0, 320.0)",
+      "mitigated": true,
+      "how": "Within-tolerance keeps the valuation area and AUTHORITATIVE confidence (test_agree_within_tolerance_keeps_valuation, test_no_caveat_stays_authoritative)"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Wait for next Railway cron run, check Telegram for crash report or success"
+    "manual_verify": "Run the brief for the known 4,452 m2 Campsie address and a clean Inner West address: confirm the Campsie lot area now matches the cadastral polygon, shows DERIVED confidence with a caveat + data_currency_warning, while the Inner West address is unchanged at AUTHORITATIVE. RESIDUAL LIMIT: if geocoding resolves the wrong propId entirely, valuation and polygon can be wrong-but-agreeing and the guard will not catch it (separate geocode-accuracy issue, Bug list item)."
   }
 }

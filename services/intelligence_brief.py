@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 from pathlib import Path
-from typing import Any, Generator, Generic, Literal, Optional, TypeVar
+from typing import Any, Generator, Generic, Literal, NamedTuple, Optional, TypeVar
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -1826,6 +1826,80 @@ def _build_neighbourhood(
     )
 
 
+class _LotAreaCheck(NamedTuple):
+    """Outcome of cross-checking the VG valuation lot area vs the cadastral polygon."""
+
+    area_m2: Optional[float]
+    source: str  # "valuation" | "geometry" | "none"
+    diverged: bool
+    note: Optional[str]
+
+
+def _reconcile_lot_area(
+    vg_area: Optional[float],
+    geom_area: Optional[float],
+    tol_pct: float = 0.25,
+) -> _LotAreaCheck:
+    """Cross-check the VG valuation lot area against the cadastral lot polygon.
+
+    The VG valuation parcel can aggregate several lots, or the address can
+    resolve to the wrong parcel — either feeds a confident-but-wrong lot area
+    into the whole brief (the 4,452 m2 suburban-lot failure). The Planning
+    Portal lot polygon is the authoritative *single-lot* geometry, so when the
+    two disagree by more than ``tol_pct`` we distrust the valuation and fall
+    back to the geometry-derived area, flagging the discrepancy.
+
+    Returns the area to use, which source it came from, whether the two sources
+    materially diverged, and a note when they did. Pure function — unit-tested.
+    """
+    has_vg = vg_area is not None and vg_area > 0
+    has_geom = geom_area is not None and geom_area > 0
+
+    if has_vg and has_geom:
+        rel_diff = abs(vg_area - geom_area) / geom_area
+        if rel_diff <= tol_pct:
+            return _LotAreaCheck(vg_area, "valuation", False, None)
+        note = (
+            f"Lot area mismatch: valuation parcel {vg_area:.0f} m2 vs cadastral "
+            f"lot geometry {geom_area:.0f} m2 ({rel_diff * 100:.0f}% apart). The "
+            f"valuation may cover an aggregated parcel; using the lot geometry and "
+            f"flagging the area for manual check."
+        )
+        return _LotAreaCheck(geom_area, "geometry", True, note)
+
+    if has_vg:
+        return _LotAreaCheck(vg_area, "valuation", False, None)
+    if has_geom:
+        return _LotAreaCheck(geom_area, "geometry", False, None)
+    return _LotAreaCheck(None, "none", False, None)
+
+
+def _apply_lot_area_reconciliation(
+    valuation: dict, lot_geometry_raw: Optional[dict],
+) -> Optional[str]:
+    """Cross-check valuation lot area vs portal geometry; update ``valuation`` in place.
+
+    Recomputes the lot polygon area from the Planning Portal geometry and
+    reconciles it with the valuation area. Writes the trusted value back to
+    ``valuation['lot_area_m2']`` and, on divergence, records
+    ``valuation['lot_area_caveat']`` (read by :func:`_build_economics` to
+    downgrade the field to DERIVED). Returns a warning string for the brief's
+    ``data_currency_warnings`` when the sources diverged, else ``None``.
+    """
+    geom_area: Optional[float] = None
+    if lot_geometry_raw:
+        dims = calculate_lot_dimensions(lot_geometry_raw)
+        if dims is not None:
+            geom_area = dims.area_m2
+
+    check = _reconcile_lot_area(valuation.get("lot_area_m2"), geom_area)
+    valuation["lot_area_m2"] = check.area_m2
+    if check.diverged and check.note:
+        valuation["lot_area_caveat"] = check.note
+        return check.note
+    return None
+
+
 def _build_economics(valuation: dict) -> Economics:
     """Map VG valuation to Economics schema."""
     today = date.today().isoformat()
@@ -1836,6 +1910,18 @@ def _build_economics(valuation: dict) -> Economics:
     ]
 
     lv = valuation.get("land_value")
+
+    # Lot area: AUTHORITATIVE from the valuation, unless the cross-check against
+    # the cadastral polygon flagged a mismatch — then it's geometry-DERIVED and
+    # carries the caveat (see _apply_lot_area_reconciliation).
+    area_val = valuation.get("lot_area_m2")
+    area_caveat = valuation.get("lot_area_caveat")
+    if area_val is None:
+        area_conf = ConfidenceLevel.NOT_AVAILABLE
+    elif area_caveat:
+        area_conf = ConfidenceLevel.DERIVED
+    else:
+        area_conf = ConfidenceLevel.AUTHORITATIVE
 
     return Economics(
         land_value=DataField(
@@ -1852,10 +1938,11 @@ def _build_economics(valuation: dict) -> Economics:
         ),
         val_history=DataField(value=history, confidence=ConfidenceLevel.AUTHORITATIVE, source="nsw_valuation_service", as_at=today),
         lot_area_m2=DataField(
-            value=valuation.get("lot_area_m2"),
-            confidence=ConfidenceLevel.AUTHORITATIVE if valuation.get("lot_area_m2") else ConfidenceLevel.NOT_AVAILABLE,
-            source="nsw_valuation_service",
+            value=area_val,
+            confidence=area_conf,
+            source="planning_portal_lot" if area_caveat else "nsw_valuation_service",
             as_at=today,
+            reason=area_caveat,
         ),
     )
 
@@ -2191,6 +2278,12 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     sepp_raw = sepp_df.value or []
     lot_geometry_raw = lot_geometry_df.value  # Portal lot polygon (EPSG:3857)
 
+    # Cross-check the valuation lot area against the cadastral polygon; on a
+    # material mismatch (aggregated/wrong parcel) trust the geometry and flag it.
+    # Reassign lot_area_m2 before any consumer (strata, controls, sepp, economics).
+    lot_area_warning = _apply_lot_area_reconciliation(valuation, lot_geometry_raw)
+    lot_area_m2 = valuation.get("lot_area_m2")
+
     # ── 5. PostGIS fallbacks (same as conveyancing.py) ───────────────────
     ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
     if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
@@ -2371,6 +2464,8 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
     # ── 10. Staleness detection ─────────────────────────────────────────
     staleness_warnings = detect_staleness(brief)
+    if lot_area_warning:
+        staleness_warnings = [lot_area_warning, *staleness_warnings]
     if staleness_warnings:
         logger.info("Staleness warnings for %s: %s", req.address, staleness_warnings)
 
@@ -2558,6 +2653,17 @@ def _generate_brief_sse(
             source="nsw_valuation_service", reason="No prop_id resolved",
         )
         valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+
+        # Await lot geometry up-front: economics is emitted first here, so the
+        # valuation lot area must be sanity-checked against the cadastral polygon
+        # BEFORE it goes out (avoids a confident wrong area on an aggregated
+        # parcel — the 4,452 m2 case). Reused below instead of re-awaiting.
+        lot_geometry_df = _timed_result(f_lot_geometry, 15, "planning_portal_lot", timings) if f_lot_geometry else DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="planning_portal_lot", reason="No prop_id resolved",
+        )
+        lot_geometry_raw = lot_geometry_df.value
+        lot_area_warning = _apply_lot_area_reconciliation(valuation, lot_geometry_raw)
         lot_area_m2 = valuation.get("lot_area_m2")
 
         economics = _build_economics(valuation)
@@ -2662,11 +2768,7 @@ def _generate_brief_sse(
         mine_subsidence_raw = mine_sub_df.value
         contaminated_land_raw = contam_df.value
         drinking_water_raw = drinking_df.value
-        lot_geometry_df = _timed_result(f_lot_geometry, 15, "planning_portal_lot", timings) if f_lot_geometry else DataField(
-            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-            source="planning_portal_lot", reason="No prop_id resolved",
-        )
-        lot_geometry_raw = lot_geometry_df.value
+        # lot_geometry already awaited + reconciled before economics (above).
         contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
             value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal_cp", reason="No prop_id resolved",
@@ -2949,6 +3051,8 @@ def _generate_brief_sse(
 
     # Staleness, confidence, gaps
     staleness_warnings = detect_staleness(brief)
+    if lot_area_warning:
+        staleness_warnings = [lot_area_warning, *staleness_warnings]
     summary = compute_confidence_summary(brief)
     gaps = collect_gaps(brief)
     gaps = enrich_gaps_with_verify_url(gaps, dcp_former_council)
