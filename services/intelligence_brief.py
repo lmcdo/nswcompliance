@@ -672,21 +672,39 @@ def classify_strata(
     strata_info: dict,
     lot_area_m2: Optional[float],
 ) -> StrataType:
-    """Classify strata type from cadastre data + lot area.
+    """Classify strata type from cadastre data + StrataHub lot count + lot area.
 
-    Spike finding: 1500m² heuristic misclassifies strata townhouses.
-    v1: use four-state enum, accept ambiguity for edge cases.
+    Prefers the StrataHub strata-plan lot count (authoritative; boundaries
+    smoke-tested in ``strata_lookup.classify_dwelling_type``) when available,
+    because lot count separates apartment vs townhouse far better than lot area.
+    The lot-area heuristic is a weaker fallback — spike finding: the 1500m²
+    heuristic misclassifies strata townhouses — used only when no count is
+    available. Four-state enum; ambiguity is accepted for the residual cases.
+
+    Args:
+        strata_info: cadastre strata dict; may carry ``lot_total`` enriched from
+            StrataHub by ``_fetch_strata``.
+        lot_area_m2: parcel area, used only for the fallback heuristic.
     """
     if not strata_info.get("is_strata"):
         return StrataType.NOT_STRATA
 
-    # Definitive signals
+    # Definitive signal
     plan_type = (strata_info.get("plan_type") or "").lower()
     if plan_type in ("community", "neighbourhood"):
         return StrataType.DEVELOPMENT  # community title = ground-level
 
-    # Heuristic: large lot + strata = likely apartment, small = likely townhouse
-    # But this fails for strata townhouse complexes on large lots (spike: 2140m²)
+    # Preferred signal: StrataHub lot count. Few lots = low-rise / ground-level
+    # strata (development analysis can apply); many lots = apartment form (per-lot
+    # development analysis does not apply). Boundary mirrors classify_dwelling_type
+    # (<=2 duplex, 3-4 townhouse, 5-8 small apartment, 9+ apartment).
+    lot_total = strata_info.get("lot_total")
+    if isinstance(lot_total, int) and not isinstance(lot_total, bool) and lot_total > 0:
+        if lot_total <= 4:
+            return StrataType.DEVELOPMENT  # duplex / townhouse
+        return StrataType.APARTMENT  # 5+ lots → (small) apartment
+
+    # Fallback heuristic (weak): lot area, only when no lot count is available.
     if lot_area_m2 is not None:
         if lot_area_m2 > 2500:
             return StrataType.APARTMENT  # very large parent lot → high confidence
@@ -1024,8 +1042,27 @@ def _fetch_overlays(lat: float, lng: float, lot_wkt: Optional[str]) -> dict:
 
 
 def _fetch_strata(address: str, lat: float, lng: float) -> dict:
-    """Cadastre strata detection."""
-    return detect_strata(address, lat, lng)
+    """Cadastre strata detection, enriched with the StrataHub lot count.
+
+    ``detect_strata`` (cadastre) decides *whether* a parcel is strata; StrataHub
+    adds the *lot count*, the stronger signal for apartment-vs-townhouse
+    classification in :func:`classify_strata`. Best-effort: a StrataHub failure
+    never fails the brief — we just fall back to the lot-area heuristic.
+    """
+    result = detect_strata(address, lat, lng)
+    if lat is not None and lng is not None and (
+        result.get("is_strata") or result.get("parent_has_strata")
+    ):
+        try:
+            from services.strata_lookup import query_strata_at_point
+
+            sh = query_strata_at_point(lng, lat)
+            if sh is not None and sh.lot_total:
+                result["lot_total"] = sh.lot_total
+                result["dwelling_type"] = sh.dwelling_type
+        except Exception as e:  # best-effort enrichment only
+            logger.warning("StrataHub lot-count enrichment failed: %s", e)
+    return result
 
 
 def _fetch_nearby_das(
