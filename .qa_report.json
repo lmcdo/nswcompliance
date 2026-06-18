@@ -5,7 +5,7 @@
     "services/intelligence_brief.py",
     "tests/test_sepp_override_heritage.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "9915844a",
   "pre_impl": {
     "existing_data": "SEPPStandard already carries an 'eligible' bool (constraint_models.py:46) but _detect_sepp_lep_overrides never read it; heritage presence is available at both override call sites via controls['heritage_items'] (Portal) and heritage_postgis['has_heritage'] (PostGIS), but was never passed to the override logic.",
     "assumption_mismatch": "'eligible' is computed from LOT SIZE ONLY (_build_sepp_housing:1643), so it does not capture the heritage exclusion. Honouring eligible alone would NOT fix Haberfield (793 m2 > min -> eligible=True); an explicit heritage gate is required.",
@@ -49,7 +49,7 @@
     },
     {
       "scenario": "A genuinely eligible non-heritage parcel must still receive the SEPP bonus",
-      "what_happens": "Over-suppressing would under-report a valid Low/Mid-Rise uplift",
+      "what_happens": "Over-suppressing the override would under-report a valid Low/Mid-Rise height uplift on eligible non-heritage land",
       "repro": "_detect_sepp_lep_overrides([eligible std max_height 9.5], lep_height_m=7.0, lep_fsr=None, is_heritage=False)",
       "mitigated": true,
       "how": "the override is created when eligible, not heritage, and strictly more generous; test_eligible_height_bonus_overrides_lep_when_not_heritage asserts one height override"
