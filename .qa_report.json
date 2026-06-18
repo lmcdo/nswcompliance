@@ -1,88 +1,72 @@
 {
   "tier": "critical",
-  "justification": "GATE-0 parcel-identity: stop the NSW Portal fuzzy /address search from silently binding a brief/report to the WRONG parcel (verified live: '29 Haberfield Rd' -> '29 Stanton Road'; '1 Dalhousie St' -> '15 Dalhousie Street'), which stamps every downstream figure AUTHORITATIVE for a different property. Shared verified resolver applied fail-closed at all three tracked production address resolvers.",
+  "justification": "GATE-1 (part 1): the engine computed realistic_dwellings as envelope_gfa/65 regardless of the permitted built FORM, so a dwelling_house on R2 reported 6 dwellings (the visible Haberfield wrongness). By the Standard Instrument a dwelling house is ONE dwelling; only multi-unit forms scale with GFA. Route both the headline yield and the parking dwelling-estimate through a form-aware helper so the engine never over-reports an impermissible yield.",
   "files": [
-    "services/address_identity.py",
-    "scripts/generate_conveyancing_report.py",
-    "services/pre_da_history.py",
-    "services/nsw_planning_api.py",
-    "tests/test_address_identity.py"
+    "services/constraint_arithmetic.py",
+    "tests/test_dwelling_form.py",
+    "tests/test_constraint_arithmetic.py"
   ],
-  "commit_hash": "ccfb06d1",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "The Portal /address search is fuzzy with noOfRecords:1; three independent tracked resolvers (resolve_address, pre_da_history geocode, nsw_planning_api client) took data[0].propId with no check that the resolved address matched the request. Each response record carries an 'address' label usable for verification.",
-    "assumption_mismatch": "The 39-agent audit ranked this #1 'realized this run' but that run used a manual non-UI input; the brief UI uses Google autocomplete, so the nonexistent-street case can't occur there. The residual that survives autocomplete is wrong street NUMBER on the right street (Google's address set != NSW cadastre) plus all non-UI paths (CLI/API). The bulk Prospector is spatial (ST_Intersects) and not affected; geocode_addresses.py is untracked.",
-    "new_vs_existing": "New shared module services/address_identity.py is the single source of truth; the three resolvers call it and fail closed on mismatch. No change to resolution for matching addresses.",
-    "external_source_error": "If the NSW Portal /address call errors or times out, each resolver already fails closed (retry then raise or return None). GATE-0 only inspects a successful non-empty response, so it never turns an API error into a wrong parcel and adds no new error path.",
-    "frontend_type": "N/A - backend address resolution only; no new frontend types or boundaries. The brief UI's Google Places autocomplete sits upstream and is unchanged.",
-    "user_failure_mode": "If GATE-0 rejects a genuinely valid address whose Portal label differs (false reject), the user sees a fail-closed 'could not resolve' state rather than a brief built on the wrong parcel — visible, not silent."
+    "existing_data": "compute_constraint_arithmetic already receives a dev_type and has _is_apartment_type; realistic_dwellings (and the parking est_dwellings) divided the GFA envelope by MIN_DWELLING_GFA_M2 (65) for every form, ignoring whether the form is a single dwelling, dual occupancy or a multi-unit building.",
+    "assumption_mismatch": "Three existing tests asserted dwelling_house -> 6/6/4 dwellings (the GFA/65 model) and passed for a year — they encoded the bug as correct. They have been corrected to the Standard Instrument meaning (a dwelling house is one dwelling); the GFA-division path is now covered for multi-unit forms in test_dwelling_form.",
+    "new_vs_existing": "No new data source: a pure helper _dwellings_for_form(dev_type, gfa_based) gates the existing GFA-based count by built form. dev_type is still passed in (currently hardcoded 'dwelling_house' upstream); deriving it from the live zone is GATE-1 part 2.",
+    "external_source_error": "N/A for this change - the helper is pure and consumes no external source; it only re-maps an already-computed integer. Upstream Portal/DB failures are unchanged.",
+    "frontend_type": "N/A - backend yield computation only; the ConstraintArithmeticResult.realistic_dwellings type (int) is unchanged, so no frontend boundary shifts. The capacity card stays unexposed.",
+    "user_failure_mode": "If a permitted denser form is mislabelled as dwelling_house upstream, the yield UNDER-reports (1 instead of the permitted count) — conservative and visible, never an over-report of an impermissible yield. Lifting that under-report is GATE-1 part 2 (zone-derived dev_type)."
   },
   "functions": [
     {
-      "name": "parcel_identity_match",
-      "file_line": "services/address_identity.py:58",
-      "input": "the requested address string and the resolved candidate address label from the Portal",
-      "output": "True only when street number and street name match; the requested tokens must prefix the candidate",
-      "if_none": "empty or sub-two-token input on either side returns False so a bare number never matches"
-    },
-    {
-      "name": "normalize_addr_tokens",
-      "file_line": "services/address_identity.py:33",
-      "input": "a free-form address string from the request or the Portal label",
-      "output": "ordered comparable tokens with street types expanded and state/country/postcode noise dropped",
-      "if_none": "an empty or whitespace-only string returns an empty token list"
-    },
-    {
-      "name": "resolve_address",
-      "file_line": "scripts/generate_conveyancing_report.py:787",
-      "input": "the requested address string for the brief/conveyancing flagship and CLI",
-      "output": "the resolved propId plus coordinates only when the parcel identity matches the request",
-      "if_none": "on a fuzzy mismatch it logs a GATE-0 line and returns None for every element (fail closed)"
+      "name": "_dwellings_for_form",
+      "file_line": "services/constraint_arithmetic.py:204",
+      "input": "the development type string and the raw GFA-based dwelling count integer",
+      "output": "the dwelling count appropriate to the built form: 1 for a dwelling house, 2 for dual occupancy, GFA-based for multi-unit forms",
+      "if_none": "an empty or unrecognised dev_type returns 1 (conservative single-dwelling default, never over-reporting)"
     }
   ],
-  "values": "N/A - no regulatory values; the matcher compares address tokens only and hardcodes no parcel data",
-  "queries": "N/A - no database queries; the gate runs on the Portal /address HTTP response already fetched by each resolver",
+  "values": "N/A - no regulatory values hardcoded; MIN_DWELLING_GFA_M2 (65) is an existing yield constant unchanged here. Form classification reuses the existing _is_apartment_type keyword set plus terrace/townhouse/manor/medium-density.",
+  "queries": "N/A - no database queries; the helper is a pure function of dev_type and an integer.",
   "break_it": [
     {
-      "scenario": "Requested street does not exist; Portal returns a different street at the same number",
-      "what_happens": "Without the gate the wrong parcel's lot area / FSR / height feed the whole brief, stamped AUTHORITATIVE",
-      "repro": "resolve '29 Haberfield Rd' -> Portal returns '29 STANTON ROAD'",
+      "scenario": "Dwelling house on a generous envelope (R2, FSR 0.5, 793 m2 -> ~397 m2)",
+      "what_happens": "Pre-GATE-1 the engine reported 6 dwellings (397/65) for a single-dwelling form — an impermissible yield",
+      "repro": "compute_constraint_arithmetic(lot_area_m2=793, dev_type='dwelling_house', lep_height_str='7', lep_fsr_str='0.5')",
       "mitigated": true,
-      "how": "parcel_identity_match returns False (street name mismatch); resolve_address returns None and logs [GATE-0]; test covers the live label"
+      "how": "_dwellings_for_form returns 1 for dwelling_house; test_dwelling_house_yields_one_not_gfa_over_65 asserts realistic_dwellings == 1"
     },
     {
-      "scenario": "Requested number absent on a real street; Portal returns a neighbouring number",
-      "what_happens": "A real Google-valid address could still resolve to the wrong house (e.g. new subdivision, unit complex)",
-      "repro": "resolve '1 Dalhousie St' -> Portal returns '15 DALHOUSIE STREET'",
+      "scenario": "Dual occupancy on a large lot",
+      "what_happens": "GFA/65 could report 5-6 units for a form limited to two dwellings",
+      "repro": "compute_constraint_arithmetic(..., dev_type='dual_occupancy', ...)",
       "mitigated": true,
-      "how": "street number must match exactly (req[0] == cand[0]); returns False; tested"
+      "how": "_dwellings_for_form returns 2 for any 'dual' form; test_dual_occupancy_yields_two asserts == 2"
     },
     {
-      "scenario": "Formatting differences between Google input and Portal label",
-      "what_happens": "A correct address could be falsely rejected (abbreviations, unit prefix, missing postcode)",
-      "repro": "'29 Dalhousie St' / '5/29 Dalhousie Street' vs '29 DALHOUSIE STREET HABERFIELD 2045'",
+      "scenario": "A genuine multi-unit form must still scale with GFA",
+      "what_happens": "Over-correcting to 1 would under-report a residential flat building / apartment",
+      "repro": "compute_constraint_arithmetic(..., dev_type='residential_flat_building', ...)",
       "mitigated": true,
-      "how": "normalize_addr_tokens expands street types, drops state/country/postcode, reduces unit 5/29 to 29; both accept-cases tested"
+      "how": "_is_apartment_type forms return the GFA-based count; test_residential_flat_building_scales_with_gfa asserts > 1 and parametric cases lock each form"
     },
     {
-      "scenario": "A future edit removes the gate from one of the three resolvers",
-      "what_happens": "The wrong-parcel bug regresses silently on that path",
-      "repro": "delete the parcel_identity_match call from any production resolver",
+      "scenario": "Unknown or empty dev_type",
+      "what_happens": "An unmapped form could fall through to the GFA/65 over-report",
+      "repro": "_dwellings_for_form('', 6) / _dwellings_for_form('some_other_use', 6)",
       "mitigated": true,
-      "how": "test_gate_applied_at_all_production_resolvers asserts the call is present in all three files"
+      "how": "the default branch returns 1 (conservative); parametric tests cover '' and an unknown use"
     },
     {
-      "scenario": "NSW Portal /address API errors or times out during resolution",
-      "what_happens": "A transient API failure could be misread as a resolved parcel",
-      "repro": "Portal returns a non-200 or times out mid-resolve",
+      "scenario": "Parking estimate inflated by the old per-dwelling count",
+      "what_happens": "est_dwellings (GFA/65) multiplied the parking rate, over-stating parking for a single dwelling",
+      "repro": "dwelling_house brief with a DCP car_parking rate",
       "mitigated": true,
-      "how": "GATE-0 runs only on a successful non-empty response; on error each resolver already retries then raises or returns None (fail closed), so GATE-0 adds no new error path"
+      "how": "the parking est_dwellings now also routes through _dwellings_for_form (line ~570), so parking scales with the real form count"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a CLI/API brief for a non-existent street number on a real street and confirm it fails closed (no brief for the wrong parcel) with a [GATE-0] log line. This is GATE-0 of the capacity-engine remediation (~/.claude/plans/ce-capacity-engine-audit-2026-06.md); the legality gates (permissibility/dwelling-count, SEPP-on-heritage) are the larger next steps and remain unexposed until done."
+    "manual_verify": "Re-run the Haberfield brief and confirm Development Capacity shows 1 dwelling (not 6) for the dwelling_house form. GATE-1 part 2 (derive dev_type from the live zone's permitted uses via DevelopmentPermissionsDB, fail-safe to conservative) is the next step and lifts the R3/R4 under-report. Engine stays unexposed (#513 unmerged) until the legality gates complete."
   }
 }
