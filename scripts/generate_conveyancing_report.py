@@ -228,10 +228,28 @@ ZONE_EPI_TO_LGA_SLUG: dict[str, str] = {
     "WAVERLEY LOCAL ENVIRONMENTAL PLAN":             "waverley",
     "WOOLLAHRA LOCAL ENVIRONMENTAL PLAN":            "woollahra",
     "KU-RING-GAI LOCAL ENVIRONMENTAL PLAN":          "ku_ring_gai",
-    # Parramatta and Cumberland: registry entries exist but setback rows not yet complete.
-    # "PARRAMATTA LOCAL ENVIRONMENTAL PLAN":         "parramatta",
-    # "CUMBERLAND LOCAL ENVIRONMENTAL PLAN":         "cumberland",
+    # Special case: the City of Sydney's instrument is "Sydney LEP", so the slug
+    # derived from the EPI name ("sydney") does not equal the DCP slug. Map it explicitly.
+    "SYDNEY LOCAL ENVIRONMENTAL PLAN":               "city_of_sydney",
+    # All other onboarded LGAs are resolved generically: detect_former_council derives the
+    # slug from the EPI name and accepts it only if it is in DCP_ONBOARDED_SLUGS (below).
 }
+
+# LGAs whose DCP setback data in dcp_setback_controls is complete and current enough to
+# use in the brief. Verified 2026-06-19 (all rows is_current, needs_review=0, control-type
+# and dev-type coverage at parity with the LGAs that were already mapped). This is the
+# completeness gate: an LGA's setbacks only go live once its slug is listed here, so a
+# partially-extracted council cannot leak into the brief. The matching EPI string is not
+# hand-maintained — _slug_from_epi() derives the slug from the portal's EPI name and is
+# validated against this set. Add a slug here when onboarding a new LGA's DCP data.
+# nsw_statewide is deliberately excluded: it is a fallback layer, not an address-resolvable EPI.
+DCP_ONBOARDED_SLUGS: frozenset[str] = frozenset({
+    "ashfield", "bayside", "blacktown", "burwood", "camden", "campbelltown",
+    "canada_bay", "canterbury_bankstown", "city_of_sydney", "cumberland", "fairfield",
+    "georges_river", "hornsby", "inner_west", "ku_ring_gai", "leichhardt", "liverpool",
+    "marrickville", "northern_beaches", "parramatta", "penrith", "randwick", "ryde",
+    "strathfield", "sutherland_shire", "the_hills", "waverley", "woollahra",
+})
 
 # Suburb → former-council slug (Inner West LGA post-2016 amalgamation).
 # Used only when ZONE_EPI_TO_LGA_SLUG returns "inner_west".
@@ -438,15 +456,43 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
     }
 
 
+def _slug_from_epi(zone_epi: str) -> Optional[str]:
+    """Derive an LGA slug from a Standard Instrument EPI name.
+
+    "Canada Bay Local Environmental Plan 2013" -> "canada_bay"
+    "Sutherland Shire LEP 2015"                -> "sutherland_shire"
+
+    Strips the instrument-type phrase and trailing year, then slugifies the council
+    name. Returns None if no instrument phrase is present (so a non-LEP string cannot
+    accidentally resolve). The result is only trusted when it is in DCP_ONBOARDED_SLUGS.
+    """
+    s = (zone_epi or "").upper()
+    cut = -1
+    for marker in ("LOCAL ENVIRONMENTAL PLAN", " LEP"):
+        idx = s.find(marker)
+        if idx > 0:
+            cut = idx
+            break
+    if cut < 0:
+        return None
+    name = s[:cut].strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", name).strip("_")
+    return slug or None
+
+
 def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
     """Return lga slug for dcp_setback_controls, or None if LGA not yet onboarded.
 
-    Looks up ZONE_EPI_TO_LGA_SLUG using the EPI name from the planning portal.
+    Resolution order:
+    1. ZONE_EPI_TO_LGA_SLUG — explicit overrides + special cases (Inner West, City of Sydney).
+    2. Generic: derive the slug from the EPI name and accept it only if it is in
+       DCP_ONBOARDED_SLUGS (the curated completeness gate). This covers every onboarded
+       LGA without a hand-maintained EPI string per council.
     - No match → None (LGA not yet onboarded for DCP setbacks)
-    - Most LGAs → slug returned directly
     - Inner West → suburb disambiguation returns marrickville / leichhardt / ashfield
 
-    Extend ZONE_EPI_TO_LGA_SLUG (not this function) when onboarding new LGAs.
+    To onboard a new LGA, add its slug to DCP_ONBOARDED_SLUGS (special EPI names only
+    need an entry in ZONE_EPI_TO_LGA_SLUG).
     """
     epi_upper = zone_epi.upper()
     slug = None
@@ -454,6 +500,10 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
         if epi_key in epi_upper or epi_upper in epi_key:
             slug = lga_slug
             break
+    if not slug:
+        derived = _slug_from_epi(zone_epi)
+        if derived and derived in DCP_ONBOARDED_SLUGS:
+            slug = derived
     if not slug:
         return None
     # Inner West: disambiguate to former-council precinct by suburb
