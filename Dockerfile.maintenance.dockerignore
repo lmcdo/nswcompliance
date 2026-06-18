@@ -1,0 +1,103 @@
+# Docker ignore for Dockerfile.maintenance builds.
+# Based on .dockerignore but allows tests/ (needed for mutation-health monitor).
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+dist/
+
+# Environment files (use secrets management instead)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation and development files
+README.md
+PLANNING.md
+TASK.md
+CLAUDE.md
+documentation/
+
+# Test files — individual patterns kept, but tests/ directory allowed
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+# tests/     <- intentionally omitted: mutation-health needs tests/
+# __tests__/ <- intentionally omitted
+coverage/
+
+# Development tools
+eslint.config.js
+jest.config.js
+playwright.config.ts
+
+# Logs
+logs/
+*.log
+
+# Database backups (handled by cloud storage)
+backups/
+*.sql
+*.dump
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Temporary files
+tmp/
+temp/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Build artifacts
+build/
+dist/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Cloud deployment
+kubernetes/
+k8s/
+helm/
+
+# Local development
+.env.example
