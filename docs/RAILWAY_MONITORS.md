@@ -99,12 +99,22 @@ the same `scripts/run_monitors.py` dispatcher.
 
 | Service Name | MONITOR_NAME | Schedule (UTC) | Notes |
 |---|---|---|---|
-| `maintenance-security` | `security` | `0 9 * * 1` | Semgrep ERROR scan, Telegram summary |
-| `maintenance-mutation` | `mutation-health` | `0 6 * * 1` | mutmut kill rate on 3 services, Telegram |
+| `maintenance-security` | `security` | `0 9 * * 1` (weekly Mon) | Semgrep ERROR scan, Telegram summary |
+| `maintenance-mutation` | `mutation-health` | `0 6 1 * *` (monthly, 1st) | mutmut kill rate on 3 services, Telegram |
 
-Create each like the monitor services, but set **Dockerfile Path** to
-`Dockerfile.maintenance`. Env vars: `MONITOR_NAME`, `TELEGRAM_BOT_TOKEN`,
-`TELEGRAM_CHAT_ID`, and optionally `HC_PING_URL`. Neither writes to the DB.
+The build + schedule are committed as config-as-code — point each service's
+**Settings > Config as code (Config Path)** at its toml and the Dockerfile +
+cron are applied automatically:
+
+- `maintenance-security`  -> `railway.maintenance-security.toml`  (cron `0 9 * * 1`)
+- `maintenance-mutation`  -> `railway.maintenance-mutation.toml` (cron `0 6 1 * *`)
+
+Env vars are still set per-service in the dashboard (Railway does not manage
+secrets via toml): `MONITOR_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
+and optionally `HC_PING_URL`. Neither service writes to the DB.
+
+Mutation runs **monthly** (not weekly) — kill rate decays slowly, so weekly
+mutmut compute is wasted. Adjust the cron in the toml if you disagree.
 
 ## Run locally / on-demand (not scheduled)
 
