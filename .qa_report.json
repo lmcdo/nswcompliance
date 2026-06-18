@@ -1,71 +1,84 @@
 {
   "tier": "critical",
-  "justification": "GATE-3: the DCP max_site_coverage cap was silently dropped because _get_dcp_value always returned value_min, but the cap (e.g. 65 percent) is stored in value_max. site_coverage_pct came back None, so the engine left the footprint uncapped (~80 percent on Haberfield) and the binding-constraint chain omitted the cap. Read the cap with a prefer_max mode so it flows in and erodes the footprint.",
+  "justification": "GATE-1 part 2: the brief hardcoded dev_type='dwelling_house' for the capacity engine, so it never reflected the zone's permitted built form (under-reporting R3/R4, and only conservatively safe on R2). Derive dev_type from the densest PERMITTED residential form in lep_land_use_table (per-zone, per-LGA), fail-safe to dwelling_house, so the engine computes the correct permissible yield without ever assuming a prohibited form.",
   "files": [
-    "services/constraint_arithmetic.py",
-    "tests/test_site_coverage_cap.py"
+    "services/intelligence_brief.py",
+    "tests/test_permitted_dev_type.py"
   ],
   "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "DCPControl carries both value_min and value_max; the engine already builds and stores max_site_coverage with its cap in value_max (verified earlier: dcp_setback_controls value_max=65). The site-coverage step then compares the cap against buildable_footprint and erodes it — but only if it reads a non-None percentage.",
-    "assumption_mismatch": "_get_dcp_value's docstring said it returns value_min (the minimum requirement), which is correct for setbacks/landscaping but wrong for a CAP control like max_site_coverage whose limit lives in value_max. So the cap silently read as None.",
-    "new_vs_existing": "No new data source: _get_dcp_value gains a prefer_max flag (value_max with value_min fallback); only the single max_site_coverage call uses it. Setbacks, landscaping and deep-soil keep reading value_min unchanged.",
-    "external_source_error": "N/A - pure function change; both helpers operate on DCPControl objects already fetched. No new external call, so upstream Portal/DB failures are unaffected.",
-    "frontend_type": "N/A - backend computation only; ConstraintArithmeticResult.site_coverage_cap_m2 (float) is unchanged in type, just now populated when a cap exists. The capacity card stays unexposed.",
-    "user_failure_mode": "If a council stores its site-coverage cap in value_min instead of value_max, prefer_max falls back to value_min, so the cap is still read; the only remaining gap is a control with neither value populated, which yields no cap (a data-coverage gap, not a silent over-read)."
+    "existing_data": "lep_land_use_table is the authoritative LEP Land Use Table: 17,353 rows, 32 zones, 25 LGAs (amalgamated names), columns zone/lga/development_type/permissibility (permitted|prohibited|exempt). Verified: R2 permits dwelling_houses (all LGAs) but NOT residential_flat_buildings; R3 permits multi_dwelling_housing; R4 permits residential_flat_buildings. Per-LGA, so council variation is captured.",
+    "assumption_mismatch": "The audit recommended DevelopmentPermissionsDB.check_development_feasibility, which reads regulatory_provisions and text-matches provision_type for permitted/prohibited — but that column holds extraction tags (provision_height, formal_development standards) with NO permitted/prohibited categories, so it is unreliable. The real source is lep_land_use_table.",
+    "new_vs_existing": "New: a pure _densest_permitted_dev_type policy + a thin _fetch_permitted_dev_type DB read; both brief assembly paths replace the hardcoded dev_type with the fetched value. No change to the engine's yield maths (GATE-1 part 1 still gates the count by form).",
+    "external_source_error": "If the DB query errors, times out (5s), or DATABASE_URL is unset, _fetch_permitted_dev_type catches it and returns dwelling_house — the conservative default — so a DB failure can never raise an impermissible yield, only fall back to the safe form.",
+    "frontend_type": "N/A - backend only; the dev_type string flows into the existing ConstraintArithmeticResult.dev_type field (already a str). The capacity card stays unexposed.",
+    "user_failure_mode": "If the LGA is outside the 25-LGA table coverage or the zone has no permitted residential form, dev_type falls back to dwelling_house — a conservative under-report (1 dwelling), never an over-report. The visible direction is always safe."
   },
   "functions": [
     {
-      "name": "_get_dcp_value",
-      "file_line": "services/constraint_arithmetic.py:103",
-      "input": "the DCP controls list, the control type, the dev_type, and an optional prefer_max flag",
-      "output": "the matched control's value_min by default, or value_max (cap) with a value_min fallback when prefer_max is set",
-      "if_none": "no matching control returns None; with prefer_max a control missing value_max falls back to its value_min"
+      "name": "_fetch_permitted_dev_type",
+      "file_line": "services/intelligence_brief.py:957",
+      "input": "the property zone code and the current LGA name from the brief",
+      "output": "the engine dev_type for the densest permitted residential form, or dwelling_house when none or on error",
+      "if_none": "missing zone or LGA, no table coverage, or any DB error returns dwelling_house (conservative fail-safe)"
+    },
+    {
+      "name": "_densest_permitted_dev_type",
+      "file_line": "services/intelligence_brief.py:945",
+      "input": "the set of permitted development_type strings from the LEP Land Use Table",
+      "output": "the engine dev_type for the densest permitted form per the fixed density ordering",
+      "if_none": "an empty set or no recognised residential form returns dwelling_house"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; the percentage cap comes from the matched DCPControl.value_max already extracted from council DCP data.",
-  "queries": "N/A - no database queries; the function selects from the in-memory DCPControl list already fetched by the brief.",
+  "values": "N/A - no regulatory values hardcoded; the permitted forms come from lep_land_use_table and the density ordering is a fixed form taxonomy, not a numeric planning control.",
+  "queries": [
+    {
+      "purpose": "Fetch the permitted residential development forms for this zone and LGA from the LEP Land Use Table to pick the densest permitted form",
+      "file_line": "services/intelligence_brief.py:968",
+      "where_clause": "zone = %s AND lga ILIKE %s AND permissibility = 'permitted' (parameterised; reads the authoritative LEP land-use table, current LGA scope)"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A council site-coverage cap is stored in value_max and the lot would otherwise build out to roughly 80 percent",
-      "what_happens": "Pre-GATE-3 the cap read as None, so the footprint stayed uncapped and the binding-constraint chain omitted site coverage entirely",
-      "repro": "compute_constraint_arithmetic with a max_site_coverage DCPControl(value_max=50) and lot_dimensions provided",
+      "scenario": "An R2 low-density lot that does not permit residential flat buildings is assessed",
+      "what_happens": "Hardcoding a denser form would over-report an impermissible apartment yield on R2",
+      "repro": "_densest_permitted_dev_type({'dwelling_houses', 'secondary_dwellings'})",
       "mitigated": true,
-      "how": "the cap is read via prefer_max and applied; test_site_coverage_cap_from_value_max_is_applied asserts site_coverage_cap_m2 == 300 for a 600 m2 lot"
+      "how": "only permitted forms are considered; with no RFB/multi/dual permitted it returns dwelling_house; test_densest_permitted_dev_type covers the R2 case"
     },
     {
-      "scenario": "A council instead records the site-coverage cap in value_min rather than value_max",
-      "what_happens": "A strict value_max-only read would miss the cap and again leave the footprint uncapped",
-      "repro": "_get_dcp_value([max_site_coverage value_min=50, value_max=None], prefer_max=True)",
+      "scenario": "An R4 high-density lot that permits residential flat buildings must lift to that form",
+      "what_happens": "Keeping dwelling_house would under-report the legitimate high-density yield",
+      "repro": "_fetch_permitted_dev_type('R4', 'Inner West') with RFB permitted in the table",
       "mitigated": true,
-      "how": "prefer_max falls back to value_min when value_max is absent; test_prefer_max_falls_back_to_value_min asserts 50.0"
+      "how": "the density ordering returns residential_flat_building when permitted; test_fetch_returns_densest_permitted asserts it"
     },
     {
-      "scenario": "Setback and landscaping controls must keep reading the minimum requirement, not the cap",
-      "what_happens": "If the prefer_max change leaked to setbacks, the engine would read the wrong value for a minimum control",
-      "repro": "_get_dcp_value([front_setback value_min=6], 'front_setback', 'dwelling_house')",
+      "scenario": "The database is unreachable or DATABASE_URL is unset during the brief",
+      "what_happens": "A raised exception would crash the brief or, worse, leave an inconsistent dev_type",
+      "repro": "_get_db_conn raises RuntimeError",
       "mitigated": true,
-      "how": "prefer_max defaults to False so the value_min path is unchanged; test_default_min_path_unchanged_for_setbacks asserts 6.0"
+      "how": "_fetch_permitted_dev_type wraps the query in try/except and returns dwelling_house; test_fetch_db_error_is_failsafe asserts the fallback"
     },
     {
-      "scenario": "A development with no site-coverage control at all is assessed by the engine",
-      "what_happens": "A missing control could raise or be mis-read as a zero cap that wrongly erodes the footprint",
-      "repro": "compute_constraint_arithmetic with dcp_controls that contain no max_site_coverage entry",
+      "scenario": "The property LGA falls outside the 25-LGA table coverage",
+      "what_happens": "A missing-coverage lookup could return nothing and be mis-handled as a prohibited form",
+      "repro": "_fetch_permitted_dev_type('R4', 'Some Uncovered LGA') returning an empty permitted set",
       "mitigated": true,
-      "how": "_get_dcp_value returns None when no control matches and the site-coverage step is skipped; existing no-DCP tests stay green"
+      "how": "an empty permitted set falls through _densest_permitted_dev_type to dwelling_house; covered by the empty-set test"
     },
     {
-      "scenario": "The cap is read correctly but is larger than the buildable footprint already computed",
-      "what_happens": "Applying a non-binding cap would erode the footprint below the real setback-limited area",
-      "repro": "a 65 percent cap on a lot whose setbacks already limit coverage below 65 percent",
+      "scenario": "Zone or LGA is missing from the resolved planning controls",
+      "what_happens": "A None zone or LGA passed to the query would error or match everything",
+      "repro": "_fetch_permitted_dev_type(None, 'Inner West') / _fetch_permitted_dev_type('R4', None)",
       "mitigated": true,
-      "how": "the step only erodes when coverage_cap < buildable_footprint (existing guard, unchanged); the cap is recorded but does not over-reduce"
+      "how": "the function short-circuits to dwelling_house when either input is falsy before touching the DB; test_fetch_missing_inputs_returns_dwelling_house asserts both"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run the Haberfield brief and confirm the DCP site-coverage cap appears in the computation chain and the footprint is no longer ~80 percent uncapped. GATE-1 part 2 (zone-derived dev_type) and the computation-chain reconciliation remain. Engine stays unexposed (#513 unmerged) until the legality gates complete."
+    "manual_verify": "Re-run an R4 address in a covered LGA and confirm the dev_type lifts to residential_flat_building (denser yield); re-run Haberfield R2 and confirm it stays dwelling_house (1 dwelling). The computation-chain reconciliation and labelling polish remain. Engine stays unexposed (#513 unmerged) until those land."
   }
 }
