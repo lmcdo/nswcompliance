@@ -1,69 +1,54 @@
 {
   "tier": "standard",
-  "justification": "Legislation-monitor -> bulk-index refresh connector: maps changed instrument to a scoped, ready-to-run recompute runbook appended to the alert (command-in-alert; no execution, no DB writes at runtime)",
+  "justification": "Regression guard for DCP setback taxonomy (Bug 2). Behaviour-preserving extraction of the setback-row -> DCPControl mapping into a pure helper, plus a 12-test guard locking the typed-control contract (semantic_type wins over the 'prescribed'/'site_derived' kind) so setbacks keep feeding the footprint calc.",
   "files": [
-    "scripts/refresh_runbook.py",
-    "scripts/legislation_monitor.py",
-    "tests/test_refresh_runbook.py"
+    "services/constraint_arithmetic.py",
+    "tests/test_setback_taxonomy.py"
   ],
-  "commit_hash": "1838729b",
+  "commit_hash": "b46281b4",
   "pre_impl": {
-    "existing_data": "instrument_registry holds 23 LEP and 2 SEPP active keys; lot_search_index.lga_name holds the 128 overlay LGA names the recompute commands must target",
-    "assumption_mismatch": "naive slug-to-LGA transform only resolves 19 of 23 keys; merged or renamed councils (Parramatta, Canterbury-Bankstown, Sutherland Shire, The Hills Shire) need explicit overrides verified against the live overlay names",
-    "new_vs_existing": "new pure module reusing the existing legislation_monitor alert path; it appends text only and runs zero DB or network calls, so the static override map is baked in rather than queried at runtime"
+    "existing_data": "dcp_setback_controls (the table the engine reads via fetch_dcp_setbacks) is already fully typed: front_setback 97 rows/29 LGAs, side_setback 94/28, rear_setback 77/28, zero 'prescribed'. The only 'prescribed' control_type in the DB is 7 rows in dcp_general_requirements (not setbacks).",
+    "assumption_mismatch": "Plan assumed setbacks were stored untyped as control_type='prescribed' and needed a pipeline change. DB reality-check disproved this; the only real residual was the untested consumption seam.",
+    "new_vs_existing": "No new behaviour. The inline mapping at _fetch_constraint_data_from_db was extracted verbatim into _dcp_controls_from_setback_rows() and is now unit-tested in isolation; the DB-coupled caller is unchanged."
   },
   "functions": [
     {
-      "name": "instrument_lga",
-      "file_line": "scripts/refresh_runbook.py:31",
-      "input": "instrument_key string such as bayside_lep_2021 or sepp_housing_2021",
-      "output": "overlay LGA name for an LEP, or None for any statewide SEPP key",
-      "if_none": "returns None for non-LEP keys so the caller emits a statewide note instead of a per-LGA command"
-    },
-    {
-      "name": "build_refresh_runbook",
-      "file_line": "scripts/refresh_runbook.py:70",
-      "input": "list of changed instrument tuples each holding key and human label",
-      "output": "operator-facing runbook text block appended to the change alert",
-      "if_none": "empty changed list returns an empty string so callers append it unconditionally"
-    },
-    {
-      "name": "_lep_block",
-      "file_line": "scripts/refresh_runbook.py:49",
-      "input": "the LEP label, instrument key, and resolved overlay LGA name",
-      "output": "scoped three-command chain re-ingest then assign then recompute for that LGA",
-      "if_none": "only called when instrument_lga returned a real LGA, so the LGA is never None here"
+      "name": "_dcp_controls_from_setback_rows",
+      "file_line": "services/constraint_arithmetic.py:128",
+      "input": "list of fetch_dcp_setbacks row dicts (setbacks + sd_setbacks) and an optional clause_ref fallback",
+      "output": "one typed DCPControl per row; control_type from semantic_type, then control_type, then type",
+      "if_none": "empty input returns []; a row missing semantic_type falls back to control_type (typed in the live DB) then ''"
     }
   ],
-  "values": "N/A - emits command strings only; no regulatory values computed or stored",
-  "queries": "N/A - no DB queries in new code; the existing monitor queries are unchanged",
+  "values": "N/A - no regulatory values hardcoded; reads extracted DCP values from the row dicts, coercing free-text requirements to a number or keeping them as the condition (never forced into the float field)",
+  "queries": "N/A - the extracted helper is pure (no DB); the unchanged caller runs the same fetch_dcp_setbacks query as before",
   "break_it": [
     {
-      "scenario": "Changed instrument is a merged/renamed council (Parramatta/Canterbury-Bankstown/Sutherland/The Hills)",
-      "what_happens": "Naive slug transform would emit the wrong --lga name, sending a command that processes 0 lots",
-      "repro": "build_refresh_runbook([('parramatta_lep_2023','...')])",
+      "scenario": "A setback arrives untyped (only the 'prescribed' kind, no semantic_type)",
+      "what_happens": "control_type becomes 'prescribed' and would NOT match a front/rear/side lookup -> silently dropped from the footprint calc (the Bug 2 failure mode)",
+      "repro": "_dcp_controls_from_setback_rows([{'control_type': 'prescribed', 'value_min': 6.0}]) then _get_dcp_value(..., 'front_setback', 'dwelling_house')",
       "mitigated": true,
-      "how": "_LGA_OVERRIDES dict verified vs lot_search_index.lga_name; regression test test_lep_uses_override_lga_not_naive asserts naive name absent, override present"
+      "how": "test_prescribed_only_row_does_not_feed_setbacks asserts the lookup returns None for all three slots — the canary fails loudly if extraction regresses to untyped"
     },
     {
-      "scenario": "Changed instrument is a statewide SEPP",
-      "what_happens": "A per-LGA recompute command would be nonsensical (SEPP affects all councils)",
-      "repro": "build_refresh_runbook([('sepp_housing_2021','...')])",
+      "scenario": "semantic_type present but control_type carries the 'prescribed' kind",
+      "what_happens": "Naive use of control_type would mis-type the setback as 'prescribed'",
+      "repro": "_dcp_controls_from_setback_rows([{'semantic_type': 'front_setback', 'control_type': 'prescribed', 'value_min': 6.0}])",
       "mitigated": true,
-      "how": "instrument_lga returns None for non-_lep_ keys -> _sepp_block (statewide note, no build command); test asserts build_lot_search_index.py absent"
+      "how": "semantic_type is preferred in the fallback chain; test_semantic_type_beats_prescribed_kind asserts control_type == 'front_setback' and routes into the front slot"
     },
     {
-      "scenario": "No instruments changed in this monitor run",
-      "what_happens": "Empty runbook string appended to the alert (no-op)",
-      "repro": "build_refresh_runbook([])",
+      "scenario": "requirement is free text (no numeric value_min)",
+      "what_happens": "Forcing text into the float value_min field would raise or store garbage",
+      "repro": "_dcp_controls_from_setback_rows([{'semantic_type': 'front_setback', 'requirement': 'as per streetscape'}])",
       "mitigated": true,
-      "how": "returns '' so callers append unconditionally; runbook only reached inside the existing 'if changed' branch anyway"
+      "how": "_parse_numeric returns None for non-numeric text; test_requirement_freetext_kept_as_condition_not_value asserts value_min is None and the text is preserved as condition"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On next Railway legislation_monitor cron with a real change (or forced --dry-run change), confirm the Telegram alert carries the scoped runbook. NOTE: the emitted recompute rebuilds from spatial_overlays, corrupt for ~26 councils (separate pending fix); the runbook re-ingests overlays first so it pulls fresh source, but the FSR ingest field-mapping fix is still outstanding."
+    "manual_verify": "None required — pure-logic change, 95/95 constraint tests pass. Optional follow-up (separate thread): confirm whether ca_confidence still caps at medium now that setbacks are typed; if so the cause is unrelated to taxonomy."
   }
 }
