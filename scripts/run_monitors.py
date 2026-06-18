@@ -3,9 +3,14 @@
 
 Set MONITOR_NAME env var to one of:
   satellite-freshness | legislation | dcp-monitor | dcp-watchdog
+  regulatory-freshness | security | mutation-health | stats-refresh
 
 Each monitor runs its script, pings healthchecks.io on completion,
 and sends Telegram alerts on failure.
+
+The `security`, `mutation-health` and `stats-refresh` jobs are the weekly
+maintenance tasks migrated off GitHub Actions; they ship in the heavier
+`Dockerfile.maintenance` image rather than `Dockerfile.monitors`.
 """
 
 import os
@@ -31,6 +36,17 @@ MONITORS = {
     },
     "regulatory-freshness": {
         "cmd": ["python", "scripts/regulatory_freshness_monitor.py"],
+    },
+    # --- Weekly maintenance jobs (migrated off GitHub Actions, 2026-06) ---
+    # These ship in Dockerfile.maintenance, not Dockerfile.monitors.
+    "security": {
+        "cmd": ["python", "scripts/security_scan.py"],
+    },
+    "mutation-health": {
+        "cmd": ["python", "scripts/mutation_health.py"],
+    },
+    "stats-refresh": {
+        "cmd": ["python", "scripts/refresh_stats_job.py"],
     },
 }
 

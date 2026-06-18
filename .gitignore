@@ -507,6 +507,11 @@ scripts/
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
 !scripts/numeric_control_review.py
+# Weekly maintenance cron jobs (migrated off GitHub Actions, 2026-06)
+!scripts/security_scan.py
+!scripts/mutation_health.py
+!scripts/refresh_stats_job.py
+!scripts/requirements-maintenance.txt
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

@@ -1,0 +1,37 @@
+# Weekly maintenance cron image (Railway) — heavier than Dockerfile.monitors.
+# Serves the jobs migrated off GitHub Actions:
+#   MONITOR_NAME=security         -> scripts/security_scan.py   (Semgrep SAST)
+#   MONITOR_NAME=mutation-health  -> scripts/mutation_health.py (mutmut kill rate)
+# stats-refresh is run locally/on-demand (needs a git push), not scheduled here.
+#
+# Kept separate from Dockerfile.monitors so the lightweight monitor services
+# don't have to pull semgrep + the mutmut/pytest stack.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/requirements-maintenance.txt ./scripts/requirements-maintenance.txt
+COPY requirements-test.txt ./requirements-test.txt
+RUN pip install --no-cache-dir \
+    -r scripts/requirements-maintenance.txt \
+    -r requirements-test.txt
+
+# Source under scan / mutation. node_modules and .next are excluded via
+# .dockerignore so the Semgrep scan stays fast.
+COPY services/ ./services/
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY frontend-nextjs/ ./frontend-nextjs/
+COPY pytest.ini ./pytest.ini
+
+ENV PYTHONPATH=/app:/app/scripts
+
+# Railway sets MONITOR_NAME per service; run_monitors.py dispatches + reports.
+CMD ["python", "scripts/run_monitors.py"]
