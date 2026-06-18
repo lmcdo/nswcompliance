@@ -6,7 +6,7 @@
     "tests/test_dwelling_form.py",
     "tests/test_constraint_arithmetic.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "ccf9c512",
   "pre_impl": {
     "existing_data": "compute_constraint_arithmetic already receives a dev_type and has _is_apartment_type; realistic_dwellings (and the parking est_dwellings) divided the GFA envelope by MIN_DWELLING_GFA_M2 (65) for every form, ignoring whether the form is a single dwelling, dual occupancy or a multi-unit building.",
     "assumption_mismatch": "Three existing tests asserted dwelling_house -> 6/6/4 dwellings (the GFA/65 model) and passed for a year — they encoded the bug as correct. They have been corrected to the Standard Instrument meaning (a dwelling house is one dwelling); the GFA-division path is now covered for multi-unit forms in test_dwelling_form.",
@@ -35,7 +35,7 @@
       "how": "_dwellings_for_form returns 1 for dwelling_house; test_dwelling_house_yields_one_not_gfa_over_65 asserts realistic_dwellings == 1"
     },
     {
-      "scenario": "Dual occupancy on a large lot",
+      "scenario": "Dual occupancy form on a large lot with a generous GFA envelope",
       "what_happens": "GFA/65 could report 5-6 units for a form limited to two dwellings",
       "repro": "compute_constraint_arithmetic(..., dev_type='dual_occupancy', ...)",
       "mitigated": true,
@@ -49,7 +49,7 @@
       "how": "_is_apartment_type forms return the GFA-based count; test_residential_flat_building_scales_with_gfa asserts > 1 and parametric cases lock each form"
     },
     {
-      "scenario": "Unknown or empty dev_type",
+      "scenario": "Unknown or empty dev_type string that maps to no known built form",
       "what_happens": "An unmapped form could fall through to the GFA/65 over-report",
       "repro": "_dwellings_for_form('', 6) / _dwellings_for_form('some_other_use', 6)",
       "mitigated": true,
