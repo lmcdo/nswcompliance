@@ -1,54 +1,88 @@
 {
-  "tier": "standard",
-  "justification": "Restore constraint-arithmetic parity to the streaming Intelligence Brief. The capacity headline (realistic yield / binding constraint / #500 DCP-adjusted GFA) was computed and attached in the non-streaming brief path but had drifted out of the streaming path that the live UI consumes, so the flagship per-address brief silently lacked it on the live path.",
+  "tier": "critical",
+  "justification": "GATE-0 parcel-identity: stop the NSW Portal fuzzy /address search from silently binding a brief/report to the WRONG parcel (verified live: '29 Haberfield Rd' -> '29 Stanton Road'; '1 Dalhousie St' -> '15 Dalhousie Street'), which stamps every downstream figure AUTHORITATIVE for a different property. Shared verified resolver applied fail-closed at all three tracked production address resolvers.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_brief_constraint_parity.py"
+    "services/address_identity.py",
+    "scripts/generate_conveyancing_report.py",
+    "services/pre_da_history.py",
+    "services/nsw_planning_api.py",
+    "tests/test_address_identity.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "ccfb06d1",
   "pre_impl": {
-    "existing_data": "The streaming path already builds dcp_controls, sepp_housing, sepp_lep_overrides, planning_controls and has lot_area_m2 + controls in scope before the DevelopmentBrief build, so constraint arithmetic needs no new fetch — it reuses inputs already present, mirroring the non-streaming path.",
-    "assumption_mismatch": "Assumed both brief endpoints were equivalent; they were not. compute_constraint_arithmetic appeared only in run_intelligence_brief, never in _generate_brief_sse — classic dual-path drift on the most important feature.",
-    "new_vs_existing": "No new logic invented: the streaming path now runs the same compute_constraint_arithmetic call, same dev_type and inputs, yields a constraint_arithmetic SSE section, and attaches the field to its DevelopmentBrief — identical to the non-streaming path."
+    "existing_data": "The Portal /address search is fuzzy with noOfRecords:1; three independent tracked resolvers (resolve_address, pre_da_history geocode, nsw_planning_api client) took data[0].propId with no check that the resolved address matched the request. Each response record carries an 'address' label usable for verification.",
+    "assumption_mismatch": "The 39-agent audit ranked this #1 'realized this run' but that run used a manual non-UI input; the brief UI uses Google autocomplete, so the nonexistent-street case can't occur there. The residual that survives autocomplete is wrong street NUMBER on the right street (Google's address set != NSW cadastre) plus all non-UI paths (CLI/API). The bulk Prospector is spatial (ST_Intersects) and not affected; geocode_addresses.py is untracked.",
+    "new_vs_existing": "New shared module services/address_identity.py is the single source of truth; the three resolvers call it and fail closed on mismatch. No change to resolution for matching addresses.",
+    "external_source_error": "If the NSW Portal /address call errors or times out, each resolver already fails closed (retry then raise or return None). GATE-0 only inspects a successful non-empty response, so it never turns an API error into a wrong parcel and adds no new error path.",
+    "frontend_type": "N/A - backend address resolution only; no new frontend types or boundaries. The brief UI's Google Places autocomplete sits upstream and is unchanged.",
+    "user_failure_mode": "If GATE-0 rejects a genuinely valid address whose Portal label differs (false reject), the user sees a fail-closed 'could not resolve' state rather than a brief built on the wrong parcel — visible, not silent."
   },
   "functions": [
     {
-      "name": "_generate_brief_sse",
-      "file_line": "services/intelligence_brief.py:2583",
-      "input": "the IntelligenceBriefRequest plus resolved prop_id, latitude, longitude and lot well-known-text",
-      "output": "a stream of SSE section events now including a constraint_arithmetic capacity section",
-      "if_none": "when lot_area_m2 is missing or zero the constraint section is skipped and the field stays None"
+      "name": "parcel_identity_match",
+      "file_line": "services/address_identity.py:58",
+      "input": "the requested address string and the resolved candidate address label from the Portal",
+      "output": "True only when street number and street name match; the requested tokens must prefix the candidate",
+      "if_none": "empty or sub-two-token input on either side returns False so a bare number never matches"
+    },
+    {
+      "name": "normalize_addr_tokens",
+      "file_line": "services/address_identity.py:33",
+      "input": "a free-form address string from the request or the Portal label",
+      "output": "ordered comparable tokens with street types expanded and state/country/postcode noise dropped",
+      "if_none": "an empty or whitespace-only string returns an empty token list"
+    },
+    {
+      "name": "resolve_address",
+      "file_line": "scripts/generate_conveyancing_report.py:787",
+      "input": "the requested address string for the brief/conveyancing flagship and CLI",
+      "output": "the resolved propId plus coordinates only when the parcel identity matches the request",
+      "if_none": "on a fuzzy mismatch it logs a GATE-0 line and returns None for every element (fail closed)"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; reuses compute_constraint_arithmetic which reads the DCP/SEPP/LEP values already fetched earlier in the same streaming path",
-  "queries": "N/A - no new database queries; the constraint computation reuses dcp_controls, sepp_housing and sepp_lep_overrides already fetched upstream in the streaming path",
+  "values": "N/A - no regulatory values; the matcher compares address tokens only and hardcodes no parcel data",
+  "queries": "N/A - no database queries; the gate runs on the Portal /address HTTP response already fetched by each resolver",
   "break_it": [
     {
-      "scenario": "The constraint arithmetic computation raises an exception mid-stream",
-      "what_happens": "Without isolation it would terminate the SSE stream and the user would lose the whole brief",
-      "repro": "force compute_constraint_arithmetic to raise inside _generate_brief_sse",
+      "scenario": "Requested street does not exist; Portal returns a different street at the same number",
+      "what_happens": "Without the gate the wrong parcel's lot area / FSR / height feed the whole brief, stamped AUTHORITATIVE",
+      "repro": "resolve '29 Haberfield Rd' -> Portal returns '29 STANTON ROAD'",
       "mitigated": true,
-      "how": "the computation is wrapped in try/except that logs a warning and leaves constraint_field None; the brief continues and still completes"
+      "how": "parcel_identity_match returns False (street name mismatch); resolve_address returns None and logs [GATE-0]; test covers the live label"
     },
     {
-      "scenario": "An apartment/strata address reaches the streaming assembly",
-      "what_happens": "constraint_field could be referenced where it was never defined, raising NameError",
-      "repro": "run the streaming brief for an is_apartment address",
+      "scenario": "Requested number absent on a real street; Portal returns a neighbouring number",
+      "what_happens": "A real Google-valid address could still resolve to the wrong house (e.g. new subdivision, unit complex)",
+      "repro": "resolve '1 Dalhousie St' -> Portal returns '15 DALHOUSIE STREET'",
       "mitigated": true,
-      "how": "the constraint block and the DevelopmentBrief that reads constraint_field are both gated on not is_apartment; apartments build a RenovationBrief that does not reference it"
+      "how": "street number must match exactly (req[0] == cand[0]); returns False; tested"
     },
     {
-      "scenario": "Adding a section throws the progress percentage off (exceeds 100)",
-      "what_happens": "Progress bar overshoots because total_sections did not count the new section",
-      "repro": "stream a development brief and watch the emitted progress values",
+      "scenario": "Formatting differences between Google input and Portal label",
+      "what_happens": "A correct address could be falsely rejected (abbreviations, unit prefix, missing postcode)",
+      "repro": "'29 Dalhousie St' / '5/29 Dalhousie Street' vs '29 DALHOUSIE STREET HABERFIELD 2045'",
       "mitigated": true,
-      "how": "total_sections raised from +3 to +4 for the non-apartment case and the max-estimate from +3 to +4, so progress stays bounded"
+      "how": "normalize_addr_tokens expands street types, drops state/country/postcode, reduces unit 5/29 to 29; both accept-cases tested"
+    },
+    {
+      "scenario": "A future edit removes the gate from one of the three resolvers",
+      "what_happens": "The wrong-parcel bug regresses silently on that path",
+      "repro": "delete the parcel_identity_match call from any production resolver",
+      "mitigated": true,
+      "how": "test_gate_applied_at_all_production_resolvers asserts the call is present in all three files"
+    },
+    {
+      "scenario": "NSW Portal /address API errors or times out during resolution",
+      "what_happens": "A transient API failure could be misread as a resolved parcel",
+      "repro": "Portal returns a non-200 or times out mid-resolve",
+      "mitigated": true,
+      "how": "GATE-0 runs only on a successful non-empty response; on error each resolver already retries then raises or returns None (fail closed), so GATE-0 adds no new error path"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Stream a development address (e.g. Penrith/Haberfield house) via /intelligence-brief/stream and confirm a constraint_arithmetic section event arrives. FRONTEND FOLLOW-UP (separate PR): the brief page does not yet render the constraint_arithmetic section (not in EXPECTED_SECTIONS_DEV / SECTION_LABELS); wire the existing ConstraintArithmeticCard so users see it. Play A (population context) is the subsequent follow-up. Dual-path unification remains the documented root-cause refactor."
+    "manual_verify": "Run a CLI/API brief for a non-existent street number on a real street and confirm it fails closed (no brief for the wrong parcel) with a [GATE-0] log line. This is GATE-0 of the capacity-engine remediation (~/.claude/plans/ce-capacity-engine-audit-2026-06.md); the legality gates (permissibility/dwelling-count, SEPP-on-heritage) are the larger next steps and remain unexposed until done."
   }
 }

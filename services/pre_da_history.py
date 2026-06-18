@@ -162,7 +162,7 @@ def _get_conn():
         host=os.environ.get("DB_HOST", "127.0.0.1"),
         database=os.environ.get("DB_NAME", "nsw_planning"),
         user=os.environ.get("DB_USER", "postgres"),
-        password=os.environ.get("DB_PASSWORD", ""),
+        password=os.environ.get("DB_PASSWORD") or "",
         port=int(os.environ.get("DB_PORT", 5432)),
     )
 
@@ -300,6 +300,15 @@ def geocode_address(address: str) -> tuple[float, float, str]:
     results = r.json()
     if not results:
         raise ValueError(f"Address not found: {address}")
+    # GATE-0 (parcel identity): the Portal /address search is fuzzy — refuse to
+    # geocode a parcel whose street number/name does not match the request.
+    from services.address_identity import parcel_identity_match
+    _resolved_label = results[0].get("address") or ""
+    if not parcel_identity_match(address, _resolved_label):
+        raise ValueError(
+            f"Address could not be uniquely resolved: requested {address!r} "
+            f"resolved to {_resolved_label!r}"
+        )
     prop_id = results[0]["propId"]
 
     # Step 2: propId → lot geometry → WGS84 centroid
@@ -478,7 +487,7 @@ def _fetch_ndvi_ndbi_year(year: int, lat: float, lon: float, bbox: list) -> tupl
             if "scl" in item.assets:
                 with rasterio.open(item.assets["scl"].href) as scl_src:
                     scl_val = list(scl_src.sample([(native_x, native_y)]))[0][0]
-                    if int(scl_val) not in _SCL_CLEAN:
+                    if scl_val is None or int(scl_val) not in _SCL_CLEAN:
                         continue  # cloud, shadow, or cirrus — skip this scene
 
             # Fix 3: 3x3 spatial median per band
@@ -580,8 +589,8 @@ def compute_ndvi_ndbi_deltas(timeline: dict[int, dict]) -> dict[int, dict]:
 def _extract_da_fields(rec: dict) -> dict:
     """Flatten a raw ePlanning response record to a standard dict."""
     loc = (rec.get("Location") or [{}])[0]
-    dev_types = [d.get("DevelopmentType", "") for d in (rec.get("DevelopmentType") or [])]
-    date_updated = rec.get("DateLastUpdated", "")
+    dev_types = [(d.get("DevelopmentType") or "") for d in (rec.get("DevelopmentType") or [])]
+    date_updated = rec.get("DateLastUpdated") or ""
     dev_type = "; ".join(t for t in dev_types if t)
     return {
         "pan": rec.get("PlanningPortalApplicationNumber"),
@@ -750,10 +759,10 @@ def get_wayback_releases() -> list[dict]:
       - Returns Selection array; release number = M field; date parsed from Name string.
     """
     r = requests.get(WAYBACK_META_URL, params={"f": "json"}, timeout=15)
-    raw = r.json().get("Selection", [])
+    raw = r.json().get("Selection") or []
     releases = []
     for x in raw:
-        m = re.search(r"(\d{4}-\d{2}-\d{2})", x.get("Name", ""))
+        m = re.search(r"(\d{4}-\d{2}-\d{2})", x.get("Name") or "")
         date_str = m.group(1) if m else ""
         releases.append({
             "releaseNum": x["M"],
@@ -918,18 +927,18 @@ def build_year_annotation(
 
     # Step 4: DA event cross-reference
     # Use date_updated year as proxy for event year (LodgementDate not in API response)
-    das_this_year = [d for d in da_events if d.get("date_updated", "")[:4] == str(year)]
+    das_this_year = [d for d in da_events if (d.get("date_updated") or "")[:4] == str(year)]
     ccs_this_year = [
         d for d in da_events
-        if d.get("date_updated", "")[:4] == str(year)
-        and "Certificate" in d.get("app_type", "")
+        if (d.get("date_updated") or "")[:4] == str(year)
+        and "Certificate" in (d.get("app_type") or "")
     ]
-    tree_removal_das = [d for d in das_this_year if "tree" in d.get("dev_type", "").lower()]
+    tree_removal_das = [d for d in das_this_year if "tree" in (d.get("dev_type") or "").lower()]
 
     explanation = []
 
     if das_this_year and not tree_removal_das:
-        types = list({d["dev_type"] for d in das_this_year if "tree" not in d.get("dev_type", "").lower()})
+        types = list({d.get("dev_type") for d in das_this_year if "tree" not in (d.get("dev_type") or "").lower()})
         if types:
             explanation.append(f"DA lodged: {', '.join(t for t in types if t)}")
     if ccs_this_year:
