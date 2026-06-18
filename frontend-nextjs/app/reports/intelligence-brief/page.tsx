@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -59,6 +60,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   dcp_controls: { label: 'DCP Controls', description: 'Development control plan provisions' },
   sepp_housing: { label: 'SEPP Housing', description: 'State policy housing standards' },
   neighbourhood: { label: 'Neighbourhood', description: 'Nearby DAs, shadow analysis' },
+  constraint_arithmetic: { label: 'Development Capacity', description: 'Indicative yield and the binding planning constraint' },
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
   'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
@@ -252,7 +254,7 @@ function formatElapsed(seconds: number): string {
 const EXPECTED_SECTIONS_BASE = [
   'economics', 'strata', 'environmental_constraints', 'planning_controls',
 ];
-const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'neighbourhood'];
+const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
   'satellite.granny_flat', 'satellite.pre_da_history',
@@ -750,13 +752,31 @@ function IntelligenceBriefInner() {
 
           {/* Section cards — appear as they arrive */}
           <div className="space-y-3">
-            {sectionEvents.map((event, i) => (
-              <SectionCard
-                key={`${event.data.section}-${i}`}
-                section={event.data.section}
-                data={event.data.data}
-              />
-            ))}
+            {sectionEvents.map((event, i) => {
+              // Development Capacity renders via the dedicated card (carries its
+              // own binding-constraint breakdown + disclaimer). Falls back to the
+              // generic SectionCard when the value is absent (not computed).
+              if (event.data.section === 'constraint_arithmetic') {
+                const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;
+                if (ca) {
+                  return (
+                    <ConstraintArithmeticCard
+                      key={`constraint_arithmetic-${i}`}
+                      briefData={ca}
+                      lotArea={ca.lot_area_m2}
+                      devType={ca.dev_type}
+                    />
+                  );
+                }
+              }
+              return (
+                <SectionCard
+                  key={`${event.data.section}-${i}`}
+                  section={event.data.section}
+                  data={event.data.data}
+                />
+              );
+            })}
           </div>
 
           {/* Complete summary */}

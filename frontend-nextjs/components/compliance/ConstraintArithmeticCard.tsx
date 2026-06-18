@@ -19,7 +19,7 @@ interface ConstraintStep {
   note: string;
 }
 
-interface ConstraintArithmeticResult {
+export interface ConstraintArithmeticResult {
   lot_area_m2: number;
   dev_type: string;
   lep_height_m: number | null;
