@@ -716,6 +716,33 @@ def classify_strata(
     return StrataType.AMBIGUOUS
 
 
+def _strata_scope_note(strata_type: StrataType) -> list[str]:
+    """Honest scope note for the apartment/strata brief.
+
+    The apartment brief intentionally omits development-capacity analysis; this
+    states *why* in plain language so the absence reads as a defined scope, not a
+    silent blank (Bug 4 Stage 2). Factual scope statement only — no advice and no
+    computed yield. APARTMENT and AMBIGUOUS get distinct wording; other states
+    return no note.
+    """
+    if strata_type == StrataType.APARTMENT:
+        return [
+            "This address is an individual lot within a strata scheme. "
+            "Development-capacity analysis is not provided for individual strata "
+            "lots — redevelopment of a strata scheme is a matter for the owners "
+            "corporation and the whole site. Engage a qualified town planner for "
+            "a site-specific assessment."
+        ]
+    if strata_type == StrataType.AMBIGUOUS:
+        return [
+            "Strata status could not be determined for this address from the "
+            "available data, so development-capacity analysis is not provided. "
+            "Whether this is an individual strata lot or a developable parcel can "
+            "be resolved by checking the strata plan or the building footprint."
+        ]
+    return []
+
+
 def _zone_prefix(zone: Optional[str]) -> str:
     """Extract zone prefix safely. Returns empty string on None/empty.
 
@@ -2410,6 +2437,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             environmental_constraints=environmental,
             economics=economics,
             satellite=satellite_data,
+            scope_limitations=_strata_scope_note(strata_type),
             confidence_summary=ConfidenceSummary(),  # placeholder, recomputed below
         )
     else:
@@ -3014,6 +3042,7 @@ def _generate_brief_sse(
             environmental_constraints=environmental,
             economics=economics,
             satellite=satellite_data,
+            scope_limitations=_strata_scope_note(strata_type),
             confidence_summary=ConfidenceSummary(),
         )
     else:
