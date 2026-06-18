@@ -486,7 +486,7 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
     Resolution order:
     1. ZONE_EPI_TO_LGA_SLUG — explicit overrides + special cases (Inner West, City of Sydney).
     2. Generic: derive the slug from the EPI name and accept it only if it is in
-       DCP_ONBOARDED_SLUGS (the verified completeness gate). This covers every onboarded
+       DCP_ONBOARDED_SLUGS (the curated completeness gate). This covers every onboarded
        LGA without a hand-maintained EPI string per council.
     - No match → None (LGA not yet onboarded for DCP setbacks)
     - Inner West → suburb disambiguation returns marrickville / leichhardt / ashfield

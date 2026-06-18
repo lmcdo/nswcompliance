@@ -5,7 +5,7 @@
     "scripts/generate_conveyancing_report.py",
     "tests/test_former_council_coverage.py"
   ],
-  "commit_hash": "0396b92f",
+  "commit_hash": "ae1a62d5",
   "pre_impl": {
     "existing_data": "dcp_setback_controls holds per-LGA setback/site-coverage rows keyed by an lga slug. Verified read-only 2026-06-19: 29 distinct lga slugs, 28 address-resolvable (nsw_statewide is a fallback). All 14 previously-unmapped LGAs have is_current rows with needs_review=0 and control/dev-type coverage at parity with the LGAs already mapped (canada_bay 40 rows, parramatta 51, georges_river 41).",
     "assumption_mismatch": "ZONE_EPI_TO_LGA_SLUG was assumed to be the onboarding source of truth, but it was a stale hand-maintained list of 11 EPI strings; the data table had moved ahead of it. The Parramatta/Cumberland 'rows not yet complete' comment was demonstrably outdated (51 and 25 current rows, 0 needs_review).",
