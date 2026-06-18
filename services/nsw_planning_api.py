@@ -93,6 +93,17 @@ class NSWPlanningAPI:
                     print(f"DEBUG: NSW API response for '{address}': {data}")
                     logger.info(f"NSW API response for '{address}': {data}")
                     if data and len(data) > 0:
+                        # GATE-0 (parcel identity): the Portal /address search is
+                        # fuzzy — refuse a resolved parcel whose street number/name
+                        # does not match the request (fail closed).
+                        from services.address_identity import parcel_identity_match
+                        _label = data[0].get("address", "") or ""
+                        if not parcel_identity_match(address, _label):
+                            logger.warning(
+                                "[GATE-0] address identity mismatch — requested %r "
+                                "resolved to %r; suppressing (fail-closed)", address, _label
+                            )
+                            return None
                         print(f"DEBUG: Found {len(data)} properties. First result: address='{data[0].get('address')}', propId={data[0].get('propId')}")
                         logger.info(f"Found {len(data)} properties. First result: address='{data[0].get('address')}', propId={data[0].get('propId')}")
                         return data  # Return all results for coordinate validation

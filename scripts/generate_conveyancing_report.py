@@ -45,6 +45,7 @@ load_dotenv(dotenv_path=project_root / ".env")
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
 from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp  # noqa: E402
+from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -798,6 +799,17 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
 
     prop_id = data[0].get("propId")
     if not prop_id:
+        return None, None, None, None
+
+    # GATE-0 (parcel identity): the Portal /address search is fuzzy — refuse a
+    # resolved parcel whose street number/name does not match the request rather
+    # than silently returning a neighbouring property as AUTHORITATIVE.
+    resolved_label = data[0].get("address", "") or ""
+    if not parcel_identity_match(address, resolved_label):
+        print(
+            f"  [GATE-0] address identity mismatch — requested {address!r} "
+            f"resolved to {resolved_label!r}; suppressing (fail-closed)"
+        )
         return None, None, None, None
 
     lat, lng, lot_wkt = None, None, None

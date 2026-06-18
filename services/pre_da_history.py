@@ -300,6 +300,15 @@ def geocode_address(address: str) -> tuple[float, float, str]:
     results = r.json()
     if not results:
         raise ValueError(f"Address not found: {address}")
+    # GATE-0 (parcel identity): the Portal /address search is fuzzy — refuse to
+    # geocode a parcel whose street number/name does not match the request.
+    from services.address_identity import parcel_identity_match
+    _resolved_label = results[0].get("address", "") or ""
+    if not parcel_identity_match(address, _resolved_label):
+        raise ValueError(
+            f"Address could not be uniquely resolved: requested {address!r} "
+            f"resolved to {_resolved_label!r}"
+        )
     prop_id = results[0]["propId"]
 
     # Step 2: propId → lot geometry → WGS84 centroid
