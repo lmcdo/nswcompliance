@@ -104,11 +104,17 @@ def _get_dcp_value(
     controls: list[DCPControl],
     control_type: str,
     dev_type: str,
+    prefer_max: bool = False,
 ) -> Optional[float]:
     """Find the DCP control value for a given type and dev_type.
 
     Matches exact dev_type first, then falls back to 'dwelling_house'.
-    Uses value_min (the minimum requirement / primary value).
+
+    By default returns value_min (the minimum requirement — correct for setbacks,
+    landscaping, deep soil). For CAP controls (e.g. max_site_coverage), the limit
+    is stored in value_max, so pass ``prefer_max=True`` — otherwise the cap is
+    read as value_min (usually None) and silently dropped (GATE-3). ``prefer_max``
+    falls back to value_min when value_max is absent.
     """
     exact = None
     fallback = None
@@ -122,6 +128,8 @@ def _get_dcp_value(
     match = exact or fallback
     if match is None:
         return None
+    if prefer_max:
+        return match.value_max if match.value_max is not None else match.value_min
     return match.value_min
 
 
@@ -389,7 +397,8 @@ def compute_constraint_arithmetic(
     # -----------------------------------------------------------------------
     # Step 5: DCP site coverage cap
     # -----------------------------------------------------------------------
-    site_coverage_pct = _get_dcp_value(dcp_controls, "max_site_coverage", dev_type)
+    # max_site_coverage is a CAP — its limit is in value_max, not value_min.
+    site_coverage_pct = _get_dcp_value(dcp_controls, "max_site_coverage", dev_type, prefer_max=True)
 
     # Also check SEPP max_site_coverage_pct for the dev type
     sepp_coverage_pct: Optional[float] = None
