@@ -1,75 +1,69 @@
 {
   "tier": "standard",
-  "justification": "Lot-area sanity guard on the flagship per-address brief: cross-check the VG valuation lot area against the Planning Portal cadastral polygon and distrust the valuation on material divergence (the 4,452 m2 aggregated-parcel case that fed a confident wrong area + capacity through the whole brief)",
-  "commit_hash": "ff9216a1",
+  "justification": "Legislation-monitor -> bulk-index refresh connector: maps changed instrument to a scoped, ready-to-run recompute runbook appended to the alert (command-in-alert; no execution, no DB writes at runtime)",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_lot_area_reconciliation.py"
+    "scripts/refresh_runbook.py",
+    "scripts/legislation_monitor.py",
+    "tests/test_refresh_runbook.py"
   ],
+  "commit_hash": "1838729b",
   "pre_impl": {
-    "existing_data": "lot_area_m2 was sourced ONLY from the VG valuation and marked AUTHORITATIVE with no check; the Planning Portal lot polygon (fetch_lot_geometry) plus calculate_lot_dimensions already yields a scale-corrected single-lot polygon area that can serve as an authoritative cross-check",
-    "assumption_mismatch": "the VG valuation parcel is not always one lot; it can aggregate multiple lots or resolve to the wrong parcel, so trusting it blindly produces a confident wrong area on the flagship report; the cadastral polygon is the better single-lot authority on divergence",
-    "new_vs_existing": "new pure reconciliation helpers reusing the existing geometry fetch and dimension calculator; wired into both the non-streaming and streaming assembly paths before any consumer, with the streaming geometry await pulled forward so economics is not emitted with an unverified area"
+    "existing_data": "instrument_registry holds 23 LEP and 2 SEPP active keys; lot_search_index.lga_name holds the 128 overlay LGA names the recompute commands must target",
+    "assumption_mismatch": "naive slug-to-LGA transform only resolves 19 of 23 keys; merged or renamed councils (Parramatta, Canterbury-Bankstown, Sutherland Shire, The Hills Shire) need explicit overrides verified against the live overlay names",
+    "new_vs_existing": "new pure module reusing the existing legislation_monitor alert path; it appends text only and runs zero DB or network calls, so the static override map is baked in rather than queried at runtime"
   },
   "functions": [
     {
-      "name": "_reconcile_lot_area",
-      "file_line": "services/intelligence_brief.py:1838",
-      "input": "valuation lot area, cadastral polygon area, and a relative tolerance fraction",
-      "output": "named tuple of chosen area, source label, diverged flag, and a note when they disagree",
-      "if_none": "missing or non-positive inputs fall back to whichever source is present, or none when both absent"
+      "name": "instrument_lga",
+      "file_line": "scripts/refresh_runbook.py:31",
+      "input": "instrument_key string such as bayside_lep_2021 or sepp_housing_2021",
+      "output": "overlay LGA name for an LEP, or None for any statewide SEPP key",
+      "if_none": "returns None for non-LEP keys so the caller emits a statewide note instead of a per-LGA command"
     },
     {
-      "name": "_apply_lot_area_reconciliation",
-      "file_line": "services/intelligence_brief.py:1877",
-      "input": "the valuation dict and the raw Planning Portal lot geometry for this address",
-      "output": "warning string for data_currency_warnings on divergence, mutating valuation in place otherwise None",
-      "if_none": "when geometry is absent the polygon area stays None and the valuation area is kept without a caveat"
+      "name": "build_refresh_runbook",
+      "file_line": "scripts/refresh_runbook.py:70",
+      "input": "list of changed instrument tuples each holding key and human label",
+      "output": "operator-facing runbook text block appended to the change alert",
+      "if_none": "empty changed list returns an empty string so callers append it unconditionally"
     },
     {
-      "name": "_build_economics",
-      "file_line": "services/intelligence_brief.py:1903",
-      "input": "the valuation dict, now optionally carrying a lot_area_caveat from the reconciliation step",
-      "output": "Economics schema whose lot_area_m2 field is downgraded to DERIVED with the caveat when a mismatch was flagged",
-      "if_none": "no caveat keeps the field AUTHORITATIVE; a None area becomes NOT_AVAILABLE as before"
+      "name": "_lep_block",
+      "file_line": "scripts/refresh_runbook.py:49",
+      "input": "the LEP label, instrument key, and resolved overlay LGA name",
+      "output": "scoped three-command chain re-ingest then assign then recompute for that LGA",
+      "if_none": "only called when instrument_lga returned a real LGA, so the LGA is never None here"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded; lot area is taken from live VG valuation or computed from the live Planning Portal polygon",
-  "queries": "N/A - no new DB queries; the change reads already-fetched valuation and geometry results",
+  "values": "N/A - emits command strings only; no regulatory values computed or stored",
+  "queries": "N/A - no DB queries in new code; the existing monitor queries are unchanged",
   "break_it": [
     {
-      "scenario": "Valuation returns an aggregated parcel far larger than the actual lot",
-      "what_happens": "Without the guard the brief shows a confident wrong area and overstated capacity on the flagship report",
-      "repro": "_reconcile_lot_area(4452.0, 312.0) or _apply_lot_area_reconciliation with a small-lot geometry",
+      "scenario": "Changed instrument is a merged/renamed council (Parramatta/Canterbury-Bankstown/Sutherland/The Hills)",
+      "what_happens": "Naive slug transform would emit the wrong --lga name, sending a command that processes 0 lots",
+      "repro": "build_refresh_runbook([('parramatta_lep_2023','...')])",
       "mitigated": true,
-      "how": "On >25% divergence the geometry area wins, the field is downgraded to DERIVED, and a data_currency_warning is surfaced; covered by test_aggregated_parcel_diverges_and_trusts_geometry"
+      "how": "_LGA_OVERRIDES dict verified vs lot_search_index.lga_name; regression test test_lep_uses_override_lga_not_naive asserts naive name absent, override present"
     },
     {
-      "scenario": "Planning Portal lot geometry is missing for the address",
-      "what_happens": "No cross-check is possible and a naive guard could blank the area",
-      "repro": "_apply_lot_area_reconciliation(valuation, None)",
+      "scenario": "Changed instrument is a statewide SEPP",
+      "what_happens": "A per-LGA recompute command would be nonsensical (SEPP affects all councils)",
+      "repro": "build_refresh_runbook([('sepp_housing_2021','...')])",
       "mitigated": true,
-      "how": "Geometry None leaves the valuation area in place with no caveat (test_no_geometry_keeps_valuation_returns_no_warning)"
+      "how": "instrument_lga returns None for non-_lep_ keys -> _sepp_block (statewide note, no build command); test asserts build_lot_search_index.py absent"
     },
     {
-      "scenario": "Streaming path emits the economics section before geometry is awaited",
-      "what_happens": "The economics SSE event would carry an unverified valuation area",
-      "repro": "Run _generate_brief_sse for an address whose valuation aggregates lots",
+      "scenario": "No instruments changed in this monitor run",
+      "what_happens": "Empty runbook string appended to the alert (no-op)",
+      "repro": "build_refresh_runbook([])",
       "mitigated": true,
-      "how": "The lot-geometry await + reconciliation were pulled forward to run before _build_economics in the streaming path; the later duplicate await was removed"
-    },
-    {
-      "scenario": "Valuation and geometry agree within tolerance",
-      "what_happens": "A too-eager guard would needlessly downgrade confidence on a correct area",
-      "repro": "_reconcile_lot_area(312.0, 320.0)",
-      "mitigated": true,
-      "how": "Within-tolerance keeps the valuation area and AUTHORITATIVE confidence (test_agree_within_tolerance_keeps_valuation, test_no_caveat_stays_authoritative)"
+      "how": "returns '' so callers append unconditionally; runbook only reached inside the existing 'if changed' branch anyway"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run the brief for the known 4,452 m2 Campsie address and a clean Inner West address: confirm the Campsie lot area now matches the cadastral polygon, shows DERIVED confidence with a caveat + data_currency_warning, while the Inner West address is unchanged at AUTHORITATIVE. RESIDUAL LIMIT: if geocoding resolves the wrong propId entirely, valuation and polygon can be wrong-but-agreeing and the guard will not catch it (separate geocode-accuracy issue, Bug list item)."
+    "manual_verify": "On next Railway legislation_monitor cron with a real change (or forced --dry-run change), confirm the Telegram alert carries the scoped runbook. NOTE: the emitted recompute rebuilds from spatial_overlays, corrupt for ~26 councils (separate pending fix); the runbook re-ingests overlays first so it pulls fresh source, but the FSR ingest field-mapping fix is still outstanding."
   }
 }
