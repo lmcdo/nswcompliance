@@ -925,6 +925,62 @@ def _get_db_conn():
     return conn
 
 
+# GATE-1 part 2: derive the development FORM from the LEP Land Use Table
+# (lep_land_use_table — per-zone, per-LGA permitted/prohibited) so the engine
+# computes yield for the densest PERMITTED form, not a hardcoded dwelling_house.
+# Density order (densest first); each maps the table's snake_case form to the
+# engine dev_type string.
+_PERMITTED_FORM_DENSITY = (
+    ("residential_flat_buildings", "residential_flat_building"),
+    ("shop_top_housing", "shop_top_housing"),
+    ("multi_dwelling_housing", "multi_dwelling_housing"),
+    ("attached_dwellings", "attached_dwelling"),
+    ("manor_houses", "manor_house"),
+    ("dual_occupancies", "dual_occupancy"),
+    ("semi_detached_dwellings", "dual_occupancy"),
+    ("dwelling_houses", "dwelling_house"),
+)
+
+
+def _densest_permitted_dev_type(permitted_forms: set[str]) -> str:
+    """Map the densest PERMITTED residential form to the engine dev_type.
+
+    Fail-safe to ``dwelling_house`` when no recognised residential form is
+    permitted, so the engine never assumes a form the zone prohibits.
+    """
+    for table_form, engine_form in _PERMITTED_FORM_DENSITY:
+        if table_form in permitted_forms:
+            return engine_form
+    return "dwelling_house"
+
+
+def _fetch_permitted_dev_type(zone_code: Optional[str], lga_name: Optional[str]) -> str:
+    """Densest permitted residential form for this zone + LGA from the LEP Land
+    Use Table. Fail-safe to ``dwelling_house`` on missing inputs, no coverage
+    (the table holds 25 LGAs), or any error — never over-reports a form the zone
+    does not permit.
+    """
+    if not zone_code or not lga_name:
+        return "dwelling_house"
+    conn = None
+    try:
+        conn = _get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT development_type FROM lep_land_use_table "
+            "WHERE zone = %s AND lga ILIKE %s AND permissibility = 'permitted'",
+            (zone_code, lga_name),
+        )
+        permitted = {row[0] for row in cur.fetchall()}
+        return _densest_permitted_dev_type(permitted)
+    except Exception as e:  # fail-safe: any error -> conservative dwelling_house
+        logger.warning("permitted dev_type lookup failed (%s/%s): %s", zone_code, lga_name, e)
+        return "dwelling_house"
+    finally:
+        if conn:
+            conn.close()
+
+
 # ---------------------------------------------------------------------------
 # LGA validation — Fix A from IMPLEMENTATION.md
 # ---------------------------------------------------------------------------
@@ -2430,7 +2486,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
-                dev_type="dwelling_house",
+                dev_type=_fetch_permitted_dev_type(controls.get("zone"), council_name),
                 lep_height_str=controls.get("height"),
                 lep_fsr_str=fsr_str,
                 lot_dimensions=lot_dims_for_ca,
@@ -2954,7 +3010,7 @@ def _generate_brief_sse(
                     lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
-                        dev_type="dwelling_house",
+                        dev_type=_fetch_permitted_dev_type(controls.get("zone"), council_name),
                         lep_height_str=controls.get("height"),
                         lep_fsr_str=controls.get("fsr"),
                         lot_dimensions=lot_dims_for_ca,
