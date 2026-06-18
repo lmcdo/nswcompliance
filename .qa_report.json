@@ -8,7 +8,7 @@
     "tests/test_permitted_dev_type.py",
     "tests/test_capacity_range.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "213d9a58",
   "pre_impl": {
     "existing_data": "lep_land_use_table (zone, lga, development_type, permissibility) holds 17,353 rows across 25 LGAs; permissibility in {permitted, prohibited, exempt}. ConstraintArithmeticResult already carried dev_type + realistic_dwellings. Verified read-only 2026-06-19 via the post-gate live sweep.",
     "assumption_mismatch": "GATE-1pt2 (#518) assumed densest(permitted) = realistic form and that _council_from_zone_epi's name matched lep_land_use_table.lga. Both were wrong: permitted-with-consent includes outlier dense forms (shop_top in R2), and the council name carries suffixes/None ('Canada Bay Council', None for Sutherland) that exact ILIKE never matched, so the join was dead and masked the over-report behind a dwelling_house under-report.",
