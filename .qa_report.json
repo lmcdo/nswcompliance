@@ -1,61 +1,54 @@
 {
   "tier": "standard",
-  "justification": "Bug 4 Stage 1: sharpen the strata classifier with the StrataHub lot count so apartment-vs-townhouse is decided by the authoritative lot count rather than the weak lot-area heuristic. Shrinks the AMBIGUOUS band that drives both Bug 4 symptoms (silent blank for apartments + wrong house-yield default).",
+  "justification": "Bug 4 Stage 2: replace the silent blank on the apartment/strata brief with an honest scope note explaining why development-capacity analysis is not provided. Factual scope statement only — no advice, no computed yield. Closes Bug 4 as scoped (show strata-appropriate output instead of a silent blank).",
   "files": [
     "services/intelligence_brief.py",
-    "tests/test_strata_classify_lotcount.py"
+    "tests/test_strata_scope_note.py"
   ],
-  "commit_hash": "26570588",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "The brief's strata path used detect_strata (NSW Cadastre) which returns is_strata/plan_type but NO lot count. The StrataHub lot count (query_strata_at_point -> lot_total, classify_dwelling_type boundaries) lived in services/strata_lookup.py and was not wired into the brief.",
-    "assumption_mismatch": "Plan assumed the lot count was already fetched in the brief path. It was not — Stage 1 had to wire StrataHub in, not just tweak classify_strata.",
-    "new_vs_existing": "Additive: classify_strata gains a lot-count branch ahead of the unchanged area fallback; _fetch_strata enriches the cadastre dict with StrataHub lot_total best-effort. Both brief assembly paths (non-streaming + streaming) share these two functions, so both benefit with no call-site changes."
+    "existing_data": "RenovationBrief already has an unused scope_limitations list field; both assembly paths (non-streaming + streaming) constructed it with no scope_limitations, defaulting to an empty list, so apartment/ambiguous briefs showed neither capacity nor any explanation.",
+    "assumption_mismatch": "The 4-stage plan over-scoped this into computed apartment yield + dev_type-by-zone; the proportionality decision deferred those (Stages 3-4) as a product/liability call. Stage 2 is the minimal liability-reducing close.",
+    "new_vs_existing": "Additive: a pure _strata_scope_note(strata_type) helper plus a scope_limitations argument on the two existing RenovationBrief constructions. No yield computed; no change to classification or the development brief path."
   },
   "functions": [
     {
-      "name": "classify_strata",
-      "file_line": "services/intelligence_brief.py:671",
-      "input": "strata_info dict (may carry lot_total from StrataHub) + lot_area_m2",
-      "output": "StrataType: NOT_STRATA / APARTMENT / DEVELOPMENT / AMBIGUOUS",
-      "if_none": "no/invalid lot_total -> area heuristic (unchanged); no area -> AMBIGUOUS"
-    },
-    {
-      "name": "_fetch_strata",
-      "file_line": "services/intelligence_brief.py:1044",
-      "input": "the property address plus latitude and longitude coordinates",
-      "output": "cadastre strata dict, enriched with lot_total + dwelling_type when StrataHub returns a plan",
-      "if_none": "StrataHub failure or non-strata cadastre -> dict returned unchanged (best-effort, never fails the brief)"
+      "name": "_strata_scope_note",
+      "file_line": "services/intelligence_brief.py:719",
+      "input": "the StrataType classification computed for this address",
+      "output": "a list holding one honest scope-note string, or an empty list",
+      "if_none": "DEVELOPMENT and NOT_STRATA states return an empty list (no note needed)"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; lot-count boundaries (<=4 townhouse, 5+ apartment) mirror the smoke-tested strata_lookup.classify_dwelling_type",
-  "queries": "N/A - no SQL DB queries in this change. The only data fetch is a read-only StrataHub ArcGIS point-intersect (public, no auth) via query_strata_at_point, gated to run only when the cadastre already indicates strata involvement.",
+  "values": "N/A - no regulatory values computed or hardcoded; the helper returns fixed factual scope-statement copy, guarded by a test against the pre-pr-review liability vocabulary",
+  "queries": "N/A - no database queries; the helper is a pure function of the StrataType enum value",
   "break_it": [
     {
-      "scenario": "Townhouse complex (3 lots) on a large 3000m2 parent lot",
-      "what_happens": "Old area heuristic called it APARTMENT (>2500m2) -> RenovationBrief, no development analysis (the spike bug)",
-      "repro": "classify_strata({'is_strata': True, 'lot_total': 3}, 3000.0)",
+      "scenario": "Confirmed apartment lot would otherwise show a silent blank capacity section",
+      "what_happens": "User sees an empty capacity area and may read it as 'no constraints' rather than 'out of scope'",
+      "repro": "_strata_scope_note(StrataType.APARTMENT)",
       "mitigated": true,
-      "how": "lot count wins -> DEVELOPMENT; test_count_overrides_area_townhouse_on_large_lot"
+      "how": "returns an explicit scope note; test_scope_note_is_not_a_silent_blank asserts non-empty text for APARTMENT and AMBIGUOUS"
     },
     {
-      "scenario": "StrataHub is down / returns garbage",
-      "what_happens": "Could raise and fail the whole brief, or write a bad lot_total",
-      "repro": "query_strata_at_point raises; or returns lot_total in {0, None, True, 1.5, '6'}",
+      "scenario": "Ambiguous strata status is silently treated as no development potential",
+      "what_happens": "A possibly-developable lot reads as having nothing, a quiet misstatement",
+      "repro": "_strata_scope_note(StrataType.AMBIGUOUS)",
       "mitigated": true,
-      "how": "_fetch_strata wraps StrataHub in try/except (best-effort); classify_strata guards isinstance(int) and excludes bool, falling back to area; tests test_fetch_strata_swallows_strata_hub_failure + test_invalid_lot_count_falls_through_to_area"
+      "how": "distinct AMBIGUOUS note states status could not be determined and what resolves it; test_ambiguous_has_distinct_scope_note"
     },
     {
-      "scenario": "Non-strata Torrens address triggers a needless StrataHub lookup",
-      "what_happens": "An extra network call would run on every non-strata lookup, slowing the brief",
-      "repro": "_fetch_strata for a Torrens parcel (is_strata False, parent_has_strata False)",
+      "scenario": "Scope copy drifts into advisory or liability-laden language over time",
+      "what_happens": "User-facing strings could imply advice, suitability, or a guarantee",
+      "repro": "any edit to the scope-note strings",
       "mitigated": true,
-      "how": "StrataHub call gated behind is_strata or parent_has_strata; test_fetch_strata_skips_strata_hub_when_not_strata asserts zero calls"
+      "how": "test_copy_has_no_banned_liability_language greps every note against the pre-pr-review.md banned-term list and fails on any match"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On a known apartment address (large strata plan) confirm the brief now classifies APARTMENT via lot count; on a townhouse-on-large-lot confirm DEVELOPMENT. Stage 2 (explain the blank) + Stage 3 (conditional potential) follow in separate PRs per ce-bug4-strata-capacity-salvage-2026-06.md."
+    "manual_verify": "On a known apartment address confirm the brief now shows the scope note instead of an empty capacity section. Stages 3 (computed apartment yield / dev_type-by-zone) and 4 (CTA) are deferred per the proportionality decision in ce-bug4-strata-capacity-salvage-2026-06.md."
   }
 }
