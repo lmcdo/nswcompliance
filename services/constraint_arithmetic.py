@@ -284,7 +284,11 @@ def compute_constraint_arithmetic(
 
     if sepp_lep_overrides:
         for ovr in sepp_lep_overrides:
-            if ovr.dev_type == dev_type or not applied_overrides:
+            # GATE-2b: an override applies ONLY to the form it belongs to. The old
+            # `or not applied_overrides` fallback applied the first override (often
+            # an LMR form bonus, e.g. dual-occ/manor 9.5m) to ANY dev_type — so a
+            # dwelling_house wrongly inherited a 7/8.5m -> 9.5m / 3-storey uplift.
+            if ovr.dev_type == dev_type:
                 if ovr.control == "height" and effective_height_m is not None:
                     if ovr.sepp_value > effective_height_m:
                         effective_height_m = ovr.sepp_value

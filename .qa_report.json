@@ -1,84 +1,71 @@
 {
   "tier": "critical",
-  "justification": "GATE-1 part 2: the brief hardcoded dev_type='dwelling_house' for the capacity engine, so it never reflected the zone's permitted built form (under-reporting R3/R4, and only conservatively safe on R2). Derive dev_type from the densest PERMITTED residential form in lep_land_use_table (per-zone, per-LGA), fail-safe to dwelling_house, so the engine computes the correct permissible yield without ever assuming a prohibited form.",
+  "justification": "GATE-2b: the SEPP override loop applied an override to ANY dev_type via the `or not applied_overrides` fallback, so an LMR form bonus (e.g. dual-occupancy/manor 9.5m) inflated a dwelling_house's height/storeys (seen on 17 Corden Ave Five Dock: LEP 8.5m -> effective 9.5m, 3 storeys, with 'Housing SEPP: No'). The override now applies only when its dev_type matches the computed form.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_permitted_dev_type.py"
+    "services/constraint_arithmetic.py",
+    "tests/test_sepp_override_form_match.py"
   ],
   "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "lep_land_use_table is the authoritative LEP Land Use Table: 17,353 rows, 32 zones, 25 LGAs (amalgamated names), columns zone/lga/development_type/permissibility (permitted|prohibited|exempt). Verified: R2 permits dwelling_houses (all LGAs) but NOT residential_flat_buildings; R3 permits multi_dwelling_housing; R4 permits residential_flat_buildings. Per-LGA, so council variation is captured.",
-    "assumption_mismatch": "The audit recommended DevelopmentPermissionsDB.check_development_feasibility, which reads regulatory_provisions and text-matches provision_type for permitted/prohibited — but that column holds extraction tags (provision_height, formal_development standards) with NO permitted/prohibited categories, so it is unreliable. The real source is lep_land_use_table.",
-    "new_vs_existing": "New: a pure _densest_permitted_dev_type policy + a thin _fetch_permitted_dev_type DB read; both brief assembly paths replace the hardcoded dev_type with the fetched value. No change to the engine's yield maths (GATE-1 part 1 still gates the count by form).",
-    "external_source_error": "If the DB query errors, times out (5s), or DATABASE_URL is unset, _fetch_permitted_dev_type catches it and returns dwelling_house — the conservative default — so a DB failure can never raise an impermissible yield, only fall back to the safe form.",
-    "frontend_type": "N/A - backend only; the dev_type string flows into the existing ConstraintArithmeticResult.dev_type field (already a str). The capacity card stays unexposed.",
-    "user_failure_mode": "If the LGA is outside the 25-LGA table coverage or the zone has no permitted residential form, dev_type falls back to dwelling_house — a conservative under-report (1 dwelling), never an over-report. The visible direction is always safe."
+    "existing_data": "SeppLepOverride carries its own dev_type; the SEPP override loop in compute_constraint_arithmetic already iterated overrides and raised effective_height / effective_fsr when more generous.",
+    "assumption_mismatch": "GATE-2 fixed override eligibility and heritage but left the audit's finding #4 in place: `if ovr.dev_type == dev_type or not applied_overrides` applied the FIRST override regardless of form, so a dwelling_house inherited an LMR-form height/FSR bonus.",
+    "new_vs_existing": "One-condition change: drop the `or not applied_overrides` fallback so an override applies only to its own form. No new data; the engine's envelope maths are unchanged otherwise.",
+    "external_source_error": "N/A - pure function; no external call. The override list is pre-fetched; this only changes which entries are applied.",
+    "frontend_type": "N/A - backend only; effective_height_m / effective_fsr / sepp_overrides_applied keep their types, just no longer mis-populated for a mismatched form. Capacity card stays unexposed.",
+    "user_failure_mode": "Where FSR binds (as on 17 Corden) the over-applied height did not change yield, but the height/storeys figures were wrong on screen; on a height-bound lot it over-reported yield. The fix removes both; it can only REMOVE an incorrectly-applied override, never add one."
   },
   "functions": [
     {
-      "name": "_fetch_permitted_dev_type",
-      "file_line": "services/intelligence_brief.py:957",
-      "input": "the property zone code and the current LGA name from the brief",
-      "output": "the engine dev_type for the densest permitted residential form, or dwelling_house when none or on error",
-      "if_none": "missing zone or LGA, no table coverage, or any DB error returns dwelling_house (conservative fail-safe)"
-    },
-    {
-      "name": "_densest_permitted_dev_type",
-      "file_line": "services/intelligence_brief.py:945",
-      "input": "the set of permitted development_type strings from the LEP Land Use Table",
-      "output": "the engine dev_type for the densest permitted form per the fixed density ordering",
-      "if_none": "an empty set or no recognised residential form returns dwelling_house"
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py:239",
+      "input": "lot area, dev_type, LEP height/FSR strings, lot dimensions, DCP controls, SEPP standards and SEPP-LEP overrides",
+      "output": "the constraint result; effective_height/effective_fsr now reflect only overrides whose form matches dev_type",
+      "if_none": "no overrides, or no override matching the dev_type, leaves the LEP height and FSR unchanged"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; the permitted forms come from lep_land_use_table and the density ordering is a fixed form taxonomy, not a numeric planning control.",
-  "queries": [
-    {
-      "purpose": "Fetch the permitted residential development forms for this zone and LGA from the LEP Land Use Table to pick the densest permitted form",
-      "file_line": "services/intelligence_brief.py:968",
-      "where_clause": "zone = %s AND lga ILIKE %s AND permissibility = 'permitted' (parameterised; reads the authoritative LEP land-use table, current LGA scope)"
-    }
-  ],
+  "values": "N/A - no regulatory values hardcoded; override values come from the SEPP standards already fetched, compared strictly greater than the LEP control.",
+  "queries": "N/A - no database queries; the override loop is a pure in-memory comparison.",
   "break_it": [
     {
-      "scenario": "An R2 low-density lot that does not permit residential flat buildings is assessed",
-      "what_happens": "Hardcoding a denser form would over-report an impermissible apartment yield on R2",
-      "repro": "_densest_permitted_dev_type({'dwelling_houses', 'secondary_dwellings'})",
+      "scenario": "A dwelling house on a lot where an LMR form (dual occupancy) has a 9.5m SEPP height standard",
+      "what_happens": "The fallback applied the dual-occupancy 9.5m bonus to the dwelling_house computation, inflating effective height and storeys",
+      "repro": "compute_constraint_arithmetic(dev_type='dwelling_house', lep_height_str='8.5', sepp_lep_overrides=[dual_occupancy height 9.5])",
       "mitigated": true,
-      "how": "only permitted forms are considered; with no RFB/multi/dual permitted it returns dwelling_house; test_densest_permitted_dev_type covers the R2 case"
+      "how": "the loop now requires ovr.dev_type == dev_type; test_override_does_not_apply_to_mismatched_form asserts effective_height stays 8.5 and no override is recorded"
     },
     {
-      "scenario": "An R4 high-density lot that permits residential flat buildings must lift to that form",
-      "what_happens": "Keeping dwelling_house would under-report the legitimate high-density yield",
-      "repro": "_fetch_permitted_dev_type('R4', 'Inner West') with RFB permitted in the table",
+      "scenario": "A genuinely matching form must still receive its SEPP override",
+      "what_happens": "Over-tightening would drop a legitimate uplift for the form it belongs to",
+      "repro": "compute_constraint_arithmetic(dev_type='dual_occupancy', lep_height_str='8.5', sepp_lep_overrides=[dual_occupancy height 9.5])",
       "mitigated": true,
-      "how": "the density ordering returns residential_flat_building when permitted; test_fetch_returns_densest_permitted asserts it"
+      "how": "the match condition passes for the same form; test_override_applies_to_matching_form asserts effective_height becomes 9.5"
     },
     {
-      "scenario": "The database is unreachable or DATABASE_URL is unset during the brief",
-      "what_happens": "A raised exception would crash the brief or, worse, leave an inconsistent dev_type",
-      "repro": "_get_db_conn raises RuntimeError",
+      "scenario": "An FSR bonus for a denser form leaks onto a dwelling house",
+      "what_happens": "A residential-flat FSR uplift could inflate a dwelling_house FSR and GFA envelope",
+      "repro": "compute_constraint_arithmetic(dev_type='dwelling_house', sepp_lep_overrides=[residential_flat_building fsr 1.0])",
       "mitigated": true,
-      "how": "_fetch_permitted_dev_type wraps the query in try/except and returns dwelling_house; test_fetch_db_error_is_failsafe asserts the fallback"
+      "how": "the same dev_type match gates FSR overrides too; test_fsr_override_only_for_matching_form asserts effective_fsr stays 0.5"
     },
     {
-      "scenario": "The property LGA falls outside the 25-LGA table coverage",
-      "what_happens": "A missing-coverage lookup could return nothing and be mis-handled as a prohibited form",
-      "repro": "_fetch_permitted_dev_type('R4', 'Some Uncovered LGA') returning an empty permitted set",
+      "scenario": "A SEPP value equal to the LEP value for the matching form",
+      "what_happens": "A non-uplift equal value could be recorded as an applied override",
+      "repro": "compute_constraint_arithmetic(dev_type='dual_occupancy', lep_height_str='9.5', sepp_lep_overrides=[dual_occupancy height 9.5])",
       "mitigated": true,
-      "how": "an empty permitted set falls through _densest_permitted_dev_type to dwelling_house; covered by the empty-set test"
+      "how": "the strict '>' comparison is preserved; test_override_ignored_when_not_more_generous asserts no override is applied"
     },
     {
-      "scenario": "Zone or LGA is missing from the resolved planning controls",
-      "what_happens": "A None zone or LGA passed to the query would error or match everything",
-      "repro": "_fetch_permitted_dev_type(None, 'Inner West') / _fetch_permitted_dev_type('R4', None)",
+      "scenario": "Removing the fallback regresses an existing constraint test that relied on it",
+      "what_happens": "An older test could have depended on the cross-form override behaviour",
+      "repro": "run the full constraint_arithmetic + dwelling_form suites",
       "mitigated": true,
-      "how": "the function short-circuits to dwelling_house when either input is falsy before touching the DB; test_fetch_missing_inputs_returns_dwelling_house asserts both"
+      "how": "102 constraint/form tests pass with no regression — no existing test relied on the buggy fallback"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run an R4 address in a covered LGA and confirm the dev_type lifts to residential_flat_building (denser yield); re-run Haberfield R2 and confirm it stays dwelling_house (1 dwelling). The computation-chain reconciliation and labelling polish remain. Engine stays unexposed (#513 unmerged) until those land."
+    "manual_verify": "Re-run 17 Corden Ave Five Dock and confirm effective height stays 8.5m / 2 storeys (no SEPP override applied to the dwelling_house) and 'SEPP overrides applied' is 0. This closes the audit's finding #4; the LMR 800m-catchment and lot-width eligibility check remain a finer-grained residual. Engine stays unexposed until the polish pass."
   }
 }
