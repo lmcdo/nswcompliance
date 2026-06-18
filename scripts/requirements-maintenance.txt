@@ -1,0 +1,20 @@
+# Deps for the weekly maintenance cron jobs (Dockerfile.maintenance):
+#   security_scan.py      -> semgrep
+#   mutation_health.py    -> mutmut + the test stack the runners import
+#   refresh_stats_job.py  -> httpx (stats fetch)
+requests>=2.31
+python-dotenv>=1.0
+
+# security_scan.py
+semgrep>=1.60
+
+# mutation_health.py (mutmut drives pytest over services/*)
+mutmut>=2.5,<3
+pytest>=8.0
+hypothesis>=6.0
+icontract>=2.6
+pydantic>=2.0
+
+# refresh_stats_job.py
+httpx>=0.27
+psycopg2-binary>=2.9

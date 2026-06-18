@@ -1,0 +1,10 @@
+# Railway config-as-code for the `maintenance-mutation` cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Still set per-service env in the dashboard: MONITOR_NAME=mutation-health,
+# TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, (optional) HC_PING_URL.
+[build]
+dockerfilePath = "Dockerfile.maintenance"
+
+[deploy]
+cronSchedule = "0 6 1 * *"   # monthly, 1st of month 06:00 UTC (mutmut kill rate)
+restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
