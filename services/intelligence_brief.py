@@ -2607,7 +2607,7 @@ def _generate_brief_sse(
     base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
     dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
     satellite_sections = 6 if req.include_satellite else 0
-    total_sections = base_sections + satellite_sections + 3  # +3 for dependent (max estimate)
+    total_sections = base_sections + satellite_sections + 4  # +4 for dependent (max estimate)
 
     import uuid
     report_id = str(uuid.uuid4())
@@ -2765,7 +2765,7 @@ def _generate_brief_sse(
         if is_apartment:
             total_sections = base_sections + satellite_sections  # no dcp/sepp/neighbourhood
         else:
-            total_sections = base_sections + 3 + satellite_sections  # +dcp, sepp, neighbourhood
+            total_sections = base_sections + 4 + satellite_sections  # +dcp, sepp, neighbourhood, constraint_arithmetic
 
         sections_yielded += 1
         yield _sse_event("section", {
@@ -2910,6 +2910,42 @@ def _generate_brief_sse(
                 "sepp_lep_overrides": [o.model_dump() for o in sepp_lep_overrides],
                 "progress": int(sections_yielded / total_sections * 100),
             })
+
+            # ── Constraint arithmetic — binding constraint + realistic yield ──
+            # Parity with the non-streaming /intelligence-brief path. This was
+            # MISSING from the streaming path (drift), so the live UI lacked the
+            # capacity headline. Same inputs + dev_type as run_intelligence_brief.
+            constraint_field = None
+            if lot_area_m2 and lot_area_m2 > 0:
+                try:
+                    from services.constraint_arithmetic import compute_constraint_arithmetic
+
+                    lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+                    constraint_result = compute_constraint_arithmetic(
+                        lot_area_m2=lot_area_m2,
+                        dev_type="dwelling_house",
+                        lep_height_str=controls.get("height"),
+                        lep_fsr_str=controls.get("fsr"),
+                        lot_dimensions=lot_dims_for_ca,
+                        dcp_controls=dcp_controls.controls.value if dcp_controls.controls.value else [],
+                        sepp_standards=sepp_housing,
+                        sepp_lep_overrides=sepp_lep_overrides,
+                    )
+                    if constraint_result is not None:
+                        constraint_field = DataField(
+                            value=constraint_result,
+                            confidence=ConfidenceLevel.DERIVED,
+                            source="constraint_arithmetic_engine",
+                            as_at=today,
+                        )
+                        sections_yielded += 1
+                        yield _sse_event("section", {
+                            "section": "constraint_arithmetic",
+                            "data": constraint_field.model_dump(),
+                            "progress": int(sections_yielded / total_sections * 100),
+                        })
+                except Exception as e:
+                    logger.warning("Constraint arithmetic (SSE) failed: %s", e)
 
             neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
             sections_yielded += 1
@@ -3066,6 +3102,7 @@ def _generate_brief_sse(
             neighbourhood=neighbourhood,
             economics=economics,
             contributions=contributions_field,
+            constraint_arithmetic=constraint_field,
             satellite=satellite_data,
             confidence_summary=ConfidenceSummary(),
         )
