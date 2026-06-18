@@ -1,72 +1,78 @@
 {
   "tier": "critical",
-  "justification": "GATE-1 (part 1): the engine computed realistic_dwellings as envelope_gfa/65 regardless of the permitted built FORM, so a dwelling_house on R2 reported 6 dwellings (the visible Haberfield wrongness). By the Standard Instrument a dwelling house is ONE dwelling; only multi-unit forms scale with GFA. Route both the headline yield and the parking dwelling-estimate through a form-aware helper so the engine never over-reports an impermissible yield.",
+  "justification": "GATE-2: _detect_sepp_lep_overrides created a height/FSR SEPP override on a bare numeric '>' comparison, ignoring std.eligible and heritage. The Low/Mid-Rise Housing reforms exclude heritage items and Heritage Conservation Areas, yet the engine applied a 7m->9.5m / 3-storey bonus on the Haberfield HCA — an over-report of impermissible height/density on protected land. The override is now created only for eligible standards and never on heritage land (the LEP control stands).",
   "files": [
-    "services/constraint_arithmetic.py",
-    "tests/test_dwelling_form.py",
-    "tests/test_constraint_arithmetic.py"
+    "services/intelligence_brief.py",
+    "tests/test_sepp_override_heritage.py"
   ],
-  "commit_hash": "ccf9c512",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "compute_constraint_arithmetic already receives a dev_type and has _is_apartment_type; realistic_dwellings (and the parking est_dwellings) divided the GFA envelope by MIN_DWELLING_GFA_M2 (65) for every form, ignoring whether the form is a single dwelling, dual occupancy or a multi-unit building.",
-    "assumption_mismatch": "Three existing tests asserted dwelling_house -> 6/6/4 dwellings (the GFA/65 model) and passed for a year — they encoded the bug as correct. They have been corrected to the Standard Instrument meaning (a dwelling house is one dwelling); the GFA-division path is now covered for multi-unit forms in test_dwelling_form.",
-    "new_vs_existing": "No new data source: a pure helper _dwellings_for_form(dev_type, gfa_based) gates the existing GFA-based count by built form. dev_type is still passed in (currently hardcoded 'dwelling_house' upstream); deriving it from the live zone is GATE-1 part 2.",
-    "external_source_error": "N/A for this change - the helper is pure and consumes no external source; it only re-maps an already-computed integer. Upstream Portal/DB failures are unchanged.",
-    "frontend_type": "N/A - backend yield computation only; the ConstraintArithmeticResult.realistic_dwellings type (int) is unchanged, so no frontend boundary shifts. The capacity card stays unexposed.",
-    "user_failure_mode": "If a permitted denser form is mislabelled as dwelling_house upstream, the yield UNDER-reports (1 instead of the permitted count) — conservative and visible, never an over-report of an impermissible yield. Lifting that under-report is GATE-1 part 2 (zone-derived dev_type)."
+    "existing_data": "SEPPStandard already carries an 'eligible' bool (constraint_models.py:46) but _detect_sepp_lep_overrides never read it; heritage presence is available at both override call sites via controls['heritage_items'] (Portal) and heritage_postgis['has_heritage'] (PostGIS), but was never passed to the override logic.",
+    "assumption_mismatch": "'eligible' is computed from LOT SIZE ONLY (_build_sepp_housing:1643), so it does not capture the heritage exclusion. Honouring eligible alone would NOT fix Haberfield (793 m2 > min -> eligible=True); an explicit heritage gate is required.",
+    "new_vs_existing": "No new data source: _detect_sepp_lep_overrides gains an is_heritage flag and an eligibility check; a pure _is_heritage_land(controls, heritage_postgis) helper derives the flag from data already fetched. Both assembly paths pass it.",
+    "external_source_error": "N/A - both helpers are pure and consume data already fetched upstream; a Portal/PostGIS failure upstream is unchanged and, if heritage data is missing, is_heritage is False (the override may apply) — heritage data quality is a separate gate, not regressed here.",
+    "frontend_type": "N/A - backend override detection only; the SeppLepOverride list type is unchanged, so no frontend boundary shifts. The capacity card stays unexposed.",
+    "user_failure_mode": "If heritage data is absent for a genuinely-heritage parcel, the override could still apply (over-report) — but that is a heritage-data-coverage gap, not introduced here; where heritage data exists the override is correctly suppressed. The conservative direction (suppress on any detected heritage) never over-reports on known-heritage land."
   },
   "functions": [
     {
-      "name": "_dwellings_for_form",
-      "file_line": "services/constraint_arithmetic.py:204",
-      "input": "the development type string and the raw GFA-based dwelling count integer",
-      "output": "the dwelling count appropriate to the built form: 1 for a dwelling house, 2 for dual occupancy, GFA-based for multi-unit forms",
-      "if_none": "an empty or unrecognised dev_type returns 1 (conservative single-dwelling default, never over-reporting)"
+      "name": "_detect_sepp_lep_overrides",
+      "file_line": "services/intelligence_brief.py:1703",
+      "input": "the SEPP standards list, the LEP height and FSR values, and an is_heritage flag",
+      "output": "override records only for eligible standards strictly more generous than the LEP, and none at all on heritage land",
+      "if_none": "on heritage land it returns an empty list immediately; otherwise ineligible standards are skipped"
+    },
+    {
+      "name": "_is_heritage_land",
+      "file_line": "services/intelligence_brief.py:1689",
+      "input": "the parsed planning controls dict and the optional PostGIS heritage result",
+      "output": "True when the parcel is a heritage item or sits in a Heritage Conservation Area, else False",
+      "if_none": "missing or empty heritage data returns False (no detected heritage)"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; MIN_DWELLING_GFA_M2 (65) is an existing yield constant unchanged here. Form classification reuses the existing _is_apartment_type keyword set plus terrace/townhouse/manor/medium-density.",
-  "queries": "N/A - no database queries; the helper is a pure function of dev_type and an integer.",
+  "values": "N/A - no regulatory values hardcoded; the override compares SEPP standard values already fetched from the DB against the LEP values from the Portal, and reads the existing eligible flag.",
+  "queries": "N/A - no database queries added; both helpers operate on data already fetched by the brief (sepp_housing, controls, heritage_postgis).",
   "break_it": [
     {
-      "scenario": "Dwelling house on a generous envelope (R2, FSR 0.5, 793 m2 -> ~397 m2)",
-      "what_happens": "Pre-GATE-1 the engine reported 6 dwellings (397/65) for a single-dwelling form — an impermissible yield",
-      "repro": "compute_constraint_arithmetic(lot_area_m2=793, dev_type='dwelling_house', lep_height_str='7', lep_fsr_str='0.5')",
+      "scenario": "A SEPP height bonus fires on a Heritage Conservation Area parcel (the Haberfield case)",
+      "what_happens": "Pre-GATE-2 a 7m->9.5m / 3-storey override inflated the whole capacity on protected land where the reform does not apply",
+      "repro": "_detect_sepp_lep_overrides([eligible std max_height 9.5], lep_height_m=7.0, lep_fsr=None, is_heritage=True)",
       "mitigated": true,
-      "how": "_dwellings_for_form returns 1 for dwelling_house; test_dwelling_house_yields_one_not_gfa_over_65 asserts realistic_dwellings == 1"
+      "how": "the function returns [] immediately when is_heritage; test_heritage_suppresses_override asserts no override"
     },
     {
-      "scenario": "Dual occupancy form on a large lot with a generous GFA envelope",
-      "what_happens": "GFA/65 could report 5-6 units for a form limited to two dwellings",
-      "repro": "compute_constraint_arithmetic(..., dev_type='dual_occupancy', ...)",
+      "scenario": "An ineligible SEPP standard (e.g. lot too small) still tries to override the LEP",
+      "what_happens": "An override would apply from a standard the parcel does not qualify for",
+      "repro": "_detect_sepp_lep_overrides([std eligible=False max_height 9.5], lep_height_m=7.0, lep_fsr=None)",
       "mitigated": true,
-      "how": "_dwellings_for_form returns 2 for any 'dual' form; test_dual_occupancy_yields_two asserts == 2"
+      "how": "the loop skips standards where not std.eligible; test_ineligible_standard_does_not_override asserts []"
     },
     {
-      "scenario": "A genuine multi-unit form must still scale with GFA",
-      "what_happens": "Over-correcting to 1 would under-report a residential flat building / apartment",
-      "repro": "compute_constraint_arithmetic(..., dev_type='residential_flat_building', ...)",
+      "scenario": "A genuinely eligible non-heritage parcel must still receive the SEPP bonus",
+      "what_happens": "Over-suppressing would under-report a valid Low/Mid-Rise uplift",
+      "repro": "_detect_sepp_lep_overrides([eligible std max_height 9.5], lep_height_m=7.0, lep_fsr=None, is_heritage=False)",
       "mitigated": true,
-      "how": "_is_apartment_type forms return the GFA-based count; test_residential_flat_building_scales_with_gfa asserts > 1 and parametric cases lock each form"
+      "how": "the override is created when eligible, not heritage, and strictly more generous; test_eligible_height_bonus_overrides_lep_when_not_heritage asserts one height override"
     },
     {
-      "scenario": "Unknown or empty dev_type string that maps to no known built form",
-      "what_happens": "An unmapped form could fall through to the GFA/65 over-report",
-      "repro": "_dwellings_for_form('', 6) / _dwellings_for_form('some_other_use', 6)",
+      "scenario": "Heritage is recorded only in PostGIS, not the Portal heritage_items",
+      "what_happens": "A Portal-only check would miss HCA coverage that comes from the PostGIS heritage layer",
+      "repro": "_is_heritage_land({}, {'has_heritage': True})",
       "mitigated": true,
-      "how": "the default branch returns 1 (conservative); parametric tests cover '' and an unknown use"
+      "how": "_is_heritage_land checks BOTH controls['heritage_items'] and heritage_postgis['has_heritage']; both-source tests assert True"
     },
     {
-      "scenario": "Parking estimate inflated by the old per-dwelling count",
-      "what_happens": "est_dwellings (GFA/65) multiplied the parking rate, over-stating parking for a single dwelling",
-      "repro": "dwelling_house brief with a DCP car_parking rate",
+      "scenario": "SEPP value equals the LEP value (not strictly greater)",
+      "what_happens": "A non-uplift could be mis-recorded as an override",
+      "repro": "_detect_sepp_lep_overrides([std max_height 7.0], lep_height_m=7.0, lep_fsr=None)",
       "mitigated": true,
-      "how": "the parking est_dwellings now also routes through _dwellings_for_form (line ~570), so parking scales with the real form count"
+      "how": "the strict '>' comparison is preserved; test_no_override_when_sepp_not_strictly_greater asserts []"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run the Haberfield brief and confirm Development Capacity shows 1 dwelling (not 6) for the dwelling_house form. GATE-1 part 2 (derive dev_type from the live zone's permitted uses via DevelopmentPermissionsDB, fail-safe to conservative) is the next step and lifts the R3/R4 under-report. Engine stays unexposed (#513 unmerged) until the legality gates complete."
+    "manual_verify": "Re-run the Haberfield brief and confirm NO 7m->9.5m SEPP height override and no 3-storey inflation (the LEP 7m stands). GATE-1 part 2 (zone-derived dev_type) and GATE-3 (site-coverage cap, no silent drop) remain. Engine stays unexposed (#513 unmerged) until the legality gates complete."
   }
 }

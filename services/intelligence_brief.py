@@ -1686,18 +1686,43 @@ def _build_sepp_housing(
     return results
 
 
+def _is_heritage_land(controls: dict, heritage_postgis: Optional[dict]) -> bool:
+    """Whether the parcel is a heritage item or in a Heritage Conservation Area.
+
+    The NSW Low/Mid-Rise Housing reforms (the SEPP height/FSR bonuses) do NOT
+    apply to heritage items or HCAs, so a SEPP override must be suppressed there
+    (GATE-2). Checks both the Portal heritage_items and the PostGIS heritage layer.
+    """
+    if controls.get("heritage_items"):
+        return True
+    if heritage_postgis and heritage_postgis.get("has_heritage"):
+        return True
+    return False
+
+
 def _detect_sepp_lep_overrides(
     sepp_standards: list[SEPPStandard],
     lep_height_m: Optional[float],
     lep_fsr: Optional[float],
+    is_heritage: bool = False,
 ) -> list[SeppLepOverride]:
-    """Detect cases where SEPP standard exceeds (overrides) LEP control.
+    """Detect cases where an ELIGIBLE SEPP standard exceeds (overrides) LEP control.
 
     SEPP prevails only when its value is MORE GENEROUS (strictly greater) than LEP.
     This is the server-side equivalent of the frontend override detection in PR #437.
+
+    GATE-2: an override is created ONLY when the standard is eligible, and NEVER on
+    heritage land — the Low/Mid-Rise Housing reforms exclude heritage items and
+    Heritage Conservation Areas, so on heritage land the LEP control stands.
     """
     overrides: list[SeppLepOverride] = []
+    # LMR height/FSR bonuses do not apply to heritage items / HCAs.
+    if is_heritage:
+        return overrides
     for std in sepp_standards:
+        # Only an eligible standard can override the LEP (e.g. not lot-size-ineligible).
+        if not std.eligible:
+            continue
         if std.max_height_m and lep_height_m and std.max_height_m > lep_height_m:
             overrides.append(SeppLepOverride(
                 dev_type=std.dev_type,
@@ -2391,7 +2416,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             lep_fsr_val = float(str(fsr_str).replace(":1", "").strip())
         except (ValueError, TypeError):
             pass
-    sepp_lep_overrides = _detect_sepp_lep_overrides(sepp_housing, lep_height_m, lep_fsr_val)
+    sepp_lep_overrides = _detect_sepp_lep_overrides(
+        sepp_housing, lep_height_m, lep_fsr_val,
+        is_heritage=_is_heritage_land(controls, heritage_postgis),
+    )
 
     # ── 7c. Constraint arithmetic — binding constraint + realistic yield ──
     constraint_result = None
@@ -2898,7 +2926,10 @@ def _generate_brief_sse(
                     sse_lep_fsr = float(str(fsr_str_sse).replace(":1", "").strip())
                 except (ValueError, TypeError):
                     pass
-            sepp_lep_overrides = _detect_sepp_lep_overrides(sepp_housing, height_m, sse_lep_fsr)
+            sepp_lep_overrides = _detect_sepp_lep_overrides(
+                sepp_housing, height_m, sse_lep_fsr,
+                is_heritage=_is_heritage_land(controls, heritage_postgis),
+            )
 
             sections_yielded += 1
             yield _sse_event("section", {
