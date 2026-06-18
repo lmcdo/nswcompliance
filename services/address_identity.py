@@ -43,7 +43,7 @@ def normalize_addr_tokens(s: str) -> list[str]:
     for raw in s.upper().replace(",", " ").split():
         t = raw.strip(".")
         if "/" in t:
-            t = t.split("/")[-1]  # unit "5/29" -> street number "29"
+            t = t.split("/")[-1]  # noqa: bracket-access  unit "5/29" -> "29" (guarded by 'if "/" in t')
         if not t:
             continue
         t = _STREET_TYPE_SYNONYMS.get(t, t)

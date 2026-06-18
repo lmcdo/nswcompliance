@@ -97,7 +97,7 @@ class NSWPlanningAPI:
                         # fuzzy — refuse a resolved parcel whose street number/name
                         # does not match the request (fail closed).
                         from services.address_identity import parcel_identity_match
-                        _label = data[0].get("address", "") or ""
+                        _label = data[0].get("address") or ""
                         if not parcel_identity_match(address, _label):
                             logger.warning(
                                 "[GATE-0] address identity mismatch — requested %r "
@@ -340,8 +340,8 @@ class NSWPlanningAPI:
             intelligence.land_value = valuation_data.get('land_value')
         
         for control in controls_data:
-            layer_name = control.get("layerName", "")
-            results = control.get("results", [])
+            layer_name = control.get("layerName") or ""
+            results = control.get("results") or []
             
             for result in results:
                 planning_control = PlanningControl(

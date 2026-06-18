@@ -804,7 +804,7 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
     # GATE-0 (parcel identity): the Portal /address search is fuzzy — refuse a
     # resolved parcel whose street number/name does not match the request rather
     # than silently returning a neighbouring property as AUTHORITATIVE.
-    resolved_label = data[0].get("address", "") or ""
+    resolved_label = data[0].get("address") or ""
     if not parcel_identity_match(address, resolved_label):
         print(
             f"  [GATE-0] address identity mismatch — requested {address!r} "
