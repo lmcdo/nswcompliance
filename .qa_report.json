@@ -5,7 +5,7 @@
     "services/intelligence_brief.py",
     "tests/test_strata_classify_lotcount.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "96357739",
   "pre_impl": {
     "existing_data": "The brief's strata path used detect_strata (NSW Cadastre) which returns is_strata/plan_type but NO lot count. The StrataHub lot count (query_strata_at_point -> lot_total, classify_dwelling_type boundaries) lived in services/strata_lookup.py and was not wired into the brief.",
     "assumption_mismatch": "Plan assumed the lot count was already fetched in the brief path. It was not — Stage 1 had to wire StrataHub in, not just tweak classify_strata.",
@@ -28,7 +28,7 @@
     }
   ],
   "values": "N/A - no regulatory values hardcoded; lot-count boundaries (<=4 townhouse, 5+ apartment) mirror the smoke-tested strata_lookup.classify_dwelling_type",
-  "queries": "StrataHub FeatureServer point intersect (read-only, public, no auth) via query_strata_at_point; gated to run only when cadastre already indicates strata involvement",
+  "queries": "N/A - no SQL DB queries in this change. The only data fetch is a read-only StrataHub ArcGIS point-intersect (public, no auth) via query_strata_at_point, gated to run only when the cadastre already indicates strata involvement.",
   "break_it": [
     {
       "scenario": "Townhouse complex (3 lots) on a large 3000m2 parent lot",
