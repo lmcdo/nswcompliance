@@ -125,6 +125,51 @@ def _get_dcp_value(
     return match.value_min
 
 
+def _dcp_controls_from_setback_rows(
+    rows: list[dict],
+    clause_ref: Optional[str] = None,
+) -> list[DCPControl]:
+    """Convert ``fetch_dcp_setbacks()`` row dicts into typed ``DCPControl`` objects.
+
+    The control type is taken from ``semantic_type`` (the real control —
+    ``front_setback``, ``rear_setback``, ``side_setback``, ...), NOT the
+    ``prescribed`` / ``site_derived`` *kind*, so downstream setback lookups in
+    :func:`_get_dcp_value` match. This is the seam where an untyped setback would
+    silently fail to feed the footprint calc, so it is covered by a regression
+    test (``tests/test_setback_taxonomy.py``).
+
+    ``requirement`` may be free text; it is coerced to a number or kept as the
+    ``condition`` (never forced into the float ``value_min`` field).
+
+    Args:
+        rows: setback row dicts as returned by ``fetch_dcp_setbacks`` (the
+            ``setbacks`` + ``sd_setbacks`` lists).
+        clause_ref: fallback clause reference when a row has no ``clause``.
+
+    Returns:
+        One ``DCPControl`` per input row, preserving order.
+    """
+    controls: list[DCPControl] = []
+    for s in rows:
+        raw_min = s.get("value_min")
+        if raw_min is None:
+            raw_min = s.get("requirement")
+        val_min = _parse_numeric(raw_min)
+        condition = s.get("notes") or s.get("condition")
+        if val_min is None and isinstance(raw_min, str) and raw_min.strip():
+            condition = condition or raw_min.strip()
+        controls.append(DCPControl(
+            control_type=s.get("semantic_type") or s.get("control_type") or s.get("type", ""),
+            dev_type=s.get("dev_type", "dwelling_house"),
+            value_min=val_min,
+            value_max=_parse_numeric(s.get("value_max")),
+            unit=s.get("unit", "m"),
+            condition=condition,
+            source_ref=s.get("clause") or clause_ref,
+        ))
+    return controls
+
+
 def _estimate_lot_dimensions(
     lot_dims: Optional[LotDimensions],
     lot_area_m2: float,
@@ -865,28 +910,9 @@ def _fetch_constraint_data_from_db(
             dcp_raw = fetch_dcp_setbacks(conn, lga, zone)
             if dcp_raw:
                 all_setbacks = (dcp_raw.get("setbacks") or []) + (dcp_raw.get("sd_setbacks") or [])
-                for s in all_setbacks:
-                    # 'requirement' fallback can be free text — coerce to a number
-                    # or None (never force text into the float field), keeping any
-                    # descriptive text as the condition.
-                    raw_min = s.get("value_min")
-                    if raw_min is None:
-                        raw_min = s.get("requirement")
-                    val_min = _parse_numeric(raw_min)
-                    condition = s.get("notes") or s.get("condition")
-                    if val_min is None and isinstance(raw_min, str) and raw_min.strip():
-                        condition = condition or raw_min.strip()
-                    dcp_controls.append(DCPControl(
-                        # semantic_type = real control (front_setback, ...), not the
-                        # 'prescribed'/'site_derived' kind, so setback lookups match.
-                        control_type=s.get("semantic_type") or s.get("control_type") or s.get("type", ""),
-                        dev_type=s.get("dev_type", "dwelling_house"),
-                        value_min=val_min,
-                        value_max=_parse_numeric(s.get("value_max")),
-                        unit=s.get("unit", "m"),
-                        condition=condition,
-                        source_ref=s.get("clause") or dcp_raw.get("clause_ref"),
-                    ))
+                dcp_controls.extend(
+                    _dcp_controls_from_setback_rows(all_setbacks, dcp_raw.get("clause_ref"))
+                )
 
         # 2. Fetch SEPP Housing standards
         if zone:
