@@ -201,6 +201,28 @@ def _is_apartment_type(dev_type: str) -> bool:
     return any(kw in dev_type.lower() for kw in apartment_keywords)
 
 
+def _dwellings_for_form(dev_type: str, gfa_based: int) -> int:
+    """Dwelling yield must respect the permitted built FORM, not just GFA (GATE-1).
+
+    By the Standard Instrument a *dwelling house* is ONE dwelling regardless of how
+    much GFA the envelope allows; a *dual occupancy* is two. Only multi-unit forms
+    (multi-dwelling housing, residential flat buildings, apartments, terraces /
+    townhouses, manor houses, medium-density) scale their dwelling count with GFA.
+    Unknown / single forms default to 1 — conservative, never over-reporting a
+    yield the built form does not permit (this is what produced "6 dwellings" for a
+    dwelling_house on R2).
+    """
+    dt = (dev_type or "").lower()
+    if (_is_apartment_type(dt) or "townhouse" in dt or "terrace" in dt
+            or "attached" in dt or "manor" in dt or "medium_density" in dt):
+        return max(1, gfa_based)
+    if "dual" in dt:        # dual occupancy
+        return 2
+    if "secondary" in dt:   # primary dwelling + secondary dwelling
+        return 2
+    return 1                # dwelling house / single / unknown
+
+
 # ---------------------------------------------------------------------------
 # Core computation
 # ---------------------------------------------------------------------------
@@ -548,7 +570,7 @@ def compute_constraint_arithmetic(
             else CIRCULATION_FACTOR_HOUSE
         )
         sellable_gfa = current_gfa * (1 - circulation)
-        est_dwellings = max(1, int(sellable_gfa / MIN_DWELLING_GFA_M2))
+        est_dwellings = _dwellings_for_form(dev_type, int(sellable_gfa / MIN_DWELLING_GFA_M2))
 
         # Parking spaces — use DCP rate if available, else SEPP, else skip
         spaces_required: Optional[float] = None
@@ -599,8 +621,8 @@ def compute_constraint_arithmetic(
             else CIRCULATION_FACTOR_HOUSE
         )
         result.realistic_gfa_m2 = round(envelope_gfa, 1)
-        result.realistic_dwellings = max(
-            1, int(envelope_gfa * (1 - circulation) / MIN_DWELLING_GFA_M2)
+        result.realistic_dwellings = _dwellings_for_form(
+            dev_type, int(envelope_gfa * (1 - circulation) / MIN_DWELLING_GFA_M2)
         )
 
     # Secondary "after-DCP" figure — only surfaced when lot geometry is reliable

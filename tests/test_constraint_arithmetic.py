@@ -228,8 +228,10 @@ class TestGoldenInnerWest:
         assert self.result.realistic_gfa_m2 == 450.0
 
     def test_realistic_dwellings(self):
-        # 450 / 65 = 6.9 -> int = 6
-        assert self.result.realistic_dwellings == 6
+        # GATE-1: a dwelling house is ONE dwelling regardless of envelope GFA.
+        # (The old 450/65 -> 6 was the pre-GATE-1 bug; GFA-scaled yield only
+        # applies to multi-unit forms — see tests/test_dwelling_form.py.)
+        assert self.result.realistic_dwellings == 1
 
     def test_binding_constraint(self):
         # FSR (450m2) < landscaping path (468m2) — FSR is more restrictive
@@ -697,14 +699,16 @@ class TestMutationResistant:
         assert result.buildable_footprint_m2 == 336.0  # 12 x 28
 
     def test_dwelling_count_floor_division(self):
-        """Headline dwellings from the LEP envelope: 450m2 / 65m2 = 6.9 -> 6."""
+        """GATE-1: a dwelling house yields ONE dwelling; envelope GFA does not
+        multiply it (the 450/65 -> 6 figure was the pre-GATE-1 bug). The GFA
+        floor-division path for multi-unit forms is locked in test_dwelling_form."""
         result = compute_constraint_arithmetic(
             lot_area_m2=600, dev_type="dwelling_house",
             lep_height_str="11", lep_fsr_str="0.75:1",
             lot_dimensions=_inner_west_lot(),
             dcp_controls=_inner_west_controls(),
         )
-        assert result.realistic_dwellings == 6
+        assert result.realistic_dwellings == 1
 
 
 # ===========================================================================
@@ -725,7 +729,7 @@ class TestNoDcpEnvelope:
         # FSR cap (0.5 * 600 = 300) binds below the height cap (600 * 3 storeys).
         assert result.lep_envelope_gfa_m2 == 300.0
         assert result.realistic_gfa_m2 == 300.0
-        assert result.realistic_dwellings == 4
+        assert result.realistic_dwellings == 1  # GATE-1: dwelling_house is one dwelling
         assert result.confidence == "low"
         assert result.binding_constraint.value == "lep_fsr"
 
