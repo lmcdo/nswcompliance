@@ -1,78 +1,71 @@
 {
   "tier": "critical",
-  "justification": "GATE-2: _detect_sepp_lep_overrides created a height/FSR SEPP override on a bare numeric '>' comparison, ignoring std.eligible and heritage. The Low/Mid-Rise Housing reforms exclude heritage items and Heritage Conservation Areas, yet the engine applied a 7m->9.5m / 3-storey bonus on the Haberfield HCA — an over-report of impermissible height/density on protected land. The override is now created only for eligible standards and never on heritage land (the LEP control stands).",
+  "justification": "GATE-3: the DCP max_site_coverage cap was silently dropped because _get_dcp_value always returned value_min, but the cap (e.g. 65 percent) is stored in value_max. site_coverage_pct came back None, so the engine left the footprint uncapped (~80 percent on Haberfield) and the binding-constraint chain omitted the cap. Read the cap with a prefer_max mode so it flows in and erodes the footprint.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_sepp_override_heritage.py"
+    "services/constraint_arithmetic.py",
+    "tests/test_site_coverage_cap.py"
   ],
-  "commit_hash": "9915844a",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "SEPPStandard already carries an 'eligible' bool (constraint_models.py:46) but _detect_sepp_lep_overrides never read it; heritage presence is available at both override call sites via controls['heritage_items'] (Portal) and heritage_postgis['has_heritage'] (PostGIS), but was never passed to the override logic.",
-    "assumption_mismatch": "'eligible' is computed from LOT SIZE ONLY (_build_sepp_housing:1643), so it does not capture the heritage exclusion. Honouring eligible alone would NOT fix Haberfield (793 m2 > min -> eligible=True); an explicit heritage gate is required.",
-    "new_vs_existing": "No new data source: _detect_sepp_lep_overrides gains an is_heritage flag and an eligibility check; a pure _is_heritage_land(controls, heritage_postgis) helper derives the flag from data already fetched. Both assembly paths pass it.",
-    "external_source_error": "N/A - both helpers are pure and consume data already fetched upstream; a Portal/PostGIS failure upstream is unchanged and, if heritage data is missing, is_heritage is False (the override may apply) — heritage data quality is a separate gate, not regressed here.",
-    "frontend_type": "N/A - backend override detection only; the SeppLepOverride list type is unchanged, so no frontend boundary shifts. The capacity card stays unexposed.",
-    "user_failure_mode": "If heritage data is absent for a genuinely-heritage parcel, the override could still apply (over-report) — but that is a heritage-data-coverage gap, not introduced here; where heritage data exists the override is correctly suppressed. The conservative direction (suppress on any detected heritage) never over-reports on known-heritage land."
+    "existing_data": "DCPControl carries both value_min and value_max; the engine already builds and stores max_site_coverage with its cap in value_max (verified earlier: dcp_setback_controls value_max=65). The site-coverage step then compares the cap against buildable_footprint and erodes it — but only if it reads a non-None percentage.",
+    "assumption_mismatch": "_get_dcp_value's docstring said it returns value_min (the minimum requirement), which is correct for setbacks/landscaping but wrong for a CAP control like max_site_coverage whose limit lives in value_max. So the cap silently read as None.",
+    "new_vs_existing": "No new data source: _get_dcp_value gains a prefer_max flag (value_max with value_min fallback); only the single max_site_coverage call uses it. Setbacks, landscaping and deep-soil keep reading value_min unchanged.",
+    "external_source_error": "N/A - pure function change; both helpers operate on DCPControl objects already fetched. No new external call, so upstream Portal/DB failures are unaffected.",
+    "frontend_type": "N/A - backend computation only; ConstraintArithmeticResult.site_coverage_cap_m2 (float) is unchanged in type, just now populated when a cap exists. The capacity card stays unexposed.",
+    "user_failure_mode": "If a council stores its site-coverage cap in value_min instead of value_max, prefer_max falls back to value_min, so the cap is still read; the only remaining gap is a control with neither value populated, which yields no cap (a data-coverage gap, not a silent over-read)."
   },
   "functions": [
     {
-      "name": "_detect_sepp_lep_overrides",
-      "file_line": "services/intelligence_brief.py:1703",
-      "input": "the SEPP standards list, the LEP height and FSR values, and an is_heritage flag",
-      "output": "override records only for eligible standards strictly more generous than the LEP, and none at all on heritage land",
-      "if_none": "on heritage land it returns an empty list immediately; otherwise ineligible standards are skipped"
-    },
-    {
-      "name": "_is_heritage_land",
-      "file_line": "services/intelligence_brief.py:1689",
-      "input": "the parsed planning controls dict and the optional PostGIS heritage result",
-      "output": "True when the parcel is a heritage item or sits in a Heritage Conservation Area, else False",
-      "if_none": "missing or empty heritage data returns False (no detected heritage)"
+      "name": "_get_dcp_value",
+      "file_line": "services/constraint_arithmetic.py:103",
+      "input": "the DCP controls list, the control type, the dev_type, and an optional prefer_max flag",
+      "output": "the matched control's value_min by default, or value_max (cap) with a value_min fallback when prefer_max is set",
+      "if_none": "no matching control returns None; with prefer_max a control missing value_max falls back to its value_min"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; the override compares SEPP standard values already fetched from the DB against the LEP values from the Portal, and reads the existing eligible flag.",
-  "queries": "N/A - no database queries added; both helpers operate on data already fetched by the brief (sepp_housing, controls, heritage_postgis).",
+  "values": "N/A - no regulatory values hardcoded; the percentage cap comes from the matched DCPControl.value_max already extracted from council DCP data.",
+  "queries": "N/A - no database queries; the function selects from the in-memory DCPControl list already fetched by the brief.",
   "break_it": [
     {
-      "scenario": "A SEPP height bonus fires on a Heritage Conservation Area parcel (the Haberfield case)",
-      "what_happens": "Pre-GATE-2 a 7m->9.5m / 3-storey override inflated the whole capacity on protected land where the reform does not apply",
-      "repro": "_detect_sepp_lep_overrides([eligible std max_height 9.5], lep_height_m=7.0, lep_fsr=None, is_heritage=True)",
+      "scenario": "A council site-coverage cap is stored in value_max and the lot would otherwise build out to roughly 80 percent",
+      "what_happens": "Pre-GATE-3 the cap read as None, so the footprint stayed uncapped and the binding-constraint chain omitted site coverage entirely",
+      "repro": "compute_constraint_arithmetic with a max_site_coverage DCPControl(value_max=50) and lot_dimensions provided",
       "mitigated": true,
-      "how": "the function returns [] immediately when is_heritage; test_heritage_suppresses_override asserts no override"
+      "how": "the cap is read via prefer_max and applied; test_site_coverage_cap_from_value_max_is_applied asserts site_coverage_cap_m2 == 300 for a 600 m2 lot"
     },
     {
-      "scenario": "An ineligible SEPP standard (e.g. lot too small) still tries to override the LEP",
-      "what_happens": "An override would apply from a standard the parcel does not qualify for",
-      "repro": "_detect_sepp_lep_overrides([std eligible=False max_height 9.5], lep_height_m=7.0, lep_fsr=None)",
+      "scenario": "A council instead records the site-coverage cap in value_min rather than value_max",
+      "what_happens": "A strict value_max-only read would miss the cap and again leave the footprint uncapped",
+      "repro": "_get_dcp_value([max_site_coverage value_min=50, value_max=None], prefer_max=True)",
       "mitigated": true,
-      "how": "the loop skips standards where not std.eligible; test_ineligible_standard_does_not_override asserts []"
+      "how": "prefer_max falls back to value_min when value_max is absent; test_prefer_max_falls_back_to_value_min asserts 50.0"
     },
     {
-      "scenario": "A genuinely eligible non-heritage parcel must still receive the SEPP bonus",
-      "what_happens": "Over-suppressing the override would under-report a valid Low/Mid-Rise height uplift on eligible non-heritage land",
-      "repro": "_detect_sepp_lep_overrides([eligible std max_height 9.5], lep_height_m=7.0, lep_fsr=None, is_heritage=False)",
+      "scenario": "Setback and landscaping controls must keep reading the minimum requirement, not the cap",
+      "what_happens": "If the prefer_max change leaked to setbacks, the engine would read the wrong value for a minimum control",
+      "repro": "_get_dcp_value([front_setback value_min=6], 'front_setback', 'dwelling_house')",
       "mitigated": true,
-      "how": "the override is created when eligible, not heritage, and strictly more generous; test_eligible_height_bonus_overrides_lep_when_not_heritage asserts one height override"
+      "how": "prefer_max defaults to False so the value_min path is unchanged; test_default_min_path_unchanged_for_setbacks asserts 6.0"
     },
     {
-      "scenario": "Heritage is recorded only in PostGIS, not the Portal heritage_items",
-      "what_happens": "A Portal-only check would miss HCA coverage that comes from the PostGIS heritage layer",
-      "repro": "_is_heritage_land({}, {'has_heritage': True})",
+      "scenario": "A development with no site-coverage control at all is assessed by the engine",
+      "what_happens": "A missing control could raise or be mis-read as a zero cap that wrongly erodes the footprint",
+      "repro": "compute_constraint_arithmetic with dcp_controls that contain no max_site_coverage entry",
       "mitigated": true,
-      "how": "_is_heritage_land checks BOTH controls['heritage_items'] and heritage_postgis['has_heritage']; both-source tests assert True"
+      "how": "_get_dcp_value returns None when no control matches and the site-coverage step is skipped; existing no-DCP tests stay green"
     },
     {
-      "scenario": "SEPP value equals the LEP value (not strictly greater)",
-      "what_happens": "A non-uplift could be mis-recorded as an override",
-      "repro": "_detect_sepp_lep_overrides([std max_height 7.0], lep_height_m=7.0, lep_fsr=None)",
+      "scenario": "The cap is read correctly but is larger than the buildable footprint already computed",
+      "what_happens": "Applying a non-binding cap would erode the footprint below the real setback-limited area",
+      "repro": "a 65 percent cap on a lot whose setbacks already limit coverage below 65 percent",
       "mitigated": true,
-      "how": "the strict '>' comparison is preserved; test_no_override_when_sepp_not_strictly_greater asserts []"
+      "how": "the step only erodes when coverage_cap < buildable_footprint (existing guard, unchanged); the cap is recorded but does not over-reduce"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run the Haberfield brief and confirm NO 7m->9.5m SEPP height override and no 3-storey inflation (the LEP 7m stands). GATE-1 part 2 (zone-derived dev_type) and GATE-3 (site-coverage cap, no silent drop) remain. Engine stays unexposed (#513 unmerged) until the legality gates complete."
+    "manual_verify": "Re-run the Haberfield brief and confirm the DCP site-coverage cap appears in the computation chain and the footprint is no longer ~80 percent uncapped. GATE-1 part 2 (zone-derived dev_type) and the computation-chain reconciliation remain. Engine stays unexposed (#513 unmerged) until the legality gates complete."
   }
 }
