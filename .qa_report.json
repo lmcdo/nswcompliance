@@ -8,11 +8,14 @@
     "services/nsw_planning_api.py",
     "tests/test_address_identity.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "ccfb06d1",
   "pre_impl": {
     "existing_data": "The Portal /address search is fuzzy with noOfRecords:1; three independent tracked resolvers (resolve_address, pre_da_history geocode, nsw_planning_api client) took data[0].propId with no check that the resolved address matched the request. Each response record carries an 'address' label usable for verification.",
     "assumption_mismatch": "The 39-agent audit ranked this #1 'realized this run' but that run used a manual non-UI input; the brief UI uses Google autocomplete, so the nonexistent-street case can't occur there. The residual that survives autocomplete is wrong street NUMBER on the right street (Google's address set != NSW cadastre) plus all non-UI paths (CLI/API). The bulk Prospector is spatial (ST_Intersects) and not affected; geocode_addresses.py is untracked.",
-    "new_vs_existing": "New shared module services/address_identity.py is the single source of truth; the three resolvers call it and fail closed on mismatch. No change to resolution for matching addresses."
+    "new_vs_existing": "New shared module services/address_identity.py is the single source of truth; the three resolvers call it and fail closed on mismatch. No change to resolution for matching addresses.",
+    "external_source_error": "If the NSW Portal /address call errors or times out, each resolver already fails closed (retry then raise or return None). GATE-0 only inspects a successful non-empty response, so it never turns an API error into a wrong parcel and adds no new error path.",
+    "frontend_type": "N/A - backend address resolution only; no new frontend types or boundaries. The brief UI's Google Places autocomplete sits upstream and is unchanged.",
+    "user_failure_mode": "If GATE-0 rejects a genuinely valid address whose Portal label differs (false reject), the user sees a fail-closed 'could not resolve' state rather than a brief built on the wrong parcel — visible, not silent."
   },
   "functions": [
     {
@@ -67,6 +70,13 @@
       "repro": "delete the parcel_identity_match call from any production resolver",
       "mitigated": true,
       "how": "test_gate_applied_at_all_production_resolvers asserts the call is present in all three files"
+    },
+    {
+      "scenario": "NSW Portal /address API errors or times out during resolution",
+      "what_happens": "A transient API failure could be misread as a resolved parcel",
+      "repro": "Portal returns a non-200 or times out mid-resolve",
+      "mitigated": true,
+      "how": "GATE-0 runs only on a successful non-empty response; on error each resolver already retries then raises or returns None (fail closed), so GATE-0 adds no new error path"
     }
   ],
   "post_merge": {
