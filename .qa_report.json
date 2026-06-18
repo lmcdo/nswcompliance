@@ -5,7 +5,7 @@
     "services/intelligence_brief.py",
     "tests/test_strata_classify_lotcount.py"
   ],
-  "commit_hash": "96357739",
+  "commit_hash": "26570588",
   "pre_impl": {
     "existing_data": "The brief's strata path used detect_strata (NSW Cadastre) which returns is_strata/plan_type but NO lot count. The StrataHub lot count (query_strata_at_point -> lot_total, classify_dwelling_type boundaries) lived in services/strata_lookup.py and was not wired into the brief.",
     "assumption_mismatch": "Plan assumed the lot count was already fetched in the brief path. It was not — Stage 1 had to wire StrataHub in, not just tweak classify_strata.",
@@ -21,8 +21,8 @@
     },
     {
       "name": "_fetch_strata",
-      "file_line": "services/intelligence_brief.py:1026",
-      "input": "address, lat, lng",
+      "file_line": "services/intelligence_brief.py:1044",
+      "input": "the property address plus latitude and longitude coordinates",
       "output": "cadastre strata dict, enriched with lot_total + dwelling_type when StrataHub returns a plan",
       "if_none": "StrataHub failure or non-strata cadastre -> dict returned unchanged (best-effort, never fails the brief)"
     }
@@ -45,8 +45,8 @@
       "how": "_fetch_strata wraps StrataHub in try/except (best-effort); classify_strata guards isinstance(int) and excludes bool, falling back to area; tests test_fetch_strata_swallows_strata_hub_failure + test_invalid_lot_count_falls_through_to_area"
     },
     {
-      "scenario": "Non-strata address",
-      "what_happens": "Needless StrataHub call on every lookup",
+      "scenario": "Non-strata Torrens address triggers a needless StrataHub lookup",
+      "what_happens": "An extra network call would run on every non-strata lookup, slowing the brief",
       "repro": "_fetch_strata for a Torrens parcel (is_strata False, parent_has_strata False)",
       "mitigated": true,
       "how": "StrataHub call gated behind is_strata or parent_has_strata; test_fetch_strata_skips_strata_hub_when_not_strata asserts zero calls"
