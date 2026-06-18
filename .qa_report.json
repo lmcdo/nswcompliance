@@ -1,54 +1,61 @@
 {
   "tier": "standard",
-  "justification": "Regression guard for DCP setback taxonomy (Bug 2). Behaviour-preserving extraction of the setback-row -> DCPControl mapping into a pure helper, plus a 12-test guard locking the typed-control contract (semantic_type wins over the 'prescribed'/'site_derived' kind) so setbacks keep feeding the footprint calc.",
+  "justification": "Bug 4 Stage 1: sharpen the strata classifier with the StrataHub lot count so apartment-vs-townhouse is decided by the authoritative lot count rather than the weak lot-area heuristic. Shrinks the AMBIGUOUS band that drives both Bug 4 symptoms (silent blank for apartments + wrong house-yield default).",
   "files": [
-    "services/constraint_arithmetic.py",
-    "tests/test_setback_taxonomy.py"
+    "services/intelligence_brief.py",
+    "tests/test_strata_classify_lotcount.py"
   ],
-  "commit_hash": "b46281b4",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "dcp_setback_controls (the table the engine reads via fetch_dcp_setbacks) is already fully typed: front_setback 97 rows/29 LGAs, side_setback 94/28, rear_setback 77/28, zero 'prescribed'. The only 'prescribed' control_type in the DB is 7 rows in dcp_general_requirements (not setbacks).",
-    "assumption_mismatch": "Plan assumed setbacks were stored untyped as control_type='prescribed' and needed a pipeline change. DB reality-check disproved this; the only real residual was the untested consumption seam.",
-    "new_vs_existing": "No new behaviour. The inline mapping at _fetch_constraint_data_from_db was extracted verbatim into _dcp_controls_from_setback_rows() and is now unit-tested in isolation; the DB-coupled caller is unchanged."
+    "existing_data": "The brief's strata path used detect_strata (NSW Cadastre) which returns is_strata/plan_type but NO lot count. The StrataHub lot count (query_strata_at_point -> lot_total, classify_dwelling_type boundaries) lived in services/strata_lookup.py and was not wired into the brief.",
+    "assumption_mismatch": "Plan assumed the lot count was already fetched in the brief path. It was not — Stage 1 had to wire StrataHub in, not just tweak classify_strata.",
+    "new_vs_existing": "Additive: classify_strata gains a lot-count branch ahead of the unchanged area fallback; _fetch_strata enriches the cadastre dict with StrataHub lot_total best-effort. Both brief assembly paths (non-streaming + streaming) share these two functions, so both benefit with no call-site changes."
   },
   "functions": [
     {
-      "name": "_dcp_controls_from_setback_rows",
-      "file_line": "services/constraint_arithmetic.py:128",
-      "input": "list of fetch_dcp_setbacks row dicts (setbacks + sd_setbacks) and an optional clause_ref fallback",
-      "output": "one typed DCPControl per row; control_type from semantic_type, then control_type, then type",
-      "if_none": "empty input returns []; a row missing semantic_type falls back to control_type (typed in the live DB) then ''"
+      "name": "classify_strata",
+      "file_line": "services/intelligence_brief.py:671",
+      "input": "strata_info dict (may carry lot_total from StrataHub) + lot_area_m2",
+      "output": "StrataType: NOT_STRATA / APARTMENT / DEVELOPMENT / AMBIGUOUS",
+      "if_none": "no/invalid lot_total -> area heuristic (unchanged); no area -> AMBIGUOUS"
+    },
+    {
+      "name": "_fetch_strata",
+      "file_line": "services/intelligence_brief.py:1026",
+      "input": "address, lat, lng",
+      "output": "cadastre strata dict, enriched with lot_total + dwelling_type when StrataHub returns a plan",
+      "if_none": "StrataHub failure or non-strata cadastre -> dict returned unchanged (best-effort, never fails the brief)"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded; reads extracted DCP values from the row dicts, coercing free-text requirements to a number or keeping them as the condition (never forced into the float field)",
-  "queries": "N/A - the extracted helper is pure (no DB); the unchanged caller runs the same fetch_dcp_setbacks query as before",
+  "values": "N/A - no regulatory values hardcoded; lot-count boundaries (<=4 townhouse, 5+ apartment) mirror the smoke-tested strata_lookup.classify_dwelling_type",
+  "queries": "StrataHub FeatureServer point intersect (read-only, public, no auth) via query_strata_at_point; gated to run only when cadastre already indicates strata involvement",
   "break_it": [
     {
-      "scenario": "A setback arrives untyped (only the 'prescribed' kind, no semantic_type)",
-      "what_happens": "control_type becomes 'prescribed' and would NOT match a front/rear/side lookup -> silently dropped from the footprint calc (the Bug 2 failure mode)",
-      "repro": "_dcp_controls_from_setback_rows([{'control_type': 'prescribed', 'value_min': 6.0}]) then _get_dcp_value(..., 'front_setback', 'dwelling_house')",
+      "scenario": "Townhouse complex (3 lots) on a large 3000m2 parent lot",
+      "what_happens": "Old area heuristic called it APARTMENT (>2500m2) -> RenovationBrief, no development analysis (the spike bug)",
+      "repro": "classify_strata({'is_strata': True, 'lot_total': 3}, 3000.0)",
       "mitigated": true,
-      "how": "test_prescribed_only_row_does_not_feed_setbacks asserts the lookup returns None for all three slots — the canary fails loudly if extraction regresses to untyped"
+      "how": "lot count wins -> DEVELOPMENT; test_count_overrides_area_townhouse_on_large_lot"
     },
     {
-      "scenario": "semantic_type present but control_type carries the 'prescribed' kind",
-      "what_happens": "Naive use of control_type would mis-type the setback as 'prescribed'",
-      "repro": "_dcp_controls_from_setback_rows([{'semantic_type': 'front_setback', 'control_type': 'prescribed', 'value_min': 6.0}])",
+      "scenario": "StrataHub is down / returns garbage",
+      "what_happens": "Could raise and fail the whole brief, or write a bad lot_total",
+      "repro": "query_strata_at_point raises; or returns lot_total in {0, None, True, 1.5, '6'}",
       "mitigated": true,
-      "how": "semantic_type is preferred in the fallback chain; test_semantic_type_beats_prescribed_kind asserts control_type == 'front_setback' and routes into the front slot"
+      "how": "_fetch_strata wraps StrataHub in try/except (best-effort); classify_strata guards isinstance(int) and excludes bool, falling back to area; tests test_fetch_strata_swallows_strata_hub_failure + test_invalid_lot_count_falls_through_to_area"
     },
     {
-      "scenario": "requirement is free text (no numeric value_min)",
-      "what_happens": "Forcing text into the float value_min field would raise or store garbage",
-      "repro": "_dcp_controls_from_setback_rows([{'semantic_type': 'front_setback', 'requirement': 'as per streetscape'}])",
+      "scenario": "Non-strata address",
+      "what_happens": "Needless StrataHub call on every lookup",
+      "repro": "_fetch_strata for a Torrens parcel (is_strata False, parent_has_strata False)",
       "mitigated": true,
-      "how": "_parse_numeric returns None for non-numeric text; test_requirement_freetext_kept_as_condition_not_value asserts value_min is None and the text is preserved as condition"
+      "how": "StrataHub call gated behind is_strata or parent_has_strata; test_fetch_strata_skips_strata_hub_when_not_strata asserts zero calls"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "None required — pure-logic change, 95/95 constraint tests pass. Optional follow-up (separate thread): confirm whether ca_confidence still caps at medium now that setbacks are typed; if so the cause is unrelated to taxonomy."
+    "manual_verify": "On a known apartment address (large strata plan) confirm the brief now classifies APARTMENT via lot count; on a townhouse-on-large-lot confirm DEVELOPMENT. Stage 2 (explain the blank) + Stage 3 (conditional potential) follow in separate PRs per ce-bug4-strata-capacity-salvage-2026-06.md."
   }
 }
