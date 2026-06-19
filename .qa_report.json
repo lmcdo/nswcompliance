@@ -6,11 +6,14 @@
     "services/housing_sepp_eligibility.py",
     "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "88f16d1a",
   "pre_impl": {
     "existing_data": "The merged eligibility engine (evaluate_eligibility) returns per-form eligibility from authoritative gates (776 LMR area, 452 dual-occ, 752/759 TOD). The brief ceiling was the base zone-tier ∩ LEP-permitted form. lot width comes from planning_controls.lot_dimensions.frontage_m; heritage from _is_heritage_land(controls, heritage_postgis).",
     "assumption_mismatch": "The ported frontend logic gated only residential_flat_r3r4 on the TOD catchment, treating R1/R2 residential flats as available anywhere in the (near-everywhere) 776 LMR area — which would surface an apartment ceiling on every R2 lot. Fixed: all residential_flat forms are mid-rise and require the catchment.",
-    "new_vs_existing": "No new file, no new query. _lmr_uplift_form delegates to the engine and maps the densest eligible form to an engine ceiling form; _realistic_forms takes the denser of the base ceiling and that uplift. Both brief assembly paths now pass lat/lng/lot-area/lot-width/heritage. The engine TOD gate changes residential_flat_r3r4 -> residential_flat (1 line)."
+    "new_vs_existing": "No new file, no new query. _lmr_uplift_form delegates to the engine and maps the densest eligible form to an engine ceiling form; _realistic_forms takes the denser of the base ceiling and that uplift. Both brief assembly paths now pass lat/lng/lot-area/lot-width/heritage. The engine TOD gate changes residential_flat_r3r4 -> residential_flat (1 line).",
+    "external_source_error": "The uplift relies on the engine's live ePlanning layer queries (776/452/752/759) and a standards DB read. _lmr_uplift_form wraps the whole engine call in try/except and returns None on any error, and the engine itself fails each gate to its conservative value, so a gov-API or DB failure yields no uplift and the base zone-tier ceiling stands (never an over-claim).",
+    "frontend_type": "Backend only. The capacity ceiling fields (max_permitted_form / max_permitted_dwellings) keep their types; only their value rises when the lot is genuinely eligible. The capacity card already renders the ceiling as the subject-to-DA upper bound, so no frontend interface change is needed.",
+    "user_failure_mode": "Before: a TOD lot under-stated its apartment potential and an R2 lot under-stated its townhouse potential. After: the ceiling rises to the genuine LMR upside, framed subject-to-a-DA. If a gate fails, the user simply sees the base zone-tier ceiling (a conservative under-state), never a denser form than the lot is eligible for."
   },
   "functions": [
     {
