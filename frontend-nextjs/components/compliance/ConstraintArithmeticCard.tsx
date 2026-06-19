@@ -42,6 +42,12 @@ interface ConstraintArithmeticResult {
   realistic_gfa_m2: number | null;
   dcp_adjusted_gfa_m2: number | null;
   realistic_dwellings: number | null;
+  // Dwelling-yield range: as-of-right floor + permitted ceiling (subject to a DA).
+  // Optional — older API responses omit them; the card falls back to a single figure.
+  as_of_right_form?: string | null;
+  as_of_right_dwellings?: number | null;
+  max_permitted_form?: string | null;
+  max_permitted_dwellings?: number | null;
   binding_constraint: string | null;
   binding_constraint_label: string;
   steps: ConstraintStep[];
@@ -72,6 +78,15 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   medium: 'bg-amber-100 text-amber-800',
   low: 'bg-red-100 text-red-800',
 };
+
+/** Engine dev_type slug → readable built-form label (e.g. "multi-dwelling housing"). */
+function humanizeForm(form?: string | null): string {
+  if (!form) return 'dwelling';
+  return form
+    .replace(/multi_dwelling/, 'multi-dwelling')
+    .replace(/_/g, ' ')
+    .trim();
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -191,7 +206,12 @@ export function ConstraintArithmeticCard({
 
   if (!result) return null;
 
-  const hasYield = result.realistic_dwellings != null && result.realistic_dwellings > 0;
+  // Dwelling-yield range. Floor = the conservative as-of-right baseline (falls back to
+  // realistic_dwellings for older API responses); ceiling = the densest permitted form,
+  // shown only when it genuinely exceeds the floor.
+  const floorDwellings = result.as_of_right_dwellings ?? result.realistic_dwellings ?? 0;
+  const ceilingDwellings = result.max_permitted_dwellings ?? null;
+  const hasYield = floorDwellings > 0;
 
   return (
     <Card className="border-blue-200 bg-blue-50/30">
@@ -237,15 +257,26 @@ export function ConstraintArithmeticCard({
             </div>
           )}
 
-          {/* Dwelling count */}
+          {/* Dwelling yield — a RANGE: as-of-right floor to permitted ceiling (subject
+              to a DA). The count is an illustration of the GFA envelope, not a promise. */}
           {hasYield && (
             <div className="bg-white border border-blue-200 rounded-lg p-3">
-              <div className="text-xs font-medium text-blue-600 mb-1">Estimated Dwellings</div>
+              <div className="text-xs font-medium text-blue-600 mb-1">Dwelling Yield</div>
               <div className="text-xl font-bold text-gray-900">
-                {result.realistic_dwellings}
+                {floorDwellings}
+                {ceilingDwellings != null && ceilingDwellings > floorDwellings && (
+                  <span>&ndash;{ceilingDwellings}</span>
+                )}
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
-                at 65m² avg per unit
+                {ceilingDwellings != null && ceilingDwellings > floorDwellings ? (
+                  <>
+                    {floorDwellings} as-of-right &middot; up to {ceilingDwellings}{' '}
+                    ({humanizeForm(result.max_permitted_form)}) subject to a DA
+                  </>
+                ) : (
+                  <>{humanizeForm(result.as_of_right_form)}, as-of-right</>
+                )}
               </div>
             </div>
           )}
