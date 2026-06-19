@@ -588,11 +588,23 @@ function IntelligenceBriefInner() {
 
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const chunks = buffer.split('\n\n');
-            buffer = chunks.pop() ?? '';
+            if (value) buffer += decoder.decode(value, { stream: true });
+
+            // On end-of-stream, flush the ENTIRE remaining buffer as the final
+            // chunk(s). Otherwise a trailing 'complete' event that arrived
+            // without a closing blank line stays stuck in `buffer` and is
+            // discarded when we break — which is what silently dropped the
+            // confidence-summary and gaps cards (and froze the progress bar).
+            let chunks: string[];
+            if (done) {
+              buffer += decoder.decode();
+              chunks = buffer.split('\n\n');
+              buffer = '';
+            } else {
+              chunks = buffer.split('\n\n');
+              buffer = chunks.pop() ?? '';
+            }
 
             for (const chunk of chunks) {
               if (!chunk.trim()) continue;
@@ -642,6 +654,8 @@ function IntelligenceBriefInner() {
                 // Skip unparseable (keepalive pings)
               }
             }
+
+            if (done) break;
           }
 
           // Stream ended without complete event — task may have finished
