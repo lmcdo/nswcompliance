@@ -1,41 +1,26 @@
 {
   "tier": "standard",
-  "justification": "Consolidation P2 part 1: a new backend Housing-SEPP eligibility engine (the single source of truth) plus a TOD-catchment fetcher. Substantial new planning-eligibility logic, but it is NOT yet wired into any live path (the brief and the LEP/SEPP tab consume it in follow-up PRs), so there is no current user-facing impact; reviewed at standard tier with full unit coverage.",
+  "justification": "Two correctness gates added to the (still-unwired) Housing-SEPP eligibility engine, found by a pre-wiring live sweep: heritage land was not excluded from the LMR reforms, and manor_house (a dataset gap with no min lot size) passed every lot gate. Both would have caused over-reports once the engine is wired into the live capacity ceiling. No live impact yet (engine unwired); standard tier with full unit coverage.",
   "files": [
     "services/housing_sepp_eligibility.py",
-    "services/portal_constraints.py",
     "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "43c0752f",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area) holds the LMR/Housing-SEPP forms + thresholds. portal_constraints already had _query_eplanning_point + fetch_sepp_exclusions (776) + fetch_dual_occ_prohibition (452); this adds fetch_tod_catchment (752/759 published TOD polygons).",
-    "assumption_mismatch": "The only prior implementation is the frontend route.ts, which trusted caller-supplied inLMRArea (defaulted true — silently over-eligible) and a mock Haversine station list. The backend engine computes both authoritatively (776 exclusion -> inLMRArea, conservatively false when unknown; 752/759 polygons -> TOD), so it cannot over-state eligibility on a transient gate failure.",
-    "new_vs_existing": "New file services/housing_sepp_eligibility.py ports the route.ts gate logic to the backend (prior-art-checked acknowledged in the module header). Reuses the standards table + the existing ePlanning point-query fetchers; adds only the 752/759 TOD layers + fetch_tod_catchment. db_config.get_connection() is broken in this environment (Supabase pooler SNI), so the engine uses the same direct psycopg2(DATABASE_URL) pattern as the brief's _get_db_conn."
+    "existing_data": "housing_sepp_standards rows per development_type. The manor_house row has max_fsr/max_height/deep-soil/landscaping but NO min_lot_size and requires_lmr_area=False (confirmed by direct query) — a genuine dataset gap, since manor houses do have a minimum lot in the SEPP.",
+    "assumption_mismatch": "The engine assumed a form with no min_lot_size simply has no lot gate (true for TOD-gated R3/R4 flats) — but for manor_house that is a missing standard, not the absence of one, so it passed on any lot. Separately, the engine assumed the 776 exclusion map captures all LMR exclusions, but it does not catch heritage items/HCAs.",
+    "new_vs_existing": "No new file, no new data. evaluate_eligibility gains a heritage flag (suppresses requires_lmr_area forms on heritage land) and a conservative data-gap guard (a non-base, non-TOD-gated form with min_lot_size missing is ineligible). Verified by re-running the live sweep: manor_house no longer eligible anywhere; Haberfield heritage shows only base forms."
   },
   "functions": [
     {
       "name": "evaluate_eligibility",
-      "file_line": "services/housing_sepp_eligibility.py:132",
-      "input": "zone code, lot area (m2), lot width (m), lat, lng, and optional pre-fetched gate_inputs",
-      "output": "a list of FormEligibility per development type, each with an eligible flag and a plain-language reason",
-      "if_none": "a non-residential zone or an unavailable standards table returns an empty list so the caller keeps base controls"
-    },
-    {
-      "name": "_gate_inputs",
-      "file_line": "services/housing_sepp_eligibility.py:97",
-      "input": "the subject lot latitude and longitude (either may be None)",
-      "output": "a dict of the three authoritative gate booleans in_lmr_area, in_tod and dual_occ_prohibited",
-      "if_none": "missing coordinates or any failed ArcGIS query yields all-False so no form is ever falsely made eligible"
-    },
-    {
-      "name": "fetch_tod_catchment",
-      "file_line": "services/portal_constraints.py:336",
-      "input": "the subject lot latitude and longitude as floats",
-      "output": "a dict with in_tod plus the source EPI and LGA names, or None when both layer queries error",
-      "if_none": "when both 752 and 759 queries fail it returns None so the caller treats the catchment as unknown"
+      "file_line": "services/housing_sepp_eligibility.py:138",
+      "input": "zone code, lot area and width, lat, lng, a heritage flag, and optional pre-fetched gate inputs",
+      "output": "a list of per-development-type FormEligibility with the heritage and lot-gap gates now applied",
+      "if_none": "a non-residential zone or an unavailable standards table still returns an empty list, fail-safe to base controls"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. All thresholds (min lot size/width, applicable zones, requires_lmr_area) are read live from housing_sepp_standards; the catchment and exclusion answers come live from the published ePlanning layers.",
+  "values": "N/A - no regulatory values are hardcoded. The heritage flag is supplied by the caller from its heritage detection; thresholds remain read from housing_sepp_standards; the new guard only withholds a form when its lot standard is absent.",
   "queries": [
     {
       "purpose": "fetch all Housing-SEPP standards (forms, thresholds, applicable zones, LMR flag) for grouping in Python",
@@ -47,45 +32,38 @@
   ],
   "break_it": [
     {
-      "scenario": "A lot that is genuinely not in a Low and Mid-Rise area but the caller (old frontend) assumed it was",
-      "what_happens": "The frontend default-true made LMR forms falsely eligible there",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_lmr_form_ineligible_when_not_in_lmr_area",
+      "scenario": "A heritage conservation-area lot that is in a Low and Mid-Rise reform area on the 776 map",
+      "what_happens": "Without a heritage gate the engine would mark LMR flats and terraces eligible on heritage land",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_heritage_suppresses_lmr_forms_but_not_base_forms",
       "mitigated": true,
-      "how": "_gate_inputs derives in_lmr_area from the live 776 exclusion and defaults it False when unknown; requires_lmr_area forms are then ineligible"
+      "how": "the heritage flag marks every requires_lmr_area form ineligible with a heritage reason while leaving base forms (dual occ, secondary) untouched"
     },
     {
-      "scenario": "An R3 lot with residential flats that is outside any Transport Oriented Development catchment",
-      "what_happens": "A mock-station Haversine check could wrongly qualify it for a mid-rise flat building",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_rfb_r3r4_requires_tod_catchment",
+      "scenario": "A small or narrow lot where manor_house has no minimum lot size in the dataset",
+      "what_happens": "manor_house passed every lot gate and would inflate the ceiling on tiny lots everywhere",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_form_missing_lot_standard_is_conservatively_ineligible",
       "mitigated": true,
-      "how": "residential_flat_r3r4 forms require in_tod from the published 752/759 polygons; outside the catchment they are marked ineligible"
+      "how": "a non-base, non-TOD-gated form with a missing min_lot_size is now marked ineligible with a 'not in the dataset' reason"
     },
     {
-      "scenario": "Any of the live gate queries (776, 452, 752, 759) times out or errors during evaluation",
-      "what_happens": "A naive engine could crash the brief or over-restrict/over-permit the affected forms",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_failsafe_on_query_errors",
+      "scenario": "A legitimate R3/R4 residential flat that has no minimum lot size because it is TOD-gated by design",
+      "what_happens": "An over-broad data-gap guard could wrongly withhold the valid mid-rise flat uplift in a TOD catchment",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_rfb_r3r4_without_min_lot_is_NOT_caught_by_the_gap_guard",
       "mitigated": true,
-      "how": "every gate query is wrapped in try/except returning the conservative False, and a missing standards table returns an empty list"
+      "how": "the guard explicitly exempts residential_flat_r3r4 forms, so they stay eligible when in a TOD catchment"
     },
     {
-      "scenario": "A lot whose width or area is unknown because lot geometry could not be resolved upstream",
-      "what_happens": "Comparing an unknown dimension to a minimum could pass by accident or raise",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_unconfirmed_lot_is_conservatively_ineligible",
-      "mitigated": true,
-      "how": "an unconfirmed (None) area or width against a real minimum is treated as ineligible with an 'unconfirmed' reason, never as a pass"
-    },
-    {
-      "scenario": "The housing_sepp_standards reference query fails because the database is unreachable or the statement times out",
-      "what_happens": "An unhandled error in _fetch_standards_grouped would raise and break whatever consumes the engine",
+      "scenario": "The housing_sepp_standards reference query fails because the database is unreachable or times out",
+      "what_happens": "An unhandled error would raise and break whatever consumes the engine",
       "repro": "pytest tests/test_housing_sepp_eligibility.py::test_standards_fetch_failure_returns_empty",
       "mitigated": true,
-      "how": "evaluate_eligibility wraps the _fetch_standards_grouped call in try/except and returns an empty list, so the caller keeps the base planning controls"
+      "how": "evaluate_eligibility wraps the standards fetch in try/except and returns an empty list so the caller keeps base controls"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "This module is not yet wired. Next PR (P2 part 2) derives the capacity brief ceiling from the densest ELIGIBLE form here (subsuming P1's _eligibility_excluded_forms); P3 migrates the LEP/SEPP tab to call it via a backend endpoint so the two surfaces stop disagreeing. Verified live the gates resolve correctly (Ashfield in-TOD -> R3 flats eligible; Five Dock not-TOD -> R3 flats absent)."
+    "manual_verify": "Still unwired. The manor_house dataset gap (missing min_lot_size, questionable requires_lmr_area=False) should be corrected in housing_sepp_standards separately; until then the conservative guard withholds it. Next: P2b wires the brief ceiling to the densest ELIGIBLE form; P3 migrates the LEP/SEPP tab."
   }
 }
