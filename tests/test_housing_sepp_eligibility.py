@@ -21,6 +21,8 @@ GROUPED = {
     "terraces":             {"requires_lmr_area": True,  "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": 500.0, "min_lot_width": 18.0},
     "residential_flat_r1r2": {"requires_lmr_area": True, "applicable_zones": ["R1", "R2"],             "min_lot_size": 500.0, "min_lot_width": 12.0},
     "residential_flat_r3r4_inner": {"requires_lmr_area": True, "applicable_zones": ["R3", "R4"],       "min_lot_size": None,  "min_lot_width": None},
+    # Known dataset gap: manor_house has no min_lot_size and requires_lmr_area=False.
+    "manor_house":          {"requires_lmr_area": False, "applicable_zones": ["R1", "R2", "R3", "R4"], "min_lot_size": None, "min_lot_width": None},
 }
 
 ALL_FALSE = {"in_lmr_area": False, "in_tod": False, "dual_occ_prohibited": False}
@@ -111,6 +113,33 @@ def test_zone_filter_drops_inapplicable_forms():
     # residential_flat_r1r2 applies to R1/R2 only — absent for an R3 lot.
     r = _by_type(evaluate_eligibility("R3", 800, 20, -33.8, 151.1, gate_inputs={**ALL_FALSE, "in_lmr_area": True}))
     assert "residential_flat_r1r2" not in r
+
+
+def test_heritage_suppresses_lmr_forms_but_not_base_forms():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 700, 20, -33.8, 151.1, heritage=True, gate_inputs=gates))
+    assert r["terraces"].eligible is False  # LMR form suppressed on heritage
+    assert "heritage" in r["terraces"].reason.lower()
+    assert r["residential_flat_r1r2"].eligible is False
+    assert r["dual_occupancy"].eligible is True  # base form unaffected by heritage
+
+
+def test_form_missing_lot_standard_is_conservatively_ineligible():
+    # manor_house has no min_lot_size in the dataset -> must NOT pass by default.
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 380, 9, -33.8, 151.1, gate_inputs=gates))
+    assert r["manor_house"].eligible is False
+    assert "dataset" in r["manor_house"].reason
+    # on a generous lot it is still conservatively ineligible (no lot standard to confirm)
+    r2 = _by_type(evaluate_eligibility("R2", 900, 25, -33.8, 151.1, gate_inputs=gates))
+    assert r2["manor_house"].eligible is False
+
+
+def test_rfb_r3r4_without_min_lot_is_NOT_caught_by_the_gap_guard():
+    # r3r4 RFB legitimately has no min_lot (TOD-gated, not a data gap) -> stays eligible in TOD.
+    gates = {**ALL_FALSE, "in_lmr_area": True, "in_tod": True}
+    r = _by_type(evaluate_eligibility("R3", 800, 20, -33.8, 151.1, gate_inputs=gates))
+    assert r["residential_flat_r3r4_inner"].eligible is True
 
 
 def test_standards_fetch_failure_returns_empty(monkeypatch):

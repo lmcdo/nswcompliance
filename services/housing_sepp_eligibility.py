@@ -29,6 +29,12 @@ logger = logging.getLogger(__name__)
 
 RESIDENTIAL_ZONES = {"R1", "R2", "R3", "R4"}
 
+# Low-density / base residential forms that are legitimately permitted without an LMR
+# lot-size uplift gate. Any OTHER (denser) form must have a confirmable min_lot_size in
+# the dataset to be eligible — so a form with a missing lot standard (e.g. manor_house,
+# a known gap) is treated conservatively rather than passed by default.
+_BASE_FORMS = {"dwelling_houses", "dwelling_house", "dual_occupancy", "secondary_dwelling"}
+
 
 @dataclass
 class FormEligibility:
@@ -136,13 +142,16 @@ def evaluate_eligibility(
     lat: Optional[float],
     lng: Optional[float],
     *,
+    heritage: bool = False,
     gate_inputs: Optional[dict] = None,
 ) -> list[FormEligibility]:
     """Per-development-type Housing-SEPP eligibility for a lot.
 
-    ``gate_inputs`` may be supplied to reuse already-fetched gate results (avoids repeat
-    ArcGIS calls); otherwise they are fetched here. Returns [] for non-residential zones or
-    if the standards table is unavailable (fail-safe — the caller keeps the base controls).
+    ``heritage`` (a heritage item or conservation-area lot) suppresses the LMR-reform forms,
+    which the Low and Mid-Rise reforms exclude (the 776 exclusion map alone does not catch
+    heritage). ``gate_inputs`` may be supplied to reuse already-fetched gate results (avoids
+    repeat ArcGIS calls); otherwise they are fetched here. Returns [] for non-residential
+    zones or if the standards table is unavailable (fail-safe — caller keeps base controls).
     """
     zone = normalize_zone(zone_code)
     if zone not in RESIDENTIAL_ZONES:
@@ -176,8 +185,21 @@ def evaluate_eligibility(
                 min_lot_size_m2=min_size, min_lot_width_m=min_width,
             )
 
+        if heritage and lmr_req:
+            results.append(_result(False, "Excluded on heritage land — the Low and Mid-Rise reforms do not apply"))
+            continue
         if lmr_req and not in_lmr_area:
             results.append(_result(False, "Not in a Low and Mid-Rise reform area (or area unconfirmed)"))
+            continue
+        # Conservative data-gap guard: a denser/uplift form must have a confirmable lot
+        # standard. Forms missing min_lot_size that are not TOD-gated (e.g. manor_house —
+        # a known dataset gap) are treated as ineligible rather than passed by default.
+        if (
+            dev_type not in _BASE_FORMS
+            and "residential_flat_r3r4" not in dev_type
+            and min_size is None
+        ):
+            results.append(_result(False, "Lot standard for this form is not in the dataset (treated conservatively)"))
             continue
         if min_size is not None and (lot_area_m2 is None or lot_area_m2 < min_size):
             reason = (
