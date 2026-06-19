@@ -1,63 +1,56 @@
 {
   "tier": "standard",
-  "commit_hash": "510f1864",
-  "justification": "Frontend display-only change to the Intelligence Brief page: (1) the live progress bar froze at the last section's percent next to a 'Complete' badge when the streaming 'complete' event was dropped — now forced to 100% on the complete state; (2) raw internal NOT_AVAILABLE reason strings (e.g. 'Layer not ingested for this LGA') and a red 'Not Available' badge were rendered to users — now translated to five honest plain-language states with calm tones. No data, query, or regulatory logic changes.",
+  "commit_hash": "1a7d7c0d",
+  "justification": "Frontend streaming-reliability fix to the Intelligence Brief page: the realtime stream reader broke on end-of-stream WITHOUT processing the leftover buffer, so a trailing 'complete' event that lacked a closing blank line was discarded — losing the Confidence Summary, Data Gaps and Compound Constraints cards and leaving the progress bar frozen. The reader now flushes the remaining buffer as the final chunk on stream end. Display/stream-parsing only; no data or regulatory logic.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "page.tsx renders DataField-wrapped sections; NOT_AVAILABLE fields printed reason verbatim with a red badge (SectionCard/SectionData). LiveStatusPanel shows server-sent streaming progress, forced to 100 only when a 'complete' event arrives; a dropped complete event left the bar at the last section value while the badge read Complete.",
-    "assumption_mismatch": "The UI assumed the streaming 'complete' event always arrives, and assumed internal reason strings are user-readable. Live run (25 Empire St) showed a dropped complete event (no Confidence Summary/Gaps cards rendered) freezing the bar at 81%, and showed raw 'Layer not ingested for this LGA' text.",
-    "new_vs_existing": "No new component or fetch. One pure helper describeUnavailable maps reason strings to a five-state {label,tone}; three style maps drive tone. The progress prop gains a 'complete -> 100' branch. Existing confidenceBadge is unchanged for the positive confidence levels.",
-    "external_source_error": "No external calls added. If a reason string is unrecognised, describeUnavailable falls back to a neutral 'Not included in this report' rather than throwing or leaking the raw string.",
-    "frontend_type": "Frontend only (TypeScript/React). reason is typed string|null and is normalised with (reason ?? '') before matching, so a null/undefined reason is handled. Tone is a closed union keyed into Record maps, so every tone resolves to a class string.",
-    "user_failure_mode": "Before: a finished report looked half-failed (Complete + frozen 81%) and showed internal pipeline jargon in red. After: the bar reads 100% on completion and empty fields read as honest plain states (None found / Available on request / Not assessed / Could not identify / Temporarily unavailable), most of which are neutral or good news."
+    "existing_data": "The SSE-style reader accumulates bytes in `buffer`, splits on blank lines, keeps the trailing partial in `buffer`, and on `done` it broke immediately. The 'complete' event carries confidence_summary/gaps/compound_constraints; CompleteSummary only renders when that event is received.",
+    "assumption_mismatch": "The reader assumed every event, including the final 'complete', arrives terminated by a blank line before the stream closes. When the closing blank line is absent, the complete event sits in the leftover buffer and is dropped on break — observed live as 'Complete' beside a frozen 81% with no summary/gaps cards.",
+    "new_vs_existing": "No new component, fetch, or dependency. The read loop now appends bytes only when value is present, and on `done` flushes the decoder and treats the entire remaining buffer as the final chunk(s) before breaking. The per-chunk parsing, dedup, and complete/error handling are unchanged.",
+    "external_source_error": "If the final buffer is empty or unparseable, the existing try/catch skips it and the prior stream-ended fallback still marks the brief complete — so a genuinely missing complete event degrades exactly as before, never worse.",
+    "frontend_type": "Frontend only (TypeScript/React). `chunks` is explicitly typed string[]; TextDecoder.decode() with no argument is a valid flush call; the break now occurs after the final chunk is processed.",
+    "user_failure_mode": "Before: a finished brief lost its Confidence Summary, Data Gaps and Compound Constraints and froze the progress bar when the complete event lacked a trailing blank line. After: the trailing complete event is parsed on stream end, so the summary renders and the bar reaches 100% via the real event."
   },
   "functions": [
     {
-      "name": "describeUnavailable",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:101",
-      "input": "an optional internal NOT_AVAILABLE reason string emitted by the backend brief for a data field",
-      "output": "an object with a plain-language user-facing label and one of five honest tone categories for styling",
-      "if_none": "a null, empty, or unrecognised reason returns a neutral 'Not included in this report' label so nothing internal ever leaks"
+      "name": "connectStream (stream reader loop)",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:524",
+      "input": "the chunked realtime response body from the Trigger.dev brief stream for the current run",
+      "output": "parsed brief events appended to state, including a trailing complete event recovered from the final buffer on stream end",
+      "if_none": "an empty or unparseable final buffer is skipped by the existing catch and the stream-ended fallback still marks the brief complete"
     }
   ],
-  "values": "N/A - no regulatory values. The mapping turns internal status strings into plain-language UI copy; no planning numbers are involved.",
-  "queries": "N/A - this is a frontend render change; it adds no database or API query and reads only the already-streamed brief field data.",
+  "values": "N/A - no regulatory values. This changes stream-buffer handling only; no planning numbers are involved.",
+  "queries": "N/A - frontend stream parsing; no database or API query is added. It reads only the already-open realtime response.",
   "break_it": [
     {
-      "scenario": "The streaming complete event is dropped so the bar would otherwise freeze below 100 next to a Complete badge",
-      "what_happens": "the user sees a finished report that looks half-loaded and failed, exactly the reported 81%-with-Complete case",
-      "repro": "force the stream-ended fallback path (no complete event); the progress prop now resolves to 100 when state is complete",
+      "scenario": "The final 'complete' event arrives without a closing blank line and the stream then ends",
+      "what_happens": "previously it stayed in the leftover buffer and was discarded on break, losing the summary/gaps cards",
+      "repro": "stream a complete event with no trailing double-newline then close; the done branch now splits and processes the remaining buffer",
       "mitigated": true,
-      "how": "progress is set to 100 whenever state is complete, independent of whether the complete event arrived, so the bar always matches the badge"
+      "how": "on done the entire remaining buffer is flushed and split into final chunks which are processed before the loop breaks"
     },
     {
-      "scenario": "A backend reason string is unrecognised by the mapping or is null for an empty field",
-      "what_happens": "a naive map could render undefined, crash on a missing key, or leak the raw internal string to the user",
-      "repro": "call describeUnavailable(null) and describeUnavailable('some new backend string') — both return a defined neutral fallback",
+      "scenario": "The stream ends cleanly with no remaining buffered data",
+      "what_happens": "a naive flush could create an empty chunk that is parsed as a bogus event",
+      "repro": "done with an empty buffer yields chunks that are skipped by the `if (!chunk.trim()) continue` guard",
       "mitigated": true,
-      "how": "reason is coerced with (reason ?? '') and the function returns a neutral default; tone indexes a Record covering all five union members"
+      "how": "empty chunks are skipped by the existing trim guard and unparseable data by the try/catch, so an empty final flush is a no-op"
     },
     {
-      "scenario": "A reason that means good news ('No coastal hazard overlays at this location') must not be shown as an alarming error",
-      "what_happens": "rendering it as a red 'Not Available' badge misreads a clean result as a failure for the owner",
-      "repro": "describeUnavailable('No coastal hazard overlays at this location') returns tone 'clear' with green styling and 'None found at this property'",
+      "scenario": "A mid-stream read returns done=true with an undefined value",
+      "what_happens": "decoding an undefined value would throw and abort the reader",
+      "repro": "the read loop now guards `if (value) buffer += decode(...)` so an undefined value on the terminal read is not decoded",
       "mitigated": true,
-      "how": "reasons starting 'no ' or containing 'none found'/'at this location' map to the clear tone (emerald), never red"
-    },
-    {
-      "scenario": "An ambiguous 'failed or not requested' reason must not be shown as a hard error",
-      "what_happens": "labelling an optional-not-requested add-on as 'failed' would alarm the user about a non-problem",
-      "repro": "describeUnavailable('Bushfire pre-screen failed or not requested') returns the neutral 'Not included in this report'",
-      "mitigated": true,
-      "how": "when a reason contains both 'fail' and 'not requested' the mapping stays neutral rather than asserting an error it cannot confirm"
+      "how": "bytes are appended only when value is present; the terminal decoder.decode() flush takes no argument and is safe"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "After deploy, run a brief that drops the complete event (or any complete brief) — the bar should read 100% with the Complete badge, no frozen percentage. Confirm empty environmental rows (riparian/wetlands) read as a calm plain state, not red 'Not Available' with internal text. The deeper streaming-reliability fix (recover the dropped complete event so the Confidence Summary/Gaps cards still render) and the live lot-level overlay check (#2) are tracked follow-ups, not in this change."
+    "manual_verify": "Run a brief that previously froze (e.g. 25 Empire St) — the Confidence Summary, Data Gaps and Compound Constraints cards should now render and the bar should reach 100% via the real complete event, not the forced fallback. If a residual case still drops the event entirely (stream never delivers it), a Trigger.dev run-result fetch fallback is the next safety net — not included here."
   }
 }
