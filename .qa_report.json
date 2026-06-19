@@ -1,85 +1,76 @@
 {
-  "tier": "critical",
-  "justification": "Consolidation P1: wires the live ePlanning dual-occupancy prohibition gate (layer 452) into the capacity ceiling, which changes the displayed dwelling-yield ceiling. Previously the gate was fetched (frontend) but never consumed by the brief, so a lot where dual occupancy is prohibited still showed a dual-occ ceiling. This affects user-facing yield, so critical tier.",
+  "tier": "standard",
+  "justification": "Consolidation P2 part 1: a new backend Housing-SEPP eligibility engine (the single source of truth) plus a TOD-catchment fetcher. Substantial new planning-eligibility logic, but it is NOT yet wired into any live path (the brief and the LEP/SEPP tab consume it in follow-up PRs), so there is no current user-facing impact; reviewed at standard tier with full unit coverage.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_eligibility_gates.py"
+    "services/housing_sepp_eligibility.py",
+    "services/portal_constraints.py",
+    "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "1acdc696",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "portal_constraints.fetch_dual_occ_prohibition(lat,lng) already queries ePlanning layer 452 (Planning_Portal_Local_Provisions) and returns {prohibited: bool, epi_name, lga_name} or None on failure. It was unused by the capacity engine. The ceiling is computed by _ceiling_within_tier over the zone-tier ladder intersected with lep_land_use_table permitted forms.",
-    "assumption_mismatch": "GATE-1pt2 assumed the densest permitted form (bounded by the zone tier) was the realistic ceiling, ignoring lot-specific prohibitions. A lot inside a dual-occupancy prohibition area would still surface dual_occupancy as the R2 ceiling.",
-    "new_vs_existing": "No new data, no schema change, no new file. Reuses the existing fetch_dual_occ_prohibition function. New helper _eligibility_excluded_forms(lat,lng) returns the engine forms to drop; _ceiling_within_tier and _realistic_forms gained an optional excluded_forms param; both brief assembly paths now compute and pass it. Heritage is already handled (GATE-2); the 776 low/mid-rise exclusion has no ceiling effect until LMR uplift (P2), so it is intentionally not called here.",
-    "external_source_error": "fetch_dual_occ_prohibition returns None on ArcGIS failure. _eligibility_excluded_forms wraps the call in try/except and returns an EMPTY set on None / exception / missing coordinates — so a transient gov-API failure never over-restricts the ceiling (fails open to the base zone-tier ceiling).",
-    "frontend_type": "Backend only. The capacity ceiling fields (max_permitted_form/dwellings) keep their types; only their value changes when a prohibition genuinely applies. No frontend interface change.",
-    "user_failure_mode": "Before: a dual-occ-prohibited lot showed a 2-dwelling dual-occ ceiling the lot cannot legally achieve (over-report). After: dual_occupancy is dropped from the ceiling for that lot (R2 tops out at dwelling_house). The gate can only REMOVE a prohibited form, never add one; on query failure it changes nothing."
+    "existing_data": "housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area) holds the LMR/Housing-SEPP forms + thresholds. portal_constraints already had _query_eplanning_point + fetch_sepp_exclusions (776) + fetch_dual_occ_prohibition (452); this adds fetch_tod_catchment (752/759 published TOD polygons).",
+    "assumption_mismatch": "The only prior implementation is the frontend route.ts, which trusted caller-supplied inLMRArea (defaulted true — silently over-eligible) and a mock Haversine station list. The backend engine computes both authoritatively (776 exclusion -> inLMRArea, conservatively false when unknown; 752/759 polygons -> TOD), so it cannot over-state eligibility on a transient gate failure.",
+    "new_vs_existing": "New file services/housing_sepp_eligibility.py ports the route.ts gate logic to the backend (prior-art-checked acknowledged in the module header). Reuses the standards table + the existing ePlanning point-query fetchers; adds only the 752/759 TOD layers + fetch_tod_catchment. db_config.get_connection() is broken in this environment (Supabase pooler SNI), so the engine uses the same direct psycopg2(DATABASE_URL) pattern as the brief's _get_db_conn."
   },
   "functions": [
     {
-      "name": "_eligibility_excluded_forms",
-      "file_line": "services/intelligence_brief.py:1080",
-      "input": "lat, lng floats (or None) for the subject lot",
-      "output": "set of engine dev_type forms to exclude from the ceiling (e.g. {'dual_occupancy'})",
-      "if_none": "missing coords / None gate / exception -> empty set (ceiling unchanged, fail-safe)"
+      "name": "evaluate_eligibility",
+      "file_line": "services/housing_sepp_eligibility.py:132",
+      "input": "zone code, lot area (m2), lot width (m), lat, lng, and optional pre-fetched gate_inputs",
+      "output": "a list of FormEligibility per development type, each with an eligible flag and a plain-language reason",
+      "if_none": "a non-residential zone or an unavailable standards table returns an empty list so the caller keeps base controls"
     },
     {
-      "name": "_ceiling_within_tier",
-      "file_line": "services/intelligence_brief.py:1034",
-      "input": "the zone code, the set of permitted engine forms, and an optional excluded_forms set",
-      "output": "the densest permitted form at or below the zone tier that is not in the excluded set",
-      "if_none": "when no permitted and non-excluded form exists it returns the conservative 'dwelling_house' default"
+      "name": "_gate_inputs",
+      "file_line": "services/housing_sepp_eligibility.py:97",
+      "input": "the subject lot latitude and longitude (either may be None)",
+      "output": "a dict of the three authoritative gate booleans in_lmr_area, in_tod and dual_occ_prohibited",
+      "if_none": "missing coordinates or any failed ArcGIS query yields all-False so no form is ever falsely made eligible"
     },
     {
-      "name": "_realistic_forms",
-      "file_line": "services/intelligence_brief.py:1058",
-      "input": "the zone code, the LGA name, and an optional set of excluded_forms to drop",
-      "output": "a tuple of (as_of_right_form, ceiling_form) where the ceiling respects the supplied exclusions",
-      "if_none": "with no LGA coverage or any error it returns the conservative ('dwelling_house','dwelling_house') pair"
+      "name": "fetch_tod_catchment",
+      "file_line": "services/portal_constraints.py:336",
+      "input": "the subject lot latitude and longitude as floats",
+      "output": "a dict with in_tod plus the source EPI and LGA names, or None when both layer queries error",
+      "if_none": "when both 752 and 759 queries fail it returns None so the caller treats the catchment as unknown"
     }
   ],
-  "values": "N/A - no regulatory values hardcoded. The prohibition is read live from ePlanning layer 452; the excluded form name ('dual_occupancy') is an engine dev_type identifier, not a planning value.",
-  "queries": "N/A - no SQL added. The only new external call is the existing live ArcGIS point query (layer 452) via fetch_dual_occ_prohibition, read-only, already timeout-bounded and fail-open.",
+  "values": "N/A - no regulatory values are hardcoded. All thresholds (min lot size/width, applicable zones, requires_lmr_area) are read live from housing_sepp_standards; the catchment and exclusion answers come live from the published ePlanning layers.",
+  "queries": "One read-only query: SELECT development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area FROM housing_sepp_standards (no WHERE needed — the whole small reference table is grouped in Python), via a statement-timeout-bounded psycopg2 connection.",
   "break_it": [
     {
-      "scenario": "An R2 lot inside a dual-occupancy prohibition area (ePlanning 452 returns prohibited)",
-      "what_happens": "Before, the ceiling was dual_occupancy (2 dwellings) the lot cannot achieve",
-      "repro": "pytest tests/test_eligibility_gates.py::test_dual_occ_prohibited_excludes_the_form  (and ::test_r2_dual_occ_excluded_falls_to_dwelling_house)",
+      "scenario": "A lot that is genuinely not in a Low and Mid-Rise area but the caller (old frontend) assumed it was",
+      "what_happens": "The frontend default-true made LMR forms falsely eligible there",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_lmr_form_ineligible_when_not_in_lmr_area",
       "mitigated": true,
-      "how": "_eligibility_excluded_forms adds 'dual_occupancy'; _ceiling_within_tier skips it -> ceiling drops to dwelling_house"
+      "how": "_gate_inputs derives in_lmr_area from the live 776 exclusion and defaults it False when unknown; requires_lmr_area forms are then ineligible"
     },
     {
-      "scenario": "The 452 query fails (ArcGIS down/timeout) or returns None",
-      "what_happens": "A naive gate could over-restrict (drop forms) or crash the brief",
-      "repro": "pytest tests/test_eligibility_gates.py::test_gate_query_raises_is_failsafe ::test_gate_query_returns_none_is_failsafe",
+      "scenario": "An R3 lot with residential flats that is outside any Transport Oriented Development catchment",
+      "what_happens": "A mock-station Haversine check could wrongly qualify it for a mid-rise flat building",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_rfb_r3r4_requires_tod_catchment",
       "mitigated": true,
-      "how": "try/except returns an empty set -> ceiling unchanged; the brief never blocks on the gate"
+      "how": "residential_flat_r3r4 forms require in_tod from the published 752/759 polygons; outside the catchment they are marked ineligible"
     },
     {
-      "scenario": "A lot where dual occupancy is permitted (452 not in prohibition area)",
-      "what_happens": "Over-tightening would wrongly drop a legitimate dual-occ ceiling",
-      "repro": "pytest tests/test_eligibility_gates.py::test_dual_occ_not_prohibited_excludes_nothing ; live 17 Corden Ave -> ceiling stays 2 dual_occupancy",
+      "scenario": "Any of the live gate queries (776, 452, 752, 759) times out or errors during evaluation",
+      "what_happens": "A naive engine could crash the brief or over-restrict/over-permit the affected forms",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_failsafe_on_query_errors",
       "mitigated": true,
-      "how": "prohibited=False -> empty exclusion set; verified live the Five Dock ceiling stays dual_occupancy"
+      "how": "every gate query is wrapped in try/except returning the conservative False, and a missing standards table returns an empty list"
     },
     {
-      "scenario": "Excluding a form that is not the ceiling form (e.g. dual_occ excluded on an R3 lot whose ceiling is multi_dwelling)",
-      "what_happens": "An over-broad exclusion could wrongly lower an unrelated ceiling",
-      "repro": "pytest tests/test_eligibility_gates.py::test_excluding_a_form_not_at_the_ceiling_is_a_noop",
+      "scenario": "A lot whose width or area is unknown because lot geometry could not be resolved upstream",
+      "what_happens": "Comparing an unknown dimension to a minimum could pass by accident or raise",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_unconfirmed_lot_is_conservatively_ineligible",
       "mitigated": true,
-      "how": "the ladder walk only skips the excluded form; the R3 multi_dwelling ceiling is unchanged"
-    },
-    {
-      "scenario": "The subject lot has missing coordinates because geocoding failed upstream in the brief",
-      "what_happens": "Calling the live ArcGIS gate with a None latitude or longitude could raise an error",
-      "repro": "pytest tests/test_eligibility_gates.py::test_missing_coordinates_skip_the_gate",
-      "mitigated": true,
-      "how": "_eligibility_excluded_forms returns an empty set when lat or lng is None"
+      "how": "an unconfirmed (None) area or width against a real minimum is treated as ineligible with an 'unconfirmed' reason, never as a pass"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a brief for a lot inside a dual-occupancy prohibition area and confirm the ceiling no longer shows dual_occupancy. P2 will add the station/catchment correctness and wire the 776 low/mid-rise exclusion against the LMR uplift; P3 unifies the fetch paths and the frontend onto this backend gate."
+    "manual_verify": "This module is not yet wired. Next PR (P2 part 2) derives the capacity brief ceiling from the densest ELIGIBLE form here (subsuming P1's _eligibility_excluded_forms); P3 migrates the LEP/SEPP tab to call it via a backend endpoint so the two surfaces stop disagreeing. Verified live the gates resolve correctly (Ashfield in-TOD -> R3 flats eligible; Five Dock not-TOD -> R3 flats absent)."
   }
 }

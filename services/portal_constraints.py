@@ -32,6 +32,10 @@ EPLANNING_LAYERS = {
     "complyingExclusion":     {"service": "Planning_Portal_SEPP",              "id": 92},
     "exemptExclusion":        {"service": "Planning_Portal_SEPP",              "id": 93},
     "dualOccProhibition":     {"service": "Planning_Portal_Local_Provisions",  "id": 452},
+    # Transport Oriented Development catchments (published government polygons —
+    # authoritative point-in-polygon, no walking-distance computation needed).
+    "todSites":               {"service": "Planning_Portal_SEPP",              "id": 752},
+    "todAccelerated":         {"service": "Planning_Portal_SEPP",              "id": 759},
 }
 
 
@@ -327,6 +331,36 @@ def fetch_sepp_exclusions(lat: float, lng: float) -> Optional[dict]:
     if all(v is None for v in result.values()):
         return None
     return result
+
+
+def fetch_tod_catchment(lat: float, lng: float) -> Optional[dict]:
+    """Transport Oriented Development catchment — published government polygons.
+
+    Point-in-polygon against the TOD Sites (752) and Accelerated TOD Precincts (759)
+    maps — authoritative, lot-specific, no walking-distance computation. A lot inside
+    either is in a mid-rise (residential flat) catchment.
+
+    Returns {"in_tod": bool, "epi_name": str|None, "lga_name": str|None} or None on
+    total failure (both layer queries errored).
+    """
+    in_tod = False
+    epi_name = None
+    lga_name = None
+    any_ok = False
+    for key in ("todSites", "todAccelerated"):
+        try:
+            features = _query_eplanning_point(key, lng, lat, out_fields="EPI_NAME,LGA_NAME")
+            any_ok = True
+            if features:
+                in_tod = True
+                attrs = features[0]
+                epi_name = epi_name or attrs.get("EPI_NAME")
+                lga_name = lga_name or attrs.get("LGA_NAME")
+        except Exception:
+            logger.warning("TOD catchment layer %s query failed", key)
+    if not any_ok:
+        return None
+    return {"in_tod": in_tod, "epi_name": epi_name, "lga_name": lga_name}
 
 
 def fetch_dual_occ_prohibition(lat: float, lng: float) -> Optional[dict]:
