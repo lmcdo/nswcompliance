@@ -1,63 +1,72 @@
 {
   "tier": "standard",
-  "commit_hash": "510f1864",
-  "justification": "Frontend display-only change to the Intelligence Brief page: (1) the live progress bar froze at the last section's percent next to a 'Complete' badge when the streaming 'complete' event was dropped — now forced to 100% on the complete state; (2) raw internal NOT_AVAILABLE reason strings (e.g. 'Layer not ingested for this LGA') and a red 'Not Available' badge were rendered to users — now translated to five honest plain-language states with calm tones. No data, query, or regulatory logic changes.",
+  "commit_hash": "1a7d7c0d",
+  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/portal_constraints.py",
+    "services/intelligence_brief.py",
+    "tests/test_overlay_live_fallback.py"
   ],
   "pre_impl": {
-    "existing_data": "page.tsx renders DataField-wrapped sections; NOT_AVAILABLE fields printed reason verbatim with a red badge (SectionCard/SectionData). LiveStatusPanel shows server-sent streaming progress, forced to 100 only when a 'complete' event arrives; a dropped complete event left the bar at the last section value while the badge read Complete.",
-    "assumption_mismatch": "The UI assumed the streaming 'complete' event always arrives, and assumed internal reason strings are user-readable. Live run (25 Empire St) showed a dropped complete event (no Confidence Summary/Gaps cards rendered) freezing the bar at 81%, and showed raw 'Layer not ingested for this LGA' text.",
-    "new_vs_existing": "No new component or fetch. One pure helper describeUnavailable maps reason strings to a five-state {label,tone}; three style maps drive tone. The progress prop gains a 'complete -> 100' branch. Existing confidenceBadge is unchanged for the positive confidence levels.",
-    "external_source_error": "No external calls added. If a reason string is unrecognised, describeUnavailable falls back to a neutral 'Not included in this report' rather than throwing or leaking the raw string.",
-    "frontend_type": "Frontend only (TypeScript/React). reason is typed string|null and is normalised with (reason ?? '') before matching, so a null/undefined reason is handled. Tone is a closed union keyed into Record maps, so every tone resolves to a class string.",
-    "user_failure_mode": "Before: a finished report looked half-failed (Complete + frozen 81%) and showed internal pipeline jargon in red. After: the bar reads 100% on completion and empty fields read as honest plain states (None found / Available on request / Not assessed / Could not identify / Temporarily unavailable), most of which are neutral or good news."
+    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
+    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
+    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
+    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
+    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
+    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
   },
   "functions": [
     {
-      "name": "describeUnavailable",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:101",
-      "input": "an optional internal NOT_AVAILABLE reason string emitted by the backend brief for a data field",
-      "output": "an object with a plain-language user-facing label and one of five honest tone categories for styling",
-      "if_none": "a null, empty, or unrecognised reason returns a neutral 'Not included in this report' label so nothing internal ever leaks"
+      "name": "fetch_protection_overlay",
+      "file_line": "services/portal_constraints.py:233",
+      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
+      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
+      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
+    },
+    {
+      "name": "_overlay_field",
+      "file_line": "services/intelligence_brief.py:1976",
+      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
+      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
+      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
     }
   ],
-  "values": "N/A - no regulatory values. The mapping turns internal status strings into plain-language UI copy; no planning numbers are involved.",
-  "queries": "N/A - this is a frontend render change; it adds no database or API query and reads only the already-streamed brief field data.",
+  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
+  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
   "break_it": [
     {
-      "scenario": "The streaming complete event is dropped so the bar would otherwise freeze below 100 next to a Complete badge",
-      "what_happens": "the user sees a finished report that looks half-loaded and failed, exactly the reported 81%-with-Complete case",
-      "repro": "force the stream-ended fallback path (no complete event); the progress prop now resolves to 100 when state is complete",
+      "scenario": "The live Protection query times out or errors while assembling the brief",
+      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
       "mitigated": true,
-      "how": "progress is set to 100 whenever state is complete, independent of whether the complete event arrived, so the bar always matches the badge"
+      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
     },
     {
-      "scenario": "A backend reason string is unrecognised by the mapping or is null for an empty field",
-      "what_happens": "a naive map could render undefined, crash on a missing key, or leak the raw internal string to the user",
-      "repro": "call describeUnavailable(null) and describeUnavailable('some new backend string') — both return a defined neutral fallback",
+      "scenario": "The property has no resolved coordinates so a live query is impossible",
+      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
       "mitigated": true,
-      "how": "reason is coerced with (reason ?? '') and the function returns a neutral default; tone indexes a Record covering all five union members"
+      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
     },
     {
-      "scenario": "A reason that means good news ('No coastal hazard overlays at this location') must not be shown as an alarming error",
-      "what_happens": "rendering it as a red 'Not Available' badge misreads a clean result as a failure for the owner",
-      "repro": "describeUnavailable('No coastal hazard overlays at this location') returns tone 'clear' with green styling and 'None found at this property'",
+      "scenario": "Our database already covers the layer for this LGA",
+      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
       "mitigated": true,
-      "how": "reasons starting 'no ' or containing 'none found'/'at this location' map to the clear tone (emerald), never red"
+      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
     },
     {
-      "scenario": "An ambiguous 'failed or not requested' reason must not be shown as a hard error",
-      "what_happens": "labelling an optional-not-requested add-on as 'failed' would alarm the user about a non-problem",
-      "repro": "describeUnavailable('Bushfire pre-screen failed or not requested') returns the neutral 'Not included in this report'",
+      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
+      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
       "mitigated": true,
-      "how": "when a reason contains both 'fail' and 'not requested' the mapping stays neutral rather than asserting an error it cannot confirm"
+      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "After deploy, run a brief that drops the complete event (or any complete brief) — the bar should read 100% with the Complete badge, no frozen percentage. Confirm empty environmental rows (riparian/wetlands) read as a calm plain state, not red 'Not Available' with internal text. The deeper streaming-reliability fix (recover the dropped complete event so the Confidence Summary/Gaps cards still render) and the live lot-level overlay check (#2) are tracked follow-ups, not in this change."
+    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
   }
 }
