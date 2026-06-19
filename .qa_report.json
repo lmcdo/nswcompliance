@@ -1,85 +1,95 @@
 {
   "tier": "critical",
-  "justification": "detect_former_council gates which LGAs get DCP setbacks/site-coverage in the brief. A hand-maintained EPI->slug allow-list had gone stale: 14 onboarded LGAs (Canada Bay, Bayside, Burwood, Camden, Cumberland, Fairfield, Georges River, Parramatta, Randwick, Ryde, Strathfield, Sutherland Shire, The Hills, City of Sydney) had complete current rows in dcp_setback_controls but no map entry, so the function returned None and the brief silently served NO DCP setbacks for them. Found live on 17 Corden Ave, Five Dock (Canada Bay). This is a data-completeness defect affecting ~14/29 onboarded LGAs (>2% rule => Priority 1).",
+  "justification": "Restructures GATE-1pt2's dwelling-form selection, which drives the capacity engine's dwelling yield. The old logic picked densest(permitted) as a single dev_type and over-reported (shop_top_housing is permitted-with-consent in low-density R2); its LGA join was also dead (all R3/R4 fell to dwelling_house). This replaces it with a RANGE: an as-of-right floor + a permitted ceiling bounded by the zone tier, so the engine lifts R3/R4 correctly yet structurally cannot over-report R2. Engine remains unexposed (#513 unmerged).",
   "files": [
-    "scripts/generate_conveyancing_report.py",
-    "tests/test_former_council_coverage.py"
+    "services/intelligence_brief.py",
+    "services/constraint_arithmetic.py",
+    "services/constraint_models.py",
+    "tests/test_permitted_dev_type.py",
+    "tests/test_capacity_range.py"
   ],
-  "commit_hash": "ae1a62d5",
+  "commit_hash": "213d9a58",
   "pre_impl": {
-    "existing_data": "dcp_setback_controls holds per-LGA setback/site-coverage rows keyed by an lga slug. Verified read-only 2026-06-19: 29 distinct lga slugs, 28 address-resolvable (nsw_statewide is a fallback). All 14 previously-unmapped LGAs have is_current rows with needs_review=0 and control/dev-type coverage at parity with the LGAs already mapped (canada_bay 40 rows, parramatta 51, georges_river 41).",
-    "assumption_mismatch": "ZONE_EPI_TO_LGA_SLUG was assumed to be the onboarding source of truth, but it was a stale hand-maintained list of 11 EPI strings; the data table had moved ahead of it. The Parramatta/Cumberland 'rows not yet complete' comment was demonstrably outdated (51 and 25 current rows, 0 needs_review).",
-    "new_vs_existing": "No new data and no schema change. detect_former_council now, on a map miss, derives the slug from the EPI name (_slug_from_epi) and accepts it only if it is in DCP_ONBOARDED_SLUGS (a verified completeness gate). The explicit map is kept for special cases (Inner West suburb disambiguation, City of Sydney). Signature unchanged, so all 6 callers are unaffected.",
-    "external_source_error": "The EPI name comes from the NSW Planning Portal (zone_epi). If the portal returns an unexpected instrument name, _slug_from_epi either returns None (no instrument phrase) or a slug that is not in DCP_ONBOARDED_SLUGS -> detect_former_council returns None, i.e. the pre-fix behaviour (no DCP setbacks). It can never resolve to the wrong LGA's data because the derived slug is validated against the onboarded set and then cross-checked against the parcel's PostGIS LGA boundary by _validate_former_council_postgis.",
-    "frontend_type": "N/A - backend only. The brief's dcp_former_council stays Optional[str]; it is now populated for more LGAs but its type and the downstream DCPControls schema are unchanged. Capacity card remains unexposed (#513).",
-    "user_failure_mode": "Before: a Canada Bay (and 13 other LGAs) brief showed 'former council could not be determined' and no setbacks/site-coverage - silent under-service of onboarded data. After: those LGAs resolve and their real DCP controls appear. The fix can only ADD correct DCP data or leave it absent (fail-safe); it cannot serve another LGA's setbacks."
+    "existing_data": "lep_land_use_table (zone, lga, development_type, permissibility) holds 17,353 rows across 25 LGAs; permissibility in {permitted, prohibited, exempt}. ConstraintArithmeticResult already carried dev_type + realistic_dwellings. Verified read-only 2026-06-19 via the post-gate live sweep.",
+    "assumption_mismatch": "GATE-1pt2 (#518) assumed densest(permitted) = realistic form and that _council_from_zone_epi's name matched lep_land_use_table.lga. Both were wrong: permitted-with-consent includes outlier dense forms (shop_top in R2), and the council name carries suffixes/None ('Canada Bay Council', None for Sutherland) that exact ILIKE never matched, so the join was dead and masked the over-report behind a dwelling_house under-report.",
+    "new_vs_existing": "No new data, no schema migration. New pure helpers select the form: zone tier (_ZONE_TIER_CEILING, structural R1-R5 metadata) caps the form, the LGA permitted set (matched via _norm_lga) filters it. compute_constraint_arithmetic gains an optional ceiling_dev_type and emits a range (as_of_right_* + max_permitted_*) off the same envelope. realistic_dwellings is unchanged (stays the conservative floor).",
+    "external_source_error": "The zone + EPI come from the NSW Planning Portal. _permitted_engine_forms returns an empty set on missing inputs, no LGA coverage, or any DB error, and _realistic_forms then returns ('dwelling_house','dwelling_house') - the conservative baseline. It can never select a form denser than the zone tier, so a surprising permitted-use value cannot produce an over-report.",
+    "frontend_type": "Backend only. Four new Optional fields on ConstraintArithmeticResult (as_of_right_form/dwellings, max_permitted_form/dwellings); existing fields keep their types. The capacity card (#513) is unexposed and is the next increment that renders the range.",
+    "user_failure_mode": "Before: R3/R4 lots silently under-reported as 1 dwelling (dead join) and, had the join worked, R2 lots would have over-reported as shop_top/multi-unit. After: R3 lifts to its medium-density ceiling, R2 is capped at dual-occ, and the headline realistic_dwellings stays conservative. The ceiling is the upside SUBJECT TO a DA, never presented as achievable without one."
   },
   "functions": [
     {
-      "name": "_slug_from_epi",
-      "file_line": "scripts/generate_conveyancing_report.py:459",
-      "input": "zone_epi string from the planning portal, e.g. 'Canada Bay Local Environmental Plan 2013'",
-      "output": "slugified council name ('canada_bay'), or None if no 'LOCAL ENVIRONMENTAL PLAN'/'LEP' phrase is present",
-      "if_none": "no instrument phrase -> returns None so a bare string cannot resolve to an LGA"
+      "name": "_ceiling_within_tier",
+      "file_line": "services/intelligence_brief.py:1034",
+      "input": "zone code and the set of permitted engine forms for that zone+LGA",
+      "output": "the densest permitted form at or below the zone-tier ceiling",
+      "if_none": "no permitted form at/below the tier -> 'dwelling_house' (an outlier denser-than-tier permitted use is never selected)"
     },
     {
-      "name": "detect_former_council",
-      "file_line": "scripts/generate_conveyancing_report.py:483",
-      "input": "address and zone_epi (EPI name) from the portal",
-      "output": "an onboarded LGA slug for dcp_setback_controls, or None when the LGA is not onboarded",
-      "if_none": "map miss AND derived slug not in DCP_ONBOARDED_SLUGS -> None (caller serves no DCP setbacks, same as before the fix)"
+      "name": "_realistic_forms",
+      "file_line": "services/intelligence_brief.py:1052",
+      "input": "zone code and LGA name (any naming variant)",
+      "output": "(as_of_right_form, ceiling_form) for the capacity range",
+      "if_none": "missing inputs / no LGA coverage / DB error -> ('dwelling_house','dwelling_house')"
+    },
+    {
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py:239",
+      "input": "lot area, dev_type (floor), optional ceiling_dev_type, LEP height/FSR, lot dims, DCP, SEPP",
+      "output": "result with realistic_dwellings (floor, unchanged) plus as_of_right_* and max_permitted_* off the same envelope",
+      "if_none": "ceiling_dev_type None -> max_permitted_* stay None; as_of_right_* still set from dev_type"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. DCP_ONBOARDED_SLUGS is a curated list of LGA identifiers (not planning values); each was verified to have complete current rows in dcp_setback_controls on 2026-06-19. The actual setback numbers are fetched from the DB at request time, unchanged by this PR.",
-  "queries": "N/A - this function performs no database queries; it returns a slug that downstream code (fetch_dcp_setbacks) uses in its existing WHERE lga = %s AND is_current query.",
+  "values": "N/A - no regulatory values hardcoded. _ZONE_TIER_CEILING maps a zone to its densest realistic FORM (Standard-Instrument R1-R5 density character, universal NSW, never amended per-LGA) and only ever caps the form downward; it is not an LEP control value. Actual GFA/FSR/height come from the portal and the envelope maths, unchanged.",
+  "queries": "N/A - the only query is SELECT lga, development_type FROM lep_land_use_table WHERE zone = %s AND permissibility = 'permitted'; scoped by zone, parameterised, read-only, sub-second on 17k rows. LGA matched in Python via _norm_lga.",
   "break_it": [
     {
-      "scenario": "A Canada Bay address whose EPI is 'Canada Bay Local Environmental Plan 2013' (the live 17 Corden Ave case)",
-      "what_happens": "Old map had no Canada Bay entry, so detect_former_council returned None and the brief served no DCP setbacks or site-coverage despite 40 current rows existing",
-      "repro": "detect_former_council('17 Corden Ave, Five Dock NSW 2046', 'Canada Bay Local Environmental Plan 2013')",
+      "scenario": "A low-density R2 lot where shop_top_housing is permitted with consent (Penrith/Sydney, the live-sweep finding)",
+      "what_happens": "densest(permitted) would pick shop_top_housing and count the whole envelope as apartments - a gross over-report on a low-density lot",
+      "repro": "_ceiling_within_tier('R2', {'shop_top_housing','dual_occupancy','dwelling_house'})",
       "mitigated": true,
-      "how": "_slug_from_epi derives 'canada_bay', which is in DCP_ONBOARDED_SLUGS; test_canada_bay_real_string_is_the_17_corden_case asserts it returns 'canada_bay'"
+      "how": "the R2 tier caps at dual_occupancy; walking the ladder from the tier down skips shop_top -> returns dual_occupancy. test_ceiling_within_tier + live 17 Corden Ave = max_permitted 2 (dual_occupancy)"
     },
     {
-      "scenario": "An LGA that has a valid LEP name but no complete DCP data in the table (e.g. Wollongong)",
-      "what_happens": "Naive slugify-and-trust would enable an LGA whose setbacks are not extracted, leaking empty or partial controls into the brief",
-      "repro": "detect_former_council('1 Crown St, Wollongong NSW', 'Wollongong Local Environmental Plan 2009')",
+      "scenario": "An R3 lot where residential_flat_building happens to be permitted",
+      "what_happens": "an RFB (apartment) yield would be reported on a medium-density street, over-reporting the realistic townhouse yield",
+      "repro": "_ceiling_within_tier('R3', {'residential_flat_building','multi_dwelling_housing','dwelling_house'})",
       "mitigated": true,
-      "how": "the derived 'wollongong' is not in DCP_ONBOARDED_SLUGS so the function returns None; test_unonboarded_lga_still_returns_none pins this completeness gate"
+      "how": "R3 tier caps at multi_dwelling_housing; RFB is above the tier and skipped -> multi_dwelling_housing. test pins this"
     },
     {
-      "scenario": "The City of Sydney whose instrument is 'Sydney LEP' so the slug differs from the DCP slug",
-      "what_happens": "Generic derivation yields 'sydney' which does not equal the DCP slug 'city_of_sydney', so Sydney would silently get no setbacks",
-      "repro": "detect_former_council('1 George St, Sydney NSW', 'Sydney Local Environmental Plan 2012')",
+      "scenario": "Council name arrives suffixed or as None (Canada Bay Council, Strathfield Municipal Council, None for Sutherland)",
+      "what_happens": "exact ILIKE never matched the bare table lga, so the permitted set was empty and every lot silently fell to dwelling_house",
+      "repro": "_realistic_forms('R4', 'Inner West Council') with RFB permitted",
       "mitigated": true,
-      "how": "an explicit ZONE_EPI_TO_LGA_SLUG entry maps 'SYDNEY LOCAL ENVIRONMENTAL PLAN' -> 'city_of_sydney'; test_city_of_sydney_special_case_maps_via_explicit_entry asserts it"
+      "how": "_norm_lga drops council-type words so the suffixed name matches; test_realistic_forms_r4_lifts_to_residential_flat asserts the lift, and the 25 table LGAs were verified to normalise to distinct keys"
     },
     {
-      "scenario": "A non-EPI string with no instrument phrase is passed as zone_epi",
-      "what_happens": "A bare council name like 'Canada Bay' could slugify to 'canada_bay' and falsely resolve an LGA without a real LEP context",
-      "repro": "detect_former_council('somewhere', 'Canada Bay')",
+      "scenario": "An LGA outside the 25-LGA table is requested",
+      "what_happens": "no permitted rows match -> a denser form could be wrongly assumed, or a crash on empty data",
+      "repro": "_realistic_forms('R4', 'Wollongong')",
       "mitigated": true,
-      "how": "_slug_from_epi requires a 'LOCAL ENVIRONMENTAL PLAN'/'LEP' phrase and returns None otherwise; test_non_lep_string_does_not_resolve covers '', 'Canada Bay'"
+      "how": "empty permitted set -> _ceiling_within_tier returns dwelling_house; floor and ceiling both dwelling_house (conservative). test_realistic_forms_unonboarded_lga_is_conservative"
     },
     {
-      "scenario": "An Inner West boundary suburb that must still disambiguate to its former council",
-      "what_happens": "Refactoring the resolution order could break the Inner West suburb to former-council path and mis-route Haberfield and similar suburbs",
-      "repro": "detect_former_council('12 Dalhousie St, Haberfield NSW 2045', 'Inner West Local Environmental Plan 2022')",
+      "scenario": "The lep_land_use_table query raises (DB down / timeout)",
+      "what_happens": "an unhandled error would break the whole brief, or a partial result could over-report",
+      "repro": "_realistic_forms('R4','Inner West') with _get_db_conn raising",
       "mitigated": true,
-      "how": "the explicit map still matches Inner West first and the suburb disambiguation block is unchanged; test_inner_west_still_disambiguates_by_suburb asserts 'ashfield'"
+      "how": "_permitted_engine_forms catches all exceptions and returns an empty set -> conservative dwelling_house. test_realistic_forms_failsafe_on_db_error"
     },
     {
-      "scenario": "The portal returns the abbreviated 'LEP' form rather than the full instrument phrase",
-      "what_happens": "If only the full 'LOCAL ENVIRONMENTAL PLAN' phrase were handled, abbreviated names would fail to resolve and lose DCP data",
-      "repro": "detect_former_council('1 Test St', 'Sutherland Shire LEP 2015')",
+      "scenario": "Existing consumers of realistic_dwellings get a surprise number after the restructure",
+      "what_happens": "if realistic_dwellings flipped to the ceiling, downstream/UI would suddenly show a non-conservative figure",
+      "repro": "compute_constraint_arithmetic(dev_type='dwelling_house', ceiling_dev_type='multi_dwelling_housing', ...)",
       "mitigated": true,
-      "how": "_slug_from_epi also cuts on ' LEP'; test_lep_abbreviation_form_also_resolves asserts 'sutherland_shire'"
+      "how": "realistic_dwellings still follows the primary dev_type (the floor) and stays 1; the upside lives in max_permitted_dwellings. test_range_floor_is_conservative_ceiling_is_the_upside + 295 related tests pass"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run a brief for an address in each newly-resolved LGA (start with 17 Corden Ave, Five Dock = Canada Bay) and confirm DCP setbacks/site-coverage now appear and the 'former council could not be determined' advisory is gone. When onboarding a future LGA's DCP data, add its slug to DCP_ONBOARDED_SLUGS (and an explicit ZONE_EPI_TO_LGA_SLUG entry only if its instrument name does not slugify to its DCP slug)."
+    "manual_verify": "Re-run a brief for an R3 lot (14 Stanley St, Concord = floor 1 / ceiling 3 multi_dwelling) and an R2 lot (17 Corden Ave, Five Dock = floor 1 / ceiling 2 dual_occupancy) and confirm the ceiling is capped at the zone tier (no shop_top/RFB on R2/R3) and realistic_dwellings stays conservative. Next increment: render the range on the capacity card (as-of-right -> subject-to-DA) before exposure; refinement #1 = Housing-SEPP/LMR as-of-right floor uplift + catchment."
   }
 }

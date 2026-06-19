@@ -942,43 +942,125 @@ _PERMITTED_FORM_DENSITY = (
 )
 
 
-def _densest_permitted_dev_type(permitted_forms: set[str]) -> str:
-    """Map the densest PERMITTED residential form to the engine dev_type.
+# Engine dev_type forms in density order (densest first), de-duplicated from the
+# mapping above. Used to rank forms against the zone-tier ceiling.
+_ENGINE_FORM_DENSITY: tuple[str, ...] = tuple(
+    dict.fromkeys(engine for _, engine in _PERMITTED_FORM_DENSITY)
+)
 
-    Fail-safe to ``dwelling_house`` when no recognised residential form is
-    permitted, so the engine never assumes a form the zone prohibits.
+# Realism ceiling per residential zone — the densest built form that reflects the
+# zone's *character*, independent of the LGA. This is Standard-Instrument structural
+# metadata (the R1–R5 density hierarchy), universal across NSW and never amended
+# per-LGA, so it is NOT hardcoded LEP regulatory data — it only ever CAPS the form
+# downward. The permitted list (per-LGA) then filters further. Together they stop an
+# outlier permitted-with-consent use (e.g. shop_top_housing in low-density R2) being
+# read as the realistic yield. LMR/Housing-SEPP uplift of these ceilings is a later
+# refinement; this is the conservative baseline.
+_ZONE_TIER_CEILING: dict[str, str] = {
+    "R1": "residential_flat_building",   # General Residential — full range
+    "R2": "dual_occupancy",              # Low Density — house / dual-occ
+    "R3": "multi_dwelling_housing",      # Medium Density — terraces / townhouses
+    "R4": "residential_flat_building",   # High Density — apartments
+    "R5": "dwelling_house",              # Large Lot — single dwellings
+}
+
+
+def _bare_lga_from_epi(zone_epi: Optional[str]) -> Optional[str]:
+    """LGA name from a Standard Instrument EPI title, without instrument phrase/year.
+
+    "Canada Bay Local Environmental Plan 2013" -> "Canada Bay". More reliable than
+    _council_from_zone_epi for the LEP-table join (that helper appends council
+    suffixes and returns None for some LGAs). Returns None if no instrument phrase.
     """
-    for table_form, engine_form in _PERMITTED_FORM_DENSITY:
-        if table_form in permitted_forms:
-            return engine_form
-    return "dwelling_house"
+    s = (zone_epi or "").upper()
+    cut = -1
+    for marker in ("LOCAL ENVIRONMENTAL PLAN", " LEP"):
+        idx = s.find(marker)
+        if idx > 0:
+            cut = idx
+            break
+    if cut < 0:
+        return None
+    name = (zone_epi or "")[:cut].strip()
+    return name or None
 
 
-def _fetch_permitted_dev_type(zone_code: Optional[str], lga_name: Optional[str]) -> str:
-    """Densest permitted residential form for this zone + LGA from the LEP Land
-    Use Table. Fail-safe to ``dwelling_house`` on missing inputs, no coverage
-    (the table holds 25 LGAs), or any error — never over-reports a form the zone
-    does not permit.
+def _norm_lga(name: Optional[str]) -> str:
+    """Normalise an LGA / council name for matching across naming conventions.
+
+    Drops council-type and connective words so "Council of the City of Sydney",
+    "Strathfield Municipal Council" and the bare table values "Sydney"/"Strathfield"
+    reduce to the same key. The 25 LEP-table LGAs reduce to distinct keys (verified
+    2026-06-19), so this cannot cross-match.
+    """
+    if not name:
+        return ""
+    s = name.lower().replace("-", " ")
+    drop = {"council", "city", "shire", "municipal", "municipality", "regional", "of", "the"}
+    tokens = [t for t in re.split(r"[^a-z0-9]+", s) if t and t not in drop]
+    return " ".join(tokens)
+
+
+def _permitted_engine_forms(zone_code: Optional[str], lga_name: Optional[str]) -> set[str]:
+    """Set of engine dev_type forms PERMITTED for this zone + LGA in the LEP Land
+    Use Table. Empty set on missing inputs / no coverage (25 LGAs) / any error —
+    the caller then fails safe to ``dwelling_house``. The LGA is matched via
+    _norm_lga so a council-name suffix mismatch no longer silently empties the set.
     """
     if not zone_code or not lga_name:
-        return "dwelling_house"
+        return set()
+    target = _norm_lga(lga_name)
+    if not target:
+        return set()
     conn = None
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
         cur.execute(
-            "SELECT development_type FROM lep_land_use_table "
-            "WHERE zone = %s AND lga ILIKE %s AND permissibility = 'permitted'",
-            (zone_code, lga_name),
+            "SELECT lga, development_type FROM lep_land_use_table "
+            "WHERE zone = %s AND permissibility = 'permitted'",
+            (zone_code,),
         )
-        permitted = {row[0] for row in cur.fetchall()}
-        return _densest_permitted_dev_type(permitted)
-    except Exception as e:  # fail-safe: any error -> conservative dwelling_house
-        logger.warning("permitted dev_type lookup failed (%s/%s): %s", zone_code, lga_name, e)
-        return "dwelling_house"
+        table_forms = {dt for (lga, dt) in cur.fetchall() if _norm_lga(lga) == target}
+        return {engine for (tbl, engine) in _PERMITTED_FORM_DENSITY if tbl in table_forms}
+    except Exception as e:  # fail-safe: any error -> empty -> caller defaults
+        logger.warning("permitted form lookup failed (%s/%s): %s", zone_code, lga_name, e)
+        return set()
     finally:
         if conn:
             conn.close()
+
+
+def _ceiling_within_tier(zone_code: Optional[str], permitted_engine_forms: set[str]) -> str:
+    """Densest permitted form AT OR BELOW the zone-tier ceiling.
+
+    Walks the density ladder from the zone's realism ceiling downward and returns the
+    first form that is permitted — so an outlier permitted use *denser* than the zone
+    tier (shop_top in R2) is never selected. Fail-safe to ``dwelling_house``.
+    """
+    tier_form = _ZONE_TIER_CEILING.get((zone_code or "").strip().upper(), "dwelling_house")
+    try:
+        start = _ENGINE_FORM_DENSITY.index(tier_form)
+    except ValueError:
+        start = _ENGINE_FORM_DENSITY.index("dwelling_house")
+    for form in _ENGINE_FORM_DENSITY[start:]:
+        if form in permitted_engine_forms:
+            return form
+    return "dwelling_house"
+
+
+def _realistic_forms(zone_code: Optional[str], lga_name: Optional[str]) -> tuple[str, str]:
+    """Return (as_of_right_form, ceiling_form) for the capacity range.
+
+    - as_of_right_form: the conservative, always-true baseline. ``dwelling_house``
+      for now; Housing-SEPP / LMR as-of-right uplift is a later refinement that
+      raises this floor.
+    - ceiling_form: the densest permitted form bounded by the zone tier (realism
+      ceiling) ∩ the LGA's permitted list (legality) — the realistic upside,
+      subject to a DA. Fail-safe to ``dwelling_house`` (no coverage / error).
+    """
+    ceiling = _ceiling_within_tier(zone_code, _permitted_engine_forms(zone_code, lga_name))
+    return "dwelling_house", ceiling
 
 
 # ---------------------------------------------------------------------------
@@ -2484,9 +2566,13 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             from services.constraint_arithmetic import compute_constraint_arithmetic
 
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            _floor_form, _ceiling_form = _realistic_forms(
+                controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name
+            )
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
-                dev_type=_fetch_permitted_dev_type(controls.get("zone"), council_name),
+                dev_type=_floor_form,
+                ceiling_dev_type=_ceiling_form,
                 lep_height_str=controls.get("height"),
                 lep_fsr_str=fsr_str,
                 lot_dimensions=lot_dims_for_ca,
@@ -3008,9 +3094,13 @@ def _generate_brief_sse(
                     from services.constraint_arithmetic import compute_constraint_arithmetic
 
                     lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+                    _floor_form, _ceiling_form = _realistic_forms(
+                        controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name
+                    )
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
-                        dev_type=_fetch_permitted_dev_type(controls.get("zone"), council_name),
+                        dev_type=_floor_form,
+                        ceiling_dev_type=_ceiling_form,
                         lep_height_str=controls.get("height"),
                         lep_fsr_str=controls.get("fsr"),
                         lot_dimensions=lot_dims_for_ca,
