@@ -325,8 +325,17 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         parent_strata = any(a.get("hasstratum") == 2 for a in attrs_list)
 
         if sp_lots:
-            plan = sp_lots[0].get("planlabel", "")
-            plan_type = "community" if str(plan).startswith("CP") else "strata"
+            top = sp_lots[0]
+            plan = top.get("planlabel") or ""
+            # classsubtype 4 = community-title lot (Community Land Development Act).
+            # Derive plan_type from classsubtype, not the planlabel prefix alone — a
+            # community lot can carry a DP-style label, and the CP-prefix-only rule
+            # mislabelled it "strata", burying a developable lot in the AMBIGUOUS band
+            # (capacity card hidden). classify_strata routes community -> DEVELOPMENT
+            # (ground-level subdivision), so this only un-hides genuine developable
+            # lots; classsubtype 3 (true strata) is unchanged and never promoted.
+            is_community = top.get("classsubtype") == 4 or str(plan).startswith("CP")
+            plan_type = "community" if is_community else "strata"
             return {
                 "is_strata": True,
                 "strata_plan": plan,
