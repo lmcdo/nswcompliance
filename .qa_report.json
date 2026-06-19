@@ -6,7 +6,7 @@
     "services/portal_constraints.py",
     "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "777d8314",
+  "commit_hash": "43c0752f",
   "pre_impl": {
     "existing_data": "housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area) holds the LMR/Housing-SEPP forms + thresholds. portal_constraints already had _query_eplanning_point + fetch_sepp_exclusions (776) + fetch_dual_occ_prohibition (452); this adds fetch_tod_catchment (752/759 published TOD polygons).",
     "assumption_mismatch": "The only prior implementation is the frontend route.ts, which trusted caller-supplied inLMRArea (defaulted true — silently over-eligible) and a mock Haversine station list. The backend engine computes both authoritatively (776 exclusion -> inLMRArea, conservatively false when unknown; 752/759 polygons -> TOD), so it cannot over-state eligibility on a transient gate failure.",
@@ -73,6 +73,13 @@
       "repro": "pytest tests/test_housing_sepp_eligibility.py::test_unconfirmed_lot_is_conservatively_ineligible",
       "mitigated": true,
       "how": "an unconfirmed (None) area or width against a real minimum is treated as ineligible with an 'unconfirmed' reason, never as a pass"
+    },
+    {
+      "scenario": "The housing_sepp_standards reference query fails because the database is unreachable or the statement times out",
+      "what_happens": "An unhandled error in _fetch_standards_grouped would raise and break whatever consumes the engine",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_standards_fetch_failure_returns_empty",
+      "mitigated": true,
+      "how": "evaluate_eligibility wraps the _fetch_standards_grouped call in try/except and returns an empty list, so the caller keeps the base planning controls"
     }
   ],
   "post_merge": {
