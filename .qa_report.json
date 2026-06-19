@@ -7,7 +7,7 @@
     ".jscpd.json",
     ".githooks/pre-push"
   ],
-  "commit_hash": "f8266a0a",
+  "commit_hash": "a5e4401b",
   "pre_impl": {
     "existing_data": "No data. Reads the PreToolUse hook stdin JSON (tool_name, tool_input.file_path, tool_input.content) and the git working tree via `git grep`.",
     "assumption_mismatch": "Could over-block (false positive) and stall legitimate work, or under-block (miss a real duplicate). Mitigated: blocks only NEW files in watched code dirs with a STRONG overlap signal, has an explicit ack escape hatch, and FAILS OPEN on any internal error so a hook bug never halts edits.",
@@ -17,7 +17,7 @@
     {
       "name": "tokens",
       "file_line": ".claude/hooks/prior-art-guard.py:71",
-      "input": "an identifier/filename string",
+      "input": "a single identifier, filename, or path-segment string to be tokenised",
       "output": "set of lowercased concern tokens (len>=4, stopwords dropped, camelCase split)",
       "if_none": "empty/blank string -> empty set -> the hook exits 0 (allow), never blocks on no signal"
     }
@@ -28,24 +28,28 @@
     {
       "scenario": "A new file is created whose concern genuinely duplicates existing code (e.g. services/planning_eligibility.py vs the frontend eligibility engine)",
       "what_happens": "Without the guard the model silently builds a parallel implementation (the exact failure this session)",
+      "repro": "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"services/planning_eligibility.py\",\"content\":\"def evaluate_eligibility(z): return True\"}}' | python .claude/hooks/prior-art-guard.py ; echo exit=$?  (expect 2)",
       "mitigated": true,
       "how": "git grep finds strong path/token overlap -> exit 2 with the candidate files listed; verified it blocks and surfaces nsw-planning-portal.ts / assess-eligibility.ts"
     },
     {
       "scenario": "A genuinely-new file is legitimately needed, or the model has reviewed the candidates and is extending none",
       "what_happens": "A hard block would deadlock (re-issuing the same Write re-blocks)",
+      "repro": "pipe the same Write JSON but with content containing a line 'prior-art-checked: backend SoT' into the hook; echo exit=$?  (expect 0)",
       "mitigated": true,
       "how": "escape hatch: a `prior-art-checked:` line in the content allows the write through (forced, auditable acknowledgment); verified exit 0 with the ack line"
     },
     {
       "scenario": "The hook errors internally (git missing, bad input, timeout) or a non-code/test/overwrite file is written",
       "what_happens": "A fail-closed guard would block all edits on its own bug (the node_modules/pre-impl class of outage)",
+      "repro": "pipe a Write JSON for file_path tests/test_x.py (or any non-watched path, or malformed JSON) into the hook; echo exit=$?  (expect 0)",
       "mitigated": true,
       "how": "every error path and non-watched/overwrite/test path calls sys.exit(0) (fail-open); verified novel + test files and overwrites pass"
     },
     {
       "scenario": "jscpd cannot run in pre-push (no network/npx cache), or the push touches no source code",
       "what_happens": "A naive gate would block the push on tooling failure or waste ~40s on docs-only pushes",
+      "repro": "push a branch that changes only docs/config and confirm step [6] prints 'No source code changed — skipping duplication ratchet' and does not block",
       "mitigated": true,
       "how": "the ratchet skips when no source code changed, and only blocks on the explicit 'too many duplicates' threshold message; any other non-zero jscpd exit warns and continues"
     }
