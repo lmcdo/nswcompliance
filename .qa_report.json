@@ -1,54 +1,63 @@
 {
   "tier": "standard",
-  "justification": "Render the now-streamed constraint_arithmetic (Development Capacity) section in the Intelligence Brief page via the existing ConstraintArithmeticCard, so the capacity headline restored to the live stream in #512 is actually visible to users. Frontend wiring only over a production-tested card.",
+  "justification": "Dev-tooling guardrails (a PreToolUse prior-art injector + a pre-push jscpd duplication ratchet). No product/runtime code, no DB, no user-facing output — but it gates the developer workflow (can block Write/push), so it is reviewed at standard tier for fail-safety.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
+    ".claude/hooks/prior-art-guard.py",
+    ".claude/settings.json",
+    ".jscpd.json",
+    ".githooks/pre-push"
   ],
-  "commit_hash": "b98ee2ac",
+  "commit_hash": "a5e4401b",
   "pre_impl": {
-    "existing_data": "The brief page already maps every received SSE section through SectionCard, so #512's constraint_arithmetic section was already rendering as an unlabelled key-value dump. ConstraintArithmeticCard already accepts a briefData prop (pre-computed result) and skips its own fetch, and its result type carries lot_area_m2 + dev_type.",
-    "assumption_mismatch": "Assumed a new card had to be built; it already exists (used in production via LepControls). Only the type needed exporting and the page needed to special-case the render.",
-    "new_vs_existing": "Reuse, not new build: export the existing ConstraintArithmeticResult interface, import the existing card, branch the page render to use it for the constraint_arithmetic section, and add a SECTION_LABELS entry plus the section to EXPECTED_SECTIONS_DEV."
+    "existing_data": "No data. Reads the PreToolUse hook stdin JSON (tool_name, tool_input.file_path, tool_input.content) and the git working tree via `git grep`.",
+    "assumption_mismatch": "Could over-block (false positive) and stall legitimate work, or under-block (miss a real duplicate). Mitigated: blocks only NEW files in watched code dirs with a STRONG overlap signal, has an explicit ack escape hatch, and FAILS OPEN on any internal error so a hook bug never halts edits.",
+    "new_vs_existing": "New PreToolUse(Write) hook registered alongside the existing pre-edit-guard; new pre-push step #6 added after the mutmut block. Reuses the existing hook conventions (Python script, stdin JSON, exit 2 = block). jscpd runs via npx (no node_modules coupling)."
   },
   "functions": [
     {
-      "name": "IntelligenceBriefPage section render",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:753",
-      "input": "the list of received SSE section events, each holding a section name and a DataField",
-      "output": "a ConstraintArithmeticCard for the capacity section, the generic SectionCard for every other section",
-      "if_none": "when the constraint_arithmetic DataField value is null the branch falls through to the generic SectionCard which shows a not-available note"
+      "name": "tokens",
+      "file_line": ".claude/hooks/prior-art-guard.py:71",
+      "input": "a single identifier, filename, or path-segment string to be tokenised",
+      "output": "set of lowercased concern tokens (len>=4, stopwords dropped, camelCase split)",
+      "if_none": "empty/blank string -> empty set -> the hook exits 0 (allow), never blocks on no signal"
     }
   ],
-  "values": "N/A - no regulatory values computed or hardcoded in the frontend; the card renders the values already computed by the backend constraint engine, which carries its own disclaimer field",
-  "queries": "N/A - no database queries; the page consumes the SSE stream and passes the pre-computed result straight into the card via briefData",
+  "values": "N/A - no regulatory or business values. Constants are the jscpd threshold (8%, baseline 6.77%) and the stopword/watched-dir lists; all dev-tooling tunables.",
+  "queries": "N/A - no database queries. The only external call is `git grep` (read-only) over tracked/untracked code files, with a 12s timeout and fail-open on error.",
   "break_it": [
     {
-      "scenario": "Constraint arithmetic was not computed (lot area missing) so the streamed value is null",
-      "what_happens": "Passing null briefData into the card could render an empty or broken capacity card",
-      "repro": "stream a development brief where constraint_arithmetic.value is null",
+      "scenario": "A new file is created whose concern genuinely duplicates existing code (e.g. services/planning_eligibility.py vs the frontend eligibility engine)",
+      "what_happens": "Without the guard the model silently builds a parallel implementation (the exact failure this session)",
+      "repro": "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"services/planning_eligibility.py\",\"content\":\"def evaluate_eligibility(z): return True\"}}' | python .claude/hooks/prior-art-guard.py ; echo exit=$?  (expect 2)",
       "mitigated": true,
-      "how": "the branch only renders the card when the value is truthy; otherwise it falls back to the generic SectionCard which displays the not-available reason"
+      "how": "git grep finds strong path/token overlap -> exit 2 with the candidate files listed; verified it blocks and surfaces nsw-planning-portal.ts / assess-eligibility.ts"
     },
     {
-      "scenario": "An apartment/strata brief is rendered",
-      "what_happens": "A development-capacity card on an apartment lot would be misleading",
-      "repro": "stream an is_apartment brief",
+      "scenario": "A genuinely-new file is legitimately needed, or the model has reviewed the candidates and is extending none",
+      "what_happens": "A hard block would deadlock (re-issuing the same Write re-blocks)",
+      "repro": "pipe the same Write JSON but with content containing a line 'prior-art-checked: backend SoT' into the hook; echo exit=$?  (expect 0)",
       "mitigated": true,
-      "how": "the streaming backend only emits constraint_arithmetic for non-apartment briefs, so no capacity section arrives and the card never renders for apartments"
+      "how": "escape hatch: a `prior-art-checked:` line in the content allows the write through (forced, auditable acknowledgment); verified exit 0 with the ack line"
     },
     {
-      "scenario": "The capacity label drifts into advisory or liability-laden wording",
-      "what_happens": "User-facing copy could imply advice, suitability, or a guarantee",
-      "repro": "edit the SECTION_LABELS constraint_arithmetic entry",
+      "scenario": "The hook errors internally (git missing, bad input, timeout) or a non-code/test/overwrite file is written",
+      "what_happens": "A fail-closed guard would block all edits on its own bug (the node_modules/pre-impl class of outage)",
+      "repro": "pipe a Write JSON for file_path tests/test_x.py (or any non-watched path, or malformed JSON) into the hook; echo exit=$?  (expect 0)",
       "mitigated": true,
-      "how": "label uses hedged factual wording ('Indicative yield and the binding planning constraint'); the card itself surfaces the backend disclaimer field; no banned pre-pr-review terms present"
+      "how": "every error path and non-watched/overwrite/test path calls sys.exit(0) (fail-open); verified novel + test files and overwrites pass"
+    },
+    {
+      "scenario": "jscpd cannot run in pre-push (no network/npx cache), or the push touches no source code",
+      "what_happens": "A naive gate would block the push on tooling failure or waste ~40s on docs-only pushes",
+      "repro": "push a branch that changes only docs/config and confirm step [6] prints 'No source code changed — skipping duplication ratchet' and does not block",
+      "mitigated": true,
+      "how": "the ratchet skips when no source code changed, and only blocks on the explicit 'too many duplicates' threshold message; any other non-zero jscpd exit warns and continues"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Load a development address (e.g. Penrith/Haberfield house) in /reports/intelligence-brief and confirm a 'Development Capacity' card renders with realistic GFA + binding constraint + disclaimer. Play A (population context) is the next follow-up; dual-path unification remains the documented root-cause refactor."
+    "manual_verify": "After merge, the prior-art guard runs on every new code-file Write (block + ack hatch); the jscpd ratchet runs on pushes that change source. Tighten the 8% threshold in .jscpd.json downward as the eligibility consolidation removes existing duplication."
   }
 }

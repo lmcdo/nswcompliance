@@ -1,0 +1,25 @@
+{
+  "path": [
+    "services",
+    "scripts",
+    "src",
+    "frontend-nextjs/app",
+    "frontend-nextjs/components",
+    "frontend-nextjs/lib"
+  ],
+  "minTokens": 50,
+  "gitignore": true,
+  "threshold": 8,
+  "reporters": ["console"],
+  "ignore": [
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/*.backup"
+  ]
+}
