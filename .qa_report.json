@@ -1,86 +1,63 @@
 {
   "tier": "critical",
-  "justification": "P2b wires the Housing-SEPP/LMR eligibility engine into the LIVE capacity ceiling, raising the upper 'subject to a DA' figure where the lot is genuinely eligible (townhouses on R2 statewide; apartments in a TOD catchment). This changes user-facing yield upward, so critical tier. Includes a 1-line engine correctness fix so R1/R2 mid-rise flats are catchment-gated like R3/R4 (they were not), preventing an apartment over-claim on every R2 lot.",
+  "justification": "Changes whether the capacity card is shown for community-title (classsubtype=4) lots — a user-facing output change in a liability-sensitive area, so critical tier. The change is narrow and conservative: it feeds the authoritative cadastre classsubtype community signal that classify_strata already routes to DEVELOPMENT; classsubtype=3 strata is unchanged, so no stacked apartment can be promoted to a development brief.",
   "files": [
-    "services/intelligence_brief.py",
-    "services/housing_sepp_eligibility.py",
-    "tests/test_housing_sepp_eligibility.py"
+    "scripts/generate_conveyancing_report.py",
+    "tests/test_cadastral_plan_type.py"
   ],
-  "commit_hash": "88f16d1a",
   "pre_impl": {
-    "existing_data": "The merged eligibility engine (evaluate_eligibility) returns per-form eligibility from authoritative gates (776 LMR area, 452 dual-occ, 752/759 TOD). The brief ceiling was the base zone-tier ∩ LEP-permitted form. lot width comes from planning_controls.lot_dimensions.frontage_m; heritage from _is_heritage_land(controls, heritage_postgis).",
-    "assumption_mismatch": "The ported frontend logic gated only residential_flat_r3r4 on the TOD catchment, treating R1/R2 residential flats as available anywhere in the (near-everywhere) 776 LMR area — which would surface an apartment ceiling on every R2 lot. Fixed: all residential_flat forms are mid-rise and require the catchment.",
-    "new_vs_existing": "No new file, no new query. _lmr_uplift_form delegates to the engine and maps the densest eligible form to an engine ceiling form; _realistic_forms takes the denser of the base ceiling and that uplift. Both brief assembly paths now pass lat/lng/lot-area/lot-width/heritage. The engine TOD gate changes residential_flat_r3r4 -> residential_flat (1 line).",
-    "external_source_error": "The uplift relies on the engine's live ePlanning layer queries (776/452/752/759) and a standards DB read. _lmr_uplift_form wraps the whole engine call in try/except and returns None on any error, and the engine itself fails each gate to its conservative value, so a gov-API or DB failure yields no uplift and the base zone-tier ceiling stands (never an over-claim).",
-    "frontend_type": "Backend only. The capacity ceiling fields (max_permitted_form / max_permitted_dwellings) keep their types; only their value rises when the lot is genuinely eligible. The capacity card already renders the ceiling as the subject-to-DA upper bound, so no frontend interface change is needed.",
-    "user_failure_mode": "Before: a TOD lot under-stated its apartment potential and an R2 lot under-stated its townhouse potential. After: the ceiling rises to the genuine LMR upside, framed subject-to-a-DA. If a gate fails, the user simply sees the base zone-tier ceiling (a conservative under-state), never a denser form than the lot is eligible for."
+    "existing_data": "get_cadastral_info already fetches classsubtype and hasstratum from the NSW cadastre; classify_strata already routes plan_type in (community, neighbourhood) to DEVELOPMENT, locked by test_strata_classify_lotcount.py::test_community_title_beats_lot_count. The brief switch (intelligence_brief.py) sends APARTMENT and AMBIGUOUS to a RenovationBrief with no capacity card.",
+    "assumption_mismatch": "The code assumed a community lot always carries a CP planlabel prefix. Live data (25 Empire St Haberfield: classsubtype=4, planlabel DP1252132) shows community-title lots can carry a DP-style prefix, so the prefix-only rule mislabelled them strata and the brief hid the capacity card.",
+    "new_vs_existing": "No new file, query, or table. One boolean derives plan_type from classsubtype==4 OR the existing CP prefix. classsubtype=3 behaviour is unchanged; only classsubtype=4 lots flip from strata to community, which downstream routing already handles.",
+    "external_source_error": "If the cadastre query raises or returns no features, get_cadastral_info returns its existing default non-strata dict; the new branch is reached only when sp_lots is non-empty, so a source failure cannot trigger a wrong community classification or a wrongly-shown card.",
+    "frontend_type": "Backend only. The cadastre dict shape is unchanged (same keys and types); only the plan_type string value changes for classsubtype=4 lots, which classify_strata already consumes. No frontend interface change.",
+    "user_failure_mode": "Before: a community-title developable lot was classed AMBIGUOUS and shown a RenovationBrief with no capacity card (a silent under-serve). After: it routes to DEVELOPMENT and shows the indicative, subject-to-a-DA capacity range like any house, while a genuine apartment (classsubtype=3) is unaffected and still gets the renovation brief."
   },
   "functions": [
     {
-      "name": "_lmr_uplift_form",
-      "file_line": "services/intelligence_brief.py:1097",
-      "input": "the zone code, lat, lng, lot area, lot width and a heritage flag for the subject lot",
-      "output": "the densest engine ceiling form the eligibility engine found eligible, or None when there is no uplift",
-      "if_none": "any engine error, or no eligible uplift form, returns None so the base zone-tier ceiling stands unchanged"
-    },
-    {
-      "name": "_realistic_forms",
-      "file_line": "services/intelligence_brief.py:1058",
-      "input": "the zone code, LGA name, optional excluded_forms set and the optional uplift_form from the engine",
-      "output": "a tuple of (as_of_right_form, ceiling_form) where the ceiling is the denser of the base form and the uplift",
-      "if_none": "with no permitted form and no uplift it returns the conservative ('dwelling_house','dwelling_house') pair"
-    },
-    {
-      "name": "evaluate_eligibility",
-      "file_line": "services/housing_sepp_eligibility.py:138",
-      "input": "zone, lot area and width, lat, lng, a heritage flag and optional pre-fetched gate inputs",
-      "output": "per-development-type eligibility with all residential-flat forms now gated on the TOD catchment",
-      "if_none": "a non-residential zone or an unavailable standards table returns an empty list, fail-safe to base controls"
+      "name": "get_cadastral_info",
+      "file_line": "scripts/generate_conveyancing_report.py:285",
+      "input": "the latitude and longitude of the subject property, used to query the NSW cadastre lot layer",
+      "output": "a cadastre dict whose plan_type now reflects the classsubtype community-title code, not just the planlabel prefix",
+      "if_none": "on a query exception or an empty feature list it returns the existing default non-strata dict unchanged, exactly as before"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The uplift form comes from the engine's live eligibility (thresholds read from housing_sepp_standards); the form-name mapping is engine-internal identifiers, not planning values.",
-  "queries": "N/A - this change adds no new database query; it delegates to the already-reviewed eligibility-engine query and reads live ePlanning layers via the existing fetchers.",
+  "values": "N/A - no regulatory values are hardcoded or changed. classsubtype=4 is the NSW cadastre community-title code and plan_type is an internal classification label, not a planning value.",
+  "queries": "N/A - this change adds no new database or API query; it only reinterprets the classsubtype field already returned by the existing NSW cadastre query inside get_cadastral_info.",
   "break_it": [
     {
-      "scenario": "An R2 lot that is in the (near-everywhere) 776 LMR area but NOT in a TOD catchment",
-      "what_happens": "Gating R1/R2 flats on LMR-area only would show an apartment ceiling on essentially every R2 lot",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_all_residential_flats_require_tod_catchment ; live Five Dock R2 -> ceiling multi_dwelling_housing (townhouses), not residential flat",
+      "scenario": "A genuine stacked strata apartment lot (classsubtype 3) must not be promoted to community or development by this change",
+      "what_happens": "if classsubtype 3 leaked into the community branch a real apartment would wrongly be shown a development capacity card",
+      "repro": "pytest tests/test_cadastral_plan_type.py::test_true_strata_classsubtype_3_stays_strata",
       "mitigated": true,
-      "how": "the engine now gates every residential_flat form on in_tod, so an R2 lot outside a catchment tops out at the low-rise LMR form (townhouses)"
+      "how": "the community branch triggers only when classsubtype equals 4 or the planlabel starts with CP, so classsubtype 3 stays strata and routes unchanged"
     },
     {
-      "scenario": "A heritage conservation-area lot that is otherwise LMR/TOD eligible",
-      "what_happens": "The ceiling could rise to townhouses or apartments on heritage land where the LMR reforms do not apply",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_heritage_suppresses_lmr_forms_but_not_base_forms ; live Haberfield heritage -> ceiling dual_occupancy",
+      "scenario": "A community-title lot carrying a DP-style planlabel was mislabelled strata and hidden in the AMBIGUOUS band",
+      "what_happens": "the developable lot was shown a renovation brief with an empty capacity card, a silent and confusing under-serve",
+      "repro": "pytest tests/test_cadastral_plan_type.py::test_community_classsubtype_with_dp_label_is_community and ::test_community_lot_routes_to_development_end_to_end",
       "mitigated": true,
-      "how": "the heritage flag (from _is_heritage_land) suppresses requires_lmr_area forms, so the uplift returns None and the base ceiling stands"
+      "how": "plan_type is now derived from the authoritative classsubtype community code, so the lot routes to DEVELOPMENT and the capacity card is shown"
     },
     {
-      "scenario": "The eligibility engine errors or times out while assembling the brief (ArcGIS or DB failure)",
-      "what_happens": "A naive uplift could crash the brief or invent a ceiling that is not actually eligible",
-      "repro": "_lmr_uplift_form wraps evaluate_eligibility in try/except (see services/intelligence_brief.py:1097); on error it returns None",
+      "scenario": "The cadastre query itself fails or returns no features for the supplied coordinate",
+      "what_happens": "a naive change could crash the function or emit a wrong default classification for the subject lot",
+      "repro": "code review of get_cadastral_info: the except branch and the empty attrs_list branch both return the unchanged default non-strata dict",
       "mitigated": true,
-      "how": "on any error _lmr_uplift_form returns None and _realistic_forms keeps the base zone-tier ceiling — fail-safe, never over-claims"
+      "how": "the new is_community boolean lives inside the existing if sp_lots branch, so an error or empty result never reaches it"
     },
     {
-      "scenario": "The uplift form is actually LESS dense than the base zone-tier ceiling for the lot",
-      "what_happens": "Naively replacing the base with the uplift could LOWER a legitimate ceiling",
-      "repro": "code review of _realistic_forms — it only swaps when the uplift's density index is lower (denser) than the base",
+      "scenario": "The downstream StrataHub lot-count query is unavailable so no unit count is present for the lot",
+      "what_happens": "classification could fall back to the weak area heuristic and route a genuine strata lot to the wrong state",
+      "repro": "pytest tests/test_cadastral_plan_type.py::test_genuine_strata_without_count_stays_out_of_development",
       "mitigated": true,
-      "how": "_realistic_forms takes the denser of the two by _ENGINE_FORM_DENSITY index, so the ceiling can only rise, never fall, from the uplift"
-    },
-    {
-      "scenario": "A small or narrow lot inside a TOD/LMR area that cannot meet any LMR form's lot standard",
-      "what_happens": "An uplift could appear on a lot too small to support any denser form",
-      "repro": "live small lot R2 (380 m²/9 m) -> uplift None, ceiling dual_occupancy",
-      "mitigated": true,
-      "how": "the engine's lot-size/width and data-gap gates mark every uplift form ineligible, so _lmr_uplift_form returns None"
+      "how": "the plan_type community signal is checked before the lot count, so a community lot still routes to DEVELOPMENT and a classsubtype 3 lot without a count stays AMBIGUOUS rather than being shown a card"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run live briefs across contexts (verified: Ashfield/R4 in-TOD -> residential flat; Five Dock R2 -> multi-dwelling townhouses; Haberfield heritage -> dual occ; small lot -> dual occ). P3 migrates the LEP/SEPP tab onto the same engine and retires the mock station lists + dead servers. The manor_house and (now-fixed) R1/R2-flat data assumptions should be reconciled in housing_sepp_standards separately."
+    "manual_verify": "Run a live brief on 25 Empire St Haberfield — it should now return a development brief with the indicative capacity range rather than a renovation brief. Confirm a known apartment address (classsubtype 3, e.g. 10 Orpington St Ashfield) still returns the renovation brief with no capacity card. The 20m cadastre buffer taint and the StrataHub coverage gap remain open follow-ups (see ce-bug4-strata-capacity-salvage-2026-06.md)."
   }
 }
