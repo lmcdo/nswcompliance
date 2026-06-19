@@ -1,69 +1,86 @@
 {
-  "tier": "standard",
-  "justification": "Two correctness gates added to the (still-unwired) Housing-SEPP eligibility engine, found by a pre-wiring live sweep: heritage land was not excluded from the LMR reforms, and manor_house (a dataset gap with no min lot size) passed every lot gate. Both would have caused over-reports once the engine is wired into the live capacity ceiling. No live impact yet (engine unwired); standard tier with full unit coverage.",
+  "tier": "critical",
+  "justification": "P2b wires the Housing-SEPP/LMR eligibility engine into the LIVE capacity ceiling, raising the upper 'subject to a DA' figure where the lot is genuinely eligible (townhouses on R2 statewide; apartments in a TOD catchment). This changes user-facing yield upward, so critical tier. Includes a 1-line engine correctness fix so R1/R2 mid-rise flats are catchment-gated like R3/R4 (they were not), preventing an apartment over-claim on every R2 lot.",
   "files": [
+    "services/intelligence_brief.py",
     "services/housing_sepp_eligibility.py",
     "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "88f16d1a",
   "pre_impl": {
-    "existing_data": "housing_sepp_standards rows per development_type. The manor_house row has max_fsr/max_height/deep-soil/landscaping but NO min_lot_size and requires_lmr_area=False (confirmed by direct query) — a genuine dataset gap, since manor houses do have a minimum lot in the SEPP.",
-    "assumption_mismatch": "The engine assumed a form with no min_lot_size simply has no lot gate (true for TOD-gated R3/R4 flats) — but for manor_house that is a missing standard, not the absence of one, so it passed on any lot. Separately, the engine assumed the 776 exclusion map captures all LMR exclusions, but it does not catch heritage items/HCAs.",
-    "new_vs_existing": "No new file, no new data. evaluate_eligibility gains a heritage flag (suppresses requires_lmr_area forms on heritage land) and a conservative data-gap guard (a non-base, non-TOD-gated form with min_lot_size missing is ineligible). Verified by re-running the live sweep: manor_house no longer eligible anywhere; Haberfield heritage shows only base forms."
+    "existing_data": "The merged eligibility engine (evaluate_eligibility) returns per-form eligibility from authoritative gates (776 LMR area, 452 dual-occ, 752/759 TOD). The brief ceiling was the base zone-tier ∩ LEP-permitted form. lot width comes from planning_controls.lot_dimensions.frontage_m; heritage from _is_heritage_land(controls, heritage_postgis).",
+    "assumption_mismatch": "The ported frontend logic gated only residential_flat_r3r4 on the TOD catchment, treating R1/R2 residential flats as available anywhere in the (near-everywhere) 776 LMR area — which would surface an apartment ceiling on every R2 lot. Fixed: all residential_flat forms are mid-rise and require the catchment.",
+    "new_vs_existing": "No new file, no new query. _lmr_uplift_form delegates to the engine and maps the densest eligible form to an engine ceiling form; _realistic_forms takes the denser of the base ceiling and that uplift. Both brief assembly paths now pass lat/lng/lot-area/lot-width/heritage. The engine TOD gate changes residential_flat_r3r4 -> residential_flat (1 line).",
+    "external_source_error": "The uplift relies on the engine's live ePlanning layer queries (776/452/752/759) and a standards DB read. _lmr_uplift_form wraps the whole engine call in try/except and returns None on any error, and the engine itself fails each gate to its conservative value, so a gov-API or DB failure yields no uplift and the base zone-tier ceiling stands (never an over-claim).",
+    "frontend_type": "Backend only. The capacity ceiling fields (max_permitted_form / max_permitted_dwellings) keep their types; only their value rises when the lot is genuinely eligible. The capacity card already renders the ceiling as the subject-to-DA upper bound, so no frontend interface change is needed.",
+    "user_failure_mode": "Before: a TOD lot under-stated its apartment potential and an R2 lot under-stated its townhouse potential. After: the ceiling rises to the genuine LMR upside, framed subject-to-a-DA. If a gate fails, the user simply sees the base zone-tier ceiling (a conservative under-state), never a denser form than the lot is eligible for."
   },
   "functions": [
     {
+      "name": "_lmr_uplift_form",
+      "file_line": "services/intelligence_brief.py:1097",
+      "input": "the zone code, lat, lng, lot area, lot width and a heritage flag for the subject lot",
+      "output": "the densest engine ceiling form the eligibility engine found eligible, or None when there is no uplift",
+      "if_none": "any engine error, or no eligible uplift form, returns None so the base zone-tier ceiling stands unchanged"
+    },
+    {
+      "name": "_realistic_forms",
+      "file_line": "services/intelligence_brief.py:1058",
+      "input": "the zone code, LGA name, optional excluded_forms set and the optional uplift_form from the engine",
+      "output": "a tuple of (as_of_right_form, ceiling_form) where the ceiling is the denser of the base form and the uplift",
+      "if_none": "with no permitted form and no uplift it returns the conservative ('dwelling_house','dwelling_house') pair"
+    },
+    {
       "name": "evaluate_eligibility",
       "file_line": "services/housing_sepp_eligibility.py:138",
-      "input": "zone code, lot area and width, lat, lng, a heritage flag, and optional pre-fetched gate inputs",
-      "output": "a list of per-development-type FormEligibility with the heritage and lot-gap gates now applied",
-      "if_none": "a non-residential zone or an unavailable standards table still returns an empty list, fail-safe to base controls"
+      "input": "zone, lot area and width, lat, lng, a heritage flag and optional pre-fetched gate inputs",
+      "output": "per-development-type eligibility with all residential-flat forms now gated on the TOD catchment",
+      "if_none": "a non-residential zone or an unavailable standards table returns an empty list, fail-safe to base controls"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The heritage flag is supplied by the caller from its heritage detection; thresholds remain read from housing_sepp_standards; the new guard only withholds a form when its lot standard is absent.",
-  "queries": [
-    {
-      "purpose": "fetch all Housing-SEPP standards (forms, thresholds, applicable zones, LMR flag) for grouping in Python",
-      "file_line": "services/housing_sepp_eligibility.py:82",
-      "where_clause": "none required — the whole small curated reference table is read and grouped in memory, not filtered per property",
-      "if_0_rows": "evaluate_eligibility returns an empty list so the caller keeps the base planning controls (fail-safe)",
-      "if_wrong_rows": "N/A — it reads the entire reference table, so there is no per-property WHERE that could select wrong rows"
-    }
-  ],
+  "values": "N/A - no regulatory values are hardcoded. The uplift form comes from the engine's live eligibility (thresholds read from housing_sepp_standards); the form-name mapping is engine-internal identifiers, not planning values.",
+  "queries": "N/A - this change adds no new database query; it delegates to the already-reviewed eligibility-engine query and reads live ePlanning layers via the existing fetchers.",
   "break_it": [
     {
-      "scenario": "A heritage conservation-area lot that is in a Low and Mid-Rise reform area on the 776 map",
-      "what_happens": "Without a heritage gate the engine would mark LMR flats and terraces eligible on heritage land",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_heritage_suppresses_lmr_forms_but_not_base_forms",
+      "scenario": "An R2 lot that is in the (near-everywhere) 776 LMR area but NOT in a TOD catchment",
+      "what_happens": "Gating R1/R2 flats on LMR-area only would show an apartment ceiling on essentially every R2 lot",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_all_residential_flats_require_tod_catchment ; live Five Dock R2 -> ceiling multi_dwelling_housing (townhouses), not residential flat",
       "mitigated": true,
-      "how": "the heritage flag marks every requires_lmr_area form ineligible with a heritage reason while leaving base forms (dual occ, secondary) untouched"
+      "how": "the engine now gates every residential_flat form on in_tod, so an R2 lot outside a catchment tops out at the low-rise LMR form (townhouses)"
     },
     {
-      "scenario": "A small or narrow lot where manor_house has no minimum lot size in the dataset",
-      "what_happens": "manor_house passed every lot gate and would inflate the ceiling on tiny lots everywhere",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_form_missing_lot_standard_is_conservatively_ineligible",
+      "scenario": "A heritage conservation-area lot that is otherwise LMR/TOD eligible",
+      "what_happens": "The ceiling could rise to townhouses or apartments on heritage land where the LMR reforms do not apply",
+      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_heritage_suppresses_lmr_forms_but_not_base_forms ; live Haberfield heritage -> ceiling dual_occupancy",
       "mitigated": true,
-      "how": "a non-base, non-TOD-gated form with a missing min_lot_size is now marked ineligible with a 'not in the dataset' reason"
+      "how": "the heritage flag (from _is_heritage_land) suppresses requires_lmr_area forms, so the uplift returns None and the base ceiling stands"
     },
     {
-      "scenario": "A legitimate R3/R4 residential flat that has no minimum lot size because it is TOD-gated by design",
-      "what_happens": "An over-broad data-gap guard could wrongly withhold the valid mid-rise flat uplift in a TOD catchment",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_rfb_r3r4_without_min_lot_is_NOT_caught_by_the_gap_guard",
+      "scenario": "The eligibility engine errors or times out while assembling the brief (ArcGIS or DB failure)",
+      "what_happens": "A naive uplift could crash the brief or invent a ceiling that is not actually eligible",
+      "repro": "_lmr_uplift_form wraps evaluate_eligibility in try/except (see services/intelligence_brief.py:1097); on error it returns None",
       "mitigated": true,
-      "how": "the guard explicitly exempts residential_flat_r3r4 forms, so they stay eligible when in a TOD catchment"
+      "how": "on any error _lmr_uplift_form returns None and _realistic_forms keeps the base zone-tier ceiling — fail-safe, never over-claims"
     },
     {
-      "scenario": "The housing_sepp_standards reference query fails because the database is unreachable or times out",
-      "what_happens": "An unhandled error would raise and break whatever consumes the engine",
-      "repro": "pytest tests/test_housing_sepp_eligibility.py::test_standards_fetch_failure_returns_empty",
+      "scenario": "The uplift form is actually LESS dense than the base zone-tier ceiling for the lot",
+      "what_happens": "Naively replacing the base with the uplift could LOWER a legitimate ceiling",
+      "repro": "code review of _realistic_forms — it only swaps when the uplift's density index is lower (denser) than the base",
       "mitigated": true,
-      "how": "evaluate_eligibility wraps the standards fetch in try/except and returns an empty list so the caller keeps base controls"
+      "how": "_realistic_forms takes the denser of the two by _ENGINE_FORM_DENSITY index, so the ceiling can only rise, never fall, from the uplift"
+    },
+    {
+      "scenario": "A small or narrow lot inside a TOD/LMR area that cannot meet any LMR form's lot standard",
+      "what_happens": "An uplift could appear on a lot too small to support any denser form",
+      "repro": "live small lot R2 (380 m²/9 m) -> uplift None, ceiling dual_occupancy",
+      "mitigated": true,
+      "how": "the engine's lot-size/width and data-gap gates mark every uplift form ineligible, so _lmr_uplift_form returns None"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Still unwired. The manor_house dataset gap (missing min_lot_size, questionable requires_lmr_area=False) should be corrected in housing_sepp_standards separately; until then the conservative guard withholds it. Next: P2b wires the brief ceiling to the densest ELIGIBLE form; P3 migrates the LEP/SEPP tab."
+    "manual_verify": "Run live briefs across contexts (verified: Ashfield/R4 in-TOD -> residential flat; Five Dock R2 -> multi-dwelling townhouses; Haberfield heritage -> dual occ; small lot -> dual occ). P3 migrates the LEP/SEPP tab onto the same engine and retires the mock station lists + dead servers. The manor_house and (now-fixed) R1/R2-flat data assumptions should be reconciled in housing_sepp_standards separately."
   }
 }
