@@ -5,7 +5,7 @@
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "b98ee2ac",
   "pre_impl": {
     "existing_data": "The brief page already maps every received SSE section through SectionCard, so #512's constraint_arithmetic section was already rendering as an unlabelled key-value dump. ConstraintArithmeticCard already accepts a briefData prop (pre-computed result) and skips its own fetch, and its result type carries lot_area_m2 + dev_type.",
     "assumption_mismatch": "Assumed a new card had to be built; it already exists (used in production via LepControls). Only the type needed exporting and the page needed to special-case the render.",
