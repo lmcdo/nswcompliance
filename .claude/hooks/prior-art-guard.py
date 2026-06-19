@@ -32,7 +32,7 @@ except Exception:
 if data.get("tool_name") != "Write":
     sys.exit(0)
 
-ti = data.get("tool_input", {}) or {}
+ti = data.get("tool_input") or {}
 fp = (ti.get("file_path") or "").replace("\\", "/")
 content = ti.get("content") or ""
 low = fp.lower()
@@ -78,7 +78,8 @@ def tokens(s):
 base = os.path.basename(fp)
 concern = tokens(re.sub(r"\.(py|ts|tsx)$", "", base))
 if base == "route.ts":  # Next.js API route — the concern is the parent dir(s).
-    concern |= tokens("/".join(fp.split("/")[-3:-1]))
+    segs = [s for s in fp.split("/") if s]
+    concern |= tokens(" ".join(segs[-3:-1]))
 head = content[:6000]
 for m in re.findall(r"(?:def|class)\s+([A-Za-z_]\w+)", head):
     concern |= tokens(m)
