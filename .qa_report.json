@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "1a7d7c0d",
+  "commit_hash": "90bd92ae",
   "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
   "files": [
     "services/portal_constraints.py",
@@ -25,7 +25,7 @@
     },
     {
       "name": "_overlay_field",
-      "file_line": "services/intelligence_brief.py:1976",
+      "file_line": "services/intelligence_brief.py:1985",
       "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
       "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
       "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
