@@ -168,5 +168,34 @@ else
   echo "Tip: set MUTMUT=1 to run mutation testing on changed service files."
 fi
 
+# ── 6. Duplication ratchet (jscpd) ───────────────────────────────────────────
+# Coarse repo-wide copy-paste ratchet (baseline 6.77%, threshold 8% in .jscpd.json).
+# Runs only when source code changed; blocks only on a real threshold breach; never
+# blocks on tool/infra failure. The SHARP per-new-file guard is the prior-art injector
+# (.claude/hooks/prior-art-guard.py).
+echo ""
+echo "=== [6] Duplication ratchet (jscpd) ==="
+DUP_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo "origin/main")
+CHANGED_CODE=$(git diff --name-only "$DUP_BASE"...HEAD 2>/dev/null \
+  | grep -E '^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$' \
+  | grep -vE '(test|__tests__|\.spec\.)' || true)
+if [ -z "$CHANGED_CODE" ]; then
+  echo "No source code changed — skipping duplication ratchet."
+elif command -v node >/dev/null 2>&1; then
+  JSCPD_OUT=$(npx --yes jscpd@4 2>&1)
+  JSCPD_RC=$?
+  echo "$JSCPD_OUT" | grep -iE "duplicated lines|too many duplicates" | tail -2
+  if [ $JSCPD_RC -ne 0 ] && echo "$JSCPD_OUT" | grep -qi "too many duplicates"; then
+    echo "Duplication exceeds the 8% ratchet (baseline 6.77%, 2026-06-19)."
+    echo "Reuse/extend existing code instead of copy-paste, or refactor the clone."
+    echo "Emergency bypass: git push --no-verify"
+    exit 1
+  elif [ $JSCPD_RC -ne 0 ]; then
+    echo "WARNING: jscpd could not run cleanly — skipping ratchet (not blocking)."
+  fi
+else
+  echo "node not available — skipping duplication ratchet."
+fi
+
 echo ""
 echo "All pre-push checks passed."
