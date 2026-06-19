@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
+import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -67,6 +68,14 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.granny_flat': { label: 'Granny Flat Detection', description: 'Structure detection, SEPP eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
 };
+
+// Bento spans — the headline (development capacity) and the field-heavy sections
+// get two columns; everything else is a single tile. Driving the layout off the
+// section key keeps it stable as cards stream in at uneven heights.
+const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints']);
+function spanFor(section: string): string {
+  return WIDE_SECTIONS.has(section) ? 'md:col-span-2' : 'col-span-1';
+}
 
 // Confidence level styling
 function confidenceBadge(confidence: string) {
@@ -735,19 +744,21 @@ function IntelligenceBriefInner() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Property intelligence report covering planning controls, environmental constraints,
-          economics, and satellite analysis for any NSW property.
+        <p className="text-sm text-slate-500 mt-1 max-w-3xl">
+          For one NSW address: what the rules allow, what physically constrains the site,
+          what environmental risk applies, what it&apos;s worth, and what&apos;s happening
+          next door — fifteen-plus authoritative government layers fused into one brief,
+          every figure traced to its source.
         </p>
       </div>
 
       {/* Address input */}
       {state === 'idle' && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4 max-w-2xl">
           <AddressAutocomplete
             value={inputAddress}
             onChange={setInputAddress}
@@ -782,7 +793,7 @@ function IntelligenceBriefInner() {
 
       {/* Error state */}
       {state === 'error' && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-5 space-y-3">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-5 space-y-3 max-w-2xl">
           <p className="text-sm text-red-800 font-medium">Brief generation failed</p>
           <p className="text-sm text-red-700">{errorMsg}</p>
           <button
@@ -829,18 +840,21 @@ function IntelligenceBriefInner() {
             state={state}
           />
 
-          {/* Section cards — appear as they arrive */}
-          <div className="space-y-3">
+          {/* Section cards — bento grid; appear as they arrive. The headline and
+              field-heavy sections span two columns; the rest are single tiles, and
+              grid-auto-flow:dense packs gaps as cards stream in at uneven heights. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 [grid-auto-flow:dense] items-start">
             {sectionEvents.map((event, i) => {
+              const section = event.data.section;
               // Development Capacity renders via the dedicated card (carries its
               // own binding-constraint breakdown + disclaimer). Falls back to the
               // generic SectionCard when the value is absent (not computed).
-              if (event.data.section === 'constraint_arithmetic') {
+              let card: ReactNode = null;
+              if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;
                 if (ca) {
-                  return (
+                  card = (
                     <ConstraintArithmeticCard
-                      key={`constraint_arithmetic-${i}`}
                       briefData={ca}
                       lotArea={ca.lot_area_m2}
                       devType={ca.dev_type}
@@ -848,12 +862,13 @@ function IntelligenceBriefInner() {
                   );
                 }
               }
+              if (!card) {
+                card = <SectionCard section={section} data={event.data.data} />;
+              }
               return (
-                <SectionCard
-                  key={`${event.data.section}-${i}`}
-                  section={event.data.section}
-                  data={event.data.data}
-                />
+                <div key={`${section}-${i}`} className={cn('min-w-0', spanFor(section))}>
+                  {card}
+                </div>
               );
             })}
           </div>

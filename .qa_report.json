@@ -1,72 +1,56 @@
 {
   "tier": "standard",
-  "commit_hash": "90bd92ae",
-  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
+  "commit_hash": "1f27f33d",
+  "justification": "Frontend display/layout only on the Intelligence Brief page: rewrite the hero subtitle to convey the value proposition (sourced, per-address, full-range) and convert the single-column section stack into a responsive bento grid (3 cols desktop / 2 tablet / 1 mobile) with the headline and field-heavy sections spanning two columns. No data, query, regulatory, or behavioural change — same components, same streaming logic.",
   "files": [
-    "services/portal_constraints.py",
-    "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
-    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
-    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
-    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
-    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
-    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
+    "existing_data": "Section cards rendered in a vertical space-y-3 stack inside a max-w-3xl container, with constraint_arithmetic special-cased to ConstraintArithmeticCard and everything else to SectionCard. The card components and the SSE streaming/parse logic are unchanged.",
+    "assumption_mismatch": "The single narrow column was lanky for ~13 heterogeneous sections and gave the headline (development capacity) no visual priority. Bento-grid precedent (size signals priority; 3/2/1 responsive) fits a data dashboard better.",
+    "new_vs_existing": "No new component or dependency. Reuses the installed shadcn cn() util and Tailwind grid utilities. Adds one pure helper spanFor(section) and wraps each streamed card in a grid cell with a column-span class. Container widened to max-w-6xl; the idle form and error panel capped at max-w-2xl so they stay readable.",
+    "external_source_error": "No data or network change. spanFor returns a single-column class for any unknown section, so a new or unexpected section key still renders as a normal tile rather than breaking the grid.",
+    "frontend_type": "Frontend only (TypeScript/React). The streamed card element is typed ReactNode; spanFor returns a string class; cn merges the span with min-w-0 to prevent grid overflow. tsc clean; the only ESLint warning is a pre-existing exhaustive-deps note unrelated to this change.",
+    "user_failure_mode": "Before: a tall thin column where the build-capacity headline had no prominence. After: a packed bento grid with the capacity card and the field-heavy planning/environmental sections double-wide, the rest as tiles — scannable, with the headline given spatial weight. Streaming still appends cards; grid-auto-flow:dense packs the uneven heights."
   },
   "functions": [
     {
-      "name": "fetch_protection_overlay",
-      "file_line": "services/portal_constraints.py:233",
-      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
-      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
-      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
-    },
-    {
-      "name": "_overlay_field",
-      "file_line": "services/intelligence_brief.py:1985",
-      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
-      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
-      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
+      "name": "spanFor",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:76",
+      "input": "the brief section key for one streamed card, e.g. constraint_arithmetic or economics",
+      "output": "a Tailwind column-span class string — two columns for headline and field-heavy sections, one column otherwise",
+      "if_none": "any section key not in the wide set returns the single-column class, so unknown sections render as a normal tile"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
-  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
+  "values": "N/A - no regulatory values. The change only controls layout column spans and hero copy; no planning numbers are involved.",
+  "queries": "N/A - this is a frontend render change; it adds no database or API query and reads only the already-streamed section data.",
   "break_it": [
     {
-      "scenario": "The live Protection query times out or errors while assembling the brief",
-      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
+      "scenario": "A streamed section key is not one of the recognised wide sections",
+      "what_happens": "an unhandled key could throw or produce an undefined span class and break the grid layout",
+      "repro": "call spanFor('some_new_section') — it returns the single-column class and the card renders as a normal tile",
       "mitigated": true,
-      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
+      "how": "spanFor checks a fixed Set and returns col-span-1 for anything not in it, so any key is safe"
     },
     {
-      "scenario": "The property has no resolved coordinates so a live query is impossible",
-      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
+      "scenario": "A card contains very wide content (long overlay-coverage string) inside a grid cell",
+      "what_happens": "without a min-width reset, a wide child can blow out the CSS grid track and break the columns",
+      "repro": "code review — each grid cell carries min-w-0 via cn so wide content wraps instead of expanding the track",
       "mitigated": true,
-      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
+      "how": "every grid cell gets min-w-0, the standard fix that lets grid items shrink below content width"
     },
     {
-      "scenario": "Our database already covers the layer for this LGA",
-      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
+      "scenario": "Cards stream in at very uneven heights and in arbitrary order",
+      "what_happens": "a naive grid would leave large vertical gaps below short cards as taller ones arrive",
+      "repro": "code review — the grid uses grid-auto-flow:dense with items-start so cards keep natural height and gaps backfill",
       "mitigated": true,
-      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
-    },
-    {
-      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
-      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
-      "mitigated": true,
-      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
+      "how": "items-start stops row-height stretch and grid-auto-flow:dense places later small cards into earlier gaps"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
+    "manual_verify": "On the Vercel preview, run a brief (e.g. 25 Empire St) and confirm: the new subtitle reads correctly; on desktop the sections form a 3-column bento with the development-capacity card and planning/environmental spanning two columns; it collapses to 2 columns on tablet and 1 on mobile; the idle input and error panel stay narrow; cards still appear progressively. Iterate on spans from the live preview if any section looks under/over-weighted."
   }
 }
