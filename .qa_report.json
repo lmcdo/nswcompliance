@@ -5,7 +5,7 @@
     "services/intelligence_brief.py",
     "tests/test_eligibility_gates.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "1acdc696",
   "pre_impl": {
     "existing_data": "portal_constraints.fetch_dual_occ_prohibition(lat,lng) already queries ePlanning layer 452 (Planning_Portal_Local_Provisions) and returns {prohibited: bool, epi_name, lga_name} or None on failure. It was unused by the capacity engine. The ceiling is computed by _ceiling_within_tier over the zone-tier ladder intersected with lep_land_use_table permitted forms.",
     "assumption_mismatch": "GATE-1pt2 assumed the densest permitted form (bounded by the zone tier) was the realistic ceiling, ignoring lot-specific prohibitions. A lot inside a dual-occupancy prohibition area would still surface dual_occupancy as the R2 ceiling.",
@@ -25,16 +25,16 @@
     {
       "name": "_ceiling_within_tier",
       "file_line": "services/intelligence_brief.py:1034",
-      "input": "zone code, permitted engine forms, optional excluded_forms set",
-      "output": "densest permitted form at/below the zone tier that is NOT excluded",
-      "if_none": "no permitted, non-excluded form -> 'dwelling_house'"
+      "input": "the zone code, the set of permitted engine forms, and an optional excluded_forms set",
+      "output": "the densest permitted form at or below the zone tier that is not in the excluded set",
+      "if_none": "when no permitted and non-excluded form exists it returns the conservative 'dwelling_house' default"
     },
     {
       "name": "_realistic_forms",
       "file_line": "services/intelligence_brief.py:1058",
-      "input": "zone code, lga name, optional excluded_forms set",
-      "output": "(as_of_right_form, ceiling_form); ceiling respects the exclusions",
-      "if_none": "no coverage / error -> ('dwelling_house','dwelling_house')"
+      "input": "the zone code, the LGA name, and an optional set of excluded_forms to drop",
+      "output": "a tuple of (as_of_right_form, ceiling_form) where the ceiling respects the supplied exclusions",
+      "if_none": "with no LGA coverage or any error it returns the conservative ('dwelling_house','dwelling_house') pair"
     }
   ],
   "values": "N/A - no regulatory values hardcoded. The prohibition is read live from ePlanning layer 452; the excluded form name ('dual_occupancy') is an engine dev_type identifier, not a planning value.",
@@ -69,8 +69,8 @@
       "how": "the ladder walk only skips the excluded form; the R3 multi_dwelling ceiling is unchanged"
     },
     {
-      "scenario": "Coordinates are missing (geocode failed upstream)",
-      "what_happens": "Calling the gate with None could raise",
+      "scenario": "The subject lot has missing coordinates because geocoding failed upstream in the brief",
+      "what_happens": "Calling the live ArcGIS gate with a None latitude or longitude could raise an error",
       "repro": "pytest tests/test_eligibility_gates.py::test_missing_coordinates_skip_the_gate",
       "mitigated": true,
       "how": "_eligibility_excluded_forms returns an empty set when lat or lng is None"
