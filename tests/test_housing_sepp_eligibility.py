@@ -91,13 +91,19 @@ def test_lot_too_narrow_is_ineligible():
     assert "width" in r["terraces"].reason.lower()
 
 
-def test_rfb_r3r4_requires_tod_catchment():
+def test_all_residential_flats_require_tod_catchment():
     in_lmr = {**ALL_FALSE, "in_lmr_area": True}
+    # R3/R4 flats need TOD
     r = _by_type(evaluate_eligibility("R3", 800, 20, -33.8, 151.1, gate_inputs=in_lmr))
     assert r["residential_flat_r3r4_inner"].eligible is False
     assert "Transport Oriented Development" in r["residential_flat_r3r4_inner"].reason
     r2 = _by_type(evaluate_eligibility("R3", 800, 20, -33.8, 151.1, gate_inputs={**in_lmr, "in_tod": True}))
     assert r2["residential_flat_r3r4_inner"].eligible is True
+    # R1/R2 flats are ALSO mid-rise -> also need TOD (not eligible statewide just by LMR area)
+    r3 = _by_type(evaluate_eligibility("R2", 700, 20, -33.8, 151.1, gate_inputs=in_lmr))
+    assert r3["residential_flat_r1r2"].eligible is False
+    r4 = _by_type(evaluate_eligibility("R2", 700, 20, -33.8, 151.1, gate_inputs={**in_lmr, "in_tod": True}))
+    assert r4["residential_flat_r1r2"].eligible is True
 
 
 def test_dual_occ_prohibition_blocks_dual_occ():

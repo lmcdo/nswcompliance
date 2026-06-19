@@ -215,7 +215,10 @@ def evaluate_eligibility(
             )
             results.append(_result(False, reason))
             continue
-        if "residential_flat_r3r4" in dev_type and not in_tod:
+        if "residential_flat" in dev_type and not in_tod:
+            # Residential flat buildings are the MID-RISE tier (R1/R2 and R3/R4) and apply
+            # only within a catchment — not statewide like the low-rise LMR forms. (The
+            # frontend gated only the R3/R4 variant; the R1/R2 variant needs it too.)
             results.append(_result(False, "Not in a Transport Oriented Development catchment"))
             continue
         if "dual_occ" in dev_type and dual_occ_prohibited:

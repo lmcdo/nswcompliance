@@ -1059,22 +1059,66 @@ def _realistic_forms(
     zone_code: Optional[str],
     lga_name: Optional[str],
     excluded_forms: Optional[set[str]] = None,
+    uplift_form: Optional[str] = None,
 ) -> tuple[str, str]:
     """Return (as_of_right_form, ceiling_form) for the capacity range.
 
-    - as_of_right_form: the conservative, always-true baseline. ``dwelling_house``
-      for now; Housing-SEPP / LMR as-of-right uplift is a later refinement that
-      raises this floor.
-    - ceiling_form: the densest permitted form bounded by the zone tier (realism
-      ceiling) ∩ the LGA's permitted list (legality), minus any ``excluded_forms``
-      prohibited on this lot (e.g. dual occupancy where the live ePlanning prohibition
-      layer applies) — the realistic upside, subject to a DA. Fail-safe to
-      ``dwelling_house`` (no coverage / error).
+    - as_of_right_form: the conservative, always-true baseline (``dwelling_house``).
+    - ceiling_form: the densest of (a) the base form bounded by the zone tier ∩ the LGA's
+      permitted list, minus ``excluded_forms``, and (b) ``uplift_form`` — the densest form
+      the Housing-SEPP/LMR engine found ELIGIBLE for this lot (which can legitimately exceed
+      the base zone tier, e.g. a residential flat in a TOD catchment). The realistic upside,
+      subject to a DA. Fail-safe to ``dwelling_house``.
     """
-    ceiling = _ceiling_within_tier(
+    base = _ceiling_within_tier(
         zone_code, _permitted_engine_forms(zone_code, lga_name), excluded_forms
     )
+    ceiling = base
+    if uplift_form and uplift_form in _ENGINE_FORM_DENSITY and base in _ENGINE_FORM_DENSITY:
+        # Lower index = denser; take the denser of the base and the eligible LMR uplift.
+        if _ENGINE_FORM_DENSITY.index(uplift_form) < _ENGINE_FORM_DENSITY.index(base):
+            ceiling = uplift_form
     return "dwelling_house", ceiling
+
+
+# housing_sepp_standards development_type -> engine ceiling form, for the LMR/SEPP uplift.
+# (dwelling_houses / secondary_dwelling do not raise the ceiling FORM — they affect the floor.)
+_SEPP_FORM_TO_ENGINE = {
+    "residential_flat_r1r2": "residential_flat_building",
+    "residential_flat_r3r4_inner": "residential_flat_building",
+    "residential_flat_r3r4_outer": "residential_flat_building",
+    "multi_dwelling": "multi_dwelling_housing",
+    "terraces": "attached_dwelling",
+    "manor_house": "manor_house",
+    "dual_occupancy": "dual_occupancy",
+}
+
+
+def _lmr_uplift_form(
+    zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
+    lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+) -> Optional[str]:
+    """Densest engine form ELIGIBLE under the Housing-SEPP / LMR engine (the catchment/area
+    uplift, subject to a DA), or None. Delegates to the single-source-of-truth eligibility
+    engine. Fail-safe: any error -> None (no uplift; the base zone-tier ceiling stands).
+    """
+    try:
+        from services.housing_sepp_eligibility import evaluate_eligibility
+        results = evaluate_eligibility(
+            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+        )
+    except Exception as e:  # fail-safe — never block the brief on the uplift engine
+        logger.warning("LMR eligibility uplift failed: %s", e)
+        return None
+    eligible_engine = {
+        _SEPP_FORM_TO_ENGINE[r.development_type]
+        for r in results
+        if r.eligible and r.development_type in _SEPP_FORM_TO_ENGINE
+    }
+    for form in _ENGINE_FORM_DENSITY:  # densest first
+        if form in eligible_engine:
+            return form
+    return None
 
 
 def _eligibility_excluded_forms(lat: Optional[float], lng: Optional[float]) -> set[str]:
@@ -2609,10 +2653,13 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             from services.constraint_arithmetic import compute_constraint_arithmetic
 
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
+            _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
             _excluded_forms = _eligibility_excluded_forms(lat, lng)
+            _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
             _floor_form, _ceiling_form = _realistic_forms(
                 controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
-                excluded_forms=_excluded_forms,
+                excluded_forms=_excluded_forms, uplift_form=_uplift_form,
             )
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
@@ -3139,10 +3186,13 @@ def _generate_brief_sse(
                     from services.constraint_arithmetic import compute_constraint_arithmetic
 
                     lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+                    _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
+                    _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
+                    _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
                     _floor_form, _ceiling_form = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
-                        excluded_forms=_excluded_forms,
+                        excluded_forms=_excluded_forms, uplift_form=_uplift_form,
                     )
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
