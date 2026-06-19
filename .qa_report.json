@@ -6,7 +6,7 @@
     "services/portal_constraints.py",
     "tests/test_housing_sepp_eligibility.py"
   ],
-  "commit_hash": "PENDING",
+  "commit_hash": "777d8314",
   "pre_impl": {
     "existing_data": "housing_sepp_standards (development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area) holds the LMR/Housing-SEPP forms + thresholds. portal_constraints already had _query_eplanning_point + fetch_sepp_exclusions (776) + fetch_dual_occ_prohibition (452); this adds fetch_tod_catchment (752/759 published TOD polygons).",
     "assumption_mismatch": "The only prior implementation is the frontend route.ts, which trusted caller-supplied inLMRArea (defaulted true — silently over-eligible) and a mock Haversine station list. The backend engine computes both authoritatively (776 exclusion -> inLMRArea, conservatively false when unknown; 752/759 polygons -> TOD), so it cannot over-state eligibility on a transient gate failure.",
@@ -36,7 +36,15 @@
     }
   ],
   "values": "N/A - no regulatory values are hardcoded. All thresholds (min lot size/width, applicable zones, requires_lmr_area) are read live from housing_sepp_standards; the catchment and exclusion answers come live from the published ePlanning layers.",
-  "queries": "One read-only query: SELECT development_type, standard_type, numeric_value, applicable_zones, requires_lmr_area FROM housing_sepp_standards (no WHERE needed — the whole small reference table is grouped in Python), via a statement-timeout-bounded psycopg2 connection.",
+  "queries": [
+    {
+      "purpose": "fetch all Housing-SEPP standards (forms, thresholds, applicable zones, LMR flag) for grouping in Python",
+      "file_line": "services/housing_sepp_eligibility.py:82",
+      "where_clause": "none required — the whole small curated reference table is read and grouped in memory, not filtered per property",
+      "if_0_rows": "evaluate_eligibility returns an empty list so the caller keeps the base planning controls (fail-safe)",
+      "if_wrong_rows": "N/A — it reads the entire reference table, so there is no per-property WHERE that could select wrong rows"
+    }
+  ],
   "break_it": [
     {
       "scenario": "A lot that is genuinely not in a Low and Mid-Rise area but the caller (old frontend) assumed it was",
