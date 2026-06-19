@@ -230,6 +230,37 @@ def fetch_anef(lat: float, lng: float) -> Optional[dict]:
     }
 
 
+def fetch_protection_overlay(
+    lat: float, lng: float, layer_id: int, value_field: str = "LAY_CLASS",
+) -> Optional[dict]:
+    """Live point-query a Planning/Protection overlay layer at one property.
+
+    A per-lot fallback for when our ingested coverage is missing the layer, so we
+    can report the real fact about THIS lot instead of an internal "not ingested"
+    gap. Same service the ingest and other fetchers use — riparian = layer 7,
+    wetlands = layer 11, biodiversity = layer 10.
+
+    Returns:
+      {"present": True, "value": <class>} — a feature intersects the point;
+      {"present": False, "value": None}   — queried successfully, nothing intersects
+                                            (a genuine "none here" for this lot);
+      None                                — the query failed (caller falls back to a
+                                            conservative "not assessed", never over-states).
+    """
+    url = (
+        "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
+        f"Planning/Protection/MapServer/{layer_id}/query"
+    )
+    try:
+        results = query_arcgis_point(url, lng, lat, out_fields=value_field)
+    except Exception:
+        logger.warning("Protection overlay layer %s point query failed", layer_id)
+        return None
+    if not results:
+        return {"present": False, "value": None}
+    return {"present": True, "value": results[0].get(value_field)}
+
+
 def fetch_bushfire_bfpl(lat: float, lng: float) -> Optional[dict]:
     """NSW RFS Bush Fire Prone Land Map — Fire/BFPL/MapServer/0.
 

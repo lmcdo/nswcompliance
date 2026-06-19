@@ -1972,6 +1972,8 @@ def _build_environmental(
     mine_subsidence_raw: Optional[dict] = None,
     contaminated_land_raw: Optional[dict] = None,
     drinking_water_raw: Optional[dict] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
 ) -> EnvironmentalConstraints:
     """Map overlays + heritage to EnvironmentalConstraints."""
     today = date.today().isoformat()
@@ -1979,6 +1981,36 @@ def _build_environmental(
 
     overlay_list = overlays_data.get("overlays", []) if overlays_data else []
     covered = overlays_data.get("covered_layers", []) if overlays_data else []
+
+    def _overlay_field(layer_key: str, db_present: bool, layer_id: int) -> DataField:
+        """Prefer ingested DB coverage; otherwise live point-query the Protection
+        layer so an un-ingested layer still reports the REAL fact for this lot
+        (present + class, or a genuine "none here") rather than leaking an
+        internal "not ingested" gap. Fail-safe: a failed/absent live query falls
+        back to the conservative NOT_AVAILABLE state, never an over-statement.
+        """
+        if layer_key in covered:
+            return DataField(value=db_present, confidence=auth, source="postgis_overlays", as_at=today)
+        live = None
+        if lat is not None and lng is not None:
+            try:
+                from services.portal_constraints import fetch_protection_overlay
+                live = fetch_protection_overlay(lat, lng, layer_id)
+            except Exception:
+                live = None
+        if live is not None:
+            # The field is a boolean (present at this lot / not). True = the layer
+            # applies here, False = a genuine "none at this property" (good news),
+            # both real facts rather than an internal "not ingested" gap.
+            return DataField(
+                value=bool(live.get("present")),
+                confidence=auth, source="live_protection_overlay", as_at=today,
+            )
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="postgis_overlays", as_at=today,
+            reason="Layer not ingested for this LGA",
+        )
 
     flood_epi = any(
         o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
@@ -2030,28 +2062,11 @@ def _build_environmental(
             source="postgis_heritage",
             as_at=today,
         ),
-        # Typed fields from spatial_overlays — present if layer is in covered list
-        terrestrial_biodiversity=DataField(
-            value=has_biodiversity if "biodiversity" in covered else None,
-            confidence=auth if "biodiversity" in covered else ConfidenceLevel.NOT_AVAILABLE,
-            source="postgis_overlays",
-            as_at=today,
-            reason=None if "biodiversity" in covered else "Layer not ingested for this LGA",
-        ),
-        riparian_land=DataField(
-            value=has_riparian if "riparian" in covered else None,
-            confidence=auth if "riparian" in covered else ConfidenceLevel.NOT_AVAILABLE,
-            source="postgis_overlays",
-            as_at=today,
-            reason=None if "riparian" in covered else "Layer not ingested for this LGA",
-        ),
-        wetlands=DataField(
-            value=has_wetlands if "wetlands" in covered else None,
-            confidence=auth if "wetlands" in covered else ConfidenceLevel.NOT_AVAILABLE,
-            source="postgis_overlays",
-            as_at=today,
-            reason=None if "wetlands" in covered else "Layer not ingested for this LGA",
-        ),
+        # Typed fields from spatial_overlays — DB coverage first, else a live
+        # per-lot Protection-layer query (riparian=7, wetlands=11, biodiversity=10).
+        terrestrial_biodiversity=_overlay_field("biodiversity", has_biodiversity, 10),
+        riparian_land=_overlay_field("riparian", has_riparian, 7),
+        wetlands=_overlay_field("wetlands", has_wetlands, 11),
         anef=DataField(
             value=anef_value if "anef" in covered else None,
             confidence=auth if "anef" in covered else ConfidenceLevel.NOT_AVAILABLE,
@@ -2680,6 +2695,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
         mine_subsidence_raw=mine_subsidence_raw,
         contaminated_land_raw=contaminated_land_raw,
         drinking_water_raw=drinking_water_raw,
+        lat=lat, lng=lng,
     )
     neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
     economics = _build_economics(valuation)
@@ -3106,6 +3122,7 @@ def _generate_brief_sse(
             mine_subsidence_raw=mine_subsidence_raw,
             contaminated_land_raw=contaminated_land_raw,
             drinking_water_raw=drinking_water_raw,
+            lat=lat, lng=lng,
         )
         sections_yielded += 1
         yield _sse_event("section", {

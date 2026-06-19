@@ -1,56 +1,72 @@
 {
   "tier": "standard",
-  "commit_hash": "1a7d7c0d",
-  "justification": "Frontend streaming-reliability fix to the Intelligence Brief page: the realtime stream reader broke on end-of-stream WITHOUT processing the leftover buffer, so a trailing 'complete' event that lacked a closing blank line was discarded — losing the Confidence Summary, Data Gaps and Compound Constraints cards and leaving the progress bar frozen. The reader now flushes the remaining buffer as the final chunk on stream end. Display/stream-parsing only; no data or regulatory logic.",
+  "commit_hash": "90bd92ae",
+  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/portal_constraints.py",
+    "services/intelligence_brief.py",
+    "tests/test_overlay_live_fallback.py"
   ],
   "pre_impl": {
-    "existing_data": "The SSE-style reader accumulates bytes in `buffer`, splits on blank lines, keeps the trailing partial in `buffer`, and on `done` it broke immediately. The 'complete' event carries confidence_summary/gaps/compound_constraints; CompleteSummary only renders when that event is received.",
-    "assumption_mismatch": "The reader assumed every event, including the final 'complete', arrives terminated by a blank line before the stream closes. When the closing blank line is absent, the complete event sits in the leftover buffer and is dropped on break — observed live as 'Complete' beside a frozen 81% with no summary/gaps cards.",
-    "new_vs_existing": "No new component, fetch, or dependency. The read loop now appends bytes only when value is present, and on `done` flushes the decoder and treats the entire remaining buffer as the final chunk(s) before breaking. The per-chunk parsing, dedup, and complete/error handling are unchanged.",
-    "external_source_error": "If the final buffer is empty or unparseable, the existing try/catch skips it and the prior stream-ended fallback still marks the brief complete — so a genuinely missing complete event degrades exactly as before, never worse.",
-    "frontend_type": "Frontend only (TypeScript/React). `chunks` is explicitly typed string[]; TextDecoder.decode() with no argument is a valid flush call; the break now occurs after the final chunk is processed.",
-    "user_failure_mode": "Before: a finished brief lost its Confidence Summary, Data Gaps and Compound Constraints and froze the progress bar when the complete event lacked a trailing blank line. After: the trailing complete event is parsed on stream end, so the summary renders and the bar reaches 100% via the real event."
+    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
+    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
+    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
+    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
+    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
+    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
   },
   "functions": [
     {
-      "name": "connectStream (stream reader loop)",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:524",
-      "input": "the chunked realtime response body from the Trigger.dev brief stream for the current run",
-      "output": "parsed brief events appended to state, including a trailing complete event recovered from the final buffer on stream end",
-      "if_none": "an empty or unparseable final buffer is skipped by the existing catch and the stream-ended fallback still marks the brief complete"
+      "name": "fetch_protection_overlay",
+      "file_line": "services/portal_constraints.py:233",
+      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
+      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
+      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
+    },
+    {
+      "name": "_overlay_field",
+      "file_line": "services/intelligence_brief.py:1985",
+      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
+      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
+      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
     }
   ],
-  "values": "N/A - no regulatory values. This changes stream-buffer handling only; no planning numbers are involved.",
-  "queries": "N/A - frontend stream parsing; no database or API query is added. It reads only the already-open realtime response.",
+  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
+  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
   "break_it": [
     {
-      "scenario": "The final 'complete' event arrives without a closing blank line and the stream then ends",
-      "what_happens": "previously it stayed in the leftover buffer and was discarded on break, losing the summary/gaps cards",
-      "repro": "stream a complete event with no trailing double-newline then close; the done branch now splits and processes the remaining buffer",
+      "scenario": "The live Protection query times out or errors while assembling the brief",
+      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
       "mitigated": true,
-      "how": "on done the entire remaining buffer is flushed and split into final chunks which are processed before the loop breaks"
+      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
     },
     {
-      "scenario": "The stream ends cleanly with no remaining buffered data",
-      "what_happens": "a naive flush could create an empty chunk that is parsed as a bogus event",
-      "repro": "done with an empty buffer yields chunks that are skipped by the `if (!chunk.trim()) continue` guard",
+      "scenario": "The property has no resolved coordinates so a live query is impossible",
+      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
       "mitigated": true,
-      "how": "empty chunks are skipped by the existing trim guard and unparseable data by the try/catch, so an empty final flush is a no-op"
+      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
     },
     {
-      "scenario": "A mid-stream read returns done=true with an undefined value",
-      "what_happens": "decoding an undefined value would throw and abort the reader",
-      "repro": "the read loop now guards `if (value) buffer += decode(...)` so an undefined value on the terminal read is not decoded",
+      "scenario": "Our database already covers the layer for this LGA",
+      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
       "mitigated": true,
-      "how": "bytes are appended only when value is present; the terminal decoder.decode() flush takes no argument and is safe"
+      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
+    },
+    {
+      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
+      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
+      "mitigated": true,
+      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a brief that previously froze (e.g. 25 Empire St) — the Confidence Summary, Data Gaps and Compound Constraints cards should now render and the bar should reach 100% via the real complete event, not the forced fallback. If a residual case still drops the event entirely (stream never delivers it), a Trigger.dev run-result fetch fallback is the next safety net — not included here."
+    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
   }
 }
