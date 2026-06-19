@@ -87,6 +87,67 @@ function confidenceBadge(confidence: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Honest "why is this empty" mapping. NEVER show the raw internal reason
+// string ("Layer not ingested for this LGA", "Premium data not requested") to
+// a user — translate it into one of five plain states with an honest tone:
+//   clear    — we checked, there's nothing here (good news for the owner)
+//   optional — an add-on that wasn't requested
+//   pending  — we haven't assessed this for this area yet (an honest gap)
+//   error    — a genuine retrieval failure
+//   neutral  — simply not part of this report
+// ---------------------------------------------------------------------------
+type UnavailableTone = 'clear' | 'optional' | 'pending' | 'error' | 'neutral';
+
+function describeUnavailable(reason?: string | null): { label: string; tone: UnavailableTone } {
+  const r = (reason ?? '').toLowerCase();
+  if (!r) return { label: 'Not included in this report', tone: 'neutral' };
+  // "...failed or not requested" conflates two states — we can't tell which, so
+  // stay neutral rather than alarm the user with a false error.
+  if (r.includes('not requested')) {
+    return r.includes('fail')
+      ? { label: 'Not included in this report', tone: 'neutral' }
+      : { label: 'Available on request', tone: 'optional' };
+  }
+  if (r.includes('prop_id') || r.includes('could not') || r.includes('couldn')) {
+    return { label: 'Could not identify this property', tone: 'error' };
+  }
+  if (r.includes('not ingested') || r.includes('not yet') || r.includes('not onboarded')) {
+    return { label: 'Not assessed for this area yet', tone: 'pending' };
+  }
+  if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
+    return { label: 'None found at this property', tone: 'clear' };
+  }
+  if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
+    return { label: 'Temporarily unavailable', tone: 'error' };
+  }
+  return { label: 'Not included in this report', tone: 'neutral' };
+}
+
+const UNAVAILABLE_TONE_STYLES: Record<UnavailableTone, string> = {
+  clear: 'bg-emerald-50 text-emerald-700',
+  optional: 'bg-teal-50 text-teal-700',
+  pending: 'bg-slate-100 text-slate-500',
+  error: 'bg-amber-50 text-amber-700',
+  neutral: 'bg-slate-100 text-slate-500',
+};
+
+const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
+  clear: 'text-emerald-700',
+  optional: 'text-teal-700',
+  pending: 'text-slate-400',
+  error: 'text-amber-700',
+  neutral: 'text-slate-400',
+};
+
+const TONE_SHORT: Record<UnavailableTone, string> = {
+  clear: 'Clear',
+  optional: 'Optional',
+  pending: 'Not assessed',
+  error: 'Unavailable',
+  neutral: 'Not included',
+};
+
+// ---------------------------------------------------------------------------
 // Section card — renders one brief section progressively
 // ---------------------------------------------------------------------------
 
@@ -99,6 +160,7 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
   const reason = isDataField ? (data.reason as string | null) : null;
   const source = isDataField ? (data.source as string) : null;
   const value = isDataField ? (data.value as Record<string, unknown> | null) : data;
+  const unavail = confidence === 'not_available' ? describeUnavailable(reason) : null;
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
@@ -108,14 +170,18 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
           <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
         </div>
         <div className="flex items-center gap-2">
-          {confidence && confidenceBadge(confidence)}
+          {unavail ? (
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${UNAVAILABLE_TONE_STYLES[unavail.tone]}`}>
+              {TONE_SHORT[unavail.tone]}
+            </span>
+          ) : confidence ? confidenceBadge(confidence) : null}
           {source && <span className="text-xs text-slate-400">{source.replace(/_/g, ' ')}</span>}
         </div>
       </div>
       <div className="px-5 py-4">
-        {confidence === 'not_available' ? (
-          <div className="text-sm text-slate-500 italic">
-            {reason || 'Data not available for this property'}
+        {unavail ? (
+          <div className={`text-sm ${UNAVAILABLE_TEXT_STYLES[unavail.tone]}`}>
+            {unavail.label}
           </div>
         ) : value ? (
           <SectionData data={value} />
@@ -152,12 +218,11 @@ function SectionData({ data }: { data: Record<string, unknown> }) {
         if (isDataField(val)) {
           const df = val;
           if (df.confidence === 'not_available') {
+            const u = describeUnavailable(df.reason);
             return (
               <div key={key} className="flex flex-col">
-                <dt className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                  {formatKey(key)} {confidenceBadge('not_available')}
-                </dt>
-                <dd className="text-sm text-slate-400 italic mt-0.5">{df.reason || '—'}</dd>
+                <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+                <dd className={`text-sm mt-0.5 ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.label}</dd>
               </div>
             );
           }
@@ -743,7 +808,7 @@ function IntelligenceBriefInner() {
           {/* Live status panel — elapsed time, section timeline, progress */}
           <LiveStatusPanel
             elapsed={state === 'complete' && completeEvent ? completeEvent.data.elapsed_seconds : elapsed}
-            progress={state === 'triggering' ? 0 : latestProgress}
+            progress={state === 'triggering' ? 0 : state === 'complete' ? 100 : latestProgress}
             receivedSections={sectionEvents.map((e) => e.data.section)}
             briefType={briefType}
             includeSatellite={includeSatellite}
