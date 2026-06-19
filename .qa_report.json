@@ -1,63 +1,85 @@
 {
-  "tier": "standard",
-  "justification": "Dev-tooling guardrails (a PreToolUse prior-art injector + a pre-push jscpd duplication ratchet). No product/runtime code, no DB, no user-facing output — but it gates the developer workflow (can block Write/push), so it is reviewed at standard tier for fail-safety.",
+  "tier": "critical",
+  "justification": "Consolidation P1: wires the live ePlanning dual-occupancy prohibition gate (layer 452) into the capacity ceiling, which changes the displayed dwelling-yield ceiling. Previously the gate was fetched (frontend) but never consumed by the brief, so a lot where dual occupancy is prohibited still showed a dual-occ ceiling. This affects user-facing yield, so critical tier.",
   "files": [
-    ".claude/hooks/prior-art-guard.py",
-    ".claude/settings.json",
-    ".jscpd.json",
-    ".githooks/pre-push"
+    "services/intelligence_brief.py",
+    "tests/test_eligibility_gates.py"
   ],
-  "commit_hash": "a5e4401b",
+  "commit_hash": "PENDING",
   "pre_impl": {
-    "existing_data": "No data. Reads the PreToolUse hook stdin JSON (tool_name, tool_input.file_path, tool_input.content) and the git working tree via `git grep`.",
-    "assumption_mismatch": "Could over-block (false positive) and stall legitimate work, or under-block (miss a real duplicate). Mitigated: blocks only NEW files in watched code dirs with a STRONG overlap signal, has an explicit ack escape hatch, and FAILS OPEN on any internal error so a hook bug never halts edits.",
-    "new_vs_existing": "New PreToolUse(Write) hook registered alongside the existing pre-edit-guard; new pre-push step #6 added after the mutmut block. Reuses the existing hook conventions (Python script, stdin JSON, exit 2 = block). jscpd runs via npx (no node_modules coupling)."
+    "existing_data": "portal_constraints.fetch_dual_occ_prohibition(lat,lng) already queries ePlanning layer 452 (Planning_Portal_Local_Provisions) and returns {prohibited: bool, epi_name, lga_name} or None on failure. It was unused by the capacity engine. The ceiling is computed by _ceiling_within_tier over the zone-tier ladder intersected with lep_land_use_table permitted forms.",
+    "assumption_mismatch": "GATE-1pt2 assumed the densest permitted form (bounded by the zone tier) was the realistic ceiling, ignoring lot-specific prohibitions. A lot inside a dual-occupancy prohibition area would still surface dual_occupancy as the R2 ceiling.",
+    "new_vs_existing": "No new data, no schema change, no new file. Reuses the existing fetch_dual_occ_prohibition function. New helper _eligibility_excluded_forms(lat,lng) returns the engine forms to drop; _ceiling_within_tier and _realistic_forms gained an optional excluded_forms param; both brief assembly paths now compute and pass it. Heritage is already handled (GATE-2); the 776 low/mid-rise exclusion has no ceiling effect until LMR uplift (P2), so it is intentionally not called here.",
+    "external_source_error": "fetch_dual_occ_prohibition returns None on ArcGIS failure. _eligibility_excluded_forms wraps the call in try/except and returns an EMPTY set on None / exception / missing coordinates — so a transient gov-API failure never over-restricts the ceiling (fails open to the base zone-tier ceiling).",
+    "frontend_type": "Backend only. The capacity ceiling fields (max_permitted_form/dwellings) keep their types; only their value changes when a prohibition genuinely applies. No frontend interface change.",
+    "user_failure_mode": "Before: a dual-occ-prohibited lot showed a 2-dwelling dual-occ ceiling the lot cannot legally achieve (over-report). After: dual_occupancy is dropped from the ceiling for that lot (R2 tops out at dwelling_house). The gate can only REMOVE a prohibited form, never add one; on query failure it changes nothing."
   },
   "functions": [
     {
-      "name": "tokens",
-      "file_line": ".claude/hooks/prior-art-guard.py:71",
-      "input": "a single identifier, filename, or path-segment string to be tokenised",
-      "output": "set of lowercased concern tokens (len>=4, stopwords dropped, camelCase split)",
-      "if_none": "empty/blank string -> empty set -> the hook exits 0 (allow), never blocks on no signal"
+      "name": "_eligibility_excluded_forms",
+      "file_line": "services/intelligence_brief.py:1080",
+      "input": "lat, lng floats (or None) for the subject lot",
+      "output": "set of engine dev_type forms to exclude from the ceiling (e.g. {'dual_occupancy'})",
+      "if_none": "missing coords / None gate / exception -> empty set (ceiling unchanged, fail-safe)"
+    },
+    {
+      "name": "_ceiling_within_tier",
+      "file_line": "services/intelligence_brief.py:1034",
+      "input": "zone code, permitted engine forms, optional excluded_forms set",
+      "output": "densest permitted form at/below the zone tier that is NOT excluded",
+      "if_none": "no permitted, non-excluded form -> 'dwelling_house'"
+    },
+    {
+      "name": "_realistic_forms",
+      "file_line": "services/intelligence_brief.py:1058",
+      "input": "zone code, lga name, optional excluded_forms set",
+      "output": "(as_of_right_form, ceiling_form); ceiling respects the exclusions",
+      "if_none": "no coverage / error -> ('dwelling_house','dwelling_house')"
     }
   ],
-  "values": "N/A - no regulatory or business values. Constants are the jscpd threshold (8%, baseline 6.77%) and the stopword/watched-dir lists; all dev-tooling tunables.",
-  "queries": "N/A - no database queries. The only external call is `git grep` (read-only) over tracked/untracked code files, with a 12s timeout and fail-open on error.",
+  "values": "N/A - no regulatory values hardcoded. The prohibition is read live from ePlanning layer 452; the excluded form name ('dual_occupancy') is an engine dev_type identifier, not a planning value.",
+  "queries": "N/A - no SQL added. The only new external call is the existing live ArcGIS point query (layer 452) via fetch_dual_occ_prohibition, read-only, already timeout-bounded and fail-open.",
   "break_it": [
     {
-      "scenario": "A new file is created whose concern genuinely duplicates existing code (e.g. services/planning_eligibility.py vs the frontend eligibility engine)",
-      "what_happens": "Without the guard the model silently builds a parallel implementation (the exact failure this session)",
-      "repro": "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"services/planning_eligibility.py\",\"content\":\"def evaluate_eligibility(z): return True\"}}' | python .claude/hooks/prior-art-guard.py ; echo exit=$?  (expect 2)",
+      "scenario": "An R2 lot inside a dual-occupancy prohibition area (ePlanning 452 returns prohibited)",
+      "what_happens": "Before, the ceiling was dual_occupancy (2 dwellings) the lot cannot achieve",
+      "repro": "pytest tests/test_eligibility_gates.py::test_dual_occ_prohibited_excludes_the_form  (and ::test_r2_dual_occ_excluded_falls_to_dwelling_house)",
       "mitigated": true,
-      "how": "git grep finds strong path/token overlap -> exit 2 with the candidate files listed; verified it blocks and surfaces nsw-planning-portal.ts / assess-eligibility.ts"
+      "how": "_eligibility_excluded_forms adds 'dual_occupancy'; _ceiling_within_tier skips it -> ceiling drops to dwelling_house"
     },
     {
-      "scenario": "A genuinely-new file is legitimately needed, or the model has reviewed the candidates and is extending none",
-      "what_happens": "A hard block would deadlock (re-issuing the same Write re-blocks)",
-      "repro": "pipe the same Write JSON but with content containing a line 'prior-art-checked: backend SoT' into the hook; echo exit=$?  (expect 0)",
+      "scenario": "The 452 query fails (ArcGIS down/timeout) or returns None",
+      "what_happens": "A naive gate could over-restrict (drop forms) or crash the brief",
+      "repro": "pytest tests/test_eligibility_gates.py::test_gate_query_raises_is_failsafe ::test_gate_query_returns_none_is_failsafe",
       "mitigated": true,
-      "how": "escape hatch: a `prior-art-checked:` line in the content allows the write through (forced, auditable acknowledgment); verified exit 0 with the ack line"
+      "how": "try/except returns an empty set -> ceiling unchanged; the brief never blocks on the gate"
     },
     {
-      "scenario": "The hook errors internally (git missing, bad input, timeout) or a non-code/test/overwrite file is written",
-      "what_happens": "A fail-closed guard would block all edits on its own bug (the node_modules/pre-impl class of outage)",
-      "repro": "pipe a Write JSON for file_path tests/test_x.py (or any non-watched path, or malformed JSON) into the hook; echo exit=$?  (expect 0)",
+      "scenario": "A lot where dual occupancy is permitted (452 not in prohibition area)",
+      "what_happens": "Over-tightening would wrongly drop a legitimate dual-occ ceiling",
+      "repro": "pytest tests/test_eligibility_gates.py::test_dual_occ_not_prohibited_excludes_nothing ; live 17 Corden Ave -> ceiling stays 2 dual_occupancy",
       "mitigated": true,
-      "how": "every error path and non-watched/overwrite/test path calls sys.exit(0) (fail-open); verified novel + test files and overwrites pass"
+      "how": "prohibited=False -> empty exclusion set; verified live the Five Dock ceiling stays dual_occupancy"
     },
     {
-      "scenario": "jscpd cannot run in pre-push (no network/npx cache), or the push touches no source code",
-      "what_happens": "A naive gate would block the push on tooling failure or waste ~40s on docs-only pushes",
-      "repro": "push a branch that changes only docs/config and confirm step [6] prints 'No source code changed — skipping duplication ratchet' and does not block",
+      "scenario": "Excluding a form that is not the ceiling form (e.g. dual_occ excluded on an R3 lot whose ceiling is multi_dwelling)",
+      "what_happens": "An over-broad exclusion could wrongly lower an unrelated ceiling",
+      "repro": "pytest tests/test_eligibility_gates.py::test_excluding_a_form_not_at_the_ceiling_is_a_noop",
       "mitigated": true,
-      "how": "the ratchet skips when no source code changed, and only blocks on the explicit 'too many duplicates' threshold message; any other non-zero jscpd exit warns and continues"
+      "how": "the ladder walk only skips the excluded form; the R3 multi_dwelling ceiling is unchanged"
+    },
+    {
+      "scenario": "Coordinates are missing (geocode failed upstream)",
+      "what_happens": "Calling the gate with None could raise",
+      "repro": "pytest tests/test_eligibility_gates.py::test_missing_coordinates_skip_the_gate",
+      "mitigated": true,
+      "how": "_eligibility_excluded_forms returns an empty set when lat or lng is None"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "After merge, the prior-art guard runs on every new code-file Write (block + ack hatch); the jscpd ratchet runs on pushes that change source. Tighten the 8% threshold in .jscpd.json downward as the eligibility consolidation removes existing duplication."
+    "manual_verify": "Run a brief for a lot inside a dual-occupancy prohibition area and confirm the ceiling no longer shows dual_occupancy. P2 will add the station/catchment correctness and wire the 776 low/mid-rise exclusion against the LMR uplift; P3 unifies the fetch paths and the frontend onto this backend gate."
   }
 }
