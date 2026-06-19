@@ -1031,36 +1031,78 @@ def _permitted_engine_forms(zone_code: Optional[str], lga_name: Optional[str]) -
             conn.close()
 
 
-def _ceiling_within_tier(zone_code: Optional[str], permitted_engine_forms: set[str]) -> str:
+def _ceiling_within_tier(
+    zone_code: Optional[str],
+    permitted_engine_forms: set[str],
+    excluded_forms: Optional[set[str]] = None,
+) -> str:
     """Densest permitted form AT OR BELOW the zone-tier ceiling.
 
     Walks the density ladder from the zone's realism ceiling downward and returns the
     first form that is permitted — so an outlier permitted use *denser* than the zone
-    tier (shop_top in R2) is never selected. Fail-safe to ``dwelling_house``.
+    tier (shop_top in R2) is never selected. ``excluded_forms`` (e.g. a form prohibited
+    on this lot by a live SEPP exclusion gate) are skipped. Fail-safe to ``dwelling_house``.
     """
+    excluded = excluded_forms or set()
     tier_form = _ZONE_TIER_CEILING.get((zone_code or "").strip().upper(), "dwelling_house")
     try:
         start = _ENGINE_FORM_DENSITY.index(tier_form)
     except ValueError:
         start = _ENGINE_FORM_DENSITY.index("dwelling_house")
     for form in _ENGINE_FORM_DENSITY[start:]:
-        if form in permitted_engine_forms:
+        if form in permitted_engine_forms and form not in excluded:
             return form
     return "dwelling_house"
 
 
-def _realistic_forms(zone_code: Optional[str], lga_name: Optional[str]) -> tuple[str, str]:
+def _realistic_forms(
+    zone_code: Optional[str],
+    lga_name: Optional[str],
+    excluded_forms: Optional[set[str]] = None,
+) -> tuple[str, str]:
     """Return (as_of_right_form, ceiling_form) for the capacity range.
 
     - as_of_right_form: the conservative, always-true baseline. ``dwelling_house``
       for now; Housing-SEPP / LMR as-of-right uplift is a later refinement that
       raises this floor.
     - ceiling_form: the densest permitted form bounded by the zone tier (realism
-      ceiling) ∩ the LGA's permitted list (legality) — the realistic upside,
-      subject to a DA. Fail-safe to ``dwelling_house`` (no coverage / error).
+      ceiling) ∩ the LGA's permitted list (legality), minus any ``excluded_forms``
+      prohibited on this lot (e.g. dual occupancy where the live ePlanning prohibition
+      layer applies) — the realistic upside, subject to a DA. Fail-safe to
+      ``dwelling_house`` (no coverage / error).
     """
-    ceiling = _ceiling_within_tier(zone_code, _permitted_engine_forms(zone_code, lga_name))
+    ceiling = _ceiling_within_tier(
+        zone_code, _permitted_engine_forms(zone_code, lga_name), excluded_forms
+    )
     return "dwelling_house", ceiling
+
+
+def _eligibility_excluded_forms(lat: Optional[float], lng: Optional[float]) -> set[str]:
+    """Engine forms to EXCLUDE from the capacity ceiling, from live SEPP eligibility gates.
+
+    Wires a previously fetched-but-unused exclusion layer into the capacity decision so the
+    backend brief and the planning UI can no longer disagree:
+    - **Dual occupancy prohibition** (ePlanning layer 452): where a lot is inside a
+      dual-occupancy prohibition area, ``dual_occupancy`` is removed from the ceiling (an
+      R2 lot then tops out at ``dwelling_house`` instead of a prohibited dual occ).
+
+    Heritage is handled separately (GATE-2 suppresses SEPP overrides on heritage land). The
+    776 low/mid-rise exclusion has no active ceiling effect yet — the ceiling reflects
+    base-LEP permissions, and LMR *uplift* (which 776 would suppress) lands in P2.
+
+    Fail-safe: missing coordinates or any query error -> empty set (ceiling unchanged, never
+    over-restricted on a transient failure).
+    """
+    if lat is None or lng is None:
+        return set()
+    excluded: set[str] = set()
+    try:
+        dual = _fetch_dual_occ_prohibition(lat, lng)
+        if dual and dual.get("prohibited"):
+            excluded.add("dual_occupancy")
+    except Exception as e:  # fail-safe — never block the brief on a gate query
+        logger.warning("dual-occ prohibition gate query failed: %s", e)
+    return excluded
 
 
 # ---------------------------------------------------------------------------
@@ -1298,6 +1340,7 @@ from services.portal_constraints import (
     fetch_uhi as _fetch_uhi,
     fetch_arr_ifd as _fetch_arr_ifd,
     fetch_firms_hotspots as _fetch_firms_hotspots,
+    fetch_dual_occ_prohibition as _fetch_dual_occ_prohibition,
 )
 from services.lot_dimensions import (
     fetch_lot_geometry,
@@ -2566,8 +2609,10 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             from services.constraint_arithmetic import compute_constraint_arithmetic
 
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            _excluded_forms = _eligibility_excluded_forms(lat, lng)
             _floor_form, _ceiling_form = _realistic_forms(
-                controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name
+                controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
+                excluded_forms=_excluded_forms,
             )
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
@@ -3094,8 +3139,10 @@ def _generate_brief_sse(
                     from services.constraint_arithmetic import compute_constraint_arithmetic
 
                     lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+                    _excluded_forms = _eligibility_excluded_forms(lat, lng)
                     _floor_form, _ceiling_form = _realistic_forms(
-                        controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name
+                        controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
+                        excluded_forms=_excluded_forms,
                     )
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
