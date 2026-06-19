@@ -751,7 +751,7 @@ function IntelligenceBriefInner() {
         <p className="text-sm text-slate-500 mt-1 max-w-3xl">
           For a single NSW property: what the rules allow, what physically constrains the site,
           what environmental risk applies, what it&apos;s worth, and what&apos;s happening
-          next door — fifteen-plus authoritative government layers fused into one brief,
+          next door — fifteen-plus government, satellite and computed layers fused into one brief,
           every figure traced to its source.
         </p>
       </div>
