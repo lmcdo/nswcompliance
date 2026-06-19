@@ -1,5 +1,6 @@
 {
   "tier": "critical",
+  "commit_hash": "c7b59cbe",
   "justification": "Changes whether the capacity card is shown for community-title (classsubtype=4) lots — a user-facing output change in a liability-sensitive area, so critical tier. The change is narrow and conservative: it feeds the authoritative cadastre classsubtype community signal that classify_strata already routes to DEVELOPMENT; classsubtype=3 strata is unchanged, so no stacked apartment can be promoted to a development brief.",
   "files": [
     "scripts/generate_conveyancing_report.py",
@@ -52,6 +53,13 @@
       "repro": "pytest tests/test_cadastral_plan_type.py::test_genuine_strata_without_count_stays_out_of_development",
       "mitigated": true,
       "how": "the plan_type community signal is checked before the lot count, so a community lot still routes to DEVELOPMENT and a classsubtype 3 lot without a count stays AMBIGUOUS rather than being shown a card"
+    },
+    {
+      "scenario": "A plain Torrens house with no strata or community feature in the cadastre result must stay non-strata and developable",
+      "what_happens": "if the new community branch widened the detection net a normal freestanding house could be wrongly flagged and lose its development brief",
+      "repro": "code review of get_cadastral_info plus the suite in tests/test_cadastral_plan_type.py — a Torrens-only feature has no classsubtype 3 or 4 and no SP or CP planlabel",
+      "mitigated": true,
+      "how": "the is_community boolean is evaluated only inside the existing if sp_lots branch, so a lot with no strata or community feature returns the unchanged non-strata dict"
     }
   ],
   "post_merge": {

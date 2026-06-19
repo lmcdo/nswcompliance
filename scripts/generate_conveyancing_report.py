@@ -326,7 +326,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
 
         if sp_lots:
             top = sp_lots[0]
-            plan = top.get("planlabel", "")
+            plan = top.get("planlabel") or ""
             # classsubtype 4 = community-title lot (Community Land Development Act).
             # Derive plan_type from classsubtype, not the planlabel prefix alone — a
             # community lot can carry a DP-style label, and the CP-prefix-only rule
