@@ -22,4 +22,11 @@ COPY scripts/dcp_watchdog.py ./scripts/dcp_watchdog.py
 COPY scripts/hub_scrapers/ ./scripts/hub_scrapers/
 COPY scripts/run_monitors.py ./scripts/run_monitors.py
 
+# Extract-to-review + commit-on-approve workers (MONITOR_NAME=dcp-extract / dcp-commit).
+# These need pdfplumber (in requirements-monitor.txt) and the enrichment package,
+# which dcp_extract_changed imports.
+COPY scripts/dcp_extract_changed.py ./scripts/dcp_extract_changed.py
+COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
+COPY enrichment/ ./enrichment/
+
 ENV PYTHONPATH=/app:/app/scripts
