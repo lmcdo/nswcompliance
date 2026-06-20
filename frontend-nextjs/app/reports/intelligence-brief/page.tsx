@@ -134,9 +134,9 @@ function describeUnavailable(reason?: string | null, section?: string): Unavaila
   // there is no path here. Don't invent one.
   if (section === 'satellite.pre_da_history' || r.includes('premium')) {
     return {
-      label: 'Not in this brief',
-      detail: 'Site-history is a deeper add-on (slower) and is not part of the standard brief.',
-      tone: 'neutral',
+      label: 'Not run',
+      detail: 'Tick “Include site history (slower)” above and run the brief again to add this.',
+      tone: 'optional',
     };
   }
   if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
@@ -635,6 +635,7 @@ function IntelligenceBriefInner() {
   const [runId, setRunId] = useState<string | null>(null);
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
+  const [includeSiteHistory, setIncludeSiteHistory] = useState(false);
   const [publicAccessToken, setPublicAccessToken] = useState<string | null>(null);
   const [parts, setParts] = useState<BriefEvent[]>([]);
   const abortRef = useRef<AbortController | null>(null);
@@ -815,7 +816,9 @@ function IntelligenceBriefInner() {
           address: selectedAddress,
           lat: selectedLat,
           lng: selectedLng,
-          include_satellite: includeSatellite,
+          // Site history needs both flags; ticking it implies satellite too.
+          include_satellite: includeSatellite || includeSiteHistory,
+          include_premium: includeSiteHistory,
         }),
       });
 
@@ -832,7 +835,7 @@ function IntelligenceBriefInner() {
       setState('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
     }
-  }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
+  }, [selectedAddress, selectedLat, selectedLng, includeSatellite, includeSiteHistory]);
 
   const handleReset = useCallback(() => {
     if (abortRef.current) {
@@ -887,6 +890,16 @@ function IntelligenceBriefInner() {
               className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
             />
             Include satellite analysis (bushfire, flood, climate, granny flat detection)
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeSiteHistory}
+              onChange={(e) => setIncludeSiteHistory(e.target.checked)}
+              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            />
+            Include site history (slower — adds ~1 min)
           </label>
 
           <button
