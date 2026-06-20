@@ -100,6 +100,11 @@ MAX_DELAY = 60.0
 # GitHub Actions matrix spread them across runner IPs (see #506).
 JITTER_LOW = 0.7
 JITTER_HIGH = 1.4
+# Paced gap between councils. Many NSW councils sit behind shared gov WAF infra
+# that rate-limits per-IP across domains, so back-to-back councils from one IP
+# burst it. A jittered inter-council rest spreads the run's load over a long
+# window without needing multiple egress IPs.
+INTER_COUNCIL_DELAY = 8.0
 
 
 def _get_domain(url: str) -> str:
@@ -593,7 +598,16 @@ def run_monitor(
         "waf_blocked": [],
     }
 
-    for council, council_chapters in by_council.items():
+    # Spread the load across the run: randomise council order + a paced gap
+    # between councils so the single Railway IP dribbles requests instead of
+    # bursting a shared gov WAF (see #506). Not multi-IP, but removes the
+    # single-burst signature with no new infrastructure.
+    import random
+    _councils = list(by_council.items())
+    random.shuffle(_councils)
+    for _ci, (council, council_chapters) in enumerate(_councils):
+        if _ci > 0:
+            time.sleep(INTER_COUNCIL_DELAY * random.uniform(JITTER_LOW, JITTER_HIGH))
         hub_url = council_chapters[0].get("council_page_url")
         hub_expected = council_chapters[0].get("hub_expected_count")
         hub_last_count = council_chapters[0].get("hub_last_pdf_count")
