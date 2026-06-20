@@ -5,9 +5,10 @@ to avoid burning Actions minutes.
 
 ## Architecture
 
-One Docker image (`Dockerfile.monitors`) serves all 4 monitors. Each Railway cron
-service sets `MONITOR_NAME` to select which monitor runs. The entrypoint is
-`scripts/run_monitors.py`.
+One Docker image (`Dockerfile.monitors`) bundles all the monitor scripts. Each
+Railway cron service sets `MONITOR_NAME` to select which monitor runs. The
+entrypoint is `scripts/run_monitors.py`, whose `MONITORS` dict is the source of
+truth for the valid `MONITOR_NAME` values.
 
 ## Services to Create in Railway Dashboard
 
@@ -19,6 +20,13 @@ Create 4 cron services in the same Railway project as the API:
 | `monitor-legislation` | `legislation` | `0 8 * * 1` | Mon 18:00 | Weekly Mon |
 | `monitor-dcp` | `dcp-monitor` | `0 2 * * 1` | Mon 12:00 | Weekly Mon, all councils sequential |
 | `monitor-watchdog` | `dcp-watchdog` | `0 10 * * 3` | Wed 20:00 | Weekly Wed (after Mon DCP run) |
+
+> **Not yet scheduled:** `regulatory-freshness` (`scripts/regulatory_freshness_monitor.py`)
+> is dispatchable via `run_monitors.py` and bundled into `Dockerfile.monitors`, but
+> has no Railway cron service. Before wiring one up: the script imports
+> `scripts/conveyancing_db.py`, which is **not** currently `COPY`d into
+> `Dockerfile.monitors` — add that COPY or the service will fail with `ImportError`.
+> It needs `DATABASE_URL`.
 
 ### Creating Each Service
 
