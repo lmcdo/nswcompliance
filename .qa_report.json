@@ -1,70 +1,57 @@
 {
   "tier": "standard",
-  "commit_hash": "667a80c7",
-  "justification": "Frontend display-only polish to the Intelligence Brief page: (1) empty states now state the real reason + path (satellite layers -> tick 'Include satellite analysis'; pre-DA -> not in standard brief; overlay -> not mapped for this council; address-not-matched), replacing the dead-end 'Not included'; (2) the SEPP Housing card renders the Low & Mid-Rise standards as a table (form / eligible / min lot / min width / max FSR-height) instead of a 'N · 16 fields' dump; (3) field labels expand acronyms (JRC/WOfS/BoM/FSR/HCA/TOD) and units (M2->m2), and drop internal terms (Postgis); (4) the raw overlay-coverage key dump is hidden and the Data Gaps list shows the contextual detail. No data, query, or regulatory logic changes.",
+  "commit_hash": "fa4cfebf",
+  "_note": "follow-up commit adds the function entry below",
+  "justification": "Dev-tooling: upgrade the prior-art guard (PreToolUse Write|Edit hook) to also fire on EDITS that add a data-source signature (a new fetcher def, an HTTP/DB call, or an external data URL), not just net-new files. This closes the hole that let an ANEF fetcher be added to an existing file with zero duplication check. Adds a known-constraint registry cross-check and an audit log. No production code; fail-open.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    ".claude/hooks/prior-art-guard.py"
   ],
   "pre_impl": {
-    "existing_data": "Section cards used describeUnavailable(reason) returning a bare {label,tone}; the body showed only the short label ('Not included'). SEPP Housing is a list[SEPPStandard]; the generic SectionData rendered each as 'index · 16 fields'. overlay_coverage (a ~20-key internal list) and the Data Gaps list both printed raw internal strings.",
-    "assumption_mismatch": "The UI assumed 'Not included' was enough; it dead-ends the user. Verified gating: satellite layers (bushfire/flood/climate/granny_flat/terrain) are blank only because include_satellite was false -> the real path is the checkbox; pre_da_history needs include_premium which this page never sends -> no path here. The SEPP list is the most decision-relevant block and was being dumped.",
-    "new_vs_existing": "No new dependency. describeUnavailable now takes the section and returns {label, detail, tone} with the verified contextual copy. formatKey expands a small acronym/unit map. A new SeppHousingCard renders the standards table (special-cased like the existing constraint_arithmetic card). overlay_coverage is filtered out; the Data Gaps list reuses describeUnavailable for its detail.",
-    "external_source_error": "No data or network change. describeUnavailable returns a neutral 'Not included' for any unrecognised reason; SeppHousingCard only renders when the standards list is non-empty, otherwise the generic SectionCard fallback applies; missing numeric standards render as a dash.",
-    "frontend_type": "Frontend only (TypeScript/React). describeUnavailable returns a typed Unavailable; SeppStandard fields are optional/nullable and guarded before formatting; tsc clean, the only ESLint warning is a pre-existing exhaustive-deps note unrelated to this change.",
-    "user_failure_mode": "Before: 'Not included' with no reason or path; a meaningless SEPP dump; raw internal labels and key lists. After: each blank says why and how to get it (or 'none here'/good news), the SEPP standards read as a real eligibility table, and labels are plain-English."
+    "existing_data": "The v1 hook fired only on Write to a NEW file under watched dirs; it bailed immediately on Edit (tool_name != Write) and on existing files. It was already registered for Edit|Write in settings.json, but the code never handled Edit.",
+    "assumption_mismatch": "The guard was assumed to cover duplication generally, but adding a capability via Edit to an existing file (the ANEF case in intelligence_brief.py) bypassed it entirely. Verified by simulating that exact edit: v2 now returns exit 2 and surfaces app/api/environmental/anef/route.ts, lib/nsw-planning-portal.ts and services/portal_constraints.py.",
+    "new_vs_existing": "Extends the existing hook in place (does not add a new hook). Adds: Edit handling, a data-source SIGNATURE regex gate (so ordinary edits stay silent), concern extraction from the added content, a KNOWN-constraint set, and a JSONL audit log of every block. Reuses the same git-grep search and scoring.",
+    "external_source_error": "Pure local hook. Any exception (bad stdin, git failure, log write) falls through to sys.exit(0) — fail-open, never blocks legitimate work on a hook bug.",
+    "frontend_type": "N/A — a Python PreToolUse hook, not application code. It reads the tool payload from stdin and writes a block message to stderr with exit 2.",
+    "user_failure_mode": "Before: a dev could add a duplicate data source by editing an existing file and the guard never ran. After: such an edit is blocked with the existing implementations listed, and the only bypass is an explicit prior-art-checked acknowledgement that is logged."
   },
   "functions": [
     {
-      "name": "describeUnavailable",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:121",
-      "input": "the internal NOT_AVAILABLE reason string and the brief section key for one empty field or card",
-      "output": "a plain-language status label, a contextual detail line stating the real reason and path, and a tone",
-      "if_none": "a null, empty or unrecognised reason returns a neutral 'Not included' so no internal string ever leaks to the user"
-    },
-    {
-      "name": "SeppHousingCard",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:355",
-      "input": "the list of Housing-SEPP development standards for the lot, each with eligibility and numeric controls",
-      "output": "a table of form, eligibility, minimum lot and width and the maximum FSR or height for each permitted form",
-      "if_none": "the render path only mounts the card when the list is non-empty, otherwise the generic section card is used"
+      "name": "tokens",
+      "file_line": ".claude/hooks/prior-art-guard.py:78",
+      "input": "a string (filename, symbol name, URL or added code block) to extract concern keywords from",
+      "output": "a set of lower-cased keyword tokens of length four or more, with camelCase split and stop-words removed",
+      "if_none": "an input with no qualifying tokens returns an empty set, and the hook then exits zero without blocking"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The acronym map is display vocabulary; the SEPP numbers are read from the standards the brief already computed, not invented.",
-  "queries": "N/A - frontend render change; no database or API query is added. It reads only the already-streamed section data.",
+  "values": "N/A - no regulatory values. The KNOWN set is a list of concern keywords (anef, riparian, flood, ...) that already have data sources in this repo, used to strengthen the block signal.",
+  "queries": "N/A - the hook runs a read-only git grep over the repo; it adds no database or API query.",
   "break_it": [
     {
-      "scenario": "A satellite layer is blank because the satellite checkbox was not ticked",
-      "what_happens": "a bare 'Not included' dead-ends the user with no reason or path to the data",
-      "repro": "describeUnavailable('Satellite data not requested', 'satellite.bushfire') returns the 'tick Include satellite analysis and run again' detail",
+      "scenario": "An ordinary logic edit with no data-source signature is made to a watched file",
+      "what_happens": "if the hook fired on every edit it would block all normal work with false positives",
+      "repro": "the capability-add branch returns early unless the SIGNATURE regex (requests/httpx/fetcher def/external URL/SQL) matches the added content",
       "mitigated": true,
-      "how": "satellite sections map to the real, verified checkbox path; the detail line states exactly how to add the layer"
+      "how": "the SIGNATURE gate means edits without a new data source exit 0 silently; only data-source additions are searched"
     },
     {
-      "scenario": "Pre-DA history is blank but there is no premium control on this page",
-      "what_happens": "telling the user to 'request it' would promise a path that does not exist here",
-      "repro": "describeUnavailable('Premium data not requested', 'satellite.pre_da_history') returns 'not part of the standard brief' with no fake path",
+      "scenario": "The added content adds a fetcher for a capability that already exists (the ANEF case)",
+      "what_happens": "a duplicate data source gets created with no discovery, as happened with ANEF",
+      "repro": "piping an Edit payload whose new_string contains def _anef_field + fetch_protection_overlay returns exit 2 and lists the existing anef route, portal lib and portal_constraints",
       "mitigated": true,
-      "how": "pre_da_history maps to an honest 'not in this brief' detail rather than an action that the page cannot perform"
+      "how": "Edit handling + the KNOWN-constraint cross-check + the git-grep candidates block the edit and surface the existing implementations to reuse"
     },
     {
-      "scenario": "The SEPP Housing standards list is empty or absent for a lot",
-      "what_happens": "a table component could render an empty shell or crash on a null list",
-      "repro": "the render branch checks standards && standards.length before mounting SeppHousingCard; otherwise the generic SectionCard handles it",
+      "scenario": "The hook itself errors on a malformed payload or a git failure",
+      "what_happens": "a hook crash could block every Write/Edit and halt all work",
+      "repro": "any exception path (json load, git grep subprocess, log write) is wrapped and falls through to exit 0",
       "mitigated": true,
-      "how": "SeppHousingCard mounts only for a non-empty list, and each numeric cell falls back to a dash when the standard is null"
-    },
-    {
-      "scenario": "A field label or gap field contains an unknown acronym or an internal term like postgis",
-      "what_happens": "the raw internal token would leak into the user-facing label",
-      "repro": "formatKey('heritage_postgis') drops 'postgis' and yields 'Heritage'; formatKey('jrc_occurrence_pct') yields 'JRC Occurrence %'",
-      "mitigated": true,
-      "how": "formatKey maps known acronyms/units and maps internal words to an empty string that is filtered out before joining"
+      "how": "fail-open by design — every error path exits 0, so a hook bug degrades to no-guard, never to a hard block"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On the Vercel preview, run 25 Empire St (no satellite) and confirm: the Bushfire/Granny-Flat/Terrain/Climate/Flood cards say 'Not run — tick Include satellite analysis and run again'; SEPP Housing renders a form/eligible/min-lot table, not 'N · 16 fields'; field labels read JRC/WOfS/FSR/m² and 'Heritage' (no Postgis); the overlay-coverage key dump is gone; the Data Gaps list reads as contextual states. ANEF live-fallback and the SEPP currency/dedup polish are tracked follow-ups."
+    "manual_verify": "Re-run the simulated ANEF edit against .claude/hooks/prior-art-guard.py and confirm exit 2 + candidates. Confirm an ordinary edit (no requests/url/fetcher) to a services/ file exits 0. Check .claude/prior-art-decisions.log records the block. The heavier CI data-source registry/ratchet remains a follow-up."
   }
 }
