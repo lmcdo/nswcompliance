@@ -2054,7 +2054,11 @@ def _build_environmental(
     def _anef_field() -> DataField:
         # prior-art-checked: ANEF reuses anef_zones (Sydney, via fetch_anef_zone)
         # + the existing portal_constraints.fetch_anef (regional). Not a new source.
-        if "anef" in covered:
+        # Only trust the ingested overlay when it actually carries a value. The
+        # anef overlay is "covered" for many LGAs but empty at most lots, while
+        # anef_zones holds the real Sydney contour — so a null overlay must fall
+        # through to the live query, not short-circuit to a blank.
+        if "anef" in covered and anef_value is not None:
             return DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today)
         if lat is None or lng is None:
             return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
