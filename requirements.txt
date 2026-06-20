@@ -206,3 +206,7 @@ geotessera
 psycopg2-binary
 scikit-image
 rapidfuzz
+
+# Gemini LLM extraction (enrichment/extractors/gemini_actionability_classifier.py).
+# New unified SDK — google.generativeai is deprecated and gemini-1.5-* models are retired.
+google-genai>=1.0.0
