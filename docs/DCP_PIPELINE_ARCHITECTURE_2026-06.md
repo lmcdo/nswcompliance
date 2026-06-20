@@ -63,6 +63,8 @@ Everyone serving legally-cited data uses the **same shape** — which this proje
 - **Wire `HC_PING_URL`** (healthchecks.io, free) on every monitor service. This alone would have caught the silent-stage failure.
 - **Update the governance doc** to match reality (Railway, not GitHub Actions).
 - **Decide the stuck chapters** the governed way: run `--review`, inspect (some under-extract to ~2 sections — likely missing page-range config for `section-a-part-6-multi-dwelling` & `section-c-part-23-building-design`, plus the `inner_west`↔`ashfield` council-key mismatch on `chapter-a-miscellaneous`). Fix config, then commit only the good ones.
+- **[TEST] Pipeline-completeness gate (the #506-catcher).** A pytest test asserting every stage in a committed `dcp_pipeline_manifest` has a matching scheduled job (parse `run_monitors.MONITORS` + the baked Railway cron config). **Enforced by the existing pre-push `pytest tests/` gate** — drop a stage and the push blocks. Offline, fast, deterministic. This is the single check that would have caught #506; build it first. (See §5.3.)
+- **[TEST] Real-endpoint smoke canary.** Extend the watchdog's ePlanning layer-health pattern to HEAD each council PDF source + R2 + verify ArcGIS layer IDs/schema, pinging healthchecks.io on success. **Enforced by the dead-man's-switch**, not pre-push (must not hit live gov servers on every push). Catches ETag/header drift, URL rot, layer-ID shift, WAF blocks. (See §5.3.)
 
 ### Phase 1 — Kill the highest-liability failure modes (days, ~$0). The "minimal change" bundle.
 - **Per-provision normalized-text hash + numeric-token diff** — replace byte-hash / ETag-as-truth. Normalize away metadata/whitespace/headers; **never** normalize away digits/units/cell boundaries. Kills false-positive noise (#2/#3) and surfaces risky numeric changes.
@@ -70,6 +72,8 @@ Everyone serving legally-cited data uses the **same shape** — which this proje
 - **Dead-man's-switch v2** — beyond `HC_PING_URL`, add a "queue not stalled" check (alert if any row stuck `in_progress` > 1h). Catches a wedged stage even if cron keeps ticking.
 - **Schema-validate every provision before commit** (Pandera/JSON-schema: clause format, units present, numeric ranges e.g. setback < ~30m). Blocks silent under-extraction / drift corruption before the live DB.
 - **Diff-based review UI** — small Next.js page against the queue: old-vs-new + PDF page crop + the numeric diff. Goal: approve in ~30s from the diff alone.
+- **[TEST] Golden-PDF regression corpus.** Commit a handful of real council PDF fixtures + their expected provision output; a pytest test extracts offline and asserts the result. **Enforced by the existing pre-push `pytest tests/` gate** — a pdfplumber bump or page-range edit that changes output blocks the push. Implements the domain framework's Golden tests at the *extraction* level. (See §5.3.)
+- **[TEST] Silent-drop / Three-State adversity suite.** pytest tests for the documented failure modes: scanned/short PDF → abort; provision-count drop → escalate; source URL 404/redirect → escalate-not-skip; two-extractor disagreement → human; soft-delete scoped to the chapter (the 1,592-wipe guard); **auto-reject queues a human, never keeps stale (State-3 ≠ State-2)**. Pure-logic, **enforced by pre-push pytest**. One enforcement test per §5.2 invariant. (See §5.3.)
 
 ### Phase 2 — Reduce per-council toil + concentrate human time (moderate).
 - Route **scanned / borderless-table councils** to a **structure-aware extractor** — Azure Document Intelligence Layout ($10/1k pages, tables included; pay-per-use only for hard councils), self-hosted **Docling** (free, ~97.9% complex-table accuracy), or a **vision LLM (e.g. Gemini)** as a *proposing* extractor (see §6 — never system-of-record). Structure-aware extraction is **drift-tolerant** — it won't silently shift columns on re-layout the way x-coordinate page-range configs do. Structural cure for pain point #4.
@@ -187,6 +191,34 @@ Design target: the **only** recurring human task is approving/rejecting *flagged
 | Cosmetic lane drifts wrong | 5% audit sample | caught on sample |
 
 **Net:** maximal automation of detection, extraction-to-review, crop/diff/summary, cosmetic auto-clear, and alerting; minimal, pre-sorted human approval confined to the genuinely risky changes; integrity enforced by hard invariants and loud failure rather than vigilance.
+
+---
+
+## 5.3 Testing & verification requirements — enforced, not documented
+
+**The rule:** a requirement written only in a doc is ignorable; the only requirement that holds is one a *gate blocks on*. So every item below names the gate that enforces it. (This is the project's own stated lesson — "enforce rules via hooks, not documentation" — applied here.)
+
+**Why the current gates miss everything that matters here:** today's pre-push runs mocked-unit pytest (`conftest_mocks` stubs `requests`/`psycopg2`/`pyproj`), jest, a *self-authored* QA-report form-check, and a liability-language diff scan. All static or mocked. The pipeline's real failure surface — live HTTP, real PDFs, real DB writes, multi-stage orchestration, runtime alerting — is untouched. Not one recurring DCP bug in the history would have been caught. Closing that needs two enforcement tiers.
+
+### Tier 1 — blocks at `git push` (no new hook machinery needed)
+Anything deterministic + offline is a pytest test, and **the existing pre-push `pytest tests/` gate already runs and blocks on it.** The gap is that the tests don't exist — *writing them IS enforcing them.* Required tests:
+- **Pipeline-completeness assertion** (Phase 0) — stages-manifest ↔ scheduled-jobs. The #506-catcher.
+- **Golden-PDF regression corpus** (Phase 1) — real PDF fixtures → expected output; locks extraction against silent drift.
+- **Silent-drop / Three-State / Safe-Default suite** (Phase 1) — every documented failure mode escalates, never serves stale-as-current; one test per §5.2 invariant.
+- **Schema-contract tests** — every committed provision matches type/unit/range; a violation fails the build.
+
+### Tier 2 — can't block at push, enforced by scheduled canary + dead-man's-switch
+These need live network or a real DB, so they must NOT run on every push (slow, flaky, would hammer gov servers). The **dead-man's-switch IS the hook-equivalent for runtime**: the canary runs on Railway cron, pings healthchecks.io on success; failure *or silence* alerts loudly.
+- **Real-endpoint smoke** — council PDFs + R2 + ArcGIS schema (extend the watchdog canary).
+- **Real-DB integration** — soft-delete scope, atomic per-chapter commit, `SKIP LOCKED` claim, count-gate — run against a **scratch/staging DB on a schedule**, never prod, never mocked.
+- **Alert-delivery canary** — prove Telegram + healthchecks actually fire and deliver (history: silently swallowed alerts).
+
+### Meta-enforcement — ensuring the tests get *written*, not just *run*
+"Make it un-ignorable" needs a gate on test *presence*, not just test *execution*:
+- **Coverage-manifest ratchet** (mirrors the existing TSC-baseline + mutmut ratchet): a pre-push check that the required artifacts exist and are non-empty — a new pipeline stage with no completeness entry, no golden fixture, and no adversity test **fails the push**. This is how "you ignore everything not hook-enforced" gets structurally closed.
+- **Mutation ratchet on the new suite** — a test that passes proves nothing if `return []` also passes it; the existing `MUTMUT=1` path should cover the new pipeline tests so weak tests are caught.
+
+**Honest limit:** hooks can enforce *presence + pass + mutation-resistance*. They cannot enforce *judgment* (is the golden fixture representative? is the adversity case the right one?). That residual is the one thing left to process — `/code-review ultra` on liability changes (Gap A) — and should be the *only* thing relying on discipline. Everything else above is a gate.
 
 ---
 
