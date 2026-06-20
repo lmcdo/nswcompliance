@@ -453,6 +453,7 @@ scripts/
 !scripts/pco_client.py
 !scripts/dcp_quality_report.py
 !scripts/dcp_watchdog.py
+!scripts/dcp_commit_approved.py
 !scripts/backfill_source_chapter_key.py
 !scripts/verify_controls_monitoring.py
 !scripts/insert_cb_parking.py
