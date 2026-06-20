@@ -262,23 +262,26 @@ export function ConstraintArithmeticCard({
               to a DA). The count is an illustration of the GFA envelope, not a promise. */}
           {hasYield && (
             <div className="bg-white border border-blue-200 rounded-lg p-3">
-              <div className="text-xs font-medium text-blue-600 mb-1">Dwelling Yield</div>
-              <div className="text-xl font-bold text-gray-900">
-                {floorDwellings}
-                {ceilingDwellings != null && ceilingDwellings > floorDwellings && (
-                  <span>&ndash;{ceilingDwellings}</span>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">
-                {ceilingDwellings != null && ceilingDwellings > floorDwellings ? (
-                  <>
-                    {floorDwellings} as-of-right &middot; up to {ceilingDwellings}{' '}
-                    ({humanizeForm(result.max_permitted_form)}) subject to a DA
-                  </>
-                ) : (
-                  <>{humanizeForm(result.as_of_right_form)}, as-of-right</>
-                )}
-              </div>
+              <div className="text-xs font-medium text-blue-600 mb-1">Homes you could build</div>
+              {ceilingDwellings != null && ceilingDwellings > floorDwellings ? (
+                <>
+                  <div className="text-xl font-bold text-gray-900">
+                    {floorDwellings}&ndash;{ceilingDwellings}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    <span className="font-medium text-gray-900">{floorDwellings}</span> without council approval,
+                    {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
+                    ({humanizeForm(result.max_permitted_form)}) with council approval.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-xl font-bold text-gray-900">{floorDwellings}</div>
+                  <div className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    {humanizeForm(result.as_of_right_form)} — buildable without council approval.
+                  </div>
+                </>
+              )}
             </div>
           )}
 

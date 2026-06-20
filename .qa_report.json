@@ -1,63 +1,48 @@
 {
   "tier": "minor",
-  "commit_hash": "22f09c39",
-  "justification": "3b labelling polish (frontend display only): planning overlays render as a readable list with units ('Lot size: 450 m2', 'Acid sulfate: Class 5') instead of '2 items'; the Climate Disclosure card humanises empirical findings ('Urban heat: +7.3 C above surrounding areas (2016 data — most recent available)') instead of dumping internal manifest/snake_case units; long URLs in value cells wrap instead of overflowing.",
+  "commit_hash": "5b857dd8",
+  "justification": "Plain-English floor/ceiling labels on the capacity card's dwelling-yield range. The engine-side LMR ceiling uplift is already built and firing (_lmr_uplift_form -> _realistic_forms, both brief paths); the gap was the label jargon. Replaces 'as-of-right' and 'subject to a DA' with 'without council approval' / 'with council approval', and retitles the cell 'Homes you could build'.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Verified live (14 Stanley, satellite on): environmental.overlays.value is a list of {layer_type,value} (acid_sulfate 'Class 5', lot_size '450'); satellite.climate_disclosure.value.empirical_findings is a list of {hazard,value,unit,data_date,confidence}.",
-    "assumption_mismatch": "Arrays of objects fell through formatValue to 'N items', and the climate value object dumped internal manifest/counts/snake_case units.",
-    "new_vs_existing": "No new data. Adds OVERLAY_UNIT map, OverlayList component, humanizeClimateFinding helper and ClimateCard, dispatched like the existing SeppHousingCard/TerrainCard special cases. break-words gains overflow-wrap:anywhere.",
-    "external_source_error": "No fetching changed. Helpers guard null/empty and fall back to the generic card when the expected shape is absent.",
-    "frontend_type": "Frontend only (TypeScript/React). OverlayItem/ClimateFinding typed; tsc --noEmit passes.",
-    "user_failure_mode": "Before: 'Overlays: 2 items', a climate dump with 'degrees_c_above_baseline', URLs spilling out. After: an itemised overlay list with units, plain-English climate lines, wrapped URLs."
+    "existing_data": "Verified live: _lmr_uplift_form fires (R2->dual_occupancy, R3->multi_dwelling_housing) and _realistic_forms raises the ceiling above the base zone tier; both streaming and non-streaming brief paths pass uplift_form. The card already received as_of_right_dwellings + max_permitted_dwellings.",
+    "assumption_mismatch": "The number range was correct but labelled in planning jargon ('as-of-right', 'subject to a DA') a layperson cannot parse.",
+    "new_vs_existing": "No new data or component. Rewords the existing Dwelling Yield cell; no logic change to the floor/ceiling values.",
+    "external_source_error": "No fetching. Pure presentation of values already in the result.",
+    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
+    "user_failure_mode": "Before: '1 as-of-right; up to 3 (multi dwelling housing) subject to a DA'. After: 'Homes you could build 1-3 — 1 without council approval, up to 3 (multi dwelling housing) with council approval.'"
   },
-  "functions": [
-    {
-      "name": "humanizeClimateFinding",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:404",
-      "input": "a climate empirical finding {hazard, value, unit, data_date, confidence}",
-      "output": "a {label, detail} plain-English line; urban heat / extreme rainfall special-cased, others humanised generically",
-      "if_none": "returns null when value is missing; ClimateCard filters nulls and shows 'No climate hazards recorded' if none"
-    },
-    {
-      "name": "OverlayList",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:381",
-      "input": "the overlays array of {layer_type, value}",
-      "output": "a readable list with units appended from OVERLAY_UNIT (lot_size -> m2)",
-      "if_none": "renders 'None mapped at this property' when no overlay has both a layer_type and a value"
-    }
-  ],
-  "values": "N/A - no regulatory values. Overlay and climate values come from the section payload; only labels/units are formatted.",
+  "functions": [],
+  "values": "N/A - no regulatory values; the floor/ceiling counts are unchanged engine outputs, only relabelled.",
   "queries": "N/A - no database or API query.",
   "break_it": [
     {
-      "scenario": "An overlay row is missing layer_type or value",
-      "what_happens": "a blank or '[object Object]' row could appear",
-      "repro": "OverlayList filters to o.layer_type && o.value != null && o.value !== ''",
+      "scenario": "Ceiling equals floor (no uplift) — e.g. a single-dwelling lot",
+      "what_happens": "showing a range would be wrong",
+      "repro": "the range branch requires ceilingDwellings > floorDwellings; otherwise the single-value branch renders",
       "mitigated": true,
-      "how": "incomplete rows dropped; an all-empty list shows the 'None mapped' message"
+      "how": "single-value branch shows 'N — buildable without council approval'"
     },
     {
-      "scenario": "The climate section arrives without empirical_findings",
-      "what_happens": "ClimateCard could render empty or crash on .map",
-      "repro": "the dispatch only swaps in ClimateCard when Array.isArray(cd.empirical_findings); otherwise the generic card renders",
+      "scenario": "max_permitted_form is null but a ceiling count exists",
+      "what_happens": "the form name could render empty",
+      "repro": "humanizeForm(null) returns 'dwelling'",
       "mitigated": true,
-      "how": "guarded dispatch + empty-array fallback text"
+      "how": "humanizeForm falls back to 'dwelling' so the sentence stays grammatical"
     },
     {
-      "scenario": "A new hazard type not special-cased",
-      "what_happens": "it could show raw snake_case",
-      "repro": "humanizeClimateFinding falls back to formatKey(hazard) + value + unit.replace(/_/g,' ')",
+      "scenario": "floorDwellings is 0 (no buildable yield)",
+      "what_happens": "the cell could show a misleading 0",
+      "repro": "hasYield = floorDwellings > 0 gates the whole cell",
       "mitigated": true,
-      "how": "the generic branch produces a readable label and de-underscored unit"
+      "how": "the cell is not rendered when there is no yield"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a brief with satellite on: overlays show an itemised list with 'Lot size: 450 m2'; the Climate card reads 'Urban heat: +7.3 C above surrounding areas (2016 data — most recent available)'; long source URLs wrap inside their card."
+    "manual_verify": "Run a brief for an LMR-eligible lot (e.g. 14 Stanley Concord): the capacity card's 'Homes you could build' reads e.g. '1-3 — 1 without council approval, up to 3 (multi dwelling housing) with council approval.'"
   }
 }
