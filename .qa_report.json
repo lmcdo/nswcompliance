@@ -1,72 +1,70 @@
 {
   "tier": "standard",
-  "commit_hash": "90bd92ae",
-  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
+  "commit_hash": "667a80c7",
+  "justification": "Frontend display-only polish to the Intelligence Brief page: (1) empty states now state the real reason + path (satellite layers -> tick 'Include satellite analysis'; pre-DA -> not in standard brief; overlay -> not mapped for this council; address-not-matched), replacing the dead-end 'Not included'; (2) the SEPP Housing card renders the Low & Mid-Rise standards as a table (form / eligible / min lot / min width / max FSR-height) instead of a 'N · 16 fields' dump; (3) field labels expand acronyms (JRC/WOfS/BoM/FSR/HCA/TOD) and units (M2->m2), and drop internal terms (Postgis); (4) the raw overlay-coverage key dump is hidden and the Data Gaps list shows the contextual detail. No data, query, or regulatory logic changes.",
   "files": [
-    "services/portal_constraints.py",
-    "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
-    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
-    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
-    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
-    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
-    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
+    "existing_data": "Section cards used describeUnavailable(reason) returning a bare {label,tone}; the body showed only the short label ('Not included'). SEPP Housing is a list[SEPPStandard]; the generic SectionData rendered each as 'index · 16 fields'. overlay_coverage (a ~20-key internal list) and the Data Gaps list both printed raw internal strings.",
+    "assumption_mismatch": "The UI assumed 'Not included' was enough; it dead-ends the user. Verified gating: satellite layers (bushfire/flood/climate/granny_flat/terrain) are blank only because include_satellite was false -> the real path is the checkbox; pre_da_history needs include_premium which this page never sends -> no path here. The SEPP list is the most decision-relevant block and was being dumped.",
+    "new_vs_existing": "No new dependency. describeUnavailable now takes the section and returns {label, detail, tone} with the verified contextual copy. formatKey expands a small acronym/unit map. A new SeppHousingCard renders the standards table (special-cased like the existing constraint_arithmetic card). overlay_coverage is filtered out; the Data Gaps list reuses describeUnavailable for its detail.",
+    "external_source_error": "No data or network change. describeUnavailable returns a neutral 'Not included' for any unrecognised reason; SeppHousingCard only renders when the standards list is non-empty, otherwise the generic SectionCard fallback applies; missing numeric standards render as a dash.",
+    "frontend_type": "Frontend only (TypeScript/React). describeUnavailable returns a typed Unavailable; SeppStandard fields are optional/nullable and guarded before formatting; tsc clean, the only ESLint warning is a pre-existing exhaustive-deps note unrelated to this change.",
+    "user_failure_mode": "Before: 'Not included' with no reason or path; a meaningless SEPP dump; raw internal labels and key lists. After: each blank says why and how to get it (or 'none here'/good news), the SEPP standards read as a real eligibility table, and labels are plain-English."
   },
   "functions": [
     {
-      "name": "fetch_protection_overlay",
-      "file_line": "services/portal_constraints.py:233",
-      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
-      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
-      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
+      "name": "describeUnavailable",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:121",
+      "input": "the internal NOT_AVAILABLE reason string and the brief section key for one empty field or card",
+      "output": "a plain-language status label, a contextual detail line stating the real reason and path, and a tone",
+      "if_none": "a null, empty or unrecognised reason returns a neutral 'Not included' so no internal string ever leaks to the user"
     },
     {
-      "name": "_overlay_field",
-      "file_line": "services/intelligence_brief.py:1985",
-      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
-      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
-      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
+      "name": "SeppHousingCard",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:355",
+      "input": "the list of Housing-SEPP development standards for the lot, each with eligibility and numeric controls",
+      "output": "a table of form, eligibility, minimum lot and width and the maximum FSR or height for each permitted form",
+      "if_none": "the render path only mounts the card when the list is non-empty, otherwise the generic section card is used"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
-  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
+  "values": "N/A - no regulatory values are hardcoded. The acronym map is display vocabulary; the SEPP numbers are read from the standards the brief already computed, not invented.",
+  "queries": "N/A - frontend render change; no database or API query is added. It reads only the already-streamed section data.",
   "break_it": [
     {
-      "scenario": "The live Protection query times out or errors while assembling the brief",
-      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
+      "scenario": "A satellite layer is blank because the satellite checkbox was not ticked",
+      "what_happens": "a bare 'Not included' dead-ends the user with no reason or path to the data",
+      "repro": "describeUnavailable('Satellite data not requested', 'satellite.bushfire') returns the 'tick Include satellite analysis and run again' detail",
       "mitigated": true,
-      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
+      "how": "satellite sections map to the real, verified checkbox path; the detail line states exactly how to add the layer"
     },
     {
-      "scenario": "The property has no resolved coordinates so a live query is impossible",
-      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
+      "scenario": "Pre-DA history is blank but there is no premium control on this page",
+      "what_happens": "telling the user to 'request it' would promise a path that does not exist here",
+      "repro": "describeUnavailable('Premium data not requested', 'satellite.pre_da_history') returns 'not part of the standard brief' with no fake path",
       "mitigated": true,
-      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
+      "how": "pre_da_history maps to an honest 'not in this brief' detail rather than an action that the page cannot perform"
     },
     {
-      "scenario": "Our database already covers the layer for this LGA",
-      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
+      "scenario": "The SEPP Housing standards list is empty or absent for a lot",
+      "what_happens": "a table component could render an empty shell or crash on a null list",
+      "repro": "the render branch checks standards && standards.length before mounting SeppHousingCard; otherwise the generic SectionCard handles it",
       "mitigated": true,
-      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
+      "how": "SeppHousingCard mounts only for a non-empty list, and each numeric cell falls back to a dash when the standard is null"
     },
     {
-      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
-      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
+      "scenario": "A field label or gap field contains an unknown acronym or an internal term like postgis",
+      "what_happens": "the raw internal token would leak into the user-facing label",
+      "repro": "formatKey('heritage_postgis') drops 'postgis' and yields 'Heritage'; formatKey('jrc_occurrence_pct') yields 'JRC Occurrence %'",
       "mitigated": true,
-      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
+      "how": "formatKey maps known acronyms/units and maps internal words to an empty string that is filtered out before joining"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
+    "manual_verify": "On the Vercel preview, run 25 Empire St (no satellite) and confirm: the Bushfire/Granny-Flat/Terrain/Climate/Flood cards say 'Not run — tick Include satellite analysis and run again'; SEPP Housing renders a form/eligible/min-lot table, not 'N · 16 fields'; field labels read JRC/WOfS/FSR/m² and 'Heritage' (no Postgis); the overlay-coverage key dump is gone; the Data Gaps list reads as contextual states. ANEF live-fallback and the SEPP currency/dedup polish are tracked follow-ups."
   }
 }
