@@ -1,56 +1,56 @@
 {
   "tier": "standard",
-  "commit_hash": "54924447",
-  "justification": "Frontend display-only fixes on the Intelligence Brief page surfaced from the live screenshot: (1) units now sit with their value (Height '7 m', Lot Size '500 m²') instead of separate 'Height Units: m' rows; (2) long values (the DCP URL) wrap with break-words instead of overflowing/overlapping the next field; (3) empty '...reason' fields (e.g. the granny-flat SEPP ineligible reason when the lot is eligible) are hidden; (4) an aerial site image is added by reusing the existing AerialTile component (NSW SIX Maps 10cm, same source as the granny-flat tool) — no new data source. No data or logic change.",
+  "commit_hash": "b41cc401",
+  "justification": "Frontend-only: draw the lot boundary on the brief's aerial. Fetches the WGS84 GeoJSON lot polygon from the existing /api/property/profile route (the same source PropertyProfile and the granny-flat tool use) and passes it to the existing AerialTile lotPolygon prop. No new component, no new data source, no new conversion.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "SectionData renders each section field generically. The backend emits units as separate fields (height + height_units, lot_size + lot_size_units), reason fields that are null when not applicable, and long URL strings. The generic renderer showed each as its own row with no wrapping.",
-    "assumption_mismatch": "The renderer assumed one field per value; units belong with their value, an empty reason is noise, and a long URL needs to wrap. Confirmed from the live brief (Height Units row, overlapping DCP URL, 'SEPP Ineligible Reason: —').",
-    "new_vs_existing": "No new component. SectionData builds a unitFor map from '<field>_units' entries and merges them; the entries filter also drops standalone units rows and empty reason rows; a small valueWithUnit helper appends the unit (never onto a dash); the value cells gain break-words.",
-    "external_source_error": "No data or network change. valueWithUnit appends a unit only when present and the value is not a dash; a field without a unit renders exactly as before.",
-    "frontend_type": "Frontend only (TypeScript/React). unitFor is typed Record<string,string>; valueWithUnit takes (key, raw, unit?) and returns a string; the filter handles null/undefined/empty reason values.",
-    "user_failure_mode": "Before: units floated as separate rows, the DCP URL overlapped the next field, and an empty ineligible-reason row added noise. After: '7 m'/'500 m²' read naturally, long values wrap, and empty reason rows are gone."
+    "existing_data": "AerialTile already accepts a lotPolygon prop and draws the outline; /api/property/profile already returns lat, lng and a WGS84 lotPolygon (Web Mercator rings converted server-side). PropertyProfile already consumes exactly this. The brief was passing only lat/lng.",
+    "assumption_mismatch": "The aerial showed the area but not the actual block outline; the data and the rendering capability already existed and just needed wiring, not new code.",
+    "new_vs_existing": "No new component, API, or conversion. Adds a lotPolygon state, a useEffect that fetches /api/property/profile for the resolved address and stores data.lotPolygon, and passes it to AerialTile. handleReset clears it.",
+    "external_source_error": "The fetch is wrapped: a non-ok response or a thrown error leaves lotPolygon null, so AerialTile falls back to its centered-aerial (no overlay) exactly as before.",
+    "frontend_type": "Frontend only (TypeScript/React). lotPolygon is typed {type:'Polygon';coordinates:number[][][]}|null; the effect guards on address and state and cancels on unmount; AerialTile already types the prop.",
+    "user_failure_mode": "Before: the aerial was just a centered photo. After: the actual lot boundary is outlined on it; if the polygon can't be fetched, it gracefully shows the photo without the outline."
   },
   "functions": [
     {
-      "name": "valueWithUnit",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:325",
-      "input": "a field key, its raw value, and an optional unit string merged from the matching units field",
-      "output": "the formatted value with the unit appended, e.g. '7 m', unless the value is an empty dash",
-      "if_none": "with no unit, or when the formatted value is a dash, it returns the formatted value unchanged"
+      "name": "IntelligenceBriefInner",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:656",
+      "input": "renders the Intelligence Brief page; now also resolves the lot polygon for the aerial overlay",
+      "output": "the brief UI including an aerial with the lot boundary drawn when the polygon is available",
+      "if_none": "if the lot polygon fetch fails or returns nothing, lotPolygon stays null and the aerial renders without an overlay"
     }
   ],
-  "values": "N/A - no regulatory values. Units are display strings emitted by the backend (m, m²); the change only places them next to their value.",
-  "queries": "N/A - frontend render change; no database or API query is added.",
+  "values": "N/A - no regulatory values. The lot polygon is geometry from the existing property API; nothing is hardcoded.",
+  "queries": "N/A for new queries - reuses the existing /api/property/profile route; no new database or API endpoint is added.",
   "break_it": [
     {
-      "scenario": "A field has a matching units field but a null value",
-      "what_happens": "appending the unit would produce a meaningless '— m'",
-      "repro": "valueWithUnit('height', null, 'm') returns the dash without the unit because the formatted value is a dash",
+      "scenario": "The property profile fetch fails or returns no lotPolygon",
+      "what_happens": "a naive overlay could crash the map or render an empty shape",
+      "repro": "the fetch is wrapped in catch and the success path only sets state when d.lotPolygon is present; otherwise lotPolygon stays null",
       "mitigated": true,
-      "how": "the helper only appends the unit when the formatted value is not the em-dash placeholder"
+      "how": "AerialTile renders the centered aerial without an overlay when lotPolygon is null, exactly as before"
     },
     {
-      "scenario": "A value is a very long URL (the DCP plan link)",
-      "what_happens": "an unwrapped long string overflows its cell and overlaps the adjacent field",
-      "repro": "the value cell now carries break-words so the URL wraps within its column",
+      "scenario": "The user resets and runs a new brief for a different address",
+      "what_happens": "a stale lot boundary from the previous address could draw over the new aerial",
+      "repro": "handleReset calls setLotPolygon(null); the effect re-fetches for the new resolved address",
       "mitigated": true,
-      "how": "break-words on the value dd wraps long unbroken strings instead of overflowing"
+      "how": "the polygon is cleared on reset and the effect, keyed on the address, fetches the new one"
     },
     {
-      "scenario": "A reason field is null because the condition does not apply (eligible lot)",
-      "what_happens": "an empty 'Ineligible Reason: —' row adds confusing noise",
-      "repro": "the entries filter drops keys matching /reason/i whose value is null, undefined or empty",
+      "scenario": "The effect fires repeatedly or after unmount during streaming",
+      "what_happens": "a late response could set state on an unmounted component or thrash",
+      "repro": "the effect uses a cancelled flag and only runs in streaming/complete with an address",
       "mitigated": true,
-      "how": "empty reason rows are filtered out; a populated reason still renders"
+      "how": "the cleanup sets cancelled = true so a late response is ignored, and the deps key it to the address and state"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On the brief, confirm Planning Controls reads 'Height 7 m' and 'Lot Size 500 m²' (no separate units rows), the DCP URL wraps instead of overlapping, and the granny-flat card no longer shows an empty 'SEPP Ineligible Reason'. The ANEF value and site-history depend on a clean Railway rebuild (ANEF #536 + rapidfuzz reinstall), not this change."
+    "manual_verify": "On the brief, confirm the aerial now shows the lot outline (teal) over the property; for an address whose polygon can't be fetched, the aerial still renders without the outline."
   }
 }

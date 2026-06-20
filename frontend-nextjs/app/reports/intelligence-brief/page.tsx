@@ -666,6 +666,7 @@ function IntelligenceBriefInner() {
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
   const [includeSiteHistory, setIncludeSiteHistory] = useState(false);
+  const [lotPolygon, setLotPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
   const [publicAccessToken, setPublicAccessToken] = useState<string | null>(null);
   const [parts, setParts] = useState<BriefEvent[]>([]);
   const abortRef = useRef<AbortController | null>(null);
@@ -697,6 +698,19 @@ function IntelligenceBriefInner() {
       }
     }
   }, [sectionEvents, briefType]);
+
+  // Fetch the lot boundary (WGS84 GeoJSON) to overlay on the aerial — reuses the
+  // /api/property/profile route (the same source PropertyProfile uses).
+  useEffect(() => {
+    const addr = metadataEvent?.data.address ?? selectedAddress;
+    if (!addr || (state !== 'streaming' && state !== 'complete')) return;
+    let cancelled = false;
+    fetch(`/api/property/profile?address=${encodeURIComponent(addr)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d?.lotPolygon) setLotPolygon(d.lotPolygon); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [metadataEvent?.data.address, selectedAddress, state]);
 
   // Connect directly to Trigger.dev Realtime stream when we have a runId + token
   useEffect(() => {
@@ -877,6 +891,7 @@ function IntelligenceBriefInner() {
     setPublicAccessToken(null);
     setErrorMsg('');
     setBriefType(null);
+    setLotPolygon(null);
     setParts([]);
     setInputAddress('');
     setSelectedAddress('');
@@ -988,6 +1003,7 @@ function IntelligenceBriefInner() {
                 lat={(metadataEvent?.data.lat ?? selectedLat) as number}
                 lng={(metadataEvent?.data.lng ?? selectedLng) as number}
                 height={260}
+                lotPolygon={lotPolygon}
               />
               <p className="px-4 py-2 text-xs text-slate-400">
                 NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
