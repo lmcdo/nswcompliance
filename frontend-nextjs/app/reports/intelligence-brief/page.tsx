@@ -427,6 +427,89 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Terrain — slope/aspect/drainage as a compass + plain-English summary, not a
+// raw number dump.
+// ---------------------------------------------------------------------------
+
+interface TerrainData {
+  slope_mean_deg?: number | null;
+  slope_max_deg?: number | null;
+  aspect_dominant_deg?: number | null;
+  aspect_direction?: string | null;
+  elevation_range_m?: number | null;
+  drainage_direction?: string | null;
+  landform_type?: string | null;
+}
+
+function slopeWord(d?: number | null): string {
+  if (d == null) return 'Slope';
+  if (d < 1) return 'Flat';
+  if (d < 3) return 'Gently sloping';
+  if (d < 6) return 'Moderately sloping';
+  if (d < 12) return 'Noticeably sloping';
+  if (d < 20) return 'Steep';
+  return 'Very steep';
+}
+
+function AspectCompass({ deg }: { deg?: number | null }) {
+  const r = 28, cx = 34, cy = 34;
+  const rad = ((deg ?? 0) * Math.PI) / 180;
+  const x = cx + r * Math.sin(rad);
+  const y = cy - r * Math.cos(rad);
+  return (
+    <svg width="68" height="68" viewBox="0 0 68 68" className="flex-shrink-0">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
+      <text x={cx} y="11" textAnchor="middle" fontSize="9" fill="#94a3b8">N</text>
+      <text x="61" y={cy + 3} textAnchor="middle" fontSize="9" fill="#94a3b8">E</text>
+      <text x={cx} y="65" textAnchor="middle" fontSize="9" fill="#94a3b8">S</text>
+      <text x="7" y={cy + 3} textAnchor="middle" fontSize="9" fill="#94a3b8">W</text>
+      {deg != null && <line x1={cx} y1={cy} x2={x} y2={y} stroke="#0d9488" strokeWidth="2.5" strokeLinecap="round" />}
+      <circle cx={cx} cy={cy} r="2.5" fill="#0d9488" />
+    </svg>
+  );
+}
+
+function TerrainCard({ data }: { data: TerrainData }) {
+  const parts: string[] = [];
+  if (data.slope_mean_deg != null) {
+    const w = slopeWord(data.slope_mean_deg).toLowerCase();
+    parts.push(`${w} (≈${data.slope_mean_deg.toFixed(1)}°${data.slope_max_deg != null ? `, up to ${Math.round(data.slope_max_deg)}°` : ''})`);
+  }
+  if (data.aspect_direction) parts.push(`faces ${data.aspect_direction}`);
+  if (data.elevation_range_m != null) parts.push(`~${Math.round(data.elevation_range_m)} m of fall across the lot`);
+  if (data.drainage_direction) parts.push(`drains ${data.drainage_direction}`);
+  const joined = parts.join(', ');
+  const summary = joined ? joined.charAt(0).toUpperCase() + joined.slice(1) + '.' : 'Terrain measured for this lot.';
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Terrain</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Slope, aspect and drainage from elevation</p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+      </div>
+      <div className="px-5 py-4 flex items-start gap-4">
+        <div className="flex flex-col items-center flex-shrink-0">
+          <AspectCompass deg={data.aspect_dominant_deg} />
+          <span className="text-xs text-slate-400 mt-0.5">{data.aspect_direction ?? '—'} aspect</span>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-slate-900">{summary}</p>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-3 text-xs">
+            <div><dt className="text-slate-400">Slope</dt><dd className="text-slate-700">{data.slope_mean_deg != null ? `${data.slope_mean_deg.toFixed(1)}° avg${data.slope_max_deg != null ? ` · ${Math.round(data.slope_max_deg)}° max` : ''}` : '—'}</dd></div>
+            <div><dt className="text-slate-400">Fall</dt><dd className="text-slate-700">{data.elevation_range_m != null ? `${data.elevation_range_m.toFixed(1)} m` : '—'}</dd></div>
+            <div><dt className="text-slate-400">Drains to</dt><dd className="text-slate-700">{data.drainage_direction ?? '—'}</dd></div>
+            <div><dt className="text-slate-400">Landform</dt><dd className="text-slate-700">{data.landform_type ?? '—'}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Elapsed timer hook
 // ---------------------------------------------------------------------------
 
@@ -1047,6 +1130,16 @@ function IntelligenceBriefInner() {
                 const standards = (event.data.data?.value ?? null) as SeppStandard[] | null;
                 if (standards && standards.length) {
                   card = <SeppHousingCard standards={standards} />;
+                }
+              }
+              if (section === 'satellite.terrain') {
+                // Terrain may arrive as a plain dict or a DataField wrapping it in .value.
+                const raw = event.data.data as Record<string, unknown> | null;
+                const t = (raw && typeof raw === 'object'
+                  ? ((raw.value as TerrainData) ?? (raw as unknown as TerrainData))
+                  : null);
+                if (t && typeof t === 'object' && t.slope_mean_deg != null) {
+                  card = <TerrainCard data={t} />;
                 }
               }
               if (!card) {
