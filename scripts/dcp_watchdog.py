@@ -16,7 +16,11 @@ Checks:
 
 Exit codes:
     0 = all clear
-    1 = issues found (also sends Telegram alert for CRITICAL/STANDARD)
+    2 = issues found — the run itself succeeded (also sends Telegram alert for
+        CRITICAL/STANDARD). run_monitors.py treats exit 2 as a healthy run, matching
+        r2_monitor / legislation_monitor / dcp_extract_changed. Exit 1 is reserved
+        for genuine crashes (e.g. an unhandled exception or DB connection failure),
+        which run_monitors reports as a real failure.
 """
 
 import os
@@ -324,7 +328,11 @@ if critical_issues or standard_issues or info_issues:
         for issue in info_issues:
             print(f"  {issue}")
 
-    sys.exit(1)
+    # Exit 2 (not 1) = "ran fine, found issues". run_monitors.py treats 0 and 2 as a
+    # healthy run and pings the healthcheck as success; the Telegram alert above is the
+    # signal. Exit 1 is left to Python for genuine crashes so the runner reports those
+    # as real failures rather than double-alerting on every normal findings run.
+    sys.exit(2)
 else:
     print("\nWatchdog: all clear.")
     sys.exit(0)

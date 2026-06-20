@@ -249,3 +249,48 @@ class TestFailGracePeriod:
         last_ok = None
         should_alert = last_ok is None
         assert should_alert is True
+
+
+# ── Watchdog ↔ run_monitors exit-code contract ──────────────────────────────
+
+
+class TestWatchdogExitCodeContract:
+    """Lock the exit-code contract between dcp_watchdog.py and run_monitors.py.
+
+    Regression guard for the double-alert bug: the watchdog used to exit 1 when it
+    found issues, but run_monitors treats any code outside {0, 2} as a crash — so
+    every normal findings run produced a spurious "🚨 dcp-watchdog failed (exit 1)"
+    alert on top of the real DCP alert.
+
+    Contract (shared with r2_monitor / legislation_monitor / dcp_extract_changed):
+      0 = all clear, 2 = ran fine + found issues, anything else = genuine crash.
+    """
+
+    @staticmethod
+    def _read(rel_path: str) -> str:
+        from pathlib import Path
+        return (Path(__file__).parent.parent / rel_path).read_text(encoding="utf-8")
+
+    def test_run_monitors_treats_exit_2_as_success(self):
+        """run_monitors must classify only codes outside {0, 2} as failed."""
+        src = self._read("scripts/run_monitors.py")
+        assert "exit_code not in (0, 2)" in src, (
+            "run_monitors failure classification changed — the watchdog's exit-2 "
+            "findings signal may now be (mis)reported as a failure."
+        )
+
+    def test_watchdog_issues_path_exits_2_not_1(self):
+        """The watchdog's 'issues found' branch must exit 2, reserving 1 for crashes."""
+        src = self._read("scripts/dcp_watchdog.py")
+        assert "sys.exit(2)" in src, "watchdog no longer signals findings with exit 2"
+        # The only intentional non-zero/non-2 exit is an uncaught crash, never a
+        # hardcoded sys.exit(1) on the findings path.
+        assert "sys.exit(1)" not in src, (
+            "watchdog reintroduced sys.exit(1) — run_monitors would treat a normal "
+            "findings run as a crash and double-alert (see TestWatchdogExitCodeContract)."
+        )
+
+    def test_watchdog_all_clear_exits_0(self):
+        """The all-clear branch must still exit 0 (healthy, no alert)."""
+        src = self._read("scripts/dcp_watchdog.py")
+        assert "sys.exit(0)" in src
