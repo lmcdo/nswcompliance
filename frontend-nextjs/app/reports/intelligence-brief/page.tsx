@@ -212,7 +212,21 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
   const reason = isDataField ? (data.reason as string | null) : null;
   const source = isDataField ? (data.source as string) : null;
   const value = isDataField ? (data.value as Record<string, unknown> | null) : data;
-  const unavail = confidence === 'not_available' ? describeUnavailable(reason, section) : null;
+  // A bushfire prescreen that RAN but found no Bushfire Attack Level is good news
+  // ("not bushfire-prone"), not an un-ticked add-on — the value object is present.
+  const bushfireNotProne =
+    section === 'satellite.bushfire' && confidence === 'not_available' &&
+    !!value && typeof value === 'object' && !Array.isArray(value) &&
+    (value as Record<string, unknown>).category == null;
+  const unavail = confidence === 'not_available'
+    ? (bushfireNotProne
+        ? {
+            label: 'Not bushfire-prone',
+            detail: 'Checked the RFS Bushfire Prone Land map — this property is not designated bushfire-prone.',
+            tone: 'clear' as UnavailableTone,
+          }
+        : describeUnavailable(reason, section))
+    : null;
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
@@ -293,10 +307,15 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
               </div>
             );
           }
+          // An authoritative null is a checked "nothing here" (e.g. not
+          // bushfire-designated, no heritage listing) — show "None", not a dash.
+          const display = df.value == null && df.confidence === 'authoritative'
+            ? 'None'
+            : valueWithUnit(key, df.value, unitFor[key]);
           return (
             <div key={key} className="flex flex-col">
               <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-              <dd className="text-sm text-slate-900 mt-0.5 break-words">{valueWithUnit(key, df.value, unitFor[key])}</dd>
+              <dd className="text-sm text-slate-900 mt-0.5 break-words">{display}</dd>
             </div>
           );
         }
@@ -678,7 +697,7 @@ function CompleteSummary({ data }: { data: BriefComplete }) {
           <div><span className="text-amber-600">Estimated:</span> <span className="font-medium">{cs.estimated}</span></div>
           <div><span className="text-blue-600">Derived:</span> <span className="font-medium">{cs.derived}</span></div>
           <div><span className="text-purple-600">Extracted:</span> <span className="font-medium">{cs.extracted}</span></div>
-          <div><span className="text-red-600">Not available:</span> <span className="font-medium">{cs.not_available}</span></div>
+          <div><span className="text-slate-500">Not available:</span> <span className="font-medium">{cs.not_available}</span></div>
         </div>
         <p className="text-xs text-slate-400 mt-3">
           Generated in {elapsed_seconds}s — {cs.total - cs.not_available} of {cs.total} fields populated
