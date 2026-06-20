@@ -1,72 +1,71 @@
 {
   "tier": "standard",
-  "commit_hash": "90bd92ae",
-  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
+  "commit_hash": "1f27f33d",
+  "justification": "ANEF redone off the correct (verify-app) source. The brief's anef field now reuses the curated anef_zones table (Sydney — the source the /api/environmental/anef route uses) via PostGIS ST_Contains, and falls back to the existing portal_constraints.fetch_anef (Protection layer 2, regional airfields). Fixes the false 'outside contour' a Sydney lot would have got from the wrong source. Honest 'no published contour' where neither has data (never 'no aircraft noise'). Reuses existing sources; fail-safe.",
   "files": [
-    "services/portal_constraints.py",
     "services/intelligence_brief.py",
     "tests/test_overlay_live_fallback.py"
   ],
   "pre_impl": {
-    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
-    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
-    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
-    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
-    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
-    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
+    "existing_data": "anef_zones (5 rows, Sydney YSSY ANEF 2039) with geometry_json jsonb + bbox columns and NO PostGIS geom column — the verify route bbox-prefilters then does JS point-in-polygon. portal_constraints.fetch_anef already queries Protection layer 2 (regional ANEF: Cessnock/Bankstown/Taree/Scone, no Sydney). _build_environmental already has lat/lng and _get_db_conn() exists.",
+    "assumption_mismatch": "An earlier attempt wired ANEF to Protection layer 2 alone, which lacks Sydney — so a Sydney lot got a false 'outside aircraft noise'. Verified live: anef_zones returns ANEF 40 at Mascot and ANEF 30 at Haberfield (correct), where the wrong source returned nothing.",
+    "new_vs_existing": "No new data source. fetch_anef_zone queries the existing anef_zones table (exact point-in-polygon via ST_Contains(ST_GeomFromGeoJSON), bbox pre-filtered); _anef_field combines it with the existing fetch_anef. DB coverage still wins; the field value is a string as before.",
+    "external_source_error": "fetch_anef_zone wraps the query in try/except and returns None on any failure; _anef_field wraps each source and falls back: Sydney -> regional -> honest 'no published contour'; missing coords -> NOT_AVAILABLE. A DB or ArcGIS outage never blocks the brief and never over-states a contour.",
+    "frontend_type": "Backend only. The anef DataField stays a string value (same schema); only its source string and the value text change. No frontend interface change.",
+    "user_failure_mode": "Before: a Sydney lot could read 'outside aircraft noise' (false) or 'not mapped'. After: Sydney lots read their real ANEF level, regional airfields read theirs, and elsewhere it says 'no published ANEF contour' — never the over-claim 'no aircraft noise'."
   },
   "functions": [
     {
-      "name": "fetch_protection_overlay",
-      "file_line": "services/portal_constraints.py:233",
-      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
-      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
-      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
+      "name": "fetch_anef_zone",
+      "file_line": "services/intelligence_brief.py:1376",
+      "input": "the latitude and longitude of a property to test against the curated Sydney anef_zones table",
+      "output": "a dict with the highest containing ANEF level and airport name, or None when the point is in no Sydney zone",
+      "if_none": "missing coordinates or any query exception returns None so the caller falls back to the regional source then a conservative note"
     },
     {
-      "name": "_overlay_field",
-      "file_line": "services/intelligence_brief.py:1985",
-      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
-      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
-      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
+      "name": "_anef_field",
+      "file_line": "services/intelligence_brief.py:2053",
+      "input": "uses the enclosing lot coordinates and overlay coverage to build the ANEF environmental DataField",
+      "output": "a DataField with the Sydney ANEF level, else the regional ANEF code, else an honest no-published-contour string",
+      "if_none": "with no coordinates it returns the existing NOT_AVAILABLE field, and any source error degrades to the next fallback"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
-  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
+  "values": "N/A - no regulatory values are hardcoded. ANEF levels and airport names are read from the authoritative anef_zones table and the Protection layer; thresholds are not invented.",
+  "queries": "N/A for new tables - reuses the existing anef_zones table; the only query is a read-only point-in-polygon SELECT (bbox pre-filter + ST_Contains over the stored GeoJSON), parameterised, with a statement timeout via _get_db_conn.",
   "break_it": [
     {
-      "scenario": "The live Protection query times out or errors while assembling the brief",
-      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
+      "scenario": "A Sydney lot that the wrong source said was outside any contour",
+      "what_happens": "a false 'outside aircraft noise' reassurance near the airport, the exact bug from the discarded Protection-only attempt",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_sydney_zone_from_anef_zones ; live Mascot -> ANEF 40, Haberfield -> ANEF 30",
       "mitigated": true,
-      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
+      "how": "fetch_anef_zone runs an exact ST_Contains point-in-polygon over the curated Sydney anef_zones table, returning the real contour level"
     },
     {
-      "scenario": "The property has no resolved coordinates so a live query is impossible",
-      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
+      "scenario": "A property near a regional airfield not in the Sydney table",
+      "what_happens": "ignoring the regional ANEF would miss small-airport noise that users care about",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_regional_fallback_when_no_sydney_zone",
       "mitigated": true,
-      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
+      "how": "when anef_zones has no match, _anef_field falls back to the existing fetch_anef (Protection layer 2) which holds the regional contours"
     },
     {
-      "scenario": "Our database already covers the layer for this LGA",
-      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
+      "scenario": "A property far from any airport with no published ANEF anywhere",
+      "what_happens": "claiming 'no aircraft noise' would over-state, since some airfields have no published ANEF at all",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_no_published_contour_is_honest",
       "mitigated": true,
-      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
+      "how": "with both sources empty the field says 'No published ANEF contour at this property' — a fact about the data, not a claim about noise"
     },
     {
-      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
-      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
+      "scenario": "The anef_zones query or the ArcGIS call fails, or coordinates are missing",
+      "what_happens": "a naive combine could crash the brief or invent a contour",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_missing_coords_is_not_available ; fetch_anef_zone except path returns None",
       "mitigated": true,
-      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
+      "how": "each source is wrapped in try/except returning None, missing coords short-circuits to NOT_AVAILABLE, and the overlay tests stub both sources offline"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
+    "manual_verify": "Run a brief on a Sydney lot (e.g. 25 Empire St Haberfield) and confirm the ANEF field reads 'ANEF 30 (Sydney)' rather than 'not mapped' or 'outside'. Confirm a remote lot reads 'No published ANEF contour at this property'. The verify app still uses anef_zones only (Sydney); this backend is more complete (adds the regional fallback)."
   }
 }

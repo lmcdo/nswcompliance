@@ -6,8 +6,18 @@ live-queries the NSW Protection layer for THIS lot instead of leaking an interna
 'present' -> the real class; live 'none here' -> a clean False (good news);
 a failed live query or missing coords -> the conservative NOT_AVAILABLE fallback.
 """
+import pytest
+
 import services.intelligence_brief as ib
 import services.portal_constraints as pc
+
+
+@pytest.fixture(autouse=True)
+def _stub_anef(monkeypatch):
+    # Keep the ANEF combined source (anef_zones DB + Protection ArcGIS) offline by
+    # default so the overlay tests don't do live I/O. ANEF tests override these.
+    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: None)
+    monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
 
 
 def _env(overlays_data, lat=-33.8, lng=151.1):
@@ -79,3 +89,35 @@ def test_all_three_protection_layers_use_the_fallback(monkeypatch):
     assert env.riparian_land.value is False
     assert env.wetlands.value is False
     assert sorted(seen) == [7, 10, 11]
+
+
+# --- ANEF combined source: anef_zones (Sydney) + fetch_anef (regional) ---
+
+def test_anef_sydney_zone_from_anef_zones(monkeypatch):
+    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: {"anef_level": 30, "airport": "Sydney"})
+    env = _env({"overlays": [], "covered_layers": []})
+    assert env.anef.value == "ANEF 30 (Sydney)"
+    assert env.anef.source == "anef_zones"
+
+
+def test_anef_regional_fallback_when_no_sydney_zone(monkeypatch):
+    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: None)
+    monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: {"anef_code": "20 - 25"})
+    env = _env({"overlays": [], "covered_layers": []})
+    assert "20 - 25" in (env.anef.value or "")
+    assert env.anef.source == "planning_portal_protection"
+
+
+def test_anef_no_published_contour_is_honest():
+    # autouse stub: both sources None -> honest "no published contour", not "no noise"
+    env = _env({"overlays": [], "covered_layers": []})
+    assert env.anef.value == "No published ANEF contour at this property"
+    assert env.anef.confidence == ib.ConfidenceLevel.AUTHORITATIVE
+
+
+def test_anef_missing_coords_is_not_available(monkeypatch):
+    called = {"n": 0}
+    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: called.__setitem__("n", called["n"] + 1))
+    env = _env({"overlays": [], "covered_layers": []}, lat=None, lng=None)
+    assert env.anef.confidence == ib.ConfidenceLevel.NOT_AVAILABLE
+    assert called["n"] == 0
