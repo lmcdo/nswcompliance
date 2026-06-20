@@ -78,47 +78,57 @@ class GeminiActionabilityClassifier:
     discarded and the provision defaults to actionable (conservative per ADR-001).
 
     Args:
-        model_name: Gemini model ID. Defaults to gemini-1.5-flash for cost
-            efficiency. Change to gemini-1.5-pro for higher accuracy if needed.
+        model_name: Gemini model ID. Defaults to gemini-2.5-flash for cost
+            efficiency. Change to gemini-2.5-pro for higher accuracy if needed.
         temperature: Sampling temperature. Low values (0.0–0.1) maximise
             determinism. Default 0.1.
-        api_key: Gemini API key. Reads GEMINI_API_KEY from environment if None.
+        api_key: Gemini API key. Reads GEMINI_API_KEY (then GOOGLE_API_KEY)
+            from environment if None.
+        timeout_s: Per-request timeout in seconds. Default 30.
 
     Raises:
-        ImportError: If google-generativeai is not installed.
+        ImportError: If google-genai is not installed.
         ValueError: If no API key is available.
     """
 
-    DEFAULT_MODEL = "gemini-1.5-flash"
+    DEFAULT_MODEL = "gemini-2.5-flash"
     DEFAULT_TEMPERATURE = 0.1
+    DEFAULT_TIMEOUT_S = 30
 
     def __init__(
         self,
         model_name: str = DEFAULT_MODEL,
         temperature: float = DEFAULT_TEMPERATURE,
         api_key: Optional[str] = None,
+        timeout_s: float = DEFAULT_TIMEOUT_S,
     ) -> None:
-        """Initialise the classifier and configure the Gemini API."""
+        """Initialise the classifier and configure the Gemini client."""
         try:
-            import google.generativeai as genai  # type: ignore[import]
+            from google import genai  # type: ignore[import]
+            from google.genai import types as genai_types  # type: ignore[import]
         except ImportError as exc:
             raise ImportError(
-                "google-generativeai is required for GeminiActionabilityClassifier. "
-                "Install with: pip install google-generativeai"
+                "google-genai is required for GeminiActionabilityClassifier. "
+                "Install with: pip install google-genai"
             ) from exc
 
-        resolved_key = api_key or os.getenv("GEMINI_API_KEY")
+        resolved_key = (
+            api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        )
         if not resolved_key:
             raise ValueError(
                 "Gemini API key required. Set GEMINI_API_KEY environment variable "
                 "or pass api_key= to GeminiActionabilityClassifier()."
             )
 
-        genai.configure(api_key=resolved_key)
-        self._model = genai.GenerativeModel(model_name)
+        # timeout is milliseconds in google-genai HttpOptions.
+        self._client = genai.Client(
+            api_key=resolved_key,
+            http_options=genai_types.HttpOptions(timeout=int(timeout_s * 1000)),
+        )
+        self._types = genai_types
         self._model_name = model_name
         self._temperature = temperature
-        self._genai = genai
 
     def classify(
         self,
@@ -151,16 +161,12 @@ class GeminiActionabilityClassifier:
 
         prompt = self._build_prompt(provision_text, document_id)
 
+        # Any failure to obtain a usable response — network error, rate limit,
+        # safety block, empty/blocked candidate — collapses to the conservative
+        # fallback (is_actionable=True, verified=False) per ADR-001. The model
+        # never causes a crash and never silently marks a provision non-actionable.
         try:
-            import google.generativeai as genai  # type: ignore[import]
-            response = self._model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=512,
-                    temperature=self._temperature,
-                    candidate_count=1,
-                ),
-            )
+            response_text = self._call_gemini(prompt)
         except Exception as exc:
             return GeminiClassificationResult(
                 is_actionable=True,
@@ -169,11 +175,37 @@ class GeminiActionabilityClassifier:
                 model=self._model_name,
             )
 
-        return self._parse_and_verify(response.text or "", corpus)
+        return self._parse_and_verify(response_text, corpus)
 
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _call_gemini(self, prompt: str) -> str:
+        """Call Gemini and return the raw response text.
+
+        Raises on any failure (network, rate limit, safety block, or an empty/
+        blocked candidate where ``response.text`` would be None or raise). The
+        caller treats every exception as the conservative fallback.
+        """
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=prompt,
+            config=self._types.GenerateContentConfig(
+                max_output_tokens=800,
+                temperature=self._temperature,
+                candidate_count=1,
+                # Force structured JSON so parsing can't be derailed by prose or
+                # markdown fences.
+                response_mime_type="application/json",
+            ),
+        )
+        # response.text raises in some SDK versions when the candidate was blocked
+        # or empty; getattr keeps that from escaping as an unhandled crash.
+        text = getattr(response, "text", None)
+        if not text:
+            raise ValueError("Gemini returned an empty or blocked response (no text)")
+        return text
 
     def _build_prompt(self, provision_text: str, document_id: str) -> str:
         """Build the classification prompt.
@@ -239,7 +271,14 @@ TEXT TO CLASSIFY:
                 model=self._model_name,
             )
 
-        is_actionable: bool = bool(data.get("is_actionable", True))
+        # Coerce defensively: JSON mode returns a real bool, but a model that
+        # emits the string "false" must not be read as truthy. Unknown/missing →
+        # conservative True.
+        raw_actionable = data.get("is_actionable", True)
+        if isinstance(raw_actionable, str):
+            is_actionable = raw_actionable.strip().lower() not in ("false", "0", "no", "")
+        else:
+            is_actionable = bool(raw_actionable)
         identified_text: Optional[str] = data.get("identified_text") or None
         reason: str = data.get("reason", "")
 
