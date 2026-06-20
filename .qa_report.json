@@ -1,77 +1,73 @@
 {
   "tier": "standard",
-  "commit_hash": "99823df9",
-  "justification": "Frontend-only: replace the raw terrain number-dump (Slope Mean Deg, Aspect Dominant Deg, ...) with a TerrainCard — an aspect compass (SVG), a plain-English summary sentence, and four clean stats. Reads the existing satellite.terrain section payload (TerrainAnalysisDetail fields the backend already streams); no new data source, API, or backend change.",
+  "commit_hash": "862ce877",
+  "justification": "Hillshade relief diagram for the brief's terrain card. Renders a coloured shaded-relief PNG from the DEM the terrain pipeline already loads (services/terrain_analysis._run_terrain_chain reads dem_arr), returns it as a base64 data URI on the existing satellite.terrain section, and TerrainCard shows it. Pure presentation — no new data source, no DB, no extra fetch.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/terrain_analysis.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_hillshade_render.py"
   ],
   "pre_impl": {
-    "existing_data": "The backend already streams section 'satellite.terrain' as a DataField whose .value is TerrainAnalysisDetail with slope_mean_deg, slope_max_deg, aspect_dominant_deg, aspect_direction, elevation_range_m, drainage_direction, landform_type (verified in services/terrain_analysis.py:97-111 and the emit at services/intelligence_brief.py:3404). The brief rendered these as a raw key/value list.",
-    "assumption_mismatch": "The terrain numbers were technically present but unreadable (degrees, bearings, no interpretation). The fix is presentation only — the same fields, shown as a compass + sentence.",
-    "new_vs_existing": "No new component is strictly required but a focused TerrainCard is added alongside the existing SeppHousingCard special-case; it consumes the already-streamed section. AspectCompass is a pure SVG from one number. No new fetch, API, or DB query.",
-    "external_source_error": "No external call is added. If the terrain field is missing or slope_mean_deg is null, the special-case does not fire and the section falls back to the existing SectionCard (which shows the contextual empty-state / raw fields exactly as before).",
-    "frontend_type": "Frontend only (TypeScript/React). TerrainData is a local interface with all-optional nullable fields; every render path guards null with `!= null` / `?? '—'`. tsc --noEmit passes.",
-    "user_failure_mode": "Before: a column of cryptic numbers (Aspect Dominant Deg 24.7). After: a compass pointing NE plus 'Gently sloping (~2.8°, up to 23°), faces NE, ~26 m of fall across the lot, drains southwest.' If terrain wasn't run, the card doesn't render and the empty-state shows."
+    "existing_data": "_run_terrain_chain already reads the DEM into dem_arr (float64, NaN at nodata) at terrain_analysis.py:895; the hillshade is rendered from that same array — no second fetch. Viz deps already in requirements (numpy, matplotlib==3.10.5, pillow==11.3.0).",
+    "assumption_mismatch": "The terrain section carried only numbers; the DEM that produced them was discarded. The fix surfaces the DEM itself as an indicative relief image. No assumption about regulatory values — relief is a picture, not a control.",
+    "new_vs_existing": "prior-art-checked: no existing hillshade/LightSource/shaded-relief renderer in services/ (grep = none). New helper _render_hillshade_png reuses the in-memory DEM via matplotlib.colors.LightSource.shade — no figure/Agg backend, no whitebox call, no fetch. Field flows through the existing _build_terrain_detail model_fields filter once added to the TerrainAnalysisDetail model.",
+    "external_source_error": "No external call is added. The entire render is wrapped in try/except returning None; the terrain metrics dict is built independently, so a render failure leaves the numbers and the card intact (the image block is simply omitted).",
+    "frontend_type": "Frontend reads hillshade_png_b64?: string|null off the terrain payload and renders a plain <img> data URI guarded by truthiness; falls back to no image. tsc --noEmit passes.",
+    "user_failure_mode": "Before: terrain was numbers only. After: a shaded-relief picture of the land (lighter = higher, shadows = slope) above the compass + summary. If the DEM is missing/flat/all-nodata, no image renders and the rest of the card is unchanged."
   },
   "functions": [
     {
-      "name": "TerrainCard",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:472",
-      "input": "a TerrainData object (slope/aspect/elevation/drainage/landform, all optional)",
-      "output": "a card with an aspect compass, a plain-English summary, and four stat cells; every field guarded against null",
-      "if_none": "fields that are null render as '—'; if slope_mean_deg is null the card is never selected and SectionCard renders instead"
-    },
-    {
-      "name": "slopeWord",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:444",
-      "input": "mean slope in degrees (number or null)",
-      "output": "a plain-English band: Flat / Gently sloping / Moderately sloping / Noticeably sloping / Steep / Very steep",
-      "if_none": "returns the neutral word 'Slope' when the input is null"
+      "name": "_render_hillshade_png",
+      "file_line": "services/terrain_analysis.py:289",
+      "input": "a 2-D DEM elevation array (float, NaN at nodata) and an optional max pixel edge",
+      "output": "a data:image/png;base64 URI of a coloured shaded relief (nodata transparent, downsampled to <=256px, capped at 400k chars), or None",
+      "if_none": "returns None on any failure (bad/None/1-D input, <16 finite cells, missing matplotlib/PIL, oversize) so the terrain metrics are never affected"
     }
   ],
-  "values": "N/A - no regulatory values. Slope/aspect/elevation are computed terrain metrics from the existing DEM pipeline; the descriptive bands (Flat/Gently sloping/...) are presentation labels, not planning controls, and nothing is hardcoded from regulation.",
-  "queries": "N/A - no new database or API query. Reads the satellite.terrain section already present in the stream.",
+  "values": "N/A - no regulatory values. The image is a qualitative relief of the same DEM the metrics come from; vert_exag is a presentation choice and the caption marks it Indicative. Nothing regulatory is hardcoded.",
+  "queries": "N/A - no new database or API query. Reuses dem_arr already loaded by _run_terrain_chain.",
   "break_it": [
     {
-      "scenario": "Terrain analysis was not requested (satellite off) so the section value is null",
-      "what_happens": "a naive card could render an empty compass and blank stats that look broken",
-      "repro": "the special-case requires t && t.slope_mean_deg != null; otherwise card stays unset",
+      "scenario": "matplotlib or PIL is not installed in the runtime image",
+      "what_happens": "an unguarded import would raise inside terrain analysis and could drop the whole terrain section",
+      "repro": "the imports are inside the try block; ImportError is caught and the function returns None",
       "mitigated": true,
-      "how": "falls through to the existing SectionCard which shows the contextual empty-state, unchanged"
+      "how": "render returns None; the metrics dict is assembled separately so terrain numbers still stream; the image block is omitted"
     },
     {
-      "scenario": "Aspect is null but slope is present (partial terrain result)",
-      "what_happens": "the compass needle could point at an arbitrary default (0=N) implying a false 'faces north'",
-      "repro": "AspectCompass only draws the needle when deg != null; the label shows '—' and the summary omits the 'faces' clause",
+      "scenario": "The DEM is entirely nodata (NaN) or has fewer than 16 finite cells",
+      "what_happens": "nanmin/nanmax over all-NaN warns and the shader could emit a garbage or blank image",
+      "repro": "finite.sum() < 16 returns None before any shading; verified by test_all_nodata_returns_none",
       "mitigated": true,
-      "how": "needle and direction text are both guarded; the summary is built from only the present clauses"
+      "how": "early return None; no image rendered"
     },
     {
-      "scenario": "The section arrives as a plain dict in some path rather than a DataField wrapper",
-      "what_happens": "reading .value would be undefined and the card would never render",
-      "repro": "extraction is `raw.value ?? raw` so both the wrapped and unwrapped shapes resolve to the terrain object",
+      "scenario": "A perfectly flat DEM where vmax == vmin",
+      "what_happens": "Normalize(vmin, vmax) with equal bounds divides by zero",
+      "repro": "norm uses vmax if vmax > vmin else vmin + 1.0; test_flat_dem_does_not_crash asserts no raise",
       "mitigated": true,
-      "how": "dual fallback handles both; the slope_mean_deg guard still gates rendering"
+      "how": "the degenerate range is widened by 1 m so Normalize is valid; output is a flat tint or None, never a crash"
     },
     {
-      "scenario": "All numeric fields present but elevation_range_m and drainage are null",
-      "what_happens": "the summary could end with a dangling comma or empty clause",
-      "repro": "the summary is assembled from a parts[] array joined by ', ' with only non-null clauses pushed",
+      "scenario": "A non-array or 1-D value is passed (upstream shape change)",
+      "what_happens": "indexing/shading on the wrong shape could raise",
+      "repro": "np.asarray(...).ndim != 2 returns None; covered by test_none_input, test_non_array_input, test_one_dimensional_input",
       "mitigated": true,
-      "how": "empty parts collapse to a single fallback sentence; no dangling punctuation"
+      "how": "shape guard returns None before any rendering"
     },
     {
-      "scenario": "slope_max_deg is null while slope_mean_deg is set",
-      "what_happens": "the 'up to N°' fragment could render 'up to °' or 'up to null°'",
-      "repro": "the max fragment is conditional on slope_max_deg != null in both the summary and the stat cell",
+      "scenario": "A huge DEM produces an oversized data URI that bloats the brief stream",
+      "what_happens": "a multi-MB base64 string could slow or break the SSE payload",
+      "repro": "the DEM is downsampled to <=256px and the b64 is rejected (None) if it exceeds 400k chars; a realistic 200x200 DEM measured ~31 KB",
       "mitigated": true,
-      "how": "the 'up to' clause and the '· N° max' suffix are each guarded; only avg shows when max is null"
+      "how": "downsample + length cap keep the inline image small; otherwise None"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief with satellite analysis on (e.g. a Sydney address). The Terrain section should show a compass pointing the aspect direction, a plain-English sentence, and Slope/Fall/Drains-to/Landform stats — not the raw 'Slope Mean Deg' list. Run a brief with satellite off: the Terrain section should show its empty-state, not a broken card."
+    "other_repo": "N/A - the brief backend runs on Railway (nswcompliance); this needs a backend redeploy to take effect, like ANEF. The frontend image rendering deploys via Vercel.",
+    "manual_verify": "After the nswcompliance redeploy, run a brief with satellite analysis on for a Sydney address: the Terrain card should show a shaded-relief image above the compass + summary. For an address where terrain fails or wasn't run, the card shows no image and the rest is unchanged."
   }
 }

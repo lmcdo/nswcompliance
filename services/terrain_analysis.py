@@ -108,6 +108,8 @@ class TerrainAnalysisDetail(BaseModel):
     landform_class: Optional[int] = None
     landform_type: Optional[str] = None
     daylight_fraction: Optional[float] = None
+    # Indicative shaded-relief image of the lot's DEM, as a base64 PNG data URI.
+    hillshade_png_b64: Optional[str] = None
 
 
 class FloodSusceptibilityDetail(BaseModel):
@@ -278,6 +280,85 @@ def _read_band(work_dir: str, filename: str) -> np.ndarray:
 def _valid_stats(arr: np.ndarray) -> np.ndarray:
     """Return array with NaN/inf removed for stats computation."""
     return arr[np.isfinite(arr)]
+
+
+# prior-art-checked: no existing hillshade/shaded-relief renderer in services/
+# (grep hillshade|LightSource|shaded_relief = none). This renders the DEM that
+# _run_terrain_chain already loads into a presentation PNG — it is NOT a data
+# source and does not fetch anything.
+def _render_hillshade_png(dem_arr, max_px: int = 256) -> Optional[str]:
+    """Render a coloured shaded-relief PNG of the DEM as a base64 data URI.
+
+    Pure presentation: a shaded relief of the *same* DEM the terrain metrics are
+    computed from (no extra fetch, no figure/backend — just LightSource.shade).
+    Lighter = higher ground; the shadows convey slope and aspect.
+
+    Failure-safety is the contract: ANY error returns None so the terrain
+    numbers are never affected by a rendering problem.
+
+    Args:
+        dem_arr: 2-D elevation array (float, NaN at nodata) from _read_band.
+        max_px: longest edge of the output image; the DEM is downsampled to fit
+                so the data URI stays small.
+
+    Returns:
+        A ``data:image/png;base64,...`` string, or None if it can't be rendered.
+    """
+    try:
+        import base64
+        import io
+
+        from matplotlib import colormaps
+        from matplotlib.colors import LightSource, Normalize
+        from PIL import Image
+
+        arr = np.asarray(dem_arr, dtype=np.float64)
+        if arr.ndim != 2 or arr.size == 0:
+            return None
+        finite = np.isfinite(arr)
+        if int(finite.sum()) < 16:  # too little real data to depict
+            return None
+
+        # Downsample large DEMs so the inline data URI stays small.
+        longest = max(arr.shape[0], arr.shape[1])
+        step = max(1, int(longest // max_px))
+        if step > 1:
+            arr = arr[::step, ::step]
+            finite = np.isfinite(arr)
+
+        vmin = float(np.nanmin(arr))
+        vmax = float(np.nanmax(arr))
+        # Fill nodata with the low value so the shader doesn't choke; masked back
+        # out via alpha below.
+        filled = np.where(finite, arr, vmin)
+
+        ls = LightSource(azdeg=315, altdeg=45)
+        norm = Normalize(vmin=vmin, vmax=vmax if vmax > vmin else vmin + 1.0)
+        # vert_exag lifts gentle urban relief into something legible; dx/dy = 5 m
+        # DEM cell. This is an indicative diagram, not a measured surface.
+        rgb = ls.shade(
+            filled,
+            cmap=colormaps["terrain"],  # noqa: bracket-access (built-in mpl colormap)
+            norm=norm,
+            blend_mode="soft",
+            vert_exag=2.5,
+            dx=5.0,
+            dy=5.0,
+        )  # -> (H, W, 4) floats in 0..1
+
+        rgba = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
+        rgba[..., 3] = np.where(finite, 255, 0).astype(np.uint8)  # nodata transparent
+
+        img = Image.fromarray(rgba, mode="RGBA")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        if len(b64) > 400_000:  # guard the brief payload size
+            return None
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        logger.warning("hillshade render failed", exc_info=True)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -947,6 +1028,7 @@ def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dic
         "landform_class": landform_class,
         "landform_type": landform_type,
         "daylight_fraction": daylight_fraction,
+        "hillshade_png_b64": _render_hillshade_png(dem_arr),
     }
 
 

@@ -439,6 +439,7 @@ interface TerrainData {
   elevation_range_m?: number | null;
   drainage_direction?: string | null;
   landform_type?: string | null;
+  hillshade_png_b64?: string | null;
 }
 
 function slopeWord(d?: number | null): string {
@@ -490,6 +491,20 @@ function TerrainCard({ data }: { data: TerrainData }) {
         </div>
         <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
       </div>
+      {data.hillshade_png_b64 && (
+        <div className="px-5 pt-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={data.hillshade_png_b64}
+            alt="Shaded-relief terrain diagram of the lot"
+            className="w-full rounded-md border border-slate-200 bg-slate-50"
+            style={{ maxHeight: 220, objectFit: 'cover' }}
+          />
+          <p className="text-[11px] text-slate-400 mt-1">
+            Shaded relief from the 5&nbsp;m elevation model — lighter is higher ground, shadows show the slope. Indicative.
+          </p>
+        </div>
+      )}
       <div className="px-5 py-4 flex items-start gap-4">
         <div className="flex flex-col items-center flex-shrink-0">
           <AspectCompass deg={data.aspect_dominant_deg} />

@@ -904,6 +904,7 @@ except (ImportError, ModuleNotFoundError):
         class TerrainAnalysisDetail(_BM):  # type: ignore[no-redef]
             """Stub when rasterio unavailable."""
             slope_mean_deg: Optional[float] = None
+            hillshade_png_b64: Optional[str] = None
 
         def run_terrain_analysis(*args, **kwargs):  # type: ignore[no-redef]
             raise RuntimeError("terrain_analysis unavailable — rasterio not installed")
