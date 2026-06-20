@@ -950,7 +950,7 @@ def resolve_propid_by_point(
             timeout=15,
         )
         r.raise_for_status()
-        features = r.json().get("features", [])
+        features = r.json().get("features") or []
     except Exception as e:
         print(f"  [warn] point->propid: {e}")
         return None
