@@ -1,0 +1,16 @@
+# Railway config-as-code for the `dcp-commit` cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Still set per-service env in the dashboard:
+#   MONITOR_NAME=dcp-commit, DATABASE_URL, R2_ACCOUNT_ID, R2_BUCKET_NAME,
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+#   (optional) HC_PING_URL.
+#
+# Runs dcp_commit_approved.py --commit: commits chapters whose every dcp_review_queue
+# row a human marked 'approved' (currency-guarded). The human gate is the queue.
+[build]
+dockerfilePath = "Dockerfile.monitors"
+
+[deploy]
+startCommand = "python scripts/run_monitors.py"
+cronSchedule = "0 9 * * *"   # daily 09:00 UTC: commit whatever was approved since last run
+restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
