@@ -156,10 +156,10 @@ supabase login
 # Link to your project
 supabase link --project-ref llzdrxywpziewrzudwhj
 
-# You'll be prompted for the database password: eDDIYq8ottiaO9ll
+# You'll be prompted for the database password: REDACTED_MOVED_TO_ENV
 
 # Import database
-supabase db push --db-url postgresql://postgres:eDDIYq8ottiaO9ll@db.llzdrxywpziewrzudwhj.supabase.co:5432/postgres --file "supabase-export\database.sql"
+supabase db push --db-url postgresql://postgres:REDACTED_MOVED_TO_ENV@db.llzdrxywpziewrzudwhj.supabase.co:5432/postgres --file "supabase-export\database.sql"
 ```
 
 **Note**: This still requires network connectivity to Supabase, so it may fail with the same DNS issues. The SQL Editor method is more reliable.
@@ -224,7 +224,7 @@ git push -u origin main
 PGHOST=db.llzdrxywpziewrzudwhj.supabase.co
 PGDATABASE=postgres
 PGUSER=postgres
-PGPASSWORD=eDDIYq8ottiaO9ll
+PGPASSWORD=REDACTED_MOVED_TO_ENV
 PGPORT=5432
 GOOGLE_PLACES_API_KEY=your-google-api-key-here
 NSW_PLANNING_API_BASE_URL=https://api.apps1.nsw.gov.au/planning
@@ -267,7 +267,7 @@ const pool = new Pool({
   host: 'db.llzdrxywpziewrzudwhj.supabase.co',
   database: 'postgres',
   user: 'postgres',
-  password: 'eDDIYq8ottiaO9ll',
+  password: 'REDACTED_MOVED_TO_ENV',
   port: 5432
 })
 ```

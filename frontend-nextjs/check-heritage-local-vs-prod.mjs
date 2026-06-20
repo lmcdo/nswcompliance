@@ -3,12 +3,12 @@ const { Pool } = pg;
 
 // Check LOCAL database (where tagging was done)
 const localPool = new Pool({
-  connectionString: 'postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning'
+  connectionString: process.env.DATABASE_URL
 });
 
 // Check SUPABASE (production)
 const supabasePool = new Pool({
-  connectionString: 'postgresql://postgres.llzdrxywpziewrzudwhj:eDDIYq8ottiaO9ll@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres'
+  connectionString: process.env.DATABASE_URL
 });
 
 async function checkBothDatabases() {
