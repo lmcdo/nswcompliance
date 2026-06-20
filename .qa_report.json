@@ -1,71 +1,56 @@
 {
   "tier": "standard",
-  "commit_hash": "1f27f33d",
-  "justification": "ANEF redone off the correct (verify-app) source. The brief's anef field now reuses the curated anef_zones table (Sydney — the source the /api/environmental/anef route uses) via PostGIS ST_Contains, and falls back to the existing portal_constraints.fetch_anef (Protection layer 2, regional airfields). Fixes the false 'outside contour' a Sydney lot would have got from the wrong source. Honest 'no published contour' where neither has data (never 'no aircraft noise'). Reuses existing sources; fail-safe.",
+  "commit_hash": "60f389b9",
+  "justification": "Frontend display-only de-dupe on the Intelligence Brief page: lot area was shown three times (Economics, Strata & Cadastre, and inside the Planning lot-dimensions composite). Now the standalone lot_area_m2 renders only in Economics, and the area is stripped from the lot-dimensions composite (which keeps frontage/depth/corner). No data or logic change.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "anef_zones (5 rows, Sydney YSSY ANEF 2039) with geometry_json jsonb + bbox columns and NO PostGIS geom column — the verify route bbox-prefilters then does JS point-in-polygon. portal_constraints.fetch_anef already queries Protection layer 2 (regional ANEF: Cessnock/Bankstown/Taree/Scone, no Sydney). _build_environmental already has lat/lng and _get_db_conn() exists.",
-    "assumption_mismatch": "An earlier attempt wired ANEF to Protection layer 2 alone, which lacks Sydney — so a Sydney lot got a false 'outside aircraft noise'. Verified live: anef_zones returns ANEF 40 at Mascot and ANEF 30 at Haberfield (correct), where the wrong source returned nothing.",
-    "new_vs_existing": "No new data source. fetch_anef_zone queries the existing anef_zones table (exact point-in-polygon via ST_Contains(ST_GeomFromGeoJSON), bbox pre-filtered); _anef_field combines it with the existing fetch_anef. DB coverage still wins; the field value is a string as before.",
-    "external_source_error": "fetch_anef_zone wraps the query in try/except and returns None on any failure; _anef_field wraps each source and falls back: Sydney -> regional -> honest 'no published contour'; missing coords -> NOT_AVAILABLE. A DB or ArcGIS outage never blocks the brief and never over-states a contour.",
-    "frontend_type": "Backend only. The anef DataField stays a string value (same schema); only its source string and the value text change. No frontend interface change.",
-    "user_failure_mode": "Before: a Sydney lot could read 'outside aircraft noise' (false) or 'not mapped'. After: Sydney lots read their real ANEF level, regional airfields read theirs, and elsewhere it says 'no published ANEF contour' — never the over-claim 'no aircraft noise'."
+    "existing_data": "SectionData renders each section's fields generically. lot_area_m2 is a field in both the economics and strata section values, and area_m2 is a key inside the planning lot_dimensions object — so the same number rendered in three places.",
+    "assumption_mismatch": "The generic renderer showed every field, duplicating lot area across three cards. The fix scopes the standalone figure to Economics and removes the redundant area from the dimensions composite.",
+    "new_vs_existing": "No new component or data. The SectionData filter drops lot_area_m2 unless the section is economics; a small pure helper stripDimArea removes area_m2/lot_area_m2 from the lot_dimensions object before it is formatted.",
+    "external_source_error": "No data or network change. stripDimArea returns the value unchanged for any non-object or non-dimensions field, so an unexpected shape renders exactly as before.",
+    "frontend_type": "Frontend only (TypeScript/React). stripDimArea is typed (key: string, value: unknown) -> unknown and guards against null/array/non-object before destructuring.",
+    "user_failure_mode": "Before: lot area appeared three times across the brief. After: it appears once (Economics) and the Planning dimensions read as frontage/depth/corner."
   },
   "functions": [
     {
-      "name": "fetch_anef_zone",
-      "file_line": "services/intelligence_brief.py:1376",
-      "input": "the latitude and longitude of a property to test against the curated Sydney anef_zones table",
-      "output": "a dict with the highest containing ANEF level and airport name, or None when the point is in no Sydney zone",
-      "if_none": "missing coordinates or any query exception returns None so the caller falls back to the regional source then a conservative note"
-    },
-    {
-      "name": "_anef_field",
-      "file_line": "services/intelligence_brief.py:2053",
-      "input": "uses the enclosing lot coordinates and overlay coverage to build the ANEF environmental DataField",
-      "output": "a DataField with the Sydney ANEF level, else the regional ANEF code, else an honest no-published-contour string",
-      "if_none": "with no coordinates it returns the existing NOT_AVAILABLE field, and any source error degrades to the next fallback"
+      "name": "stripDimArea",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:306",
+      "input": "a field key and its value from a brief section, to be rendered in the generic data list",
+      "output": "the value unchanged, except the lot_dimensions composite has its area key removed so area is not shown again",
+      "if_none": "any non lot_dimensions key or a null, array or non-object value is returned unchanged so other fields render as before"
     }
   ],
-  "values": "N/A - no regulatory values are hardcoded. ANEF levels and airport names are read from the authoritative anef_zones table and the Protection layer; thresholds are not invented.",
-  "queries": "N/A for new tables - reuses the existing anef_zones table; the only query is a read-only point-in-polygon SELECT (bbox pre-filter + ST_Contains over the stored GeoJSON), parameterised, with a statement timeout via _get_db_conn.",
+  "values": "N/A - no regulatory values. The change only controls which copy of the lot area is displayed; the numbers themselves are unchanged.",
+  "queries": "N/A - frontend render change; no database or API query is added.",
   "break_it": [
     {
-      "scenario": "A Sydney lot that the wrong source said was outside any contour",
-      "what_happens": "a false 'outside aircraft noise' reassurance near the airport, the exact bug from the discarded Protection-only attempt",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_sydney_zone_from_anef_zones ; live Mascot -> ANEF 40, Haberfield -> ANEF 30",
+      "scenario": "The lot_dimensions object is null, an array, or a non-object for some property",
+      "what_happens": "destructuring a non-object to strip the area key would throw and break the section",
+      "repro": "stripDimArea('lot_dimensions', null) and stripDimArea('lot_dimensions', []) both return the input unchanged",
       "mitigated": true,
-      "how": "fetch_anef_zone runs an exact ST_Contains point-in-polygon over the curated Sydney anef_zones table, returning the real contour level"
+      "how": "the helper guards on key, truthiness, typeof object and not Array before touching the value"
     },
     {
-      "scenario": "A property near a regional airfield not in the Sydney table",
-      "what_happens": "ignoring the regional ANEF would miss small-airport noise that users care about",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_regional_fallback_when_no_sydney_zone",
+      "scenario": "A non-economics section also carries a lot_area_m2 field (e.g. Strata)",
+      "what_happens": "showing it duplicates the Economics figure, the reported 3x",
+      "repro": "the entries filter drops key lot_area_m2 when section is not economics",
       "mitigated": true,
-      "how": "when anef_zones has no match, _anef_field falls back to the existing fetch_anef (Protection layer 2) which holds the regional contours"
+      "how": "the filter keeps lot_area_m2 only in the economics section, so the standalone figure appears once"
     },
     {
-      "scenario": "A property far from any airport with no published ANEF anywhere",
-      "what_happens": "claiming 'no aircraft noise' would over-state, since some airfields have no published ANEF at all",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_no_published_contour_is_honest",
+      "scenario": "Economics itself must still show the lot area",
+      "what_happens": "an over-broad filter could hide the canonical figure entirely",
+      "repro": "the filter condition only drops lot_area_m2 when section !== 'economics', so Economics keeps it",
       "mitigated": true,
-      "how": "with both sources empty the field says 'No published ANEF contour at this property' — a fact about the data, not a claim about noise"
-    },
-    {
-      "scenario": "The anef_zones query or the ArcGIS call fails, or coordinates are missing",
-      "what_happens": "a naive combine could crash the brief or invent a contour",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_missing_coords_is_not_available ; fetch_anef_zone except path returns None",
-      "mitigated": true,
-      "how": "each source is wrapped in try/except returning None, missing coords short-circuits to NOT_AVAILABLE, and the overlay tests stub both sources offline"
+      "how": "the de-dupe is scoped to non-economics sections, leaving the one canonical Economics figure intact"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a brief on a Sydney lot (e.g. 25 Empire St Haberfield) and confirm the ANEF field reads 'ANEF 30 (Sydney)' rather than 'not mapped' or 'outside'. Confirm a remote lot reads 'No published ANEF contour at this property'. The verify app still uses anef_zones only (Sydney); this backend is more complete (adds the regional fallback)."
+    "manual_verify": "On the deployed brief, confirm lot area shows once (Economics), is gone from Strata & Cadastre, and the Planning lot-dimensions reads frontage/depth/corner without repeating the area."
   }
 }
