@@ -38,6 +38,12 @@ MONITORS = {
         # migration (#506). Needs DATABASE_URL + R2_* creds on the Railway service.
         "cmd": ["python", "scripts/dcp_extract_changed.py", "--review"],
     },
+    "dcp-commit": {
+        # Commit-on-approve: commit chapters whose every dcp_review_queue row a human
+        # marked 'approved' (currency-guarded). Reuses extract_chapter. --commit makes
+        # it write; without it the worker is a dry run. The human gate is the queue.
+        "cmd": ["python", "scripts/dcp_commit_approved.py", "--commit"],
+    },
     "dcp-watchdog": {
         "cmd": ["python", "scripts/dcp_watchdog.py"],
     },
