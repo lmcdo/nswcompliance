@@ -1,72 +1,48 @@
 {
   "tier": "standard",
-  "commit_hash": "90bd92ae",
-  "justification": "Backend, additive, fail-safe: when our ingested spatial coverage is missing riparian/wetlands/biodiversity for an LGA, the brief now live point-queries the NSW Planning/Protection layer for THIS lot and reports the real fact (present / none here) instead of leaking an internal 'Layer not ingested for this LGA' gap. DB coverage still wins; a failed live query or missing coords falls back to the existing NOT_AVAILABLE state. No regulatory values are hardcoded; the value is a boolean presence flag from the authoritative government layer.",
+  "commit_hash": "1f27f33d",
+  "justification": "Dev-tooling: upgrade the prior-art guard (PreToolUse Write|Edit hook) to also fire on EDITS that add a data-source signature (a new fetcher def, an HTTP/DB call, or an external data URL), not just net-new files. This closes the hole that let an ANEF fetcher be added to an existing file with zero duplication check. Adds a known-constraint registry cross-check and an audit log. No production code; fail-open.",
   "files": [
-    "services/portal_constraints.py",
-    "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py"
+    ".claude/hooks/prior-art-guard.py"
   ],
   "pre_impl": {
-    "existing_data": "_build_environmental (intelligence_brief.py) set riparian/wetlands/biodiversity to NOT_AVAILABLE + reason 'Layer not ingested for this LGA' whenever the layer was absent from overlays_data.covered_layers — collapsing 'not loaded', 'not relevant', and 'genuinely clear' into one string. portal_constraints already point-queries the same Planning/Protection service (fetch_anef=layer 2, drinking_water=layer 3) via query_arcgis_point.",
-    "assumption_mismatch": "The brief assumed a missing layer means 'no data', when for these live-queryable layers the truth (present at this lot vs none here) is obtainable per-lot regardless of our ingestion. Verified live: 25 Empire St returns present=False for riparian/wetlands/biodiversity (a real 'none here', not a gap).",
-    "new_vs_existing": "Reuses query_arcgis_point (no new query infra). One new fail-safe fetcher fetch_protection_overlay(lat,lng,layer_id) and one helper _overlay_field inside _build_environmental. lat/lng are threaded into _build_environmental at both existing call sites. The fetcher is only called when the layer is NOT in covered_layers.",
-    "external_source_error": "fetch_protection_overlay wraps query_arcgis_point in try/except and returns None on any failure; _overlay_field returns None on a missing import or exception. Either way the field falls back to the prior NOT_AVAILABLE 'Layer not ingested' state, so a slow or down government API never blocks the brief and never over-states presence.",
-    "frontend_type": "Backend only. The DataField value stays a boolean (present True / none False) so the EnvironmentalConstraints pydantic schema is unchanged; only the source string ('live_protection_overlay') and the confidence (AUTHORITATIVE instead of NOT_AVAILABLE) change when the live query succeeds.",
-    "user_failure_mode": "Before: an un-ingested layer showed internal jargon 'Layer not ingested for this LGA'. After: the user sees the real per-lot fact (riparian/wetland present: yes/no) for live-queryable layers, and only sees the honest 'not assessed' fallback when both our DB and the live query have nothing."
+    "existing_data": "The v1 hook fired only on Write to a NEW file under watched dirs; it bailed immediately on Edit (tool_name != Write) and on existing files. It was already registered for Edit|Write in settings.json, but the code never handled Edit.",
+    "assumption_mismatch": "The guard was assumed to cover duplication generally, but adding a capability via Edit to an existing file (the ANEF case in intelligence_brief.py) bypassed it entirely. Verified by simulating that exact edit: v2 now returns exit 2 and surfaces app/api/environmental/anef/route.ts, lib/nsw-planning-portal.ts and services/portal_constraints.py.",
+    "new_vs_existing": "Extends the existing hook in place (does not add a new hook). Adds: Edit handling, a data-source SIGNATURE regex gate (so ordinary edits stay silent), concern extraction from the added content, a KNOWN-constraint set, and a JSONL audit log of every block. Reuses the same git-grep search and scoring.",
+    "external_source_error": "Pure local hook. Any exception (bad stdin, git failure, log write) falls through to sys.exit(0) — fail-open, never blocks legitimate work on a hook bug.",
+    "frontend_type": "N/A — a Python PreToolUse hook, not application code. It reads the tool payload from stdin and writes a block message to stderr with exit 2.",
+    "user_failure_mode": "Before: a dev could add a duplicate data source by editing an existing file and the guard never ran. After: such an edit is blocked with the existing implementations listed, and the only bypass is an explicit prior-art-checked acknowledgement that is logged."
   },
-  "functions": [
-    {
-      "name": "fetch_protection_overlay",
-      "file_line": "services/portal_constraints.py:233",
-      "input": "the latitude, longitude and a Planning/Protection layer id (riparian 7, wetlands 11, biodiversity 10) for one property",
-      "output": "a dict with present True plus the layer class, present False for a queried-but-empty lot, or None when the query fails",
-      "if_none": "any request exception returns None so the caller keeps the conservative not-assessed fallback rather than asserting absence"
-    },
-    {
-      "name": "_overlay_field",
-      "file_line": "services/intelligence_brief.py:1985",
-      "input": "the layer key, the ingested DB presence flag and the Protection layer id for one overlay field",
-      "output": "a DataField using DB coverage first, else the live per-lot fact, else the conservative NOT_AVAILABLE not-ingested fallback",
-      "if_none": "with no DB coverage, no coordinates and no live result it returns the existing NOT_AVAILABLE field unchanged from before"
-    }
-  ],
-  "values": "N/A - no regulatory values are hardcoded. The value is a boolean presence flag read from the authoritative NSW Planning/Protection layer; layer ids (7/11/10) mirror the existing ingest config, not invented planning numbers.",
-  "queries": "N/A - no database query. The change adds a live ArcGIS point query that reuses the already-reviewed query_arcgis_point helper against the same Protection service other fetchers use.",
+  "functions": [],
+  "values": "N/A - no regulatory values. The KNOWN set is a list of concern keywords (anef, riparian, flood, ...) that already have data sources in this repo, used to strengthen the block signal.",
+  "queries": "N/A - the hook runs a read-only git grep over the repo; it adds no database or API query.",
   "break_it": [
     {
-      "scenario": "The live Protection query times out or errors while assembling the brief",
-      "what_happens": "a naive live call could crash the environmental section or invent a presence value the lot does not have",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_failure_falls_back_to_not_available",
+      "scenario": "An ordinary logic edit with no data-source signature is made to a watched file",
+      "what_happens": "if the hook fired on every edit it would block all normal work with false positives",
+      "repro": "the capability-add branch returns early unless the SIGNATURE regex (requests/httpx/fetcher def/external URL/SQL) matches the added content",
       "mitigated": true,
-      "how": "fetch_protection_overlay returns None on any exception and _overlay_field then keeps the conservative NOT_AVAILABLE 'not ingested' field"
+      "how": "the SIGNATURE gate means edits without a new data source exit 0 silently; only data-source additions are searched"
     },
     {
-      "scenario": "The property has no resolved coordinates so a live query is impossible",
-      "what_happens": "calling the live layer with None coordinates would error or query the wrong place",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_missing_coords_skips_live_and_is_not_available",
+      "scenario": "The added content adds a fetcher for a capability that already exists (the ANEF case)",
+      "what_happens": "a duplicate data source gets created with no discovery, as happened with ANEF",
+      "repro": "piping an Edit payload whose new_string contains def _anef_field + fetch_protection_overlay returns exit 2 and lists the existing anef route, portal lib and portal_constraints",
       "mitigated": true,
-      "how": "the live branch runs only when lat and lng are both present; otherwise it returns the existing NOT_AVAILABLE fallback with no call"
+      "how": "Edit handling + the KNOWN-constraint cross-check + the git-grep candidates block the edit and surface the existing implementations to reuse"
     },
     {
-      "scenario": "Our database already covers the layer for this LGA",
-      "what_happens": "an unnecessary live call would add latency and could disagree with the ingested value",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_db_coverage_wins_no_live_call",
+      "scenario": "The hook itself errors on a malformed payload or a git failure",
+      "what_happens": "a hook crash could block every Write/Edit and halt all work",
+      "repro": "any exception path (json load, git grep subprocess, log write) is wrapped and falls through to exit 0",
       "mitigated": true,
-      "how": "_overlay_field returns the DB-backed DataField first and never calls the live fetcher when the layer is in covered_layers"
-    },
-    {
-      "scenario": "The live query runs and the lot genuinely has nothing in the layer",
-      "what_happens": "showing 'not assessed' would hide that we actually checked and the lot is clear",
-      "repro": "pytest tests/test_overlay_live_fallback.py::test_live_absent_is_a_clean_false ; live 25 Empire St returns present False for all three",
-      "mitigated": true,
-      "how": "a successful empty query returns present False which becomes a boolean False (a real 'none here'), confidence AUTHORITATIVE, not NOT_AVAILABLE"
+      "how": "fail-open by design — every error path exits 0, so a hook bug degrades to no-guard, never to a hard block"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Run a live brief in an un-ingested LGA (e.g. Inner West 25 Empire St) — riparian/wetlands/biodiversity should show a real Yes/No from the live Protection query, not 'Layer not ingested'. Confirm an ingested LGA still uses the DB value and makes no extra live call. The same helper can later extend to other live-queryable Protection layers; per-layer staleness metadata (distinguishing 'checked, none' from 'never loaded') for non-live layers remains a follow-up."
+    "manual_verify": "Re-run the simulated ANEF edit against .claude/hooks/prior-art-guard.py and confirm exit 2 + candidates. Confirm an ordinary edit (no requests/url/fetcher) to a services/ file exits 0. Check .claude/prior-art-decisions.log records the block. The heavier CI data-source registry/ratchet remains a follow-up."
   }
 }
