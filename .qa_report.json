@@ -1,57 +1,79 @@
 {
   "tier": "standard",
-  "commit_hash": "ea70c640",
-  "justification": "ANEF empty-overlay fall-through fix. _anef_field short-circuited to a blank postgis_overlays value whenever 'anef' was listed in covered_layers, never consulting the working anef_zones live query — so Sydney addresses (Mascot, Marrickville) reported a blank ANEF even though anef_zones holds the real contour (ANEF 35/30). One-line null-guard so an empty overlay falls through to the live query.",
+  "commit_hash": "529b9779",
+  "justification": "Coordinate-first parcel resolution. When the brief has a trusted pin (Google Places lat/lng) but no prop_id, resolve the parcel by point-in-cadastre (NSW Property layer) + the SAME parcel-identity cross-check, before the fuzzy text geocode. Fixes valid addresses that the text search + GATE-0 false-closed, without weakening wrong-parcel protection. Live-verified end-to-end: 2/45 Alt St (was a text false-close) now resolves; 22 Northwood (bad pin) still 422.",
   "files": [
+    "scripts/generate_conveyancing_report.py",
     "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py"
+    "tests/test_resolve_by_point.py"
   ],
   "pre_impl": {
-    "existing_data": "fetch_anef_zone(lat,lng) queries anef_zones and returns the Sydney contour; verified live: Mascot -> ANEF 35, Haberfield -> ANEF 30. anef_value (intelligence_brief.py:2118) is the value of an overlay row with layer_type=='anef', None for most lots even when the LGA's anef layer is 'covered'.",
-    "assumption_mismatch": "The covered-check assumed 'covered' implies a usable value. In practice the anef overlay is covered but empty at most lots, so the brief short-circuited to a blank instead of using anef_zones.",
-    "new_vs_existing": "No new source or function — reuses the existing fetch_anef_zone fall-through that was already in the function but unreachable when 'anef' was covered. The guard `and anef_value is not None` re-enables it for the empty case.",
-    "external_source_error": "Unchanged fail-safety: if anef_zones and the regional fetch both miss, the field still resolves to the honest 'no published ANEF contour' authoritative state; a failed query is caught and treated as None.",
-    "frontend_type": "N/A (backend Python). The field type and confidence semantics are unchanged.",
-    "user_failure_mode": "Before: ANEF blank/null at Sydney addresses where the anef overlay is covered-but-empty (most of them). After: ANEF 35 (Sydney) / ANEF 30 (Sydney) from anef_zones; the overlay still wins when it actually has a value."
+    "existing_data": "The brief page POSTs address+lat+lng but no prop_id; _resolve_address only used lat/lng when prop_id was ALSO present, so it discarded the Google pin and re-geocoded the string via the fuzzy Portal /address search. NSW_Land_Parcel_Property_Theme/FeatureServer/12 point-in-polygon returns the propId that matches the Portal (verified 14 Stanley=1456609) plus the parcel's cadastre address.",
+    "assumption_mismatch": "'covered by Google autocomplete' did not mean 'resolved reliably' — the backend threw the coordinate away. The fix uses the coordinate that was already provided.",
+    "new_vs_existing": "prior-art-checked (ack in code): no existing coordinate->propId resolver — frontend TS fetchers and the Python overlay/strata point queries don't return a propId. New resolve_propid_by_point sits beside resolve_address and shares _portal_get + the extracted _lot_centroid_wkt + parcel_identity_match.",
+    "external_source_error": "resolve_propid_by_point wraps the HTTP call in try/except -> None on any error/0-features/ambiguity; _resolve_address then falls back to the existing text resolver, which keeps its own GATE-0, ending in an honest 422. No new failure mode is introduced.",
+    "frontend_type": "N/A (backend Python). No frontend change; the page already sends lat/lng.",
+    "user_failure_mode": "Before: valid addresses (incl. strata units) blanked because the text geocoder returned a neighbouring parcel and GATE-0 fail-closed. After: the pin resolves the correct parcel by point + identity cross-check; a pin on the wrong parcel still yields no match -> text fallback -> 422 (never wrong-parcel data)."
   },
   "functions": [
     {
-      "name": "_anef_field",
-      "file_line": "services/intelligence_brief.py:2054",
-      "input": "closure over covered (covered_layers), anef_value (overlay value or None), lat, lng",
-      "output": "a DataField for ANEF: the overlay value if present, else the anef_zones contour, else the regional contour, else an honest 'no published ANEF contour'",
-      "if_none": "when no source has a value the field is the authoritative 'no published ANEF contour' (not a silent blank); missing coords -> NOT_AVAILABLE"
+      "name": "resolve_propid_by_point",
+      "file_line": "scripts/generate_conveyancing_report.py:916",
+      "input": "lat, lng (WGS84 pin) and the requested address string",
+      "output": "(prop_id, lat, lng, lot_wkt) iff exactly one distinct propId's cadastre address passes parcel_identity_match; else None",
+      "if_none": "returns None on no-feature / address-mismatch / ambiguous distinct propIds / HTTP error, so the caller falls back to the text resolver"
+    },
+    {
+      "name": "_resolve_address",
+      "file_line": "services/intelligence_brief.py:2359",
+      "input": "the brief request (address, optional lat/lng/prop_id)",
+      "output": "(prop_id, lat, lng, lot_wkt); coordinate-first when a pin is present, text fallback otherwise",
+      "if_none": "if neither path resolves a valid NSW coordinate it raises HTTP 422 (unchanged honest fail-closed)"
     }
   ],
-  "values": "N/A - no hardcoded regulatory values. ANEF levels come from the anef_zones table (point-in-polygon) or the Protection overlay; nothing is hardcoded.",
-  "queries": "No new query. Re-enables the existing fetch_anef_zone call for the covered-but-empty case.",
+  "values": "N/A - no regulatory values. propId and geometry come from the NSW cadastre/portal; nothing is hardcoded.",
+  "queries": "N/A - no database query. Adds one ArcGIS point-in-polygon HTTP call to the NSW cadastre Property layer (reuses the existing /lot fetch for geometry).",
   "break_it": [
     {
-      "scenario": "'anef' is in covered_layers but the overlay has no value at this lot (the common Sydney case)",
-      "what_happens": "previously short-circuited to value=null source=postgis_overlays (a blank ANEF)",
-      "repro": "test_anef_covered_but_empty_falls_through_to_zone: covered=['anef'], no overlay value, fetch_anef_zone returns 35",
+      "scenario": "The Google pin lands on a neighbouring parcel",
+      "what_happens": "naively trusting the point would serve the WRONG parcel as authoritative (the exact thing GATE-0 #514 prevents)",
+      "repro": "test_wrong_parcel_is_rejected + live 22 Northwood: the cadastre address fails parcel_identity_match so no propId survives",
       "mitigated": true,
-      "how": "the guard `and anef_value is not None` lets it fall through to anef_zones -> 'ANEF 35 (Sydney)', source anef_zones"
+      "how": "resolve only when a matched propId exists; otherwise None -> text fallback -> 422. Verified live: 22 Northwood still 422"
     },
     {
-      "scenario": "'anef' is covered AND the overlay carries a real value",
-      "what_happens": "the fix could wrongly override a valid ingested value with anef_zones",
-      "repro": "test_anef_covered_with_value_still_uses_overlay: overlay value 'ANEF 25-30', fetch_anef_zone raises if called",
+      "scenario": "A strata/apartment block returns many address points at the pin",
+      "what_happens": "multiple features could be read as ambiguous and drop a valid address",
+      "repro": "test_strata_block_collapses_to_one_propid: 3 features all share propId 4241915",
       "mitigated": true,
-      "how": "the overlay value is non-null so the short-circuit still returns it; anef_zones is never queried"
+      "how": "matched features collapse to a set of distinct propIds; one distinct id -> resolve. Live: 5/1 Treacy, 2/45 Alt resolve"
     },
     {
-      "scenario": "covered-but-empty AND coords are missing",
-      "what_happens": "a fall-through with no coords could crash the live query",
-      "repro": "the lat/lng None branch returns NOT_AVAILABLE before any query (test_anef_missing_coords_is_not_available)",
+      "scenario": "Two parcels genuinely share the same address tokens but different propIds",
+      "what_happens": "picking either would be a guess",
+      "repro": "test_ambiguous_distinct_propids_returns_none",
       "mitigated": true,
-      "how": "the existing coords guard runs immediately after the overlay short-circuit"
+      "how": "len(distinct matched propIds) != 1 returns None -> text fallback (no guess)"
+    },
+    {
+      "scenario": "The cadastre Property endpoint is down, slow, or returns malformed JSON",
+      "what_happens": "an unguarded call would raise and break resolution",
+      "repro": "test_endpoint_error_returns_none: requests.get raises",
+      "mitigated": true,
+      "how": "the call is wrapped (timeout 15s) -> None -> existing text resolver runs as before"
+    },
+    {
+      "scenario": "A unit address ('2/45 Alt St') whose cadastre parcel is the base property ('45 Alt St')",
+      "what_happens": "a strict match would reject a valid strata unit (re-creating the false-close)",
+      "repro": "test_unit_request_matches_base_property + live 2/45 Alt -> propid 1291953",
+      "mitigated": true,
+      "how": "normalize_addr_tokens strips the unit prefix on both sides, so the unit matches its base-property address"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A - backend runs on Railway (nswcompliance); needs the redeploy to take effect, like the ANEF source and hillshade.",
-    "manual_verify": "After redeploy, run a brief for a Sydney address near the airport (e.g. Mascot): the Environmental section ANEF should read 'ANEF 35 (Sydney)' (source anef_zones), and Haberfield 'ANEF 30 (Sydney)', not a blank."
+    "other_repo": "N/A - backend runs on Railway (nswcompliance), auto-deploys from GitHub on merge.",
+    "manual_verify": "In the brief, pick a strata-unit or text-fuzzy address from Google autocomplete (e.g. 2/45 Alt Street, Ashfield) that previously blanked — it should now resolve. A pin that lands off-parcel still yields the honest 'could not determine coordinates' 422."
   }
 }
