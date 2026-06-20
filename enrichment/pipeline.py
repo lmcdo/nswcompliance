@@ -29,6 +29,10 @@ from enrichment.extractors.type_classifier import TypeClassifier
 from enrichment.extractors.applicability_tagger import ApplicabilityTagger
 from enrichment.extractors.layer_topic_tagger import LayerTopicTagger
 from enrichment.extractors.actionable_classifier import ActionableClassifier
+from enrichment.extractors.gemini_actionability_classifier import (
+    GeminiActionabilityClassifier,
+    is_performance_based_dcp,
+)
 
 
 ENRICHMENT_VERSION = "1.0.0"
@@ -37,6 +41,80 @@ ENRICHMENT_VERSION = "1.0.0"
 def get_connection():
     """Get database connection."""
     return psycopg2.connect(os.getenv('DATABASE_URL') or os.getenv('SUPABASE_DB_URL'))
+
+
+# ── Gemini Stage-3 actionability (performance-based DCPs) ────────────────────
+# OFF by default. Enable with DCP_GEMINI_STAGE3=1 + GEMINI_API_KEY. Performance-
+# based DCPs (Ashfield Purpose/Performance-Criteria/Design-Solutions prose) are
+# routed to the verbatim-verified Gemini classifier; every other doc uses the
+# regex ActionableClassifier unchanged. Verdicts are cached in
+# gemini_classification_cache so re-passes cost ~$0 and don't flap.
+
+GEMINI_PROMPT_VERSION = "v1"
+
+
+def _maybe_build_gemini():
+    """Return a Gemini Stage-3 classifier, or None if disabled/unavailable.
+
+    Any failure (flag off, no SDK, no API key) returns None and the pipeline
+    falls back to the regex classifier for every provision — no behaviour change.
+    """
+    if os.getenv("DCP_GEMINI_STAGE3", "").lower() not in ("1", "true", "yes"):
+        return None
+    try:
+        return GeminiActionabilityClassifier()
+    except Exception as exc:
+        print(f"[gemini] Stage-3 disabled — {exc}")
+        return None
+
+
+def _gemini_classify_cached(gemini, text, document_id, cur):
+    """Classify via Gemini with a durable cache. Returns (is_actionable, reason).
+
+    Cache key = sha256(text) + model + prompt_version. The verbatim-verification
+    gate + conservative fallback live inside gemini.classify; unverified output
+    always yields is_actionable=True.
+    """
+    import hashlib
+    sha = hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+    model = getattr(gemini, "_model_name", "unknown")
+    cur.execute(
+        "SELECT is_actionable, reason FROM gemini_classification_cache "
+        "WHERE text_sha256 = %s AND model_name = %s AND prompt_version = %s",
+        (sha, model, GEMINI_PROMPT_VERSION),
+    )
+    row = cur.fetchone()
+    if row is not None:
+        return bool(row["is_actionable"]), (row.get("reason") or "gemini (cached)")
+
+    result = gemini.classify(text, document_id, source_text=text)
+    try:
+        cur.execute(
+            """
+            INSERT INTO gemini_classification_cache
+                (text_sha256, model_name, prompt_version, is_actionable, verified,
+                 identified_text, char_start, char_end, reason)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (text_sha256, model_name, prompt_version) DO NOTHING
+            """,
+            (sha, model, GEMINI_PROMPT_VERSION, result.is_actionable, result.verified,
+             result.identified_text, result.char_start, result.char_end, result.reason),
+        )
+    except Exception as exc:
+        print(f"[gemini] cache write skipped — {exc}")
+    return result.is_actionable, (result.reason or "gemini")
+
+
+def _classify_one(prov, classifier, gemini, cur):
+    """Route one provision: Gemini Stage-3 for performance-based DCPs, else regex."""
+    document_id = prov.get("document_id") or ""
+    if gemini is not None and is_performance_based_dcp(document_id):
+        return _gemini_classify_cached(gemini, prov["provision_text"], document_id, cur)
+    return classifier.classify(
+        prov["provision_text"],
+        document_id=prov["document_id"],
+        section_header=prov["section_header"],
+    )
 
 
 def run_actionability_classification(
@@ -77,6 +155,9 @@ def run_actionability_classification(
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     classifier = ActionableClassifier()
+    gemini = _maybe_build_gemini()
+    if gemini is not None:
+        print(f"[gemini] Stage-3 enabled ({gemini._model_name}) for performance-based DCPs")
 
     if force_reprocess:
         # Re-evaluate both NULL and existing FALSE rows.
@@ -166,11 +247,7 @@ def run_actionability_classification(
                 break
 
             try:
-                is_actionable, _ = classifier.classify(
-                    prov['provision_text'],
-                    document_id=prov['document_id'],
-                    section_header=prov['section_header'],
-                )
+                is_actionable, _ = _classify_one(prov, classifier, gemini, cur)
                 updates.append((is_actionable, prov['id']))
 
                 if is_actionable:
