@@ -1,6 +1,7 @@
 {
   "tier": "standard",
-  "commit_hash": "1f27f33d",
+  "commit_hash": "fa4cfebf",
+  "_note": "follow-up commit adds the function entry below",
   "justification": "Dev-tooling: upgrade the prior-art guard (PreToolUse Write|Edit hook) to also fire on EDITS that add a data-source signature (a new fetcher def, an HTTP/DB call, or an external data URL), not just net-new files. This closes the hole that let an ANEF fetcher be added to an existing file with zero duplication check. Adds a known-constraint registry cross-check and an audit log. No production code; fail-open.",
   "files": [
     ".claude/hooks/prior-art-guard.py"
@@ -13,7 +14,15 @@
     "frontend_type": "N/A — a Python PreToolUse hook, not application code. It reads the tool payload from stdin and writes a block message to stderr with exit 2.",
     "user_failure_mode": "Before: a dev could add a duplicate data source by editing an existing file and the guard never ran. After: such an edit is blocked with the existing implementations listed, and the only bypass is an explicit prior-art-checked acknowledgement that is logged."
   },
-  "functions": [],
+  "functions": [
+    {
+      "name": "tokens",
+      "file_line": ".claude/hooks/prior-art-guard.py:78",
+      "input": "a string (filename, symbol name, URL or added code block) to extract concern keywords from",
+      "output": "a set of lower-cased keyword tokens of length four or more, with camelCase split and stop-words removed",
+      "if_none": "an input with no qualifying tokens returns an empty set, and the hook then exits zero without blocking"
+    }
+  ],
   "values": "N/A - no regulatory values. The KNOWN set is a list of concern keywords (anef, riparian, flood, ...) that already have data sources in this repo, used to strengthen the block signal.",
   "queries": "N/A - the hook runs a read-only git grep over the repo; it adds no database or API query.",
   "break_it": [
