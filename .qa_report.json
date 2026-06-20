@@ -1,66 +1,63 @@
 {
-  "tier": "standard",
-  "commit_hash": "6a27f6ca",
-  "justification": "3a computation-chain ledger restructure. Split the single ConstraintStep list into two labelled phases so the on-screen chain stops pretending to be one sum that doesn't add up: phase 'lep' presents FSR vs height as ALTERNATIVES (the smaller caps the maximum), phase 'dcp' is a reconciling erosion ledger (output == input - reduction). Display-only / presentation change — verified no headline number drift across 5 live addresses.",
+  "tier": "minor",
+  "commit_hash": "22f09c39",
+  "justification": "3b labelling polish (frontend display only): planning overlays render as a readable list with units ('Lot size: 450 m2', 'Acid sulfate: Class 5') instead of '2 items'; the Climate Disclosure card humanises empirical findings ('Urban heat: +7.3 C above surrounding areas (2016 data — most recent available)') instead of dumping internal manifest/snake_case units; long URLs in value cells wrap instead of overflowing.",
   "files": [
-    "services/constraint_models.py",
-    "services/constraint_arithmetic.py",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_constraint_phased_ledger.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "compute_constraint_arithmetic builds ConstraintStep[] mixing LEP-envelope establishment with DCP footprint+GFA erosion. Confirmed result.lep_max_gfa_from_height_m2 (was the eroded gfa_from_height) is display-only — envelope uses clean_height_gfa, current_gfa uses gfa_from_height, binding uses clean_height_gfa — so realigning the displayed height GFA to clean does not change any computed headline.",
-    "assumption_mismatch": "The flat step table implied a single subtraction chain (e.g. 397-278-121) that never reconciled, because LEP caps (alternatives) and DCP erosions (sequential) were rendered together.",
-    "new_vs_existing": "No new module. Added ConstraintStep.phase; tagged steps lep/dcp; set the LEP height step + lep_max_gfa_from_height_m2 to the clean full-lot envelope; populated input_gfa_m2 on the GFA-erosion steps so reduction = input - output by construction; the frontend card groups steps into two labelled tables.",
-    "external_source_error": "No data fetching. Pure computation/presentation; the engine already handles missing controls (gaps list).",
-    "frontend_type": "TypeScript: ConstraintStep gains optional phase; the card filters by phase (phase!=='dcp' -> LEP group, ==='dcp' -> DCP group) so unphased/legacy steps degrade into the LEP group rather than vanish. tsc --noEmit passes.",
-    "user_failure_mode": "Before: a single chain that didn't sum and a height-GFA that looked smaller than the envelope. After: 'Maximum envelope (LEP)' shows the FSR and height caps with the binding one and min; 'After council DCP (indicative)' shows a reconciling erosion ending at the dcp_adjusted figure, explicitly labelled as separate, not subtracted from the LEP maximum."
+    "existing_data": "Verified live (14 Stanley, satellite on): environmental.overlays.value is a list of {layer_type,value} (acid_sulfate 'Class 5', lot_size '450'); satellite.climate_disclosure.value.empirical_findings is a list of {hazard,value,unit,data_date,confidence}.",
+    "assumption_mismatch": "Arrays of objects fell through formatValue to 'N items', and the climate value object dumped internal manifest/counts/snake_case units.",
+    "new_vs_existing": "No new data. Adds OVERLAY_UNIT map, OverlayList component, humanizeClimateFinding helper and ClimateCard, dispatched like the existing SeppHousingCard/TerrainCard special cases. break-words gains overflow-wrap:anywhere.",
+    "external_source_error": "No fetching changed. Helpers guard null/empty and fall back to the generic card when the expected shape is absent.",
+    "frontend_type": "Frontend only (TypeScript/React). OverlayItem/ClimateFinding typed; tsc --noEmit passes.",
+    "user_failure_mode": "Before: 'Overlays: 2 items', a climate dump with 'degrees_c_above_baseline', URLs spilling out. After: an itemised overlay list with units, plain-English climate lines, wrapped URLs."
   },
   "functions": [
     {
-      "name": "compute_constraint_arithmetic",
-      "file_line": "services/constraint_arithmetic.py:239",
-      "input": "lot area, dev_type, LEP height/FSR strings, lot dimensions, DCP controls, SEPP standards/overrides, shadow result",
-      "output": "ConstraintArithmeticResult whose steps are now phase-tagged; LEP steps are alternatives, DCP GFA steps reconcile (output == input - reduction)",
-      "if_none": "missing controls still produce the LEP envelope (headline) and an honest gaps list; the DCP figure is only surfaced when lot geometry is reliable"
+      "name": "humanizeClimateFinding",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:404",
+      "input": "a climate empirical finding {hazard, value, unit, data_date, confidence}",
+      "output": "a {label, detail} plain-English line; urban heat / extreme rainfall special-cased, others humanised generically",
+      "if_none": "returns null when value is missing; ClimateCard filters nulls and shows 'No climate hazards recorded' if none"
+    },
+    {
+      "name": "OverlayList",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:381",
+      "input": "the overlays array of {layer_type, value}",
+      "output": "a readable list with units appended from OVERLAY_UNIT (lot_size -> m2)",
+      "if_none": "renders 'None mapped at this property' when no overlay has both a layer_type and a value"
     }
   ],
-  "values": "N/A - no hardcoded regulatory values. FSR/height/setback/parking values come from the LEP/DCP/SEPP inputs; the change only re-labels and re-groups the derived steps.",
+  "values": "N/A - no regulatory values. Overlay and climate values come from the section payload; only labels/units are formatted.",
   "queries": "N/A - no database or API query.",
   "break_it": [
     {
-      "scenario": "The restructure silently changes a headline GFA or dwelling count",
-      "what_happens": "the demo numbers would drift from the verified values",
-      "repro": "captured _ca_before.json for 5 live addresses, re-ran after the change, diffed realistic_gfa/lep_envelope/dcp_adjusted/all dwellings",
+      "scenario": "An overlay row is missing layer_type or value",
+      "what_happens": "a blank or '[object Object]' row could appear",
+      "repro": "OverlayList filters to o.layer_type && o.value != null && o.value !== ''",
       "mitigated": true,
-      "how": "HEADLINE UNCHANGED: True for all 5; only lep_max_gfa_from_height_m2 (display) changed from eroded to clean, as intended"
+      "how": "incomplete rows dropped; an all-empty list shows the 'None mapped' message"
     },
     {
-      "scenario": "A DCP GFA step's reduction and output disagree (the 'broken sum')",
-      "what_happens": "the chain would look wrong again",
-      "repro": "test_constraint_phased_ledger.test_dcp_gfa_steps_reconcile asserts output == round(input - reduction, 1) for every GFA step",
+      "scenario": "The climate section arrives without empirical_findings",
+      "what_happens": "ClimateCard could render empty or crash on .map",
+      "repro": "the dispatch only swaps in ClimateCard when Array.isArray(cd.empirical_findings); otherwise the generic card renders",
       "mitigated": true,
-      "how": "reduction_m2 is set to input - output by construction (after the floor-at-0 clamp), so it always reconciles"
+      "how": "guarded dispatch + empty-array fallback text"
     },
     {
-      "scenario": "An LEP step is mistaken for part of a subtraction chain",
-      "what_happens": "the two phases would be summed again",
-      "repro": "test_lep_steps_are_alternatives_not_a_chain asserts LEP steps carry no input_gfa_m2; the card renders LEP as a cap list, not input/change/output",
+      "scenario": "A new hazard type not special-cased",
+      "what_happens": "it could show raw snake_case",
+      "repro": "humanizeClimateFinding falls back to formatKey(hazard) + value + unit.replace(/_/g,' ')",
       "mitigated": true,
-      "how": "LEP steps show only their cap and the min; the DCP table is visually separate with an 'not subtracted from it' note"
-    },
-    {
-      "scenario": "Legacy/unphased steps from an older payload",
-      "what_happens": "steps could vanish if filtered only by phase==='lep'",
-      "repro": "the card uses phase!=='dcp' for the LEP group, so a null phase still renders",
-      "mitigated": true,
-      "how": "unphased steps fall into the LEP group rather than disappearing"
+      "how": "the generic branch produces a readable label and de-underscored unit"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
-    "manual_verify": "Open the capacity card 'Show computation chain': it now shows two tables — 'Maximum envelope (LEP)' (FSR vs height caps + binding + min) and, when lot geometry is reliable, 'After council DCP (indicative)' (a reconciling erosion). The headline GFA/dwellings match the prior values."
+    "other_repo": "N/A",
+    "manual_verify": "Run a brief with satellite on: overlays show an itemised list with 'Lot size: 450 m2'; the Climate card reads 'Urban heat: +7.3 C above surrounding areas (2016 data — most recent available)'; long source URLs wrap inside their card."
   }
 }

@@ -307,6 +307,16 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
               </div>
             );
           }
+          // Planning overlays are a list of {layer_type, value} — render them as
+          // a readable list with units, not "2 items".
+          if (key === 'overlays' && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+                <dd className="mt-0.5"><OverlayList overlays={df.value as OverlayItem[]} /></dd>
+              </div>
+            );
+          }
           // An authoritative null is a checked "nothing here" (e.g. not
           // bushfire-designated, no heritage listing) — show "None", not a dash.
           const display = df.value == null && df.confidence === 'authoritative'
@@ -315,7 +325,7 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
           return (
             <div key={key} className="flex flex-col">
               <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-              <dd className="text-sm text-slate-900 mt-0.5 break-words">{display}</dd>
+              <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]">{display}</dd>
             </div>
           );
         }
@@ -323,7 +333,7 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
         return (
           <div key={key} className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-            <dd className="text-sm text-slate-900 mt-0.5 break-words">{valueWithUnit(key, val, unitFor[key])}</dd>
+            <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]">{valueWithUnit(key, val, unitFor[key])}</dd>
           </div>
         );
       })}
@@ -356,6 +366,92 @@ function formatKey(key: string): string {
     })
     .filter(Boolean)
     .join(' ');
+}
+
+// Units to append to a planning-overlay value when it's a bare number/string.
+const OVERLAY_UNIT: Record<string, string> = {
+  lot_size: 'm²', minimum_lot_size: 'm²', height: 'm', height_of_building: 'm',
+  floor_space_ratio: ':1', fsr: ':1',
+};
+
+interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
+
+// Planning overlays arrive as a list of {layer_type, value} — render them as a
+// readable list ("Acid sulfate: Class 5", "Lot size: 450 m²"), not "2 items".
+function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
+  const rows = overlays.filter((o) => o && o.layer_type && o.value != null && o.value !== '');
+  if (rows.length === 0) return <span className="text-sm text-emerald-700">None mapped at this property</span>;
+  return (
+    <ul className="text-sm text-slate-900 space-y-0.5">
+      {rows.map((o, i) => {
+        const unit = OVERLAY_UNIT[o.layer_type as string];
+        const v = formatValue(o.value);
+        return (
+          <li key={i}>
+            <span className="text-slate-500">{formatKey(o.layer_type as string)}:</span>{' '}
+            {unit && v !== '—' ? `${v} ${unit}` : v}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; }
+
+// Turn a raw climate empirical finding into one plain-English line, e.g.
+// "Urban heat: +7.3 °C above surrounding areas (2016 data — most recent available)".
+function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: string } | null {
+  if (!f || f.value == null) return null;
+  const yr = f.data_date ? f.data_date.slice(0, 4) : '';
+  const stale = f.confidence === 'stale';
+  if (f.hazard === 'urban_heat_island') {
+    return {
+      label: 'Urban heat',
+      detail: `+${f.value.toFixed(1)} °C above surrounding areas${yr ? ` (${yr} data${stale ? ' — most recent available' : ''})` : ''}`,
+    };
+  }
+  if (f.hazard === 'extreme_rainfall') {
+    return {
+      label: 'Extreme rainfall',
+      detail: `${f.value.toFixed(1)} mm in 60 min (1% annual chance)${yr ? ` (${yr})` : ''}`,
+    };
+  }
+  // Fallback: humanise the hazard name + value, drop the snake_case unit jargon.
+  return {
+    label: formatKey(f.hazard ?? 'Hazard'),
+    detail: `${f.value}${f.unit ? ` ${f.unit.replace(/_/g, ' ')}` : ''}${yr ? ` (${yr})` : ''}`,
+  };
+}
+
+function ClimateCard({ data }: { data: Record<string, unknown> }) {
+  const empirical = (data.empirical_findings as ClimateFinding[] | undefined) ?? [];
+  const lines = empirical.map(humanizeClimateFinding).filter(Boolean) as { label: string; detail: string }[];
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Climate Disclosure</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Heat island, rainfall intensity</p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+      </div>
+      <div className="px-5 py-4">
+        {lines.length === 0 ? (
+          <div className="text-sm text-slate-400">No climate hazards recorded at this property.</div>
+        ) : (
+          <dl className="space-y-2">
+            {lines.map((l, i) => (
+              <div key={i} className="flex flex-col">
+                <dt className="text-xs font-medium text-slate-500">{l.label}</dt>
+                <dd className="text-sm text-slate-900 mt-0.5">{l.detail}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function formatValue(val: unknown): string {
@@ -1174,6 +1270,15 @@ function IntelligenceBriefInner() {
                   : null);
                 if (t && typeof t === 'object' && t.slope_mean_deg != null) {
                   card = <TerrainCard data={t} />;
+                }
+              }
+              if (section === 'satellite.climate_disclosure') {
+                const raw = event.data.data as Record<string, unknown> | null;
+                const cd = (raw && typeof raw === 'object'
+                  ? ((raw.value as Record<string, unknown>) ?? raw)
+                  : null);
+                if (cd && Array.isArray(cd.empirical_findings)) {
+                  card = <ClimateCard data={cd} />;
                 }
               }
               if (!card) {
