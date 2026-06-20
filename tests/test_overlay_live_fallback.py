@@ -121,3 +121,27 @@ def test_anef_missing_coords_is_not_available(monkeypatch):
     env = _env({"overlays": [], "covered_layers": []}, lat=None, lng=None)
     assert env.anef.confidence == ib.ConfidenceLevel.NOT_AVAILABLE
     assert called["n"] == 0
+
+
+def test_anef_covered_but_empty_falls_through_to_zone(monkeypatch):
+    # 'anef' is "covered" for the LGA but carries no value at this lot (the sparse
+    # ingested-overlay case). This must NOT short-circuit to a blank — it falls
+    # through to the live anef_zones contour. (Regression: Mascot/Marrickville
+    # were reporting null ANEF from postgis_overlays despite anef_zones = 30/35.)
+    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: {"anef_level": 35, "airport": "Sydney"})
+    env = _env({"overlays": [], "covered_layers": ["anef"]})
+    assert env.anef.value == "ANEF 35 (Sydney)"
+    assert env.anef.source == "anef_zones"
+
+
+def test_anef_covered_with_value_still_uses_overlay(monkeypatch):
+    # When the ingested overlay actually has a value, it wins — anef_zones is not
+    # consulted (unchanged behaviour, guards against over-correcting the fix).
+    def _boom(lat, lng):
+        raise AssertionError("anef_zones must not be queried when the overlay has a value")
+
+    monkeypatch.setattr(ib, "fetch_anef_zone", _boom)
+    env = _env({"overlays": [{"layer_type": "anef", "value": "ANEF 25-30"}],
+                "covered_layers": ["anef"]})
+    assert env.anef.value == "ANEF 25-30"
+    assert env.anef.source == "postgis_overlays"
