@@ -12,6 +12,7 @@ import { Calculator, ChevronDown, ChevronUp, AlertTriangle, TrendingDown } from 
 interface ConstraintStep {
   constraint: string;
   label: string;
+  phase?: string | null;
   input_gfa_m2: number | null;
   reduction_m2: number | null;
   output_gfa_m2: number | null;
@@ -378,43 +379,102 @@ export function ConstraintArithmeticCard({
               {showSteps ? 'Hide' : 'Show'} computation chain ({result.steps.length} steps)
             </button>
 
-            {showSteps && (
-              <div className="mt-2 bg-white border border-blue-100 rounded-lg overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-blue-50">
-                    <tr>
-                      <th className="text-left px-3 py-1.5 text-blue-700">Step</th>
-                      <th className="text-right px-3 py-1.5 text-blue-700">Input</th>
-                      <th className="text-right px-3 py-1.5 text-blue-700">Change</th>
-                      <th className="text-right px-3 py-1.5 text-blue-700">Output</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-blue-50">
-                    {result.steps.map((step, i) => (
-                      <tr key={i} className="hover:bg-blue-50/50">
-                        <td className="px-3 py-1.5 text-gray-700">{step.label}</td>
-                        <td className="px-3 py-1.5 text-right text-gray-500">
-                          {step.input_gfa_m2 != null ? `${Math.round(step.input_gfa_m2).toLocaleString()}m²` : '-'}
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          {step.reduction_m2 != null && step.reduction_m2 !== 0 ? (
-                            <span className="text-red-600">
-                              <TrendingDown className="h-3 w-3 inline mr-0.5" />
-                              -{Math.round(step.reduction_m2).toLocaleString()}m²
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
+            {showSteps && (() => {
+              const lepSteps = result.steps.filter((s) => s.phase !== 'dcp');
+              const dcpSteps = result.steps.filter((s) => s.phase === 'dcp');
+              const m2 = (n: number) => `${Math.round(n).toLocaleString()}m²`;
+              return (
+                <div className="mt-2 space-y-3">
+                  {/* Phase 1 — LEP envelope: FSR vs height are ALTERNATIVES, the
+                      smaller caps the maximum. Not a subtraction chain. */}
+                  {lepSteps.length > 0 && (
+                    <div className="bg-white border border-blue-100 rounded-lg overflow-hidden">
+                      <div className="bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+                        Maximum envelope (LEP) — the smaller of the FSR and height caps
+                      </div>
+                      <table className="w-full text-xs">
+                        <tbody className="divide-y divide-blue-50">
+                          {lepSteps.map((step, i) => (
+                            <tr key={i} className="hover:bg-blue-50/50">
+                              <td className="px-3 py-1.5 text-gray-700">{step.label}</td>
+                              <td className="px-3 py-1.5 text-right font-medium text-gray-900">
+                                {step.output_gfa_m2 != null ? m2(step.output_gfa_m2) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                          {result.lep_envelope_gfa_m2 != null && (
+                            <tr className="bg-blue-50/40 font-medium">
+                              <td className="px-3 py-1.5 text-blue-800">
+                                Maximum GFA{result.binding_constraint_label ? ` — ${result.binding_constraint_label}` : ''}
+                              </td>
+                              <td className="px-3 py-1.5 text-right text-blue-900">{m2(result.lep_envelope_gfa_m2)}</td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="px-3 py-1.5 text-right font-medium text-gray-900">
-                          {step.output_gfa_m2 != null ? `${Math.round(step.output_gfa_m2).toLocaleString()}m²` : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Phase 2 — indicative DCP erosion: a reconciling chain
+                      (output = input − change), shown separately, never summed
+                      with the LEP maximum above. */}
+                  {dcpSteps.length > 0 && (
+                    <div className="bg-white border border-amber-100 rounded-lg overflow-hidden">
+                      <div className="bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+                        After council DCP (indicative) — setbacks, landscaping, parking, shadow
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead className="bg-amber-50/60">
+                          <tr>
+                            <th className="text-left px-3 py-1.5 text-amber-700">Step</th>
+                            <th className="text-right px-3 py-1.5 text-amber-700">Input</th>
+                            <th className="text-right px-3 py-1.5 text-amber-700">Change</th>
+                            <th className="text-right px-3 py-1.5 text-amber-700">Output</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amber-50">
+                          {dcpSteps.map((step, i) => (
+                            <tr key={i} className="hover:bg-amber-50/50">
+                              <td className="px-3 py-1.5 text-gray-700">{step.label}</td>
+                              <td className="px-3 py-1.5 text-right text-gray-500">
+                                {step.input_gfa_m2 != null
+                                  ? m2(step.input_gfa_m2)
+                                  : step.footprint_m2 != null
+                                    ? `${m2(step.footprint_m2)} footprint`
+                                    : '—'}
+                              </td>
+                              <td className="px-3 py-1.5 text-right">
+                                {step.reduction_m2 != null && step.reduction_m2 !== 0 ? (
+                                  <span className="text-red-600">
+                                    <TrendingDown className="h-3 w-3 inline mr-0.5" />
+                                    -{Math.round(step.reduction_m2).toLocaleString()}m²
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-medium text-gray-900">
+                                {step.output_gfa_m2 != null ? m2(step.output_gfa_m2) : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                          {result.dcp_adjusted_gfa_m2 != null && (
+                            <tr className="bg-amber-50/40 font-medium">
+                              <td className="px-3 py-1.5 text-amber-800">Indicative after-DCP GFA</td>
+                              <td className="px-3 py-1.5" colSpan={2} />
+                              <td className="px-3 py-1.5 text-right text-amber-900">{m2(result.dcp_adjusted_gfa_m2)}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                      <p className="px-3 py-1.5 text-[11px] text-amber-600/80">
+                        Indicative only — a separate erosion from the LEP maximum above, not subtracted from it.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

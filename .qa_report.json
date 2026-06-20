@@ -1,56 +1,66 @@
 {
-  "tier": "minor",
-  "commit_hash": "bd88213d",
-  "justification": "Brief empty-state polish (frontend display only): (1) an authoritative null field renders 'None' instead of a bare dash (bushfire designation, heritage listing — checked, nothing here); (2) a bushfire prescreen that RAN but found no Bushfire Attack Level shows 'Not bushfire-prone' instead of the misleading 'tick Include satellite' message; (3) the Confidence Summary 'Not available' count is neutral grey, not alarming red, since it is mostly opt-in layers that weren't run.",
+  "tier": "standard",
+  "commit_hash": "6a27f6ca",
+  "justification": "3a computation-chain ledger restructure. Split the single ConstraintStep list into two labelled phases so the on-screen chain stops pretending to be one sum that doesn't add up: phase 'lep' presents FSR vs height as ALTERNATIVES (the smaller caps the maximum), phase 'dcp' is a reconciling erosion ledger (output == input - reduction). Display-only / presentation change — verified no headline number drift across 5 live addresses.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/constraint_models.py",
+    "services/constraint_arithmetic.py",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "tests/test_constraint_phased_ledger.py"
   ],
   "pre_impl": {
-    "existing_data": "Verified live (14 Stanley, satellite on): environmental.bushfire_designation and heritage_postgis come back value=null/confidence=authoritative; satellite.bushfire returns a present object {category:null,...}/confidence=not_available when the lot is not bushfire-prone.",
-    "assumption_mismatch": "An authoritative null was rendering as '—' (looks like missing data) and a ran-but-empty bushfire prescreen was routed to the 'not run' add-on message — both read as failures when they are actually clean results.",
-    "new_vs_existing": "No new component. The DataField renderer gains a null-authoritative->'None' branch; SectionCard gains a bushfireNotProne check that reuses the existing Unavailable 'clear' tone; one Tailwind colour change.",
-    "external_source_error": "No data fetching changed. Pure display mapping of values already in the section payload.",
-    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
-    "user_failure_mode": "Before: bushfire/heritage looked blank and the bushfire card told the user to tick a box they had already ticked; the summary flashed red on a normal brief. After: 'None'/'Not bushfire-prone' read as checked-clear, and the summary is calm."
+    "existing_data": "compute_constraint_arithmetic builds ConstraintStep[] mixing LEP-envelope establishment with DCP footprint+GFA erosion. Confirmed result.lep_max_gfa_from_height_m2 (was the eroded gfa_from_height) is display-only — envelope uses clean_height_gfa, current_gfa uses gfa_from_height, binding uses clean_height_gfa — so realigning the displayed height GFA to clean does not change any computed headline.",
+    "assumption_mismatch": "The flat step table implied a single subtraction chain (e.g. 397-278-121) that never reconciled, because LEP caps (alternatives) and DCP erosions (sequential) were rendered together.",
+    "new_vs_existing": "No new module. Added ConstraintStep.phase; tagged steps lep/dcp; set the LEP height step + lep_max_gfa_from_height_m2 to the clean full-lot envelope; populated input_gfa_m2 on the GFA-erosion steps so reduction = input - output by construction; the frontend card groups steps into two labelled tables.",
+    "external_source_error": "No data fetching. Pure computation/presentation; the engine already handles missing controls (gaps list).",
+    "frontend_type": "TypeScript: ConstraintStep gains optional phase; the card filters by phase (phase!=='dcp' -> LEP group, ==='dcp' -> DCP group) so unphased/legacy steps degrade into the LEP group rather than vanish. tsc --noEmit passes.",
+    "user_failure_mode": "Before: a single chain that didn't sum and a height-GFA that looked smaller than the envelope. After: 'Maximum envelope (LEP)' shows the FSR and height caps with the binding one and min; 'After council DCP (indicative)' shows a reconciling erosion ending at the dcp_adjusted figure, explicitly labelled as separate, not subtracted from the LEP maximum."
   },
   "functions": [
     {
-      "name": "SectionCard",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:206",
-      "input": "a section id and its DataField payload",
-      "output": "the section card; a ran-but-not-prone bushfire section shows a 'Not bushfire-prone' clear state",
-      "if_none": "non-bushfire not_available sections keep the existing describeUnavailable mapping"
+      "name": "compute_constraint_arithmetic",
+      "file_line": "services/constraint_arithmetic.py:239",
+      "input": "lot area, dev_type, LEP height/FSR strings, lot dimensions, DCP controls, SEPP standards/overrides, shadow result",
+      "output": "ConstraintArithmeticResult whose steps are now phase-tagged; LEP steps are alternatives, DCP GFA steps reconcile (output == input - reduction)",
+      "if_none": "missing controls still produce the LEP envelope (headline) and an honest gaps list; the DCP figure is only surfaced when lot geometry is reliable"
     }
   ],
-  "values": "N/A - no regulatory values; display-only mapping of existing fields.",
+  "values": "N/A - no hardcoded regulatory values. FSR/height/setback/parking values come from the LEP/DCP/SEPP inputs; the change only re-labels and re-groups the derived steps.",
   "queries": "N/A - no database or API query.",
   "break_it": [
     {
-      "scenario": "Satellite analysis is genuinely NOT run, so bushfire value is null",
-      "what_happens": "the new bushfire branch could wrongly claim 'not bushfire-prone'",
-      "repro": "bushfireNotProne requires value to be a present object; a null value fails the check",
+      "scenario": "The restructure silently changes a headline GFA or dwelling count",
+      "what_happens": "the demo numbers would drift from the verified values",
+      "repro": "captured _ca_before.json for 5 live addresses, re-ran after the change, diffed realistic_gfa/lep_envelope/dcp_adjusted/all dwellings",
       "mitigated": true,
-      "how": "value must be a non-null object (the prescreen actually ran); otherwise it falls through to the 'tick Include satellite' message"
+      "how": "HEADLINE UNCHANGED: True for all 5; only lep_max_gfa_from_height_m2 (display) changed from eroded to clean, as intended"
     },
     {
-      "scenario": "A field is null but NOT authoritative (e.g. derived/estimated could-not-compute)",
-      "what_happens": "showing 'None' would overstate certainty",
-      "repro": "the 'None' branch requires df.confidence === 'authoritative'",
+      "scenario": "A DCP GFA step's reduction and output disagree (the 'broken sum')",
+      "what_happens": "the chain would look wrong again",
+      "repro": "test_constraint_phased_ledger.test_dcp_gfa_steps_reconcile asserts output == round(input - reduction, 1) for every GFA step",
       "mitigated": true,
-      "how": "only authoritative nulls map to 'None'; other nulls keep the existing '—' / empty-state handling"
+      "how": "reduction_m2 is set to input - output by construction (after the floor-at-0 clamp), so it always reconciles"
     },
     {
-      "scenario": "A bushfire-PRONE lot (category set)",
-      "what_happens": "it must not be mislabelled 'not bushfire-prone'",
-      "repro": "category != null makes confidence estimated/authoritative -> not the not_available path; bushfireNotProne is false",
+      "scenario": "An LEP step is mistaken for part of a subtraction chain",
+      "what_happens": "the two phases would be summed again",
+      "repro": "test_lep_steps_are_alternatives_not_a_chain asserts LEP steps carry no input_gfa_m2; the card renders LEP as a cap list, not input/change/output",
       "mitigated": true,
-      "how": "the branch only fires when category is null AND confidence is not_available"
+      "how": "LEP steps show only their cap and the min; the DCP table is visually separate with an 'not subtracted from it' note"
+    },
+    {
+      "scenario": "Legacy/unphased steps from an older payload",
+      "what_happens": "steps could vanish if filtered only by phase==='lep'",
+      "repro": "the card uses phase!=='dcp' for the LEP group, so a null phase still renders",
+      "mitigated": true,
+      "how": "unphased steps fall into the LEP group rather than disappearing"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief with satellite on for a non-bushfire lot: Environmental bushfire/heritage read 'None'; the Bushfire Risk card reads 'Not bushfire-prone'; the Confidence Summary 'Not available' count is grey, not red."
+    "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
+    "manual_verify": "Open the capacity card 'Show computation chain': it now shows two tables — 'Maximum envelope (LEP)' (FSR vs height caps + binding + min) and, when lot geometry is reliable, 'After council DCP (indicative)' (a reconciling erosion). The headline GFA/dwellings match the prior values."
   }
 }
