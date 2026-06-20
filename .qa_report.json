@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "commit_hash": "f40ec8d4",
-  "justification": "Frontend display-only fixes on the Intelligence Brief page surfaced from the live screenshot: (1) units now sit with their value (Height '7 m', Lot Size '500 m²') instead of separate 'Height Units: m' rows; (2) long values (the DCP URL) wrap with break-words instead of overflowing/overlapping the next field; (3) empty '...reason' fields (e.g. the granny-flat SEPP ineligible reason when the lot is eligible) are hidden. No data or logic change.",
+  "commit_hash": "54924447",
+  "justification": "Frontend display-only fixes on the Intelligence Brief page surfaced from the live screenshot: (1) units now sit with their value (Height '7 m', Lot Size '500 m²') instead of separate 'Height Units: m' rows; (2) long values (the DCP URL) wrap with break-words instead of overflowing/overlapping the next field; (3) empty '...reason' fields (e.g. the granny-flat SEPP ineligible reason when the lot is eligible) are hidden; (4) an aerial site image is added by reusing the existing AerialTile component (NSW SIX Maps 10cm, same source as the granny-flat tool) — no new data source. No data or logic change.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
@@ -16,7 +16,7 @@
   "functions": [
     {
       "name": "valueWithUnit",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:324",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:325",
       "input": "a field key, its raw value, and an optional unit string merged from the matching units field",
       "output": "the formatted value with the unit appended, e.g. '7 m', unless the value is an empty dash",
       "if_none": "with no unit, or when the formatted value is a dash, it returns the formatted value unchanged"

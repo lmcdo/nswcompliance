@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
+import AerialTile from '@/components/reports/AerialTile';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -979,6 +980,20 @@ function IntelligenceBriefInner() {
               </button>
             )}
           </div>
+
+          {/* Aerial — NSW SIX Maps 10cm imagery for the lot (reuses AerialTile). */}
+          {(metadataEvent?.data.lat ?? selectedLat) != null && (metadataEvent?.data.lng ?? selectedLng) != null && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+              <AerialTile
+                lat={(metadataEvent?.data.lat ?? selectedLat) as number}
+                lng={(metadataEvent?.data.lng ?? selectedLng) as number}
+                height={260}
+              />
+              <p className="px-4 py-2 text-xs text-slate-400">
+                NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
+              </p>
+            </div>
+          )}
 
           {/* Live status panel — elapsed time, section timeline, progress */}
           <LiveStatusPanel
