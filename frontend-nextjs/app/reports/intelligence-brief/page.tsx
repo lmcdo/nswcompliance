@@ -255,8 +255,12 @@ function isDataField(val: unknown): val is { value: unknown; confidence: string;
 
 function SectionData({ data, section }: { data: Record<string, unknown>; section?: string }) {
   // overlay_coverage is an internal QA list of every layer checked — hide it.
+  // lot_area_m2 also appears in the Strata card and the Planning lot-dimensions
+  // composite; show the standalone figure only in Economics (dedupe to one place).
   const entries = Object.entries(data).filter(
-    ([key]) => !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key),
+    ([key]) =>
+      !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key) &&
+      !(key === 'lot_area_m2' && section !== 'economics'),
   );
 
   if (entries.length === 0) {
@@ -281,7 +285,7 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
           return (
             <div key={key} className="flex flex-col">
               <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-              <dd className="text-sm text-slate-900 mt-0.5">{formatValue(df.value)}</dd>
+              <dd className="text-sm text-slate-900 mt-0.5">{formatValue(stripDimArea(key, df.value))}</dd>
             </div>
           );
         }
@@ -289,12 +293,20 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
         return (
           <div key={key} className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-            <dd className="text-sm text-slate-900 mt-0.5">{formatValue(val)}</dd>
+            <dd className="text-sm text-slate-900 mt-0.5">{formatValue(stripDimArea(key, val))}</dd>
           </div>
         );
       })}
     </dl>
   );
+}
+
+// The lot-dimensions composite implies area (shown standalone in Economics) — strip
+// it so it reads as frontage/depth/corner, not the lot area a third time.
+function stripDimArea(key: string, value: unknown): unknown {
+  if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const obj = value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2'));
 }
 
 function formatKey(key: string): string {
