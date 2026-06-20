@@ -1,56 +1,77 @@
 {
   "tier": "standard",
-  "commit_hash": "b41cc401",
-  "justification": "Frontend-only: draw the lot boundary on the brief's aerial. Fetches the WGS84 GeoJSON lot polygon from the existing /api/property/profile route (the same source PropertyProfile and the granny-flat tool use) and passes it to the existing AerialTile lotPolygon prop. No new component, no new data source, no new conversion.",
+  "commit_hash": "99823df9",
+  "justification": "Frontend-only: replace the raw terrain number-dump (Slope Mean Deg, Aspect Dominant Deg, ...) with a TerrainCard — an aspect compass (SVG), a plain-English summary sentence, and four clean stats. Reads the existing satellite.terrain section payload (TerrainAnalysisDetail fields the backend already streams); no new data source, API, or backend change.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "AerialTile already accepts a lotPolygon prop and draws the outline; /api/property/profile already returns lat, lng and a WGS84 lotPolygon (Web Mercator rings converted server-side). PropertyProfile already consumes exactly this. The brief was passing only lat/lng.",
-    "assumption_mismatch": "The aerial showed the area but not the actual block outline; the data and the rendering capability already existed and just needed wiring, not new code.",
-    "new_vs_existing": "No new component, API, or conversion. Adds a lotPolygon state, a useEffect that fetches /api/property/profile for the resolved address and stores data.lotPolygon, and passes it to AerialTile. handleReset clears it.",
-    "external_source_error": "The fetch is wrapped: a non-ok response or a thrown error leaves lotPolygon null, so AerialTile falls back to its centered-aerial (no overlay) exactly as before.",
-    "frontend_type": "Frontend only (TypeScript/React). lotPolygon is typed {type:'Polygon';coordinates:number[][][]}|null; the effect guards on address and state and cancels on unmount; AerialTile already types the prop.",
-    "user_failure_mode": "Before: the aerial was just a centered photo. After: the actual lot boundary is outlined on it; if the polygon can't be fetched, it gracefully shows the photo without the outline."
+    "existing_data": "The backend already streams section 'satellite.terrain' as a DataField whose .value is TerrainAnalysisDetail with slope_mean_deg, slope_max_deg, aspect_dominant_deg, aspect_direction, elevation_range_m, drainage_direction, landform_type (verified in services/terrain_analysis.py:97-111 and the emit at services/intelligence_brief.py:3404). The brief rendered these as a raw key/value list.",
+    "assumption_mismatch": "The terrain numbers were technically present but unreadable (degrees, bearings, no interpretation). The fix is presentation only — the same fields, shown as a compass + sentence.",
+    "new_vs_existing": "No new component is strictly required but a focused TerrainCard is added alongside the existing SeppHousingCard special-case; it consumes the already-streamed section. AspectCompass is a pure SVG from one number. No new fetch, API, or DB query.",
+    "external_source_error": "No external call is added. If the terrain field is missing or slope_mean_deg is null, the special-case does not fire and the section falls back to the existing SectionCard (which shows the contextual empty-state / raw fields exactly as before).",
+    "frontend_type": "Frontend only (TypeScript/React). TerrainData is a local interface with all-optional nullable fields; every render path guards null with `!= null` / `?? '—'`. tsc --noEmit passes.",
+    "user_failure_mode": "Before: a column of cryptic numbers (Aspect Dominant Deg 24.7). After: a compass pointing NE plus 'Gently sloping (~2.8°, up to 23°), faces NE, ~26 m of fall across the lot, drains southwest.' If terrain wasn't run, the card doesn't render and the empty-state shows."
   },
   "functions": [
     {
-      "name": "IntelligenceBriefInner",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:656",
-      "input": "renders the Intelligence Brief page; now also resolves the lot polygon for the aerial overlay",
-      "output": "the brief UI including an aerial with the lot boundary drawn when the polygon is available",
-      "if_none": "if the lot polygon fetch fails or returns nothing, lotPolygon stays null and the aerial renders without an overlay"
+      "name": "TerrainCard",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:472",
+      "input": "a TerrainData object (slope/aspect/elevation/drainage/landform, all optional)",
+      "output": "a card with an aspect compass, a plain-English summary, and four stat cells; every field guarded against null",
+      "if_none": "fields that are null render as '—'; if slope_mean_deg is null the card is never selected and SectionCard renders instead"
+    },
+    {
+      "name": "slopeWord",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:444",
+      "input": "mean slope in degrees (number or null)",
+      "output": "a plain-English band: Flat / Gently sloping / Moderately sloping / Noticeably sloping / Steep / Very steep",
+      "if_none": "returns the neutral word 'Slope' when the input is null"
     }
   ],
-  "values": "N/A - no regulatory values. The lot polygon is geometry from the existing property API; nothing is hardcoded.",
-  "queries": "N/A for new queries - reuses the existing /api/property/profile route; no new database or API endpoint is added.",
+  "values": "N/A - no regulatory values. Slope/aspect/elevation are computed terrain metrics from the existing DEM pipeline; the descriptive bands (Flat/Gently sloping/...) are presentation labels, not planning controls, and nothing is hardcoded from regulation.",
+  "queries": "N/A - no new database or API query. Reads the satellite.terrain section already present in the stream.",
   "break_it": [
     {
-      "scenario": "The property profile fetch fails or returns no lotPolygon",
-      "what_happens": "a naive overlay could crash the map or render an empty shape",
-      "repro": "the fetch is wrapped in catch and the success path only sets state when d.lotPolygon is present; otherwise lotPolygon stays null",
+      "scenario": "Terrain analysis was not requested (satellite off) so the section value is null",
+      "what_happens": "a naive card could render an empty compass and blank stats that look broken",
+      "repro": "the special-case requires t && t.slope_mean_deg != null; otherwise card stays unset",
       "mitigated": true,
-      "how": "AerialTile renders the centered aerial without an overlay when lotPolygon is null, exactly as before"
+      "how": "falls through to the existing SectionCard which shows the contextual empty-state, unchanged"
     },
     {
-      "scenario": "The user resets and runs a new brief for a different address",
-      "what_happens": "a stale lot boundary from the previous address could draw over the new aerial",
-      "repro": "handleReset calls setLotPolygon(null); the effect re-fetches for the new resolved address",
+      "scenario": "Aspect is null but slope is present (partial terrain result)",
+      "what_happens": "the compass needle could point at an arbitrary default (0=N) implying a false 'faces north'",
+      "repro": "AspectCompass only draws the needle when deg != null; the label shows '—' and the summary omits the 'faces' clause",
       "mitigated": true,
-      "how": "the polygon is cleared on reset and the effect, keyed on the address, fetches the new one"
+      "how": "needle and direction text are both guarded; the summary is built from only the present clauses"
     },
     {
-      "scenario": "The effect fires repeatedly or after unmount during streaming",
-      "what_happens": "a late response could set state on an unmounted component or thrash",
-      "repro": "the effect uses a cancelled flag and only runs in streaming/complete with an address",
+      "scenario": "The section arrives as a plain dict in some path rather than a DataField wrapper",
+      "what_happens": "reading .value would be undefined and the card would never render",
+      "repro": "extraction is `raw.value ?? raw` so both the wrapped and unwrapped shapes resolve to the terrain object",
       "mitigated": true,
-      "how": "the cleanup sets cancelled = true so a late response is ignored, and the deps key it to the address and state"
+      "how": "dual fallback handles both; the slope_mean_deg guard still gates rendering"
+    },
+    {
+      "scenario": "All numeric fields present but elevation_range_m and drainage are null",
+      "what_happens": "the summary could end with a dangling comma or empty clause",
+      "repro": "the summary is assembled from a parts[] array joined by ', ' with only non-null clauses pushed",
+      "mitigated": true,
+      "how": "empty parts collapse to a single fallback sentence; no dangling punctuation"
+    },
+    {
+      "scenario": "slope_max_deg is null while slope_mean_deg is set",
+      "what_happens": "the 'up to N°' fragment could render 'up to °' or 'up to null°'",
+      "repro": "the max fragment is conditional on slope_max_deg != null in both the summary and the stat cell",
+      "mitigated": true,
+      "how": "the 'up to' clause and the '· N° max' suffix are each guarded; only avg shows when max is null"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On the brief, confirm the aerial now shows the lot outline (teal) over the property; for an address whose polygon can't be fetched, the aerial still renders without the outline."
+    "manual_verify": "Run a brief with satellite analysis on (e.g. a Sydney address). The Terrain section should show a compass pointing the aspect direction, a plain-English sentence, and Slope/Fall/Drains-to/Landform stats — not the raw 'Slope Mean Deg' list. Run a brief with satellite off: the Terrain section should show its empty-state, not a broken card."
   }
 }
