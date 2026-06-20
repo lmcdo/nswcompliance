@@ -1,57 +1,71 @@
 {
   "tier": "standard",
-  "commit_hash": "fa4cfebf",
-  "_note": "follow-up commit adds the function entry below",
-  "justification": "Dev-tooling: upgrade the prior-art guard (PreToolUse Write|Edit hook) to also fire on EDITS that add a data-source signature (a new fetcher def, an HTTP/DB call, or an external data URL), not just net-new files. This closes the hole that let an ANEF fetcher be added to an existing file with zero duplication check. Adds a known-constraint registry cross-check and an audit log. No production code; fail-open.",
+  "commit_hash": "1f27f33d",
+  "justification": "ANEF redone off the correct (verify-app) source. The brief's anef field now reuses the curated anef_zones table (Sydney — the source the /api/environmental/anef route uses) via PostGIS ST_Contains, and falls back to the existing portal_constraints.fetch_anef (Protection layer 2, regional airfields). Fixes the false 'outside contour' a Sydney lot would have got from the wrong source. Honest 'no published contour' where neither has data (never 'no aircraft noise'). Reuses existing sources; fail-safe.",
   "files": [
-    ".claude/hooks/prior-art-guard.py"
+    "services/intelligence_brief.py",
+    "tests/test_overlay_live_fallback.py"
   ],
   "pre_impl": {
-    "existing_data": "The v1 hook fired only on Write to a NEW file under watched dirs; it bailed immediately on Edit (tool_name != Write) and on existing files. It was already registered for Edit|Write in settings.json, but the code never handled Edit.",
-    "assumption_mismatch": "The guard was assumed to cover duplication generally, but adding a capability via Edit to an existing file (the ANEF case in intelligence_brief.py) bypassed it entirely. Verified by simulating that exact edit: v2 now returns exit 2 and surfaces app/api/environmental/anef/route.ts, lib/nsw-planning-portal.ts and services/portal_constraints.py.",
-    "new_vs_existing": "Extends the existing hook in place (does not add a new hook). Adds: Edit handling, a data-source SIGNATURE regex gate (so ordinary edits stay silent), concern extraction from the added content, a KNOWN-constraint set, and a JSONL audit log of every block. Reuses the same git-grep search and scoring.",
-    "external_source_error": "Pure local hook. Any exception (bad stdin, git failure, log write) falls through to sys.exit(0) — fail-open, never blocks legitimate work on a hook bug.",
-    "frontend_type": "N/A — a Python PreToolUse hook, not application code. It reads the tool payload from stdin and writes a block message to stderr with exit 2.",
-    "user_failure_mode": "Before: a dev could add a duplicate data source by editing an existing file and the guard never ran. After: such an edit is blocked with the existing implementations listed, and the only bypass is an explicit prior-art-checked acknowledgement that is logged."
+    "existing_data": "anef_zones (5 rows, Sydney YSSY ANEF 2039) with geometry_json jsonb + bbox columns and NO PostGIS geom column — the verify route bbox-prefilters then does JS point-in-polygon. portal_constraints.fetch_anef already queries Protection layer 2 (regional ANEF: Cessnock/Bankstown/Taree/Scone, no Sydney). _build_environmental already has lat/lng and _get_db_conn() exists.",
+    "assumption_mismatch": "An earlier attempt wired ANEF to Protection layer 2 alone, which lacks Sydney — so a Sydney lot got a false 'outside aircraft noise'. Verified live: anef_zones returns ANEF 40 at Mascot and ANEF 30 at Haberfield (correct), where the wrong source returned nothing.",
+    "new_vs_existing": "No new data source. fetch_anef_zone queries the existing anef_zones table (exact point-in-polygon via ST_Contains(ST_GeomFromGeoJSON), bbox pre-filtered); _anef_field combines it with the existing fetch_anef. DB coverage still wins; the field value is a string as before.",
+    "external_source_error": "fetch_anef_zone wraps the query in try/except and returns None on any failure; _anef_field wraps each source and falls back: Sydney -> regional -> honest 'no published contour'; missing coords -> NOT_AVAILABLE. A DB or ArcGIS outage never blocks the brief and never over-states a contour.",
+    "frontend_type": "Backend only. The anef DataField stays a string value (same schema); only its source string and the value text change. No frontend interface change.",
+    "user_failure_mode": "Before: a Sydney lot could read 'outside aircraft noise' (false) or 'not mapped'. After: Sydney lots read their real ANEF level, regional airfields read theirs, and elsewhere it says 'no published ANEF contour' — never the over-claim 'no aircraft noise'."
   },
   "functions": [
     {
-      "name": "tokens",
-      "file_line": ".claude/hooks/prior-art-guard.py:78",
-      "input": "a string (filename, symbol name, URL or added code block) to extract concern keywords from",
-      "output": "a set of lower-cased keyword tokens of length four or more, with camelCase split and stop-words removed",
-      "if_none": "an input with no qualifying tokens returns an empty set, and the hook then exits zero without blocking"
+      "name": "fetch_anef_zone",
+      "file_line": "services/intelligence_brief.py:1376",
+      "input": "the latitude and longitude of a property to test against the curated Sydney anef_zones table",
+      "output": "a dict with the highest containing ANEF level and airport name, or None when the point is in no Sydney zone",
+      "if_none": "missing coordinates or any query exception returns None so the caller falls back to the regional source then a conservative note"
+    },
+    {
+      "name": "_anef_field",
+      "file_line": "services/intelligence_brief.py:2053",
+      "input": "uses the enclosing lot coordinates and overlay coverage to build the ANEF environmental DataField",
+      "output": "a DataField with the Sydney ANEF level, else the regional ANEF code, else an honest no-published-contour string",
+      "if_none": "with no coordinates it returns the existing NOT_AVAILABLE field, and any source error degrades to the next fallback"
     }
   ],
-  "values": "N/A - no regulatory values. The KNOWN set is a list of concern keywords (anef, riparian, flood, ...) that already have data sources in this repo, used to strengthen the block signal.",
-  "queries": "N/A - the hook runs a read-only git grep over the repo; it adds no database or API query.",
+  "values": "N/A - no regulatory values are hardcoded. ANEF levels and airport names are read from the authoritative anef_zones table and the Protection layer; thresholds are not invented.",
+  "queries": "N/A for new tables - reuses the existing anef_zones table; the only query is a read-only point-in-polygon SELECT (bbox pre-filter + ST_Contains over the stored GeoJSON), parameterised, with a statement timeout via _get_db_conn.",
   "break_it": [
     {
-      "scenario": "An ordinary logic edit with no data-source signature is made to a watched file",
-      "what_happens": "if the hook fired on every edit it would block all normal work with false positives",
-      "repro": "the capability-add branch returns early unless the SIGNATURE regex (requests/httpx/fetcher def/external URL/SQL) matches the added content",
+      "scenario": "A Sydney lot that the wrong source said was outside any contour",
+      "what_happens": "a false 'outside aircraft noise' reassurance near the airport, the exact bug from the discarded Protection-only attempt",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_sydney_zone_from_anef_zones ; live Mascot -> ANEF 40, Haberfield -> ANEF 30",
       "mitigated": true,
-      "how": "the SIGNATURE gate means edits without a new data source exit 0 silently; only data-source additions are searched"
+      "how": "fetch_anef_zone runs an exact ST_Contains point-in-polygon over the curated Sydney anef_zones table, returning the real contour level"
     },
     {
-      "scenario": "The added content adds a fetcher for a capability that already exists (the ANEF case)",
-      "what_happens": "a duplicate data source gets created with no discovery, as happened with ANEF",
-      "repro": "piping an Edit payload whose new_string contains def _anef_field + fetch_protection_overlay returns exit 2 and lists the existing anef route, portal lib and portal_constraints",
+      "scenario": "A property near a regional airfield not in the Sydney table",
+      "what_happens": "ignoring the regional ANEF would miss small-airport noise that users care about",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_regional_fallback_when_no_sydney_zone",
       "mitigated": true,
-      "how": "Edit handling + the KNOWN-constraint cross-check + the git-grep candidates block the edit and surface the existing implementations to reuse"
+      "how": "when anef_zones has no match, _anef_field falls back to the existing fetch_anef (Protection layer 2) which holds the regional contours"
     },
     {
-      "scenario": "The hook itself errors on a malformed payload or a git failure",
-      "what_happens": "a hook crash could block every Write/Edit and halt all work",
-      "repro": "any exception path (json load, git grep subprocess, log write) is wrapped and falls through to exit 0",
+      "scenario": "A property far from any airport with no published ANEF anywhere",
+      "what_happens": "claiming 'no aircraft noise' would over-state, since some airfields have no published ANEF at all",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_no_published_contour_is_honest",
       "mitigated": true,
-      "how": "fail-open by design — every error path exits 0, so a hook bug degrades to no-guard, never to a hard block"
+      "how": "with both sources empty the field says 'No published ANEF contour at this property' — a fact about the data, not a claim about noise"
+    },
+    {
+      "scenario": "The anef_zones query or the ArcGIS call fails, or coordinates are missing",
+      "what_happens": "a naive combine could crash the brief or invent a contour",
+      "repro": "pytest tests/test_overlay_live_fallback.py::test_anef_missing_coords_is_not_available ; fetch_anef_zone except path returns None",
+      "mitigated": true,
+      "how": "each source is wrapped in try/except returning None, missing coords short-circuits to NOT_AVAILABLE, and the overlay tests stub both sources offline"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "Re-run the simulated ANEF edit against .claude/hooks/prior-art-guard.py and confirm exit 2 + candidates. Confirm an ordinary edit (no requests/url/fetcher) to a services/ file exits 0. Check .claude/prior-art-decisions.log records the block. The heavier CI data-source registry/ratchet remains a follow-up."
+    "manual_verify": "Run a brief on a Sydney lot (e.g. 25 Empire St Haberfield) and confirm the ANEF field reads 'ANEF 30 (Sydney)' rather than 'not mapped' or 'outside'. Confirm a remote lot reads 'No published ANEF contour at this property'. The verify app still uses anef_zones only (Sydney); this backend is more complete (adds the regional fallback)."
   }
 }

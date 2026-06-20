@@ -1373,6 +1373,44 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
             conn.close()
 
 
+def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
+    """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
+    verify app's /api/environmental/anef route uses. Exact point-in-polygon via
+    PostGIS ST_Contains over the stored GeoJSON (bbox pre-filter for speed).
+
+    prior-art-checked: reuses the existing anef_zones table (no new source); the
+    regional half is the existing portal_constraints.fetch_anef. Returns
+    ``{"anef_level": int, "airport": str}`` or None; None on any failure.
+    """
+    if lat is None or lng is None:
+        return None
+    conn = None
+    try:
+        conn = _get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT anef_level, airport_name FROM anef_zones "
+            "WHERE bbox_min_lon <= %s AND bbox_max_lon >= %s "
+            "AND bbox_min_lat <= %s AND bbox_max_lat >= %s "
+            "AND ST_Contains("
+            "  ST_SetSRID(ST_GeomFromGeoJSON(geometry_json::text), 4326), "
+            "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
+            "ORDER BY anef_level DESC LIMIT 1",
+            (lng, lng, lat, lat, lng, lat),
+        )
+        row = cur.fetchone()
+    except Exception:
+        logger.warning("anef_zones point query failed")
+        return None
+    finally:
+        if conn:
+            conn.close()
+    if not row:
+        return None
+    level, airport = row
+    return {"anef_level": level, "airport": airport}
+
+
 # ---------------------------------------------------------------------------
 # Portal constraint fetchers — shared module
 # ---------------------------------------------------------------------------
@@ -2012,6 +2050,37 @@ def _build_environmental(
             reason="Layer not ingested for this LGA",
         )
 
+    def _anef_field() -> DataField:
+        # prior-art-checked: ANEF reuses anef_zones (Sydney, via fetch_anef_zone)
+        # + the existing portal_constraints.fetch_anef (regional). Not a new source.
+        if "anef" in covered:
+            return DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today)
+        if lat is None or lng is None:
+            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                             source="anef_zones", as_at=today, reason="Layer not ingested for this LGA")
+        try:
+            zone = fetch_anef_zone(lat, lng)
+        except Exception:
+            zone = None
+        if zone:
+            return DataField(
+                value=f"ANEF {zone.get('anef_level')} ({zone.get('airport')})",
+                confidence=auth, source="anef_zones", as_at=today,
+            )
+        regional = None
+        try:
+            from services.portal_constraints import fetch_anef
+            regional = fetch_anef(lat, lng)
+        except Exception:
+            regional = None
+        if regional:
+            code = regional.get("anef_code") or regional.get("anef_level")
+            return DataField(value=f"ANEF contour {code}".strip(),
+                             confidence=auth, source="planning_portal_protection", as_at=today)
+        # Checked both published ANEF sources — none. Honest (NOT "no aircraft noise").
+        return DataField(value="No published ANEF contour at this property",
+                         confidence=auth, source="anef_zones", as_at=today)
+
     flood_epi = any(
         o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
     ) or controls.get("flood_epi", False)
@@ -2067,13 +2136,7 @@ def _build_environmental(
         terrestrial_biodiversity=_overlay_field("biodiversity", has_biodiversity, 10),
         riparian_land=_overlay_field("riparian", has_riparian, 7),
         wetlands=_overlay_field("wetlands", has_wetlands, 11),
-        anef=DataField(
-            value=anef_value if "anef" in covered else None,
-            confidence=auth if "anef" in covered else ConfidenceLevel.NOT_AVAILABLE,
-            source="postgis_overlays",
-            as_at=today,
-            reason=None if "anef" in covered else "Layer not ingested for this LGA",
-        ),
+        anef=_anef_field(),
         coastal_hazards=DataField(
             value=coastal_layers if coastal_layers else None,
             confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
