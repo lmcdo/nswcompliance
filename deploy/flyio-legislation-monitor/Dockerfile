@@ -9,8 +9,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY pco_client.py .
 COPY legislation_monitor.py .
-
 COPY check_ip.py .
+COPY run_loop.sh .
 
-# Default: run legislation monitor in auto mode
-CMD ["python", "legislation_monitor.py"]
+# Run the monitor weekly from inside the container. A one-shot script deployed as
+# an always-on Fly app gets restart-looped on exit and suspended; the internal
+# loop keeps the process alive. To grab the egress IP instead, override:
+#   fly machine run . --command "python check_ip.py"
+CMD ["sh", "run_loop.sh"]
