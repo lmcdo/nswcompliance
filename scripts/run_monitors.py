@@ -31,6 +31,13 @@ MONITORS = {
         "cmd": ["python", "scripts/r2_monitor.py"],
         # No --council flag = runs all councils sequentially
     },
+    "dcp-extract": {
+        # Extract-to-review: re-extract changed chapters in memory and enqueue the
+        # diff to dcp_review_queue for human approval. --review = NO provision
+        # commit. Restores the step dropped in the GitHub Actions -> Railway
+        # migration (#506). Needs DATABASE_URL + R2_* creds on the Railway service.
+        "cmd": ["python", "scripts/dcp_extract_changed.py", "--review"],
+    },
     "dcp-watchdog": {
         "cmd": ["python", "scripts/dcp_watchdog.py"],
     },

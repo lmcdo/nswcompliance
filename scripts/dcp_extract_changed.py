@@ -1624,6 +1624,8 @@ def extract_chapter(
                 "artifact_counts": dict(artifact_counts),
                 "artifact_samples": dict(flagged_samples.most_common(5)),
                 "total_provisions": len(provision_texts),
+                "document_id": document_id,
+                "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,
             }
 
@@ -1916,6 +1918,75 @@ def extract_chapter(
         return True, None
 
 
+# ── Review queue ─────────────────────────────────────────────────────────────
+
+def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
+    """Insert detected provision changes into dcp_review_queue for human review.
+
+    This is the inbox for the governance gate: --review extracts in memory and
+    enqueues the diff; a human approves via the review UI before anything commits
+    to regulatory_provisions. No provision is committed here.
+
+    Idempotent per chapter: existing pending rows for a (council, chapter_key) are
+    cleared and re-inserted, so re-running --review refreshes the queue rather than
+    duplicating. Only changed/added/removed items are enqueued (page-only shifts
+    and unchanged provisions are not). Returns the number of rows enqueued.
+    """
+    cur = conn.cursor()
+    total = 0
+    for ch in review_chapters:
+        diff = ch.get("diff") or {}
+        council = ch.get("council")
+        chapter_key = ch.get("chapter_key")
+        document_id = ch.get("document_id")
+        content_hash = ch.get("content_hash")
+
+        rows: list[tuple] = []
+        for c in diff.get("changed", []):
+            rows.append((
+                "changed", c.get("ref_number"), c.get("old_text"), c.get("new_text"),
+                c.get("old_page"), c.get("new_page"), bool(c.get("has_numeric_change")),
+            ))
+        for a in diff.get("added", []):
+            rows.append((
+                "added", a.get("ref_number"), None, a.get("new_text"),
+                None, a.get("new_page"), False,
+            ))
+        for r in diff.get("removed", []):
+            rows.append((
+                "removed", r.get("ref_number"), r.get("old_text"), None,
+                None, None, False,
+            ))
+
+        if not rows:
+            continue
+
+        # Refresh: drop stale pending rows for this chapter, then insert fresh.
+        # Only 'pending' rows are cleared — approved/rejected history is preserved.
+        cur.execute(
+            "DELETE FROM dcp_review_queue "
+            "WHERE council = %s AND chapter_key = %s AND status = 'pending'",
+            (council, chapter_key),
+        )
+        for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:
+            cur.execute(
+                """
+                INSERT INTO dcp_review_queue
+                    (council, chapter_key, document_id, ref_number, change_type,
+                     old_text, new_text, old_page, new_page, has_numeric_change,
+                     source_content_hash, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                """,
+                (council, chapter_key, document_id, ref, change_type,
+                 old_t, new_t, old_p, new_p, has_num, content_hash),
+            )
+            total += 1
+
+    conn.commit()
+    cur.close()
+    return total
+
+
 # ── Review file writer ───────────────────────────────────────────────────────
 
 def write_review_file(council: str, chapters: list[dict]) -> Path:
@@ -2196,10 +2267,12 @@ def main() -> None:
 
     if args.review and review_chapters:
         review_path = write_review_file(args.council or "all", review_chapters)
+        queued = enqueue_review_changes(conn, review_chapters)
         print(f"\n{'='*60}")
         print(f"REVIEW FILE WRITTEN")
         print(f"{'='*60}")
         print(f"\n  {review_path}")
+        print(f"  Enqueued {queued} change(s) to dcp_review_queue for human review.")
         print(f"\n  Open this file and inspect section lists + sample provision texts.")
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
