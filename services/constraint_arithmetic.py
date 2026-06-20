@@ -307,6 +307,7 @@ def compute_constraint_arithmetic(
         for ovr in applied_overrides:
             steps.append(ConstraintStep(
                 constraint=ConstraintType.SEPP_OVERRIDE,
+                phase="lep",
                 label=f"SEPP overrides LEP {ovr.control}",
                 note=(
                     f"SEPP {ovr.control} {ovr.sepp_value} > LEP {ovr.lep_value} "
@@ -323,6 +324,7 @@ def compute_constraint_arithmetic(
         result.lep_max_gfa_from_fsr_m2 = round(gfa_from_fsr, 1)
         steps.append(ConstraintStep(
             constraint=ConstraintType.LEP_FSR,
+            phase="lep",
             label="LEP FSR envelope",
             output_gfa_m2=round(gfa_from_fsr, 1),
             note=f"FSR {effective_fsr} x {lot_area_m2}m2 lot = {gfa_from_fsr:.1f}m2 max GFA",
@@ -344,6 +346,7 @@ def compute_constraint_arithmetic(
 
         steps.append(ConstraintStep(
             constraint=ConstraintType.LEP_HEIGHT,
+            phase="lep",
             label="LEP height envelope",
             note=f"{effective_height_m}m ÷ {STOREY_HEIGHT_M}m/storey = {max_storeys} storeys",
         ))
@@ -384,6 +387,7 @@ def compute_constraint_arithmetic(
 
         steps.append(ConstraintStep(
             constraint=ConstraintType.DCP_SETBACKS,
+            phase="dcp",
             label="DCP setback erosion",
             footprint_m2=round(buildable_footprint, 1),
             note=(
@@ -420,6 +424,7 @@ def compute_constraint_arithmetic(
         if coverage_cap < buildable_footprint:
             steps.append(ConstraintStep(
                 constraint=ConstraintType.DCP_SITE_COVERAGE,
+                phase="dcp",
                 label="Site coverage cap",
                 footprint_m2=round(coverage_cap, 1),
                 note=(
@@ -450,6 +455,7 @@ def compute_constraint_arithmetic(
         new_footprint = max(0.0, buildable_footprint - landscape_reduction_m2)
         steps.append(ConstraintStep(
             constraint=ConstraintType.DCP_LANDSCAPING,
+            phase="dcp",
             label="Landscaping / deep soil",
             footprint_m2=round(new_footprint, 1),
             reduction_m2=round(landscape_reduction_m2, 1),
@@ -470,15 +476,16 @@ def compute_constraint_arithmetic(
         # headline LEP envelope and does not depend on the frontage/depth heuristic.
         gfa_from_height = buildable_footprint * max_storeys
         clean_height_gfa = lot_area_m2 * max_storeys
-        result.lep_max_gfa_from_height_m2 = round(gfa_from_height, 1)
-        # Update the height step with GFA
+        # The LEP-envelope (headline) height path is the FULL lot footprint x
+        # storeys — an alternative to the FSR cap, not the DCP-eroded figure. The
+        # eroded gfa_from_height stays a local that feeds the secondary dcp path.
+        result.lep_max_gfa_from_height_m2 = round(clean_height_gfa, 1)
+        # Update the height step to show that clean envelope (phase = "lep").
         for step in steps:
             if step.constraint == ConstraintType.LEP_HEIGHT:
-                step.output_gfa_m2 = round(gfa_from_height, 1)
-                step.footprint_m2 = round(buildable_footprint, 1)
+                step.output_gfa_m2 = round(clean_height_gfa, 1)
                 step.note += (
-                    f" -> {buildable_footprint:.1f}m2 footprint x "
-                    f"{max_storeys} storeys = {gfa_from_height:.1f}m2 GFA"
+                    f" x {lot_area_m2:.0f}m2 lot = {clean_height_gfa:.1f}m2 max GFA"
                 )
 
     # -----------------------------------------------------------------------
@@ -547,6 +554,7 @@ def compute_constraint_arithmetic(
             shadow_reduction = 1
             result.shadow_storey_reduction = 1
 
+            shadow_input_gfa = current_gfa
             if current_gfa is not None:
                 current_gfa = max(0.0, current_gfa - shadow_gfa_loss)
 
@@ -558,11 +566,16 @@ def compute_constraint_arithmetic(
                 note_parts.append(f"depth amplifier {depth_amplifier:.2f}")
             note_parts.append(f"top storey reduced by {shadow_gfa_loss:.1f}m2")
 
+            # input -> output reconciles by construction (reduction = the actual
+            # amount removed, after the floor-at-0 clamp).
             steps.append(ConstraintStep(
                 constraint=ConstraintType.SHADOW_ACCESS,
+                phase="dcp",
                 label="Solar access plane",
-                reduction_m2=round(shadow_gfa_loss, 1),
-                output_gfa_m2=round(current_gfa, 1) if current_gfa else None,
+                input_gfa_m2=round(shadow_input_gfa, 1) if shadow_input_gfa is not None else None,
+                reduction_m2=(round(shadow_input_gfa - current_gfa, 1)
+                              if shadow_input_gfa is not None and current_gfa is not None else None),
+                output_gfa_m2=round(current_gfa, 1) if current_gfa is not None else None,
                 note=" -- ".join(note_parts),
             ))
 
@@ -603,11 +616,14 @@ def compute_constraint_arithmetic(
 
             # Only deduct parking if it's at-grade (single/dual occ, not apartments)
             if not _is_apartment_type(dev_type):
+                parking_input_gfa = current_gfa
                 current_gfa = max(0.0, current_gfa - parking_gfa)
                 steps.append(ConstraintStep(
                     constraint=ConstraintType.PARKING,
+                    phase="dcp",
                     label="Parking floor area",
-                    reduction_m2=round(parking_gfa, 1),
+                    input_gfa_m2=round(parking_input_gfa, 1),
+                    reduction_m2=round(parking_input_gfa - current_gfa, 1),
                     output_gfa_m2=round(current_gfa, 1),
                     note=(
                         f"{spaces_required:.0f} spaces x {PARKING_AREA_PER_SPACE_M2}m2 = "
@@ -617,6 +633,7 @@ def compute_constraint_arithmetic(
             else:
                 steps.append(ConstraintStep(
                     constraint=ConstraintType.PARKING,
+                    phase="dcp",
                     label="Parking (basement — cost, not GFA)",
                     note=(
                         f"{spaces_required:.0f} spaces assumed basement — "

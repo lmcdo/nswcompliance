@@ -124,6 +124,11 @@ class ConstraintStep(BaseModel):
 
     constraint: ConstraintType
     label: str
+    # "lep"  — establishes the maximum envelope (FSR vs height ALTERNATIVES, not a
+    #          subtraction); the headline is min(FSR cap, height cap).
+    # "dcp"  — the indicative after-council erosion (a reconciling GFA/footprint chain).
+    # Phases are displayed as two separate ledgers, never summed together.
+    phase: Optional[str] = None
     input_gfa_m2: Optional[float] = None
     reduction_m2: Optional[float] = None
     output_gfa_m2: Optional[float] = None
