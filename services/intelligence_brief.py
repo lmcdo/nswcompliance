@@ -843,6 +843,7 @@ sys.path.insert(0, str(_services_dir))
 
 from generate_conveyancing_report import (  # noqa: E402
     resolve_address,
+    resolve_propid_by_point,
     get_raw_controls,
     parse_controls,
     get_valuation,
@@ -2359,6 +2360,19 @@ def _resolve_address(req: IntelligenceBriefRequest) -> tuple:
     """Resolve address to (prop_id, lat, lng, lot_wkt). Raises HTTPException on failure."""
     if req.lat and req.lng and req.prop_id:
         return int(req.prop_id), req.lat, req.lng, None
+
+    # Coordinate-first: a trusted pin (Google Places autocomplete) resolves the
+    # parcel by point-in-cadastre + the SAME parcel-identity cross-check, which is
+    # authoritative and avoids the fuzzy text geocode that false-closes valid
+    # addresses. Any miss/ambiguity/error -> fall through to the text resolver.
+    if req.lat and req.lng:
+        try:
+            hit = resolve_propid_by_point(req.lat, req.lng, req.address)
+        except Exception as e:
+            logger.warning("point->propid resolution failed: %s", e)
+            hit = None
+        if hit and hit[0] and hit[1] and hit[2] and not _validate_coordinates(hit[1], hit[2]):
+            return hit
 
     try:
         resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)

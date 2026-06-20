@@ -57,6 +57,18 @@ PORTAL_HEADERS = {
     "Referer": "https://www.planningportal.nsw.gov.au/",
     "User-Agent": "Mozilla/5.0",
 }
+# prior-art-checked: reuse not viable because the existing cadastre/property
+# fetchers are all frontend TypeScript (nsw-planning-portal.ts, spatial-boundary-
+# service.ts, app/api/property/*) and the existing Python point queries
+# (portal_constraints.py, strata_lookup.py) return overlays/strata, NOT a propId.
+# This is the only Python coordinate->propId resolver; it sits next to the text
+# resolve_address so both share _portal_get/_lot_centroid_wkt/parcel_identity_match.
+# NSW cadastre "Property" layer — point-in-polygon returns the propId that matches
+# the Planning Portal, plus the parcel's cadastre address for the GATE-0 check.
+PROPERTY_LAYER_URL = (
+    "https://portal.spatial.nsw.gov.au/server/rest/services/"
+    "NSW_Land_Parcel_Property_Theme/FeatureServer/12/query"
+)
 DA_URL = "https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineDA"
 
 # Acid sulfate class descriptions (Class 1 = highest risk, Class 5 = subaqueous)
@@ -871,7 +883,18 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
         )
         return None, None, None, None
 
-    lat, lng, lot_wkt = None, None, None
+    lat, lng, lot_wkt = _lot_centroid_wkt(prop_id)
+    return prop_id, lat, lng, lot_wkt
+
+
+def _lot_centroid_wkt(
+    prop_id: int,
+) -> tuple[Optional[float], Optional[float], Optional[str]]:
+    """Fetch the lot polygon for ``prop_id`` → (lat, lng, lot_wkt) in WGS84.
+
+    Shared by the text resolver and the coordinate resolver so both derive the
+    centroid + PostGIS polygon identically. Returns (None, None, None) on failure.
+    """
     try:
         lot_data = _portal_get("lot", {"propId": prop_id})
         if lot_data and isinstance(lot_data, list) and lot_data[0].get("geometry"):
@@ -884,11 +907,71 @@ def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optio
                 # Convert outer ring to WGS84 for PostGIS polygon query
                 wgs84_pts = [_epsg3857_to_wgs84(p[0], p[1]) for p in ring]
                 coords_str = ", ".join(f"{pt[1]} {pt[0]}" for pt in wgs84_pts)
-                lot_wkt = f"POLYGON(({coords_str}))"
+                return lat, lng, f"POLYGON(({coords_str}))"
     except Exception as e:
         print(f"  [warn] lot geometry: {e}")
+    return None, None, None
 
-    return prop_id, lat, lng, lot_wkt
+
+def resolve_propid_by_point(
+    lat: float, lng: float, requested_address: str,
+) -> Optional[tuple[int, float, float, Optional[str]]]:
+    """Coordinate-first parcel resolution: resolve the propId from a trusted pin
+    (e.g. Google Places) via point-in-cadastre instead of the fuzzy text search.
+
+    prior-art-checked: reuse not viable because no existing resolver maps a
+    coordinate to a Planning-Portal propId — intelligence_brief.py consumes this,
+    hierarchy_resolver/dcp-resolver resolve provisions not parcels, and the Python
+    cadastre point queries (portal_constraints, strata_lookup) return
+    overlays/strata not a propId. This is the single coordinate->propId resolver.
+
+    GATE-0 is RETAINED, not bypassed: the cadastre Property layer returns each
+    parcel's own address, and we keep only parcels whose address passes
+    :func:`parcel_identity_match` against the request. We resolve **iff** exactly
+    one distinct propId survives — a pin that lands on a neighbouring parcel (whose
+    address won't match) yields no result, so the caller falls back to the text
+    resolver rather than serving the wrong parcel.
+
+    Returns ``(prop_id, lat, lng, lot_wkt)`` on a confident match, else ``None``.
+    """
+    try:
+        geometry = json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4326}})
+        r = requests.get(
+            PROPERTY_LAYER_URL,
+            params={
+                "geometry": geometry,
+                "geometryType": "esriGeometryPoint",
+                "inSR": "4326",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "propid,address",
+                "returnGeometry": "false",
+                "f": "json",
+            },
+            timeout=15,
+        )
+        r.raise_for_status()
+        features = r.json().get("features", [])
+    except Exception as e:
+        print(f"  [warn] point->propid: {e}")
+        return None
+
+    # GATE-0 cross-check: keep only parcels whose cadastre address matches the
+    # request; a strata/apartment block returns many address points sharing one
+    # propId, which collapses to a single id here.
+    matched_propids = {
+        attrs["propid"]
+        for f in features
+        for attrs in (f.get("attributes") or {},)
+        if attrs.get("propid") and attrs.get("address")
+        and parcel_identity_match(requested_address, attrs["address"])
+    }
+    if len(matched_propids) != 1:
+        return None  # no confident match, or ambiguous -> caller falls back to text
+
+    prop_id = int(matched_propids.pop())
+    c_lat, c_lng, lot_wkt = _lot_centroid_wkt(prop_id)
+    # Prefer the authoritative lot centroid; fall back to the input pin.
+    return prop_id, (c_lat if c_lat is not None else lat), (c_lng if c_lng is not None else lng), lot_wkt
 
 
 # Keep these thin wrappers for any callers that use them directly
