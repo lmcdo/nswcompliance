@@ -92,8 +92,14 @@ SESSION.headers.update(HEADERS)
 
 # ── Adaptive delay tracking ──────────────────────────────────────────────────
 _domain_delays: dict[str, float] = {}  # domain → current delay in seconds
-DEFAULT_DELAY = 2.0
+DEFAULT_DELAY = 3.0
 MAX_DELAY = 60.0
+# Random jitter applied to every adaptive sleep. A metronomic fixed interval is a
+# classic bot signature that single-IP WAFs flag; jitter (~±35%) breaks it. This
+# matters because the Railway migration runs all councils from ONE IP — the old
+# GitHub Actions matrix spread them across runner IPs (see #506).
+JITTER_LOW = 0.7
+JITTER_HIGH = 1.4
 
 
 def _get_domain(url: str) -> str:
@@ -102,10 +108,11 @@ def _get_domain(url: str) -> str:
 
 
 def adaptive_delay(url: str) -> None:
-    """Sleep for the current adaptive delay for this URL's domain."""
+    """Sleep the current adaptive per-domain delay, with random jitter."""
+    import random
     domain = _get_domain(url)
-    delay = _domain_delays.get(domain, DEFAULT_DELAY)
-    time.sleep(delay)
+    base = _domain_delays.get(domain, DEFAULT_DELAY)
+    time.sleep(base * random.uniform(JITTER_LOW, JITTER_HIGH))
 
 
 def _backoff(url: str) -> None:
