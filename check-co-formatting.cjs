@@ -2,7 +2,7 @@ const { Pool } = require('./frontend-nextjs/node_modules/pg');
 
 (async () => {
   const pool = new Pool({
-    connectionString: 'postgresql://postgres.llzdrxywpziewrzudwhj:eDDIYq8ottiaO9ll@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres',
+    connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
 

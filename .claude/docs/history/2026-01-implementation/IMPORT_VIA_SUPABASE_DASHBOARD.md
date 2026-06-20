@@ -135,7 +135,7 @@ supabase db dump --file supabase-export\database.sql
    - Port: `5432`
    - Database: `postgres`
    - Username: `postgres`
-   - Password: `eDDIYq8ottiaO9ll`
+   - Password: `REDACTED_MOVED_TO_ENV`
 4. **Right-click database** → **Restore**
 5. **Select file**: `supabase-export\database.sql`
 6. **Format**: Plain
@@ -175,7 +175,7 @@ Once database is verified, proceed with Vercel deployment:
    PGHOST=db.llzdrxywpziewrzudwhj.supabase.co
    PGDATABASE=postgres
    PGUSER=postgres
-   PGPASSWORD=eDDIYq8ottiaO9ll
+   PGPASSWORD=REDACTED_MOVED_TO_ENV
    PGPORT=5432
    ```
 5. Deploy!

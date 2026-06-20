@@ -52,7 +52,7 @@ Launch pgAdmin 4 from Start Menu
    - Port: `5432`
    - Maintenance database: `postgres`
    - Username: `postgres`
-   - Password: `eDDIYq8ottiaO9ll`
+   - Password: `REDACTED_MOVED_TO_ENV`
    - ✅ Save password
 
 4. **SSL Tab**:
@@ -243,7 +243,7 @@ git push -u origin main
 PGHOST=db.llzdrxywpziewrzudwhj.supabase.co
 PGDATABASE=postgres
 PGUSER=postgres
-PGPASSWORD=eDDIYq8ottiaO9ll
+PGPASSWORD=REDACTED_MOVED_TO_ENV
 PGPORT=5432
 GOOGLE_PLACES_API_KEY=your-google-api-key-here
 NSW_PLANNING_API_BASE_URL=https://api.apps1.nsw.gov.au/planning
@@ -274,7 +274,7 @@ curl "https://YOUR-APP-URL.vercel.app/api/property?address=180%20Addison%20Road,
 
 **Solutions**:
 1. Check Supabase dashboard is accessible
-2. Verify password: `eDDIYq8ottiaO9ll`
+2. Verify password: `REDACTED_MOVED_TO_ENV`
 3. Try SSL mode: `Require` instead of `Prefer`
 4. Check firewall isn't blocking port 5432
 

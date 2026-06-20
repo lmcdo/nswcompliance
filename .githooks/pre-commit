@@ -33,6 +33,17 @@ if [ -n "$STAGED_SECRETS" ]; then
   SECRETS_FOUND=1
 fi
 
+# DB connection strings with an inline password (e.g. postgresql://user:pass@host).
+# Scoped to ADDED lines (^+) so REMOVING a previously-committed credential is never
+# blocked. This is the leak class that put a live Supabase password into ~22 files.
+ADDED_DB_URLS=$(git diff --cached -U0 -- ':!.githooks/*' | grep -E '^\+' | grep -iE '(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^:@/]+:[^@/]+@' || true)
+if [ -n "$ADDED_DB_URLS" ]; then
+  echo "COMMIT REJECTED — database URL with inline password in staged changes:"
+  echo "$ADDED_DB_URLS" | head -5
+  echo "  Move it to an env var (process.env.DATABASE_URL / os.environ['DATABASE_URL'])."
+  SECRETS_FOUND=1
+fi
+
 if [ "$SECRETS_FOUND" -ne 0 ]; then
   echo "  If intentional, use: git commit --no-verify"
   exit 1

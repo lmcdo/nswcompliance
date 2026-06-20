@@ -2,7 +2,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const pool = new Pool({
-  connectionString: 'postgresql://postgres.llzdrxywpziewrzudwhj:eDDIYq8ottiaO9ll@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres'
+  connectionString: process.env.DATABASE_URL
 });
 
 async function check() {

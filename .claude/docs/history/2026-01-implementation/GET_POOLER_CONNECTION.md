@@ -43,7 +43,7 @@ From the connection string, we need:
 - **Port**: `5432`
 - **User**: `postgres.[PROJECT_REF]` (e.g., `postgres.llzdrxywpziewrzudwhj`)
 - **Database**: `postgres`
-- **Password**: `eDDIYq8ottiaO9ll` (you already have this)
+- **Password**: `REDACTED_MOVED_TO_ENV` (you already have this)
 
 ---
 
@@ -56,7 +56,7 @@ Update and run this command:
 ```powershell
 cd "C:\Users\lawre\Downloads\solvyra\projects\compliance engine\compliance-engine"
 
-$env:PGPASSWORD = "eDDIYq8ottiaO9ll"
+$env:PGPASSWORD = "REDACTED_MOVED_TO_ENV"
 $env:PGSSLMODE = "require"
 
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" `
@@ -82,7 +82,7 @@ Since we keep hitting connection issues, pgAdmin is more reliable:
    - Host: (from pooler connection string)
    - Port: 5432
    - Username: (from pooler connection string)
-   - Password: eDDIYq8ottiaO9ll
+   - Password: REDACTED_MOVED_TO_ENV
 4. **Right-click database** → **Restore**
 5. **Select file**: `supabase-export\database_cleaned.sql`
 6. **Format**: Plain

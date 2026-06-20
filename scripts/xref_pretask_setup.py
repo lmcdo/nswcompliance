@@ -46,7 +46,7 @@ import psycopg2.extras
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres.llzdrxywpziewrzudwhj:eDDIYq8ottiaO9ll"
+    "postgresql://postgres.llzdrxywpziewrzudwhj:REDACTED_MOVED_TO_ENV"
     "@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres"
 )
 
