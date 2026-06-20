@@ -102,6 +102,94 @@ An LLM can help **a lot**, but only in roles that never make it the authoritativ
 
 ---
 
+## 5.1 Review acceleration + the automation boundary (the correction)
+
+**Confidence signals ≠ defensibility signals.** An earlier framing leaned on a blend of four confidence signals (structural stability, numeric-delta plausibility, double-extraction agreement, schema pass) as if they were the legal safeguard. They are not. They decide *where to point the human*; they do not constitute the legal defence. The two layers are distinct and both required.
+
+### The boundary is two-dimensional (field-class first, confidence second)
+A single confidence threshold is the wrong primary gate for cited legal data. The defensible boundary keys on **what kind of field changed**:
+
+1. **Field-class gate (PRIMARY).** Any change to a **cited numeric value or clause identifier** (setback, height, FSR, parking rate, or the clause number it sits under) is **always human-required, regardless of confidence.** No score auto-commits this class. Cautionary precedent: Michigan's MiDAS auto-decided a high-liability class without human oversight → **93% error rate, ~20,000 people falsely accused.** Cited provisions are the MiDAS-risk class here.
+2. **Confidence band (SECONDARY, only within the cosmetic/text-only class).** Auto-approve a change *only* if every numeric value and clause id is byte-identical to the prior version AND it passes schema validation AND double-extraction agreement AND structural-stability — i.e. genuinely cosmetic (whitespace, re-flow, punctuation). Everything else → human queue, sorted worst-first.
+3. **Audit sample.** Even auto-approved cosmetic changes are logged and a ~5% random sample is re-checked (Pulse pattern), so the "safe" lane can't drift wrong unnoticed.
+
+### The confidence signals, corrected
+Keep the four — but as a *routing/ordering* aid, not a gate, with two fixes:
+- **Double-extraction agreement is the strongest; build it first.** Run two extractors (e.g. pdfplumber table-parse vs text/regex). **Disagreement forces a human even if each path is internally "sure"** (ensemble disagreement drops real confidence 10–20%).
+- **Schema-validation failure is a hard human-trigger, not a soft score.** Out-of-range value/unit → straight to human.
+- Structural stability and numeric-delta plausibility remain useful triage inputs (an implausible delta like `6m → 600m` is more likely an extraction bug than a real amendment).
+
+### What actually makes it legally defensible (the spine — aligns to the existing four-layer defence)
+The defence is NOT a confidence score. It is, in order:
+1. **Provenance / traceability** — store page + bounding-box + a **verbatim source crop** with every value ("clause 4.2 as it appears in the gazetted PDF, p.14"). This is Layer 1+2 of the four-layer defence and the thing Tepko/Butcher actually protect.
+2. **Verbatim-not-interpreted** — the stored value is a literal transcription of source text (the "never interpret regulations" rule), deterministically checkable.
+3. **Currency proof** — value extracted from the *current* document version (`content_hash == provisions_extracted_from_hash`) + `effective_date`. Serving a superseded provision as current is the Shaddock risk.
+4. **Named-human-approval audit trail** — who approved, when, against which crop. In a dispute this *is* the defence.
+5. **Confidence labelling + product framing** — amber "extracted — verify against source" badges, "screening only", "engage a planner" (four-layer defence Layers 2–3). Already decided in `ce-intelligence-brief-legal-reference.md`.
+
+### Silent-drop prohibition (a defensibility requirement, not just hygiene)
+**Auto-reject must escalate to a human — never silently keep the old value.** If re-extraction can't find a clause it previously had, two passes disagree, a delta is implausible, schema fails, *or a council's provision count drops sharply between runs*, that raises an alert and queues a human. A silent keep-stale is indistinguishable from MiDAS-style silent wrong-data and is the direct Shaddock exposure. Add a per-council record-count guard (sharp drop = halt + escalate, never auto-apply). The govtech analog (Open States) automates *detection + queueing* aggressively but **gates the commit** of the high-liability record.
+
+### The "30-second review" UX + build recommendation
+- One screen, reviewer never opens the full PDF: **old vs new** with word/number diff highlighted, a **pre-rendered PDF crop** of the source region beside the value, and a one-line plain-language summary ("front setback 6m → 7m, clause 4.2") generated *from the fields already computed* (old/new/clause — nothing for an LLM to hallucinate), shown above the crop the human verifies against.
+- **Keyboard-first:** approve / reject / needs-info + next/prev + bulk-approve-cosmetic-batch. No mouse.
+- **Build it in-app, not on an annotation tool.** Label Studio / Argilla / Prodigy are shaped for *creating annotations* and each forces a second service + two-way sync. Roll your own: a Supabase `pending_changes` table → a protected Next.js route → `react-diff-viewer-continued` for the value diff → a crop PNG (rendered by pdfplumber/pdf.js **at extraction time**, stored in Supabase Storage). The hard part (source-snippet beside value) none of the generic tools do for you anyway.
+
+---
+
+## 5.2 Operating model — least manual work, reliably, with integrity
+
+Design target: the **only** recurring human task is approving/rejecting *flagged numeric-or-clause changes* from a pre-sorted queue — realistically minutes per month, since DCP amendments are quarterly–annual per council. Everything else runs unattended, and every unattended path is built to **fail loud**, never to fail silent.
+
+### The one human touchpoint
+- Open the review queue → for each flagged item, glance old-vs-new + crop + summary → `A`/`R`/`N`. Done.
+- Nothing else requires you on the happy path. Cosmetic churn auto-clears; the queue only ever contains real, risky changes.
+
+### Everything automated (unattended)
+| Stage | Runs | Output |
+|---|---|---|
+| Detect | Railway cron, modest cadence | sets `needs_extraction` / writes `content_hash` |
+| Extract-to-review | auto after detect (the step #506 deleted — restore it) | provisions extracted **in memory**, no live writes |
+| Crop render + diff + summary | inside extract | `pending_changes` rows with crop PNG + numeric diff + plain summary |
+| Cosmetic auto-approve + 5% sample | inside commit path | byte-identical-number changes committed; sample logged |
+| Alerts | healthchecks + queue monitor | "review ready", "stage silent", "queue stalled", "count dropped" |
+
+### Hard requirements (non-negotiable invariants — the integrity contract)
+1. **Atomic per-item commit** — each provision set commits-or-not in one DB transaction; never half a chapter.
+2. **Idempotency** — key items by `(council, chapter, content_hash, clause_id)`; claim queue rows with `SELECT … FOR UPDATE SKIP LOCKED`; re-runs are safe.
+3. **Provenance stored on every value** — page + bbox + verbatim crop + source hash + extraction strategy + confidence. No value without its lineage.
+4. **Schema-validate before commit** — type/unit/range per control; failure = hard human route, never a live write.
+5. **Currency check** — only the current `content_hash` is treated as live; `effective_date` recorded.
+6. **No silent drop** — auto-reject / "could not extract" / "row count dropped" all escalate + alert.
+7. **Human gate on cited numbers** — field-class gate above; deterministic extractor is the system-of-record; LLM is presentation-only.
+8. **Fail loud** — external dead-man's-switch (healthchecks.io, the unset `HC_PING_URL`) per stage + a "queue not stalled >1h" check. Silence trips an alarm.
+
+### Constraints (the reality this must fit)
+- **Cost ~$0 incremental.** Cost ($38.59/mo GitHub Actions) drove the migration that broke this. Build on what's paid for: Supabase, Railway cron, the existing Next.js app. Paid extraction (Azure/Gemini) only for the few hard councils, pay-per-use.
+- **Solo operator.** No second system to babysit — the review surface lives *in* the existing app over Supabase, not a separate annotation service.
+- **Railway single-IP.** Re-add per-council throttling/backoff (deleted by #506) so council CDNs don't WAF-block; stagger councils across cron offsets.
+- **Determinism.** Deterministic processing is the system-of-record (project rule). LLM only writes human-facing summaries from already-computed fields and proposes extractions for hard councils — always validated + human-gated.
+
+### Reliability mechanisms (what keeps it running without you watching)
+- **Dead-man's-switch** per stage (alert on *absence* of a success ping) + **queue-not-stalled** monitor.
+- **Retry/backoff with dead-letter → human** — transient failures retry; poison items escalate, never silently drop.
+- **Record-count + freshness anomaly guards** per council — the "wrote zero rows, still green" class.
+- **Quarantined per-council adapters** — a council's format break fails loud and in isolation (Open States "intentionally fragile"), without taking down the core.
+
+### Failure-mode → guard (so "as intended" is enforced, not hoped)
+| If this happens | Guard | Result |
+|---|---|---|
+| A stage silently stops | dead-man's-switch on success ping | alert within minutes |
+| Re-extract loses a clause | count-drop guard + no-silent-drop | halt + human, stale value flagged |
+| Scanned/garbage PDF | min-sections + 0-provision gate | escalate, never commit empty |
+| Numeric mis-read | double-extraction disagreement → human | wrong number never auto-commits |
+| Council CDN blocks | per-council throttle/backoff + WAF detect | ret/queue, alert on repeated failure |
+| Cosmetic lane drifts wrong | 5% audit sample | caught on sample |
+
+**Net:** maximal automation of detection, extraction-to-review, crop/diff/summary, cosmetic auto-clear, and alerting; minimal, pre-sorted human approval confined to the genuinely risky changes; integrity enforced by hard invariants and loud failure rather than vigilance.
+
+---
+
 ## 6. Premise checks (challenge before building)
 
 - **Should DCP be PDF-extracted at all?** Yes, unavoidably. SEPP/LEP permissibility is queried live from the Planning Portal API; **DCP has no live API** — councils publish only PDFs. Stored extraction is the only path. (Prefer structured data if a council ever publishes it.)
