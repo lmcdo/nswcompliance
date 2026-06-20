@@ -1,56 +1,70 @@
 {
   "tier": "standard",
-  "commit_hash": "1f27f33d",
-  "justification": "Frontend display/layout only on the Intelligence Brief page: rewrite the hero subtitle to convey the value proposition (sourced, per-address, full-range) and convert the single-column section stack into a responsive bento grid (3 cols desktop / 2 tablet / 1 mobile) with the headline and field-heavy sections spanning two columns. No data, query, regulatory, or behavioural change — same components, same streaming logic.",
+  "commit_hash": "667a80c7",
+  "justification": "Frontend display-only polish to the Intelligence Brief page: (1) empty states now state the real reason + path (satellite layers -> tick 'Include satellite analysis'; pre-DA -> not in standard brief; overlay -> not mapped for this council; address-not-matched), replacing the dead-end 'Not included'; (2) the SEPP Housing card renders the Low & Mid-Rise standards as a table (form / eligible / min lot / min width / max FSR-height) instead of a 'N · 16 fields' dump; (3) field labels expand acronyms (JRC/WOfS/BoM/FSR/HCA/TOD) and units (M2->m2), and drop internal terms (Postgis); (4) the raw overlay-coverage key dump is hidden and the Data Gaps list shows the contextual detail. No data, query, or regulatory logic changes.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Section cards rendered in a vertical space-y-3 stack inside a max-w-3xl container, with constraint_arithmetic special-cased to ConstraintArithmeticCard and everything else to SectionCard. The card components and the SSE streaming/parse logic are unchanged.",
-    "assumption_mismatch": "The single narrow column was lanky for ~13 heterogeneous sections and gave the headline (development capacity) no visual priority. Bento-grid precedent (size signals priority; 3/2/1 responsive) fits a data dashboard better.",
-    "new_vs_existing": "No new component or dependency. Reuses the installed shadcn cn() util and Tailwind grid utilities. Adds one pure helper spanFor(section) and wraps each streamed card in a grid cell with a column-span class. Container widened to max-w-6xl; the idle form and error panel capped at max-w-2xl so they stay readable.",
-    "external_source_error": "No data or network change. spanFor returns a single-column class for any unknown section, so a new or unexpected section key still renders as a normal tile rather than breaking the grid.",
-    "frontend_type": "Frontend only (TypeScript/React). The streamed card element is typed ReactNode; spanFor returns a string class; cn merges the span with min-w-0 to prevent grid overflow. tsc clean; the only ESLint warning is a pre-existing exhaustive-deps note unrelated to this change.",
-    "user_failure_mode": "Before: a tall thin column where the build-capacity headline had no prominence. After: a packed bento grid with the capacity card and the field-heavy planning/environmental sections double-wide, the rest as tiles — scannable, with the headline given spatial weight. Streaming still appends cards; grid-auto-flow:dense packs the uneven heights."
+    "existing_data": "Section cards used describeUnavailable(reason) returning a bare {label,tone}; the body showed only the short label ('Not included'). SEPP Housing is a list[SEPPStandard]; the generic SectionData rendered each as 'index · 16 fields'. overlay_coverage (a ~20-key internal list) and the Data Gaps list both printed raw internal strings.",
+    "assumption_mismatch": "The UI assumed 'Not included' was enough; it dead-ends the user. Verified gating: satellite layers (bushfire/flood/climate/granny_flat/terrain) are blank only because include_satellite was false -> the real path is the checkbox; pre_da_history needs include_premium which this page never sends -> no path here. The SEPP list is the most decision-relevant block and was being dumped.",
+    "new_vs_existing": "No new dependency. describeUnavailable now takes the section and returns {label, detail, tone} with the verified contextual copy. formatKey expands a small acronym/unit map. A new SeppHousingCard renders the standards table (special-cased like the existing constraint_arithmetic card). overlay_coverage is filtered out; the Data Gaps list reuses describeUnavailable for its detail.",
+    "external_source_error": "No data or network change. describeUnavailable returns a neutral 'Not included' for any unrecognised reason; SeppHousingCard only renders when the standards list is non-empty, otherwise the generic SectionCard fallback applies; missing numeric standards render as a dash.",
+    "frontend_type": "Frontend only (TypeScript/React). describeUnavailable returns a typed Unavailable; SeppStandard fields are optional/nullable and guarded before formatting; tsc clean, the only ESLint warning is a pre-existing exhaustive-deps note unrelated to this change.",
+    "user_failure_mode": "Before: 'Not included' with no reason or path; a meaningless SEPP dump; raw internal labels and key lists. After: each blank says why and how to get it (or 'none here'/good news), the SEPP standards read as a real eligibility table, and labels are plain-English."
   },
   "functions": [
     {
-      "name": "spanFor",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:76",
-      "input": "the brief section key for one streamed card, e.g. constraint_arithmetic or economics",
-      "output": "a Tailwind column-span class string — two columns for headline and field-heavy sections, one column otherwise",
-      "if_none": "any section key not in the wide set returns the single-column class, so unknown sections render as a normal tile"
+      "name": "describeUnavailable",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:121",
+      "input": "the internal NOT_AVAILABLE reason string and the brief section key for one empty field or card",
+      "output": "a plain-language status label, a contextual detail line stating the real reason and path, and a tone",
+      "if_none": "a null, empty or unrecognised reason returns a neutral 'Not included' so no internal string ever leaks to the user"
+    },
+    {
+      "name": "SeppHousingCard",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:355",
+      "input": "the list of Housing-SEPP development standards for the lot, each with eligibility and numeric controls",
+      "output": "a table of form, eligibility, minimum lot and width and the maximum FSR or height for each permitted form",
+      "if_none": "the render path only mounts the card when the list is non-empty, otherwise the generic section card is used"
     }
   ],
-  "values": "N/A - no regulatory values. The change only controls layout column spans and hero copy; no planning numbers are involved.",
-  "queries": "N/A - this is a frontend render change; it adds no database or API query and reads only the already-streamed section data.",
+  "values": "N/A - no regulatory values are hardcoded. The acronym map is display vocabulary; the SEPP numbers are read from the standards the brief already computed, not invented.",
+  "queries": "N/A - frontend render change; no database or API query is added. It reads only the already-streamed section data.",
   "break_it": [
     {
-      "scenario": "A streamed section key is not one of the recognised wide sections",
-      "what_happens": "an unhandled key could throw or produce an undefined span class and break the grid layout",
-      "repro": "call spanFor('some_new_section') — it returns the single-column class and the card renders as a normal tile",
+      "scenario": "A satellite layer is blank because the satellite checkbox was not ticked",
+      "what_happens": "a bare 'Not included' dead-ends the user with no reason or path to the data",
+      "repro": "describeUnavailable('Satellite data not requested', 'satellite.bushfire') returns the 'tick Include satellite analysis and run again' detail",
       "mitigated": true,
-      "how": "spanFor checks a fixed Set and returns col-span-1 for anything not in it, so any key is safe"
+      "how": "satellite sections map to the real, verified checkbox path; the detail line states exactly how to add the layer"
     },
     {
-      "scenario": "A card contains very wide content (long overlay-coverage string) inside a grid cell",
-      "what_happens": "without a min-width reset, a wide child can blow out the CSS grid track and break the columns",
-      "repro": "code review — each grid cell carries min-w-0 via cn so wide content wraps instead of expanding the track",
+      "scenario": "Pre-DA history is blank but there is no premium control on this page",
+      "what_happens": "telling the user to 'request it' would promise a path that does not exist here",
+      "repro": "describeUnavailable('Premium data not requested', 'satellite.pre_da_history') returns 'not part of the standard brief' with no fake path",
       "mitigated": true,
-      "how": "every grid cell gets min-w-0, the standard fix that lets grid items shrink below content width"
+      "how": "pre_da_history maps to an honest 'not in this brief' detail rather than an action that the page cannot perform"
     },
     {
-      "scenario": "Cards stream in at very uneven heights and in arbitrary order",
-      "what_happens": "a naive grid would leave large vertical gaps below short cards as taller ones arrive",
-      "repro": "code review — the grid uses grid-auto-flow:dense with items-start so cards keep natural height and gaps backfill",
+      "scenario": "The SEPP Housing standards list is empty or absent for a lot",
+      "what_happens": "a table component could render an empty shell or crash on a null list",
+      "repro": "the render branch checks standards && standards.length before mounting SeppHousingCard; otherwise the generic SectionCard handles it",
       "mitigated": true,
-      "how": "items-start stops row-height stretch and grid-auto-flow:dense places later small cards into earlier gaps"
+      "how": "SeppHousingCard mounts only for a non-empty list, and each numeric cell falls back to a dash when the standard is null"
+    },
+    {
+      "scenario": "A field label or gap field contains an unknown acronym or an internal term like postgis",
+      "what_happens": "the raw internal token would leak into the user-facing label",
+      "repro": "formatKey('heritage_postgis') drops 'postgis' and yields 'Heritage'; formatKey('jrc_occurrence_pct') yields 'JRC Occurrence %'",
+      "mitigated": true,
+      "how": "formatKey maps known acronyms/units and maps internal words to an empty string that is filtered out before joining"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On the Vercel preview, run a brief (e.g. 25 Empire St) and confirm: the new subtitle reads correctly; on desktop the sections form a 3-column bento with the development-capacity card and planning/environmental spanning two columns; it collapses to 2 columns on tablet and 1 on mobile; the idle input and error panel stay narrow; cards still appear progressively. Iterate on spans from the live preview if any section looks under/over-weighted."
+    "manual_verify": "On the Vercel preview, run 25 Empire St (no satellite) and confirm: the Bushfire/Granny-Flat/Terrain/Climate/Flood cards say 'Not run — tick Include satellite analysis and run again'; SEPP Housing renders a form/eligible/min-lot table, not 'N · 16 fields'; field labels read JRC/WOfS/FSR/m² and 'Heritage' (no Postgis); the overlay-coverage key dump is gone; the Data Gaps list reads as contextual states. ANEF live-fallback and the SEPP currency/dedup polish are tracked follow-ups."
   }
 }

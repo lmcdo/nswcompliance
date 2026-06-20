@@ -67,6 +67,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
   'satellite.granny_flat': { label: 'Granny Flat Detection', description: 'Structure detection, SEPP eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
+  'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
 };
 
 // Bento spans — the headline (development capacity) and the field-heavy sections
@@ -107,29 +108,70 @@ function confidenceBadge(confidence: string) {
 // ---------------------------------------------------------------------------
 type UnavailableTone = 'clear' | 'optional' | 'pending' | 'error' | 'neutral';
 
-function describeUnavailable(reason?: string | null): { label: string; tone: UnavailableTone } {
+// Satellite layers are opt-in behind the "Include satellite analysis" checkbox —
+// so the real reason they're blank is that the box wasn't ticked, and the real
+// path is to tick it and re-run. (Verified against include_satellite gating.)
+const SATELLITE_SECTIONS = new Set([
+  'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
+  'satellite.granny_flat', 'satellite.terrain',
+]);
+
+interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
+
+function describeUnavailable(reason?: string | null, section?: string): Unavailable {
   const r = (reason ?? '').toLowerCase();
-  if (!r) return { label: 'Not included in this report', tone: 'neutral' };
-  // "...failed or not requested" conflates two states — we can't tell which, so
-  // stay neutral rather than alarm the user with a false error.
-  if (r.includes('not requested')) {
-    return r.includes('fail')
-      ? { label: 'Not included in this report', tone: 'neutral' }
-      : { label: 'Available on request', tone: 'optional' };
+  const isSatellite = !!section && (SATELLITE_SECTIONS.has(section) || section === 'satellite.bushfire');
+
+  // Satellite opt-in layers — the box wasn't ticked. Real, actionable path.
+  if (isSatellite) {
+    return {
+      label: 'Not run',
+      detail: 'Tick “Include satellite analysis” above and run the brief again to add this.',
+      tone: 'optional',
+    };
   }
+  // Pre-DA history needs the premium flag, which this page does not expose — so
+  // there is no path here. Don't invent one.
+  if (section === 'satellite.pre_da_history' || r.includes('premium')) {
+    return {
+      label: 'Not in this brief',
+      detail: 'Site-history is a deeper add-on (slower) and is not part of the standard brief.',
+      tone: 'neutral',
+    };
+  }
+  if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
   if (r.includes('prop_id') || r.includes('could not') || r.includes('couldn')) {
-    return { label: 'Could not identify this property', tone: 'error' };
+    return {
+      label: 'Address not matched',
+      detail: 'We could not match this address to a property in the NSW register — check the address.',
+      tone: 'error',
+    };
   }
   if (r.includes('not ingested') || r.includes('not yet') || r.includes('not onboarded')) {
-    return { label: 'Not assessed for this area yet', tone: 'pending' };
+    return {
+      label: 'Not assessed',
+      detail: 'This layer is not yet mapped for this council — confirm with the council or the NSW Planning Portal.',
+      tone: 'pending',
+    };
   }
   if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
-    return { label: 'None found at this property', tone: 'clear' };
+    return {
+      label: 'None here',
+      detail: 'Checked — nothing recorded at this property.',
+      tone: 'clear',
+    };
+  }
+  if (r.includes('not requested')) {
+    return { label: 'Not run', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
   }
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
-    return { label: 'Temporarily unavailable', tone: 'error' };
+    return {
+      label: 'Unavailable',
+      detail: 'The data source did not respond — run the brief again to retry.',
+      tone: 'error',
+    };
   }
-  return { label: 'Not included in this report', tone: 'neutral' };
+  return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
 }
 
 const UNAVAILABLE_TONE_STYLES: Record<UnavailableTone, string> = {
@@ -148,12 +190,12 @@ const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
   neutral: 'text-slate-400',
 };
 
-const TONE_SHORT: Record<UnavailableTone, string> = {
-  clear: 'Clear',
-  optional: 'Optional',
-  pending: 'Not assessed',
-  error: 'Unavailable',
-  neutral: 'Not included',
+// Acronyms + units expanded in field labels; '' drops the word (internal terms).
+const KEY_WORDS: Record<string, string> = {
+  jrc: 'JRC', wofs: 'WOfS', bom: 'BoM', epi: 'EPI', anef: 'ANEF', gfa: 'GFA',
+  fsr: 'FSR', lep: 'LEP', dcp: 'DCP', sepp: 'SEPP', hca: 'HCA', tod: 'TOD',
+  da: 'DA', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
+  m2: 'm²', pct: '%', postgis: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -169,7 +211,7 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
   const reason = isDataField ? (data.reason as string | null) : null;
   const source = isDataField ? (data.source as string) : null;
   const value = isDataField ? (data.value as Record<string, unknown> | null) : data;
-  const unavail = confidence === 'not_available' ? describeUnavailable(reason) : null;
+  const unavail = confidence === 'not_available' ? describeUnavailable(reason, section) : null;
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
@@ -181,7 +223,7 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
         <div className="flex items-center gap-2">
           {unavail ? (
             <span className={`px-2 py-0.5 text-xs font-medium rounded ${UNAVAILABLE_TONE_STYLES[unavail.tone]}`}>
-              {TONE_SHORT[unavail.tone]}
+              {unavail.label}
             </span>
           ) : confidence ? confidenceBadge(confidence) : null}
           {source && <span className="text-xs text-slate-400">{source.replace(/_/g, ' ')}</span>}
@@ -190,10 +232,10 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
       <div className="px-5 py-4">
         {unavail ? (
           <div className={`text-sm ${UNAVAILABLE_TEXT_STYLES[unavail.tone]}`}>
-            {unavail.label}
+            {unavail.detail}
           </div>
         ) : value ? (
-          <SectionData data={value} />
+          <SectionData data={value} section={section} />
         ) : (
           <div className="text-sm text-slate-400 italic">No data</div>
         )}
@@ -211,9 +253,10 @@ function isDataField(val: unknown): val is { value: unknown; confidence: string;
   return typeof val === 'object' && val !== null && !Array.isArray(val) && 'confidence' in val && 'source' in val;
 }
 
-function SectionData({ data }: { data: Record<string, unknown> }) {
+function SectionData({ data, section }: { data: Record<string, unknown>; section?: string }) {
+  // overlay_coverage is an internal QA list of every layer checked — hide it.
   const entries = Object.entries(data).filter(
-    ([key]) => !['confidence', 'source', 'as_at', 'reason'].includes(key),
+    ([key]) => !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key),
   );
 
   if (entries.length === 0) {
@@ -227,7 +270,7 @@ function SectionData({ data }: { data: Record<string, unknown> }) {
         if (isDataField(val)) {
           const df = val;
           if (df.confidence === 'not_available') {
-            const u = describeUnavailable(df.reason);
+            const u = describeUnavailable(df.reason, section);
             return (
               <div key={key} className="flex flex-col">
                 <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
@@ -256,8 +299,14 @@ function SectionData({ data }: { data: Record<string, unknown> }) {
 
 function formatKey(key: string): string {
   return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .split('_')
+    .map((w) => {
+      const k = w.toLowerCase();
+      if (k in KEY_WORDS) return KEY_WORDS[k];
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .filter(Boolean)
+    .join(' ');
 }
 
 function formatValue(val: unknown): string {
@@ -286,6 +335,65 @@ function formatValue(val: unknown): string {
     return `${keys.length} fields`;
   }
   return String(val);
+}
+
+// ---------------------------------------------------------------------------
+// Housing SEPP (Low & Mid-Rise) standards — the denser forms the policy permits
+// and whether this lot qualifies. Rendered as a table, not a raw object dump.
+// ---------------------------------------------------------------------------
+
+interface SeppStandard {
+  dev_type: string;
+  eligible: boolean;
+  min_lot_area_m2?: number | null;
+  min_lot_width_m?: number | null;
+  max_fsr?: number | null;
+  max_height_m?: number | null;
+  reason_ineligible?: string | null;
+}
+
+function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Denser forms the policy permits, and whether this lot qualifies</p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800">Authoritative</span>
+      </div>
+      <div className="px-5 py-4 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-slate-500 text-left">
+              <th className="font-medium pb-2 pr-3">Form</th>
+              <th className="font-medium pb-2 pr-3">Eligible</th>
+              <th className="font-medium pb-2 pr-3">Min lot</th>
+              <th className="font-medium pb-2 pr-3">Min width</th>
+              <th className="font-medium pb-2">Max FSR / height</th>
+            </tr>
+          </thead>
+          <tbody>
+            {standards.map((s, i) => (
+              <tr key={i} className="border-t border-slate-100 align-top">
+                <td className="py-1.5 pr-3 text-slate-900">{formatKey(s.dev_type)}</td>
+                <td className="py-1.5 pr-3">
+                  {s.eligible
+                    ? <span className="text-emerald-700">Yes</span>
+                    : <span className="text-slate-400" title={s.reason_ineligible ?? undefined}>No</span>}
+                </td>
+                <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_area_m2 ? `${s.min_lot_area_m2} m²` : '—'}</td>
+                <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_width_m ? `${s.min_lot_width_m} m` : '—'}</td>
+                <td className="py-1.5 text-slate-600">
+                  {s.max_fsr ? `${s.max_fsr}:1` : s.max_height_m ? `${s.max_height_m} m` : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -477,8 +585,8 @@ function CompleteSummary({ data }: { data: BriefComplete }) {
               <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
                 <span className="text-slate-400 mt-0.5 flex-shrink-0">&#9679;</span>
                 <div>
-                  <span className="font-medium">{formatKey(g.field)}</span>
-                  {g.reason && <span className="text-slate-500"> — {g.reason}</span>}
+                  <span className="font-medium">{formatKey(g.field.replace(/^satellite\./, ''))}</span>
+                  <span className="text-slate-500"> — {describeUnavailable(g.reason, g.field).detail}</span>
                   {g.verify_url && (
                     <a
                       href={g.verify_url}
@@ -860,6 +968,12 @@ function IntelligenceBriefInner() {
                       devType={ca.dev_type}
                     />
                   );
+                }
+              }
+              if (section === 'sepp_housing') {
+                const standards = (event.data.data?.value ?? null) as SeppStandard[] | null;
+                if (standards && standards.length) {
+                  card = <SeppHousingCard standards={standards} />;
                 }
               }
               if (!card) {
