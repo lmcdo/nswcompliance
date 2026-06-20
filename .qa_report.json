@@ -1,56 +1,56 @@
 {
   "tier": "standard",
-  "commit_hash": "60f389b9",
-  "justification": "Frontend display-only de-dupe on the Intelligence Brief page: lot area was shown three times (Economics, Strata & Cadastre, and inside the Planning lot-dimensions composite). Now the standalone lot_area_m2 renders only in Economics, and the area is stripped from the lot-dimensions composite (which keeps frontage/depth/corner). No data or logic change.",
+  "commit_hash": "54924447",
+  "justification": "Frontend display-only fixes on the Intelligence Brief page surfaced from the live screenshot: (1) units now sit with their value (Height '7 m', Lot Size '500 m²') instead of separate 'Height Units: m' rows; (2) long values (the DCP URL) wrap with break-words instead of overflowing/overlapping the next field; (3) empty '...reason' fields (e.g. the granny-flat SEPP ineligible reason when the lot is eligible) are hidden; (4) an aerial site image is added by reusing the existing AerialTile component (NSW SIX Maps 10cm, same source as the granny-flat tool) — no new data source. No data or logic change.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "SectionData renders each section's fields generically. lot_area_m2 is a field in both the economics and strata section values, and area_m2 is a key inside the planning lot_dimensions object — so the same number rendered in three places.",
-    "assumption_mismatch": "The generic renderer showed every field, duplicating lot area across three cards. The fix scopes the standalone figure to Economics and removes the redundant area from the dimensions composite.",
-    "new_vs_existing": "No new component or data. The SectionData filter drops lot_area_m2 unless the section is economics; a small pure helper stripDimArea removes area_m2/lot_area_m2 from the lot_dimensions object before it is formatted.",
-    "external_source_error": "No data or network change. stripDimArea returns the value unchanged for any non-object or non-dimensions field, so an unexpected shape renders exactly as before.",
-    "frontend_type": "Frontend only (TypeScript/React). stripDimArea is typed (key: string, value: unknown) -> unknown and guards against null/array/non-object before destructuring.",
-    "user_failure_mode": "Before: lot area appeared three times across the brief. After: it appears once (Economics) and the Planning dimensions read as frontage/depth/corner."
+    "existing_data": "SectionData renders each section field generically. The backend emits units as separate fields (height + height_units, lot_size + lot_size_units), reason fields that are null when not applicable, and long URL strings. The generic renderer showed each as its own row with no wrapping.",
+    "assumption_mismatch": "The renderer assumed one field per value; units belong with their value, an empty reason is noise, and a long URL needs to wrap. Confirmed from the live brief (Height Units row, overlapping DCP URL, 'SEPP Ineligible Reason: —').",
+    "new_vs_existing": "No new component. SectionData builds a unitFor map from '<field>_units' entries and merges them; the entries filter also drops standalone units rows and empty reason rows; a small valueWithUnit helper appends the unit (never onto a dash); the value cells gain break-words.",
+    "external_source_error": "No data or network change. valueWithUnit appends a unit only when present and the value is not a dash; a field without a unit renders exactly as before.",
+    "frontend_type": "Frontend only (TypeScript/React). unitFor is typed Record<string,string>; valueWithUnit takes (key, raw, unit?) and returns a string; the filter handles null/undefined/empty reason values.",
+    "user_failure_mode": "Before: units floated as separate rows, the DCP URL overlapped the next field, and an empty ineligible-reason row added noise. After: '7 m'/'500 m²' read naturally, long values wrap, and empty reason rows are gone."
   },
   "functions": [
     {
-      "name": "stripDimArea",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:306",
-      "input": "a field key and its value from a brief section, to be rendered in the generic data list",
-      "output": "the value unchanged, except the lot_dimensions composite has its area key removed so area is not shown again",
-      "if_none": "any non lot_dimensions key or a null, array or non-object value is returned unchanged so other fields render as before"
+      "name": "valueWithUnit",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:325",
+      "input": "a field key, its raw value, and an optional unit string merged from the matching units field",
+      "output": "the formatted value with the unit appended, e.g. '7 m', unless the value is an empty dash",
+      "if_none": "with no unit, or when the formatted value is a dash, it returns the formatted value unchanged"
     }
   ],
-  "values": "N/A - no regulatory values. The change only controls which copy of the lot area is displayed; the numbers themselves are unchanged.",
+  "values": "N/A - no regulatory values. Units are display strings emitted by the backend (m, m²); the change only places them next to their value.",
   "queries": "N/A - frontend render change; no database or API query is added.",
   "break_it": [
     {
-      "scenario": "The lot_dimensions object is null, an array, or a non-object for some property",
-      "what_happens": "destructuring a non-object to strip the area key would throw and break the section",
-      "repro": "stripDimArea('lot_dimensions', null) and stripDimArea('lot_dimensions', []) both return the input unchanged",
+      "scenario": "A field has a matching units field but a null value",
+      "what_happens": "appending the unit would produce a meaningless '— m'",
+      "repro": "valueWithUnit('height', null, 'm') returns the dash without the unit because the formatted value is a dash",
       "mitigated": true,
-      "how": "the helper guards on key, truthiness, typeof object and not Array before touching the value"
+      "how": "the helper only appends the unit when the formatted value is not the em-dash placeholder"
     },
     {
-      "scenario": "A non-economics section also carries a lot_area_m2 field (e.g. Strata)",
-      "what_happens": "showing it duplicates the Economics figure, the reported 3x",
-      "repro": "the entries filter drops key lot_area_m2 when section is not economics",
+      "scenario": "A value is a very long URL (the DCP plan link)",
+      "what_happens": "an unwrapped long string overflows its cell and overlaps the adjacent field",
+      "repro": "the value cell now carries break-words so the URL wraps within its column",
       "mitigated": true,
-      "how": "the filter keeps lot_area_m2 only in the economics section, so the standalone figure appears once"
+      "how": "break-words on the value dd wraps long unbroken strings instead of overflowing"
     },
     {
-      "scenario": "Economics itself must still show the lot area",
-      "what_happens": "an over-broad filter could hide the canonical figure entirely",
-      "repro": "the filter condition only drops lot_area_m2 when section !== 'economics', so Economics keeps it",
+      "scenario": "A reason field is null because the condition does not apply (eligible lot)",
+      "what_happens": "an empty 'Ineligible Reason: —' row adds confusing noise",
+      "repro": "the entries filter drops keys matching /reason/i whose value is null, undefined or empty",
       "mitigated": true,
-      "how": "the de-dupe is scoped to non-economics sections, leaving the one canonical Economics figure intact"
+      "how": "empty reason rows are filtered out; a populated reason still renders"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A",
-    "manual_verify": "On the deployed brief, confirm lot area shows once (Economics), is gone from Strata & Cadastre, and the Planning lot-dimensions reads frontage/depth/corner without repeating the area."
+    "manual_verify": "On the brief, confirm Planning Controls reads 'Height 7 m' and 'Lot Size 500 m²' (no separate units rows), the DCP URL wraps instead of overlapping, and the granny-flat card no longer shows an empty 'SEPP Ineligible Reason'. The ANEF value and site-history depend on a clean Railway rebuild (ANEF #536 + rapidfuzz reinstall), not this change."
   }
 }

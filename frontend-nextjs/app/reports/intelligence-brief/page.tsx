@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
+import AerialTile from '@/components/reports/AerialTile';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -254,13 +255,23 @@ function isDataField(val: unknown): val is { value: unknown; confidence: string;
 }
 
 function SectionData({ data, section }: { data: Record<string, unknown>; section?: string }) {
-  // overlay_coverage is an internal QA list of every layer checked — hide it.
-  // lot_area_m2 also appears in the Strata card and the Planning lot-dimensions
-  // composite; show the standalone figure only in Economics (dedupe to one place).
+  // Merge "<field>_units" into "<field>" so e.g. Height reads "7 m", not a
+  // separate "Height Units: m" row.
+  const unitFor: Record<string, string> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!k.endsWith('_units')) continue;
+    const u = isDataField(v) ? v.value : v;
+    if (typeof u === 'string' && u) unitFor[k.slice(0, -6)] = u;
+  }
+  // Hide: internal QA fields; standalone units rows (merged above); the duplicate
+  // lot area (kept in Economics); and empty "...reason" rows (e.g. an ineligible
+  // reason when the lot is actually eligible).
   const entries = Object.entries(data).filter(
-    ([key]) =>
+    ([key, val]) =>
       !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key) &&
-      !(key === 'lot_area_m2' && section !== 'economics'),
+      !key.endsWith('_units') &&
+      !(key === 'lot_area_m2' && section !== 'economics') &&
+      !(/reason/i.test(key) && (val === null || val === undefined || val === '')),
   );
 
   if (entries.length === 0) {
@@ -285,7 +296,7 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
           return (
             <div key={key} className="flex flex-col">
               <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-              <dd className="text-sm text-slate-900 mt-0.5">{formatValue(stripDimArea(key, df.value))}</dd>
+              <dd className="text-sm text-slate-900 mt-0.5 break-words">{valueWithUnit(key, df.value, unitFor[key])}</dd>
             </div>
           );
         }
@@ -293,7 +304,7 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
         return (
           <div key={key} className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-            <dd className="text-sm text-slate-900 mt-0.5">{formatValue(stripDimArea(key, val))}</dd>
+            <dd className="text-sm text-slate-900 mt-0.5 break-words">{valueWithUnit(key, val, unitFor[key])}</dd>
           </div>
         );
       })}
@@ -307,6 +318,13 @@ function stripDimArea(key: string, value: unknown): unknown {
   if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
   const obj = value as Record<string, unknown>;
   return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2'));
+}
+
+// Format a field value (dimensions-area stripped) and append its unit — "7 m",
+// "500 m²" — but never onto an empty/dash value.
+function valueWithUnit(key: string, raw: unknown, unit?: string): string {
+  const s = formatValue(stripDimArea(key, raw));
+  return unit && s !== '—' ? `${s} ${unit}` : s;
 }
 
 function formatKey(key: string): string {
@@ -962,6 +980,20 @@ function IntelligenceBriefInner() {
               </button>
             )}
           </div>
+
+          {/* Aerial — NSW SIX Maps 10cm imagery for the lot (reuses AerialTile). */}
+          {(metadataEvent?.data.lat ?? selectedLat) != null && (metadataEvent?.data.lng ?? selectedLng) != null && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+              <AerialTile
+                lat={(metadataEvent?.data.lat ?? selectedLat) as number}
+                lng={(metadataEvent?.data.lng ?? selectedLng) as number}
+                height={260}
+              />
+              <p className="px-4 py-2 text-xs text-slate-400">
+                NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
+              </p>
+            </div>
+          )}
 
           {/* Live status panel — elapsed time, section timeline, progress */}
           <LiveStatusPanel
