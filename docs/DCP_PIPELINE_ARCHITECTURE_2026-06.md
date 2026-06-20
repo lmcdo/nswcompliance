@@ -222,6 +222,40 @@ These need live network or a real DB, so they must NOT run on every push (slow, 
 
 ---
 
+## 5.4 Gemini actionability classifier — wiring spec (cache, cost, routing)
+
+The classifier (`enrichment/extractors/gemini_actionability_classifier.py`) is migrated, tested, and **not yet wired** (PR #546). It is "Stage 3" of actionability classification — used only for **performance-based DCPs** (Ashfield Purpose/Performance-Criteria/Design-Solutions prose) where regex (Stages 1–2) can't tell a control from narrative. It sets `v2_is_actionable`, which downstream queries filter on. The verbatim-substring gate + conservative fallback mean it can only *sharpen* the classification when verifiably right, and every failure path stays `is_actionable=True`. **Safety is structural; the human review below is a precision backstop, not a safety requirement.**
+
+### Wiring checklist (a separate, reviewed PR)
+1. **Route** in `enrichment/pipeline.py:run_actionability_classification` — branch on `is_performance_based_dcp(document_id)` to call Stage 3 (only where regex is low-confidence, to bound cost).
+2. **Adapter** — regex `classify()` returns `(bool, reason)` and takes `section_header`; Gemini returns a `GeminiClassificationResult` and takes `source_text`. Small shim maps one to the other.
+3. **Persist the audit trail** — store `identified_text`, `char_start/end`, `model`, `reason` next to the verdict (the ADR-001 machine-verifiable record = the defensibility artifact a reviewer checks).
+4. **Cache (below)** — so repeated passes cost ~$0 and verdicts don't flap.
+5. **Key in deploy env** — `GEMINI_API_KEY` on the Railway enrichment job, or Stage 3 silently falls back everywhere (the exact failure this module just fixed).
+6. **§5.3 gates for the wired path** — integration tests: perf-based docs route to Stage 3; verdict+trail persist; a Gemini failure leaves the provision actionable; the cache hits; cost guard fires.
+
+### Cache (required) — makes re-runs free and kills non-determinism
+A durable Postgres cache, e.g. `gemini_classification_cache`:
+- **Key:** `sha256(provision_text) + model_name + prompt_version`.
+- **Value:** the full result (`is_actionable, verified, identified_text, char_start, char_end, reason, created_at`).
+- **Flow:** compute key → hit returns the cached verdict with **no API call**; miss calls Gemini, stores, returns.
+- **Invalidation:** bump `prompt_version` to re-classify everything after a prompt change; identical provision text otherwise never re-calls.
+- **Two payoffs:** (a) a full re-pass over unchanged provisions costs **$0**; (b) identical text always yields the identical verdict, so Gemini's non-determinism can't cause flapping between runs.
+
+### Cost — pinned (June 2026), measured at 248 input + ~90 output tokens/provision
+| Model | Input $/1M | Output $/1M | Per provision | Ashfield full (1,697) |
+|---|---|---|---|---|
+| **Gemini 2.5 Flash** (current) | $0.30 | $2.50 | ~$0.00030 | **$0.51** |
+| **Gemini 2.5 Flash-Lite** | $0.10 | $0.40 | ~$0.00006 | **$0.10** |
+| DeepSeek V3 (deepseek-chat) | ~$0.27 | ~$1.10 | ~$0.00017 | ~$0.28 |
+
+Steady state runs only on new/changed provisions (`v2_is_actionable IS NULL`), and DCP amendments are quarterly–annual per council → **typical month ≈ $0–$0.30**; with the cache, repeated passes ≈ $0.
+
+### Model choice — stay in the Gemini family
+Cost is not a decision factor at this scale. The verbatim gate makes model choice **safety-neutral** (any model's hallucination is caught → fallback); a weaker model only lowers *precision yield* (how often a span verifies), never safety. **Recommendation: Gemini 2.5 Flash** (proven, JSON-native, integrated). If cost ever matters, **drop to Gemini 2.5 Flash-Lite — cheaper than DeepSeek V3 and a one-string change, no new SDK/risk.** Avoid DeepSeek/GLM here: Chinese-hosted (data-residency/optics for AU regulatory data), re-integration + re-test cost, to save cents. Cheaper-vendor migration is only justified by data-residency or massive scale — and then the move is self-hosting an open model, not swapping cloud APIs.
+
+---
+
 ## 6. Premise checks (challenge before building)
 
 - **Should DCP be PDF-extracted at all?** Yes, unavoidably. SEPP/LEP permissibility is queried live from the Planning Portal API; **DCP has no live API** — councils publish only PDFs. Stored extraction is the only path. (Prefer structured data if a council ever publishes it.)
