@@ -1,77 +1,28 @@
 {
-  "tier": "standard",
-  "commit_hash": "2177b896",
-  "justification": "Three correctness fixes the user caught against the live brief. (1) NEARBY DAs showed 0 while the original PlotDetect map-viewer shows ~112: the brief called the flaky live ePlanning OnlineDA API with a tight 200m radius AND an exact council_name='X' filter (returns 0 on any name-format mismatch; the original deliberately uses a fuzzy ilike). Switched the brief to the consolidated development_applications table via the existing conveyancing_db.fetch_nearby_das (same reliable source the map-viewer uses), dropped the brittle council filter for this proximity query (the lat/lng bbox already constrains location), and widened the radius 200->500m. (2) PRE-DA showed 'Not run' even with the 'Include site history' box ticked: it was collected with timeout_satellite+5 = 50s, but the pre-DA pipeline takes 30-90s, so it always timed out. Added a dedicated timeout_premium=120s. Made the empty-state reason distinguish 'not requested' from 'ran but didn't finish' so the UI no longer tells a user who ticked the box to tick it again. (3) Per the user's 'reliability over speed' directive, raised terrain 55->80s (SIX Maps DEM is slow/variable) and shadow 30->50s so they finish reliably.",
-  "files": [
-    "services/intelligence_brief.py",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
-  ],
+  "tier": "minor",
+  "commit_hash": "pending",
+  "justification": "Close the terrain two-layer timeout gap. The brief's outer terrain collection budget was 80s, but the DEM service's INNER HTTP timeout (_TIMEOUT) was 40s — and SIX Maps (the only working DEM source) is variable, sometimes >40s. So the inner 40s killed the fetch before the outer budget mattered, and terrain still failed when SIX Maps was slow. Raised the inner DEM _TIMEOUT 40->65s (the true reliability limit) and the outer timeout_terrain 80->100s to cover GA(12+12 capped) + SIX(65) + the whitebox chain. Two constants only.",
+  "files": ["services/dem_service.py", "services/intelligence_brief.py"],
   "pre_impl": {
-    "existing_data": "conveyancing_db.fetch_nearby_das(conn, lat, lng, council_name, radius_m, days) already queries development_applications via a lat/lng bbox + Haversine and returns the same shape as the live get_nearby_das, but was unused by the brief. The brief has _get_db_conn() and already imports from conveyancing_db.",
-    "assumption_mismatch": "Assumed the live ePlanning API was the right DA source; the original app proves the consolidated development_applications table is the reliable one, and an exact council_name match silently zeroed results.",
-    "new_vs_existing": "Reused the existing DB function and conn pattern; no new query written. Added a CONFIG.timeout_premium / timeout_shadow_collect and bumped timeout_terrain.",
-    "external_source_error": "A DB connection failure propagates so nearby DAs report NOT_AVAILABLE (honest), not a false 0. The live ePlanning API (now unused by the brief) is no longer a failure source here.",
-    "frontend_type": "Backend + a frontend empty-state message change. tsc --noEmit passes.",
-    "user_failure_mode": "Before: 'No nearby DAs' on a street with 112 council DAs; 'Pre-DA Not run — tick the box' when the box was already ticked. After: nearby DAs come from the reliable table within 500m; pre-DA has 120s to complete and, if it still fails, says it couldn't finish rather than blaming the tickbox."
+    "existing_data": "dem_service._TIMEOUT bounded each DEM HTTP call (GA capped at 12, SIX at _TIMEOUT); intelligence_brief.CONFIG.timeout_terrain bounded the terrain future.",
+    "assumption_mismatch": "Raising only the outer collection budget (done earlier) did not help — the inner 40s HTTP timeout on SIX Maps was the binding limit.",
+    "new_vs_existing": "Two existing constants bumped; no new mechanism.",
+    "external_source_error": "SIX Maps slowness now tolerated to 65s; a still-slower response or failure surfaces an honest NOT_AVAILABLE terrain card (unchanged behaviour).",
+    "frontend_type": "Backend only.",
+    "user_failure_mode": "Before: terrain could still fail when SIX Maps took 40-65s because the inner timeout fired. After: the inner timeout matches the outer budget so the working source has real room to return."
   },
   "functions": [
-    {
-      "name": "_fetch_nearby_das",
-      "file_line": "services/intelligence_brief.py",
-      "input": "lat, lng, council_name (unused as a filter), radius_m, days",
-      "output": "nearby DAs from the development_applications table via a bbox + Haversine proximity query, council filter intentionally dropped",
-      "if_none": "a connection failure propagates to NOT_AVAILABLE; a genuine empty result is an honest 0"
-    },
-    {
-      "name": "_build_neighbourhood pre-DA reason path",
-      "file_line": "services/intelligence_brief.py",
-      "input": "whether pre-DA was requested and whether it produced a detail",
-      "output": "reason 'Site history not requested' when not requested, else the run's failure reason when it ran but produced nothing",
-      "if_none": "the frontend renders 'tick the box' only for not-requested, otherwise 'couldn't complete'"
-    }
+    {"name": "fetch_dem_region", "file_line": "services/dem_service.py", "input": "lat, lng, buffer_m, and a timeout defaulting to _TIMEOUT (now 65s)", "output": "a DEM GeoTIFF from GA or SIX Maps with the SIX Maps HTTP call now allowed up to 65s", "if_none": "raises RuntimeError on failure; the brief maps it to a NOT_AVAILABLE terrain section"}
   ],
-  "values": "N/A - DA records and timeouts, not regulatory values.",
-  "queries": [
-    {
-      "purpose": "Fetch nearby development applications within a radius of the lot for the brief Neighbourhood section",
-      "file_line": "scripts/conveyancing_db.py fetch_nearby_das (reused, unchanged) — wired in services/intelligence_brief.py _fetch_nearby_das",
-      "where_clause": "latitude BETWEEN %s AND %s AND longitude BETWEEN %s AND %s AND (lodgement_date >= %s OR determination_date >= %s); council filter intentionally dropped for this proximity query; bounded by the connection 5s statement_timeout; SELECT only, no writes"
-    }
-  ],
+  "values": "N/A - timeout constants, not regulatory values.",
+  "queries": "N/A - no DB query.",
   "break_it": [
-    {
-      "scenario": "The development_applications table is stale or missing coordinates for an area",
-      "what_happens": "nearby DAs would under-report or read 0",
-      "repro": "query a region with rows lacking latitude/longitude",
-      "mitigated": true,
-      "how": "rows with null lat/lng are skipped; the same table backs the original map-viewer which shows current data; a genuine 0 is honest and a connection failure surfaces NOT_AVAILABLE"
-    },
-    {
-      "scenario": "Dropping the council filter pulls DAs from an adjacent council across a boundary",
-      "what_happens": "a DA just over the LGA line could appear",
-      "repro": "a property near a council boundary",
-      "mitigated": true,
-      "how": "the 500m radius is a proximity scope, not a jurisdiction claim — a DA 400m away is genuinely 'nearby' regardless of which council assessed it; results are sorted by distance"
-    },
-    {
-      "scenario": "Pre-DA still exceeds 120s for some address",
-      "what_happens": "it times out and shows 'couldn't complete'",
-      "repro": "an address whose pre-DA pipeline runs >120s",
-      "mitigated": true,
-      "how": "120s covers the documented 30-90s range with margin; on timeout the honest 'ran but didn't finish' message shows, not a false 'not run'"
-    },
-    {
-      "scenario": "Longer terrain/pre-DA budgets make the whole brief slower under concurrency",
-      "what_happens": "a brief could take ~2min and hold memory longer",
-      "repro": "run a brief with site history + satellite on",
-      "mitigated": true,
-      "how": "the concurrency cap (#577) serialises briefs; the user explicitly accepts longer briefs for reliability; layers still run concurrently so total ~= the slowest layer"
-    }
+    {"scenario": "SIX Maps takes longer than 65s", "what_happens": "the DEM fetch times out and terrain shows an honest unavailable card", "repro": "hit SIX Maps under heavy load", "mitigated": true, "how": "65s covers the observed variance; a slower response is genuinely degraded service and surfaces NOT_AVAILABLE, not a fake diagram"},
+    {"scenario": "A 100s terrain budget slows the whole brief", "what_happens": "a brief could run up to ~100s when terrain is the slowest layer", "repro": "run a brief with satellite on while SIX Maps is slow", "mitigated": true, "how": "layers run concurrently so total = the slowest layer; the user explicitly chose reliability over speed; the concurrency cap (#577) bounds memory"},
+    {"scenario": "GA WCS starts hanging and eats the budget", "what_happens": "GA could waste time before SIX Maps runs", "repro": "GA latency spike", "mitigated": true, "how": "GA stays capped at 12s per attempt, so the worst-case before SIX Maps is ~24s, leaving 76s for SIX inside the 100s budget"}
   ],
   "post_merge": {
-    "db_reset": "N/A - read-only.",
-    "secrets": "None.",
-    "other_repo": "N/A - same /stream endpoint; the live ePlanning get_nearby_das remains for the conveyancing CLI only.",
-    "manual_verify": "Run a brief for an inner-Sydney street with known DA activity: nearby DAs now list real applications within 500m. Tick 'Include site history' and run: pre-DA completes (up to 120s) instead of showing 'Not run'."
+    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A - the standalone terrain tool benefits from the same DEM timeout.",
+    "manual_verify": "Run a brief with satellite on for an inner-Sydney address while SIX Maps is responsive: the terrain diagram renders; when SIX Maps is slow (40-65s) it now still completes rather than timing out at 40s."
   }
 }

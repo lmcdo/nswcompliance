@@ -52,7 +52,7 @@ class BriefConfig:
     timeout_shadow: float = 15.0
     timeout_satellite: float = 45.0
     timeout_strata: float = 5.0
-    timeout_terrain: float = 80.0  # whitebox DEM analysis; SIX Maps DEM fetch is slow + variable (~26s, sometimes >40s)
+    timeout_terrain: float = 100.0  # covers GA(12+12 capped) + SIX Maps DEM (up to 65s, variable) + whitebox chain
     timeout_premium: float = 120.0  # pre-DA site history is a 30–90s pipeline — give it room to finish, not time out
     timeout_shadow_collect: float = 50.0  # shadow Sentinel-2 step alone is ~25s; full run needs headroom to be reliable
 
