@@ -1,8 +1,10 @@
 {
   "tier": "minor",
-  "commit_hash": "540966d9",
+  "commit_hash": "b12c0f83",
   "justification": "DCP Controls card gets its own full-width row so the long PDF URL is readable, and URL fields (DCP URL, Legislation URL) render as styled clickable links ('Open the DCP document (PDF) ↗') instead of raw overflowing addresses.",
-  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
+  "files": [
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+  ],
   "pre_impl": {
     "existing_data": "spanFor() already maps sections to grid spans; the dcp_controls section carries a DCP URL field. Values rendered as raw strings via FieldValue's predecessor.",
     "assumption_mismatch": "A long PDF URL in a single tile overflowed/was unreadable; it should be a link, and the card needs room.",
@@ -12,17 +14,43 @@
     "user_failure_mode": "Before: DCP card squeezed in a tile with a raw overflowing URL. After: DCP card spans the row; the URL is a clickable 'Open the DCP document (PDF)' link; legislation URLs likewise."
   },
   "functions": [
-    {"name": "FieldValue", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the display string, the raw value, and the field key", "output": "a clickable labelled link when the raw value is an http(s) URL, otherwise the plain display text", "if_none": "non-URL values render exactly as before via the display string"}
+    {
+      "name": "FieldValue",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "the display string, the raw value, and the field key",
+      "output": "a clickable labelled link when the raw value is an http(s) URL, otherwise the plain display text",
+      "if_none": "non-URL values render exactly as before via the display string"
+    }
   ],
   "values": "N/A - display only; no regulatory values.",
   "queries": "N/A - no database or API query.",
   "break_it": [
-    {"scenario": "A non-URL string that starts with http-like text", "what_happens": "could be mis-linked", "repro": "the test is /^https?:\/\//i — requires an actual http(s):// prefix", "mitigated": true, "how": "anchored regex only matches genuine URLs"},
-    {"scenario": "A URL field with a null/empty value", "what_happens": "an empty link could render", "repro": "raw must be a string matching the URL regex; null/empty falls through to the display text", "mitigated": true, "how": "typeof raw === 'string' guard plus the regex"},
-    {"scenario": "The full-row span breaks the bento layout on small screens", "what_happens": "overflow on mobile", "repro": "the span is col-span-1 on mobile, widening only at md/xl", "mitigated": true, "how": "responsive span: 1 col on mobile, 2 at md, 3 at xl"}
+    {
+      "scenario": "A non-URL string that starts with http-like text",
+      "what_happens": "could be mis-linked",
+      "repro": "the test is /^https?:///i — requires an actual http(s):// prefix",
+      "mitigated": true,
+      "how": "anchored regex only matches genuine URLs"
+    },
+    {
+      "scenario": "A URL field with a null/empty value",
+      "what_happens": "an empty link could render",
+      "repro": "raw must be a string matching the URL regex; null/empty falls through to the display text",
+      "mitigated": true,
+      "how": "typeof raw === 'string' guard plus the regex"
+    },
+    {
+      "scenario": "The full-row span breaks the bento layout on small screens",
+      "what_happens": "overflow on mobile",
+      "repro": "the span is col-span-1 on mobile, widening only at md/xl",
+      "mitigated": true,
+      "how": "responsive span: 1 col on mobile, 2 at md, 3 at xl"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A",
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A",
     "manual_verify": "Open a brief: the DCP Controls card spans the full row and its URL is a clickable 'Open the DCP document (PDF)' link; the Planning Controls legislation URL is also a link."
   }
 }
