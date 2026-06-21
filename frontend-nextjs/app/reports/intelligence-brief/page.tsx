@@ -125,12 +125,13 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
 
   // Satellite opt-in layers.
   if (isSatellite) {
-    // If satellite analysis WAS requested, an empty result is a real outcome
-    // (no structures detected, or the source didn't respond) — NOT "tick the box".
+    // If satellite analysis WAS requested but this layer is empty, it couldn't be
+    // produced for this property — say that plainly, don't blame the user's tickbox
+    // and don't imply a false finding ("no structures" on a clearly built lot).
     if (satelliteRan) {
       return {
-        label: 'No result',
-        detail: 'Satellite analysis ran but returned nothing for this property — no structures detected, or the imagery source did not respond. Re-run to retry.',
+        label: 'Couldn’t complete',
+        detail: 'We couldn’t complete this analysis for the property — it may be temporarily unavailable. Try running the brief again.',
         tone: 'pending',
       };
     }
@@ -396,10 +397,14 @@ const OVERLAY_UNIT: Record<string, string> = {
 // into one plain sentence instead of dumping "HCA:…, Has Heritage: Yes, Raw: 2 items".
 function humanizeHeritage(v: Record<string, unknown>): string {
   if (!v || !v.has_heritage) return 'No heritage listing recorded at this property.';
+  // v.hca / v.items already read like "Heritage Conservation Area (Inner West LEP 2022)"
+  // — render them as-is (they carry the instrument), don't re-prefix and double up.
   const parts: string[] = [];
-  if (v.hca) parts.push(`In a Heritage Conservation Area — ${String(v.hca)}`);
-  if (v.items) parts.push(`Heritage item: ${String(v.items)}`);
-  return parts.length ? parts.join('. ') + '.' : 'A heritage listing applies to this property.';
+  if (v.hca) parts.push(String(v.hca));
+  if (v.items) parts.push(String(v.items));
+  return parts.length
+    ? `This property is heritage-affected: ${parts.join('; ')}.`
+    : 'A heritage listing applies to this property.';
 }
 
 interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
