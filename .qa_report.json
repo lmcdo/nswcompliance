@@ -1,31 +1,56 @@
 {
   "tier": "minor",
-  "commit_hash": "1107f8f0",
-  "justification": "Dead-code removal. The Intelligence Brief had two copies of the fan-out/assembly logic: the batch run_intelligence_brief (POST /pipeline/intelligence-brief) and the streaming _generate_brief_sse (POST /pipeline/intelligence-brief/stream). Only the streaming path is used — the Trigger.dev relay (plotdetect-agents/trigger/intelligence-brief.ts) POSTs to /stream and the frontend consumes the SSE stream. The batch endpoint had zero callers anywhere; the only reference was test_brief_constraint_parity.py, which existed solely to babysit the two copies for drift. Removed the dead function, its route, and the obsolete parity test, and reworded two stale comments that named the deleted function. No logic, query, or schema change. One assembly path remains, eliminating the drift class that previously dropped the capacity headline from the live stream (fixed in #512).",
+  "commit_hash": "b12c0f83",
+  "justification": "DCP Controls card gets its own full-width row so the long PDF URL is readable, and URL fields (DCP URL, Legislation URL) render as styled clickable links ('Open the DCP document (PDF) ↗') instead of raw overflowing addresses.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_brief_constraint_parity.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
+  "pre_impl": {
+    "existing_data": "spanFor() already maps sections to grid spans; the dcp_controls section carries a DCP URL field. Values rendered as raw strings via FieldValue's predecessor.",
+    "assumption_mismatch": "A long PDF URL in a single tile overflowed/was unreadable; it should be a link, and the card needs room.",
+    "new_vs_existing": "Adds FULL_ROW_SECTIONS (dcp_controls -> full row) and a FieldValue component that renders http(s) values as labelled links; reused in both the DataField and plain value branches.",
+    "external_source_error": "Pure display; non-URL values render unchanged via the display string.",
+    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
+    "user_failure_mode": "Before: DCP card squeezed in a tile with a raw overflowing URL. After: DCP card spans the row; the URL is a clickable 'Open the DCP document (PDF)' link; legislation URLs likewise."
+  },
+  "functions": [
+    {
+      "name": "FieldValue",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "the display string, the raw value, and the field key",
+      "output": "a clickable labelled link when the raw value is an http(s) URL, otherwise the plain display text",
+      "if_none": "non-URL values render exactly as before via the display string"
+    }
+  ],
+  "values": "N/A - display only; no regulatory values.",
+  "queries": "N/A - no database or API query.",
   "break_it": [
     {
-      "scenario": "Some other caller (e.g. an external API consumer) still POSTs to /pipeline/intelligence-brief (the removed batch route)",
-      "what_happens": "that caller would get a 404",
-      "repro": "grep the repo and the Trigger.dev relay for the route",
+      "scenario": "A non-URL string that starts with http-like text",
+      "what_happens": "could be mis-linked",
+      "repro": "the test is /^https?:///i — requires an actual http(s):// prefix",
       "mitigated": true,
-      "how": "verified zero callers: the only reference in-repo was the parity test (reads the function source); the Trigger.dev relay (plotdetect-agents/trigger/intelligence-brief.ts) POSTs to /pipeline/intelligence-brief/stream only (line 156); the frontend consumes the SSE stream; no other in-repo reference exists"
+      "how": "anchored regex only matches genuine URLs"
     },
     {
-      "scenario": "The streaming path silently regresses without the parity test guarding it",
-      "what_happens": "a brief section could go missing from the live stream undetected",
-      "repro": "remove a section emission from _generate_brief_sse",
+      "scenario": "A URL field with a null/empty value",
+      "what_happens": "an empty link could render",
+      "repro": "raw must be a string matching the URL regex; null/empty falls through to the display text",
       "mitigated": true,
-      "how": "the parity test only compared the now-deleted batch path against the stream; with one path it is obsolete. The remaining streaming assembly is covered by tests/test_intelligence_brief_schema.py and tests/test_intelligence_brief_orchestrator.py (157 pass), plus a live SSE smoke (metadata then 8 sections then complete, 0 errors)"
+      "how": "typeof raw === 'string' guard plus the regex"
+    },
+    {
+      "scenario": "The full-row span breaks the bento layout on small screens",
+      "what_happens": "overflow on mobile",
+      "repro": "the span is col-span-1 on mobile, widening only at md/xl",
+      "mitigated": true,
+      "how": "responsive span: 1 col on mobile, 2 at md, 3 at xl"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None - no secrets or env vars touched.",
-    "other_repo": "N/A - removes an unused backend route; the Trigger.dev relay in plotdetect-agents already calls /stream only, so nothing downstream changes.",
-    "manual_verify": "Run a brief from the UI: it still streams (metadata then sections then complete). POST /pipeline/intelligence-brief now 404s (intended; nothing calls it); POST /pipeline/intelligence-brief/stream unchanged."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A",
+    "manual_verify": "Open a brief: the DCP Controls card spans the full row and its URL is a clickable 'Open the DCP document (PDF)' link; the Planning Controls legislation URL is also a link."
   }
 }
