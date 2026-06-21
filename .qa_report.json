@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "commit_hash": "065e0d04",
+  "commit_hash": "a59561e2",
   "justification": "Concurrency cap on the brief SSE stream to stop the 8GB Railway container OOM-crashing when two heavy briefs run at once (each peaks at a few GB from Sentinel-2 + pre-DA embeddings + terrain arrays). A threading.BoundedSemaphore (default 1, env BRIEF_MAX_CONCURRENCY) serialises heavy briefs; a queued request waits up to 150s then gets an honest 'busy' event instead of a crash. Investigation found the flood rasters are disk + location-gated (not the RAM cause), so lazy-loading them was NOT shipped — the concurrency cap is the actual fix.",
   "files": ["services/intelligence_brief.py"],
   "pre_impl": {
@@ -18,7 +18,7 @@
     {"scenario": "A brief generator raises before release", "what_happens": "the semaphore could leak and permanently block briefs", "repro": "the acquire is paired with a finally: _BRIEF_SEMAPHORE.release()", "mitigated": true, "how": "release is in a finally so it runs on success, exception, or generator close"},
     {"scenario": "A client disconnects mid-stream (generator GC'd)", "what_happens": "the permit might not be released", "repro": "Python closes the generator (GeneratorExit) which runs the finally", "mitigated": true, "how": "the finally release runs on generator close/GC"},
     {"scenario": "Traffic exceeds the cap", "what_happens": "requests could hang forever", "repro": "acquire has a 150s timeout; on miss it yields a 'busy' error event and returns", "mitigated": true, "how": "bounded wait + honest busy message, never an indefinite hang"},
-    {"scenario": "The cap is too low and serialises legitimate concurrent demand", "what_happens": "users wait", "repro": "BRIEF_MAX_CONCURRENCY is an env var; raise it once the container has more memory", "mitigated": true, "how": "configurable without a code change; default 1 is the safe value at 8GB"}
+    {"scenario": "The cap is too low and serialises legitimate concurrent demand", "what_happens": "legitimate users could wait too long", "repro": "BRIEF_MAX_CONCURRENCY is an env var; raise it once the container has more memory", "mitigated": true, "how": "configurable without a code change; default 1 is the safe value at 8GB"}
   ],
   "post_merge": {
     "db_reset": "N/A", "secrets": "None",
