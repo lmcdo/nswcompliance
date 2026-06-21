@@ -1,29 +1,27 @@
 {
   "tier": "minor",
-  "commit_hash": "5c6f694a",
-  "justification": "Plain-English fixes (frontend display): (1) when a satellite layer is empty despite satellite being requested, say 'We couldn't complete this analysis — try again', not 'no structures detected' (which falsely implies a finding on a built lot) or 'tick the box'; (2) the heritage sentence no longer doubles 'Heritage Conservation Area — Heritage Conservation Area' — it renders the hca/items strings (which carry the instrument) cleanly.",
-  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
+  "commit_hash": "a6930689",
+  "justification": "Raise the brief's satellite collection timeout caps so the in-process pure-compute layers stop being killed before they finish. bushfire 10->30, flood 20->50, climate 10->25, terrain 30->55 (CONFIG.timeout_terrain) — matching the standalone-tool budgets. These layers run in the brief's own ThreadPoolExecutor identically to the tools; the only defect was the short caps. Parallel futures return as-soon-as-done so higher caps add no latency unless a layer is genuinely slow.",
+  "files": ["services/intelligence_brief.py"],
   "pre_impl": {
-    "existing_data": "describeUnavailable returned a satellite 'No result' message mentioning 'no structures detected'; humanizeHeritage prefixed 'In a Heritage Conservation Area — ' onto v.hca which itself already starts with 'Heritage Conservation Area (instrument)'.",
-    "assumption_mismatch": "Backend investigation: GF empty is almost always a failed scan (its structure detection needs a Modal GPU endpoint, MODAL_STRUCTURES_URL, that is undocumented and likely unset on Railway), NOT a real 'no structures' finding — so the old wording stated a false fact.",
-    "new_vs_existing": "No new data or function. Reworded one branch of describeUnavailable and simplified humanizeHeritage to avoid the doubled prefix.",
-    "external_source_error": "No fetch. Display strings only.",
-    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
-    "user_failure_mode": "Before: 'No result — no structures detected' (false) and 'Heritage Conservation Area — Heritage Conservation Area (...)'. After: 'We couldn't complete this analysis — try again' and 'This property is heritage-affected: Heritage Conservation Area (Inner West LEP 2022); Heritage Item (...).'"
+    "existing_data": "Investigation (agent map): the brief mounts the same FastAPI app as the working tools and calls the same _fetch_* functions in a shared ThreadPoolExecutor; _timed_result(future, cap) collected each satellite layer at 10-30s while the standalone tools allow 55-180s, so flood/terrain/climate timed out and were emitted empty.",
+    "assumption_mismatch": "The empties read as 'not wired' but the layers actually run in-process — they were just collected too early.",
+    "new_vs_existing": "No new code or query. Four timeout constants raised; granny left unchanged (it will be decoupled to the working async route next, which also carries the eligibility gate).",
+    "external_source_error": "Unchanged: a layer that still exceeds its (now higher) cap returns the same NOT_AVAILABLE DataField and the card shows the honest 'couldn't complete' state.",
+    "frontend_type": "N/A (backend Python).",
+    "user_failure_mode": "Before: terrain/flood/climate frequently empty (killed at 10-30s). After: they have the same budget as the standalone tools, so they populate; a genuinely slow/failed layer still degrades to the honest empty state."
   },
-  "functions": [
-    {"name": "humanizeHeritage", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the heritage_postgis dict with has_heritage, hca and items keys", "output": "one plain sentence citing the conservation area and/or heritage item, or a 'no listing' line", "if_none": "returns 'No heritage listing recorded at this property.' when has_heritage is falsy"}
-  ],
-  "values": "N/A - no regulatory values; display strings only. The heritage instrument names come from the data, not hardcoded.",
-  "queries": "N/A - no database or API query.",
+  "functions": [],
+  "values": "N/A - timeout constants only, no regulatory values.",
+  "queries": "N/A - no database or API query added.",
   "break_it": [
-    {"scenario": "A satellite layer is genuinely unavailable for the area (not a failure)", "what_happens": "the message must not falsely claim a finding either way", "repro": "the reworded message says 'couldn't complete — may be temporarily unavailable', which is true whether it failed or has no coverage", "mitigated": true, "how": "the wording avoids asserting a specific finding like 'no structures'"},
-    {"scenario": "heritage v.hca is present but v.items is absent", "what_happens": "a dangling separator could appear", "repro": "parts only pushes present values and joins with '; '", "mitigated": true, "how": "join over a filtered parts array yields no trailing separator"},
-    {"scenario": "heritage has_heritage is false", "what_happens": "showing a heritage sentence would be wrong", "repro": "the function returns the 'No heritage listing' line when has_heritage is falsy", "mitigated": true, "how": "the has_heritage guard runs first"}
+    {"scenario": "A satellite layer is genuinely slow or hangs", "what_happens": "the brief could wait the full higher cap", "repro": "_timed_result still enforces the cap (now 30-55s) and returns NOT_AVAILABLE on timeout", "mitigated": true, "how": "the cap still bounds the wait; parallel collection returns each future as soon as it completes"},
+    {"scenario": "Raising caps serialises the emit and slows the whole brief", "what_happens": "total brief time could balloon", "repro": "futures are submitted up front and run in parallel; _timed_result returns when the future finishes, not after the full cap", "mitigated": true, "how": "total wait approximates the slowest single layer, not the sum of caps"},
+    {"scenario": "Granny flat (Modal-bound) still empties", "what_happens": "GF may still time out or return 0 if Modal is off", "repro": "granny cap left at 30 intentionally; GF is being decoupled to the gated async route next", "mitigated": true, "how": "GF handled separately; this PR fixes the pure-compute layers only"}
   ],
   "post_merge": {
     "db_reset": "N/A", "secrets": "None",
-    "other_repo": "BACKEND ACTION (not in this PR): Granny Flat structure detection needs MODAL_STRUCTURES_URL set on the Railway backend; terrain needs the whitebox-tools binary installed; flood detail (JRC/WOfS) needs Planetary Computer access. Until those are configured, these layers correctly show 'couldn't complete'. Product decision: configure them or stop listing them.",
-    "manual_verify": "Run a brief with satellite on: an empty satellite layer reads 'We couldn't complete this analysis — try again'; the heritage line reads as one clean sentence with the instrument, no 'Raw: 2 items' and no doubled prefix."
+    "other_repo": "N/A - same Railway process. NEXT: decouple GF to the working /api/satellite/granny-flat route (inherits its SEPP cl 50/53 eligibility gate). Verify MODAL_STRUCTURES_URL is set on Railway for real GF structure counts.",
+    "manual_verify": "Run a brief with satellite on for a residential address: terrain, flood and climate now populate instead of showing 'couldn't complete'. Total brief time is not materially longer (parallel collection)."
   }
 }
