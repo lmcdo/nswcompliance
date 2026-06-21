@@ -1,74 +1,32 @@
 {
   "tier": "standard",
-  "commit_hash": "2ac26335",
-  "justification": "Carry the LMR/SEPP citation end-to-end so the capacity card's LMR note cites the real clause, and gate the note on a citation (no clause -> no claim). Fixes the #566 gap where the card asserted an LMR conclusion with no source even though housing_sepp_standards holds the clause. Verified live: the uplift returns clause 172(2)(a), 'SEPP (Housing) 2021 - LMR Amendment', legislation.nsw.gov.au, effective 2025-02-28.",
-  "files": [
-    "services/housing_sepp_eligibility.py",
-    "services/intelligence_brief.py",
-    "services/constraint_models.py",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_eligibility_gates.py"
-  ],
+  "commit_hash": "dd4d805e",
+  "justification": "Fix two reported brief bugs + two empty-state bugs (frontend display): (1) a Data sources footer aggregating every source from the streamed sections — restores the 'data sources at the bottom' and delivers the 'every figure traced to its source' promise; (2) a satellite section that comes back empty when satellite WAS requested now reads 'No result', not the misleading 'tick Include satellite analysis'; (3) SEPP Housing with no standards (e.g. a commercial zone) says 'don't apply to this zone' instead of 'No data fields'; (4) the PostGIS heritage dict renders as one sentence, not a raw 'HCA:…, Raw: 2 items' dump.",
+  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {
-    "existing_data": "housing_sepp_standards already has source_clause/source_document/legislation_url/effective_date/verified_at. _fetch_standards_grouped dropped them. Live-verified clauses: multi_dwelling 172(2)*, residential_flat_r1r2 174, r3r4_inner 175, r3r4_outer 176.",
-    "assumption_mismatch": "The #566 note assumed attribution was enough; the product requires a surfaced citation. The clause existed in the DB but was never carried through.",
-    "new_vs_existing": "No new source or query — extends the existing _fetch_standards_grouped SELECT (same table) to read the citation columns. FormEligibility + _lmr_uplift_form + ConstraintArithmeticResult carry it; a shared _apply_lmr_attribution gates the claim.",
-    "external_source_error": "Fail-safe preserved: any eligibility/query failure -> _lmr_uplift_form (None, None) -> _apply_lmr_attribution sets ceiling_from_lmr False -> no note. No new external call.",
-    "frontend_type": "TypeScript: 4 lmr_* citation fields added; the note renders ONLY when ceiling_from_lmr && lmr_source_clause, with the clause + document + legislation link. tsc passes.",
-    "user_failure_mode": "Before: 'Higher limit available here under the Low & Mid-Rise Housing reforms' with NO citation. After: 'Higher limit under SEPP (Housing) 2021 - LMR Amendment cl 172(2)(a) (from 2025-02-28)' linking legislation.nsw.gov.au; if no clause is available, no note at all."
+    "existing_data": "Each streamed section is a DataField (or nested DataFields) carrying source + as_at; the backend tracks data_sources_used but never streams it and the page never rendered a sources list (git history confirms). describeUnavailable had no knowledge of whether satellite was requested. SEPP dispatch fell through to 'No data fields' when standards were empty. heritage_postgis is a {has_heritage,hca,items,raw} dict.",
+    "assumption_mismatch": "The 'traced to its source' subtitle promised provenance the UI threw away; the satellite empty-state assumed not-available == box-unticked even when it WAS ticked; empty SEPP/heritage rendered as raw dumps.",
+    "new_vs_existing": "No new data. collectSources walks the already-streamed sections client-side for distinct sources + URLs; ranWithSatellite captured at generate time threads through SectionCard/SectionData into describeUnavailable; SEPP/heritage get honest renders.",
+    "external_source_error": "No new fetch. All helpers guard null/non-object and fall back (empty footer hidden; unknown source slug humanized generically).",
+    "frontend_type": "Frontend only (TypeScript/React). New props are optional with defaults; tsc --noEmit passes.",
+    "user_failure_mode": "Before: data-sources list absent; GF said 'tick the box' though satellite was on; SEPP 'No data fields'; heritage raw dump. After: a Data sources footer; GF says 'No result — satellite ran but returned nothing'; SEPP says it doesn't apply to the zone; heritage reads as a sentence."
   },
   "functions": [
-    {
-      "name": "_apply_lmr_attribution",
-      "file_line": "services/intelligence_brief.py",
-      "input": "the constraint result, the geometric ceiling_from_lmr flag, and the uplift citation dict (or None)",
-      "output": "sets ceiling_from_lmr + the lmr_* citation fields ONLY when the ceiling was raised by LMR AND a real source_clause exists",
-      "if_none": "no citation -> ceiling_from_lmr forced False (no uncited claim); None result -> no-op"
-    },
-    {
-      "name": "_lmr_uplift_form",
-      "file_line": "services/intelligence_brief.py",
-      "input": "zone, lat, lng, lot area/width, heritage",
-      "output": "(densest eligible engine form, citation dict) for the winning form, or (None, None)",
-      "if_none": "no eligible form or any error -> (None, None); a form with no source_clause -> (form, None)"
-    }
+    {"name": "collectSources", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the streamed section events", "output": "{sources:[{label,asAt}], links:[{label,url}]} — distinct data sources + legislation URLs, humanized", "if_none": "returns empty arrays; the footer is hidden when both are empty"},
+    {"name": "describeUnavailable", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "reason, section, satelliteRan", "output": "the empty-state label/detail/tone; a satellite section with satelliteRan=true returns 'No result', else 'tick the box'", "if_none": "non-satellite sections keep the existing mapping; satelliteRan defaults false"}
   ],
-  "values": "N/A - no hardcoded regulatory values. The clause/document/url/date come from housing_sepp_standards; the engine reads, never invents them.",
-  "queries": "N/A for new queries - extends the existing housing_sepp_standards SELECT in _fetch_standards_grouped to read citation columns already on the table; no new table or endpoint.",
+  "values": "N/A - no regulatory values; display-only provenance + empty-state mapping.",
+  "queries": "N/A - no database or API query; sources are aggregated from data already on the client.",
   "break_it": [
-    {
-      "scenario": "LMR raises the ceiling but no clause exists for the winning form",
-      "what_happens": "an uncited LMR claim would appear (the exact product failure)",
-      "repro": "test_apply_lmr_attribution_no_clause_makes_no_claim + test_lmr_uplift_form_no_clause_returns_no_citation",
-      "mitigated": true,
-      "how": "_apply_lmr_attribution forces ceiling_from_lmr False when no clause; the card gates the note on lmr_source_clause"
-    },
-    {
-      "scenario": "The eligibility / 776 query fails at request time",
-      "what_happens": "the note could show on an unknown state",
-      "repro": "_lmr_uplift_form returns (None, None) on any error",
-      "mitigated": true,
-      "how": "no uplift -> no citation -> no note; base ceiling stands; brief never blocked"
-    },
-    {
-      "scenario": "effective_date is a date object that must serialise to JSON",
-      "what_happens": "a raw date could break model_dump / the SSE payload",
-      "repro": "_fetch_standards_grouped converts effective_date via .isoformat()",
-      "mitigated": true,
-      "how": "the citation carries effective_date as an ISO string"
-    },
-    {
-      "scenario": "The base LEP already permits the density (LMR not the reason)",
-      "what_happens": "crediting LMR would be wrong",
-      "repro": "ceiling_from_lmr only True on a strict raise (existing 3a/attribution test); 14 Stanley/Mascot stay False",
-      "mitigated": true,
-      "how": "the geometric flag gate AND the citation gate both must pass"
-    }
+    {"scenario": "A satellite section is empty because the box was NOT ticked", "what_happens": "showing 'No result' would be wrong", "repro": "ranWithSatellite is false (captured at generate) so describeUnavailable returns the 'tick the box' message", "mitigated": true, "how": "the 'No result' branch only fires when satelliteRan is true"},
+    {"scenario": "The user reruns without satellite after a satellite run", "what_happens": "stale ranWithSatellite could mislabel", "repro": "ranWithSatellite is set at each handleGenerate from the current checkbox state", "mitigated": true, "how": "captured per-run at generate time, not read live"},
+    {"scenario": "A section has no source field", "what_happens": "a blank/undefined source row could appear in the footer", "repro": "collectSources only records typeof source === 'string' && source", "mitigated": true, "how": "non-string/empty sources are skipped; an all-empty footer is hidden"},
+    {"scenario": "SEPP standards present (residential zone)", "what_happens": "the new empty branch must not replace the real table", "repro": "the empty branch is the else of standards && standards.length", "mitigated": true, "how": "SeppHousingCard still renders whenever standards exist"},
+    {"scenario": "heritage_postgis is null or not an object", "what_happens": "humanizeHeritage could throw", "repro": "the special-case requires df.value to be a non-null non-array object; humanizeHeritage guards !v || !v.has_heritage", "mitigated": true, "how": "falls through to the normal render / 'No heritage listing' sentence"}
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
-    "manual_verify": "Run a brief on a lot where LMR strictly raises the ceiling: the capacity card shows 'Higher limit under SEPP (Housing) 2021 ... cl <clause> (from <date>)' linking legislation.nsw.gov.au. On a lot whose base LEP already permits the density, or where no clause exists, no LMR note appears."
+    "db_reset": "N/A", "secrets": "None",
+    "other_repo": "N/A - frontend deploys via Vercel. SEPARATE backend question: whether Granny Flat actually RAN on the Railway backend for this property (the frontend now reports the empty result honestly, but if GF is failing server-side that needs a live backend check).",
+    "manual_verify": "Run a brief with satellite ON: a Data sources footer lists the sources used; if Granny Flat returns nothing it says 'No result' not 'tick the box'. For a commercial zone, SEPP Housing says it doesn't apply. Heritage reads as a sentence, not a raw dump."
   }
 }
