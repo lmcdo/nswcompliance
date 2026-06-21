@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "commit_hash": "5a27bb67",
+  "commit_hash": "fd632e8a",
   "justification": "Three brief fixes: (1) the Data sources card now renders from the section cards already on the client (DataSourcesCard, gated on state==='complete' + sections), so it appears even when the stream's final 'complete' event is dropped — the actual reason it was missing; (2) it carries a plain-English confidence legend defining Authoritative/Estimated/Derived/Extracted; (3) the Granny Flat card + section label renamed to 'Secondary Dwelling' with a short 'granny-flat feasibility' subtitle.",
   "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {

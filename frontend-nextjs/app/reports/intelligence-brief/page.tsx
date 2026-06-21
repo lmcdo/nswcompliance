@@ -1137,7 +1137,7 @@ function CompleteSummary({ data }: { data: BriefComplete }) {
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
   { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
-  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — indicative, not a definitive measurement.' },
+  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — a guide to investigate, not a measured value.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
 ];
