@@ -1,29 +1,28 @@
 {
   "tier": "minor",
-  "commit_hash": "c9e5eacc",
-  "justification": "Replace the curt SEPP 'doesn't apply to this zone' line with a value-rich, cited explanation that uses the lot's real zone, zone name, instrument (with the legislation link) and explains WHAT it means: a centre/business zone delivers housing through its own permitted uses (e.g. shop-top housing) rather than the Low & Mid-Rise pathway; a residential-but-empty case is treated as a load failure, not a 'no'. Adds getPlanningContext to share zone/instrument/lot context across cards.",
+  "commit_hash": "2a03aae1",
+  "justification": "Apply the rich-explanation standard across the brief's empty states: describeUnavailable now weaves in WHAT each layer assesses (from the section labels) so a 'no' explains itself — 'Checked for bushfire attack level, vegetation category — none recorded; for a constrained site that's good news', 'We couldn't complete the slope/aspect/drainage analysis…', 'This council's DCP provisions aren't in our dataset yet…'. Overlays empty message names the overlays checked. 'DAs' acronym fixed.",
   "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {
-    "existing_data": "The brief already streams zone, zone_full, zone_epi and legislation_url on the planning_controls section; getPlanningContext walks the streamed sections to extract them (unwrapping DataFields). No new fetch.",
-    "assumption_mismatch": "A 'no' was rendered as a terse one-liner that dropped the product's value; the context to explain the 'no' richly was already on the client.",
-    "new_vs_existing": "No new data. Adds getPlanningContext + isResidentialZone helpers and a SeppContextCard that consumes them; replaces the inline empty SEPP block.",
-    "external_source_error": "Pure display; if zone context is missing the card falls back to generic phrasing ('this zone', 'the Local Environmental Plan') and omits the link.",
+    "existing_data": "SECTION_LABELS already holds a one-line description of what each section assesses; describeUnavailable already receives the section id. No new data.",
+    "assumption_mismatch": "Empty states were generic ('Checked — nothing recorded', 'The data source did not respond') and dropped the value of saying what was checked.",
+    "new_vs_existing": "No new function. describeUnavailable reads SECTION_LABELS[section].description and weaves it into the not-assessed / none-here / couldn't-complete / unavailable branches; OverlayList empty text enriched; KEY_WORDS gains das->DAs.",
+    "external_source_error": "Pure display. When a section has no description the messages fall back to the prior generic wording.",
     "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
-    "user_failure_mode": "Before: 'The Low & Mid-Rise Housing forms don't apply to this zone.' After: 'This lot is zoned E1 (Local Centre) under the Inner West LEP 2022 — not a residential zone. The Low & Mid-Rise reforms reach only R1–R4… housing here is delivered through the zone's own permitted uses, typically shop-top housing…' with the legislation link."
+    "user_failure_mode": "Before: 'None here — Checked, nothing recorded at this property.' After: 'Checked for bushfire attack level, vegetation category — none recorded at this property. For a constrained site that's good news.'"
   },
   "functions": [
-    {"name": "getPlanningContext", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the streamed section events for this brief", "output": "a PlanningContext with zone, zoneFull, zoneEpi, legislationUrl and lotAreaM2 unwrapped from the planning_controls and economics sections", "if_none": "returns an empty object; the card uses generic fallback phrasing and omits the legislation link"}
+    {"name": "describeUnavailable", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the reason string, the section id, and whether satellite ran", "output": "an empty-state label/detail/tone whose detail names what the layer assesses, drawn from SECTION_LABELS", "if_none": "sections without a description fall back to the prior generic detail strings"}
   ],
-  "values": "N/A - no hardcoded regulatory values. Zone, instrument and the legislation URL come from the brief data; the explanatory copy describes the SEPP mechanism generically and hedges ('typically'), asserting nothing specific about this lot's permissions.",
+  "values": "N/A - no regulatory values; display copy drawn from existing section descriptions.",
   "queries": "N/A - no database or API query.",
   "break_it": [
-    {"scenario": "The zone is residential (R-zone) but standards are empty (a data load failure)", "what_happens": "claiming the zone excludes the forms would be wrong", "repro": "isResidentialZone(ctx.zone) routes R1-R5/RU5 to the 'couldn't load, re-run' branch, not the zone-excluded branch", "mitigated": true, "how": "the residential branch frames it as a load issue and points to the instrument, never a false exclusion"},
-    {"scenario": "Planning context is missing (planning_controls not yet streamed)", "what_happens": "the card could render undefined zone text", "repro": "getPlanningContext returns {} and the card uses 'this zone' / 'the Local Environmental Plan' fallbacks", "mitigated": true, "how": "every field is optional with a generic fallback; the legislation link only renders when present"},
-    {"scenario": "The copy asserts a specific permitted use for this lot (liability)", "what_happens": "claiming 'you can build shop-top housing here' would overstate", "repro": "the text says housing is 'typically' delivered via shop-top housing and directs the reader to the land use table for what THIS lot permits", "mitigated": true, "how": "the wording is general/educational and hedged; it points to the source rather than asserting the lot's permissions"}
+    {"scenario": "A section id has no entry in SECTION_LABELS", "what_happens": "the woven phrase could be empty/awkward", "repro": "what is '' when no description; each branch guards with a conditional so it falls back to the plain wording", "mitigated": true, "how": "the ternary on 'what' omits the phrase cleanly when absent"},
+    {"scenario": "The 'good news' framing on a None-here is wrong for a non-constraint layer", "what_happens": "saying 'good news' could read oddly", "repro": "the None-here branch fires only on overlay/constraint layers (reason starts with 'no'/'none')", "mitigated": true, "how": "scoped to the absence-of-a-constraint case where 'nothing here' is genuinely favourable"},
+    {"scenario": "das->DAs over-applies to a word containing 'das'", "what_happens": "a token like 'dashboard' could mis-render", "repro": "formatKey splits on underscores and matches whole lowercased tokens against KEY_WORDS, so only a standalone 'das' token maps", "mitigated": true, "how": "KEY_WORDS matches exact tokens, not substrings"}
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A. PATTERN: this rich-explanation standard (zone + instrument + clause + meaning) will also be applied to the Granny Flat 'not permitted' reason when GF is decoupled to the gated async route, and to other empty states.",
-    "manual_verify": "Run a brief for an E1/commercial lot (e.g. 100 Ramsay): the SEPP card explains the zone, links the instrument, and explains how housing applies in a centre zone — not a one-line 'doesn't apply'."
+    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A",
+    "manual_verify": "Run a brief: empty cards now name what was checked (e.g. environmental overlays list the overlays; a not-run satellite layer names the analysis); 'Nearby DAs' reads correctly."
   }
 }

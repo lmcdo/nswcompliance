@@ -122,6 +122,11 @@ interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
 function describeUnavailable(reason?: string | null, section?: string, satelliteRan = false): Unavailable {
   const r = (reason ?? '').toLowerCase();
   const isSatellite = !!section && (SATELLITE_SECTIONS.has(section) || section === 'satellite.bushfire');
+  // What this layer actually assesses, so a "no" explains itself (e.g.
+  // "bushfire attack level and vegetation category") rather than a bare "none".
+  const what = (section && SECTION_LABELS[section]?.description
+    ? SECTION_LABELS[section].description.toLowerCase()
+    : '');
 
   // Satellite opt-in layers.
   if (isSatellite) {
@@ -131,13 +136,13 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
     if (satelliteRan) {
       return {
         label: 'Couldn’t complete',
-        detail: 'We couldn’t complete this analysis for the property — it may be temporarily unavailable. Try running the brief again.',
+        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property — the imagery or model source may be temporarily unavailable. Try running the brief again.`,
         tone: 'pending',
       };
     }
     return {
       label: 'Not run',
-      detail: 'Tick “Include satellite analysis” above and run the brief again to add this.',
+      detail: `Tick “Include satellite analysis” above and re-run to add ${what || 'this layer'}.`,
       tone: 'optional',
     };
   }
@@ -161,14 +166,14 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.includes('not ingested') || r.includes('not yet') || r.includes('not onboarded')) {
     return {
       label: 'Not assessed',
-      detail: 'This layer is not yet mapped for this council — confirm with the council or the NSW Planning Portal.',
+      detail: `${what ? `This council's ${what} isn't in our dataset yet` : 'This layer is not yet mapped for this council'} — confirm directly with the council or the NSW Planning Portal.`,
       tone: 'pending',
     };
   }
   if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
     return {
       label: 'None here',
-      detail: 'Checked — nothing recorded at this property.',
+      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property. For a constrained site that's good news.`,
       tone: 'clear',
     };
   }
@@ -178,7 +183,7 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
     return {
       label: 'Unavailable',
-      detail: 'The data source did not respond — run the brief again to retry.',
+      detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
       tone: 'error',
     };
   }
@@ -205,7 +210,7 @@ const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
 const KEY_WORDS: Record<string, string> = {
   jrc: 'JRC', wofs: 'WOfS', bom: 'BoM', epi: 'EPI', anef: 'ANEF', gfa: 'GFA',
   fsr: 'FSR', lep: 'LEP', dcp: 'DCP', sepp: 'SEPP', hca: 'HCA', tod: 'TOD',
-  da: 'DA', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
+  da: 'DA', das: 'DAs', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
   m2: 'm²', pct: '%', postgis: '',
 };
 
@@ -413,7 +418,7 @@ interface OverlayItem { layer_type?: string; value?: unknown; instrument?: strin
 // readable list ("Acid sulfate: Class 5", "Lot size: 450 m²"), not "2 items".
 function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
   const rows = overlays.filter((o) => o && o.layer_type && o.value != null && o.value !== '');
-  if (rows.length === 0) return <span className="text-sm text-emerald-700">None mapped at this property</span>;
+  if (rows.length === 0) return <span className="text-sm text-emerald-700">Checked the NSW planning overlays (flood, heritage, biodiversity, acid sulfate, coastal) — none apply at this property.</span>;
   return (
     <ul className="text-sm text-slate-900 space-y-0.5">
       {rows.map((o, i) => {
