@@ -2209,11 +2209,18 @@ def _build_environmental(
 
 
 def _build_neighbourhood(
-    das: list[dict],
+    das_df: "DataField",
     shadow_result: Optional[dict],
 ) -> Neighbourhood:
-    """Map DA list + shadow to Neighbourhood schema."""
+    """Map DA list + shadow to Neighbourhood schema.
+
+    A failed/timed-out DA lookup (das_df.confidence == NOT_AVAILABLE) must NOT be
+    served as an authoritative "0 nearby DAs" — that is a silent false negative.
+    A genuine empty result (the query ran and found none) stays AUTHORITATIVE 0.
+    """
     today = date.today().isoformat()
+    da_failed = das_df.confidence == ConfidenceLevel.NOT_AVAILABLE
+    das = das_df.value or []
 
     nearby = [
         NearbyDA(
@@ -2248,9 +2255,17 @@ def _build_neighbourhood(
             worst_case_scenario=shadow_result.get("worst_case_scenario"),
         )
 
+    if da_failed:
+        da_reason = das_df.reason or "Nearby-DA lookup did not complete"
+        nearby_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="eplanning_da_api", as_at=today, reason=da_reason)
+        count_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="eplanning_da_api", as_at=today, reason=da_reason)
+    else:
+        nearby_field = DataField(value=nearby, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
+        count_field = DataField(value=len(nearby), confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
+
     return Neighbourhood(
-        nearby_das=DataField(value=nearby, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today),
-        da_count=DataField(value=len(nearby), confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today),
+        nearby_das=nearby_field,
+        da_count=count_field,
         shadow=DataField(
             value=shadow_schema,
             confidence=ConfidenceLevel.DERIVED if shadow_schema else ConfidenceLevel.NOT_AVAILABLE,
@@ -2750,11 +2765,12 @@ def _generate_brief_sse(
         dcp_df = _timed_result(f_dcp, 10, "plotdetect_dcp", timings)
         sepp_df = _timed_result(f_sepp, 10, "housing_sepp_standards", timings)
         das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
-        shadow_df = _timed_result(f_shadow, 20, "shadow_detector", timings)
+        # 30s: the shadow endpoint's Sentinel-2 fetch step alone can take ~25s;
+        # the prior 20s budget guaranteed a timeout before it could return.
+        shadow_df = _timed_result(f_shadow, 30, "shadow_detector", timings)
 
         dcp_raw = dcp_df.value
         sepp_raw = sepp_df.value or []
-        das_raw = das_df.value or []
         shadow_raw = shadow_df.value
 
         if not is_apartment:
@@ -2836,7 +2852,7 @@ def _generate_brief_sse(
                 except Exception as e:
                     logger.warning("Constraint arithmetic (SSE) failed: %s", e)
 
-            neighbourhood = _build_neighbourhood(das_raw, shadow_raw)
+            neighbourhood = _build_neighbourhood(das_df, shadow_raw)
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "neighbourhood",
