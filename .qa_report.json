@@ -1,72 +1,56 @@
 {
-  "tier": "standard",
-  "commit_hash": "0dec242b",
-  "justification": "Data-integrity fix: a failed/timed-out ePlanning nearby-DA lookup was being served as an AUTHORITATIVE '0 nearby DAs', indistinguishable from a genuine zero. get_nearby_das swallowed its own API exception and returned [], so _safe_call wrapped it AUTHORITATIVE, and _build_neighbourhood stamped da_count=0 AUTHORITATIVE unconditionally. Now get_nearby_das propagates the failure (raise), so the brief's _safe_call yields NOT_AVAILABLE; _build_neighbourhood honours NOT_AVAILABLE (nearby_das/da_count = None + reason, never AUTHORITATIVE 0) and a genuine empty result (query ran, found none) correctly stays AUTHORITATIVE 0. Also raised the brief's shadow-layer budget 20s->30s (its Sentinel-2 step alone can take ~25s, so 20s guaranteed a timeout). The conveyancing CLI caller wraps get_nearby_das in try/except to preserve its existing []-degrade (no PDF output change).",
+  "tier": "minor",
+  "commit_hash": "0b93867b",
+  "justification": "Two display fixes for the Intelligence Brief. (1) satellite.terrain was missing from EXPECTED_SECTIONS_SAT, so although the backend always emits the terrain section, it never appeared in the live progress checklist — the user couldn't see that terrain ran (or was pending). Added it. (2) Added plain-English descriptions (FIELD_HINTS + a FieldLabel component) under opaque satellite/flood/neighbourhood field labels (JRC occurrence %, WOfS frequency %, BoM gauge distance, flood studies, EPI flood, nearby DAs, DA count) so a dash or a bare number now has meaning. Display-only; no logic, query, or schema change.",
   "files": [
-    "services/intelligence_brief.py",
-    "scripts/generate_conveyancing_report.py",
-    "tests/test_intelligence_brief_orchestrator.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "get_nearby_das returns list[dict] and caught its own exceptions returning []. _safe_call wraps a successful return into DataField(value, AUTHORITATIVE). _timed_result returns NOT_AVAILABLE only on future timeout/exception. _build_neighbourhood took a list and stamped AUTHORITATIVE.",
-    "assumption_mismatch": "Assumed a failed DA API call would surface as a timeout; in fact get_nearby_das swallowed HTTP/connection errors into [], so failures looked like successful empty results.",
-    "new_vs_existing": "Reused the existing DataField confidence model; no new mechanism. _build_neighbourhood now reads das_df.confidence to branch failed-vs-genuine-empty.",
-    "external_source_error": "ePlanning DA API timeout/HTTP error now propagates to NOT_AVAILABLE with the reason text, shown to the user as 'couldn't check nearby DAs' rather than a misleading 0.",
-    "frontend_type": "Backend only; the frontend already routes a not_available DataField through describeUnavailable (page.tsx:336).",
-    "user_failure_mode": "Before: a transient DA API failure rendered as a confident 'No nearby development applications' — a silent false negative that could mislead a buyer. After: a failed lookup says it couldn't be checked (with reason); a true zero still reads as zero."
+    "existing_data": "EXPECTED_SECTIONS_SAT drove the live progress checklist; the card-render dispatch (sectionEvents.map) was never filtered by it, so terrain still rendered when its section arrived — only the checklist omitted it. Field labels came from formatKey(key) with no descriptions.",
+    "assumption_mismatch": "Assumed terrain was dropped entirely; in fact only the checklist omitted it, and on DEM failure terrain falls through to a generic 'unavailable' card (the missing terrain *diagram* is a separate DEM-fetch issue, not this change).",
+    "new_vs_existing": "Reused formatKey + the existing dt/dd field layout; added a FieldLabel wrapper and a FIELD_HINTS lookup. No new data source.",
+    "external_source_error": "None — purely client-side label text.",
+    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
+    "user_failure_mode": "Before: terrain absent from the progress list; flood/neighbourhood fields showed acronyms or bare numbers with no explanation. After: terrain is listed; each opaque field carries a one-line plain-English description."
   },
   "functions": [
     {
-      "name": "_build_neighbourhood",
-      "file_line": "services/intelligence_brief.py",
-      "input": "das_df (the DA-lookup DataField) and an optional shadow result dict",
-      "output": "a Neighbourhood with nearby_das/da_count = NOT_AVAILABLE+reason when the lookup failed, or AUTHORITATIVE with the real list/count when it ran (including a genuine 0)",
-      "if_none": "a failed lookup yields NOT_AVAILABLE (value None) — never AUTHORITATIVE 0"
-    },
-    {
-      "name": "get_nearby_das",
-      "file_line": "scripts/generate_conveyancing_report.py",
-      "input": "lat, lng, normalised council_name, radius, days",
-      "output": "list of nearby DA dicts on success; raises RuntimeError on API failure instead of returning []",
-      "if_none": "a genuine empty result returns [] (no exception); a failed call raises so callers can tell the difference"
+      "name": "FieldLabel",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "a field key string",
+      "output": "the humanised label plus, when present, a muted one-line description from FIELD_HINTS",
+      "if_none": "fields without a hint render exactly as before — just the label"
     }
   ],
-  "values": "N/A - no regulatory values; DA records are factual API output.",
-  "queries": "N/A - no DB query changed; ePlanning DA API call behaviour (error propagation) only.",
+  "values": "N/A - display only; no regulatory values.",
+  "queries": "N/A - no database or API query.",
   "break_it": [
     {
-      "scenario": "ePlanning DA API times out or returns HTTP 500 for a property that genuinely has nearby DAs",
-      "what_happens": "previously: served as authoritative '0 nearby DAs' (false negative)",
-      "repro": "make requests.get raise inside get_nearby_das",
+      "scenario": "A field key collides with a FIELD_HINTS entry but appears in a section where the hint is misleading",
+      "what_happens": "a wrong description could show",
+      "repro": "the hint keys (jrc_occurrence_pct, wofs_frequency_pct, bom_gauge_distance_km, flood_studies, epi_flood, flood_epi, nearby_das, da_count) are specific enough that no other field reuses them",
       "mitigated": true,
-      "how": "get_nearby_das now raises; _safe_call yields NOT_AVAILABLE; _build_neighbourhood renders 'couldn't check' with the reason. Guarded by test_failed_lookup_is_not_authoritative_zero"
+      "how": "keys are exact field names unique to the flood and neighbourhood sections"
     },
     {
-      "scenario": "A property genuinely has zero DAs within the radius",
-      "what_happens": "must still read as a real, authoritative 0 (not 'couldn't check')",
-      "repro": "get_nearby_das returns [] with no exception",
+      "scenario": "Adding terrain to EXPECTED_SECTIONS_SAT double-renders the terrain card",
+      "what_happens": "two terrain cards could appear",
+      "repro": "the expected list only feeds the progress checklist, not the card dispatch, which renders one card per received section event",
       "mitigated": true,
-      "how": "da_failed is False when confidence != NOT_AVAILABLE, so da_count stays AUTHORITATIVE 0. Guarded by test_genuine_empty_stays_authoritative_zero"
+      "how": "card rendering iterates sectionEvents (one per emitted section), independent of the expected list"
     },
     {
-      "scenario": "The conveyancing PDF report's DA section regresses because get_nearby_das now raises",
-      "what_happens": "the CLI could crash mid-report",
-      "repro": "run generate_conveyancing_report against a council while the DA API is down",
+      "scenario": "The hint line overflows or breaks the two-column field grid on mobile",
+      "what_happens": "the hint line could overflow the field cell and shift the two-column grid",
+      "repro": "the hint is a block span with small text inside the existing flex-col cell",
       "mitigated": true,
-      "how": "the CLI caller (line ~3540) wraps the call in try/except and degrades to das=[] with a warning, preserving prior behaviour"
-    },
-    {
-      "scenario": "Shadow layer never populates because its 20s budget is shorter than the endpoint's ~25s Sentinel-2 step",
-      "what_happens": "the shadow card always reads Unavailable even though the analysis would have succeeded with more time",
-      "repro": "time the shadow endpoint",
-      "mitigated": true,
-      "how": "raised the shadow budget to 30s so the S2 fetch can complete"
+      "how": "rendered as a block child of the existing dt cell with leading-snug; the grid cell already wraps"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None.",
-    "other_repo": "N/A - the Trigger.dev relay POSTs to the same /stream endpoint; section payload shape unchanged (DataField confidence/reason already part of the schema).",
-    "manual_verify": "Run a brief for an address with known nearby DAs while the DA API is healthy → DAs listed. The Neighbourhood card no longer shows a confident '0' when the DA lookup fails; shadow now has time to complete."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A",
+    "manual_verify": "Run a brief with satellite on: 'Terrain Analysis' now appears in the live progress checklist; the Flood and Neighbourhood cards show a one-line description under each field (JRC/WOfS/gauge/flood-studies/EPI flood/nearby DAs)."
   }
 }

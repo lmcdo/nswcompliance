@@ -337,7 +337,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             const u = describeUnavailable(df.reason, section, satelliteRan);
             return (
               <div key={key} className="flex flex-col">
-                <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+                <FieldLabel fieldKey={key} />
                 <dd className={`text-sm mt-0.5 ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.label}</dd>
               </div>
             );
@@ -368,7 +368,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             : valueWithUnit(key, df.value, unitFor[key]);
           return (
             <div key={key} className="flex flex-col">
-              <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+              <FieldLabel fieldKey={key} />
               <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]"><FieldValue display={display} raw={df.value} fieldKey={key} /></dd>
             </div>
           );
@@ -376,7 +376,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
 
         return (
           <div key={key} className="flex flex-col">
-            <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+            <FieldLabel fieldKey={key} />
             <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]"><FieldValue display={valueWithUnit(key, val, unitFor[key])} raw={val} fieldKey={key} /></dd>
           </div>
         );
@@ -410,6 +410,37 @@ function formatKey(key: string): string {
     })
     .filter(Boolean)
     .join(' ');
+}
+
+// Plain-English descriptions for fields whose labels are opaque on their own
+// (satellite/flood acronyms, neighbourhood counts). Shown as a muted line under
+// the field label so a dash or a number has meaning. Factual, no advice.
+const FIELD_HINTS: Record<string, string> = {
+  jrc_occurrence_pct:
+    'How often satellites saw surface water on this spot over 1984–2021 (EC Joint Research Centre). 0% means no water was observed in ~37 years.',
+  wofs_frequency_pct:
+    'Share of clear satellite passes where water was visible here (Geoscience Australia, Water Observations from Space).',
+  bom_gauge_distance_km:
+    'Straight-line distance to the nearest Bureau of Meteorology river gauge.',
+  flood_studies: 'Council or agency flood studies that cover this location.',
+  epi_flood: 'Whether the lot falls in a flood-planning area mapped in the council’s LEP.',
+  flood_epi: 'Whether the lot falls in a flood-planning area mapped in the council’s LEP.',
+  nearby_das:
+    'Development applications lodged on nearby properties (within the search radius) in the last 12 months.',
+  da_count: 'Number of those nearby development applications.',
+};
+
+// Field label + an optional one-line description underneath.
+function FieldLabel({ fieldKey }: { fieldKey: string }) {
+  const hint = FIELD_HINTS[fieldKey];
+  return (
+    <dt className="text-xs font-medium text-slate-500">
+      {formatKey(fieldKey)}
+      {hint && (
+        <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">{hint}</span>
+      )}
+    </dt>
+  );
 }
 
 // Units to append to a planning-overlay value when it's a bare number/string.
@@ -973,7 +1004,7 @@ const EXPECTED_SECTIONS_BASE = [
 const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.pre_da_history',
+  'satellite.granny_flat', 'satellite.pre_da_history', 'satellite.terrain',
 ];
 
 function LiveStatusPanel({
