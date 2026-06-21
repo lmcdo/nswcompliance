@@ -1,27 +1,29 @@
 {
   "tier": "minor",
-  "commit_hash": "a6930689",
-  "justification": "Raise the brief's satellite collection timeout caps so the in-process pure-compute layers stop being killed before they finish. bushfire 10->30, flood 20->50, climate 10->25, terrain 30->55 (CONFIG.timeout_terrain) — matching the standalone-tool budgets. These layers run in the brief's own ThreadPoolExecutor identically to the tools; the only defect was the short caps. Parallel futures return as-soon-as-done so higher caps add no latency unless a layer is genuinely slow.",
-  "files": ["services/intelligence_brief.py"],
+  "commit_hash": "c9e5eacc",
+  "justification": "Replace the curt SEPP 'doesn't apply to this zone' line with a value-rich, cited explanation that uses the lot's real zone, zone name, instrument (with the legislation link) and explains WHAT it means: a centre/business zone delivers housing through its own permitted uses (e.g. shop-top housing) rather than the Low & Mid-Rise pathway; a residential-but-empty case is treated as a load failure, not a 'no'. Adds getPlanningContext to share zone/instrument/lot context across cards.",
+  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {
-    "existing_data": "Investigation (agent map): the brief mounts the same FastAPI app as the working tools and calls the same _fetch_* functions in a shared ThreadPoolExecutor; _timed_result(future, cap) collected each satellite layer at 10-30s while the standalone tools allow 55-180s, so flood/terrain/climate timed out and were emitted empty.",
-    "assumption_mismatch": "The empties read as 'not wired' but the layers actually run in-process — they were just collected too early.",
-    "new_vs_existing": "No new code or query. Four timeout constants raised; granny left unchanged (it will be decoupled to the working async route next, which also carries the eligibility gate).",
-    "external_source_error": "Unchanged: a layer that still exceeds its (now higher) cap returns the same NOT_AVAILABLE DataField and the card shows the honest 'couldn't complete' state.",
-    "frontend_type": "N/A (backend Python).",
-    "user_failure_mode": "Before: terrain/flood/climate frequently empty (killed at 10-30s). After: they have the same budget as the standalone tools, so they populate; a genuinely slow/failed layer still degrades to the honest empty state."
+    "existing_data": "The brief already streams zone, zone_full, zone_epi and legislation_url on the planning_controls section; getPlanningContext walks the streamed sections to extract them (unwrapping DataFields). No new fetch.",
+    "assumption_mismatch": "A 'no' was rendered as a terse one-liner that dropped the product's value; the context to explain the 'no' richly was already on the client.",
+    "new_vs_existing": "No new data. Adds getPlanningContext + isResidentialZone helpers and a SeppContextCard that consumes them; replaces the inline empty SEPP block.",
+    "external_source_error": "Pure display; if zone context is missing the card falls back to generic phrasing ('this zone', 'the Local Environmental Plan') and omits the link.",
+    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
+    "user_failure_mode": "Before: 'The Low & Mid-Rise Housing forms don't apply to this zone.' After: 'This lot is zoned E1 (Local Centre) under the Inner West LEP 2022 — not a residential zone. The Low & Mid-Rise reforms reach only R1–R4… housing here is delivered through the zone's own permitted uses, typically shop-top housing…' with the legislation link."
   },
-  "functions": [],
-  "values": "N/A - timeout constants only, no regulatory values.",
-  "queries": "N/A - no database or API query added.",
+  "functions": [
+    {"name": "getPlanningContext", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the streamed section events for this brief", "output": "a PlanningContext with zone, zoneFull, zoneEpi, legislationUrl and lotAreaM2 unwrapped from the planning_controls and economics sections", "if_none": "returns an empty object; the card uses generic fallback phrasing and omits the legislation link"}
+  ],
+  "values": "N/A - no hardcoded regulatory values. Zone, instrument and the legislation URL come from the brief data; the explanatory copy describes the SEPP mechanism generically and hedges ('typically'), asserting nothing specific about this lot's permissions.",
+  "queries": "N/A - no database or API query.",
   "break_it": [
-    {"scenario": "A satellite layer is genuinely slow or hangs", "what_happens": "the brief could wait the full higher cap", "repro": "_timed_result still enforces the cap (now 30-55s) and returns NOT_AVAILABLE on timeout", "mitigated": true, "how": "the cap still bounds the wait; parallel collection returns each future as soon as it completes"},
-    {"scenario": "Raising caps serialises the emit and slows the whole brief", "what_happens": "total brief time could balloon", "repro": "futures are submitted up front and run in parallel; _timed_result returns when the future finishes, not after the full cap", "mitigated": true, "how": "total wait approximates the slowest single layer, not the sum of caps"},
-    {"scenario": "Granny flat (Modal-bound) still empties", "what_happens": "GF may still time out or return 0 if Modal is off", "repro": "granny cap left at 30 intentionally; GF is being decoupled to the gated async route next", "mitigated": true, "how": "GF handled separately; this PR fixes the pure-compute layers only"}
+    {"scenario": "The zone is residential (R-zone) but standards are empty (a data load failure)", "what_happens": "claiming the zone excludes the forms would be wrong", "repro": "isResidentialZone(ctx.zone) routes R1-R5/RU5 to the 'couldn't load, re-run' branch, not the zone-excluded branch", "mitigated": true, "how": "the residential branch frames it as a load issue and points to the instrument, never a false exclusion"},
+    {"scenario": "Planning context is missing (planning_controls not yet streamed)", "what_happens": "the card could render undefined zone text", "repro": "getPlanningContext returns {} and the card uses 'this zone' / 'the Local Environmental Plan' fallbacks", "mitigated": true, "how": "every field is optional with a generic fallback; the legislation link only renders when present"},
+    {"scenario": "The copy asserts a specific permitted use for this lot (liability)", "what_happens": "claiming 'you can build shop-top housing here' would overstate", "repro": "the text says housing is 'typically' delivered via shop-top housing and directs the reader to the land use table for what THIS lot permits", "mitigated": true, "how": "the wording is general/educational and hedged; it points to the source rather than asserting the lot's permissions"}
   ],
   "post_merge": {
     "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A - same Railway process. NEXT: decouple GF to the working /api/satellite/granny-flat route (inherits its SEPP cl 50/53 eligibility gate). Verify MODAL_STRUCTURES_URL is set on Railway for real GF structure counts.",
-    "manual_verify": "Run a brief with satellite on for a residential address: terrain, flood and climate now populate instead of showing 'couldn't complete'. Total brief time is not materially longer (parallel collection)."
+    "other_repo": "N/A. PATTERN: this rich-explanation standard (zone + instrument + clause + meaning) will also be applied to the Granny Flat 'not permitted' reason when GF is decoupled to the gated async route, and to other empty states.",
+    "manual_verify": "Run a brief for an E1/commercial lot (e.g. 100 Ramsay): the SEPP card explains the zone, links the instrument, and explains how housing applies in a centre zone — not a one-line 'doesn't apply'."
   }
 }

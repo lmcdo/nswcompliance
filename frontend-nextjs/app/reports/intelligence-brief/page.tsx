@@ -543,6 +543,36 @@ function collectSources(sections: { data: { data: unknown } }[]): {
   };
 }
 
+// Cross-section planning context, so a "doesn't apply" card can explain WHY using
+// the lot's real zone, instrument and lot size — not a curt one-liner.
+interface PlanningContext {
+  zone?: string; zoneFull?: string; zoneEpi?: string; legislationUrl?: string; lotAreaM2?: number;
+}
+function getPlanningContext(sections: { data: { section: string; data: unknown } }[]): PlanningContext {
+  const unwrap = (v: unknown): unknown => (isDataField(v) ? v.value : v);
+  const ctx: PlanningContext = {};
+  for (const s of sections) {
+    const d = s.data.data as Record<string, unknown> | null;
+    const v = (d && isDataField(d) ? (d.value as Record<string, unknown>) : d) || {};
+    if (s.data.section === 'planning_controls') {
+      ctx.zone = (unwrap(v.zone) as string) ?? ctx.zone;
+      ctx.zoneFull = (unwrap(v.zone_full) as string) ?? ctx.zoneFull;
+      ctx.zoneEpi = (unwrap(v.zone_epi) as string) ?? ctx.zoneEpi;
+      ctx.legislationUrl = (unwrap(v.legislation_url) as string) ?? ctx.legislationUrl;
+    }
+    if (s.data.section === 'economics') {
+      const la = unwrap(v.lot_area_m2);
+      if (typeof la === 'number') ctx.lotAreaM2 = la;
+    }
+  }
+  return ctx;
+}
+
+// Is this a residential zone where the Housing-SEPP residential forms can apply?
+function isResidentialZone(zone?: string): boolean {
+  return /^(R1|R2|R3|R4|R5|RU5)\b/.test((zone || '').trim());
+}
+
 function formatValue(val: unknown): string {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
@@ -625,6 +655,57 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// When the Housing-SEPP residential forms don't apply, don't say "doesn't apply" —
+// explain WHY with the lot's real zone + instrument, and what it means for housing
+// on this land. A "no" carrying context is the product's value.
+function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
+  const zoneLabel = ctx.zone
+    ? `${ctx.zone}${ctx.zoneFull ? ` (${ctx.zoneFull})` : ''}`
+    : 'this zone';
+  const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
+  const residential = isResidentialZone(ctx.zone);
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+        <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
+      </div>
+      <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
+        {residential ? (
+          <p>
+            This lot sits in <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
+            {ctx.legislationUrl
+              ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
+              : instrument}. It&apos;s a residential zone, but the Low &amp; Mid-Rise Housing standards
+            (terraces, townhouses, manor houses and residential flats) couldn&apos;t be loaded for
+            it — re-run the brief, or check the standards directly in the instrument above.
+          </p>
+        ) : (
+          <>
+            <p>
+              This lot is zoned <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
+              {ctx.legislationUrl
+                ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
+                : instrument} — not a residential zone.
+            </p>
+            <p>
+              The Low &amp; Mid-Rise Housing reforms (terraces, townhouses, manor houses, residential
+              flats) reach only the residential zones <span className="font-medium">R1–R4</span>, so they
+              don&apos;t apply here. On a centre/business zone like this, housing is delivered through the
+              zone&apos;s own permitted uses — typically <span className="font-medium">shop-top housing</span>{' '}
+              above ground-floor retail — rather than the low-and-mid-rise pathway.
+            </p>
+            <p className="text-slate-500">
+              See the land use table in the instrument above for what this specific lot permits, and the
+              Development Capacity card for the buildable envelope.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1017,6 +1098,7 @@ function IntelligenceBriefInner() {
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
   const sectionEvents = parts.filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
+  const planningCtx = getPlanningContext(sectionEvents);
 
   // Track progress — complete event overrides to 100
   const latestProgress = completeEvent
@@ -1387,20 +1469,7 @@ function IntelligenceBriefInner() {
                 if (standards && standards.length) {
                   card = <SeppHousingCard standards={standards} />;
                 } else {
-                  // Empty standards = the Housing SEPP's denser forms don't apply to
-                  // this zone (e.g. a commercial/centre zone). Say so, don't dump
-                  // "No data fields".
-                  card = (
-                    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="px-5 py-4 border-b border-slate-100">
-                        <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Denser forms the policy permits, and whether this lot qualifies</p>
-                      </div>
-                      <div className="px-5 py-4 text-sm text-slate-500">
-                        The Low &amp; Mid-Rise Housing forms don&apos;t apply to this zone.
-                      </div>
-                    </div>
-                  );
+                  card = <SeppContextCard ctx={planningCtx} />;
                 }
               }
               if (section === 'satellite.terrain') {
