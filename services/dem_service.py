@@ -39,8 +39,17 @@ SIXMAPS_URL = (
 _TIFF_LE = b"II*\x00"  # little-endian
 _TIFF_BE = b"MM\x00*"  # big-endian
 
-# Default timeout for remote requests (seconds)
-_TIMEOUT = 20
+# Default timeout for remote requests (seconds). The SIX Maps fallback
+# (exportImage) routinely takes ~26s to return a valid DEM tile; the prior 20s
+# ceiling killed it before it could respond, so the terrain diagram never
+# rendered. 40s gives it headroom and still fits the brief's 55s terrain budget.
+_TIMEOUT = 40
+
+# GA WCS is tried first but currently returns HTTP 400 (ArcGIS Server Error) for
+# every request — it fast-fails in ~9.6s. Cap its per-attempt timeout so a slow
+# failure on the broken primary can never consume the budget the working SIX Maps
+# fallback needs.
+_GA_TIMEOUT_CAP = 12
 
 # Approximate metres-per-degree at the equator
 _M_PER_DEG_LAT = 111_320.0
@@ -90,6 +99,10 @@ def _fetch_ga_wcs(
         f"{lng + d_lng},{lat + d_lat}"
     )
 
+    # Cap GA's per-attempt timeout — it currently fast-fails (HTTP 400) and must
+    # never starve the working SIX Maps fallback of the budget it needs.
+    timeout = min(timeout, _GA_TIMEOUT_CAP)
+
     # 5m ≈ 0.00005° at this latitude
     res = "0.00005"
 
@@ -116,6 +129,9 @@ def _fetch_ga_wcs(
         logger.warning("GA WCS 1.0.0 failed: %s — trying 2.0.1", e)
 
     # --- Fallback WCS 2.0.1 ---
+    # Axis labels for this coverage are "y x" (EPSG:4283), NOT "Lat"/"Long" —
+    # the old labels returned an InvalidAxisLabel ServiceException. (GA still
+    # rejects the GetCoverage on another param; SIX Maps is the working path.)
     params_v2 = {
         "service": "WCS",
         "version": "2.0.1",
@@ -123,8 +139,8 @@ def _fetch_ga_wcs(
         "CoverageId": f"Coverage{GA_COVERAGE_ID}",
         "format": "image/tiff",
         "subset": [
-            f"Long({lng - d_lng},{lng + d_lng})",
-            f"Lat({lat - d_lat},{lat + d_lat})",
+            f"y({lat - d_lat},{lat + d_lat})",
+            f"x({lng - d_lng},{lng + d_lng})",
         ],
     }
 
