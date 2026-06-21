@@ -1,28 +1,72 @@
 {
-  "tier": "minor",
-  "commit_hash": "pending",
-  "justification": "Close the terrain two-layer timeout gap. The brief's outer terrain collection budget was 80s, but the DEM service's INNER HTTP timeout (_TIMEOUT) was 40s — and SIX Maps (the only working DEM source) is variable, sometimes >40s. So the inner 40s killed the fetch before the outer budget mattered, and terrain still failed when SIX Maps was slow. Raised the inner DEM _TIMEOUT 40->65s (the true reliability limit) and the outer timeout_terrain 80->100s to cover GA(12+12 capped) + SIX(65) + the whitebox chain. Two constants only.",
-  "files": ["services/dem_service.py", "services/intelligence_brief.py"],
+  "tier": "standard",
+  "commit_hash": "9c4efad4",
+  "justification": "Heritage styling + three diagnosis-driven reliability fixes from a live Haberfield brief. (1) HERITAGE STYLING: heritage_items/heritage_hca are list[str] like '<name> Significance: <level>' but rendered as a comma run-on; added a HeritageList component — one item per line, significance as a small badge. (2) SHADOW 'Unavailable': the brief collected shadow with a 50s budget but the shadow endpoint's own POST timeout is 60s, so the brief cut it off 10s early; raised timeout_shadow_collect 50->65s. (3) FLOOD blanks (JRC/WOfS/EPI '—'): these concurrent sub-queries timed out internally (EPI 20s, JRC 25s, WOfS 25s) and returned None (a genuine no-water reading returns 0.0, so the blank means timeout/no-data, not a real zero); raised them to 30/35/35s — still under the 50s flood budget since they run concurrently — so they can return the true value. (4) PRE-DA 'didn't finish in time' was misleading: the brief finished in 96s with a 120s pre-DA budget, so pre-DA ERRORED fast (not a timeout); the frontend now distinguishes a real timeout from a fast error and surfaces the actual backend reason instead of pretending it timed out.",
+  "files": [
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "services/flood_truth.py",
+    "services/intelligence_brief.py"
+  ],
   "pre_impl": {
-    "existing_data": "dem_service._TIMEOUT bounded each DEM HTTP call (GA capped at 12, SIX at _TIMEOUT); intelligence_brief.CONFIG.timeout_terrain bounded the terrain future.",
-    "assumption_mismatch": "Raising only the outer collection budget (done earlier) did not help — the inner 40s HTTP timeout on SIX Maps was the binding limit.",
-    "new_vs_existing": "Two existing constants bumped; no new mechanism.",
-    "external_source_error": "SIX Maps slowness now tolerated to 65s; a still-slower response or failure surfaces an honest NOT_AVAILABLE terrain card (unchanged behaviour).",
-    "frontend_type": "Backend only.",
-    "user_failure_mode": "Before: terrain could still fail when SIX Maps took 40-65s because the inner timeout fired. After: the inner timeout matches the outer budget so the working source has real room to return."
+    "existing_data": "heritage_items/heritage_hca are DataField[list[str]]; the flood sub-queries already return None on failure and a real float (incl 0.0) on success; the shadow endpoint POST already used timeout=60.",
+    "assumption_mismatch": "A blank flood field looked like 'no data' but actually means the remote sub-query timed out (a genuine zero would render '0'); pre-DA 'didn't finish in time' implied a timeout but it errors fast.",
+    "new_vs_existing": "Reused the existing list-field render pattern (like OverlayList) for heritage; bumped existing timeout constants; reused the existing reason string for pre-DA.",
+    "external_source_error": "Slow EPI/JRC/WOfS remote servers now get more time; a still-failing sub-query stays None (honest blank). Shadow endpoint failures still surface NOT_AVAILABLE.",
+    "frontend_type": "Frontend (heritage render + pre-DA message) + backend timeout constants. tsc passes.",
+    "user_failure_mode": "Before: heritage as an unreadable run-on; flood blanks ambiguous; shadow cut off early; pre-DA blaming a timeout it didn't hit. After: heritage as a clean list with significance badges; flood sub-queries get time to return real values; shadow waits past the endpoint's own limit; pre-DA shows the real reason."
   },
   "functions": [
-    {"name": "fetch_dem_region", "file_line": "services/dem_service.py", "input": "lat, lng, buffer_m, and a timeout defaulting to _TIMEOUT (now 65s)", "output": "a DEM GeoTIFF from GA or SIX Maps with the SIX Maps HTTP call now allowed up to 65s", "if_none": "raises RuntimeError on failure; the brief maps it to a NOT_AVAILABLE terrain section"}
+    {
+      "name": "HeritageList",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "a list of heritage item strings each ending in ' Significance: <level>'",
+      "output": "a stacked list with the name and a significance badge per item",
+      "if_none": "an empty list renders a plain 'No heritage listing recorded' line"
+    },
+    {
+      "name": "describeUnavailable",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "input": "the field reason, section, and whether satellite ran",
+      "output": "for pre-DA, a 'not requested' / genuine-timeout / fast-error message that surfaces the real backend reason",
+      "if_none": "falls through to the generic unavailable handling"
+    }
   ],
-  "values": "N/A - timeout constants, not regulatory values.",
-  "queries": "N/A - no DB query.",
+  "values": "N/A - heritage strings and timeout constants, not regulatory values.",
+  "queries": "N/A - no DB query changed; only HTTP sub-query timeouts in flood_truth (EPI/JRC/WOfS) bumped.",
   "break_it": [
-    {"scenario": "SIX Maps takes longer than 65s", "what_happens": "the DEM fetch times out and terrain shows an honest unavailable card", "repro": "hit SIX Maps under heavy load", "mitigated": true, "how": "65s covers the observed variance; a slower response is genuinely degraded service and surfaces NOT_AVAILABLE, not a fake diagram"},
-    {"scenario": "A 100s terrain budget slows the whole brief", "what_happens": "a brief could run up to ~100s when terrain is the slowest layer", "repro": "run a brief with satellite on while SIX Maps is slow", "mitigated": true, "how": "layers run concurrently so total = the slowest layer; the user explicitly chose reliability over speed; the concurrency cap (#577) bounds memory"},
-    {"scenario": "GA WCS starts hanging and eats the budget", "what_happens": "GA could waste time before SIX Maps runs", "repro": "GA latency spike", "mitigated": true, "how": "GA stays capped at 12s per attempt, so the worst-case before SIX Maps is ~24s, leaving 76s for SIX inside the 100s budget"}
+    {
+      "scenario": "A heritage item string has no ' Significance:' delimiter",
+      "what_happens": "the item could render without its significance badge separated out",
+      "repro": "an item that is just a name",
+      "mitigated": true,
+      "how": "the regex falls back to showing the whole string as the name with no badge"
+    },
+    {
+      "scenario": "Flood sub-queries still time out at the higher 35s and the brief's 50s budget is exceeded",
+      "what_happens": "the flood section could be cut off",
+      "repro": "all three remote servers stall past 35s",
+      "mitigated": true,
+      "how": "the sub-queries run concurrently (ThreadPoolExecutor), so the flood endpoint completes at max(sub-query) ~= 35s, under the 50s brief budget"
+    },
+    {
+      "scenario": "Shadow still fails fast because the lot-geometry fetch 422s (not a timeout)",
+      "what_happens": "raising the budget to 65s would not help",
+      "repro": "a parcel with no Portal geometry",
+      "mitigated": true,
+      "how": "the 65s budget fixes the timeout case; a genuine geometry failure still surfaces an honest 'Unavailable' — no false data either way"
+    },
+    {
+      "scenario": "Pre-DA reason leaks an ugly backend exception to a real user",
+      "what_happens": "a raw error string could show",
+      "repro": "pre-DA errors with a verbose message",
+      "mitigated": true,
+      "how": "the reason is capped at 160 chars and framed as 'a backend issue, not your input'; this is a dev/demo tool and the visible reason is what lets the cause be diagnosed"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A - the standalone terrain tool benefits from the same DEM timeout.",
-    "manual_verify": "Run a brief with satellite on for an inner-Sydney address while SIX Maps is responsive: the terrain diagram renders; when SIX Maps is slow (40-65s) it now still completes rather than timing out at 40s."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A - same endpoints, only timeouts.",
+    "manual_verify": "Re-run the Haberfield brief: Heritage Items/HCA render as a clean list with significance badges; flood JRC/WOfS show real values (or honest blanks) instead of timing out; shadow gets 65s; if pre-DA still fails it now shows the real reason."
   }
 }

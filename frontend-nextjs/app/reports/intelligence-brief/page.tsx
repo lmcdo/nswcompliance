@@ -160,9 +160,20 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
         tone: 'optional',
       };
     }
+    // A genuine timeout — it ran out of time. Tell the user to retry.
+    if (r.includes('timeout') || r.includes("didn't finish") || r.includes('did not finish')) {
+      return {
+        label: 'Couldn’t complete',
+        detail: 'The site-history analysis didn’t finish in time for this property — please run the brief again.',
+        tone: 'pending',
+      };
+    }
+    // It errored fast (e.g. a backend model/service issue) — surface the real
+    // reason so it can be diagnosed, rather than pretending it timed out.
+    const why = reason ? String(reason).slice(0, 160) : '';
     return {
       label: 'Couldn’t complete',
-      detail: 'The site-history analysis ran but didn’t finish in time for this property — please run the brief again.',
+      detail: `The site-history analysis couldn’t run for this property — this is a backend issue, not your input${why ? ` (${why})` : ''}.`,
       tone: 'pending',
     };
   }
@@ -359,6 +370,17 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // Heritage items / HCA arrive as a list of "<name> Significance: <level>"
+          // strings — render each on its own line with the significance as a badge,
+          // not a comma run-on.
+          if ((key === 'heritage_items' || key === 'heritage_hca') && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><HeritageList items={df.value as string[]} /></dd>
+              </div>
+            );
+          }
           // Planning overlays are a list of {layer_type, value} — render them as
           // a readable list with units, not "2 items".
           if (key === 'overlays' && Array.isArray(df.value)) {
@@ -469,6 +491,35 @@ function humanizeHeritage(v: Record<string, unknown>): string {
   return parts.length
     ? `This property is heritage-affected: ${parts.join('; ')}.`
     : 'A heritage listing applies to this property.';
+}
+
+// Heritage items/HCA arrive as a list of "<name> Significance: <level>" strings.
+// Render each on its own line with the significance as a small badge instead of a
+// comma run-on; split on " Significance: " to separate the name from the level.
+function HeritageList({ items }: { items: string[] }) {
+  const rows = (items || []).map((s) => String(s).trim()).filter(Boolean);
+  if (rows.length === 0) {
+    return <span className="text-sm text-emerald-700">No heritage listing recorded at this property.</span>;
+  }
+  return (
+    <ul className="text-sm text-slate-900 space-y-1.5">
+      {rows.map((raw, i) => {
+        const m = raw.match(/^(.*?)\s*significance:\s*(.+)$/i);
+        const name = m ? m[1].trim().replace(/[;,]\s*$/, '') : raw;
+        const sig = m ? m[2].trim() : null;
+        return (
+          <li key={i} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2">
+            <span className="leading-snug">{name}</span>
+            {sig && (
+              <span className="inline-flex w-fit shrink-0 items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 ring-1 ring-amber-200">
+                {sig} significance
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
