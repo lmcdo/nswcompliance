@@ -48,6 +48,20 @@ def test_realistic_forms_threads_exclusions(monkeypatch):
     assert _realistic_forms("R2", "Penrith", {"dual_occupancy"}) == ("dwelling_house", "dwelling_house")
 
 
+def test_realistic_forms_lmr_source_flag(monkeypatch):
+    # Base zone tier here tops out at dwelling_house; an LMR uplift to multi-dwelling
+    # strictly raises the ceiling -> ceiling_from_lmr True.
+    monkeypatch.setattr(ib, "_permitted_engine_forms", lambda z, l: {"dwelling_house"})
+    assert _realistic_forms("R3", "X", uplift_form="multi_dwelling_housing", return_source=True) == \
+        ("dwelling_house", "multi_dwelling_housing", True)
+    # No uplift -> ceiling stays base, flag False.
+    assert _realistic_forms("R3", "X", return_source=True) == \
+        ("dwelling_house", "dwelling_house", False)
+    # Uplift equal to the base form does NOT count as LMR-raised (base already there).
+    monkeypatch.setattr(ib, "_ceiling_within_tier", lambda z, p, e=None: "multi_dwelling_housing")
+    assert _realistic_forms("R3", "X", uplift_form="multi_dwelling_housing", return_source=True)[2] is False
+
+
 # --- _eligibility_excluded_forms (live gate, mocked) ------------------------
 
 def test_dual_occ_prohibited_excludes_the_form(monkeypatch):

@@ -1062,7 +1062,8 @@ def _realistic_forms(
     lga_name: Optional[str],
     excluded_forms: Optional[set[str]] = None,
     uplift_form: Optional[str] = None,
-) -> tuple[str, str]:
+    return_source: bool = False,
+):
     """Return (as_of_right_form, ceiling_form) for the capacity range.
 
     - as_of_right_form: the conservative, always-true baseline (``dwelling_house``).
@@ -1080,6 +1081,11 @@ def _realistic_forms(
         # Lower index = denser; take the denser of the base and the eligible LMR uplift.
         if _ENGINE_FORM_DENSITY.index(uplift_form) < _ENGINE_FORM_DENSITY.index(base):
             ceiling = uplift_form
+    if return_source:
+        # The ceiling came from LMR only when the uplift strictly raised it above
+        # the base zone-tier form (not when the base already reached that density).
+        ceiling_from_lmr = bool(uplift_form) and ceiling == uplift_form and ceiling != base
+        return "dwelling_house", ceiling, ceiling_from_lmr
     return "dwelling_house", ceiling
 
 
@@ -2754,9 +2760,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
             _excluded_forms = _eligibility_excluded_forms(lat, lng)
             _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
-            _floor_form, _ceiling_form = _realistic_forms(
+            _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                 controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
-                excluded_forms=_excluded_forms, uplift_form=_uplift_form,
+                excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
             )
             constraint_result = compute_constraint_arithmetic(
                 lot_area_m2=lot_area_m2,
@@ -2769,6 +2775,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                 sepp_standards=sepp_housing,
                 sepp_lep_overrides=sepp_lep_overrides,
             )
+            constraint_result.ceiling_from_lmr = _ceiling_from_lmr
         except Exception as e:
             logger.warning("Constraint arithmetic computation failed: %s", e)
 
@@ -3289,9 +3296,9 @@ def _generate_brief_sse(
                     _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
                     _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
-                    _floor_form, _ceiling_form = _realistic_forms(
+                    _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
-                        excluded_forms=_excluded_forms, uplift_form=_uplift_form,
+                        excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
                     )
                     constraint_result = compute_constraint_arithmetic(
                         lot_area_m2=lot_area_m2,
@@ -3305,6 +3312,7 @@ def _generate_brief_sse(
                         sepp_lep_overrides=sepp_lep_overrides,
                     )
                     if constraint_result is not None:
+                        constraint_result.ceiling_from_lmr = _ceiling_from_lmr
                         constraint_field = DataField(
                             value=constraint_result,
                             confidence=ConfidenceLevel.DERIVED,
