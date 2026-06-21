@@ -133,7 +133,14 @@ def main() -> int:
     else:
         print(f"[run_monitors] {monitor_name} completed successfully")
 
-    return exit_code
+    # Railway (and most schedulers) mark ANY non-zero exit as a failed run.
+    # Exit 2 from a monitor means it ran fine and simply *found something*
+    # (legislation_monitor / r2_monitor / dcp_watchdog all use 2 = "changes
+    # detected" / "stale chapters found"). That is a healthy run, not a crash —
+    # the monitor already sent its own Telegram alert. Report success to the OS
+    # so the cron dashboard isn't permanently red on every findings run.
+    # Real failures (exit 1, crashes) still propagate as non-zero.
+    return 0 if exit_code == 2 else exit_code
 
 
 if __name__ == "__main__":

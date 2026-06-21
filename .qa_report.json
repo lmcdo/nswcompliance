@@ -1,74 +1,54 @@
 {
   "tier": "standard",
-  "commit_hash": "2ac26335",
-  "justification": "Carry the LMR/SEPP citation end-to-end so the capacity card's LMR note cites the real clause, and gate the note on a citation (no clause -> no claim). Fixes the #566 gap where the card asserted an LMR conclusion with no source even though housing_sepp_standards holds the clause. Verified live: the uplift returns clause 172(2)(a), 'SEPP (Housing) 2021 - LMR Amendment', legislation.nsw.gov.au, effective 2025-02-28.",
+  "commit_hash": "dd4d805e",
+  "justification": "run_monitors.py returned the child exit code verbatim (line 136). Railway marks ANY non-zero exit as a failed run, so every monitor run that merely DETECTED changes (exit 2 = healthy 'found something' for legislation_monitor/r2_monitor/dcp_watchdog) showed permanently red on the cron dashboard, training the operator to ignore real alerts. Map child exit 2 -> process exit 0 so a findings-run is green and only genuine failures (exit 1, crashes) are red. Also documents Railway GitHub auto-deploy, the exit-code contract, and that legislation runs on Fly not Railway.",
   "files": [
-    "services/housing_sepp_eligibility.py",
-    "services/intelligence_brief.py",
-    "services/constraint_models.py",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_eligibility_gates.py"
+    "scripts/run_monitors.py",
+    "docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md"
   ],
   "pre_impl": {
-    "existing_data": "housing_sepp_standards already has source_clause/source_document/legislation_url/effective_date/verified_at. _fetch_standards_grouped dropped them. Live-verified clauses: multi_dwelling 172(2)*, residential_flat_r1r2 174, r3r4_inner 175, r3r4_outer 176.",
-    "assumption_mismatch": "The #566 note assumed attribution was enough; the product requires a surfaced citation. The clause existed in the DB but was never carried through.",
-    "new_vs_existing": "No new source or query — extends the existing _fetch_standards_grouped SELECT (same table) to read the citation columns. FormEligibility + _lmr_uplift_form + ConstraintArithmeticResult carry it; a shared _apply_lmr_attribution gates the claim.",
-    "external_source_error": "Fail-safe preserved: any eligibility/query failure -> _lmr_uplift_form (None, None) -> _apply_lmr_attribution sets ceiling_from_lmr False -> no note. No new external call.",
-    "frontend_type": "TypeScript: 4 lmr_* citation fields added; the note renders ONLY when ceiling_from_lmr && lmr_source_clause, with the clause + document + legislation link. tsc passes.",
-    "user_failure_mode": "Before: 'Higher limit available here under the Low & Mid-Rise Housing reforms' with NO citation. After: 'Higher limit under SEPP (Housing) 2021 - LMR Amendment cl 172(2)(a) (from 2025-02-28)' linking legislation.nsw.gov.au; if no clause is available, no note at all."
+    "existing_data": "run_monitors.py already classified exit 2 as non-failing for the healthcheck ping (failed = exit_code not in (0,2)) and Telegram, but still returned exit_code verbatim to the OS at line 136, so Railway saw a non-zero exit and marked the run failed.",
+    "assumption_mismatch": "Prior fix #538 changed dcp_watchdog exit 1 -> 2 assuming run_monitors treated 2 as success end-to-end; it only did so for the heartbeat and Telegram, not for the process exit code Railway actually reads. That fix was incomplete.",
+    "new_vs_existing": "No new function or dependency: one return statement changes from 'return exit_code' to 'return 0 if exit_code == 2 else exit_code', reusing the exit-code convention already documented at line 123."
   },
   "functions": [
     {
-      "name": "_apply_lmr_attribution",
-      "file_line": "services/intelligence_brief.py",
-      "input": "the constraint result, the geometric ceiling_from_lmr flag, and the uplift citation dict (or None)",
-      "output": "sets ceiling_from_lmr + the lmr_* citation fields ONLY when the ceiling was raised by LMR AND a real source_clause exists",
-      "if_none": "no citation -> ceiling_from_lmr forced False (no uncited claim); None result -> no-op"
-    },
-    {
-      "name": "_lmr_uplift_form",
-      "file_line": "services/intelligence_brief.py",
-      "input": "zone, lat, lng, lot area/width, heritage",
-      "output": "(densest eligible engine form, citation dict) for the winning form, or (None, None)",
-      "if_none": "no eligible form or any error -> (None, None); a form with no source_clause -> (form, None)"
+      "name": "main",
+      "file_line": "scripts/run_monitors.py:94",
+      "input": "MONITOR_NAME env var selecting a monitor; runs its subprocess and reads the child return code",
+      "output": "process exit code: 0 for a healthy run (child exit 0 or 2), the child's non-zero code otherwise",
+      "if_none": "unknown MONITOR_NAME returns 1 (unchanged); a subprocess crash is caught by the outer try/except and exits 1"
     }
   ],
-  "values": "N/A - no hardcoded regulatory values. The clause/document/url/date come from housing_sepp_standards; the engine reads, never invents them.",
-  "queries": "N/A for new queries - extends the existing housing_sepp_standards SELECT in _fetch_standards_grouped to read citation columns already on the table; no new table or endpoint.",
+  "values": "N/A - no hardcoded regulatory values; this is scheduler exit-code plumbing only.",
+  "queries": "N/A - no DB queries added or changed.",
   "break_it": [
     {
-      "scenario": "LMR raises the ceiling but no clause exists for the winning form",
-      "what_happens": "an uncited LMR claim would appear (the exact product failure)",
-      "repro": "test_apply_lmr_attribution_no_clause_makes_no_claim + test_lmr_uplift_form_no_clause_returns_no_citation",
+      "scenario": "A monitor genuinely crashes or errors with exit 1 and the mapping wrongly hides it",
+      "what_happens": "a real failure would show green and the operator would never investigate",
+      "repro": "force the child to exit 1; run_monitors must still return 1",
       "mitigated": true,
-      "how": "_apply_lmr_attribution forces ceiling_from_lmr False when no clause; the card gates the note on lmr_source_clause"
+      "how": "only exit_code == 2 maps to 0; exit 1 and every other non-zero, plus the outer except's exit 1, propagate unchanged so real failures stay red"
     },
     {
-      "scenario": "The eligibility / 776 query fails at request time",
-      "what_happens": "the note could show on an unknown state",
-      "repro": "_lmr_uplift_form returns (None, None) on any error",
+      "scenario": "A findings-run that exits 2 silently swallows the change so the operator never learns of it",
+      "what_happens": "if green meant nothing-happened, a detected legislation or DCP change could be missed",
+      "repro": "run dcp_watchdog with stale chapters present; child exits 2; run_monitors now returns 0",
       "mitigated": true,
-      "how": "no uplift -> no citation -> no note; base ceiling stands; brief never blocked"
+      "how": "each monitor script sends its own Telegram alert before exiting 2; green on Railway means ran-cleanly, the Telegram message is the change signal, not the dashboard colour"
     },
     {
-      "scenario": "effective_date is a date object that must serialise to JSON",
-      "what_happens": "a raw date could break model_dump / the SSE payload",
-      "repro": "_fetch_standards_grouped converts effective_date via .isoformat()",
+      "scenario": "The healthcheck dead-man's-switch is weakened by reporting success on exit 2",
+      "what_happens": "a degraded run could ping success and hide a problem from the silence detector",
+      "repro": "the exit 2 path calls ping_healthcheck(failed=False)",
       "mitigated": true,
-      "how": "the citation carries effective_date as an ISO string"
-    },
-    {
-      "scenario": "The base LEP already permits the density (LMR not the reason)",
-      "what_happens": "crediting LMR would be wrong",
-      "repro": "ceiling_from_lmr only True on a strict raise (existing 3a/attribution test); 14 Stanley/Mascot stay False",
-      "mitigated": true,
-      "how": "the geometric flag gate AND the citation gate both must pass"
+      "how": "unchanged by this patch: failed already excluded 2 before line 124, so exit 2 has always pinged success by design; the patch only changes the OS exit code, not the ping"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
-    "manual_verify": "Run a brief on a lot where LMR strictly raises the ceiling: the capacity card shows 'Higher limit under SEPP (Housing) 2021 ... cl <clause> (from <date>)' linking legislation.nsw.gov.au. On a lot whose base LEP already permits the density, or where no clause exists, no LMR note appears."
+    "db_reset": "N/A - no schema or data change.",
+    "secrets": "None - no new secrets or env vars.",
+    "other_repo": "N/A - Railway auto-deploys this repo from GitHub on merge to main; the next scheduled cron run of monitor-watchdog and monitor-dcp uses the new code, no manual redeploy.",
+    "manual_verify": "After merge watch the next monitor-watchdog and monitor-dcp cron runs: a run that finds stale chapters or detects changes should now show green with the Telegram alert still delivered; a forced error run should still show red. Separately delete the dead Railway monitor-legislation service."
   }
 }
