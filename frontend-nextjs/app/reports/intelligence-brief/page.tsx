@@ -66,7 +66,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
   'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
-  'satellite.granny_flat': { label: 'Granny Flat Detection', description: 'Structure detection, SEPP eligibility' },
+  'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
 };
@@ -777,8 +777,8 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Granny Flat Detection</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Existing buildings on the lot, and secondary-dwelling eligibility</p>
+          <h3 className="text-sm font-semibold text-slate-900">Secondary Dwelling</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Granny-flat feasibility — buildings on the lot + eligibility</p>
         </div>
         <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
       </div>
@@ -1050,10 +1050,7 @@ function LiveStatusPanel({
 // Complete summary card
 // ---------------------------------------------------------------------------
 
-function CompleteSummary({ data, provenance }: {
-  data: BriefComplete;
-  provenance: { sources: { label: string; asAt?: string }[]; links: { label: string; url: string }[] };
-}) {
+function CompleteSummary({ data }: { data: BriefComplete }) {
   const { confidence_summary: cs, compound_constraints, gaps, data_currency_warnings, elapsed_seconds } = data;
 
   return (
@@ -1133,35 +1130,61 @@ function CompleteSummary({ data, provenance }: {
         </div>
       )}
 
-      {/* Data sources — every figure traced to its source */}
-      {(provenance.sources.length > 0 || provenance.links.length > 0) && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-900 mb-3">Data sources</h3>
-          {provenance.sources.length > 0 && (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
-              {provenance.sources.map((s, i) => (
-                <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                  <span className="text-slate-300 mt-0.5 flex-shrink-0">&#9679;</span>
-                  <span>{s.label}{s.asAt ? <span className="text-slate-400"> — as at {s.asAt}</span> : null}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {provenance.links.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
-              {provenance.links.map((l, i) => (
-                <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
-                   className="text-xs text-teal-600 hover:text-teal-800 underline [overflow-wrap:anywhere]">
-                  {l.label} ↗
-                </a>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-slate-400 mt-3">
-            Each figure above is drawn from these government, satellite and computed sources.
-          </p>
+    </div>
+  );
+}
+
+// Plain-English definitions of the confidence labels stamped on each figure.
+const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
+  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
+  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — a guide to investigate, not a measured value.' },
+  { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
+  { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
+];
+
+// Data sources + a confidence legend. Rendered from the section cards already on
+// the client, so it appears even when the stream's final 'complete' event is dropped.
+function DataSourcesCard({ provenance }: {
+  provenance: { sources: { label: string; asAt?: string }[]; links: { label: string; url: string }[] };
+}) {
+  if (provenance.sources.length === 0 && provenance.links.length === 0) return null;
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+      <h3 className="text-sm font-semibold text-slate-900 mb-3">Data sources</h3>
+      {provenance.sources.length > 0 && (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+          {provenance.sources.map((s, i) => (
+            <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+              <span className="text-slate-300 mt-0.5 flex-shrink-0">&#9679;</span>
+              <span>{s.label}{s.asAt ? <span className="text-slate-400"> — as at {s.asAt}</span> : null}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {provenance.links.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
+          {provenance.links.map((l, i) => (
+            <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
+               className="text-xs text-teal-600 hover:text-teal-800 underline [overflow-wrap:anywhere]">
+              {l.label} ↗
+            </a>
+          ))}
         </div>
       )}
+      <p className="text-xs text-slate-400 mt-3">
+        Each figure above is drawn from these government, satellite and computed sources.
+      </p>
+      <div className="mt-4 pt-4 border-t border-slate-100">
+        <h4 className="text-xs font-semibold text-slate-700 mb-2">What the confidence labels mean</h4>
+        <dl className="space-y-1.5">
+          {CONFIDENCE_LEGEND.map((c) => (
+            <div key={c.label} className="text-xs flex gap-2">
+              <dt className={`font-medium flex-shrink-0 ${c.color}`}>{c.label}</dt>
+              <dd className="text-slate-500">{c.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
@@ -1609,7 +1632,12 @@ function IntelligenceBriefInner() {
           </div>
 
           {/* Complete summary */}
-          {completeEvent && <CompleteSummary data={completeEvent.data} provenance={collectSources(sectionEvents)} />}
+          {completeEvent && <CompleteSummary data={completeEvent.data} />}
+          {/* Data sources + confidence legend — built from the section cards, so it
+              shows even when the stream's final 'complete' event is dropped. */}
+          {state === 'complete' && sectionEvents.length > 0 && (
+            <DataSourcesCard provenance={collectSources(sectionEvents)} />
+          )}
         </div>
       )}
     </div>
