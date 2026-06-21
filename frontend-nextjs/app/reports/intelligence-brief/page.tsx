@@ -149,13 +149,21 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
       tone: 'optional',
     };
   }
-  // Pre-DA history needs the premium flag, which this page does not expose — so
-  // there is no path here. Don't invent one.
-  if (section === 'satellite.pre_da_history' || r.includes('premium')) {
+  // Pre-DA site history. Distinguish "not requested" (tick the box) from
+  // "requested but didn't finish" (it ran and timed out / failed) — don't tell a
+  // user who already ticked the box to tick it again.
+  if (section === 'satellite.pre_da_history' || r.includes('premium') || r.includes('site history')) {
+    if (r.includes('not requested')) {
+      return {
+        label: 'Not run',
+        detail: 'Tick “Include site history (slower)” above and run the brief again to add this.',
+        tone: 'optional',
+      };
+    }
     return {
-      label: 'Not run',
-      detail: 'Tick “Include site history (slower)” above and run the brief again to add this.',
-      tone: 'optional',
+      label: 'Couldn’t complete',
+      detail: 'The site-history analysis ran but didn’t finish in time for this property — please run the brief again.',
+      tone: 'pending',
     };
   }
   if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
