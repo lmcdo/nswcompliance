@@ -51,6 +51,11 @@ export interface ConstraintArithmeticResult {
   max_permitted_dwellings?: number | null;
   // True when the ceiling was raised by the Low & Mid-Rise Housing reforms.
   ceiling_from_lmr?: boolean | null;
+  // Citation for that LMR uplift — present only when a real clause backs it.
+  lmr_source_clause?: string | null;
+  lmr_source_document?: string | null;
+  lmr_legislation_url?: string | null;
+  lmr_effective_date?: string | null;
   binding_constraint: string | null;
   binding_constraint_label: string;
   steps: ConstraintStep[];
@@ -275,9 +280,23 @@ export function ConstraintArithmeticCard({
                     {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
-                  {result.ceiling_from_lmr && (
+                  {/* LMR note — shown ONLY when a real clause backs it (no citation, no claim). */}
+                  {result.ceiling_from_lmr && result.lmr_source_clause && (
                     <div className="text-xs text-teal-700 mt-1">
-                      Higher limit available here under the Low &amp; Mid-Rise Housing reforms.
+                      Higher limit under{' '}
+                      {result.lmr_legislation_url ? (
+                        <a
+                          href={result.lmr_legislation_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-teal-900"
+                        >
+                          {result.lmr_source_document || 'SEPP (Housing) 2021'} cl {result.lmr_source_clause}
+                        </a>
+                      ) : (
+                        <>{result.lmr_source_document || 'SEPP (Housing) 2021'} cl {result.lmr_source_clause}</>
+                      )}
+                      {result.lmr_effective_date ? ` (from ${result.lmr_effective_date})` : ''}.
                     </div>
                   )}
                 </>

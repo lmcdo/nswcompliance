@@ -194,6 +194,13 @@ class ConstraintArithmeticResult(BaseModel):
     # True when the ceiling form was raised above the base zone tier by the
     # Housing-SEPP / Low-and-Mid-Rise uplift (so the card can attribute it).
     ceiling_from_lmr: bool = False
+    # Citation for that LMR uplift (from housing_sepp_standards) — set only when
+    # ceiling_from_lmr AND a real clause exists. The card shows the LMR note ONLY
+    # when this clause is present: no citation -> no claim.
+    lmr_source_clause: Optional[str] = None
+    lmr_source_document: Optional[str] = None
+    lmr_legislation_url: Optional[str] = None
+    lmr_effective_date: Optional[str] = None
 
     binding_constraint: Optional[ConstraintType] = None
     binding_constraint_label: str = ""
