@@ -40,10 +40,10 @@ _TIFF_LE = b"II*\x00"  # little-endian
 _TIFF_BE = b"MM\x00*"  # big-endian
 
 # Default timeout for remote requests (seconds). The SIX Maps fallback
-# (exportImage) routinely takes ~26s to return a valid DEM tile; the prior 20s
-# ceiling killed it before it could respond, so the terrain diagram never
-# rendered. 40s gives it headroom and still fits the brief's 55s terrain budget.
-_TIMEOUT = 40
+# (exportImage) is slow AND variable — ~26s typical, but observed >40s. This is
+# the TRUE limit on terrain reliability: the brief's outer collection budget is
+# moot if this inner HTTP call dies first, so give it real room: 65s.
+_TIMEOUT = 65
 
 # GA WCS is tried first but currently returns HTTP 400 (ArcGIS Server Error) for
 # every request — it fast-fails in ~9.6s. Cap its per-attempt timeout so a slow
