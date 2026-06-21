@@ -20,6 +20,7 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -51,7 +52,7 @@ class BriefConfig:
     timeout_shadow: float = 15.0
     timeout_satellite: float = 45.0
     timeout_strata: float = 5.0
-    timeout_terrain: float = 30.0
+    timeout_terrain: float = 55.0  # whitebox DEM analysis — match the standalone tool budget
 
     # NSW bounding box (WGS84)
     nsw_lat_min: float = -37.5
@@ -69,6 +70,15 @@ class BriefConfig:
 
     # Minimum viable brief — refuse if too many fields failed
     min_available_ratio: float = 0.70
+
+
+# Concurrency cap on the heavy brief stream. Each brief peaks at a few GB; two at
+# once OOM-killed the 8GB Railway container. Default 1 (fully serialised) is safe on
+# 8GB; raise BRIEF_MAX_CONCURRENCY when the container has more memory. A queued
+# request waits up to BRIEF_ACQUIRE_TIMEOUT_S, then gets an honest "busy" event.
+_BRIEF_MAX_CONCURRENCY = max(1, int(os.getenv("BRIEF_MAX_CONCURRENCY", "1")))
+_BRIEF_ACQUIRE_TIMEOUT_S = float(os.getenv("BRIEF_ACQUIRE_TIMEOUT_S", "150"))
+_BRIEF_SEMAPHORE = threading.BoundedSemaphore(_BRIEF_MAX_CONCURRENCY)
 
 
 CONFIG = BriefConfig()
@@ -884,11 +894,6 @@ except ImportError:
     from services.climate_risk_score import climate_risk_score as _climate_risk_score_fn  # noqa: E402
 
 try:
-    from granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
-except ImportError:
-    from services.granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
-
-try:
     from pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
 except ImportError:
     from services.pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
@@ -1517,16 +1522,13 @@ def _fetch_granny_flat_detect(
     address: str, lat: float, lng: float,
     prop_id: str,
 ) -> dict:
-    """Granny flat structure detection (step 1 only — no confirmation)."""
-    req = GrannyFlatDetectRequest(
-        address=address, lat=lat, lng=lng,
-        prop_id=prop_id,
-    )
-    result = detect_structures(req)
-    # Return the Pydantic model as dict
-    if hasattr(result, "model_dump"):
-        return result.model_dump()
-    return result
+    """Granny flat — DECOUPLED. The brief no longer runs the slow Modal structure
+    detection inline (it timed out at 30s and would double-charge Modal now that the
+    frontend GrannyFlatCard fires the gated /api/satellite/granny-flat route, which
+    gates on SEPP cl 50/53 BEFORE the GPU scan). Emit a light marker so the section
+    (and therefore the card slot) still appears; the real detection happens client-side.
+    """
+    return {"decoupled": True}
 
 
 def _fetch_pre_da_history(
@@ -2685,9 +2687,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
         # Satellite results
         if req.include_satellite:
-            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
-            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
-            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            bushfire_df = _timed_result(f_bushfire, 30, "bushfire_prescreen", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 50, "flood_truth", timings)
+            climate_df = _timed_result(f_climate, 25, "climate_risk_score", timings)
             granny_df = _timed_result(f_granny, 30, "granny_flat_detect", timings)
             uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
             arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
@@ -3370,7 +3372,7 @@ def _generate_brief_sse(
         uhi_raw = arr_raw = firms_raw = None
 
         if req.include_satellite:
-            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
+            bushfire_df = _timed_result(f_bushfire, 30, "bushfire_prescreen", timings)
             bushfire_raw = bushfire_df.value
             bushfire_detail = _build_bushfire_detail(bushfire_raw)
             sections_yielded += 1
@@ -3384,7 +3386,7 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 50, "flood_truth", timings)
             flood_raw_sat = flood_sat_df.value
             flood_detail = _build_flood_detail(flood_raw_sat)
             sections_yielded += 1
@@ -3398,7 +3400,7 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            climate_df = _timed_result(f_climate, 25, "climate_risk_score", timings)
             uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
             arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
             firms_df = _timed_result(f_firms, 18, "nasa_firms", timings)
@@ -3604,6 +3606,18 @@ def _safe_brief_sse(
     this, an exception after streaming started just closed the connection and
     the UI hung at the last progress percentage with no indication of failure.
     """
+    # Concurrency cap: each brief peaks at a few GB (Sentinel-2 + pre-DA embeddings
+    # + terrain arrays). Two at once OOM-killed the 8GB container, which severs every
+    # in-flight stream (and drops the 'complete' event). Serialise heavy briefs; a
+    # queued request waits up to the timeout, then gets an honest 'busy' event rather
+    # than a crash. Tune via BRIEF_MAX_CONCURRENCY once the container has more memory.
+    acquired = _BRIEF_SEMAPHORE.acquire(timeout=_BRIEF_ACQUIRE_TIMEOUT_S)
+    if not acquired:
+        yield _sse_event("error", {
+            "error": "server_busy",
+            "message": "The service is finishing other briefs right now — please try again in a minute.",
+        })
+        return
     try:
         yield from _generate_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt)
     except Exception as e:  # convert ANY mid-stream failure into a visible event
@@ -3612,6 +3626,8 @@ def _safe_brief_sse(
             "error": f"{type(e).__name__}: {str(e)[:300]}",
             "message": "The brief could not be completed. Please try again.",
         })
+    finally:
+        _BRIEF_SEMAPHORE.release()
 
 
 @router.post("/intelligence-brief/stream")

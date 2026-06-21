@@ -66,7 +66,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
   'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
-  'satellite.granny_flat': { label: 'Granny Flat Detection', description: 'Structure detection, SEPP eligibility' },
+  'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
 };
@@ -119,15 +119,30 @@ const SATELLITE_SECTIONS = new Set([
 
 interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
 
-function describeUnavailable(reason?: string | null, section?: string): Unavailable {
+function describeUnavailable(reason?: string | null, section?: string, satelliteRan = false): Unavailable {
   const r = (reason ?? '').toLowerCase();
   const isSatellite = !!section && (SATELLITE_SECTIONS.has(section) || section === 'satellite.bushfire');
+  // What this layer actually assesses, so a "no" explains itself (e.g.
+  // "bushfire attack level and vegetation category") rather than a bare "none".
+  const what = (section && SECTION_LABELS[section]?.description
+    ? SECTION_LABELS[section].description.toLowerCase()
+    : '');
 
-  // Satellite opt-in layers — the box wasn't ticked. Real, actionable path.
+  // Satellite opt-in layers.
   if (isSatellite) {
+    // If satellite analysis WAS requested but this layer is empty, it couldn't be
+    // produced for this property — say that plainly, don't blame the user's tickbox
+    // and don't imply a false finding ("no structures" on a clearly built lot).
+    if (satelliteRan) {
+      return {
+        label: 'Couldn’t complete',
+        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property — the imagery or model source may be temporarily unavailable. Try running the brief again.`,
+        tone: 'pending',
+      };
+    }
     return {
       label: 'Not run',
-      detail: 'Tick “Include satellite analysis” above and run the brief again to add this.',
+      detail: `Tick “Include satellite analysis” above and re-run to add ${what || 'this layer'}.`,
       tone: 'optional',
     };
   }
@@ -151,14 +166,14 @@ function describeUnavailable(reason?: string | null, section?: string): Unavaila
   if (r.includes('not ingested') || r.includes('not yet') || r.includes('not onboarded')) {
     return {
       label: 'Not assessed',
-      detail: 'This layer is not yet mapped for this council — confirm with the council or the NSW Planning Portal.',
+      detail: `${what ? `This council's ${what} isn't in our dataset yet` : 'This layer is not yet mapped for this council'} — confirm directly with the council or the NSW Planning Portal.`,
       tone: 'pending',
     };
   }
   if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
     return {
       label: 'None here',
-      detail: 'Checked — nothing recorded at this property.',
+      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property. For a constrained site that's good news.`,
       tone: 'clear',
     };
   }
@@ -168,7 +183,7 @@ function describeUnavailable(reason?: string | null, section?: string): Unavaila
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
     return {
       label: 'Unavailable',
-      detail: 'The data source did not respond — run the brief again to retry.',
+      detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
       tone: 'error',
     };
   }
@@ -195,7 +210,7 @@ const UNAVAILABLE_TEXT_STYLES: Record<UnavailableTone, string> = {
 const KEY_WORDS: Record<string, string> = {
   jrc: 'JRC', wofs: 'WOfS', bom: 'BoM', epi: 'EPI', anef: 'ANEF', gfa: 'GFA',
   fsr: 'FSR', lep: 'LEP', dcp: 'DCP', sepp: 'SEPP', hca: 'HCA', tod: 'TOD',
-  da: 'DA', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
+  da: 'DA', das: 'DAs', cdc: 'CDC', url: 'URL', ahd: 'AHD', bal: 'BAL', id: 'ID',
   m2: 'm²', pct: '%', postgis: '',
 };
 
@@ -203,7 +218,7 @@ const KEY_WORDS: Record<string, string> = {
 // Section card — renders one brief section progressively
 // ---------------------------------------------------------------------------
 
-function SectionCard({ section, data }: { section: string; data: Record<string, unknown> }) {
+function SectionCard({ section, data, satelliteRan = false }: { section: string; data: Record<string, unknown>; satelliteRan?: boolean }) {
   const meta = SECTION_LABELS[section] ?? { label: section, description: '' };
 
   // DataField-wrapped sections have value/confidence/source at top level
@@ -225,7 +240,7 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
             detail: 'Checked the RFS Bushfire Prone Land map — this property is not designated bushfire-prone.',
             tone: 'clear' as UnavailableTone,
           }
-        : describeUnavailable(reason, section))
+        : describeUnavailable(reason, section, satelliteRan))
     : null;
 
   return (
@@ -250,7 +265,7 @@ function SectionCard({ section, data }: { section: string; data: Record<string, 
             {unavail.detail}
           </div>
         ) : value ? (
-          <SectionData data={value} section={section} />
+          <SectionData data={value} section={section} satelliteRan={satelliteRan} />
         ) : (
           <div className="text-sm text-slate-400 italic">No data</div>
         )}
@@ -268,7 +283,7 @@ function isDataField(val: unknown): val is { value: unknown; confidence: string;
   return typeof val === 'object' && val !== null && !Array.isArray(val) && 'confidence' in val && 'source' in val;
 }
 
-function SectionData({ data, section }: { data: Record<string, unknown>; section?: string }) {
+function SectionData({ data, section, satelliteRan = false }: { data: Record<string, unknown>; section?: string; satelliteRan?: boolean }) {
   // Merge "<field>_units" into "<field>" so e.g. Height reads "7 m", not a
   // separate "Height Units: m" row.
   const unitFor: Record<string, string> = {};
@@ -299,11 +314,20 @@ function SectionData({ data, section }: { data: Record<string, unknown>; section
         if (isDataField(val)) {
           const df = val;
           if (df.confidence === 'not_available') {
-            const u = describeUnavailable(df.reason, section);
+            const u = describeUnavailable(df.reason, section, satelliteRan);
             return (
               <div key={key} className="flex flex-col">
                 <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
                 <dd className={`text-sm mt-0.5 ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.label}</dd>
+              </div>
+            );
+          }
+          // Heritage dict -> one plain sentence, not a raw object dump.
+          if (key === 'heritage_postgis' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <dt className="text-xs font-medium text-slate-500">Heritage</dt>
+                <dd className="text-sm text-slate-900 mt-0.5">{humanizeHeritage(df.value as Record<string, unknown>)}</dd>
               </div>
             );
           }
@@ -374,13 +398,27 @@ const OVERLAY_UNIT: Record<string, string> = {
   floor_space_ratio: ':1', fsr: ':1',
 };
 
+// The PostGIS heritage field is a {has_heritage, hca, items, raw} dict — turn it
+// into one plain sentence instead of dumping "HCA:…, Has Heritage: Yes, Raw: 2 items".
+function humanizeHeritage(v: Record<string, unknown>): string {
+  if (!v || !v.has_heritage) return 'No heritage listing recorded at this property.';
+  // v.hca / v.items already read like "Heritage Conservation Area (Inner West LEP 2022)"
+  // — render them as-is (they carry the instrument), don't re-prefix and double up.
+  const parts: string[] = [];
+  if (v.hca) parts.push(String(v.hca));
+  if (v.items) parts.push(String(v.items));
+  return parts.length
+    ? `This property is heritage-affected: ${parts.join('; ')}.`
+    : 'A heritage listing applies to this property.';
+}
+
 interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
 
 // Planning overlays arrive as a list of {layer_type, value} — render them as a
 // readable list ("Acid sulfate: Class 5", "Lot size: 450 m²"), not "2 items".
 function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
   const rows = overlays.filter((o) => o && o.layer_type && o.value != null && o.value !== '');
-  if (rows.length === 0) return <span className="text-sm text-emerald-700">None mapped at this property</span>;
+  if (rows.length === 0) return <span className="text-sm text-emerald-700">Checked the NSW planning overlays (flood, heritage, biodiversity, acid sulfate, coastal) — none apply at this property.</span>;
   return (
     <ul className="text-sm text-slate-900 space-y-0.5">
       {rows.map((o, i) => {
@@ -452,6 +490,92 @@ function ClimateCard({ data }: { data: Record<string, unknown> }) {
       </div>
     </div>
   );
+}
+
+// Internal source slugs -> the real-world data source, so the brief can list
+// "every figure traced to its source" honestly at the bottom.
+const SOURCE_LABELS: Record<string, string> = {
+  postgis_overlays: 'NSW planning overlays (PostGIS)',
+  live_protection_overlay: 'NSW Planning Portal — Protection layers',
+  planning_portal_protection: 'NSW Planning Portal — Protection layers',
+  cadastre_strata: 'NSW cadastre (strata/lot)',
+  postgis_heritage: 'NSW heritage (PostGIS)',
+  anef_zones: 'ANEF aircraft-noise contours',
+  planning_portal: 'NSW Planning Portal',
+  bushfire_prescreen: 'NSW RFS Bushfire Prone Land map',
+  flood_truth: 'Flood screening (JRC / WOfS / BoM)',
+  housing_sepp_standards: 'SEPP (Housing) 2021 standards',
+  constraint_arithmetic_engine: 'Computed — constraint engine',
+  terrain_analysis: 'Computed — 5 m DEM terrain',
+  granny_flat_detect: 'Satellite imagery + structure detection',
+  vg_valuation: 'NSW Valuer General',
+  nsw_spatial_services: 'NSW Spatial Services',
+  epa_contaminated_sites: 'NSW EPA contaminated-land register',
+};
+
+function humanizeSource(slug: string): string {
+  if (slug in SOURCE_LABELS) return SOURCE_LABELS[slug];
+  return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Walk the streamed sections and collect every distinct data source + any
+// legislation/source URL, so the brief footer can list provenance.
+function collectSources(sections: { data: { data: unknown } }[]): {
+  sources: { label: string; asAt?: string }[];
+  links: { label: string; url: string }[];
+} {
+  const srcMap = new Map<string, string | undefined>();
+  const linkMap = new Map<string, string>();
+  const walk = (v: unknown) => {
+    if (!v || typeof v !== 'object') return;
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    const o = v as Record<string, unknown>;
+    if (typeof o.source === 'string' && o.source && !srcMap.has(o.source)) {
+      srcMap.set(o.source, typeof o.as_at === 'string' ? o.as_at : undefined);
+    }
+    for (const [k, val] of Object.entries(o)) {
+      if (/url$/i.test(k) && typeof val === 'string' && val.startsWith('http')) {
+        if (!linkMap.has(val)) linkMap.set(val, formatKey(k.replace(/_url$/i, '')) || 'Source');
+      }
+      walk(val);
+    }
+  };
+  sections.forEach((s) => walk(s.data.data));
+  return {
+    sources: [...srcMap.entries()].map(([s, asAt]) => ({ label: humanizeSource(s), asAt }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    links: [...linkMap.entries()].map(([url, label]) => ({ label, url })),
+  };
+}
+
+// Cross-section planning context, so a "doesn't apply" card can explain WHY using
+// the lot's real zone, instrument and lot size — not a curt one-liner.
+interface PlanningContext {
+  zone?: string; zoneFull?: string; zoneEpi?: string; legislationUrl?: string; lotAreaM2?: number;
+}
+function getPlanningContext(sections: { data: { section: string; data: unknown } }[]): PlanningContext {
+  const unwrap = (v: unknown): unknown => (isDataField(v) ? v.value : v);
+  const ctx: PlanningContext = {};
+  for (const s of sections) {
+    const d = s.data.data as Record<string, unknown> | null;
+    const v = (d && isDataField(d) ? (d.value as Record<string, unknown>) : d) || {};
+    if (s.data.section === 'planning_controls') {
+      ctx.zone = (unwrap(v.zone) as string) ?? ctx.zone;
+      ctx.zoneFull = (unwrap(v.zone_full) as string) ?? ctx.zoneFull;
+      ctx.zoneEpi = (unwrap(v.zone_epi) as string) ?? ctx.zoneEpi;
+      ctx.legislationUrl = (unwrap(v.legislation_url) as string) ?? ctx.legislationUrl;
+    }
+    if (s.data.section === 'economics') {
+      const la = unwrap(v.lot_area_m2);
+      if (typeof la === 'number') ctx.lotAreaM2 = la;
+    }
+  }
+  return ctx;
+}
+
+// Is this a residential zone where the Housing-SEPP residential forms can apply?
+function isResidentialZone(zone?: string): boolean {
+  return /^(R1|R2|R3|R4|R5|RU5)\b/.test((zone || '').trim());
 }
 
 function formatValue(val: unknown): string {
@@ -538,6 +662,153 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+// When the Housing-SEPP residential forms don't apply, don't say "doesn't apply" —
+// explain WHY with the lot's real zone + instrument, and what it means for housing
+// on this land. A "no" carrying context is the product's value.
+function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
+  const zoneLabel = ctx.zone
+    ? `${ctx.zone}${ctx.zoneFull ? ` (${ctx.zoneFull})` : ''}`
+    : 'this zone';
+  const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
+  const residential = isResidentialZone(ctx.zone);
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+        <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
+      </div>
+      <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
+        {residential ? (
+          <p>
+            This lot sits in <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
+            {ctx.legislationUrl
+              ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
+              : instrument}. It&apos;s a residential zone, but the Low &amp; Mid-Rise Housing standards
+            (terraces, townhouses, manor houses and residential flats) couldn&apos;t be loaded for
+            it — re-run the brief, or check the standards directly in the instrument above.
+          </p>
+        ) : (
+          <>
+            <p>
+              This lot is zoned <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
+              {ctx.legislationUrl
+                ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
+                : instrument} — not a residential zone.
+            </p>
+            <p>
+              The Low &amp; Mid-Rise Housing reforms (terraces, townhouses, manor houses, residential
+              flats) reach only the residential zones <span className="font-medium">R1–R4</span>, so they
+              don&apos;t apply here. On a centre/business zone like this, housing is delivered through the
+              zone&apos;s own permitted uses — typically <span className="font-medium">shop-top housing</span>{' '}
+              above ground-floor retail — rather than the low-and-mid-rise pathway.
+            </p>
+            <p className="text-slate-500">
+              See the land use table in the instrument above for what this specific lot permits, and the
+              Development Capacity card for the buildable envelope.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Granny Flat — decoupled to the working async pipeline. The brief fires the same
+// gated /api/satellite/granny-flat route the standalone tool uses (which gates on
+// SEPP cl 50/53 BEFORE the GPU scan, so an ineligible lot costs nothing), then polls
+// granny_flat_reports and renders a rich, cited card.
+type GfState =
+  | { kind: 'loading' }
+  | { kind: 'ineligible'; reason: string; evidence?: string }
+  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number }
+  | { kind: 'error'; message: string };
+
+function GrannyFlatCard({ address, active }: { address?: string; active: boolean }) {
+  const [state, setState] = useState<GfState | null>(null);
+  useEffect(() => {
+    if (!active || !address) { setState(null); return; }
+    let cancelled = false;
+    setState({ kind: 'loading' });
+
+    const poll = async (jobId: string) => {
+      for (let attempts = 0; !cancelled && attempts < 90; attempts++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        if (cancelled) return;
+        try {
+          const r = await fetch(`/api/satellite/granny-flat?jobId=${encodeURIComponent(jobId)}`);
+          const d = await r.json();
+          if (d.status === 'detected' || d.status === 'completed') {
+            const o = (d.data || {}) as Record<string, unknown>;
+            setState({
+              kind: 'result',
+              count: (o.confirmed_structure_count as number) ?? (o.samgeo_structure_count as number) ?? null,
+              seppEligible: !!o.sepp_eligible,
+              ineligibleReason: (o.sepp_ineligible_reason as string) || undefined,
+              lotAreaM2: (o.lot_area_m2 as number) || undefined,
+            });
+            return;
+          }
+          if (d.status === 'error') { setState({ kind: 'error', message: d.message || d.error || 'Detection failed — try again.' }); return; }
+        } catch { /* transient — keep polling */ }
+      }
+      if (!cancelled) setState({ kind: 'error', message: 'The building scan timed out — try running the brief again.' });
+    };
+
+    fetch('/api/satellite/granny-flat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, action: 'detect' }),
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (cancelled) return;
+        if (d.ineligible) { setState({ kind: 'ineligible', reason: d.error, evidence: d.evidence }); return; }
+        if (!r.ok || !d.jobId) { setState({ kind: 'error', message: d.error || 'Couldn’t start the building scan.' }); return; }
+        poll(d.jobId as string);
+      })
+      .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Couldn’t start the building scan.' }); });
+
+    return () => { cancelled = true; };
+  }, [active, address]);
+
+  const Shell = ({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) => (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Secondary Dwelling</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Granny-flat feasibility — buildings on the lot + eligibility</p>
+        </div>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
+      </div>
+      <div className="px-5 py-4 text-sm leading-relaxed">{children}</div>
+    </div>
+  );
+
+  if (!active) return <Shell badge="Not run" badgeClass="bg-teal-50 text-teal-700"><span className="text-slate-500">Tick “Include satellite analysis” above and re-run to scan the lot’s buildings and check granny-flat eligibility.</span></Shell>;
+  if (!state || state.kind === 'loading') return <Shell badge="Analysing…" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500 animate-pulse">Scanning the aerial image for buildings and checking secondary-dwelling eligibility… (up to ~90s)</span></Shell>;
+  if (state.kind === 'ineligible') return (
+    <Shell badge="Not available here" badgeClass="bg-amber-50 text-amber-700">
+      <p className="text-slate-700">{state.reason}</p>
+      {state.evidence && <p className="text-slate-500 mt-1">{state.evidence}</p>}
+    </Shell>
+  );
+  if (state.kind === 'error') return <Shell badge="Couldn’t complete" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500">{state.message}</span></Shell>;
+  return (
+    <Shell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
+      <p className="text-slate-900">
+        {state.count != null
+          ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
+          : 'Building scan complete.'}
+      </p>
+      <p className="mt-1 text-slate-700">
+        {state.seppEligible
+          ? <>This lot <span className="font-medium">meets</span> the SEPP (Housing) 2021 secondary-dwelling lot standard{state.lotAreaM2 ? ` (lot ${Math.round(state.lotAreaM2)} m²)` : ''} — a granny flat is a permissible form, subject to the detailed controls.</>
+          : (state.ineligibleReason || 'This lot does not meet the SEPP secondary-dwelling lot standard.')}
+      </p>
+      <p className="mt-2 text-xs text-slate-400">Confirm the detected building count in the Granny Flat tool before relying on the figure.</p>
+    </Shell>
   );
 }
 
@@ -858,6 +1129,62 @@ function CompleteSummary({ data }: { data: BriefComplete }) {
           </ul>
         </div>
       )}
+
+    </div>
+  );
+}
+
+// Plain-English definitions of the confidence labels stamped on each figure.
+const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
+  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
+  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — a guide to investigate, not a measured value.' },
+  { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
+  { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
+];
+
+// Data sources + a confidence legend. Rendered from the section cards already on
+// the client, so it appears even when the stream's final 'complete' event is dropped.
+function DataSourcesCard({ provenance }: {
+  provenance: { sources: { label: string; asAt?: string }[]; links: { label: string; url: string }[] };
+}) {
+  if (provenance.sources.length === 0 && provenance.links.length === 0) return null;
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
+      <h3 className="text-sm font-semibold text-slate-900 mb-3">Data sources</h3>
+      {provenance.sources.length > 0 && (
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+          {provenance.sources.map((s, i) => (
+            <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+              <span className="text-slate-300 mt-0.5 flex-shrink-0">&#9679;</span>
+              <span>{s.label}{s.asAt ? <span className="text-slate-400"> — as at {s.asAt}</span> : null}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {provenance.links.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
+          {provenance.links.map((l, i) => (
+            <a key={i} href={l.url} target="_blank" rel="noopener noreferrer"
+               className="text-xs text-teal-600 hover:text-teal-800 underline [overflow-wrap:anywhere]">
+              {l.label} ↗
+            </a>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-slate-400 mt-3">
+        Each figure above is drawn from these government, satellite and computed sources.
+      </p>
+      <div className="mt-4 pt-4 border-t border-slate-100">
+        <h4 className="text-xs font-semibold text-slate-700 mb-2">What the confidence labels mean</h4>
+        <dl className="space-y-1.5">
+          {CONFIDENCE_LEGEND.map((c) => (
+            <div key={c.label} className="text-xs flex gap-2">
+              <dt className={`font-medium flex-shrink-0 ${c.color}`}>{c.label}</dt>
+              <dd className="text-slate-500">{c.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
@@ -879,6 +1206,7 @@ function IntelligenceBriefInner() {
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
   const [includeSiteHistory, setIncludeSiteHistory] = useState(false);
+  const [ranWithSatellite, setRanWithSatellite] = useState(false);
   const [lotPolygon, setLotPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
   const [publicAccessToken, setPublicAccessToken] = useState<string | null>(null);
   const [parts, setParts] = useState<BriefEvent[]>([]);
@@ -894,6 +1222,7 @@ function IntelligenceBriefInner() {
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
   const sectionEvents = parts.filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
+  const planningCtx = getPlanningContext(sectionEvents);
 
   // Track progress — complete event overrides to 100
   const latestProgress = completeEvent
@@ -1064,6 +1393,9 @@ function IntelligenceBriefInner() {
     setRunId(null);
     setBriefType(null);
     setParts([]);
+    // Record whether satellite analysis was requested for THIS run, so an empty
+    // satellite section reads honestly ("no result") instead of "tick the box".
+    setRanWithSatellite(includeSatellite || includeSiteHistory);
 
     try {
       const res = await fetch('/api/intelligence-brief', {
@@ -1244,6 +1576,11 @@ function IntelligenceBriefInner() {
               // own binding-constraint breakdown + disclaimer). Falls back to the
               // generic SectionCard when the value is absent (not computed).
               let card: ReactNode = null;
+              if (section === 'satellite.granny_flat') {
+                // Decoupled: the card fires the gated async route itself (gate +
+                // real Modal scan), rather than the brief's timed-out inline run.
+                card = <GrannyFlatCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} />;
+              }
               if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;
                 if (ca) {
@@ -1260,6 +1597,8 @@ function IntelligenceBriefInner() {
                 const standards = (event.data.data?.value ?? null) as SeppStandard[] | null;
                 if (standards && standards.length) {
                   card = <SeppHousingCard standards={standards} />;
+                } else {
+                  card = <SeppContextCard ctx={planningCtx} />;
                 }
               }
               if (section === 'satellite.terrain') {
@@ -1282,7 +1621,7 @@ function IntelligenceBriefInner() {
                 }
               }
               if (!card) {
-                card = <SectionCard section={section} data={event.data.data} />;
+                card = <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
               return (
                 <div key={`${section}-${i}`} className={cn('min-w-0', spanFor(section))}>
@@ -1294,6 +1633,11 @@ function IntelligenceBriefInner() {
 
           {/* Complete summary */}
           {completeEvent && <CompleteSummary data={completeEvent.data} />}
+          {/* Data sources + confidence legend — built from the section cards, so it
+              shows even when the stream's final 'complete' event is dropped. */}
+          {state === 'complete' && sectionEvents.length > 0 && (
+            <DataSourcesCard provenance={collectSources(sectionEvents)} />
+          )}
         </div>
       )}
     </div>
