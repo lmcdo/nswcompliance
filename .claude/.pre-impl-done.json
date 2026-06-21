@@ -1,5 +1,5 @@
 {
   "status": "trivial",
-  "timestamp": "2026-06-21T23:45:00+10:00",
-  "reason": "Two timeout-constant bumps so terrain's inner DEM HTTP timeout no longer fires before the outer collection budget: dem_service _TIMEOUT 40->65 (SIX Maps is variable, sometimes >40s) and intelligence_brief timeout_terrain 80->100 to cover GA(12+12 capped)+SIX(65)+whitebox chain. No logic change."
+  "timestamp": "2026-06-22T09:00:00+10:00",
+  "reason": "Timeout-constant bumps only (no new queries/sources): flood_truth EPI 20->30s, JRC 25->35s, WOfS hard-timeout 25->35s so these concurrent sub-queries return a real value (incl. genuine 0.0) instead of timing out to None/blank; intelligence_brief timeout_shadow_collect 50->65s to exceed the shadow endpoint's own 60s POST timeout. Plus a frontend pre-DA message tweak to surface the real failure reason. All <5 lines each, diagnosis-driven."
 }

@@ -54,7 +54,7 @@ class BriefConfig:
     timeout_strata: float = 5.0
     timeout_terrain: float = 100.0  # covers GA(12+12 capped) + SIX Maps DEM (up to 65s, variable) + whitebox chain
     timeout_premium: float = 120.0  # pre-DA site history is a 30–90s pipeline — give it room to finish, not time out
-    timeout_shadow_collect: float = 50.0  # shadow Sentinel-2 step alone is ~25s; full run needs headroom to be reliable
+    timeout_shadow_collect: float = 65.0  # the shadow endpoint's own POST timeout is 60s; the brief must wait longer, not cut it off at 50s
 
     # NSW bounding box (WGS84)
     nsw_lat_min: float = -37.5

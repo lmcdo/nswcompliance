@@ -312,7 +312,8 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
             "returnGeometry": "false",
             "f": "json",
         }
-        r = requests.get(EPI_REST, params=params, timeout=20)
+        # prior-art-checked: timeout bump only on the existing EPI flood query, no new source
+        r = requests.get(EPI_REST, params=params, timeout=30)
         r.raise_for_status()
         body = r.json()
         # ArcGIS REST returns {"features": [{"attributes": {...}}]}
@@ -494,7 +495,7 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
     try:
         with ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(_sample)
-            return fut.result(timeout=25)
+            return fut.result(timeout=35)
     except Exception as e:
         logger.warning(f"JRC GSW query: {e}")
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
@@ -846,7 +847,7 @@ def _query_compound_risk_layers(lat: float, lng: float) -> dict:
     return result
 
 
-_WOFS_HARD_TIMEOUT = 25  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
+_WOFS_HARD_TIMEOUT = 35  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
 
 
 def _query_dea_wofs(lat: float, lng: float) -> dict:
