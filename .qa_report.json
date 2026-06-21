@@ -1,29 +1,28 @@
 {
   "tier": "minor",
-  "commit_hash": "fd632e8a",
-  "justification": "Three brief fixes: (1) the Data sources card now renders from the section cards already on the client (DataSourcesCard, gated on state==='complete' + sections), so it appears even when the stream's final 'complete' event is dropped — the actual reason it was missing; (2) it carries a plain-English confidence legend defining Authoritative/Estimated/Derived/Extracted; (3) the Granny Flat card + section label renamed to 'Secondary Dwelling' with a short 'granny-flat feasibility' subtitle.",
-  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
+  "commit_hash": "a59561e2",
+  "justification": "Concurrency cap on the brief SSE stream to stop the 8GB Railway container OOM-crashing when two heavy briefs run at once (each peaks at a few GB from Sentinel-2 + pre-DA embeddings + terrain arrays). A threading.BoundedSemaphore (default 1, env BRIEF_MAX_CONCURRENCY) serialises heavy briefs; a queued request waits up to 150s then gets an honest 'busy' event instead of a crash. Investigation found the flood rasters are disk + location-gated (not the RAM cause), so lazy-loading them was NOT shipped — the concurrency cap is the actual fix.",
+  "files": ["services/intelligence_brief.py"],
   "pre_impl": {
-    "existing_data": "collectSources(sectionEvents) builds the provenance from the streamed section cards and does NOT need the complete event. The Data sources block was previously inside CompleteSummary, which only renders when completeEvent exists; the stream's final complete event is frequently dropped (the page sets state='complete' on stream-end regardless), so CompleteSummary — and the data sources — never showed.",
-    "assumption_mismatch": "The data sources were gated on the complete event; they only need the section cards, which are always present once the brief finishes.",
-    "new_vs_existing": "No new data. Extracted the existing data-sources block into a standalone DataSourcesCard, added a confidence legend, and render it independent of completeEvent. CompleteSummary keeps the confidence summary/gaps (when the complete event arrives). GF card + label renamed.",
-    "external_source_error": "Pure display. DataSourcesCard returns null when there are no sources/links.",
-    "frontend_type": "Frontend only (TypeScript/React). CompleteSummary's provenance prop removed; tsc --noEmit passes.",
-    "user_failure_mode": "Before: no Data sources card and no confidence definitions (the whole CompleteSummary was gated on a dropped event); 'Granny Flat Detection' title. After: the Data sources card + confidence legend always show on completion; the card reads 'Secondary Dwelling'."
+    "existing_data": "Railway logs: two POST /pipeline/intelligence-brief/stream at 07:12:06 and 07:12:19, then 'Killed' (OOM) at 07:14:08 and auto-restart. Memory is at the plan cap (8GB). Confirmed: torch is NOT imported at boot; flood_truth reads the 520MB Hawkesbury rasters only when a lot is within the study bounds (gated), so they are disk + on-demand, not a RAM baseline. The OOM is a per-brief runtime spike x concurrency.",
+    "assumption_mismatch": "Earlier framing blamed the 520MB rasters as RAM; investigation shows they are disk-backed (/tmp) and location-gated. The real cause is concurrent heavy briefs.",
+    "new_vs_existing": "No new query or pipeline. Adds a module-level BoundedSemaphore and wraps the existing _safe_brief_sse generator with acquire (timeout) / finally-release.",
+    "external_source_error": "Independent of data sources. If the semaphore can't be acquired in time, a clean 'busy' SSE error event is emitted; the brief never crashes the container.",
+    "frontend_type": "N/A (backend Python). The frontend already renders an SSE 'error' event.",
+    "user_failure_mode": "Before: a second concurrent brief could OOM-kill the container, severing all in-flight streams (and dropping the 'complete' event). After: heavy briefs serialise; a second request waits or gets an honest 'busy' message; no OOM crash."
   },
-  "functions": [
-    {"name": "DataSourcesCard", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the provenance object (sources + links) aggregated from the section cards", "output": "a card listing the data sources, source links, and a plain-English confidence legend", "if_none": "returns null when there are no sources and no links"}
-  ],
-  "values": "N/A - no regulatory values; provenance and confidence definitions are display copy.",
-  "queries": "N/A - no database or API query; sources aggregated from data already on the client.",
+  "functions": [],
+  "values": "N/A - no regulatory values; a concurrency constant.",
+  "queries": "N/A - no database or API query.",
   "break_it": [
-    {"scenario": "The stream's complete event is dropped (the common case here)", "what_happens": "previously the entire CompleteSummary including data sources never rendered", "repro": "DataSourcesCard is gated on state==='complete' && sectionEvents.length, not on completeEvent", "mitigated": true, "how": "the card builds from the section cards that are always present once the brief finishes"},
-    {"scenario": "The complete event DOES arrive", "what_happens": "data sources could render twice", "repro": "the data-sources block was removed from CompleteSummary; only DataSourcesCard renders it", "mitigated": true, "how": "single source of truth for the data-sources block"},
-    {"scenario": "No sections streamed (early failure)", "what_happens": "an empty data-sources card could show", "repro": "DataSourcesCard returns null with no sources/links and the render is gated on sectionEvents.length > 0", "mitigated": true, "how": "double-guarded: gate + the component's own null return"}
+    {"scenario": "A brief generator raises before release", "what_happens": "the semaphore could leak and permanently block briefs", "repro": "the acquire is paired with a finally: _BRIEF_SEMAPHORE.release()", "mitigated": true, "how": "release is in a finally so it runs on success, exception, or generator close"},
+    {"scenario": "A client disconnects mid-stream (generator GC'd)", "what_happens": "the permit might not be released", "repro": "Python closes the generator (GeneratorExit) which runs the finally", "mitigated": true, "how": "the finally release runs on generator close/GC"},
+    {"scenario": "Traffic exceeds the cap", "what_happens": "requests could hang forever", "repro": "acquire has a 150s timeout; on miss it yields a 'busy' error event and returns", "mitigated": true, "how": "bounded wait + honest busy message, never an indefinite hang"},
+    {"scenario": "The cap is too low and serialises legitimate concurrent demand", "what_happens": "legitimate users could wait too long", "repro": "BRIEF_MAX_CONCURRENCY is an env var; raise it once the container has more memory", "mitigated": true, "how": "configurable without a code change; default 1 is the safe value at 8GB"}
   ],
   "post_merge": {
     "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A. Note: the dropped 'complete' SSE event (which hides the numeric Confidence Summary) is a deeper Trigger.dev realtime streaming issue, tracked separately; this PR makes the data sources + confidence legend resilient to it.",
-    "manual_verify": "Run a brief: the Data sources card appears at the bottom with the source list + confidence legend even though the Confidence Summary (which needs the complete event) may be absent; the Granny Flat card reads 'Secondary Dwelling'."
+    "other_repo": "Railway: optionally set BRIEF_MAX_CONCURRENCY=2 if you upgrade memory; leave unset (=1) on the 8GB plan. The lazy-raster idea was investigated and dropped (rasters are disk + location-gated, not the RAM cause).",
+    "manual_verify": "Fire two briefs at once: the second queues behind the first (or returns a 'busy' event) instead of OOM-killing the container; a single brief is unaffected."
   }
 }

@@ -1,5 +1,5 @@
 {
   "status": "trivial",
   "timestamp": "2026-06-21T00:00:00Z",
-  "reason": "Decouple the brief's inline Granny Flat: _fetch_granny_flat_detect stops calling detect_structures (the slow Modal scan that timed out at 30s and would double-charge Modal now that the frontend fires the gated /api/satellite/granny-flat route). Returns a light decoupled marker so the section/card slot still emits. No new query; removes a call."
+  "reason": "Add a concurrency cap (threading.BoundedSemaphore, default 1, env-configurable) around the brief SSE generator so two heavy briefs can't run at once and OOM the 8GB container. No new query; wraps the existing _safe_brief_sse with acquire/finally-release."
 }

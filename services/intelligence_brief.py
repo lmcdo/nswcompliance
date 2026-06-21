@@ -20,6 +20,7 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -69,6 +70,15 @@ class BriefConfig:
 
     # Minimum viable brief — refuse if too many fields failed
     min_available_ratio: float = 0.70
+
+
+# Concurrency cap on the heavy brief stream. Each brief peaks at a few GB; two at
+# once OOM-killed the 8GB Railway container. Default 1 (fully serialised) is safe on
+# 8GB; raise BRIEF_MAX_CONCURRENCY when the container has more memory. A queued
+# request waits up to BRIEF_ACQUIRE_TIMEOUT_S, then gets an honest "busy" event.
+_BRIEF_MAX_CONCURRENCY = max(1, int(os.getenv("BRIEF_MAX_CONCURRENCY", "1")))
+_BRIEF_ACQUIRE_TIMEOUT_S = float(os.getenv("BRIEF_ACQUIRE_TIMEOUT_S", "150"))
+_BRIEF_SEMAPHORE = threading.BoundedSemaphore(_BRIEF_MAX_CONCURRENCY)
 
 
 CONFIG = BriefConfig()
@@ -3596,6 +3606,18 @@ def _safe_brief_sse(
     this, an exception after streaming started just closed the connection and
     the UI hung at the last progress percentage with no indication of failure.
     """
+    # Concurrency cap: each brief peaks at a few GB (Sentinel-2 + pre-DA embeddings
+    # + terrain arrays). Two at once OOM-killed the 8GB container, which severs every
+    # in-flight stream (and drops the 'complete' event). Serialise heavy briefs; a
+    # queued request waits up to the timeout, then gets an honest 'busy' event rather
+    # than a crash. Tune via BRIEF_MAX_CONCURRENCY once the container has more memory.
+    acquired = _BRIEF_SEMAPHORE.acquire(timeout=_BRIEF_ACQUIRE_TIMEOUT_S)
+    if not acquired:
+        yield _sse_event("error", {
+            "error": "server_busy",
+            "message": "The service is finishing other briefs right now — please try again in a minute.",
+        })
+        return
     try:
         yield from _generate_brief_sse(req, resolved_prop_id, lat, lng, lot_wkt)
     except Exception as e:  # convert ANY mid-stream failure into a visible event
@@ -3604,6 +3626,8 @@ def _safe_brief_sse(
             "error": f"{type(e).__name__}: {str(e)[:300]}",
             "message": "The brief could not be completed. Please try again.",
         })
+    finally:
+        _BRIEF_SEMAPHORE.release()
 
 
 @router.post("/intelligence-brief/stream")
