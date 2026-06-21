@@ -404,6 +404,17 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           );
         }
 
+        // Flood raster/remote reads return 0 for a genuine "no water" and null only
+        // when the read FAILED — so a null here means "couldn't retrieve", not zero.
+        // Say that plainly rather than showing an ambiguous dash.
+        if (FLOOD_RETRIEVAL_KEYS.has(key) && (val === null || val === undefined)) {
+          return (
+            <div key={key} className="flex flex-col">
+              <FieldLabel fieldKey={key} />
+              <dd className="text-sm mt-0.5 text-amber-700">Couldn’t retrieve — run the brief again to retry.</dd>
+            </div>
+          );
+        }
         return (
           <div key={key} className="flex flex-col">
             <FieldLabel fieldKey={key} />
@@ -445,6 +456,10 @@ function formatKey(key: string): string {
 // Plain-English descriptions for fields whose labels are opaque on their own
 // (satellite/flood acronyms, neighbourhood counts). Shown as a muted line under
 // the field label so a dash or a number has meaning. Factual, no advice.
+// Flood fields whose source returns 0 for a genuine "no water" reading, so a
+// null specifically means the satellite/raster read failed (not a real zero).
+const FLOOD_RETRIEVAL_KEYS = new Set(['jrc_occurrence_pct', 'wofs_frequency_pct', 'epi_flood']);
+
 const FIELD_HINTS: Record<string, string> = {
   jrc_occurrence_pct:
     'How often satellites saw surface water on this spot over 1984–2021 (EC Joint Research Centre). 0% means no water was observed in ~37 years.',
@@ -456,8 +471,8 @@ const FIELD_HINTS: Record<string, string> = {
   epi_flood: 'Whether the lot falls in a flood-planning area mapped in the council’s LEP.',
   flood_epi: 'Whether the lot falls in a flood-planning area mapped in the council’s LEP.',
   nearby_das:
-    'Development applications lodged on nearby properties (within the search radius) in the last 12 months.',
-  da_count: 'Number of those nearby development applications.',
+    'Development applications lodged on nearby properties (within 500 m) in the last 12 months.',
+  da_count: 'Number of development applications within 500 m in the last 12 months.',
 };
 
 // Field label + an optional one-line description underneath.

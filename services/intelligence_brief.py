@@ -2895,7 +2895,7 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            flood_sat_df = _timed_result(f_flood_sat, 50, "flood_truth", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 70, "flood_truth", timings)  # > the concurrent JRC/WOfS inner budgets (60s) so a slow raster read isn't cut off
             flood_raw_sat = flood_sat_df.value
             flood_detail = _build_flood_detail(flood_raw_sat)
             sections_yielded += 1
