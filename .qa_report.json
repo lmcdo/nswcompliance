@@ -1,28 +1,54 @@
 {
-  "tier": "minor",
-  "commit_hash": "a59561e2",
-  "justification": "Concurrency cap on the brief SSE stream to stop the 8GB Railway container OOM-crashing when two heavy briefs run at once (each peaks at a few GB from Sentinel-2 + pre-DA embeddings + terrain arrays). A threading.BoundedSemaphore (default 1, env BRIEF_MAX_CONCURRENCY) serialises heavy briefs; a queued request waits up to 150s then gets an honest 'busy' event instead of a crash. Investigation found the flood rasters are disk + location-gated (not the RAM cause), so lazy-loading them was NOT shipped — the concurrency cap is the actual fix.",
-  "files": ["services/intelligence_brief.py"],
+  "tier": "standard",
+  "commit_hash": "dd4d805e",
+  "justification": "run_monitors.py returned the child exit code verbatim (line 136). Railway marks ANY non-zero exit as a failed run, so every monitor run that merely DETECTED changes (exit 2 = healthy 'found something' for legislation_monitor/r2_monitor/dcp_watchdog) showed permanently red on the cron dashboard, training the operator to ignore real alerts. Map child exit 2 -> process exit 0 so a findings-run is green and only genuine failures (exit 1, crashes) are red. Also documents Railway GitHub auto-deploy, the exit-code contract, and that legislation runs on Fly not Railway.",
+  "files": [
+    "scripts/run_monitors.py",
+    "docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md"
+  ],
   "pre_impl": {
-    "existing_data": "Railway logs: two POST /pipeline/intelligence-brief/stream at 07:12:06 and 07:12:19, then 'Killed' (OOM) at 07:14:08 and auto-restart. Memory is at the plan cap (8GB). Confirmed: torch is NOT imported at boot; flood_truth reads the 520MB Hawkesbury rasters only when a lot is within the study bounds (gated), so they are disk + on-demand, not a RAM baseline. The OOM is a per-brief runtime spike x concurrency.",
-    "assumption_mismatch": "Earlier framing blamed the 520MB rasters as RAM; investigation shows they are disk-backed (/tmp) and location-gated. The real cause is concurrent heavy briefs.",
-    "new_vs_existing": "No new query or pipeline. Adds a module-level BoundedSemaphore and wraps the existing _safe_brief_sse generator with acquire (timeout) / finally-release.",
-    "external_source_error": "Independent of data sources. If the semaphore can't be acquired in time, a clean 'busy' SSE error event is emitted; the brief never crashes the container.",
-    "frontend_type": "N/A (backend Python). The frontend already renders an SSE 'error' event.",
-    "user_failure_mode": "Before: a second concurrent brief could OOM-kill the container, severing all in-flight streams (and dropping the 'complete' event). After: heavy briefs serialise; a second request waits or gets an honest 'busy' message; no OOM crash."
+    "existing_data": "run_monitors.py already classified exit 2 as non-failing for the healthcheck ping (failed = exit_code not in (0,2)) and Telegram, but still returned exit_code verbatim to the OS at line 136, so Railway saw a non-zero exit and marked the run failed.",
+    "assumption_mismatch": "Prior fix #538 changed dcp_watchdog exit 1 -> 2 assuming run_monitors treated 2 as success end-to-end; it only did so for the heartbeat and Telegram, not for the process exit code Railway actually reads. That fix was incomplete.",
+    "new_vs_existing": "No new function or dependency: one return statement changes from 'return exit_code' to 'return 0 if exit_code == 2 else exit_code', reusing the exit-code convention already documented at line 123."
   },
-  "functions": [],
-  "values": "N/A - no regulatory values; a concurrency constant.",
-  "queries": "N/A - no database or API query.",
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/run_monitors.py:94",
+      "input": "MONITOR_NAME env var selecting a monitor; runs its subprocess and reads the child return code",
+      "output": "process exit code: 0 for a healthy run (child exit 0 or 2), the child's non-zero code otherwise",
+      "if_none": "unknown MONITOR_NAME returns 1 (unchanged); a subprocess crash is caught by the outer try/except and exits 1"
+    }
+  ],
+  "values": "N/A - no hardcoded regulatory values; this is scheduler exit-code plumbing only.",
+  "queries": "N/A - no DB queries added or changed.",
   "break_it": [
-    {"scenario": "A brief generator raises before release", "what_happens": "the semaphore could leak and permanently block briefs", "repro": "the acquire is paired with a finally: _BRIEF_SEMAPHORE.release()", "mitigated": true, "how": "release is in a finally so it runs on success, exception, or generator close"},
-    {"scenario": "A client disconnects mid-stream (generator GC'd)", "what_happens": "the permit might not be released", "repro": "Python closes the generator (GeneratorExit) which runs the finally", "mitigated": true, "how": "the finally release runs on generator close/GC"},
-    {"scenario": "Traffic exceeds the cap", "what_happens": "requests could hang forever", "repro": "acquire has a 150s timeout; on miss it yields a 'busy' error event and returns", "mitigated": true, "how": "bounded wait + honest busy message, never an indefinite hang"},
-    {"scenario": "The cap is too low and serialises legitimate concurrent demand", "what_happens": "legitimate users could wait too long", "repro": "BRIEF_MAX_CONCURRENCY is an env var; raise it once the container has more memory", "mitigated": true, "how": "configurable without a code change; default 1 is the safe value at 8GB"}
+    {
+      "scenario": "A monitor genuinely crashes or errors with exit 1 and the mapping wrongly hides it",
+      "what_happens": "a real failure would show green and the operator would never investigate",
+      "repro": "force the child to exit 1; run_monitors must still return 1",
+      "mitigated": true,
+      "how": "only exit_code == 2 maps to 0; exit 1 and every other non-zero, plus the outer except's exit 1, propagate unchanged so real failures stay red"
+    },
+    {
+      "scenario": "A findings-run that exits 2 silently swallows the change so the operator never learns of it",
+      "what_happens": "if green meant nothing-happened, a detected legislation or DCP change could be missed",
+      "repro": "run dcp_watchdog with stale chapters present; child exits 2; run_monitors now returns 0",
+      "mitigated": true,
+      "how": "each monitor script sends its own Telegram alert before exiting 2; green on Railway means ran-cleanly, the Telegram message is the change signal, not the dashboard colour"
+    },
+    {
+      "scenario": "The healthcheck dead-man's-switch is weakened by reporting success on exit 2",
+      "what_happens": "a degraded run could ping success and hide a problem from the silence detector",
+      "repro": "the exit 2 path calls ping_healthcheck(failed=False)",
+      "mitigated": true,
+      "how": "unchanged by this patch: failed already excluded 2 before line 124, so exit 2 has always pinged success by design; the patch only changes the OS exit code, not the ping"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "Railway: optionally set BRIEF_MAX_CONCURRENCY=2 if you upgrade memory; leave unset (=1) on the 8GB plan. The lazy-raster idea was investigated and dropped (rasters are disk + location-gated, not the RAM cause).",
-    "manual_verify": "Fire two briefs at once: the second queues behind the first (or returns a 'busy' event) instead of OOM-killing the container; a single brief is unaffected."
+    "db_reset": "N/A - no schema or data change.",
+    "secrets": "None - no new secrets or env vars.",
+    "other_repo": "N/A - Railway auto-deploys this repo from GitHub on merge to main; the next scheduled cron run of monitor-watchdog and monitor-dcp uses the new code, no manual redeploy.",
+    "manual_verify": "After merge watch the next monitor-watchdog and monitor-dcp cron runs: a run that finds stale chapters or detects changes should now show green with the Telegram alert still delivered; a forced error run should still show red. Separately delete the dead Railway monitor-legislation service."
   }
 }
