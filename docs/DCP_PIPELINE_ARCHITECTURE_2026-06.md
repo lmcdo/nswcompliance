@@ -174,6 +174,11 @@ Design target: the **only** recurring human task is approving/rejecting *flagged
 - **Railway single-IP.** Re-add per-council throttling/backoff (deleted by #506) so council CDNs don't WAF-block; stagger councils across cron offsets.
 - **Determinism.** Deterministic processing is the system-of-record (project rule). LLM only writes human-facing summaries from already-computed fields and proposes extractions for hard councils — always validated + human-gated.
 
+### Deployment & exit-code semantics (operational facts — don't re-learn the hard way)
+- **Railway auto-deploys from GitHub.** Every push to `main` redeploys the affected Railway services automatically. Merging a fix is sufficient — there is **no manual "redeploy" step**; the next scheduled cron run picks up the new code. (The cron *schedule* and per-service env vars are set in the Railway dashboard, not in git — only those require a manual touch.)
+- **Exit code semantics — `2` is healthy, but only after `run_monitors.py` maps it.** Railway marks **any non-zero exit as a failed run**. The monitors deliberately exit `2` to mean "ran fine, *found* something" (`legislation_monitor` / `r2_monitor` = changes detected; `dcp_watchdog` = stale chapters found) — a healthy outcome, and each script sends its own Telegram alert. `run_monitors.py` therefore translates child exit `2` → process exit `0`, so a findings-run shows **green** on the dashboard and only genuine failures (exit `1`, crashes) show red. Without that mapping the dashboard is permanently red on every successful findings-run, which trains you to ignore it.
+- **Legislation lives on Fly.io, not Railway.** The Railway `monitor-legislation` service is forced to `--source pco` from a non-whitelisted IP → it 403s and exits `1` *every* run by design. The real monitor is the Fly app (`run_loop.sh`, auto-source with scrape fallback, static egress IP for PCO whitelisting). The Railway `monitor-legislation` service should be **deleted**.
+
 ### Reliability mechanisms (what keeps it running without you watching)
 - **Dead-man's-switch** per stage (alert on *absence* of a success ping) + **queue-not-stalled** monitor.
 - **Retry/backoff with dead-letter → human** — transient failures retry; poison items escalate, never silently drop.
