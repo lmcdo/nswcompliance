@@ -1,54 +1,61 @@
 {
   "tier": "standard",
-  "commit_hash": "dd4d805e",
-  "justification": "run_monitors.py returned the child exit code verbatim (line 136). Railway marks ANY non-zero exit as a failed run, so every monitor run that merely DETECTED changes (exit 2 = healthy 'found something' for legislation_monitor/r2_monitor/dcp_watchdog) showed permanently red on the cron dashboard, training the operator to ignore real alerts. Map child exit 2 -> process exit 0 so a findings-run is green and only genuine failures (exit 1, crashes) are red. Also documents Railway GitHub auto-deploy, the exit-code contract, and that legislation runs on Fly not Railway.",
+  "commit_hash": "5a27bb67",
+  "justification": "The verify app showed SEPP/LEP instruments as verified/current even after legislation_monitor.py detected an amendment: needs_review (set on instrument_registry) was never surfaced — the currency API read only instrument_currency, so the UI judged currency by verified_at age alone. A freshly 'verified' instrument that was since amended still showed green. This makes 'verified' fail closed: the API now joins needs_review, and InstrumentCurrency flips that instrument (and the overall dot) to amber 'change found at source — under review', suppressing the stale verified date/version, until a human reconciles.",
   "files": [
-    "scripts/run_monitors.py",
-    "docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md"
+    "frontend-nextjs/app/api/instrument-currency/route.ts",
+    "frontend-nextjs/components/compliance/InstrumentCurrency.tsx"
   ],
   "pre_impl": {
-    "existing_data": "run_monitors.py already classified exit 2 as non-failing for the healthcheck ping (failed = exit_code not in (0,2)) and Telegram, but still returned exit_code verbatim to the OS at line 136, so Railway saw a non-zero exit and marked the run failed.",
-    "assumption_mismatch": "Prior fix #538 changed dcp_watchdog exit 1 -> 2 assuming run_monitors treated 2 as success end-to-end; it only did so for the heartbeat and Telegram, not for the process exit code Railway actually reads. That fix was incomplete.",
-    "new_vs_existing": "No new function or dependency: one return statement changes from 'return exit_code' to 'return 0 if exit_code == 2 else exit_code', reusing the exit-code convention already documented at line 123."
+    "existing_data": "needs_review already exists on instrument_registry (BOOLEAN NOT NULL DEFAULT FALSE, idx_ir_review), set TRUE by legislation_monitor.py on a detected amendment and cleared by update_instrument_provisions.py after human reconcile. instrument_currency has no such column; the API queried only instrument_currency so the flag never reached the UI.",
+    "assumption_mismatch": "The currency UI assumed verified_at freshness captured currency. It does not: an instrument can be recently verified yet already amended (needs_review TRUE). Age does not encode a detected-but-unreconciled change, so green could be shown on a superseded instrument.",
+    "new_vs_existing": "No new table or endpoint. The existing instrument_currency SELECT gains a LEFT JOIN to instrument_registry to read needs_review (COALESCE FALSE). The component adds a statusFor() override reusing the existing statusDot/daysSince; no new fetch."
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "scripts/run_monitors.py:94",
-      "input": "MONITOR_NAME env var selecting a monitor; runs its subprocess and reads the child return code",
-      "output": "process exit code: 0 for a healthy run (child exit 0 or 2), the child's non-zero code otherwise",
-      "if_none": "unknown MONITOR_NAME returns 1 (unchanged); a subprocess crash is caught by the outer try/except and exits 1"
+      "name": "GET",
+      "file_line": "frontend-nextjs/app/api/instrument-currency/route.ts:4",
+      "input": "the council slug taken from the request query string",
+      "output": "currency rows for that council plus NULL-council state instruments, each now carrying needs_review (COALESCE r.needs_review FALSE)",
+      "if_none": "missing council -> 400; a currency row with no matching instrument_registry row (e.g. DCP) -> needs_review FALSE via COALESCE"
+    },
+    {
+      "name": "statusFor",
+      "file_line": "frontend-nextjs/components/compliance/InstrumentCurrency.tsx:34",
+      "input": "a single instrument currency row returned by the API",
+      "output": "{color,title,underReview}: amber under-review override when needs_review, else the freshness dot from statusDot(daysSince(verified_at))",
+      "if_none": "needs_review false/absent -> falls through to the existing freshness logic; null verified_at -> statusDot returns the grey 'not yet verified' state"
     }
   ],
-  "values": "N/A - no hardcoded regulatory values; this is scheduler exit-code plumbing only.",
-  "queries": "N/A - no DB queries added or changed.",
+  "values": "N/A - no regulatory values. needs_review is a monitor-set flag read from instrument_registry; the component never invents it.",
+  "queries": "N/A for new queries - extends the existing instrument_currency SELECT with a LEFT JOIN instrument_registry ON r.instrument_key = ic.instrument_key, same WHERE (ic.council = $1 OR ic.council IS NULL); no new table or endpoint.",
   "break_it": [
     {
-      "scenario": "A monitor genuinely crashes or errors with exit 1 and the mapping wrongly hides it",
-      "what_happens": "a real failure would show green and the operator would never investigate",
-      "repro": "force the child to exit 1; run_monitors must still return 1",
+      "scenario": "needs_review is NULL for a currency row with no instrument_registry row (DCP rows)",
+      "what_happens": "an unguarded NULL could render as under-review (false alarm) or break the boolean check",
+      "repro": "load a council whose DCP instrument_currency rows have no registry match",
       "mitigated": true,
-      "how": "only exit_code == 2 maps to 0; exit 1 and every other non-zero, plus the outer except's exit 1, propagate unchanged so real failures stay red"
+      "how": "COALESCE(r.needs_review, FALSE) in SQL guarantees a boolean; the TS type is boolean and statusFor treats only TRUE as under-review, so DCP rows render normally"
     },
     {
-      "scenario": "A findings-run that exits 2 silently swallows the change so the operator never learns of it",
-      "what_happens": "if green meant nothing-happened, a detected legislation or DCP change could be missed",
-      "repro": "run dcp_watchdog with stale chapters present; child exits 2; run_monitors now returns 0",
+      "scenario": "An instrument is amended (needs_review TRUE) but the panel still shows green/verified — the exact bug being fixed",
+      "what_happens": "a superseded citation would be presented as current",
+      "repro": "set instrument_registry.needs_review = TRUE for sepp_housing_2021 and open a property",
       "mitigated": true,
-      "how": "each monitor script sends its own Telegram alert before exiting 2; green on Railway means ran-cleanly, the Telegram message is the change signal, not the dashboard colour"
+      "how": "statusFor checks needs_review FIRST and overrides colour+title; the overall dot uses anyReview; the stale version_label and verified date are suppressed and replaced with the under-review note"
     },
     {
-      "scenario": "The healthcheck dead-man's-switch is weakened by reporting success on exit 2",
-      "what_happens": "a degraded run could ping success and hide a problem from the silence detector",
-      "repro": "the exit 2 path calls ping_healthcheck(failed=False)",
+      "scenario": "The LEFT JOIN multiplies rows if instrument_registry had more than one row per instrument_key",
+      "what_happens": "duplicate currency rows would render",
+      "repro": "two registry rows sharing an instrument_key",
       "mitigated": true,
-      "how": "unchanged by this patch: failed already excluded 2 before line 124, so exit 2 has always pinged success by design; the patch only changes the OS exit code, not the ping"
+      "how": "instrument_key is unique on instrument_registry (and instrument_currency is unique on (council, instrument_key)), so the join is 1:1; no fan-out"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no schema or data change.",
+    "db_reset": "N/A - no schema or data change; needs_review column already exists.",
     "secrets": "None - no new secrets or env vars.",
-    "other_repo": "N/A - Railway auto-deploys this repo from GitHub on merge to main; the next scheduled cron run of monitor-watchdog and monitor-dcp uses the new code, no manual redeploy.",
-    "manual_verify": "After merge watch the next monitor-watchdog and monitor-dcp cron runs: a run that finds stale chapters or detects changes should now show green with the Telegram alert still delivered; a forced error run should still show red. Separately delete the dead Railway monitor-legislation service."
+    "other_repo": "N/A - the Next.js frontend auto-deploys on Vercel from GitHub on merge; backend/API unchanged.",
+    "manual_verify": "Set instrument_registry.needs_review = TRUE for a state instrument (e.g. sepp_housing_2021); open a property in any council -> the Data currency dot and that instrument's row show amber 'change found at source — under review' with the verified date/version suppressed. Set it back to FALSE -> the verified date returns. Confirm DCP rows (no registry row) still render their verified date normally."
   }
 }
