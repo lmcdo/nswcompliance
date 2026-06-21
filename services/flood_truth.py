@@ -477,7 +477,7 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
         # JRC tiles are regular GeoTIFFs — GDAL will fetch header + target block only.
         gdal_url = f"/vsicurl/{url}"
 
-        with rasterio.Env(GDAL_HTTP_TIMEOUT=12, CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+        with rasterio.Env(GDAL_HTTP_TIMEOUT=30, CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
             with rasterio.open(gdal_url) as src:
                 row, col = rowcol(src.transform, lng, lat)
                 # Clamp to valid extent
@@ -495,7 +495,7 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
     try:
         with ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(_sample)
-            return fut.result(timeout=35)
+            return fut.result(timeout=60)
     except Exception as e:
         logger.warning(f"JRC GSW query: {e}")
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
@@ -847,7 +847,7 @@ def _query_compound_risk_layers(lat: float, lng: float) -> dict:
     return result
 
 
-_WOFS_HARD_TIMEOUT = 35  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
+_WOFS_HARD_TIMEOUT = 60  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
 
 
 def _query_dea_wofs(lat: float, lng: float) -> dict:
@@ -869,7 +869,7 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
             "coverage": DEA_WOFS_LAYER, "format": "GeoTIFF",
             "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
             "crs": "EPSG:4326", "resx": str(delta), "resy": str(delta),
-        }, timeout=20)
+        }, timeout=30)
         r.raise_for_status()
         ct = r.headers.get("Content-Type") or ""
         if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):

@@ -1,72 +1,34 @@
 {
   "tier": "standard",
-  "commit_hash": "9c4efad4",
-  "justification": "Heritage styling + three diagnosis-driven reliability fixes from a live Haberfield brief. (1) HERITAGE STYLING: heritage_items/heritage_hca are list[str] like '<name> Significance: <level>' but rendered as a comma run-on; added a HeritageList component — one item per line, significance as a small badge. (2) SHADOW 'Unavailable': the brief collected shadow with a 50s budget but the shadow endpoint's own POST timeout is 60s, so the brief cut it off 10s early; raised timeout_shadow_collect 50->65s. (3) FLOOD blanks (JRC/WOfS/EPI '—'): these concurrent sub-queries timed out internally (EPI 20s, JRC 25s, WOfS 25s) and returned None (a genuine no-water reading returns 0.0, so the blank means timeout/no-data, not a real zero); raised them to 30/35/35s — still under the 50s flood budget since they run concurrently — so they can return the true value. (4) PRE-DA 'didn't finish in time' was misleading: the brief finished in 96s with a 120s pre-DA budget, so pre-DA ERRORED fast (not a timeout); the frontend now distinguishes a real timeout from a fast error and surfaces the actual backend reason instead of pretending it timed out.",
+  "commit_hash": "pending",
+  "justification": "Flood JRC/WOfS blanks persisted because the BINDING limits are the INNER timeouts, not the outer wrappers changed before. JRC reads a remote GeoTIFF via GDAL vsicurl bounded by GDAL_HTTP_TIMEOUT=12s (raised to 30, with the outer fut.result 35->60); WOfS downloads a WCS GeoTIFF bounded by requests timeout=20s (raised to 30, with _WOFS_HARD_TIMEOUT 35->60); the brief's flood collection budget raised 50->70s so the now-longer concurrent sub-queries (max ~60s) are not cut off. Since JRC/WOfS return 0 for a genuine no-water reading and null only on a FAILED read, the frontend now renders 'Couldn't retrieve' for a null JRC/WOfS/EPI-flood instead of an ambiguous '—'. Also labelled the nearby-DA radius explicitly as 500 m. Companion change (separate repo): the Trigger.dev task maxDuration 120->300 so the longer brief finishes before the stream is cut.",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "services/flood_truth.py",
-    "services/intelligence_brief.py"
+    "services/intelligence_brief.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "heritage_items/heritage_hca are DataField[list[str]]; the flood sub-queries already return None on failure and a real float (incl 0.0) on success; the shadow endpoint POST already used timeout=60.",
-    "assumption_mismatch": "A blank flood field looked like 'no data' but actually means the remote sub-query timed out (a genuine zero would render '0'); pre-DA 'didn't finish in time' implied a timeout but it errors fast.",
-    "new_vs_existing": "Reused the existing list-field render pattern (like OverlayList) for heritage; bumped existing timeout constants; reused the existing reason string for pre-DA.",
-    "external_source_error": "Slow EPI/JRC/WOfS remote servers now get more time; a still-failing sub-query stays None (honest blank). Shadow endpoint failures still surface NOT_AVAILABLE.",
-    "frontend_type": "Frontend (heritage render + pre-DA message) + backend timeout constants. tsc passes.",
-    "user_failure_mode": "Before: heritage as an unreadable run-on; flood blanks ambiguous; shadow cut off early; pre-DA blaming a timeout it didn't hit. After: heritage as a clean list with significance badges; flood sub-queries get time to return real values; shadow waits past the endpoint's own limit; pre-DA shows the real reason."
+    "existing_data": "JRC _query_jrc_surface_water samples via /vsicurl with GDAL_HTTP_TIMEOUT=12 and an outer 35s; WOfS _query_dea_wofs downloads a WCS GeoTIFF with requests timeout=20 and an outer 35s; both return null on failure and a real float (incl 0.0) on success. The brief collected flood at a hardcoded 50s.",
+    "assumption_mismatch": "Earlier I raised the outer wrappers (25->35), but the inner GDAL/requests timeouts fired first, so the reads still failed fast and returned null (rendered blank).",
+    "new_vs_existing": "Bumped existing inner+outer timeout constants keeping inner < outer; reused the existing null-on-failure contract for the honest 'couldn't retrieve' render.",
+    "external_source_error": "Slow JRC GCS / DEA WCS reads now get more time; a still-failing read stays null and shows 'Couldn't retrieve' rather than a misleading dash or a false 0.",
+    "frontend_type": "Backend timeouts + a frontend honest-null render + a label. tsc passes.",
+    "user_failure_mode": "Before: JRC/WOfS/EPI flood showed a bare '—' that could mean failure OR zero, and the nearby-DA radius was unstated. After: the reads get time to return a real value (0 for a dry lot); a genuine failure says 'Couldn't retrieve'; the radius reads '500 m'."
   },
   "functions": [
-    {
-      "name": "HeritageList",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "input": "a list of heritage item strings each ending in ' Significance: <level>'",
-      "output": "a stacked list with the name and a significance badge per item",
-      "if_none": "an empty list renders a plain 'No heritage listing recorded' line"
-    },
-    {
-      "name": "describeUnavailable",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "input": "the field reason, section, and whether satellite ran",
-      "output": "for pre-DA, a 'not requested' / genuine-timeout / fast-error message that surfaces the real backend reason",
-      "if_none": "falls through to the generic unavailable handling"
-    }
+    {"name": "_query_jrc_surface_water", "file_line": "services/flood_truth.py", "input": "lat, lng for the JRC occurrence raster sample", "output": "the water-occurrence percent (0 for a dry point) with the GDAL HTTP timeout raised to 30s inside a 60s outer guard", "if_none": "returns null only on a failed/timed-out read, which the UI shows as 'Couldn't retrieve'"},
+    {"name": "_query_dea_wofs", "file_line": "services/flood_truth.py", "input": "lat, lng for the DEA WOfS WCS GeoTIFF download", "output": "the water-observed frequency percent with the WCS download timeout raised to 30s inside a 60s outer guard", "if_none": "returns null only on a failed read, shown as 'Couldn't retrieve'"}
   ],
-  "values": "N/A - heritage strings and timeout constants, not regulatory values.",
-  "queries": "N/A - no DB query changed; only HTTP sub-query timeouts in flood_truth (EPI/JRC/WOfS) bumped.",
+  "values": "N/A - flood screening percentages and timeout constants, not regulatory values.",
+  "queries": "N/A - no DB query; only the JRC vsicurl read and the WOfS/EPI HTTP timeouts changed.",
   "break_it": [
-    {
-      "scenario": "A heritage item string has no ' Significance:' delimiter",
-      "what_happens": "the item could render without its significance badge separated out",
-      "repro": "an item that is just a name",
-      "mitigated": true,
-      "how": "the regex falls back to showing the whole string as the name with no badge"
-    },
-    {
-      "scenario": "Flood sub-queries still time out at the higher 35s and the brief's 50s budget is exceeded",
-      "what_happens": "the flood section could be cut off",
-      "repro": "all three remote servers stall past 35s",
-      "mitigated": true,
-      "how": "the sub-queries run concurrently (ThreadPoolExecutor), so the flood endpoint completes at max(sub-query) ~= 35s, under the 50s brief budget"
-    },
-    {
-      "scenario": "Shadow still fails fast because the lot-geometry fetch 422s (not a timeout)",
-      "what_happens": "raising the budget to 65s would not help",
-      "repro": "a parcel with no Portal geometry",
-      "mitigated": true,
-      "how": "the 65s budget fixes the timeout case; a genuine geometry failure still surfaces an honest 'Unavailable' — no false data either way"
-    },
-    {
-      "scenario": "Pre-DA reason leaks an ugly backend exception to a real user",
-      "what_happens": "a raw error string could show",
-      "repro": "pre-DA errors with a verbose message",
-      "mitigated": true,
-      "how": "the reason is capped at 160 chars and framed as 'a backend issue, not your input'; this is a dev/demo tool and the visible reason is what lets the cause be diagnosed"
-    }
+    {"scenario": "JRC vsicurl read still exceeds 30s because the global tile is not cloud-optimized", "what_happens": "the read fails and the field shows 'Couldn't retrieve' instead of a value", "repro": "sample a point where GDAL must fetch large non-tiled strips", "mitigated": true, "how": "the outer 60s guard bounds it and the honest 'couldn't retrieve' message is shown, never a false 0; the authoritative EPI flood flag is still served from PostGIS in the Environmental card"},
+    {"scenario": "A genuine zero-water reading is mistaken for a failure", "what_happens": "a real 0 could be hidden behind 'couldn't retrieve'", "repro": "a dry inland point", "mitigated": true, "how": "JRC/WOfS return 0.0 (not null) for a genuine zero, so 0 renders as '0' and only a true null (failed read) shows 'couldn't retrieve'"},
+    {"scenario": "Raising the flood budget to 70s makes the brief longer and risks the stream cutoff again", "what_happens": "the brief could run longer", "repro": "all flood sub-queries take ~60s", "mitigated": true, "how": "the companion Trigger.dev maxDuration was raised 120->300s; flood sub-queries run concurrently so the section completes at ~max(sub-query) ~= 60s, under the 70s budget"}
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A - same endpoints, only timeouts.",
-    "manual_verify": "Re-run the Haberfield brief: Heritage Items/HCA render as a clean list with significance badges; flood JRC/WOfS show real values (or honest blanks) instead of timing out; shadow gets 65s; if pre-DA still fails it now shows the real reason."
+    "db_reset": "N/A", "secrets": "None - JRC (GCS) and DEA WOfS (WCS) are keyless public sources.",
+    "other_repo": "plotdetect-agents: trigger/intelligence-brief.ts maxDuration 120->300 must be deployed (npx trigger.dev deploy) for the brief tail to render.",
+    "manual_verify": "Re-run the Haberfield brief: JRC/WOfS show a real value (0% for this dry ridge) or an honest 'Couldn't retrieve'; the nearby-DA description reads '500 m'; after the maxDuration deploy, Terrain/Pre-DA/Confidence Summary render again."
   }
 }
