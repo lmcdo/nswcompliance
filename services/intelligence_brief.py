@@ -884,11 +884,6 @@ except ImportError:
     from services.climate_risk_score import climate_risk_score as _climate_risk_score_fn  # noqa: E402
 
 try:
-    from granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
-except ImportError:
-    from services.granny_flat import detect_structures, GrannyFlatDetectRequest  # noqa: E402
-
-try:
     from pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
 except ImportError:
     from services.pre_da_history import run_pre_da_history, PreDAHistoryRequest  # noqa: E402
@@ -1517,16 +1512,13 @@ def _fetch_granny_flat_detect(
     address: str, lat: float, lng: float,
     prop_id: str,
 ) -> dict:
-    """Granny flat structure detection (step 1 only — no confirmation)."""
-    req = GrannyFlatDetectRequest(
-        address=address, lat=lat, lng=lng,
-        prop_id=prop_id,
-    )
-    result = detect_structures(req)
-    # Return the Pydantic model as dict
-    if hasattr(result, "model_dump"):
-        return result.model_dump()
-    return result
+    """Granny flat — DECOUPLED. The brief no longer runs the slow Modal structure
+    detection inline (it timed out at 30s and would double-charge Modal now that the
+    frontend GrannyFlatCard fires the gated /api/satellite/granny-flat route, which
+    gates on SEPP cl 50/53 BEFORE the GPU scan). Emit a light marker so the section
+    (and therefore the card slot) still appears; the real detection happens client-side.
+    """
+    return {"decoupled": True}
 
 
 def _fetch_pre_da_history(

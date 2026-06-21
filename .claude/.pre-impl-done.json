@@ -1,5 +1,5 @@
 {
   "status": "trivial",
   "timestamp": "2026-06-21T00:00:00Z",
-  "reason": "Raise the brief's satellite collection timeout caps (bushfire/flood/climate/terrain) to match the standalone-tool budgets so the in-process layers stop being killed at 10-30s. Constants only — no new queries, no logic change, no schema."
+  "reason": "Decouple the brief's inline Granny Flat: _fetch_granny_flat_detect stops calling detect_structures (the slow Modal scan that timed out at 30s and would double-charge Modal now that the frontend fires the gated /api/satellite/granny-flat route). Returns a light decoupled marker so the section/card slot still emits. No new query; removes a call."
 }
