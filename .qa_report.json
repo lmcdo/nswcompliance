@@ -1,31 +1,29 @@
 {
-  "tier": "standard",
-  "commit_hash": "6841c293",
-  "justification": "Decouple Granny Flat to the working async pipeline. The brief's inline GF timed out at 30s (the Modal structure scan needs ~90s) and emitted empty; now the frontend GrannyFlatCard fires the same gated /api/satellite/granny-flat route the standalone tool uses — which gates on SEPP cl 50/53 BEFORE the GPU scan (so an ineligible lot like E1 costs nothing and shows a cited reason), runs the real Modal detection, and is polled. The brief's inline _fetch_granny_flat_detect is no-op'd so Modal isn't double-charged.",
-  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx", "services/intelligence_brief.py"],
+  "tier": "minor",
+  "commit_hash": "5a27bb67",
+  "justification": "Three brief fixes: (1) the Data sources card now renders from the section cards already on the client (DataSourcesCard, gated on state==='complete' + sections), so it appears even when the stream's final 'complete' event is dropped — the actual reason it was missing; (2) it carries a plain-English confidence legend defining Authoritative/Estimated/Derived/Extracted; (3) the Granny Flat card + section label renamed to 'Secondary Dwelling' with a short 'granny-flat feasibility' subtitle.",
+  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {
-    "existing_data": "The working route contract (verified): POST {address,action:'detect'} -> {ineligible,error,evidence} (SEPP cl 50/53 gate) or 202 {jobId}; GET ?jobId= -> {status:'detected'|'completed', data:{samgeo_structure_count,sepp_eligible,sepp_ineligible_reason,lot_area_m2}} | {status:'error'} | {status:'pending'}. The brief streams a satellite.granny_flat section the card hooks onto.",
-    "assumption_mismatch": "The inline 30s run could never finish the ~90s Modal scan, so GF was always empty; the fix reuses the proven async path instead of the inline call.",
-    "new_vs_existing": "Reuses the existing /api/satellite/granny-flat route + granny_flat_reports poll contract verbatim (the contract the standalone reports/granny-flat page already uses). New: a GrannyFlatCard that drives that flow inside the brief, wired to the satellite.granny_flat section.",
-    "external_source_error": "All fetches are wrapped: a POST failure or ineligible response or poll error/timeout each render a distinct honest card (cited ineligible reason / 'couldn't complete'). No throw escapes.",
-    "frontend_type": "GfState is a discriminated union; the poll uses a cancelled flag + bounded 90 attempts; tsc --noEmit passes.",
-    "user_failure_mode": "Before: GF always 'Not run'/empty even when ticked + eligible. After: an ineligible lot shows the cited SEPP reason instantly (no GPU); an eligible lot shows 'analysing…' then the real building count + secondary-dwelling eligibility."
+    "existing_data": "collectSources(sectionEvents) builds the provenance from the streamed section cards and does NOT need the complete event. The Data sources block was previously inside CompleteSummary, which only renders when completeEvent exists; the stream's final complete event is frequently dropped (the page sets state='complete' on stream-end regardless), so CompleteSummary — and the data sources — never showed.",
+    "assumption_mismatch": "The data sources were gated on the complete event; they only need the section cards, which are always present once the brief finishes.",
+    "new_vs_existing": "No new data. Extracted the existing data-sources block into a standalone DataSourcesCard, added a confidence legend, and render it independent of completeEvent. CompleteSummary keeps the confidence summary/gaps (when the complete event arrives). GF card + label renamed.",
+    "external_source_error": "Pure display. DataSourcesCard returns null when there are no sources/links.",
+    "frontend_type": "Frontend only (TypeScript/React). CompleteSummary's provenance prop removed; tsc --noEmit passes.",
+    "user_failure_mode": "Before: no Data sources card and no confidence definitions (the whole CompleteSummary was gated on a dropped event); 'Granny Flat Detection' title. After: the Data sources card + confidence legend always show on completion; the card reads 'Secondary Dwelling'."
   },
   "functions": [
-    {"name": "GrannyFlatCard", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:729", "input": "the resolved address and whether satellite analysis was requested for this run", "output": "a card that fires the gated detect route, polls the report, and renders ineligible/result/error/analysing states", "if_none": "when satellite was not requested or no address, it shows the 'tick Include satellite analysis' prompt"}
+    {"name": "DataSourcesCard", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the provenance object (sources + links) aggregated from the section cards", "output": "a card listing the data sources, source links, and a plain-English confidence legend", "if_none": "returns null when there are no sources and no links"}
   ],
-  "values": "N/A - no hardcoded regulatory values. The eligibility gate + cited reasons come from the route (SEPP cl 50/53) and the structure count from the Modal scan.",
-  "queries": "N/A for new queries - reuses the existing /api/satellite/granny-flat route and its granny_flat_reports poll; the brief backend removes a call (no longer runs detect_structures inline).",
+  "values": "N/A - no regulatory values; provenance and confidence definitions are display copy.",
+  "queries": "N/A - no database or API query; sources aggregated from data already on the client.",
   "break_it": [
-    {"scenario": "Modal is off so the scan returns no structures", "what_happens": "showing a fake '0 buildings' would be dishonest", "repro": "the result card shows the count only when present and always leads with the SEPP eligibility from the route; a null count renders 'Building scan complete' not '0'", "mitigated": true, "how": "count is rendered conditionally; eligibility (the cited, deterministic part) is always shown"},
-    {"scenario": "The lot is ineligible (e.g. E1 commercial)", "what_happens": "running the GPU scan would waste cost", "repro": "the route returns {ineligible:true} before firing Modal; the card shows the cited reason + evidence", "mitigated": true, "how": "the gate runs server-side before the scan; the card never polls in this case"},
-    {"scenario": "The component unmounts or address changes mid-poll", "what_happens": "a late setState on an unmounted component or a stale result", "repro": "the effect sets cancelled=true on cleanup and re-keys on [active,address]", "mitigated": true, "how": "every async path checks cancelled before setState"},
-    {"scenario": "The brief still runs GF inline and double-charges Modal", "what_happens": "two Modal calls per brief", "repro": "_fetch_granny_flat_detect now returns {decoupled:true} without calling detect_structures", "mitigated": true, "how": "the inline Modal call is removed; only the frontend card fires the scan"},
-    {"scenario": "The poll never resolves (job stuck)", "what_happens": "the card could spin forever", "repro": "the loop is bounded to 90 attempts (~3 min) then shows a 'timed out — try again' card", "mitigated": true, "how": "bounded attempts + honest timeout state"}
+    {"scenario": "The stream's complete event is dropped (the common case here)", "what_happens": "previously the entire CompleteSummary including data sources never rendered", "repro": "DataSourcesCard is gated on state==='complete' && sectionEvents.length, not on completeEvent", "mitigated": true, "how": "the card builds from the section cards that are always present once the brief finishes"},
+    {"scenario": "The complete event DOES arrive", "what_happens": "data sources could render twice", "repro": "the data-sources block was removed from CompleteSummary; only DataSourcesCard renders it", "mitigated": true, "how": "single source of truth for the data-sources block"},
+    {"scenario": "No sections streamed (early failure)", "what_happens": "an empty data-sources card could show", "repro": "DataSourcesCard returns null with no sources/links and the render is gated on sectionEvents.length > 0", "mitigated": true, "how": "double-guarded: gate + the component's own null return"}
   ],
   "post_merge": {
     "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A - same Railway process; MODAL_STRUCTURES_URL confirmed ON by the owner so real structure counts return. The satellite-job-runner Trigger.dev task (plotdetect-agents) relays the detect in prod.",
-    "manual_verify": "Run a brief with satellite on: an E1 lot shows a cited 'secondary dwellings not permitted' card instantly (no scan); a residential lot shows 'analysing…' then the real building count + SEPP eligibility. No double Modal run."
+    "other_repo": "N/A. Note: the dropped 'complete' SSE event (which hides the numeric Confidence Summary) is a deeper Trigger.dev realtime streaming issue, tracked separately; this PR makes the data sources + confidence legend resilient to it.",
+    "manual_verify": "Run a brief: the Data sources card appears at the bottom with the source list + confidence legend even though the Confidence Summary (which needs the complete event) may be absent; the Granny Flat card reads 'Secondary Dwelling'."
   }
 }
