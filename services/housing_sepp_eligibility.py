@@ -47,6 +47,12 @@ class FormEligibility:
     applicable_zones: list = field(default_factory=list)
     min_lot_size_m2: Optional[float] = None
     min_lot_width_m: Optional[float] = None
+    # Citation for the standard, carried from housing_sepp_standards so any claim
+    # this drives can be sourced (the whole point of the product — no uncited claim).
+    source_clause: Optional[str] = None
+    source_document: Optional[str] = None
+    legislation_url: Optional[str] = None
+    effective_date: Optional[str] = None
 
 
 def normalize_zone(zone_code: Optional[str]) -> str:
@@ -71,9 +77,14 @@ def _fetch_standards_grouped() -> dict:
         conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
         conn.autocommit = True
         cur = conn.cursor()
+        # prior-art-checked: reuse not viable — this IS the existing
+        # _fetch_standards_grouped query in this same module, extended to also read
+        # the citation columns (source_clause/document/url/date) that already exist
+        # on housing_sepp_standards. No new source, no new query, same table.
         cur.execute(
             "SELECT development_type, standard_type, numeric_value, applicable_zones, "
-            "requires_lmr_area FROM housing_sepp_standards"
+            "requires_lmr_area, source_clause, source_document, legislation_url, "
+            "effective_date FROM housing_sepp_standards"
         )
         rows = cur.fetchall()
     finally:
@@ -81,7 +92,8 @@ def _fetch_standards_grouped() -> dict:
             conn.close()
 
     grouped: dict = {}
-    for dev_type, standard_type, numeric_value, zones, lmr in rows:
+    for (dev_type, standard_type, numeric_value, zones, lmr,
+         source_clause, source_document, legislation_url, effective_date) in rows:
         g = grouped.get(dev_type)
         if g is None:
             g = {
@@ -89,8 +101,17 @@ def _fetch_standards_grouped() -> dict:
                 "applicable_zones": list(zones) if zones else [],
                 "min_lot_size": None,
                 "min_lot_width": None,
+                "source_clause": None,
+                "source_document": None,
+                "legislation_url": None,
+                "effective_date": None,
             }
             grouped[dev_type] = g
+        if g.get("source_clause") is None and source_clause:
+            g["source_clause"] = source_clause
+            g["source_document"] = source_document
+            g["legislation_url"] = legislation_url
+            g["effective_date"] = effective_date.isoformat() if effective_date else None
         if numeric_value is None:
             continue
         if standard_type == "min_lot_size":
@@ -183,6 +204,10 @@ def evaluate_eligibility(
                 development_type=dev_type, eligible=eligible, reason=reason,
                 requires_lmr_area=lmr_req, applicable_zones=zones,
                 min_lot_size_m2=min_size, min_lot_width_m=min_width,
+                source_clause=g.get("source_clause"),
+                source_document=g.get("source_document"),
+                legislation_url=g.get("legislation_url"),
+                effective_date=g.get("effective_date"),
             )
 
         if heritage and lmr_req:

@@ -89,3 +89,65 @@ def test_gate_query_raises_is_failsafe(monkeypatch):
 def test_missing_coordinates_skip_the_gate():
     assert _eligibility_excluded_forms(None, 151.1) == set()
     assert _eligibility_excluded_forms(-33.8, None) == set()
+
+
+# --- LMR citation gate (no clause -> no claim) ------------------------------
+
+from types import SimpleNamespace  # noqa: E402
+
+from services.intelligence_brief import _apply_lmr_attribution, _lmr_uplift_form  # noqa: E402
+
+
+def test_apply_lmr_attribution_sets_citation_when_present():
+    r = SimpleNamespace(ceiling_from_lmr=False, lmr_source_clause=None,
+                        lmr_source_document=None, lmr_legislation_url=None, lmr_effective_date=None)
+    _apply_lmr_attribution(r, True, {
+        "source_clause": "172(2)(a)", "source_document": "SEPP (Housing) 2021 - LMR Amendment",
+        "legislation_url": "https://legislation.nsw.gov.au/x", "effective_date": "2025-02-28",
+    })
+    assert r.ceiling_from_lmr is True
+    assert r.lmr_source_clause == "172(2)(a)"
+    assert r.lmr_legislation_url.startswith("https://")
+
+
+def test_apply_lmr_attribution_no_clause_makes_no_claim():
+    # LMR raised the ceiling geometrically but there's no citation -> NO claim.
+    r = SimpleNamespace(ceiling_from_lmr=False, lmr_source_clause=None,
+                        lmr_source_document=None, lmr_legislation_url=None, lmr_effective_date=None)
+    _apply_lmr_attribution(r, True, None)
+    assert r.ceiling_from_lmr is False
+    assert r.lmr_source_clause is None
+    _apply_lmr_attribution(r, True, {"source_clause": None})
+    assert r.ceiling_from_lmr is False
+
+
+def test_apply_lmr_attribution_flag_false_no_claim():
+    r = SimpleNamespace(ceiling_from_lmr=True, lmr_source_clause=None,
+                        lmr_source_document=None, lmr_legislation_url=None, lmr_effective_date=None)
+    _apply_lmr_attribution(r, False, {"source_clause": "172(2)(a)"})
+    assert r.ceiling_from_lmr is False
+
+
+def test_lmr_uplift_form_returns_citation(monkeypatch):
+    elig = SimpleNamespace(
+        development_type="multi_dwelling", eligible=True, source_clause="172(2)(a)",
+        source_document="SEPP (Housing) 2021 - LMR Amendment",
+        legislation_url="https://legislation.nsw.gov.au/x", effective_date="2025-02-28")
+    monkeypatch.setattr(ib, "_SEPP_FORM_TO_ENGINE", {"multi_dwelling": "multi_dwelling_housing"})
+    import services.housing_sepp_eligibility as he
+    monkeypatch.setattr(he, "evaluate_eligibility", lambda *a, **k: [elig])
+    form, cite = _lmr_uplift_form("R3", -33.8, 151.1, 600.0, 15.0, False)
+    assert form == "multi_dwelling_housing"
+    assert cite["source_clause"] == "172(2)(a)"
+
+
+def test_lmr_uplift_form_no_clause_returns_no_citation(monkeypatch):
+    elig = SimpleNamespace(development_type="multi_dwelling", eligible=True,
+                           source_clause=None, source_document=None,
+                           legislation_url=None, effective_date=None)
+    monkeypatch.setattr(ib, "_SEPP_FORM_TO_ENGINE", {"multi_dwelling": "multi_dwelling_housing"})
+    import services.housing_sepp_eligibility as he
+    monkeypatch.setattr(he, "evaluate_eligibility", lambda *a, **k: [elig])
+    form, cite = _lmr_uplift_form("R3", -33.8, 151.1, 600.0, 15.0, False)
+    assert form == "multi_dwelling_housing"
+    assert cite is None

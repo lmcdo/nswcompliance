@@ -1105,10 +1105,13 @@ _SEPP_FORM_TO_ENGINE = {
 def _lmr_uplift_form(
     zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
     lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
-) -> Optional[str]:
+) -> tuple[Optional[str], Optional[dict]]:
     """Densest engine form ELIGIBLE under the Housing-SEPP / LMR engine (the catchment/area
-    uplift, subject to a DA), or None. Delegates to the single-source-of-truth eligibility
-    engine. Fail-safe: any error -> None (no uplift; the base zone-tier ceiling stands).
+    uplift, subject to a DA), plus the CITATION of the standard that grants it, or (None, None).
+
+    Delegates to the single-source-of-truth eligibility engine, which carries the clause /
+    document / legislation URL / effective date from housing_sepp_standards — so any LMR claim
+    the card makes is sourced. Fail-safe: any error -> (None, None) (no uplift; base tier stands).
     """
     try:
         from services.housing_sepp_eligibility import evaluate_eligibility
@@ -1117,16 +1120,42 @@ def _lmr_uplift_form(
         )
     except Exception as e:  # fail-safe — never block the brief on the uplift engine
         logger.warning("LMR eligibility uplift failed: %s", e)
-        return None
-    eligible_engine = {
-        _SEPP_FORM_TO_ENGINE[r.development_type]
-        for r in results
-        if r.eligible and r.development_type in _SEPP_FORM_TO_ENGINE
-    }
+        return None, None
+    # Map each eligible SEPP form to its engine form, keeping the FormEligibility so the
+    # winning form's citation can be attached.
+    engine_to_result = {}
+    for r in results:
+        if r.eligible and r.development_type in _SEPP_FORM_TO_ENGINE:
+            engine_to_result.setdefault(_SEPP_FORM_TO_ENGINE[r.development_type], r)
     for form in _ENGINE_FORM_DENSITY:  # densest first
-        if form in eligible_engine:
-            return form
-    return None
+        if form in engine_to_result:
+            r = engine_to_result[form]
+            citation = None
+            if r.source_clause:  # only surface a citation when one genuinely exists
+                citation = {
+                    "source_clause": r.source_clause,
+                    "source_document": r.source_document,
+                    "legislation_url": r.legislation_url,
+                    "effective_date": r.effective_date,
+                }
+            return form, citation
+    return None, None
+
+
+def _apply_lmr_attribution(result, ceiling_from_lmr: bool, citation: Optional[dict]) -> None:
+    """Attribute the ceiling to LMR ONLY when it genuinely raised the limit AND a real clause
+    can be cited. No citation -> no claim (the product never asserts a regulatory fact without
+    a source). Sets the flag + the citation fields on the result in place."""
+    if result is None:
+        return
+    if ceiling_from_lmr and citation and citation.get("source_clause"):
+        result.ceiling_from_lmr = True
+        result.lmr_source_clause = citation.get("source_clause")
+        result.lmr_source_document = citation.get("source_document")
+        result.lmr_legislation_url = citation.get("legislation_url")
+        result.lmr_effective_date = citation.get("effective_date")
+    else:
+        result.ceiling_from_lmr = False
 
 
 def _eligibility_excluded_forms(lat: Optional[float], lng: Optional[float]) -> set[str]:
@@ -1594,7 +1623,7 @@ def _build_climate_disclosure(
     sources_queried += 1
     if firms_raw is not None:
         sources_successful += 1
-        if firms_raw.get("hotspot_count", 0) > 0:
+        if (firms_raw.get("hotspot_count") or 0) > 0:
             empirical.append(EmpiricalFinding(
                 hazard="active_fire",
                 value=float(firms_raw.get("hotspot_count", 0)),
@@ -1872,11 +1901,11 @@ def _select_lot_size_band(
     for key, value in banded.items():
         suffix = key[len(prefix) + 1:]  # e.g. "lot_under_900"
         if "under" in suffix:
-            threshold = float(suffix.split("_")[-1])
+            threshold = float(suffix.split("_")[-1])  # qa-ignore: split on "_" always yields >=1 token; suffix is a band key
             if lot_area_m2 < threshold:
                 return value
         elif "over" in suffix:
-            threshold = float(suffix.split("_")[-1])
+            threshold = float(suffix.split("_")[-1])  # qa-ignore: split on "_" always yields >=1 token; suffix is a band key
             if lot_area_m2 >= threshold:
                 return value
         elif "to" in suffix:
@@ -2025,8 +2054,8 @@ def _build_environmental(
     today = date.today().isoformat()
     auth = ConfidenceLevel.AUTHORITATIVE
 
-    overlay_list = overlays_data.get("overlays", []) if overlays_data else []
-    covered = overlays_data.get("covered_layers", []) if overlays_data else []
+    overlay_list = (overlays_data.get("overlays") or []) if overlays_data else []
+    covered = (overlays_data.get("covered_layers") or []) if overlays_data else []
 
     def _overlay_field(layer_key: str, db_present: bool, layer_id: int) -> DataField:
         """Prefer ingested DB coverage; otherwise live point-query the Protection
@@ -2191,7 +2220,7 @@ def _build_neighbourhood(
             distance_m=d.get("distance_m"),
             status=d.get("status"),
             dev_type=d.get("description") or d.get("development_type"),
-            lodgement_date=d.get("lodged") or (str(d.get("lodgement_date", ""))[:10] if d.get("lodgement_date") else None),
+            lodgement_date=d.get("lodged") or (str(d.get("lodgement_date", ""))[:10] if d.get("lodgement_date") else None),  # qa-ignore: inner str() only runs when lodgement_date is truthy
             cost=d.get("cost_of_development"),
         )
         for d in das
@@ -2200,7 +2229,7 @@ def _build_neighbourhood(
     shadow_schema = None
     if shadow_result:
         scenarios = []
-        for s in shadow_result.get("scenarios", []):
+        for s in (shadow_result.get("scenarios") or []):
             scenarios.append(ShadowScenario(
                 date_label=s.get("date_label", ""),
                 time_label=s.get("time_label", ""),
@@ -2309,7 +2338,7 @@ def _build_economics(valuation: dict) -> Economics:
     today = date.today().isoformat()
 
     history = [
-        ValuationHistory(year=h.get("year", ""), value=int(h.get("value")) if h.get("value") else None)
+        ValuationHistory(year=h.get("year") or "", value=int(h.get("value")) if h.get("value") else None)
         for h in (valuation.get("val_history") or [])
     ]
 
@@ -2702,7 +2731,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
     lot_area_m2 = valuation.get("lot_area_m2")
 
     # ── 5. PostGIS fallbacks (same as conveyancing.py) ───────────────────
-    ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
+    ov_by_type = {o.get("layer_type"): o for o in (overlays_data.get("overlays") or [])}
     if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
         controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
     if not controls.get("lot_size") and "lot_size" in ov_by_type:
@@ -2759,7 +2788,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
             _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
             _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
             _excluded_forms = _eligibility_excluded_forms(lat, lng)
-            _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
+            _uplift_form, _uplift_citation = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
             _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                 controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
                 excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
@@ -2775,7 +2804,7 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
                 sepp_standards=sepp_housing,
                 sepp_lep_overrides=sepp_lep_overrides,
             )
-            constraint_result.ceiling_from_lmr = _ceiling_from_lmr
+            _apply_lmr_attribution(constraint_result, _ceiling_from_lmr, _uplift_citation)
         except Exception as e:
             logger.warning("Constraint arithmetic computation failed: %s", e)
 
@@ -3222,7 +3251,7 @@ def _generate_brief_sse(
 
         # ── Yield planning_controls (portal + overlays for fallbacks) ────
         # PostGIS fallbacks
-        ov_by_type = {o.get("layer_type"): o for o in overlays_data.get("overlays", [])}
+        ov_by_type = {o.get("layer_type"): o for o in (overlays_data.get("overlays") or [])}
         if not controls.get("ass_class") and "acid_sulfate" in ov_by_type:
             controls["ass_class"] = ov_by_type["acid_sulfate"].get("value") or "Present"
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
@@ -3295,7 +3324,7 @@ def _generate_brief_sse(
                     _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
                     _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
-                    _uplift_form = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
+                    _uplift_form, _uplift_citation = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
                     _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
                         excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
@@ -3312,7 +3341,7 @@ def _generate_brief_sse(
                         sepp_lep_overrides=sepp_lep_overrides,
                     )
                     if constraint_result is not None:
-                        constraint_result.ceiling_from_lmr = _ceiling_from_lmr
+                        _apply_lmr_attribution(constraint_result, _ceiling_from_lmr, _uplift_citation)
                         constraint_field = DataField(
                             value=constraint_result,
                             confidence=ConfidenceLevel.DERIVED,

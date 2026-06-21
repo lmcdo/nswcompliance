@@ -1,59 +1,74 @@
 {
   "tier": "standard",
-  "commit_hash": "6bccd611",
-  "justification": "LMR attribution flag: expose whether the capacity ceiling was raised by the Housing-SEPP / Low-and-Mid-Rise reforms (vs the base zone tier), and show a one-line note on the card. Conservative by design — the flag is True ONLY when the LMR uplift strictly raises the ceiling above what the base zone+LGA LEP already permits, so we never over-attribute density to LMR.",
+  "commit_hash": "2ac26335",
+  "justification": "Carry the LMR/SEPP citation end-to-end so the capacity card's LMR note cites the real clause, and gate the note on a citation (no clause -> no claim). Fixes the #566 gap where the card asserted an LMR conclusion with no source even though housing_sepp_standards holds the clause. Verified live: the uplift returns clause 172(2)(a), 'SEPP (Housing) 2021 - LMR Amendment', legislation.nsw.gov.au, effective 2025-02-28.",
   "files": [
-    "services/constraint_models.py",
+    "services/housing_sepp_eligibility.py",
     "services/intelligence_brief.py",
+    "services/constraint_models.py",
     "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
     "tests/test_eligibility_gates.py"
   ],
   "pre_impl": {
-    "existing_data": "_lmr_uplift_form already runs the live LMR eligibility query and _realistic_forms already takes the denser of base and uplift; both brief paths compute it. The result model had no field recording WHETHER the ceiling came from LMR.",
-    "assumption_mismatch": "The card could not say why the ceiling was high. Naively flagging 'LMR eligible' would over-claim — many lots reach that density via the base LEP, not LMR.",
-    "new_vs_existing": "No new query — reuses the uplift already computed. Adds ceiling_from_lmr to the result model, an opt-in return_source kwarg to _realistic_forms (default keeps the 2-tuple so existing callers/tests are unchanged), and a card note.",
-    "external_source_error": "No new fetching. Fail-safe unchanged: an uplift query failure -> _lmr_uplift_form None -> flag False -> base ceiling -> no note.",
-    "frontend_type": "TypeScript: ceiling_from_lmr?: boolean|null added; the note renders only when true. tsc --noEmit passes.",
-    "user_failure_mode": "Before: the ceiling gave no reason. After: when LMR genuinely raises the limit, the card adds 'Higher limit available here under the Low & Mid-Rise Housing reforms.' On lots where the base LEP already permits the density (e.g. 14 Stanley, Mascot — verified flag False), no note shows, which is the honest result."
+    "existing_data": "housing_sepp_standards already has source_clause/source_document/legislation_url/effective_date/verified_at. _fetch_standards_grouped dropped them. Live-verified clauses: multi_dwelling 172(2)*, residential_flat_r1r2 174, r3r4_inner 175, r3r4_outer 176.",
+    "assumption_mismatch": "The #566 note assumed attribution was enough; the product requires a surfaced citation. The clause existed in the DB but was never carried through.",
+    "new_vs_existing": "No new source or query — extends the existing _fetch_standards_grouped SELECT (same table) to read the citation columns. FormEligibility + _lmr_uplift_form + ConstraintArithmeticResult carry it; a shared _apply_lmr_attribution gates the claim.",
+    "external_source_error": "Fail-safe preserved: any eligibility/query failure -> _lmr_uplift_form (None, None) -> _apply_lmr_attribution sets ceiling_from_lmr False -> no note. No new external call.",
+    "frontend_type": "TypeScript: 4 lmr_* citation fields added; the note renders ONLY when ceiling_from_lmr && lmr_source_clause, with the clause + document + legislation link. tsc passes.",
+    "user_failure_mode": "Before: 'Higher limit available here under the Low & Mid-Rise Housing reforms' with NO citation. After: 'Higher limit under SEPP (Housing) 2021 - LMR Amendment cl 172(2)(a) (from 2025-02-28)' linking legislation.nsw.gov.au; if no clause is available, no note at all."
   },
   "functions": [
     {
-      "name": "_realistic_forms",
-      "file_line": "services/intelligence_brief.py:1060",
-      "input": "zone, lga, excluded_forms, uplift_form, return_source",
-      "output": "(floor, ceiling) by default; (floor, ceiling, ceiling_from_lmr) when return_source=True",
-      "if_none": "no uplift / uplift not denser than base -> ceiling_from_lmr False; fail-safe to dwelling_house"
+      "name": "_apply_lmr_attribution",
+      "file_line": "services/intelligence_brief.py",
+      "input": "the constraint result, the geometric ceiling_from_lmr flag, and the uplift citation dict (or None)",
+      "output": "sets ceiling_from_lmr + the lmr_* citation fields ONLY when the ceiling was raised by LMR AND a real source_clause exists",
+      "if_none": "no citation -> ceiling_from_lmr forced False (no uncited claim); None result -> no-op"
+    },
+    {
+      "name": "_lmr_uplift_form",
+      "file_line": "services/intelligence_brief.py",
+      "input": "zone, lat, lng, lot area/width, heritage",
+      "output": "(densest eligible engine form, citation dict) for the winning form, or (None, None)",
+      "if_none": "no eligible form or any error -> (None, None); a form with no source_clause -> (form, None)"
     }
   ],
-  "values": "N/A - no regulatory values; the flag is derived from the already-computed forms.",
-  "queries": "N/A - no new query; reuses the existing live LMR eligibility result.",
+  "values": "N/A - no hardcoded regulatory values. The clause/document/url/date come from housing_sepp_standards; the engine reads, never invents them.",
+  "queries": "N/A for new queries - extends the existing housing_sepp_standards SELECT in _fetch_standards_grouped to read citation columns already on the table; no new table or endpoint.",
   "break_it": [
     {
-      "scenario": "The base zone tier already reaches the uplift density",
-      "what_happens": "naively the note would wrongly credit LMR",
-      "repro": "test_realistic_forms_lmr_source_flag: uplift == base -> flag False; verified live 14 Stanley/Mascot flag False",
+      "scenario": "LMR raises the ceiling but no clause exists for the winning form",
+      "what_happens": "an uncited LMR claim would appear (the exact product failure)",
+      "repro": "test_apply_lmr_attribution_no_clause_makes_no_claim + test_lmr_uplift_form_no_clause_returns_no_citation",
       "mitigated": true,
-      "how": "ceiling_from_lmr = uplift set AND ceiling == uplift AND ceiling != base — only a STRICT raise counts"
+      "how": "_apply_lmr_attribution forces ceiling_from_lmr False when no clause; the card gates the note on lmr_source_clause"
     },
     {
-      "scenario": "Existing callers/tests expect the 2-tuple return",
-      "what_happens": "changing the return would break them",
-      "repro": "return_source defaults False; test_realistic_forms_threads_exclusions still asserts the 2-tuple",
+      "scenario": "The eligibility / 776 query fails at request time",
+      "what_happens": "the note could show on an unknown state",
+      "repro": "_lmr_uplift_form returns (None, None) on any error",
       "mitigated": true,
-      "how": "the 3-tuple is opt-in; only the two brief call sites pass return_source=True"
+      "how": "no uplift -> no citation -> no note; base ceiling stands; brief never blocked"
     },
     {
-      "scenario": "The LMR eligibility query fails at request time",
-      "what_happens": "the note could appear on a failed/unknown state",
-      "repro": "_lmr_uplift_form returns None on any error -> no uplift -> flag False",
+      "scenario": "effective_date is a date object that must serialise to JSON",
+      "what_happens": "a raw date could break model_dump / the SSE payload",
+      "repro": "_fetch_standards_grouped converts effective_date via .isoformat()",
       "mitigated": true,
-      "how": "fail-safe to the base ceiling with no note; the brief is never blocked"
+      "how": "the citation carries effective_date as an ISO string"
+    },
+    {
+      "scenario": "The base LEP already permits the density (LMR not the reason)",
+      "what_happens": "crediting LMR would be wrong",
+      "repro": "ceiling_from_lmr only True on a strict raise (existing 3a/attribution test); 14 Stanley/Mascot stay False",
+      "mitigated": true,
+      "how": "the geometric flag gate AND the citation gate both must pass"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
     "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
-    "manual_verify": "Run a brief on a lot where LMR strictly adds density beyond the base LEP: the capacity card shows 'Higher limit available here under the Low & Mid-Rise Housing reforms.' On lots whose base LEP already permits the ceiling density, the note does not show."
+    "manual_verify": "Run a brief on a lot where LMR strictly raises the ceiling: the capacity card shows 'Higher limit under SEPP (Housing) 2021 ... cl <clause> (from <date>)' linking legislation.nsw.gov.au. On a lot whose base LEP already permits the density, or where no clause exists, no LMR note appears."
   }
 }
