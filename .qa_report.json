@@ -1,28 +1,28 @@
 {
   "tier": "minor",
-  "commit_hash": "a59561e2",
-  "justification": "Concurrency cap on the brief SSE stream to stop the 8GB Railway container OOM-crashing when two heavy briefs run at once (each peaks at a few GB from Sentinel-2 + pre-DA embeddings + terrain arrays). A threading.BoundedSemaphore (default 1, env BRIEF_MAX_CONCURRENCY) serialises heavy briefs; a queued request waits up to 150s then gets an honest 'busy' event instead of a crash. Investigation found the flood rasters are disk + location-gated (not the RAM cause), so lazy-loading them was NOT shipped — the concurrency cap is the actual fix.",
-  "files": ["services/intelligence_brief.py"],
+  "commit_hash": "540966d9",
+  "justification": "DCP Controls card gets its own full-width row so the long PDF URL is readable, and URL fields (DCP URL, Legislation URL) render as styled clickable links ('Open the DCP document (PDF) ↗') instead of raw overflowing addresses.",
+  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx"],
   "pre_impl": {
-    "existing_data": "Railway logs: two POST /pipeline/intelligence-brief/stream at 07:12:06 and 07:12:19, then 'Killed' (OOM) at 07:14:08 and auto-restart. Memory is at the plan cap (8GB). Confirmed: torch is NOT imported at boot; flood_truth reads the 520MB Hawkesbury rasters only when a lot is within the study bounds (gated), so they are disk + on-demand, not a RAM baseline. The OOM is a per-brief runtime spike x concurrency.",
-    "assumption_mismatch": "Earlier framing blamed the 520MB rasters as RAM; investigation shows they are disk-backed (/tmp) and location-gated. The real cause is concurrent heavy briefs.",
-    "new_vs_existing": "No new query or pipeline. Adds a module-level BoundedSemaphore and wraps the existing _safe_brief_sse generator with acquire (timeout) / finally-release.",
-    "external_source_error": "Independent of data sources. If the semaphore can't be acquired in time, a clean 'busy' SSE error event is emitted; the brief never crashes the container.",
-    "frontend_type": "N/A (backend Python). The frontend already renders an SSE 'error' event.",
-    "user_failure_mode": "Before: a second concurrent brief could OOM-kill the container, severing all in-flight streams (and dropping the 'complete' event). After: heavy briefs serialise; a second request waits or gets an honest 'busy' message; no OOM crash."
+    "existing_data": "spanFor() already maps sections to grid spans; the dcp_controls section carries a DCP URL field. Values rendered as raw strings via FieldValue's predecessor.",
+    "assumption_mismatch": "A long PDF URL in a single tile overflowed/was unreadable; it should be a link, and the card needs room.",
+    "new_vs_existing": "Adds FULL_ROW_SECTIONS (dcp_controls -> full row) and a FieldValue component that renders http(s) values as labelled links; reused in both the DataField and plain value branches.",
+    "external_source_error": "Pure display; non-URL values render unchanged via the display string.",
+    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
+    "user_failure_mode": "Before: DCP card squeezed in a tile with a raw overflowing URL. After: DCP card spans the row; the URL is a clickable 'Open the DCP document (PDF)' link; legislation URLs likewise."
   },
-  "functions": [],
-  "values": "N/A - no regulatory values; a concurrency constant.",
+  "functions": [
+    {"name": "FieldValue", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "the display string, the raw value, and the field key", "output": "a clickable labelled link when the raw value is an http(s) URL, otherwise the plain display text", "if_none": "non-URL values render exactly as before via the display string"}
+  ],
+  "values": "N/A - display only; no regulatory values.",
   "queries": "N/A - no database or API query.",
   "break_it": [
-    {"scenario": "A brief generator raises before release", "what_happens": "the semaphore could leak and permanently block briefs", "repro": "the acquire is paired with a finally: _BRIEF_SEMAPHORE.release()", "mitigated": true, "how": "release is in a finally so it runs on success, exception, or generator close"},
-    {"scenario": "A client disconnects mid-stream (generator GC'd)", "what_happens": "the permit might not be released", "repro": "Python closes the generator (GeneratorExit) which runs the finally", "mitigated": true, "how": "the finally release runs on generator close/GC"},
-    {"scenario": "Traffic exceeds the cap", "what_happens": "requests could hang forever", "repro": "acquire has a 150s timeout; on miss it yields a 'busy' error event and returns", "mitigated": true, "how": "bounded wait + honest busy message, never an indefinite hang"},
-    {"scenario": "The cap is too low and serialises legitimate concurrent demand", "what_happens": "legitimate users could wait too long", "repro": "BRIEF_MAX_CONCURRENCY is an env var; raise it once the container has more memory", "mitigated": true, "how": "configurable without a code change; default 1 is the safe value at 8GB"}
+    {"scenario": "A non-URL string that starts with http-like text", "what_happens": "could be mis-linked", "repro": "the test is /^https?:\/\//i — requires an actual http(s):// prefix", "mitigated": true, "how": "anchored regex only matches genuine URLs"},
+    {"scenario": "A URL field with a null/empty value", "what_happens": "an empty link could render", "repro": "raw must be a string matching the URL regex; null/empty falls through to the display text", "mitigated": true, "how": "typeof raw === 'string' guard plus the regex"},
+    {"scenario": "The full-row span breaks the bento layout on small screens", "what_happens": "overflow on mobile", "repro": "the span is col-span-1 on mobile, widening only at md/xl", "mitigated": true, "how": "responsive span: 1 col on mobile, 2 at md, 3 at xl"}
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "Railway: optionally set BRIEF_MAX_CONCURRENCY=2 if you upgrade memory; leave unset (=1) on the 8GB plan. The lazy-raster idea was investigated and dropped (rasters are disk + location-gated, not the RAM cause).",
-    "manual_verify": "Fire two briefs at once: the second queues behind the first (or returns a 'busy' event) instead of OOM-killing the container; a single brief is unaffected."
+    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A",
+    "manual_verify": "Open a brief: the DCP Controls card spans the full row and its URL is a clickable 'Open the DCP document (PDF)' link; the Planning Controls legislation URL is also a link."
   }
 }

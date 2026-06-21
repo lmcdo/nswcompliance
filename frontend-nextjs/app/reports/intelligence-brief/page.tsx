@@ -75,7 +75,10 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
 // get two columns; everything else is a single tile. Driving the layout off the
 // section key keeps it stable as cards stream in at uneven heights.
 const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints']);
+// DCP controls carries a long PDF URL — give it the full row so it reads cleanly.
+const FULL_ROW_SECTIONS = new Set(['dcp_controls']);
 function spanFor(section: string): string {
+  if (FULL_ROW_SECTIONS.has(section)) return 'col-span-1 md:col-span-2 xl:col-span-3';
   return WIDE_SECTIONS.has(section) ? 'md:col-span-2' : 'col-span-1';
 }
 
@@ -283,6 +286,23 @@ function isDataField(val: unknown): val is { value: unknown; confidence: string;
   return typeof val === 'object' && val !== null && !Array.isArray(val) && 'confidence' in val && 'source' in val;
 }
 
+// Render a field value — if it's a URL, show a readable clickable link instead of
+// a raw, overflowing address.
+function FieldValue({ display, raw, fieldKey }: { display: string; raw: unknown; fieldKey: string }) {
+  if (typeof raw === 'string' && /^https?:\/\//i.test(raw)) {
+    const label = /dcp/i.test(fieldKey) ? 'Open the DCP document (PDF)'
+      : /legislation/i.test(fieldKey) ? 'Open the legislation'
+      : 'Open the document';
+    return (
+      <a href={raw} target="_blank" rel="noopener noreferrer"
+         className="text-teal-600 hover:text-teal-800 underline font-medium">
+        {label} ↗
+      </a>
+    );
+  }
+  return <>{display}</>;
+}
+
 function SectionData({ data, section, satelliteRan = false }: { data: Record<string, unknown>; section?: string; satelliteRan?: boolean }) {
   // Merge "<field>_units" into "<field>" so e.g. Height reads "7 m", not a
   // separate "Height Units: m" row.
@@ -349,7 +369,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           return (
             <div key={key} className="flex flex-col">
               <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-              <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]">{display}</dd>
+              <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]"><FieldValue display={display} raw={df.value} fieldKey={key} /></dd>
             </div>
           );
         }
@@ -357,7 +377,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
         return (
           <div key={key} className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
-            <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]">{valueWithUnit(key, val, unitFor[key])}</dd>
+            <dd className="text-sm text-slate-900 mt-0.5 break-words [overflow-wrap:anywhere]"><FieldValue display={valueWithUnit(key, val, unitFor[key])} raw={val} fieldKey={key} /></dd>
           </div>
         );
       })}
