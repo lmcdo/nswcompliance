@@ -51,7 +51,7 @@ class BriefConfig:
     timeout_shadow: float = 15.0
     timeout_satellite: float = 45.0
     timeout_strata: float = 5.0
-    timeout_terrain: float = 30.0
+    timeout_terrain: float = 55.0  # whitebox DEM analysis — match the standalone tool budget
 
     # NSW bounding box (WGS84)
     nsw_lat_min: float = -37.5
@@ -2685,9 +2685,9 @@ def run_intelligence_brief(req: IntelligenceBriefRequest):
 
         # Satellite results
         if req.include_satellite:
-            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
-            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
-            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            bushfire_df = _timed_result(f_bushfire, 30, "bushfire_prescreen", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 50, "flood_truth", timings)
+            climate_df = _timed_result(f_climate, 25, "climate_risk_score", timings)
             granny_df = _timed_result(f_granny, 30, "granny_flat_detect", timings)
             uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
             arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
@@ -3370,7 +3370,7 @@ def _generate_brief_sse(
         uhi_raw = arr_raw = firms_raw = None
 
         if req.include_satellite:
-            bushfire_df = _timed_result(f_bushfire, CONFIG.timeout_postgis + 5, "bushfire_prescreen", timings)
+            bushfire_df = _timed_result(f_bushfire, 30, "bushfire_prescreen", timings)
             bushfire_raw = bushfire_df.value
             bushfire_detail = _build_bushfire_detail(bushfire_raw)
             sections_yielded += 1
@@ -3384,7 +3384,7 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            flood_sat_df = _timed_result(f_flood_sat, 20, "flood_truth", timings)
+            flood_sat_df = _timed_result(f_flood_sat, 50, "flood_truth", timings)
             flood_raw_sat = flood_sat_df.value
             flood_detail = _build_flood_detail(flood_raw_sat)
             sections_yielded += 1
@@ -3398,7 +3398,7 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            climate_df = _timed_result(f_climate, 10, "climate_risk_score", timings)
+            climate_df = _timed_result(f_climate, 25, "climate_risk_score", timings)
             uhi_df = _timed_result(f_uhi, 10, "nsw_uhgc", timings)
             arr_df = _timed_result(f_arr, 18, "arr_data_hub", timings)
             firms_df = _timed_result(f_firms, 18, "nasa_firms", timings)
