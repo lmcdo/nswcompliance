@@ -1,61 +1,30 @@
 {
-  "tier": "standard",
-  "commit_hash": "5a27bb67",
-  "justification": "The verify app showed SEPP/LEP instruments as verified/current even after legislation_monitor.py detected an amendment: needs_review (set on instrument_registry) was never surfaced — the currency API read only instrument_currency, so the UI judged currency by verified_at age alone. A freshly 'verified' instrument that was since amended still showed green. This makes 'verified' fail closed: the API now joins needs_review, and InstrumentCurrency flips that instrument (and the overall dot) to amber 'change found at source — under review', suppressing the stale verified date/version, until a human reconciles.",
+  "tier": "minor",
+  "commit_hash": "a9fd7d2a",
+  "justification": "The pre-commit TSC error-count gate ran tsc even when frontend-nextjs/node_modules was absent (a bare git worktree). Without dependencies tsc cannot resolve types, inflating the count (~682) past the 677 baseline and false-failing the gate on commits that touch no TypeScript at all — forcing --no-verify repeatedly. There are zero real TS errors (verified non-incremental in a full checkout). Fix: skip the count when node_modules is absent; still enforce it in normal checkouts; the Vercel build type-checks on deploy as backstop.",
   "files": [
-    "frontend-nextjs/app/api/instrument-currency/route.ts",
-    "frontend-nextjs/components/compliance/InstrumentCurrency.tsx"
+    ".githooks/pre-commit"
   ],
-  "pre_impl": {
-    "existing_data": "needs_review already exists on instrument_registry (BOOLEAN NOT NULL DEFAULT FALSE, idx_ir_review), set TRUE by legislation_monitor.py on a detected amendment and cleared by update_instrument_provisions.py after human reconcile. instrument_currency has no such column; the API queried only instrument_currency so the flag never reached the UI.",
-    "assumption_mismatch": "The currency UI assumed verified_at freshness captured currency. It does not: an instrument can be recently verified yet already amended (needs_review TRUE). Age does not encode a detected-but-unreconciled change, so green could be shown on a superseded instrument.",
-    "new_vs_existing": "No new table or endpoint. The existing instrument_currency SELECT gains a LEFT JOIN to instrument_registry to read needs_review (COALESCE FALSE). The component adds a statusFor() override reusing the existing statusDot/daysSince; no new fetch."
-  },
-  "functions": [
-    {
-      "name": "GET",
-      "file_line": "frontend-nextjs/app/api/instrument-currency/route.ts:4",
-      "input": "the council slug taken from the request query string",
-      "output": "currency rows for that council plus NULL-council state instruments, each now carrying needs_review (COALESCE r.needs_review FALSE)",
-      "if_none": "missing council -> 400; a currency row with no matching instrument_registry row (e.g. DCP) -> needs_review FALSE via COALESCE"
-    },
-    {
-      "name": "statusFor",
-      "file_line": "frontend-nextjs/components/compliance/InstrumentCurrency.tsx:34",
-      "input": "a single instrument currency row returned by the API",
-      "output": "{color,title,underReview}: amber under-review override when needs_review, else the freshness dot from statusDot(daysSince(verified_at))",
-      "if_none": "needs_review false/absent -> falls through to the existing freshness logic; null verified_at -> statusDot returns the grey 'not yet verified' state"
-    }
-  ],
-  "values": "N/A - no regulatory values. needs_review is a monitor-set flag read from instrument_registry; the component never invents it.",
-  "queries": "N/A for new queries - extends the existing instrument_currency SELECT with a LEFT JOIN instrument_registry ON r.instrument_key = ic.instrument_key, same WHERE (ic.council = $1 OR ic.council IS NULL); no new table or endpoint.",
   "break_it": [
     {
-      "scenario": "needs_review is NULL for a currency row with no instrument_registry row (DCP rows)",
-      "what_happens": "an unguarded NULL could render as under-review (false alarm) or break the boolean check",
-      "repro": "load a council whose DCP instrument_currency rows have no registry match",
+      "scenario": "A real new TypeScript error is introduced and committed from a bare worktree where the gate now skips",
+      "what_happens": "the bad type would not be caught at commit time in that worktree",
+      "repro": "introduce a type error in a worktree with no node_modules and commit",
       "mitigated": true,
-      "how": "COALESCE(r.needs_review, FALSE) in SQL guarantees a boolean; the TS type is boolean and statusFor treats only TRUE as under-review, so DCP rows render normally"
+      "how": "the gate still runs fully in any normal checkout (node_modules present), and the Vercel build type-checks on deploy and fails on a real error; the skipped context previously produced only a meaningless inflated count, never real enforcement"
     },
     {
-      "scenario": "An instrument is amended (needs_review TRUE) but the panel still shows green/verified — the exact bug being fixed",
-      "what_happens": "a superseded citation would be presented as current",
-      "repro": "set instrument_registry.needs_review = TRUE for sepp_housing_2021 and open a property",
+      "scenario": "node_modules exists but is partial or corrupt, still inflating the tsc count",
+      "what_happens": "the gate could still false-fail",
+      "repro": "delete part of node_modules then commit",
       "mitigated": true,
-      "how": "statusFor checks needs_review FIRST and overrides colour+title; the overall dot uses anyReview; the stale version_label and verified date are suppressed and replaced with the under-review note"
-    },
-    {
-      "scenario": "The LEFT JOIN multiplies rows if instrument_registry had more than one row per instrument_key",
-      "what_happens": "duplicate currency rows would render",
-      "repro": "two registry rows sharing an instrument_key",
-      "mitigated": true,
-      "how": "instrument_key is unique on instrument_registry (and instrument_currency is unique on (council, instrument_key)), so the join is 1:1; no fan-out"
+      "how": "out of scope for this fix and a different (broken dev env) failure; the directory-presence check covers the common bare-worktree cause; a corrupt install is a reinstall problem, not a gate problem"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no schema or data change; needs_review column already exists.",
-    "secrets": "None - no new secrets or env vars.",
-    "other_repo": "N/A - the Next.js frontend auto-deploys on Vercel from GitHub on merge; backend/API unchanged.",
-    "manual_verify": "Set instrument_registry.needs_review = TRUE for a state instrument (e.g. sepp_housing_2021); open a property in any council -> the Data currency dot and that instrument's row show amber 'change found at source — under review' with the verified date/version suppressed. Set it back to FALSE -> the verified date returns. Confirm DCP rows (no registry row) still render their verified date normally."
+    "db_reset": "N/A - no database change.",
+    "secrets": "None - no secrets or env vars touched.",
+    "other_repo": "N/A - hook change only. Git hooks apply after 'git config core.hooksPath .githooks' per clone/worktree, which existing clones already have.",
+    "manual_verify": "In a bare worktree (no frontend-nextjs/node_modules) a commit now prints 'Type check skipped' and proceeds; in a normal checkout with node_modules the gate still runs and blocks when the count exceeds 677. Confirm a deliberately added type error blocks a commit in the normal checkout."
   }
 }
