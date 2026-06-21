@@ -1,48 +1,59 @@
 {
-  "tier": "minor",
-  "commit_hash": "5b857dd8",
-  "justification": "Plain-English floor/ceiling labels on the capacity card's dwelling-yield range. The engine-side LMR ceiling uplift is already built and firing (_lmr_uplift_form -> _realistic_forms, both brief paths); the gap was the label jargon. Replaces 'as-of-right' and 'subject to a DA' with 'without council approval' / 'with council approval', and retitles the cell 'Homes you could build'.",
+  "tier": "standard",
+  "commit_hash": "6bccd611",
+  "justification": "LMR attribution flag: expose whether the capacity ceiling was raised by the Housing-SEPP / Low-and-Mid-Rise reforms (vs the base zone tier), and show a one-line note on the card. Conservative by design — the flag is True ONLY when the LMR uplift strictly raises the ceiling above what the base zone+LGA LEP already permits, so we never over-attribute density to LMR.",
   "files": [
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
+    "services/constraint_models.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "tests/test_eligibility_gates.py"
   ],
   "pre_impl": {
-    "existing_data": "Verified live: _lmr_uplift_form fires (R2->dual_occupancy, R3->multi_dwelling_housing) and _realistic_forms raises the ceiling above the base zone tier; both streaming and non-streaming brief paths pass uplift_form. The card already received as_of_right_dwellings + max_permitted_dwellings.",
-    "assumption_mismatch": "The number range was correct but labelled in planning jargon ('as-of-right', 'subject to a DA') a layperson cannot parse.",
-    "new_vs_existing": "No new data or component. Rewords the existing Dwelling Yield cell; no logic change to the floor/ceiling values.",
-    "external_source_error": "No fetching. Pure presentation of values already in the result.",
-    "frontend_type": "Frontend only (TypeScript/React). tsc --noEmit passes.",
-    "user_failure_mode": "Before: '1 as-of-right; up to 3 (multi dwelling housing) subject to a DA'. After: 'Homes you could build 1-3 — 1 without council approval, up to 3 (multi dwelling housing) with council approval.'"
+    "existing_data": "_lmr_uplift_form already runs the live LMR eligibility query and _realistic_forms already takes the denser of base and uplift; both brief paths compute it. The result model had no field recording WHETHER the ceiling came from LMR.",
+    "assumption_mismatch": "The card could not say why the ceiling was high. Naively flagging 'LMR eligible' would over-claim — many lots reach that density via the base LEP, not LMR.",
+    "new_vs_existing": "No new query — reuses the uplift already computed. Adds ceiling_from_lmr to the result model, an opt-in return_source kwarg to _realistic_forms (default keeps the 2-tuple so existing callers/tests are unchanged), and a card note.",
+    "external_source_error": "No new fetching. Fail-safe unchanged: an uplift query failure -> _lmr_uplift_form None -> flag False -> base ceiling -> no note.",
+    "frontend_type": "TypeScript: ceiling_from_lmr?: boolean|null added; the note renders only when true. tsc --noEmit passes.",
+    "user_failure_mode": "Before: the ceiling gave no reason. After: when LMR genuinely raises the limit, the card adds 'Higher limit available here under the Low & Mid-Rise Housing reforms.' On lots where the base LEP already permits the density (e.g. 14 Stanley, Mascot — verified flag False), no note shows, which is the honest result."
   },
-  "functions": [],
-  "values": "N/A - no regulatory values; the floor/ceiling counts are unchanged engine outputs, only relabelled.",
-  "queries": "N/A - no database or API query.",
+  "functions": [
+    {
+      "name": "_realistic_forms",
+      "file_line": "services/intelligence_brief.py:1060",
+      "input": "zone, lga, excluded_forms, uplift_form, return_source",
+      "output": "(floor, ceiling) by default; (floor, ceiling, ceiling_from_lmr) when return_source=True",
+      "if_none": "no uplift / uplift not denser than base -> ceiling_from_lmr False; fail-safe to dwelling_house"
+    }
+  ],
+  "values": "N/A - no regulatory values; the flag is derived from the already-computed forms.",
+  "queries": "N/A - no new query; reuses the existing live LMR eligibility result.",
   "break_it": [
     {
-      "scenario": "Ceiling equals floor (no uplift) — e.g. a single-dwelling lot",
-      "what_happens": "showing a range would be wrong",
-      "repro": "the range branch requires ceilingDwellings > floorDwellings; otherwise the single-value branch renders",
+      "scenario": "The base zone tier already reaches the uplift density",
+      "what_happens": "naively the note would wrongly credit LMR",
+      "repro": "test_realistic_forms_lmr_source_flag: uplift == base -> flag False; verified live 14 Stanley/Mascot flag False",
       "mitigated": true,
-      "how": "single-value branch shows 'N — buildable without council approval'"
+      "how": "ceiling_from_lmr = uplift set AND ceiling == uplift AND ceiling != base — only a STRICT raise counts"
     },
     {
-      "scenario": "max_permitted_form is null but a ceiling count exists",
-      "what_happens": "the form name could render empty",
-      "repro": "humanizeForm(null) returns 'dwelling'",
+      "scenario": "Existing callers/tests expect the 2-tuple return",
+      "what_happens": "changing the return would break them",
+      "repro": "return_source defaults False; test_realistic_forms_threads_exclusions still asserts the 2-tuple",
       "mitigated": true,
-      "how": "humanizeForm falls back to 'dwelling' so the sentence stays grammatical"
+      "how": "the 3-tuple is opt-in; only the two brief call sites pass return_source=True"
     },
     {
-      "scenario": "floorDwellings is 0 (no buildable yield)",
-      "what_happens": "the cell could show a misleading 0",
-      "repro": "hasYield = floorDwellings > 0 gates the whole cell",
+      "scenario": "The LMR eligibility query fails at request time",
+      "what_happens": "the note could appear on a failed/unknown state",
+      "repro": "_lmr_uplift_form returns None on any error -> no uplift -> flag False",
       "mitigated": true,
-      "how": "the cell is not rendered when there is no yield"
+      "how": "fail-safe to the base ceiling with no note; the brief is never blocked"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief for an LMR-eligible lot (e.g. 14 Stanley Concord): the capacity card's 'Homes you could build' reads e.g. '1-3 — 1 without council approval, up to 3 (multi dwelling housing) with council approval.'"
+    "other_repo": "N/A - backend auto-deploys on Railway from GitHub.",
+    "manual_verify": "Run a brief on a lot where LMR strictly adds density beyond the base LEP: the capacity card shows 'Higher limit available here under the Low & Mid-Rise Housing reforms.' On lots whose base LEP already permits the ceiling density, the note does not show."
   }
 }

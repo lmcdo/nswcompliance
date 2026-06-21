@@ -191,6 +191,10 @@ class ConstraintArithmeticResult(BaseModel):
     max_permitted_form: Optional[str] = None
     max_permitted_dwellings: Optional[int] = None
 
+    # True when the ceiling form was raised above the base zone tier by the
+    # Housing-SEPP / Low-and-Mid-Rise uplift (so the card can attribute it).
+    ceiling_from_lmr: bool = False
+
     binding_constraint: Optional[ConstraintType] = None
     binding_constraint_label: str = ""
 

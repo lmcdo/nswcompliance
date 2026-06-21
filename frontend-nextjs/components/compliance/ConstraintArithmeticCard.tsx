@@ -49,6 +49,8 @@ export interface ConstraintArithmeticResult {
   as_of_right_dwellings?: number | null;
   max_permitted_form?: string | null;
   max_permitted_dwellings?: number | null;
+  // True when the ceiling was raised by the Low & Mid-Rise Housing reforms.
+  ceiling_from_lmr?: boolean | null;
   binding_constraint: string | null;
   binding_constraint_label: string;
   steps: ConstraintStep[];
@@ -273,6 +275,11 @@ export function ConstraintArithmeticCard({
                     {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
+                  {result.ceiling_from_lmr && (
+                    <div className="text-xs text-teal-700 mt-1">
+                      Higher limit available here under the Low &amp; Mid-Rise Housing reforms.
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
