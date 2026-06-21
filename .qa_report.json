@@ -1,30 +1,30 @@
 {
   "tier": "minor",
-  "commit_hash": "a9fd7d2a",
-  "justification": "The pre-commit TSC error-count gate ran tsc even when frontend-nextjs/node_modules was absent (a bare git worktree). Without dependencies tsc cannot resolve types, inflating the count (~682) past the 677 baseline and false-failing the gate on commits that touch no TypeScript at all — forcing --no-verify repeatedly. There are zero real TS errors (verified non-incremental in a full checkout). Fix: skip the count when node_modules is absent; still enforce it in normal checkouts; the Vercel build type-checks on deploy as backstop.",
+  "commit_hash": "352184ff",
+  "justification": "The pre-push hook ran the frontend Jest suite even in a bare git worktree with no frontend-nextjs/node_modules, where jest cannot run at all and the push false-fails — forcing --no-verify on every push from a worktree (the project's default workflow). Jest therefore never actually gates in that workflow; it only adds friction. Skip jest when node_modules is absent; it still runs and gates on any push from a full checkout where deps exist. Mirrors the pre-commit TSC fix (#578).",
   "files": [
-    ".githooks/pre-commit"
+    ".githooks/pre-push"
   ],
   "break_it": [
     {
-      "scenario": "A real new TypeScript error is introduced and committed from a bare worktree where the gate now skips",
-      "what_happens": "the bad type would not be caught at commit time in that worktree",
-      "repro": "introduce a type error in a worktree with no node_modules and commit",
+      "scenario": "A real failing frontend test is pushed from a bare worktree where jest now skips",
+      "what_happens": "the failing test would not block that push",
+      "repro": "break a jest test and push from a worktree with no node_modules",
       "mitigated": true,
-      "how": "the gate still runs fully in any normal checkout (node_modules present), and the Vercel build type-checks on deploy and fails on a real error; the skipped context previously produced only a meaningless inflated count, never real enforcement"
+      "how": "jest could never run in that context anyway (no deps) so it was already bypassed with --no-verify; the gate still runs fully on any push from a checkout with node_modules, and pytest (which does not need node_modules) still runs on every push"
     },
     {
-      "scenario": "node_modules exists but is partial or corrupt, still inflating the tsc count",
-      "what_happens": "the gate could still false-fail",
-      "repro": "delete part of node_modules then commit",
+      "scenario": "node_modules present but broken, so jest errors out",
+      "what_happens": "the push would block on a jest error",
+      "repro": "corrupt node_modules then push",
       "mitigated": true,
-      "how": "out of scope for this fix and a different (broken dev env) failure; the directory-presence check covers the common bare-worktree cause; a corrupt install is a reinstall problem, not a gate problem"
+      "how": "that is correct fail-closed behaviour for a present-but-broken install (a reinstall problem); the directory-presence check only skips the genuine bare-worktree case"
     }
   ],
   "post_merge": {
     "db_reset": "N/A - no database change.",
     "secrets": "None - no secrets or env vars touched.",
-    "other_repo": "N/A - hook change only. Git hooks apply after 'git config core.hooksPath .githooks' per clone/worktree, which existing clones already have.",
-    "manual_verify": "In a bare worktree (no frontend-nextjs/node_modules) a commit now prints 'Type check skipped' and proceeds; in a normal checkout with node_modules the gate still runs and blocks when the count exceeds 677. Confirm a deliberately added type error blocks a commit in the normal checkout."
+    "other_repo": "N/A - hook change only; applies via core.hooksPath which existing clones already set.",
+    "manual_verify": "Push from a bare worktree (no frontend-nextjs/node_modules): the hook prints 'Skipped: ... jest cannot run' and proceeds past stage 2 (pytest still runs). Push from a full checkout: jest still runs and blocks on a failing test."
   }
 }
