@@ -1,30 +1,31 @@
 {
   "tier": "minor",
-  "commit_hash": "352184ff",
-  "justification": "The pre-push hook ran the frontend Jest suite even in a bare git worktree with no frontend-nextjs/node_modules, where jest cannot run at all and the push false-fails — forcing --no-verify on every push from a worktree (the project's default workflow). Jest therefore never actually gates in that workflow; it only adds friction. Skip jest when node_modules is absent; it still runs and gates on any push from a full checkout where deps exist. Mirrors the pre-commit TSC fix (#578).",
+  "commit_hash": "1107f8f0",
+  "justification": "Dead-code removal. The Intelligence Brief had two copies of the fan-out/assembly logic: the batch run_intelligence_brief (POST /pipeline/intelligence-brief) and the streaming _generate_brief_sse (POST /pipeline/intelligence-brief/stream). Only the streaming path is used — the Trigger.dev relay (plotdetect-agents/trigger/intelligence-brief.ts) POSTs to /stream and the frontend consumes the SSE stream. The batch endpoint had zero callers anywhere; the only reference was test_brief_constraint_parity.py, which existed solely to babysit the two copies for drift. Removed the dead function, its route, and the obsolete parity test, and reworded two stale comments that named the deleted function. No logic, query, or schema change. One assembly path remains, eliminating the drift class that previously dropped the capacity headline from the live stream (fixed in #512).",
   "files": [
-    ".githooks/pre-push"
+    "services/intelligence_brief.py",
+    "tests/test_brief_constraint_parity.py"
   ],
   "break_it": [
     {
-      "scenario": "A real failing frontend test is pushed from a bare worktree where jest now skips",
-      "what_happens": "the failing test would not block that push",
-      "repro": "break a jest test and push from a worktree with no node_modules",
+      "scenario": "Some other caller (e.g. an external API consumer) still POSTs to /pipeline/intelligence-brief (the removed batch route)",
+      "what_happens": "that caller would get a 404",
+      "repro": "grep the repo and the Trigger.dev relay for the route",
       "mitigated": true,
-      "how": "jest could never run in that context anyway (no deps) so it was already bypassed with --no-verify; the gate still runs fully on any push from a checkout with node_modules, and pytest (which does not need node_modules) still runs on every push"
+      "how": "verified zero callers: the only reference in-repo was the parity test (reads the function source); the Trigger.dev relay (plotdetect-agents/trigger/intelligence-brief.ts) POSTs to /pipeline/intelligence-brief/stream only (line 156); the frontend consumes the SSE stream; no other in-repo reference exists"
     },
     {
-      "scenario": "node_modules present but broken, so jest errors out",
-      "what_happens": "the push would block on a jest error",
-      "repro": "corrupt node_modules then push",
+      "scenario": "The streaming path silently regresses without the parity test guarding it",
+      "what_happens": "a brief section could go missing from the live stream undetected",
+      "repro": "remove a section emission from _generate_brief_sse",
       "mitigated": true,
-      "how": "that is correct fail-closed behaviour for a present-but-broken install (a reinstall problem); the directory-presence check only skips the genuine bare-worktree case"
+      "how": "the parity test only compared the now-deleted batch path against the stream; with one path it is obsolete. The remaining streaming assembly is covered by tests/test_intelligence_brief_schema.py and tests/test_intelligence_brief_orchestrator.py (157 pass), plus a live SSE smoke (metadata then 8 sections then complete, 0 errors)"
     }
   ],
   "post_merge": {
     "db_reset": "N/A - no database change.",
     "secrets": "None - no secrets or env vars touched.",
-    "other_repo": "N/A - hook change only; applies via core.hooksPath which existing clones already set.",
-    "manual_verify": "Push from a bare worktree (no frontend-nextjs/node_modules): the hook prints 'Skipped: ... jest cannot run' and proceeds past stage 2 (pytest still runs). Push from a full checkout: jest still runs and blocks on a failing test."
+    "other_repo": "N/A - removes an unused backend route; the Trigger.dev relay in plotdetect-agents already calls /stream only, so nothing downstream changes.",
+    "manual_verify": "Run a brief from the UI: it still streams (metadata then sections then complete). POST /pipeline/intelligence-brief now 404s (intended; nothing calls it); POST /pipeline/intelligence-brief/stream unchanged."
   }
 }
