@@ -1,31 +1,61 @@
 {
   "tier": "standard",
-  "commit_hash": "6841c293",
-  "justification": "Decouple Granny Flat to the working async pipeline. The brief's inline GF timed out at 30s (the Modal structure scan needs ~90s) and emitted empty; now the frontend GrannyFlatCard fires the same gated /api/satellite/granny-flat route the standalone tool uses — which gates on SEPP cl 50/53 BEFORE the GPU scan (so an ineligible lot like E1 costs nothing and shows a cited reason), runs the real Modal detection, and is polled. The brief's inline _fetch_granny_flat_detect is no-op'd so Modal isn't double-charged.",
-  "files": ["frontend-nextjs/app/reports/intelligence-brief/page.tsx", "services/intelligence_brief.py"],
+  "commit_hash": "5a27bb67",
+  "justification": "The verify app showed SEPP/LEP instruments as verified/current even after legislation_monitor.py detected an amendment: needs_review (set on instrument_registry) was never surfaced — the currency API read only instrument_currency, so the UI judged currency by verified_at age alone. A freshly 'verified' instrument that was since amended still showed green. This makes 'verified' fail closed: the API now joins needs_review, and InstrumentCurrency flips that instrument (and the overall dot) to amber 'change found at source — under review', suppressing the stale verified date/version, until a human reconciles.",
+  "files": [
+    "frontend-nextjs/app/api/instrument-currency/route.ts",
+    "frontend-nextjs/components/compliance/InstrumentCurrency.tsx"
+  ],
   "pre_impl": {
-    "existing_data": "The working route contract (verified): POST {address,action:'detect'} -> {ineligible,error,evidence} (SEPP cl 50/53 gate) or 202 {jobId}; GET ?jobId= -> {status:'detected'|'completed', data:{samgeo_structure_count,sepp_eligible,sepp_ineligible_reason,lot_area_m2}} | {status:'error'} | {status:'pending'}. The brief streams a satellite.granny_flat section the card hooks onto.",
-    "assumption_mismatch": "The inline 30s run could never finish the ~90s Modal scan, so GF was always empty; the fix reuses the proven async path instead of the inline call.",
-    "new_vs_existing": "Reuses the existing /api/satellite/granny-flat route + granny_flat_reports poll contract verbatim (the contract the standalone reports/granny-flat page already uses). New: a GrannyFlatCard that drives that flow inside the brief, wired to the satellite.granny_flat section.",
-    "external_source_error": "All fetches are wrapped: a POST failure or ineligible response or poll error/timeout each render a distinct honest card (cited ineligible reason / 'couldn't complete'). No throw escapes.",
-    "frontend_type": "GfState is a discriminated union; the poll uses a cancelled flag + bounded 90 attempts; tsc --noEmit passes.",
-    "user_failure_mode": "Before: GF always 'Not run'/empty even when ticked + eligible. After: an ineligible lot shows the cited SEPP reason instantly (no GPU); an eligible lot shows 'analysing…' then the real building count + secondary-dwelling eligibility."
+    "existing_data": "needs_review already exists on instrument_registry (BOOLEAN NOT NULL DEFAULT FALSE, idx_ir_review), set TRUE by legislation_monitor.py on a detected amendment and cleared by update_instrument_provisions.py after human reconcile. instrument_currency has no such column; the API queried only instrument_currency so the flag never reached the UI.",
+    "assumption_mismatch": "The currency UI assumed verified_at freshness captured currency. It does not: an instrument can be recently verified yet already amended (needs_review TRUE). Age does not encode a detected-but-unreconciled change, so green could be shown on a superseded instrument.",
+    "new_vs_existing": "No new table or endpoint. The existing instrument_currency SELECT gains a LEFT JOIN to instrument_registry to read needs_review (COALESCE FALSE). The component adds a statusFor() override reusing the existing statusDot/daysSince; no new fetch."
   },
   "functions": [
-    {"name": "GrannyFlatCard", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:729", "input": "the resolved address and whether satellite analysis was requested for this run", "output": "a card that fires the gated detect route, polls the report, and renders ineligible/result/error/analysing states", "if_none": "when satellite was not requested or no address, it shows the 'tick Include satellite analysis' prompt"}
+    {
+      "name": "GET",
+      "file_line": "frontend-nextjs/app/api/instrument-currency/route.ts:4",
+      "input": "the council slug taken from the request query string",
+      "output": "currency rows for that council plus NULL-council state instruments, each now carrying needs_review (COALESCE r.needs_review FALSE)",
+      "if_none": "missing council -> 400; a currency row with no matching instrument_registry row (e.g. DCP) -> needs_review FALSE via COALESCE"
+    },
+    {
+      "name": "statusFor",
+      "file_line": "frontend-nextjs/components/compliance/InstrumentCurrency.tsx:34",
+      "input": "a single instrument currency row returned by the API",
+      "output": "{color,title,underReview}: amber under-review override when needs_review, else the freshness dot from statusDot(daysSince(verified_at))",
+      "if_none": "needs_review false/absent -> falls through to the existing freshness logic; null verified_at -> statusDot returns the grey 'not yet verified' state"
+    }
   ],
-  "values": "N/A - no hardcoded regulatory values. The eligibility gate + cited reasons come from the route (SEPP cl 50/53) and the structure count from the Modal scan.",
-  "queries": "N/A for new queries - reuses the existing /api/satellite/granny-flat route and its granny_flat_reports poll; the brief backend removes a call (no longer runs detect_structures inline).",
+  "values": "N/A - no regulatory values. needs_review is a monitor-set flag read from instrument_registry; the component never invents it.",
+  "queries": "N/A for new queries - extends the existing instrument_currency SELECT with a LEFT JOIN instrument_registry ON r.instrument_key = ic.instrument_key, same WHERE (ic.council = $1 OR ic.council IS NULL); no new table or endpoint.",
   "break_it": [
-    {"scenario": "Modal is off so the scan returns no structures", "what_happens": "showing a fake '0 buildings' would be dishonest", "repro": "the result card shows the count only when present and always leads with the SEPP eligibility from the route; a null count renders 'Building scan complete' not '0'", "mitigated": true, "how": "count is rendered conditionally; eligibility (the cited, deterministic part) is always shown"},
-    {"scenario": "The lot is ineligible (e.g. E1 commercial)", "what_happens": "running the GPU scan would waste cost", "repro": "the route returns {ineligible:true} before firing Modal; the card shows the cited reason + evidence", "mitigated": true, "how": "the gate runs server-side before the scan; the card never polls in this case"},
-    {"scenario": "The component unmounts or address changes mid-poll", "what_happens": "a late setState on an unmounted component or a stale result", "repro": "the effect sets cancelled=true on cleanup and re-keys on [active,address]", "mitigated": true, "how": "every async path checks cancelled before setState"},
-    {"scenario": "The brief still runs GF inline and double-charges Modal", "what_happens": "two Modal calls per brief", "repro": "_fetch_granny_flat_detect now returns {decoupled:true} without calling detect_structures", "mitigated": true, "how": "the inline Modal call is removed; only the frontend card fires the scan"},
-    {"scenario": "The poll never resolves (job stuck)", "what_happens": "the card could spin forever", "repro": "the loop is bounded to 90 attempts (~3 min) then shows a 'timed out — try again' card", "mitigated": true, "how": "bounded attempts + honest timeout state"}
+    {
+      "scenario": "needs_review is NULL for a currency row with no instrument_registry row (DCP rows)",
+      "what_happens": "an unguarded NULL could render as under-review (false alarm) or break the boolean check",
+      "repro": "load a council whose DCP instrument_currency rows have no registry match",
+      "mitigated": true,
+      "how": "COALESCE(r.needs_review, FALSE) in SQL guarantees a boolean; the TS type is boolean and statusFor treats only TRUE as under-review, so DCP rows render normally"
+    },
+    {
+      "scenario": "An instrument is amended (needs_review TRUE) but the panel still shows green/verified — the exact bug being fixed",
+      "what_happens": "a superseded citation would be presented as current",
+      "repro": "set instrument_registry.needs_review = TRUE for sepp_housing_2021 and open a property",
+      "mitigated": true,
+      "how": "statusFor checks needs_review FIRST and overrides colour+title; the overall dot uses anyReview; the stale version_label and verified date are suppressed and replaced with the under-review note"
+    },
+    {
+      "scenario": "The LEFT JOIN multiplies rows if instrument_registry had more than one row per instrument_key",
+      "what_happens": "duplicate currency rows would render",
+      "repro": "two registry rows sharing an instrument_key",
+      "mitigated": true,
+      "how": "instrument_key is unique on instrument_registry (and instrument_currency is unique on (council, instrument_key)), so the join is 1:1; no fan-out"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A - same Railway process; MODAL_STRUCTURES_URL confirmed ON by the owner so real structure counts return. The satellite-job-runner Trigger.dev task (plotdetect-agents) relays the detect in prod.",
-    "manual_verify": "Run a brief with satellite on: an E1 lot shows a cited 'secondary dwellings not permitted' card instantly (no scan); a residential lot shows 'analysing…' then the real building count + SEPP eligibility. No double Modal run."
+    "db_reset": "N/A - no schema or data change; needs_review column already exists.",
+    "secrets": "None - no new secrets or env vars.",
+    "other_repo": "N/A - the Next.js frontend auto-deploys on Vercel from GitHub on merge; backend/API unchanged.",
+    "manual_verify": "Set instrument_registry.needs_review = TRUE for a state instrument (e.g. sepp_housing_2021); open a property in any council -> the Data currency dot and that instrument's row show amber 'change found at source — under review' with the verified date/version suppressed. Set it back to FALSE -> the verified date returns. Confirm DCP rows (no registry row) still render their verified date normally."
   }
 }
