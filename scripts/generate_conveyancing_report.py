@@ -1652,8 +1652,10 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
             if page > 10:   # safety cap — 2,000 DAs max per council per year
                 break
     except Exception as e:
-        print(f"  [warn] DA API: {e}")
-        return []
+        # Propagate so callers can distinguish a FAILED lookup from a genuine
+        # zero result. A swallowed failure returned as [] gets served downstream
+        # as an authoritative "0 nearby DAs" — a silent false negative.
+        raise RuntimeError(f"Nearby-DA lookup failed: {e}") from e
 
     nearby = []
     for app in apps:
@@ -3537,7 +3539,11 @@ def main():
     council_name = _normalise_council(raw_council) if args.council else raw_council
     if council_name:
         print(f"\nFetching nearby DAs (council: {council_name}) ...")
-        das = get_nearby_das(lat, lng, council_name=council_name)
+        try:
+            das = get_nearby_das(lat, lng, council_name=council_name)
+        except Exception as e:
+            print(f"  [warn] DA search failed: {e}")
+            das = []
     else:
         print("\nSkipping DA search — council could not be derived from LEP")
         das = []

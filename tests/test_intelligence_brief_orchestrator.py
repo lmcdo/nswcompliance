@@ -449,23 +449,50 @@ class TestFetchDrinkingWaterCatchment:
 # 5. Neighbourhood assembly
 # ---------------------------------------------------------------------------
 
+def _da_ok(das: list) -> DataField:
+    """A successful DA lookup (the query ran) — wraps the list AUTHORITATIVE."""
+    return DataField(value=das, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api")
+
+
+def _da_failed() -> DataField:
+    """A failed/timed-out DA lookup — value None, NOT_AVAILABLE, with a reason."""
+    return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                     source="eplanning_da_api", reason="Timeout after 15.0s")
+
+
 class TestBuildNeighbourhood:
     def test_das_mapped(self):
-        nb = _build_neighbourhood(SAMPLE_DAS, SAMPLE_SHADOW)
+        nb = _build_neighbourhood(_da_ok(SAMPLE_DAS), SAMPLE_SHADOW)
         assert len(nb.nearby_das.value) == 2
         assert nb.nearby_das.value[0].number == "DA/2025/0001"
         assert nb.nearby_das.value[0].distance_m == 50
         assert nb.da_count.value == 2
 
+    def test_genuine_empty_stays_authoritative_zero(self):
+        # The query RAN and found none → 0 is a real, authoritative answer.
+        nb = _build_neighbourhood(_da_ok([]), SAMPLE_SHADOW)
+        assert nb.da_count.value == 0
+        assert nb.da_count.confidence == ConfidenceLevel.AUTHORITATIVE
+        assert nb.nearby_das.confidence == ConfidenceLevel.AUTHORITATIVE
+
+    def test_failed_lookup_is_not_authoritative_zero(self):
+        # REGRESSION GUARD: a failed lookup must NOT be served as "0 DAs, authoritative".
+        nb = _build_neighbourhood(_da_failed(), SAMPLE_SHADOW)
+        assert nb.da_count.confidence == ConfidenceLevel.NOT_AVAILABLE
+        assert nb.da_count.value is None
+        assert nb.nearby_das.confidence == ConfidenceLevel.NOT_AVAILABLE
+        assert nb.nearby_das.value is None
+        assert nb.da_count.reason  # carries the failure reason, not a silent 0
+
     def test_shadow_mapped(self):
-        nb = _build_neighbourhood([], SAMPLE_SHADOW)
+        nb = _build_neighbourhood(_da_ok([]), SAMPLE_SHADOW)
         assert nb.shadow.value is not None
         assert nb.shadow.value.height_m == 9.0
         assert len(nb.shadow.value.scenarios) == 1
         assert nb.shadow.confidence == ConfidenceLevel.DERIVED
 
     def test_shadow_unavailable(self):
-        nb = _build_neighbourhood([], None)
+        nb = _build_neighbourhood(_da_ok([]), None)
         assert nb.shadow.value is None
         assert nb.shadow.confidence == ConfidenceLevel.NOT_AVAILABLE
 

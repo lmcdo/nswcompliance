@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-06-21T00:00:00Z",
-  "reason": "Add a concurrency cap (threading.BoundedSemaphore, default 1, env-configurable) around the brief SSE generator so two heavy briefs can't run at once and OOM the 8GB container. No new query; wraps the existing _safe_brief_sse with acquire/finally-release."
+  "status": "passed",
+  "timestamp": "2026-06-21T20:40:00+10:00",
+  "target": "Neighbourhood DA false-negative: a timed-out/failed ePlanning DA lookup served as AUTHORITATIVE '0 nearby DAs'",
+  "findings_summary": "get_nearby_das (generate_conveyancing_report.py:1654) swallows its own API exception and returns [], so _safe_call wraps it as DataField(value=[], AUTHORITATIVE); _build_neighbourhood (intelligence_brief.py:2252-53) then stamps AUTHORITATIVE 0 unconditionally. Fix: get_nearby_das must PROPAGATE failure (raise) so _safe_call yields NOT_AVAILABLE; _build_neighbourhood takes das_df and honours NOT_AVAILABLE (never AUTHORITATIVE 0 on a failed lookup); conveyancing CLI caller (3540) wraps in try/except to preserve its []-degrade. Two callers confirmed (brief + conveyancing PDF). No DB/schema/spatial change; pure error-propagation + confidence logic. Genuine empty result (no exception) stays AUTHORITATIVE 0, correctly."
 }
