@@ -1,63 +1,77 @@
 {
   "tier": "standard",
-  "commit_hash": "52eb6200",
-  "justification": "Terrain diagram never rendered because the DEM fetch failed on timeout. LIVE-probed both endpoints: GA WCS (the primary) returns a ServiceException/400 — its 2.0.1 subset used axis labels Long/Lat but the coverage's real labels are y/x (EPSG:4283), giving InvalidAxisLabel; corrected to y/x (GA still rejects on another param, but this removes the definitively-wrong label and is no regression since GA already failed). The working path is NSW SIX Maps exportImage, which returns a valid GeoTIFF but takes ~26s — longer than the old _TIMEOUT=20, so it was always killed before responding. Raised _TIMEOUT to 40s (SIX Maps's typical latency, still inside the brief's 55s terrain budget) and capped GA at 12s so the broken primary cannot starve the working fallback. SIX Maps latency is variable (sometimes >40s) so terrain remains best-effort; the durable fix is Tier-3 precompute (terrain barely changes per lot).",
+  "commit_hash": "2177b896",
+  "justification": "Three correctness fixes the user caught against the live brief. (1) NEARBY DAs showed 0 while the original PlotDetect map-viewer shows ~112: the brief called the flaky live ePlanning OnlineDA API with a tight 200m radius AND an exact council_name='X' filter (returns 0 on any name-format mismatch; the original deliberately uses a fuzzy ilike). Switched the brief to the consolidated development_applications table via the existing conveyancing_db.fetch_nearby_das (same reliable source the map-viewer uses), dropped the brittle council filter for this proximity query (the lat/lng bbox already constrains location), and widened the radius 200->500m. (2) PRE-DA showed 'Not run' even with the 'Include site history' box ticked: it was collected with timeout_satellite+5 = 50s, but the pre-DA pipeline takes 30-90s, so it always timed out. Added a dedicated timeout_premium=120s. Made the empty-state reason distinguish 'not requested' from 'ran but didn't finish' so the UI no longer tells a user who ticked the box to tick it again. (3) Per the user's 'reliability over speed' directive, raised terrain 55->80s (SIX Maps DEM is slow/variable) and shadow 30->50s so they finish reliably.",
   "files": [
-    "services/dem_service.py"
+    "services/intelligence_brief.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "fetch_dem_region tries GA WCS 1.0.0, GA WCS 2.0.1, then SIX Maps exportImage, each with a single shared _TIMEOUT=20. The brief calls run_terrain_analysis(include_flood=False) so exactly one fetch_dem_region(500m) runs per brief.",
-    "assumption_mismatch": "Assumed the DEM endpoints were simply down; in fact SIX Maps works but is slow (26s) and GA's WCS 2.0.1 axis labels were wrong (Long/Lat vs y/x).",
-    "new_vs_existing": "No new mechanism — adjusted the existing timeout constant, added a GA-specific cap, and corrected the WCS 2.0.1 axis labels.",
-    "external_source_error": "GA WCS returns an OGC ServiceException / ArcGIS 400; the code already treats a non-TIFF GA response as failure and falls through to SIX Maps. A SIX Maps timeout is caught and surfaces as a NOT_AVAILABLE terrain section (honest 'unavailable' card), never a fabricated diagram.",
-    "frontend_type": "Backend only.",
-    "user_failure_mode": "Before: terrain always showed 'unavailable' (no diagram) because the 20s timeout killed the 26s SIX Maps fetch. After: the diagram renders whenever SIX Maps responds within 40s (the common case); a slow/failed fetch still shows an honest unavailable card."
+    "existing_data": "conveyancing_db.fetch_nearby_das(conn, lat, lng, council_name, radius_m, days) already queries development_applications via a lat/lng bbox + Haversine and returns the same shape as the live get_nearby_das, but was unused by the brief. The brief has _get_db_conn() and already imports from conveyancing_db.",
+    "assumption_mismatch": "Assumed the live ePlanning API was the right DA source; the original app proves the consolidated development_applications table is the reliable one, and an exact council_name match silently zeroed results.",
+    "new_vs_existing": "Reused the existing DB function and conn pattern; no new query written. Added a CONFIG.timeout_premium / timeout_shadow_collect and bumped timeout_terrain.",
+    "external_source_error": "A DB connection failure propagates so nearby DAs report NOT_AVAILABLE (honest), not a false 0. The live ePlanning API (now unused by the brief) is no longer a failure source here.",
+    "frontend_type": "Backend + a frontend empty-state message change. tsc --noEmit passes.",
+    "user_failure_mode": "Before: 'No nearby DAs' on a street with 112 council DAs; 'Pre-DA Not run — tick the box' when the box was already ticked. After: nearby DAs come from the reliable table within 500m; pre-DA has 120s to complete and, if it still fails, says it couldn't finish rather than blaming the tickbox."
   },
   "functions": [
     {
-      "name": "_fetch_ga_wcs",
-      "file_line": "services/dem_service.py",
-      "input": "lat, lng, buffer_m in metres, and a timeout in seconds",
-      "output": "a GeoTIFF BytesIO from GA WCS, or None on failure; its timeout is now capped at 12s and its 2.0.1 subset uses the correct y/x axis labels",
-      "if_none": "returns None so fetch_dem_region falls through to SIX Maps"
+      "name": "_fetch_nearby_das",
+      "file_line": "services/intelligence_brief.py",
+      "input": "lat, lng, council_name (unused as a filter), radius_m, days",
+      "output": "nearby DAs from the development_applications table via a bbox + Haversine proximity query, council filter intentionally dropped",
+      "if_none": "a connection failure propagates to NOT_AVAILABLE; a genuine empty result is an honest 0"
     },
     {
-      "name": "fetch_dem_region",
-      "file_line": "services/dem_service.py",
-      "input": "lat, lng, buffer_m, timeout (default 40s)",
-      "output": "a DEM GeoTIFF BytesIO from GA or SIX Maps",
-      "if_none": "raises RuntimeError if both sources fail; the caller maps this to a NOT_AVAILABLE terrain section"
+      "name": "_build_neighbourhood pre-DA reason path",
+      "file_line": "services/intelligence_brief.py",
+      "input": "whether pre-DA was requested and whether it produced a detail",
+      "output": "reason 'Site history not requested' when not requested, else the run's failure reason when it ran but produced nothing",
+      "if_none": "the frontend renders 'tick the box' only for not-requested, otherwise 'couldn't complete'"
     }
   ],
-  "values": "N/A - elevation raster bytes, not regulatory values.",
-  "queries": "N/A - external WCS/ImageServer HTTP only; no DB.",
+  "values": "N/A - DA records and timeouts, not regulatory values.",
+  "queries": [
+    {
+      "purpose": "Fetch nearby development applications within a radius of the lot for the brief Neighbourhood section",
+      "file_line": "scripts/conveyancing_db.py fetch_nearby_das (reused, unchanged) — wired in services/intelligence_brief.py _fetch_nearby_das",
+      "where_clause": "latitude BETWEEN %s AND %s AND longitude BETWEEN %s AND %s AND (lodgement_date >= %s OR determination_date >= %s); council filter intentionally dropped for this proximity query; bounded by the connection 5s statement_timeout; SELECT only, no writes"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "SIX Maps takes longer than 40s for a large/slow region",
-      "what_happens": "the DEM fetch times out and terrain shows an honest unavailable card",
-      "repro": "request a 5000m buffer or hit the service under load",
+      "scenario": "The development_applications table is stale or missing coordinates for an area",
+      "what_happens": "nearby DAs would under-report or read 0",
+      "repro": "query a region with rows lacking latitude/longitude",
       "mitigated": true,
-      "how": "the timeout is caught; terrain surfaces NOT_AVAILABLE with a reason rather than a fabricated or partial diagram. The brief uses the small 500m buffer, the common-case path"
+      "how": "rows with null lat/lng are skipped; the same table backs the original map-viewer which shows current data; a genuine 0 is honest and a connection failure surfaces NOT_AVAILABLE"
     },
     {
-      "scenario": "GA WCS starts hanging instead of fast-failing",
-      "what_happens": "a slow primary could eat the terrain budget before SIX Maps is tried",
-      "repro": "GA latency spikes",
+      "scenario": "Dropping the council filter pulls DAs from an adjacent council across a boundary",
+      "what_happens": "a DA just over the LGA line could appear",
+      "repro": "a property near a council boundary",
       "mitigated": true,
-      "how": "GA is capped at 12s per attempt (min(timeout, _GA_TIMEOUT_CAP)), bounding the wasted time to ~24s and leaving SIX Maps room inside the 55s budget"
+      "how": "the 500m radius is a proximity scope, not a jurisdiction claim — a DA 400m away is genuinely 'nearby' regardless of which council assessed it; results are sorted by distance"
     },
     {
-      "scenario": "GA WCS begins returning TIFFs again with the corrected y/x labels",
-      "what_happens": "GA LiDAR would be served instead of SIX Maps",
-      "repro": "GA fixes its remaining param rejection",
+      "scenario": "Pre-DA still exceeds 120s for some address",
+      "what_happens": "it times out and shows 'couldn't complete'",
+      "repro": "an address whose pre-DA pipeline runs >120s",
       "mitigated": true,
-      "how": "that is the preferred higher-quality source; _is_tiff validates the response before returning, so a non-TIFF GA reply still falls through to SIX Maps"
+      "how": "120s covers the documented 30-90s range with margin; on timeout the honest 'ran but didn't finish' message shows, not a false 'not run'"
+    },
+    {
+      "scenario": "Longer terrain/pre-DA budgets make the whole brief slower under concurrency",
+      "what_happens": "a brief could take ~2min and hold memory longer",
+      "repro": "run a brief with site history + satellite on",
+      "mitigated": true,
+      "how": "the concurrency cap (#577) serialises briefs; the user explicitly accepts longer briefs for reliability; layers still run concurrently so total ~= the slowest layer"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None - both DEM endpoints are keyless public services.",
-    "other_repo": "N/A - the standalone terrain satellite tool uses the same fetch_dem_region and benefits identically.",
-    "manual_verify": "Run a brief with satellite on for an inner-Sydney address: the Terrain Analysis card now renders the shaded-relief diagram when SIX Maps responds within 40s; otherwise it shows an honest 'unavailable' state."
+    "db_reset": "N/A - read-only.",
+    "secrets": "None.",
+    "other_repo": "N/A - same /stream endpoint; the live ePlanning get_nearby_das remains for the conveyancing CLI only.",
+    "manual_verify": "Run a brief for an inner-Sydney street with known DA activity: nearby DAs now list real applications within 500m. Tick 'Include site history' and run: pre-DA completes (up to 120s) instead of showing 'Not run'."
   }
 }

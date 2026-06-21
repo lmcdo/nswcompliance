@@ -52,7 +52,9 @@ class BriefConfig:
     timeout_shadow: float = 15.0
     timeout_satellite: float = 45.0
     timeout_strata: float = 5.0
-    timeout_terrain: float = 55.0  # whitebox DEM analysis — match the standalone tool budget
+    timeout_terrain: float = 80.0  # whitebox DEM analysis; SIX Maps DEM fetch is slow + variable (~26s, sometimes >40s)
+    timeout_premium: float = 120.0  # pre-DA site history is a 30–90s pipeline — give it room to finish, not time out
+    timeout_shadow_collect: float = 50.0  # shadow Sentinel-2 step alone is ~25s; full run needs headroom to be reliable
 
     # NSW bounding box (WGS84)
     nsw_lat_min: float = -37.5
@@ -61,7 +63,7 @@ class BriefConfig:
     nsw_lng_max: float = 153.7
 
     # Search parameters
-    da_radius_m: int = 200
+    da_radius_m: int = 500  # neighbourhood scope — 200m was too tight to be useful
     da_lookback_days: int = 365
 
     # Concurrency — single pool runs all sources; dependents submitted after
@@ -862,11 +864,11 @@ from generate_conveyancing_report import (  # noqa: E402
     detect_former_council,
     get_shadow_risk,
     _council_from_zone_epi,
-    get_nearby_das,
 )
 from conveyancing_db import (  # noqa: E402
     fetch_dcp_setbacks,
     fetch_heritage_postgis,
+    fetch_nearby_das as db_fetch_nearby_das,
     fetch_sepp_housing_standards,
 )
 from lga_lookup import lookup_lga  # noqa: E402
@@ -1362,10 +1364,24 @@ def _fetch_nearby_das(
     lat: float, lng: float, council_name: Optional[str],
     radius_m: int, days: int,
 ) -> list[dict]:
-    """ePlanning DA API: nearby development applications."""
-    if not council_name:
-        return []
-    return get_nearby_das(lat, lng, council_name, radius_m=radius_m, days=days)
+    """Nearby development applications from the consolidated ``development_applications``
+    table — the SAME reliable source the PlotDetect map-viewer uses (not the
+    flaky live ePlanning API, which timed out and returned 0).
+
+    This is a PROXIMITY query: the lat/lng bounding box already constrains
+    location, so the council filter is intentionally dropped (``council_name=None``).
+    An exact ``council_name = 'X'`` match was returning 0 on any name-format
+    mismatch; ``council_name`` is kept in the signature for compatibility but not
+    used as a filter. A connection failure propagates so the brief reports
+    NOT_AVAILABLE rather than a false "0 nearby DAs".
+    """
+    conn = None
+    try:
+        conn = _get_db_conn()
+        return db_fetch_nearby_das(conn, lat, lng, council_name=None, radius_m=radius_m, days=days)
+    finally:
+        if conn:
+            conn.close()
 
 
 def _fetch_shadow(
@@ -2767,7 +2783,7 @@ def _generate_brief_sse(
         das_df = _timed_result(f_das, 15, "eplanning_da_api", timings)
         # 30s: the shadow endpoint's Sentinel-2 fetch step alone can take ~25s;
         # the prior 20s budget guaranteed a timeout before it could return.
-        shadow_df = _timed_result(f_shadow, 30, "shadow_detector", timings)
+        shadow_df = _timed_result(f_shadow, CONFIG.timeout_shadow_collect, "shadow_detector", timings)
 
         dcp_raw = dcp_df.value
         sepp_raw = sepp_df.value or []
@@ -2927,12 +2943,21 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
-            pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_satellite + 5, "pre_da_history", timings) if f_pre_da else DataField(
+            pre_da_requested = f_pre_da is not None
+            pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_premium, "pre_da_history", timings) if f_pre_da else DataField(
                 value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-                source="pre_da_history", reason="Pre-DA history not requested or not available",
+                source="pre_da_history", reason="Site history not requested",
             )
             pre_da_raw = pre_da_df.value
             pre_da_detail = _build_pre_da_detail(pre_da_raw)
+            # Distinguish "not requested" (tick the box) from "requested but didn't
+            # complete" (it ran and failed/timed out) so the UI message is honest.
+            if pre_da_detail:
+                pre_da_reason = None
+            elif pre_da_requested:
+                pre_da_reason = pre_da_df.reason or "Site-history analysis did not complete"
+            else:
+                pre_da_reason = "Site history not requested"
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "satellite.pre_da_history",
@@ -2940,7 +2965,7 @@ def _generate_brief_sse(
                     value=pre_da_detail,
                     confidence=ConfidenceLevel.ESTIMATED if pre_da_detail else ConfidenceLevel.NOT_AVAILABLE,
                     source="pre_da_history", as_at=today,
-                    reason=None if pre_da_detail else "Pre-DA history not requested or not available",
+                    reason=pre_da_reason,
                 ).model_dump(),
                 "progress": int(sections_yielded / total_sections * 100),
             })
