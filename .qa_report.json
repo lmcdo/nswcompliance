@@ -1,53 +1,33 @@
 {
   "tier": "standard",
-  "commit_hash": "a00ffda6",
-  "justification": "After removing the canibuildit->plotdetect redirect (#591), canibuildit.com.au served the SAME PlotDetect info homepage as plotdetect.com.au. But canibuildit is meant to be the satellite apps site (the /reports section), not a clone of the info homepage. Add a hostname rewrite in middleware mirroring the existing verify.plotdetect.com.au -> /assessment rule: canibuildit.com.au (and www) root rewrites to /reports (the satellite landing). plotdetect.com.au root is untouched and stays the info site.",
+  "commit_hash": "pending",
+  "justification": "WO-2 (overlays) + WO-3 (controls) fail-closed — the two sites left tracked by the failsoft lint after S1 (#593). A FAILED overlay fetch rendered the overlay list + coverage at AUTHORITATIVE (and flood/bushfire confidently False), and a FAILED portal-controls fetch rendered zone/height/FSR blank@AUTHORITATIVE — both confident false-negatives. Used _unwrap_or_default to thread overlays_failed/controls_failed into _build_environmental and _build_planning_controls. Precise scope: purely overlay-derived fields (overlays, overlay_coverage) -> NOT_AVAILABLE on overlays_failed; flood_epi + bushfire_designation combine overlays WITH portal controls so only downgrade when BOTH failed (a surviving source still gives a real answer); mine/contaminated/drinking/heritage come from separate fetches and are untouched; biodiversity/riparian/wetlands self-heal via their existing live-query fallback. lot_dimensions stays AUTHORITATIVE under a controls failure (it comes from geometry, not controls). The failsoft lint now reports 0 tracked todos.",
   "files": [
-    "frontend-nextjs/middleware.ts"
+    "services/intelligence_brief.py",
+    "tests/test_brief_failclosed.py"
   ],
   "pre_impl": {
-    "existing_data": "middleware already does hostname routing: isVerifyDomain (verify.plotdetect.com.au) at pathname '/' rewrites to /assessment, reading host from x-forwarded-host first (reliable behind Cloudflare+Vercel). The satellite section app/reports has its own layout and a landing page app/reports/page.tsx titled 'Property Intelligence Reports — NSW'.",
-    "assumption_mismatch": "Removing the redirect (#591) was assumed to make canibuildit its own site, but with no host routing it just rendered the shared root (the PlotDetect info homepage). The domain needs to map to the satellite section, not the info root.",
-    "new_vs_existing": "No new mechanism. Adds isCanibuilditDomain (apex + www) and one rewrite to /reports, directly mirroring the existing isVerifyDomain rewrite. plotdetect.com.au and verify.plotdetect.com.au paths are unaffected."
+    "existing_data": "_build_environmental stamps overlay-derived fields with a shared `auth`; flood_epi/bushfire combine overlay_list with controls; mine/contaminated/drinking/heritage/anef use separate raws. _build_planning_controls stamps all portal fields with `auth`; lot_dimensions uses geometry/area.",
+    "assumption_mismatch": "The audit implied mine/contaminated were overlay-derived false-negatives; in fact they are separate fetches. flood_epi/bushfire are dual-source, so a blanket overlay-failure downgrade would wrongly blank a valid portal answer.",
+    "new_vs_existing": "Reused _unwrap_or_default (S1) + the existing confidence-stamping; added overlays_failed/controls_failed params and precise auth variants (overlay_auth, both_failed).",
+    "external_source_error": "A failed PostGIS overlay or portal-controls fetch now surfaces NOT_AVAILABLE on the affected fields, never a confident 'no hazard'/blank.",
+    "frontend_type": "Backend only; the frontend already renders NOT_AVAILABLE via describeUnavailable. 174 brief tests pass.",
+    "user_failure_mode": "Before: a failed overlay fetch -> confident overlay list/coverage + (if controls also failed) confident 'no flood'; a failed controls fetch -> blank zone/height/FSR read as authoritative. After: those surface NOT_AVAILABLE; a surviving source still answers; geometry-derived lot dimensions are unaffected."
   },
   "functions": [
-    {
-      "name": "middleware",
-      "file_line": "frontend-nextjs/middleware.ts:91",
-      "input": "the incoming NextRequest, from which host is read via x-forwarded-host then host then nextUrl.hostname",
-      "output": "for the canibuildit apex/www host at pathname '/', an internal NextResponse.rewrite to /reports; all other hosts and paths fall through unchanged",
-      "if_none": "host not canibuildit, or path not '/' -> no rewrite; verify and plotdetect behaviour is preserved exactly"
-    }
+    {"name": "_build_environmental", "file_line": "services/intelligence_brief.py", "input": "controls, overlays_data, heritage, the separate raws, lat/lng, and overlays_failed/controls_failed flags", "output": "overlay list/coverage NOT_AVAILABLE when the overlay fetch failed; flood_epi/bushfire NOT_AVAILABLE only when both the overlay and the portal-controls fetch failed", "if_none": "with both flags False it behaves exactly as before (AUTHORITATIVE)"},
+    {"name": "_build_planning_controls", "file_line": "services/intelligence_brief.py", "input": "controls, overlays_data, lot geometry/area, and a controls_failed flag", "output": "the portal-derived fields (zone/height/FSR/etc) NOT_AVAILABLE when the controls fetch failed, while geometry-derived lot_dimensions stays AUTHORITATIVE", "if_none": "with controls_failed False it behaves exactly as before"}
   ],
-  "values": "N/A - no regulatory values; this is host-based request routing only.",
-  "queries": "N/A - no database queries.",
+  "values": "N/A - confidence stamping, not regulatory values.",
+  "queries": "N/A - no DB query changed.",
   "break_it": [
-    {
-      "scenario": "The /reports landing needs an auth/session the rewrite path does not get, so canibuildit root renders blank or bounces",
-      "what_happens": "the satellite home could fail to render for anonymous visitors",
-      "repro": "hit canibuildit.com.au/ logged out after deploy",
-      "mitigated": true,
-      "how": "this mirrors the working verify -> /assessment rewrite; it is a rewrite (URL stays /), and /reports is a public marketing landing with its own layout, not a gated route; the session-refresh branch only augments /reports/* tool pages, it does not block the landing"
-    },
-    {
-      "scenario": "www.canibuildit.com.au does not match the apex rule and serves the info homepage",
-      "what_happens": "the www host would show the wrong site",
-      "repro": "hit www.canibuildit.com.au/",
-      "mitigated": true,
-      "how": "isCanibuilditDomain matches BOTH canibuildit.com.au and www.canibuildit.com.au; additionally Vercel 307s www to apex, so the apex rule also covers it"
-    },
-    {
-      "scenario": "host is misread behind Cloudflare so the rule fires on the wrong domain (e.g. plotdetect shows /reports)",
-      "what_happens": "the info site could be replaced by the satellite section",
-      "repro": "inspect x-forwarded-host handling across domains",
-      "mitigated": true,
-      "how": "host is read via x-forwarded-host first (the same reliable source the existing verify rule uses) and matched by exact string equality against only the two canibuildit hosts, so plotdetect.com.au and verify.plotdetect.com.au never match"
-    }
+    {"scenario": "Overlay fetch fails but portal controls succeed and report flood-planning", "what_happens": "flood_epi must keep the real portal answer, not become NOT_AVAILABLE", "repro": "overlays_failed True, controls_failed False, controls.flood_epi truthy", "mitigated": true, "how": "flood_epi only downgrades when both_failed; a surviving controls source keeps AUTHORITATIVE. Guarded by test_flood_epi_survives_when_only_overlays_fail"},
+    {"scenario": "Both overlay and controls fetches fail", "what_happens": "flood_epi must be NOT_AVAILABLE, never a confident False 'no flood'", "repro": "overlays_failed True, controls_failed True", "mitigated": true, "how": "both_failed -> value None + NOT_AVAILABLE. Guarded by test_flood_epi_not_available_when_both_sources_fail"},
+    {"scenario": "A controls failure wrongly blanks lot dimensions that came from geometry", "what_happens": "lot_dimensions should stay AUTHORITATIVE when the polygon/area is present", "repro": "controls_failed True with a valid lot_area_m2", "mitigated": true, "how": "lot_dimensions uses AUTHORITATIVE independent of the controls auth. Guarded by test_controls_failed_does_not_downgrade_lot_dimensions"},
+    {"scenario": "A genuine successful run is wrongly downgraded", "what_happens": "all fields must stay AUTHORITATIVE when nothing failed", "repro": "both flags False", "mitigated": true, "how": "the auth variants reduce to AUTHORITATIVE when no flag is set. Guarded by test_environmental_genuine_success_is_authoritative + test_controls_success_stays_authoritative"}
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None - no secrets or env vars.",
-    "other_repo": "N/A - the Next.js frontend auto-deploys on Vercel from GitHub on merge.",
-    "manual_verify": "After deploy (bust cache with ?cb=N): canibuildit.com.au/ shows the satellite landing 'Property Intelligence Reports'; plotdetect.com.au/ still shows the PlotDetect info homepage; verify.plotdetect.com.au/ still serves /assessment. canibuildit.com.au/reports/solar-yield still works."
+    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A",
+    "manual_verify": "Run the brief normally — environmental + planning controls populate as before. The failsoft lint now reports 0 tracked todos (strata/overlays/controls all resolved)."
   }
 }

@@ -9,10 +9,70 @@ import subprocess
 import sys
 import textwrap
 
-from services.intelligence_brief import _unwrap_or_default, DataField, ConfidenceLevel
+from services.intelligence_brief import (
+    _unwrap_or_default,
+    _build_planning_controls,
+    _build_environmental,
+    DataField,
+    ConfidenceLevel,
+)
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINT = os.path.join(REPO, "scripts", "lint_brief_failsoft.py")
+
+NA = ConfidenceLevel.NOT_AVAILABLE
+AUTH = ConfidenceLevel.AUTHORITATIVE
+_CONTROLS = {"zone": "R2", "height": "9", "fsr": "0.5:1", "flood_epi": False}
+_OVERLAYS = {"overlays": [], "covered_layers": [], "proximity_m": {}}
+
+
+# --- WO-3: controls fail-closed --------------------------------------------
+
+def test_controls_failed_is_not_available():
+    pc = _build_planning_controls({}, _OVERLAYS, controls_failed=True)
+    assert pc.zone.confidence == NA
+    assert pc.height.confidence == NA
+    assert pc.fsr.confidence == NA
+
+
+def test_controls_success_stays_authoritative():
+    pc = _build_planning_controls(_CONTROLS, _OVERLAYS, controls_failed=False)
+    assert pc.zone.confidence == AUTH
+    assert pc.zone.value == "R2"
+
+
+def test_controls_failed_does_not_downgrade_lot_dimensions():
+    # lot_dims comes from geometry/area, not controls — a controls failure must not blank it.
+    pc = _build_planning_controls({}, _OVERLAYS, lot_area_m2=500.0, controls_failed=True)
+    assert pc.lot_dimensions.confidence == AUTH
+    assert pc.lot_dimensions.value is not None
+
+
+# --- WO-2: environmental overlays fail-closed ------------------------------
+
+def test_overlays_failed_blanks_overlay_fields_not_authoritative():
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None, overlays_failed=True, controls_failed=False)
+    # purely overlay-derived -> NOT_AVAILABLE on overlay failure
+    assert env.overlays.confidence == NA
+    assert env.overlay_coverage.confidence == NA
+
+
+def test_flood_epi_survives_when_only_overlays_fail():
+    # overlays failed but controls succeeded -> flood_epi keeps the portal answer, not NOT_AVAILABLE.
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None, overlays_failed=True, controls_failed=False)
+    assert env.flood_epi.confidence == AUTH
+
+
+def test_flood_epi_not_available_when_both_sources_fail():
+    env = _build_environmental({}, _OVERLAYS, None, overlays_failed=True, controls_failed=True)
+    assert env.flood_epi.confidence == NA
+    assert env.flood_epi.value is None
+
+
+def test_environmental_genuine_success_is_authoritative():
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None, overlays_failed=False, controls_failed=False)
+    assert env.flood_epi.confidence == AUTH
+    assert env.overlays.confidence == AUTH
 
 
 # --- _unwrap_or_default: three-state semantics -----------------------------

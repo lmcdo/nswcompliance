@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T09:00:00+10:00",
-  "target": "S1 fail-closed mechanism: _unwrap_or_default helper + failsoft lint + strata fail-closed routing",
-  "findings_summary": "Adversarial key-contract audit (2026-06-22) found the dangerous class is `_df.value or {default}` discarding the NOT_AVAILABLE signal -> a FAILED fetch re-stamped AUTHORITATIVE negative. 5 sites: valuation (degrades OK), strata (DANGEROUS - also switches is_apartment template), controls (blank@AUTH), overlays (hazard False@AUTH), sepp (minor). DataField docstring already encodes 3-state semantics; the bug is purely discarding df.confidence. Fix: _unwrap_or_default(df,default)->(value,failed); strata: failed->AMBIGUOUS routing (renovation, no dev claims) + NOT_AVAILABLE card; lint blocks new `_df.value or {` unless annotated failsoft-ok (verified-safe) or failsoft-todo (tracked WO-2/WO-3 for overlays/controls). No DB queries, no schema. Strata fetch is fast/reliable (0.2s) so the conservative renovation-on-failure trade-off is rare."
+  "timestamp": "2026-06-23T11:00:00+10:00",
+  "target": "WO-2 overlays + WO-3 controls fail-closed: a FAILED fetch must surface NOT_AVAILABLE, not False/blank@AUTHORITATIVE",
+  "findings_summary": "Both annotated failsoft-todo after S1 (#593). WO-2: overlays_df failed -> _build_environmental emits flood_epi/_overlay_field hazard fields at AUTHORITATIVE (confident 'no hazards'); mine/contaminated/drinking/heritage/ANEF come from SEPARATE raws so are NOT affected by overlays_failed. WO-3: controls_df failed -> _build_planning_controls emits zone/height/FSR blank@AUTHORITATIVE. Fix: _unwrap_or_default -> (value, failed); thread overlays_failed into _build_environmental (overlay-derived fields use NOT_AVAILABLE when failed) and controls_failed into _build_planning_controls (its fields NOT_AVAILABLE when failed). No DB/schema change; confidence-stamping logic only."
 }

@@ -1831,10 +1831,17 @@ def _build_planning_controls(
     overlays_data: dict,
     lot_geometry: Optional[dict] = None,
     lot_area_m2: Optional[float] = None,
+    controls_failed: bool = False,
 ) -> PlanningControls:
-    """Map conveyancing parse_controls output to PlanningControls schema."""
+    """Map conveyancing parse_controls output to PlanningControls schema.
+
+    Fail-closed: when the portal controls fetch FAILED (``controls_failed``), the
+    portal-derived fields are emitted NOT_AVAILABLE — never blank@AUTHORITATIVE,
+    which would read as a confident "no zone / no height control".
+    """
     today = date.today().isoformat()
-    auth = ConfidenceLevel.AUTHORITATIVE
+    # A FAILED controls fetch must not produce confident blanks.
+    auth = ConfidenceLevel.NOT_AVAILABLE if controls_failed else ConfidenceLevel.AUTHORITATIVE
 
     overlay_list = overlays_data.get("overlays", []) if overlays_data else []
 
@@ -1876,8 +1883,10 @@ def _build_planning_controls(
         housing_sepp=DataField(value=housing_sepp, confidence=auth, source="planning_portal", as_at=today),
         tod_area=DataField(value=tod_area, confidence=auth, source="planning_portal", as_at=today),
         lot_dimensions=DataField(
+            # lot_dims comes from geometry/cadastre, not the portal controls — a
+            # controls failure must not downgrade it.
             value=lot_dims,
-            confidence=auth if lot_dims else ConfidenceLevel.NOT_AVAILABLE,
+            confidence=ConfidenceLevel.AUTHORITATIVE if lot_dims else ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal",
             as_at=today,
         ),
@@ -2105,10 +2114,23 @@ def _build_environmental(
     drinking_water_raw: Optional[dict] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
+    overlays_failed: bool = False,
+    controls_failed: bool = False,
 ) -> EnvironmentalConstraints:
-    """Map overlays + heritage to EnvironmentalConstraints."""
+    """Map overlays + heritage to EnvironmentalConstraints.
+
+    Fail-closed: when the overlay fetch FAILED (``overlays_failed``), the purely
+    overlay-derived fields (the overlay list + coverage) are emitted NOT_AVAILABLE.
+    flood_epi and bushfire_designation combine overlays WITH the portal controls,
+    so they are only downgraded when BOTH sources failed — otherwise a single
+    surviving source still gives a real answer. mine/contaminated/drinking/heritage
+    come from separate fetches and are unaffected.
+    """
     today = date.today().isoformat()
     auth = ConfidenceLevel.AUTHORITATIVE
+    na = ConfidenceLevel.NOT_AVAILABLE
+    overlay_auth = na if overlays_failed else auth          # purely overlay-derived fields
+    both_failed = overlays_failed and controls_failed       # overlay+controls hazard fields
 
     overlay_list = (overlays_data.get("overlays") or []) if overlays_data else []
     covered = (overlays_data.get("covered_layers") or []) if overlays_data else []
@@ -2218,10 +2240,19 @@ def _build_environmental(
     }
 
     return EnvironmentalConstraints(
-        flood_epi=DataField(value=flood_epi, confidence=auth, source="postgis_overlays", as_at=today),
-        overlays=DataField(value=env_overlays, confidence=auth, source="postgis_overlays", as_at=today),
-        overlay_coverage=DataField(value=covered, confidence=auth, source="postgis_overlays", as_at=today),
-        bushfire_designation=DataField(value=bushfire_designation, confidence=auth, source="postgis_overlays", as_at=today),
+        flood_epi=DataField(
+            value=None if both_failed else flood_epi,
+            confidence=na if both_failed else auth,
+            source="postgis_overlays", as_at=today,
+            reason="Flood overlay and portal controls both unavailable" if both_failed else None,
+        ),
+        overlays=DataField(value=env_overlays, confidence=overlay_auth, source="postgis_overlays", as_at=today),
+        overlay_coverage=DataField(value=covered, confidence=overlay_auth, source="postgis_overlays", as_at=today),
+        bushfire_designation=DataField(
+            value=None if both_failed else bushfire_designation,
+            confidence=na if both_failed else auth,
+            source="postgis_overlays", as_at=today,
+        ),
         heritage_postgis=DataField(
             value=heritage_postgis if heritage_postgis and heritage_postgis.get("has_heritage") else None,
             confidence=auth if heritage_postgis else ConfidenceLevel.NOT_AVAILABLE,
@@ -2732,7 +2763,7 @@ def _generate_brief_sse(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal", reason="No prop_id resolved",
         )
-        controls = controls_df.value or parse_controls([])  # failsoft-todo: WO-3 — a FAILED portal fetch currently renders zone/height/FSR blank@AUTHORITATIVE; thread controls_failed into _build_planning_controls
+        controls, controls_failed = _unwrap_or_default(controls_df, parse_controls([]))  # WO-3: controls_failed -> _build_planning_controls stamps NOT_AVAILABLE instead of blank@AUTHORITATIVE
 
         zone_epi = controls.get("zone_epi", "")
         zone_code = controls.get("zone")
@@ -2778,7 +2809,7 @@ def _generate_brief_sse(
         contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
         drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
 
-        overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}  # failsoft-todo: WO-2 — a FAILED overlay fetch currently renders flood/mine/contam False@AUTHORITATIVE (hazard false-negative); thread overlays_failed into _build_environmental
+        overlays_data, overlays_failed = _unwrap_or_default(overlays_df, {"overlays": [], "covered_layers": [], "proximity_m": {}})  # WO-2: overlays_failed -> _build_environmental stamps overlay-derived fields NOT_AVAILABLE instead of False@AUTHORITATIVE
         heritage_postgis = heritage_df.value
         mine_subsidence_raw = mine_sub_df.value
         contaminated_land_raw = contam_df.value
@@ -2795,6 +2826,7 @@ def _generate_brief_sse(
             contaminated_land_raw=contaminated_land_raw,
             drinking_water_raw=drinking_water_raw,
             lat=lat, lng=lng,
+            overlays_failed=overlays_failed, controls_failed=controls_failed,
         )
         sections_yielded += 1
         yield _sse_event("section", {
@@ -2811,7 +2843,7 @@ def _generate_brief_sse(
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
             controls["lot_size"] = ov_by_type["lot_size"].get("value")
 
-        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2)
+        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2, controls_failed=controls_failed)
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "planning_controls",
