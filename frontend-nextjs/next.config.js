@@ -7,18 +7,8 @@ const nextConfig = {
  async redirects() {
    return [
      // Legacy domains → plotdetect.com.au
-     {
-       source: '/:path*',
-       has: [{ type: 'host', value: 'www.canibuildit.com.au' }],
-       destination: 'https://plotdetect.com.au/:path*',
-       permanent: true,
-     },
-     {
-       source: '/:path*',
-       has: [{ type: 'host', value: 'canibuildit.com.au' }],
-       destination: 'https://plotdetect.com.au/:path*',
-       permanent: true,
-     },
+     // canibuildit.com.au + www.canibuildit.com.au now serve the site directly
+     // (redirect removed) — the public info site is served on both domains.
      {
        source: '/:path*',
        has: [{ type: 'host', value: 'whatcanibuildhere.com.au' }],
