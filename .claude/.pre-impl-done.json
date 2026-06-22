@@ -1,5 +1,5 @@
 {
   "status": "trivial",
-  "timestamp": "2026-06-22T11:00:00+10:00",
-  "reason": "Inner/outer timeout alignment for flood so JRC/WOfS return real values instead of failing fast (the binding limits were the INNER ones, not the outer wrappers I changed before): JRC GDAL_HTTP_TIMEOUT 12->30 + outer fut.result 35->60; WOfS WCS requests timeout 20->30 + _WOFS_HARD_TIMEOUT 35->60; brief flood collection budget 50->70 (>60s concurrent sub-query max). No new queries/sources. Companion: trigger maxDuration 120->300 in plotdetect-agents (separate repo). Frontend: nearby-DA radius label + honest 'couldn't retrieve' for failed flood raster reads."
+  "timestamp": "2026-06-22T13:00:00+10:00",
+  "reason": "Diagnosis-driven fixes from a full live brief: (1) add rapidfuzz to services/requirements.txt (the prod image installs this file, not root requirements.txt; pre_da_history imports rapidfuzz -> 'No module named rapidfuzz'); (2) surface terrain's real failure reason instead of a generic message (use terrain_df.reason); plus a frontend shadow-result render + terrain raw-reason display. No DB queries, no schema."
 }

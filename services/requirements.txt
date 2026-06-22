@@ -47,3 +47,6 @@ scikit-image
 # samgeo==1.2.0
 # torch==2.2.0
 # torchvision==0.17.0
+
+# Fuzzy matching for pre-DA site-history address/DA reconciliation (imported by services/pre_da_history.py)
+rapidfuzz
