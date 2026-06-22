@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-06-22T13:00:00+10:00",
-  "reason": "Diagnosis-driven fixes from a full live brief: (1) add rapidfuzz to services/requirements.txt (the prod image installs this file, not root requirements.txt; pre_da_history imports rapidfuzz -> 'No module named rapidfuzz'); (2) surface terrain's real failure reason instead of a generic message (use terrain_df.reason); plus a frontend shadow-result render + terrain raw-reason display. No DB queries, no schema."
+  "status": "passed",
+  "timestamp": "2026-06-23T09:00:00+10:00",
+  "target": "S1 fail-closed mechanism: _unwrap_or_default helper + failsoft lint + strata fail-closed routing",
+  "findings_summary": "Adversarial key-contract audit (2026-06-22) found the dangerous class is `_df.value or {default}` discarding the NOT_AVAILABLE signal -> a FAILED fetch re-stamped AUTHORITATIVE negative. 5 sites: valuation (degrades OK), strata (DANGEROUS - also switches is_apartment template), controls (blank@AUTH), overlays (hazard False@AUTH), sepp (minor). DataField docstring already encodes 3-state semantics; the bug is purely discarding df.confidence. Fix: _unwrap_or_default(df,default)->(value,failed); strata: failed->AMBIGUOUS routing (renovation, no dev claims) + NOT_AVAILABLE card; lint blocks new `_df.value or {` unless annotated failsoft-ok (verified-safe) or failsoft-todo (tracked WO-2/WO-3 for overlays/controls). No DB queries, no schema. Strata fetch is fast/reliable (0.2s) so the conservative renovation-on-failure trade-off is rare."
 }

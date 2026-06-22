@@ -1,30 +1,73 @@
 {
-  "tier": "minor",
-  "commit_hash": "96e3127f",
-  "justification": "canibuildit.com.au (and www) were 308-permanent-redirected to plotdetect.com.au by a next.config.js 'Legacy domains' block, so the domain showed nothing of its own — the public info site was only reachable at plotdetect.com.au. Removing the two canibuildit redirect rules so the domain serves the Next.js app (the public info site) directly. plotdetect.com.au is unchanged and continues to serve the info site. whatcanibuildhere.com.au redirect is left intact (not in scope).",
+  "tier": "standard",
+  "commit_hash": "92b04a40",
+  "justification": "S1 fail-closed mechanism + the highest-severity self-contained fix, from the adversarial key-contract audit (2026-06-22). The dangerous class is `_df.value or {default}` discarding a DataField's NOT_AVAILABLE signal -> a FAILED fetch re-stamped as a confident AUTHORITATIVE negative. Added _unwrap_or_default(df, default)->(value, failed) as the sanctioned replacement that preserves the failure signal. Fixed STRATA (the worst case): a failed strata lookup was served as authoritative 'not strata' AND silently routed a possible apartment into a full DevelopmentBrief; now a failed strata is AMBIGUOUS (renovation path, no dev-capacity claims) with a NOT_AVAILABLE card. Added scripts/lint_brief_failsoft.py (blocks new un-annotated `_df.value or <container/computed default>`; allows `# failsoft-ok` verified-safe and `# failsoft-todo` tracked) and wired it into pre-commit. Annotated the 4 remaining sites: valuation/sepp/nearby-DA = failsoft-ok (verified-safe / #582-guarded); controls (WO-3) + overlays (WO-2) = failsoft-todo (tracked for their own PRs with build-function changes + live verify). 8 new tests.",
   "files": [
-    "frontend-nextjs/next.config.js"
+    "services/intelligence_brief.py",
+    "scripts/lint_brief_failsoft.py",
+    ".githooks/pre-commit",
+    "tests/test_brief_failclosed.py"
   ],
-  "break_it": [
+  "pre_impl": {
+    "existing_data": "DataField docstring already encodes 3-state semantics (value+conf=present; None+conf!=NA=genuine empty; None+conf=NA=failed). The bug is purely the `.value or {default}` sites discarding df.confidence. classify_strata already has an AMBIGUOUS state -> renovation routing.",
+    "assumption_mismatch": "A blanket DataField validator forbidding AUTHORITATIVE+null is WRONG (legit 'checked, genuinely none' uses it). The failure signal lives in the SOURCE df.confidence, discarded by `or {default}`. So the fix is a helper that preserves it + per-site handling, not a validator.",
+    "new_vs_existing": "Reused the existing AMBIGUOUS->renovation routing and the #582 da_failed guard pattern; added one helper + one lint (no existing lint covers this).",
+    "external_source_error": "A failed strata/overlay/controls fetch now surfaces as NOT_AVAILABLE; strata routing degrades to the conservative renovation path (no false dev-capacity claims).",
+    "frontend_type": "Backend (helper + strata) + a lint script + a pre-commit hook line. 167 brief tests pass.",
+    "user_failure_mode": "Before: a failed strata fetch -> confident 'not strata' + a DevelopmentBrief for a possible apartment. After: NOT_AVAILABLE strata card + renovation routing. New silent-false-negatives are blocked at commit by the lint."
+  },
+  "functions": [
     {
-      "scenario": "canibuildit.com.au is not actually attached to the Vercel project, so removing the redirect leaves it serving nothing",
-      "what_happens": "the domain could show a Vercel default/404 instead of the site",
-      "repro": "hit canibuildit.com.au after deploy with the domain detached",
-      "mitigated": true,
-      "how": "the pre-existing redirect was served WITH an X-Vercel-Id for that host, which proves the domain is attached to the project and Vercel is routing it; removing the redirect makes that same routing serve the app"
+      "name": "_unwrap_or_default",
+      "file_line": "services/intelligence_brief.py",
+      "input": "a DataField and a default value",
+      "output": "a tuple of (value-or-default, failed) where failed is True only when the upstream fetch did not succeed (confidence == NOT_AVAILABLE)",
+      "if_none": "a genuine empty (value None but confidence not NOT_AVAILABLE) returns failed=False, so legitimate 'checked, none here' is not mistaken for a failure"
     },
     {
-      "scenario": "Two domains serving identical content dilutes SEO (duplicate content)",
-      "what_happens": "search engines may split ranking between canibuildit and plotdetect",
-      "repro": "both domains index the same pages",
+      "name": "scan",
+      "file_line": "scripts/lint_brief_failsoft.py",
+      "input": "a path to a python source file to scan",
+      "output": "blocking errors for un-annotated `_df.value or <container/computed default>` and tracked warnings for failsoft-todo annotations",
+      "if_none": "a file with no matches returns no errors and the lint passes"
+    }
+  ],
+  "values": "N/A - control-flow + confidence, not regulatory values.",
+  "queries": "N/A - no DB query changed.",
+  "break_it": [
+    {
+      "scenario": "A strata fetch genuinely succeeds and finds the lot is not strata",
+      "what_happens": "must stay AUTHORITATIVE 'not strata' + development routing, not be forced to renovation",
+      "repro": "strata_df AUTHORITATIVE with is_strata False",
       "mitigated": true,
-      "how": "out of scope for this change and a deliberate product call to revive the domain; a rel=canonical to plotdetect can be added later if SEO consolidation is wanted. Functionally the site renders correctly on both"
+      "how": "strata_failed is only True when confidence == NOT_AVAILABLE; a successful not-strata result keeps classify_strata -> NOT_STRATA -> development. Guarded by test_genuine_empty_is_not_a_failure"
+    },
+    {
+      "scenario": "The lint mis-flags a harmless scalar default like `or None`",
+      "what_happens": "a false positive blocking a safe line",
+      "repro": "foo_df.value or None",
+      "mitigated": true,
+      "how": "the pattern only matches container `{`/`[` or computed `func(` defaults, not scalars. Guarded by test_lint_allows_scalar_default"
+    },
+    {
+      "scenario": "A new `_df.value or {default}` is added without handling the failure",
+      "what_happens": "a new silent false-negative could ship",
+      "repro": "add an un-annotated site",
+      "mitigated": true,
+      "how": "the pre-commit failsoft lint blocks it; the developer must use _unwrap_or_default or annotate. Guarded by test_lint_blocks_unannotated_anti_pattern + test_lint_blocks_computed_default"
+    },
+    {
+      "scenario": "A transient strata-fetch failure routes a house to renovation, losing dev cards",
+      "what_happens": "a house briefly shows a renovation brief on a failed strata run",
+      "repro": "strata_df times out for a house",
+      "mitigated": true,
+      "how": "strata fetch is fast/reliable (~0.2s) so failures are rare; renovation (no false dev claims) is the conservative trade-off vs serving a misleading DevelopmentBrief for a possible apartment"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None - no secrets or env vars.",
-    "other_repo": "N/A - the Next.js frontend auto-deploys on Vercel from GitHub on merge; the redirect change takes effect on that deploy.",
-    "manual_verify": "After deploy, curl -sI https://canibuildit.com.au should return 200 (the site) instead of 308 to plotdetect.com.au; plotdetect.com.au still returns the info site homepage. whatcanibuildhere.com.au should still 308 to plotdetect."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A - same /stream endpoint.",
+    "manual_verify": "Run the brief for the Hurstville strata address (5/1 Treacy St) — strata card populates; simulate a strata-fetch failure -> strata card NOT_AVAILABLE + renovation routing, not a confident DevelopmentBrief. The pre-commit lint blocks any new un-annotated `_df.value or {default}`."
   }
 }

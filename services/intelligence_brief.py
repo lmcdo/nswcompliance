@@ -2274,7 +2274,7 @@ def _build_neighbourhood(
     """
     today = date.today().isoformat()
     da_failed = das_df.confidence == ConfidenceLevel.NOT_AVAILABLE
-    das = das_df.value or []
+    das = das_df.value or []  # failsoft-ok: da_failed (above) re-stamps NOT_AVAILABLE so a failed lookup is never served as an authoritative 0 (the #582 guard)
 
     nearby = [
         NearbyDA(
@@ -2503,6 +2503,22 @@ def _timed_result(future, timeout: float, label: str, timings: list) -> "DataFie
     return result
 
 
+def _unwrap_or_default(df: "DataField", default):
+    """Unwrap a DataField, preserving the FAILURE signal that ``df.value or X`` throws away.
+
+    Returns ``(value, failed)`` where ``failed`` is True only when the upstream
+    fetch did not succeed (``confidence == NOT_AVAILABLE``). Callers MUST use
+    ``failed`` to decide the emitted section's confidence — a failed fetch must
+    surface as NOT_AVAILABLE, never as a confident AUTHORITATIVE negative
+    (the strata/overlay false-negative class). This is the sanctioned
+    replacement for the ``df.value or <default>`` anti-pattern that the
+    failsoft lint blocks.
+    """
+    failed = df.confidence == ConfidenceLevel.NOT_AVAILABLE
+    value = df.value if df.value is not None else default
+    return value, failed
+
+
 # ---------------------------------------------------------------------------
 # SSE streaming endpoint — progressive rendering
 # ---------------------------------------------------------------------------
@@ -2645,7 +2661,7 @@ def _generate_brief_sse(
             confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="nsw_valuation_service", reason="No prop_id resolved",
         )
-        valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+        valuation = valuation_df.value or {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}  # failsoft-ok: _build_economics maps each None field to NOT_AVAILABLE (audit 2026-06-22)
 
         # Await lot geometry up-front: economics is emitted first here, so the
         # valuation lot area must be sanity-checked against the cadastral polygon
@@ -2677,8 +2693,12 @@ def _generate_brief_sse(
 
         # ── Yield strata (depends on cadastre + lot_area_m2) ─────────────
         strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
-        strata_raw = strata_df.value or {"is_strata": False}
-        strata_type = classify_strata(strata_raw, lot_area_m2)
+        strata_raw, strata_failed = _unwrap_or_default(strata_df, {"is_strata": False})  # failsoft-ok: strata_failed branch below restamps NOT_AVAILABLE + AMBIGUOUS routing
+        # Fail-closed: a FAILED strata lookup must NOT be served as a confident
+        # "not strata" — that would silently route a possible apartment into a full
+        # DevelopmentBrief (capacity claims it can't support). Treat unknown strata
+        # as AMBIGUOUS → renovation path (no dev-capacity claims) + NOT_AVAILABLE card.
+        strata_type = StrataType.AMBIGUOUS if strata_failed else classify_strata(strata_raw, lot_area_m2)
         strata_info = StrataInfo(
             is_strata=strata_raw.get("is_strata", False),
             strata_type=strata_type,
@@ -2698,8 +2718,10 @@ def _generate_brief_sse(
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "strata", "data": DataField(
-                value=strata_info, confidence=ConfidenceLevel.AUTHORITATIVE,
+                value=strata_info,
+                confidence=ConfidenceLevel.NOT_AVAILABLE if strata_failed else ConfidenceLevel.AUTHORITATIVE,
                 source="cadastre_strata", as_at=today,
+                reason=(strata_df.reason or "Strata lookup did not complete") if strata_failed else None,
             ).model_dump(),
             "progress": int(sections_yielded / total_sections * 100),
             "brief_type": "renovation" if is_apartment else "development",
@@ -2710,7 +2732,7 @@ def _generate_brief_sse(
             value=parse_controls([]), confidence=ConfidenceLevel.NOT_AVAILABLE,
             source="planning_portal", reason="No prop_id resolved",
         )
-        controls = controls_df.value or parse_controls([])
+        controls = controls_df.value or parse_controls([])  # failsoft-todo: WO-3 — a FAILED portal fetch currently renders zone/height/FSR blank@AUTHORITATIVE; thread controls_failed into _build_planning_controls
 
         zone_epi = controls.get("zone_epi", "")
         zone_code = controls.get("zone")
@@ -2756,7 +2778,7 @@ def _generate_brief_sse(
         contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
         drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
 
-        overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}
+        overlays_data = overlays_df.value or {"overlays": [], "covered_layers": [], "proximity_m": {}}  # failsoft-todo: WO-2 — a FAILED overlay fetch currently renders flood/mine/contam False@AUTHORITATIVE (hazard false-negative); thread overlays_failed into _build_environmental
         heritage_postgis = heritage_df.value
         mine_subsidence_raw = mine_sub_df.value
         contaminated_land_raw = contam_df.value
@@ -2806,7 +2828,7 @@ def _generate_brief_sse(
         shadow_df = _timed_result(f_shadow, CONFIG.timeout_shadow_collect, "shadow_detector", timings)
 
         dcp_raw = dcp_df.value
-        sepp_raw = sepp_df.value or []
+        sepp_raw = sepp_df.value or []  # failsoft-ok: empty list = no standards; SEPP is a fast DB lookup, _build_sepp_housing handles empty gracefully
         shadow_raw = shadow_df.value
 
         if not is_apartment:
