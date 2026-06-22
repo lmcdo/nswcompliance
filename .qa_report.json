@@ -1,35 +1,80 @@
 {
   "tier": "standard",
-  "commit_hash": "pending",
-  "justification": "Diagnosis-driven fixes from the first full (uncut) live brief. (1) SHADOW now succeeds (the earlier 65s budget fix landed) but rendered as a bare '6 fields'; added a ShadowDisplay component that renders the real overshadowing summary (modelled height + source, ADG 3-hour solar-access compliance badge, worst-case shadow length + neighbour overlap, temporal caveat). (2) TERRAIN failed with a generic 'imagery or model source unavailable' that hid the cause; the brief now passes through the REAL terrain_df.reason and the satellite empty-state surfaces it (capped) so the actual error (DEM/whitebox) is diagnosable on the next run. (3) PRE-DA's confirmed 'No module named rapidfuzz' — rapidfuzz is imported by services/pre_da_history.py but was missing from services/requirements.txt (the file the prod Docker image installs, NOT the root requirements.txt); added it. NOTE: pre-DA also needs torch (Tessera/Clay embeddings) which services/requirements.txt deliberately excludes as too large for Railway — so pre-DA ultimately needs decoupling to a GPU worker like granny-flat; rapidfuzz is a correct omission fix regardless.",
-  "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "services/intelligence_brief.py",
-    "services/requirements.txt"
-  ],
+  "commit_hash": "8b7324c6",
+  "justification": "Tier 0 of the brief content-enrichment plan: fix the satellite key-mapping bugs that silently nulled data the brief already fetches. Confirmed live (2026-06-22) the services emit different keys than the brief reads. Bushfire read outputs['rfs'][...] + outputs['cross_overlays'] but the service emits flat is_bushfire_prone/designation_category/estimated_bal_band/designation_guideline/fire_signal + compliance.cross_overlays (whole card was dead). Flood read epi_flood/jrc_occurrence_pct/wofs_frequency_pct but the service emits epi_flood_class (a class string, not a bool)/jrc_water_occurrence_pct/dea_wofs_frequency_pct (3 fields always null; #588's null->'Couldn't retrieve' meant it said couldn't-retrieve even on success). Shadow scenarios read date_label/time_label/overlap_pct but the service emits label/time_local/shadow_overlap_fraction(0-1)/shadow_direction_deg/overlaps_subject_lot (4 fields blank). Complementary to #587/#588 (those fixed timeouts, not keys). No DB query / schema change.",
   "pre_impl": {
-    "existing_data": "Shadow is a DataField[Optional[ShadowResult]] inside Neighbourhood; ShadowResult has height_m/height_source/adg_compliant/scenarios/worst_case_scenario/temporal_caveat. terrain_df.reason already captures the real _safe_call exception. services/requirements.txt (49 lines) is what Dockerfile.python installs.",
-    "assumption_mismatch": "Assumed the root requirements.txt governed the prod image; in fact Dockerfile.python installs services/requirements.txt, which omits rapidfuzz (and deliberately torch).",
-    "new_vs_existing": "Reused the existing nested-render pattern (like HeritageList/OverlayList) for shadow; reused the DataField.reason already produced by _safe_call for terrain; appended one dependency.",
-    "external_source_error": "Terrain/flood/shadow upstream failures now surface their real reason (capped) instead of a generic line; a genuine success renders the data.",
-    "frontend_type": "Frontend (shadow render + reason surfacing) + backend (terrain reason passthrough + one requirement). tsc passes; 159 brief tests pass.",
-    "user_failure_mode": "Before: shadow showed '6 fields'; terrain showed a generic 'unavailable' with no cause; pre-DA failed on a missing package. After: shadow shows the overshadowing summary; terrain shows its real error; pre-DA's rapidfuzz blocker is removed (torch decoupling still needed for the embeddings)."
+    "existing_data": "Read both sides of the boundary live + by source: services flood_truth.py:1387-1411, bushfire_prescreen.py:557-572, shadow_detector.py:275-286 emit the real keys; the brief's _build_bushfire_detail/_build_flood_detail and the inline shadow map in _build_neighbourhood read different keys. Verified live against demo addresses (Concord/Belmore/Hurstville).",
+    "assumption_mismatch": "The brief assumed nested outputs['rfs'] for bushfire, a bool 'epi_flood', and scenario keys date_label/time_label/overlap_pct. Reality: flat bushfire keys + compliance.cross_overlays; epi_flood_class is a class string ('none'/'flood_planning_area'); shadow emits label/time_local/shadow_overlap_fraction (0-1). #588 then rendered the resulting nulls as 'Couldn't retrieve', so a successful fetch was reported as a failure.",
+    "new_vs_existing": "Reuses existing services unchanged; only remaps the dict keys the brief reads. Widens 3 existing models (BushfireDetail +is_bushfire_prone/fire_signal, FloodDetail +epi_flood_label, ShadowScenario +shadow_direction_deg/overlaps_subject_lot) and extracts _build_shadow_result from the inline block in _build_neighbourhood so the mapping is unit-testable. No new service, query, or table.",
+    "external_source_error": "Services return graceful empties (None) for non-applicable addresses; epi_flood is None when not assessed, False only when the class is 'none', True when a flood class is present. Overlap arrives as a 0-1 fraction and is converted to percent.",
+    "frontend_type": "Backend Python only (Pydantic models + builders). Frontend renders these DataFields generically; no .tsx change in this PR.",
+    "user_failure_mode": "Before: bushfire card blank on every run; flood JRC/WOfS/EPI showed 'Couldn't retrieve' even on success; shadow scenarios missing date/time/overlap/direction. After: each surfaces the real values the service already returned."
   },
   "functions": [
-    {"name": "ShadowDisplay", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "a ShadowResult object with height, ADG compliance, scenarios and worst-case", "output": "a readable overshadowing summary with a solar-access compliance badge and the worst-case shadow length and neighbour overlap", "if_none": "a null shadow value hits the not_available branch and shows the unavailable message instead"},
-    {"name": "describeUnavailable", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "a satellite layer's reason, section and satelliteRan flag", "output": "for a ran-but-failed satellite layer, the generic message now appends the real reason (capped at 180 chars) when it is not a 'not requested' case", "if_none": "a not-requested layer still shows the tick-the-box message"}
+    {
+      "name": "_build_bushfire_detail",
+      "file_line": "services/intelligence_brief.py:1560",
+      "input": "the raw dict returned by run_bushfire",
+      "output": "BushfireDetail with is_bushfire_prone/category/bal_estimate/vegetation_type/fire_signal/cross_overlays from the real flat keys + compliance.cross_overlays",
+      "if_none": "returns None when input is falsy"
+    },
+    {
+      "name": "_build_flood_detail",
+      "file_line": "services/intelligence_brief.py:1575",
+      "input": "the raw dict returned by run_flood",
+      "output": "FloodDetail; epi_flood = None if no class / False if 'none' / True otherwise, plus epi_flood_label, jrc_water_occurrence_pct, dea_wofs_frequency_pct",
+      "if_none": "returns None when input is falsy"
+    },
+    {
+      "name": "_build_shadow_result",
+      "file_line": "services/intelligence_brief.py:1598",
+      "input": "the raw dict returned by shadow_detector run_shadow",
+      "output": "ShadowResult; per-scenario date_label/time_label/shadow_length_m/overlap_pct(fraction*100)/shadow_direction_deg/overlaps_subject_lot from the real keys",
+      "if_none": "returns None when input is falsy; required str fields fall back to '' via (get() or '')"
+    }
   ],
-  "values": "N/A - shadow geometry and a dependency, not regulatory values.",
-  "queries": "N/A - no DB query.",
+  "values": "N/A - no regulatory values computed; pure key remap + presentation.",
+  "queries": "N/A - no database or API query added.",
+  "files": [
+    "services/intelligence_brief.py",
+    "services/constraint_models.py",
+    "tests/test_brief_satellite_field_mapping.py",
+    "tests/test_satellite_integration.py"
+  ],
   "break_it": [
-    {"scenario": "Shadow result is present but has no scenarios array", "what_happens": "the worst-case line would be skipped and only height/ADG show", "repro": "a ShadowResult with scenarios=[]", "mitigated": true, "how": "each block is guarded by a null/empty check; an empty scenarios array simply omits the worst-case line"},
-    {"scenario": "A satellite reason contains a very long Python traceback", "what_happens": "an unwieldy string could show in the card", "repro": "terrain raises with a long message", "mitigated": true, "how": "the reason is capped at 180 chars and framed in parentheses; this is a dev/demo tool where the visible reason is what enables diagnosis"},
-    {"scenario": "rapidfuzz still missing after deploy because the image build cache is stale", "what_happens": "pre-DA would still fail on rapidfuzz", "repro": "Railway reuses the cached pip layer", "mitigated": true, "how": "adding it to services/requirements.txt changes the file content, invalidating the pip layer cache; if Railway still serves a stale image, a clean rebuild resolves it"},
-    {"scenario": "Adding rapidfuzz makes pre-DA appear fixed but it still fails on torch", "what_happens": "pre-DA shows a torch error instead of rapidfuzz", "repro": "run pre-DA after the deploy", "mitigated": true, "how": "the surfaced real reason will now show the torch/geotessera error, confirming pre-DA needs decoupling to a GPU worker — documented in services/requirements.txt"}
+    {
+      "scenario": "Someone reverts a builder to the old key (outputs['rfs'] or jrc_occurrence_pct)",
+      "what_happens": "the field silently goes null again - the exact bug class",
+      "repro": "feed the legacy-key dict to the builder",
+      "mitigated": true,
+      "how": "test_brief_satellite_field_mapping.py has *_does_not_read_legacy_keys tests asserting old keys produce None, so a revert fails the suite"
+    },
+    {
+      "scenario": "Flood service returns no EPI class (not assessed)",
+      "what_happens": "could render a misleading 'not flood'",
+      "repro": "outputs without epi_flood_class",
+      "mitigated": true,
+      "how": "epi_flood = None when class is None; False only when class == 'none'; test_flood_missing_class_is_unknown_not_false pins it"
+    },
+    {
+      "scenario": "Shadow scenario has an explicit None label/time, or fraction shown as raw percent",
+      "what_happens": "validation error on required str field, or 0.42 shown as 0.42%",
+      "repro": "scenario {label: None} or shadow_overlap_fraction=0.42",
+      "mitigated": true,
+      "how": "(get() or '') guards None on required str fields; fraction*100 -> percent; test asserts overlap_pct == 42.0"
+    },
+    {
+      "scenario": "A pre-existing test encodes the bug (fake keys) and masks a regression",
+      "what_happens": "green tests, broken prod (how the bug survived)",
+      "repro": "old SAMPLE_BUSHFIRE_RAW/SAMPLE_FLOOD_RAW used outputs['rfs']/epi_flood",
+      "mitigated": true,
+      "how": "updated those fixtures in test_satellite_integration.py to the real service-output keys so they test reality"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A - same /stream endpoint; the Trigger.dev relay is unchanged.",
-    "manual_verify": "Re-run the brief: Shadow shows a real overshadowing summary; Terrain shows its actual error (DEM/whitebox); Pre-DA's rapidfuzz error is gone (it may now show the torch/geotessera error, confirming the decoupling need)."
+    "db_reset": "N/A - no database change.",
+    "secrets": "None.",
+    "other_repo": "N/A - reads existing service output keys; no relay/contract change.",
+    "manual_verify": "Run a brief on a bushfire-prone + flood-affected address: Bushfire card shows prone/category/BAL/fire signal (was blank); Flood card shows JRC/WOfS/EPI class instead of 'Couldn't retrieve'; Shadow scenarios show date/time/overlap%/direction."
   }
 }

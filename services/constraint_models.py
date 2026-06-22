@@ -82,6 +82,8 @@ class ShadowScenario(BaseModel):
     sun_azimuth_deg: Optional[float] = None
     shadow_length_m: Optional[float] = None
     overlap_pct: Optional[float] = None
+    shadow_direction_deg: Optional[float] = None  # compass bearing the shadow falls toward
+    overlaps_subject_lot: Optional[bool] = None
 
 
 class ShadowResult(BaseModel):
