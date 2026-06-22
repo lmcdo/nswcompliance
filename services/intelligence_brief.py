@@ -2976,6 +2976,14 @@ def _generate_brief_sse(
             )
             terrain_raw = terrain_df.value
             terrain_detail = _build_terrain_detail(terrain_raw)
+            # Surface the real failure reason (e.g. a DEM-fetch or whitebox error)
+            # instead of a generic message, so the cause is diagnosable from the UI.
+            if terrain_detail:
+                terrain_reason = None
+            elif f_terrain is not None:
+                terrain_reason = terrain_df.reason or "Terrain analysis did not complete"
+            else:
+                terrain_reason = "Terrain analysis not requested"
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "satellite.terrain",
@@ -2983,7 +2991,7 @@ def _generate_brief_sse(
                     value=terrain_detail,
                     confidence=ConfidenceLevel.ESTIMATED if terrain_detail else ConfidenceLevel.NOT_AVAILABLE,
                     source="terrain_analysis", as_at=today,
-                    reason=None if terrain_detail else "Terrain analysis failed or not requested",
+                    reason=terrain_reason,
                 ).model_dump(),
                 "progress": int(sections_yielded / total_sections * 100),
             })

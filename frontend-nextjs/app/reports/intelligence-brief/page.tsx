@@ -137,9 +137,12 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
     // produced for this property — say that plainly, don't blame the user's tickbox
     // and don't imply a false finding ("no structures" on a clearly built lot).
     if (satelliteRan) {
+      // Surface the real failure reason (e.g. a missing model or a DEM/raster
+      // error) so the cause is diagnosable, not hidden behind a generic line.
+      const why = reason && !r.includes('not requested') ? ` (${String(reason).slice(0, 180)})` : '';
       return {
         label: 'Couldn’t complete',
-        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property — the imagery or model source may be temporarily unavailable. Try running the brief again.`,
+        detail: `We couldn’t complete ${what ? `the ${what} analysis` : 'this analysis'} for this property${why}. Try running the brief again.`,
         tone: 'pending',
       };
     }
@@ -370,6 +373,16 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // Shadow is a nested overshadowing result — render a readable summary,
+          // not "6 fields".
+          if (key === 'shadow' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><ShadowDisplay data={df.value as ShadowData} /></dd>
+              </div>
+            );
+          }
           // Heritage items / HCA arrive as a list of "<name> Significance: <level>"
           // strings — render each on its own line with the significance as a badge,
           // not a comma run-on.
@@ -534,6 +547,44 @@ function HeritageList({ items }: { items: string[] }) {
         );
       })}
     </ul>
+  );
+}
+
+interface ShadowScenario { date_label?: string; time_label?: string; shadow_length_m?: number | null; overlap_pct?: number | null; }
+interface ShadowData {
+  height_m?: number | null; height_source?: string | null; adg_compliant?: boolean | null;
+  scenarios?: ShadowScenario[]; worst_case_scenario?: string | null; temporal_caveat?: string | null;
+}
+
+// The shadow field is a nested object — render the overshadowing summary
+// (height, solar-access compliance, worst-case shadow), not a bare "6 fields".
+function ShadowDisplay({ data }: { data: ShadowData }) {
+  const worst = (data.scenarios || []).find((s) => `${s.date_label} ${s.time_label}`.trim() === (data.worst_case_scenario || '').trim())
+    || (data.scenarios || [])[0];
+  return (
+    <div className="text-sm text-slate-900 space-y-1.5">
+      {data.height_m != null && (
+        <div>Modelled building height: <span className="font-medium">{data.height_m} m</span>{data.height_source ? ` (${data.height_source})` : ''}</div>
+      )}
+      {data.adg_compliant != null && (
+        <div>
+          ADG solar access:{' '}
+          <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ring-1',
+            data.adg_compliant ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-amber-200')}>
+            {data.adg_compliant ? 'meets the 3-hour guideline' : 'below the 3-hour guideline'}
+          </span>
+        </div>
+      )}
+      {worst && (worst.shadow_length_m != null || worst.overlap_pct != null) && (
+        <div className="text-slate-700">
+          Worst case ({[worst.date_label, worst.time_label].filter(Boolean).join(' ')}):{' '}
+          {worst.shadow_length_m != null ? `${worst.shadow_length_m} m shadow` : ''}
+          {worst.shadow_length_m != null && worst.overlap_pct != null ? ', ' : ''}
+          {worst.overlap_pct != null ? `${worst.overlap_pct}% overlap on neighbours` : ''}
+        </div>
+      )}
+      {data.temporal_caveat && <div className="text-[11px] text-slate-400 leading-snug mt-1">{data.temporal_caveat}</div>}
+    </div>
   );
 }
 
