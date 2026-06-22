@@ -112,4 +112,19 @@ if [ "$BRACKET_EXIT" -ne 0 ]; then
 fi
 echo "✅ Bracket access lint passed"
 
+# ── 7. Brief fail-soft lint ──────────────────────────────────────────────────
+echo ""
+echo "🔍 Running brief fail-soft lint (silent-false-negative guard)..."
+python scripts/lint_brief_failsoft.py
+FAILSOFT_EXIT=$?
+if [ "$FAILSOFT_EXIT" -ne 0 ]; then
+  echo ""
+  echo "❌ Brief fail-soft lint FAILED — a \`_df.value or {default}\` discards the"
+  echo "   NOT_AVAILABLE signal (a failed fetch becomes a confident AUTHORITATIVE negative)."
+  echo "   Use _unwrap_or_default(df, default) + emit NOT_AVAILABLE on \`failed\`,"
+  echo "   or annotate  # failsoft-ok: <reason>  /  # failsoft-todo: <WO>"
+  exit 1
+fi
+echo "✅ Brief fail-soft lint passed"
+
 echo "✅ Pre-commit checks complete"

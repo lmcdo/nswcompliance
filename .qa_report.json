@@ -1,80 +1,73 @@
 {
   "tier": "standard",
-  "commit_hash": "8b7324c6",
-  "justification": "Tier 0 of the brief content-enrichment plan: fix the satellite key-mapping bugs that silently nulled data the brief already fetches. Confirmed live (2026-06-22) the services emit different keys than the brief reads. Bushfire read outputs['rfs'][...] + outputs['cross_overlays'] but the service emits flat is_bushfire_prone/designation_category/estimated_bal_band/designation_guideline/fire_signal + compliance.cross_overlays (whole card was dead). Flood read epi_flood/jrc_occurrence_pct/wofs_frequency_pct but the service emits epi_flood_class (a class string, not a bool)/jrc_water_occurrence_pct/dea_wofs_frequency_pct (3 fields always null; #588's null->'Couldn't retrieve' meant it said couldn't-retrieve even on success). Shadow scenarios read date_label/time_label/overlap_pct but the service emits label/time_local/shadow_overlap_fraction(0-1)/shadow_direction_deg/overlaps_subject_lot (4 fields blank). Complementary to #587/#588 (those fixed timeouts, not keys). No DB query / schema change.",
+  "commit_hash": "92b04a40",
+  "justification": "S1 fail-closed mechanism + the highest-severity self-contained fix, from the adversarial key-contract audit (2026-06-22). The dangerous class is `_df.value or {default}` discarding a DataField's NOT_AVAILABLE signal -> a FAILED fetch re-stamped as a confident AUTHORITATIVE negative. Added _unwrap_or_default(df, default)->(value, failed) as the sanctioned replacement that preserves the failure signal. Fixed STRATA (the worst case): a failed strata lookup was served as authoritative 'not strata' AND silently routed a possible apartment into a full DevelopmentBrief; now a failed strata is AMBIGUOUS (renovation path, no dev-capacity claims) with a NOT_AVAILABLE card. Added scripts/lint_brief_failsoft.py (blocks new un-annotated `_df.value or <container/computed default>`; allows `# failsoft-ok` verified-safe and `# failsoft-todo` tracked) and wired it into pre-commit. Annotated the 4 remaining sites: valuation/sepp/nearby-DA = failsoft-ok (verified-safe / #582-guarded); controls (WO-3) + overlays (WO-2) = failsoft-todo (tracked for their own PRs with build-function changes + live verify). 8 new tests.",
+  "files": [
+    "services/intelligence_brief.py",
+    "scripts/lint_brief_failsoft.py",
+    ".githooks/pre-commit",
+    "tests/test_brief_failclosed.py"
+  ],
   "pre_impl": {
-    "existing_data": "Read both sides of the boundary live + by source: services flood_truth.py:1387-1411, bushfire_prescreen.py:557-572, shadow_detector.py:275-286 emit the real keys; the brief's _build_bushfire_detail/_build_flood_detail and the inline shadow map in _build_neighbourhood read different keys. Verified live against demo addresses (Concord/Belmore/Hurstville).",
-    "assumption_mismatch": "The brief assumed nested outputs['rfs'] for bushfire, a bool 'epi_flood', and scenario keys date_label/time_label/overlap_pct. Reality: flat bushfire keys + compliance.cross_overlays; epi_flood_class is a class string ('none'/'flood_planning_area'); shadow emits label/time_local/shadow_overlap_fraction (0-1). #588 then rendered the resulting nulls as 'Couldn't retrieve', so a successful fetch was reported as a failure.",
-    "new_vs_existing": "Reuses existing services unchanged; only remaps the dict keys the brief reads. Widens 3 existing models (BushfireDetail +is_bushfire_prone/fire_signal, FloodDetail +epi_flood_label, ShadowScenario +shadow_direction_deg/overlaps_subject_lot) and extracts _build_shadow_result from the inline block in _build_neighbourhood so the mapping is unit-testable. No new service, query, or table.",
-    "external_source_error": "Services return graceful empties (None) for non-applicable addresses; epi_flood is None when not assessed, False only when the class is 'none', True when a flood class is present. Overlap arrives as a 0-1 fraction and is converted to percent.",
-    "frontend_type": "Backend Python only (Pydantic models + builders). Frontend renders these DataFields generically; no .tsx change in this PR.",
-    "user_failure_mode": "Before: bushfire card blank on every run; flood JRC/WOfS/EPI showed 'Couldn't retrieve' even on success; shadow scenarios missing date/time/overlap/direction. After: each surfaces the real values the service already returned."
+    "existing_data": "DataField docstring already encodes 3-state semantics (value+conf=present; None+conf!=NA=genuine empty; None+conf=NA=failed). The bug is purely the `.value or {default}` sites discarding df.confidence. classify_strata already has an AMBIGUOUS state -> renovation routing.",
+    "assumption_mismatch": "A blanket DataField validator forbidding AUTHORITATIVE+null is WRONG (legit 'checked, genuinely none' uses it). The failure signal lives in the SOURCE df.confidence, discarded by `or {default}`. So the fix is a helper that preserves it + per-site handling, not a validator.",
+    "new_vs_existing": "Reused the existing AMBIGUOUS->renovation routing and the #582 da_failed guard pattern; added one helper + one lint (no existing lint covers this).",
+    "external_source_error": "A failed strata/overlay/controls fetch now surfaces as NOT_AVAILABLE; strata routing degrades to the conservative renovation path (no false dev-capacity claims).",
+    "frontend_type": "Backend (helper + strata) + a lint script + a pre-commit hook line. 167 brief tests pass.",
+    "user_failure_mode": "Before: a failed strata fetch -> confident 'not strata' + a DevelopmentBrief for a possible apartment. After: NOT_AVAILABLE strata card + renovation routing. New silent-false-negatives are blocked at commit by the lint."
   },
   "functions": [
     {
-      "name": "_build_bushfire_detail",
-      "file_line": "services/intelligence_brief.py:1560",
-      "input": "the raw dict returned by run_bushfire",
-      "output": "BushfireDetail with is_bushfire_prone/category/bal_estimate/vegetation_type/fire_signal/cross_overlays from the real flat keys + compliance.cross_overlays",
-      "if_none": "returns None when input is falsy"
+      "name": "_unwrap_or_default",
+      "file_line": "services/intelligence_brief.py",
+      "input": "a DataField and a default value",
+      "output": "a tuple of (value-or-default, failed) where failed is True only when the upstream fetch did not succeed (confidence == NOT_AVAILABLE)",
+      "if_none": "a genuine empty (value None but confidence not NOT_AVAILABLE) returns failed=False, so legitimate 'checked, none here' is not mistaken for a failure"
     },
     {
-      "name": "_build_flood_detail",
-      "file_line": "services/intelligence_brief.py:1575",
-      "input": "the raw dict returned by run_flood",
-      "output": "FloodDetail; epi_flood = None if no class / False if 'none' / True otherwise, plus epi_flood_label, jrc_water_occurrence_pct, dea_wofs_frequency_pct",
-      "if_none": "returns None when input is falsy"
-    },
-    {
-      "name": "_build_shadow_result",
-      "file_line": "services/intelligence_brief.py:1598",
-      "input": "the raw dict returned by shadow_detector run_shadow",
-      "output": "ShadowResult; per-scenario date_label/time_label/shadow_length_m/overlap_pct(fraction*100)/shadow_direction_deg/overlaps_subject_lot from the real keys",
-      "if_none": "returns None when input is falsy; required str fields fall back to '' via (get() or '')"
+      "name": "scan",
+      "file_line": "scripts/lint_brief_failsoft.py",
+      "input": "a path to a python source file to scan",
+      "output": "blocking errors for un-annotated `_df.value or <container/computed default>` and tracked warnings for failsoft-todo annotations",
+      "if_none": "a file with no matches returns no errors and the lint passes"
     }
   ],
-  "values": "N/A - no regulatory values computed; pure key remap + presentation.",
-  "queries": "N/A - no database or API query added.",
-  "files": [
-    "services/intelligence_brief.py",
-    "services/constraint_models.py",
-    "tests/test_brief_satellite_field_mapping.py",
-    "tests/test_satellite_integration.py"
-  ],
+  "values": "N/A - control-flow + confidence, not regulatory values.",
+  "queries": "N/A - no DB query changed.",
   "break_it": [
     {
-      "scenario": "Someone reverts a builder to the old key (outputs['rfs'] or jrc_occurrence_pct)",
-      "what_happens": "the field silently goes null again - the exact bug class",
-      "repro": "feed the legacy-key dict to the builder",
+      "scenario": "A strata fetch genuinely succeeds and finds the lot is not strata",
+      "what_happens": "must stay AUTHORITATIVE 'not strata' + development routing, not be forced to renovation",
+      "repro": "strata_df AUTHORITATIVE with is_strata False",
       "mitigated": true,
-      "how": "test_brief_satellite_field_mapping.py has *_does_not_read_legacy_keys tests asserting old keys produce None, so a revert fails the suite"
+      "how": "strata_failed is only True when confidence == NOT_AVAILABLE; a successful not-strata result keeps classify_strata -> NOT_STRATA -> development. Guarded by test_genuine_empty_is_not_a_failure"
     },
     {
-      "scenario": "Flood service returns no EPI class (not assessed)",
-      "what_happens": "could render a misleading 'not flood'",
-      "repro": "outputs without epi_flood_class",
+      "scenario": "The lint mis-flags a harmless scalar default like `or None`",
+      "what_happens": "a false positive blocking a safe line",
+      "repro": "foo_df.value or None",
       "mitigated": true,
-      "how": "epi_flood = None when class is None; False only when class == 'none'; test_flood_missing_class_is_unknown_not_false pins it"
+      "how": "the pattern only matches container `{`/`[` or computed `func(` defaults, not scalars. Guarded by test_lint_allows_scalar_default"
     },
     {
-      "scenario": "Shadow scenario has an explicit None label/time, or fraction shown as raw percent",
-      "what_happens": "validation error on required str field, or 0.42 shown as 0.42%",
-      "repro": "scenario {label: None} or shadow_overlap_fraction=0.42",
+      "scenario": "A new `_df.value or {default}` is added without handling the failure",
+      "what_happens": "a new silent false-negative could ship",
+      "repro": "add an un-annotated site",
       "mitigated": true,
-      "how": "(get() or '') guards None on required str fields; fraction*100 -> percent; test asserts overlap_pct == 42.0"
+      "how": "the pre-commit failsoft lint blocks it; the developer must use _unwrap_or_default or annotate. Guarded by test_lint_blocks_unannotated_anti_pattern + test_lint_blocks_computed_default"
     },
     {
-      "scenario": "A pre-existing test encodes the bug (fake keys) and masks a regression",
-      "what_happens": "green tests, broken prod (how the bug survived)",
-      "repro": "old SAMPLE_BUSHFIRE_RAW/SAMPLE_FLOOD_RAW used outputs['rfs']/epi_flood",
+      "scenario": "A transient strata-fetch failure routes a house to renovation, losing dev cards",
+      "what_happens": "a house briefly shows a renovation brief on a failed strata run",
+      "repro": "strata_df times out for a house",
       "mitigated": true,
-      "how": "updated those fixtures in test_satellite_integration.py to the real service-output keys so they test reality"
+      "how": "strata fetch is fast/reliable (~0.2s) so failures are rare; renovation (no false dev claims) is the conservative trade-off vs serving a misleading DevelopmentBrief for a possible apartment"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None.",
-    "other_repo": "N/A - reads existing service output keys; no relay/contract change.",
-    "manual_verify": "Run a brief on a bushfire-prone + flood-affected address: Bushfire card shows prone/category/BAL/fire signal (was blank); Flood card shows JRC/WOfS/EPI class instead of 'Couldn't retrieve'; Shadow scenarios show date/time/overlap%/direction."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A - same /stream endpoint.",
+    "manual_verify": "Run the brief for the Hurstville strata address (5/1 Treacy St) — strata card populates; simulate a strata-fetch failure -> strata card NOT_AVAILABLE + renovation routing, not a confident DevelopmentBrief. The pre-commit lint blocks any new un-annotated `_df.value or {default}`."
   }
 }
