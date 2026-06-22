@@ -42,30 +42,32 @@ from services.intelligence_brief import CompoundSeverity
 # Sample pipeline outputs (matching real pipeline response shapes)
 # ---------------------------------------------------------------------------
 
+# Real run_bushfire output shape: flat keys + compliance.cross_overlays
+# (bushfire_prescreen.py:557-572), NOT a nested 'rfs' dict.
 SAMPLE_BUSHFIRE_RAW = {
     "address": "10 Test St",
     "outputs": {
-        "rfs": {
-            "category": "Vegetation Category 1",
-            "bal_estimate": "BAL-29",
-            "vegetation_type": "Forest",
-        },
-        "cross_overlays": {
-            "flood": False,
-            "heritage_hca": True,
-            "zone": "R2",
+        "is_bushfire_prone": True,
+        "designation_category": "Vegetation Category 1",
+        "estimated_bal_band": "BAL-29",
+        "designation_guideline": "10/50 Vegetation Clearing",
+        "fire_signal": "elevated",
+        "compliance": {
+            "cross_overlays": {"flood": False, "heritage_hca": True, "zone": "R2"},
         },
     },
     "confidence": "high",
     "data_sources": ["rfs_bfpl", "postgis_overlays"],
 }
 
+# Real run_flood normalised output keys (flood_truth.py:1387-1411).
 SAMPLE_FLOOD_RAW = {
     "address": "10 Test St",
     "outputs": {
-        "epi_flood": True,
-        "jrc_occurrence_pct": 4.2,
-        "wofs_frequency_pct": 3.1,
+        "epi_flood_class": "flood_planning_area",
+        "epi_flood_label": "Flood Planning Area",
+        "jrc_water_occurrence_pct": 4.2,
+        "dea_wofs_frequency_pct": 3.1,
         "bom_gauge_distance_km": 2.5,
         "flood_studies": [{"study": "Hawkesbury FRMSP", "depth_m": 1.2}],
     },
@@ -146,13 +148,15 @@ class TestBushfireDetail:
     def test_category_mapped(self):
         sat = _build_satellite_data(SAMPLE_BUSHFIRE_RAW, None, None, None, None)
         bf = sat.bushfire.value
+        assert bf.is_bushfire_prone is True
         assert bf.category == "Vegetation Category 1"
         assert bf.bal_estimate == "BAL-29"
-        assert bf.vegetation_type == "Forest"
+        assert bf.vegetation_type == "10/50 Vegetation Clearing"
+        assert bf.fire_signal == "elevated"
         assert bf.cross_overlays is not None
 
-    def test_empty_rfs_outputs(self):
-        raw = {"outputs": {"rfs": {}}, "confidence": "low"}
+    def test_empty_bushfire_outputs(self):
+        raw = {"outputs": {}, "confidence": "low"}
         sat = _build_satellite_data(raw, None, None, None, None)
         bf = sat.bushfire.value
         assert bf.category is None

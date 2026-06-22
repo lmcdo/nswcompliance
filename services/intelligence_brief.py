@@ -395,9 +395,11 @@ class Economics(BaseModel):
 class BushfireDetail(BaseModel):
     """Bushfire pre-screen from RFS BFPL + PostGIS cross-overlays."""
 
+    is_bushfire_prone: Optional[bool] = None
     category: Optional[str] = None  # Vegetation Category 1/2/3, buffer
     bal_estimate: Optional[str] = None
-    vegetation_type: Optional[str] = None
+    vegetation_type: Optional[str] = None  # RFS designation guideline
+    fire_signal: Optional[str] = None  # none/low/moderate/elevated/unavailable
     cross_overlays: Optional[dict] = None  # flood, heritage, zone intersections
     confidence: Optional[str] = None
 
@@ -406,6 +408,7 @@ class FloodDetail(BaseModel):
     """Multi-source flood analysis beyond statutory EPI flag."""
 
     epi_flood: Optional[bool] = None
+    epi_flood_label: Optional[str] = None  # EPI flood class label (human-readable)
     jrc_occurrence_pct: Optional[float] = None  # JRC 1984-2021
     wofs_frequency_pct: Optional[float] = None  # DEA WOfS
     bom_gauge_distance_km: Optional[float] = None
@@ -1562,12 +1565,14 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
     if not bushfire_raw:
         return None
     outputs = bushfire_raw.get("outputs") or {}
-    rfs = outputs.get("rfs") or {}
+    compliance = outputs.get("compliance") or {}
     return BushfireDetail(
-        category=rfs.get("category"),
-        bal_estimate=rfs.get("bal_estimate"),
-        vegetation_type=rfs.get("vegetation_type"),
-        cross_overlays=outputs.get("cross_overlays"),
+        is_bushfire_prone=outputs.get("is_bushfire_prone"),
+        category=outputs.get("designation_category"),
+        bal_estimate=outputs.get("estimated_bal_band"),
+        vegetation_type=outputs.get("designation_guideline"),
+        fire_signal=outputs.get("fire_signal"),
+        cross_overlays=compliance.get("cross_overlays"),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -1577,13 +1582,46 @@ def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
     if not flood_raw:
         return None
     outputs = flood_raw.get("outputs") or {}
+    epi_class = outputs.get("epi_flood_class")
     return FloodDetail(
-        epi_flood=outputs.get("epi_flood"),
-        jrc_occurrence_pct=outputs.get("jrc_occurrence_pct"),
-        wofs_frequency_pct=outputs.get("wofs_frequency_pct"),
+        # None = not assessed; False = checked, not in a flood class; True = flood class present
+        epi_flood=(None if epi_class is None else epi_class != "none"),
+        epi_flood_label=outputs.get("epi_flood_label"),
+        jrc_occurrence_pct=outputs.get("jrc_water_occurrence_pct"),
+        wofs_frequency_pct=outputs.get("dea_wofs_frequency_pct"),
         bom_gauge_distance_km=outputs.get("bom_gauge_distance_km"),
         flood_studies=outputs.get("flood_studies"),
         confidence=flood_raw.get("confidence"),
+    )
+
+
+def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult]:
+    """Map raw shadow_detector output into ShadowResult.
+
+    Service scenario keys: label / time_local / shadow_overlap_fraction (0-1) /
+    shadow_direction_deg / overlaps_subject_lot. Overlap fraction -> percent.
+    """
+    if not shadow_result:
+        return None
+    scenarios = []
+    for s in (shadow_result.get("scenarios") or []):
+        frac = s.get("shadow_overlap_fraction")
+        scenarios.append(ShadowScenario(
+            date_label=(s.get("label") or ""),
+            time_label=(s.get("time_local") or ""),
+            sun_altitude_deg=s.get("sun_altitude_deg"),
+            sun_azimuth_deg=s.get("sun_azimuth_deg"),
+            shadow_length_m=s.get("shadow_length_m"),
+            overlap_pct=(frac * 100 if frac is not None else None),
+            shadow_direction_deg=s.get("shadow_direction_deg"),
+            overlaps_subject_lot=s.get("overlaps_subject_lot"),
+        ))
+    return ShadowResult(
+        height_m=shadow_result.get("height_m"),
+        height_source=shadow_result.get("height_source"),
+        adg_compliant=shadow_result.get("adg_compliant"),
+        scenarios=scenarios,
+        worst_case_scenario=shadow_result.get("worst_case_scenario"),
     )
 
 
@@ -2251,25 +2289,7 @@ def _build_neighbourhood(
         for d in das
     ]
 
-    shadow_schema = None
-    if shadow_result:
-        scenarios = []
-        for s in (shadow_result.get("scenarios") or []):
-            scenarios.append(ShadowScenario(
-                date_label=s.get("date_label", ""),
-                time_label=s.get("time_label", ""),
-                sun_altitude_deg=s.get("sun_altitude_deg"),
-                sun_azimuth_deg=s.get("sun_azimuth_deg"),
-                shadow_length_m=s.get("shadow_length_m"),
-                overlap_pct=s.get("overlap_pct"),
-            ))
-        shadow_schema = ShadowResult(
-            height_m=shadow_result.get("height_m"),
-            height_source=shadow_result.get("height_source"),
-            adg_compliant=shadow_result.get("adg_compliant"),
-            scenarios=scenarios,
-            worst_case_scenario=shadow_result.get("worst_case_scenario"),
-        )
+    shadow_schema = _build_shadow_result(shadow_result)
 
     if da_failed:
         da_reason = das_df.reason or "Nearby-DA lookup did not complete"
