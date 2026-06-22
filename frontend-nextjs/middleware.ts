@@ -135,9 +135,16 @@ export async function middleware(request: NextRequest) {
     request.headers.get('host') ??
     request.nextUrl.hostname;
   const isVerifyDomain = hostname === 'verify.plotdetect.com.au';
+  // canibuildit.com.au = the satellite apps site (the /reports section).
+  // plotdetect.com.au stays the info site (its root is unchanged).
+  const isCanibuilditDomain =
+    hostname === 'canibuildit.com.au' || hostname === 'www.canibuildit.com.au';
 
   if (isVerifyDomain && pathname === '/') {
     return NextResponse.rewrite(new URL('/assessment', request.url));
+  }
+  if (isCanibuilditDomain && pathname === '/') {
+    return NextResponse.rewrite(new URL('/reports', request.url));
   }
 
   // Only apply rate limiting / auth to API routes
