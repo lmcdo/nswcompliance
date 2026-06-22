@@ -1,34 +1,35 @@
 {
   "tier": "standard",
   "commit_hash": "pending",
-  "justification": "Flood JRC/WOfS blanks persisted because the BINDING limits are the INNER timeouts, not the outer wrappers changed before. JRC reads a remote GeoTIFF via GDAL vsicurl bounded by GDAL_HTTP_TIMEOUT=12s (raised to 30, with the outer fut.result 35->60); WOfS downloads a WCS GeoTIFF bounded by requests timeout=20s (raised to 30, with _WOFS_HARD_TIMEOUT 35->60); the brief's flood collection budget raised 50->70s so the now-longer concurrent sub-queries (max ~60s) are not cut off. Since JRC/WOfS return 0 for a genuine no-water reading and null only on a FAILED read, the frontend now renders 'Couldn't retrieve' for a null JRC/WOfS/EPI-flood instead of an ambiguous '—'. Also labelled the nearby-DA radius explicitly as 500 m. Companion change (separate repo): the Trigger.dev task maxDuration 120->300 so the longer brief finishes before the stream is cut.",
+  "justification": "Diagnosis-driven fixes from the first full (uncut) live brief. (1) SHADOW now succeeds (the earlier 65s budget fix landed) but rendered as a bare '6 fields'; added a ShadowDisplay component that renders the real overshadowing summary (modelled height + source, ADG 3-hour solar-access compliance badge, worst-case shadow length + neighbour overlap, temporal caveat). (2) TERRAIN failed with a generic 'imagery or model source unavailable' that hid the cause; the brief now passes through the REAL terrain_df.reason and the satellite empty-state surfaces it (capped) so the actual error (DEM/whitebox) is diagnosable on the next run. (3) PRE-DA's confirmed 'No module named rapidfuzz' — rapidfuzz is imported by services/pre_da_history.py but was missing from services/requirements.txt (the file the prod Docker image installs, NOT the root requirements.txt); added it. NOTE: pre-DA also needs torch (Tessera/Clay embeddings) which services/requirements.txt deliberately excludes as too large for Railway — so pre-DA ultimately needs decoupling to a GPU worker like granny-flat; rapidfuzz is a correct omission fix regardless.",
   "files": [
-    "services/flood_truth.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "services/intelligence_brief.py",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/requirements.txt"
   ],
   "pre_impl": {
-    "existing_data": "JRC _query_jrc_surface_water samples via /vsicurl with GDAL_HTTP_TIMEOUT=12 and an outer 35s; WOfS _query_dea_wofs downloads a WCS GeoTIFF with requests timeout=20 and an outer 35s; both return null on failure and a real float (incl 0.0) on success. The brief collected flood at a hardcoded 50s.",
-    "assumption_mismatch": "Earlier I raised the outer wrappers (25->35), but the inner GDAL/requests timeouts fired first, so the reads still failed fast and returned null (rendered blank).",
-    "new_vs_existing": "Bumped existing inner+outer timeout constants keeping inner < outer; reused the existing null-on-failure contract for the honest 'couldn't retrieve' render.",
-    "external_source_error": "Slow JRC GCS / DEA WCS reads now get more time; a still-failing read stays null and shows 'Couldn't retrieve' rather than a misleading dash or a false 0.",
-    "frontend_type": "Backend timeouts + a frontend honest-null render + a label. tsc passes.",
-    "user_failure_mode": "Before: JRC/WOfS/EPI flood showed a bare '—' that could mean failure OR zero, and the nearby-DA radius was unstated. After: the reads get time to return a real value (0 for a dry lot); a genuine failure says 'Couldn't retrieve'; the radius reads '500 m'."
+    "existing_data": "Shadow is a DataField[Optional[ShadowResult]] inside Neighbourhood; ShadowResult has height_m/height_source/adg_compliant/scenarios/worst_case_scenario/temporal_caveat. terrain_df.reason already captures the real _safe_call exception. services/requirements.txt (49 lines) is what Dockerfile.python installs.",
+    "assumption_mismatch": "Assumed the root requirements.txt governed the prod image; in fact Dockerfile.python installs services/requirements.txt, which omits rapidfuzz (and deliberately torch).",
+    "new_vs_existing": "Reused the existing nested-render pattern (like HeritageList/OverlayList) for shadow; reused the DataField.reason already produced by _safe_call for terrain; appended one dependency.",
+    "external_source_error": "Terrain/flood/shadow upstream failures now surface their real reason (capped) instead of a generic line; a genuine success renders the data.",
+    "frontend_type": "Frontend (shadow render + reason surfacing) + backend (terrain reason passthrough + one requirement). tsc passes; 159 brief tests pass.",
+    "user_failure_mode": "Before: shadow showed '6 fields'; terrain showed a generic 'unavailable' with no cause; pre-DA failed on a missing package. After: shadow shows the overshadowing summary; terrain shows its real error; pre-DA's rapidfuzz blocker is removed (torch decoupling still needed for the embeddings)."
   },
   "functions": [
-    {"name": "_query_jrc_surface_water", "file_line": "services/flood_truth.py", "input": "lat, lng for the JRC occurrence raster sample", "output": "the water-occurrence percent (0 for a dry point) with the GDAL HTTP timeout raised to 30s inside a 60s outer guard", "if_none": "returns null only on a failed/timed-out read, which the UI shows as 'Couldn't retrieve'"},
-    {"name": "_query_dea_wofs", "file_line": "services/flood_truth.py", "input": "lat, lng for the DEA WOfS WCS GeoTIFF download", "output": "the water-observed frequency percent with the WCS download timeout raised to 30s inside a 60s outer guard", "if_none": "returns null only on a failed read, shown as 'Couldn't retrieve'"}
+    {"name": "ShadowDisplay", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "a ShadowResult object with height, ADG compliance, scenarios and worst-case", "output": "a readable overshadowing summary with a solar-access compliance badge and the worst-case shadow length and neighbour overlap", "if_none": "a null shadow value hits the not_available branch and shows the unavailable message instead"},
+    {"name": "describeUnavailable", "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx", "input": "a satellite layer's reason, section and satelliteRan flag", "output": "for a ran-but-failed satellite layer, the generic message now appends the real reason (capped at 180 chars) when it is not a 'not requested' case", "if_none": "a not-requested layer still shows the tick-the-box message"}
   ],
-  "values": "N/A - flood screening percentages and timeout constants, not regulatory values.",
-  "queries": "N/A - no DB query; only the JRC vsicurl read and the WOfS/EPI HTTP timeouts changed.",
+  "values": "N/A - shadow geometry and a dependency, not regulatory values.",
+  "queries": "N/A - no DB query.",
   "break_it": [
-    {"scenario": "JRC vsicurl read still exceeds 30s because the global tile is not cloud-optimized", "what_happens": "the read fails and the field shows 'Couldn't retrieve' instead of a value", "repro": "sample a point where GDAL must fetch large non-tiled strips", "mitigated": true, "how": "the outer 60s guard bounds it and the honest 'couldn't retrieve' message is shown, never a false 0; the authoritative EPI flood flag is still served from PostGIS in the Environmental card"},
-    {"scenario": "A genuine zero-water reading is mistaken for a failure", "what_happens": "a real 0 could be hidden behind 'couldn't retrieve'", "repro": "a dry inland point", "mitigated": true, "how": "JRC/WOfS return 0.0 (not null) for a genuine zero, so 0 renders as '0' and only a true null (failed read) shows 'couldn't retrieve'"},
-    {"scenario": "Raising the flood budget to 70s makes the brief longer and risks the stream cutoff again", "what_happens": "the brief could run longer", "repro": "all flood sub-queries take ~60s", "mitigated": true, "how": "the companion Trigger.dev maxDuration was raised 120->300s; flood sub-queries run concurrently so the section completes at ~max(sub-query) ~= 60s, under the 70s budget"}
+    {"scenario": "Shadow result is present but has no scenarios array", "what_happens": "the worst-case line would be skipped and only height/ADG show", "repro": "a ShadowResult with scenarios=[]", "mitigated": true, "how": "each block is guarded by a null/empty check; an empty scenarios array simply omits the worst-case line"},
+    {"scenario": "A satellite reason contains a very long Python traceback", "what_happens": "an unwieldy string could show in the card", "repro": "terrain raises with a long message", "mitigated": true, "how": "the reason is capped at 180 chars and framed in parentheses; this is a dev/demo tool where the visible reason is what enables diagnosis"},
+    {"scenario": "rapidfuzz still missing after deploy because the image build cache is stale", "what_happens": "pre-DA would still fail on rapidfuzz", "repro": "Railway reuses the cached pip layer", "mitigated": true, "how": "adding it to services/requirements.txt changes the file content, invalidating the pip layer cache; if Railway still serves a stale image, a clean rebuild resolves it"},
+    {"scenario": "Adding rapidfuzz makes pre-DA appear fixed but it still fails on torch", "what_happens": "pre-DA shows a torch error instead of rapidfuzz", "repro": "run pre-DA after the deploy", "mitigated": true, "how": "the surfaced real reason will now show the torch/geotessera error, confirming pre-DA needs decoupling to a GPU worker — documented in services/requirements.txt"}
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None - JRC (GCS) and DEA WOfS (WCS) are keyless public sources.",
-    "other_repo": "plotdetect-agents: trigger/intelligence-brief.ts maxDuration 120->300 must be deployed (npx trigger.dev deploy) for the brief tail to render.",
-    "manual_verify": "Re-run the Haberfield brief: JRC/WOfS show a real value (0% for this dry ridge) or an honest 'Couldn't retrieve'; the nearby-DA description reads '500 m'; after the maxDuration deploy, Terrain/Pre-DA/Confidence Summary render again."
+    "db_reset": "N/A", "secrets": "None",
+    "other_repo": "N/A - same /stream endpoint; the Trigger.dev relay is unchanged.",
+    "manual_verify": "Re-run the brief: Shadow shows a real overshadowing summary; Terrain shows its actual error (DEM/whitebox); Pre-DA's rapidfuzz error is gone (it may now show the torch/geotessera error, confirming the decoupling need)."
   }
 }
