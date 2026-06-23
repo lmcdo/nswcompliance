@@ -219,7 +219,12 @@ export function ConstraintArithmeticCard({
   // shown only when it genuinely exceeds the floor.
   const floorDwellings = result.as_of_right_dwellings ?? result.realistic_dwellings ?? 0;
   const ceilingDwellings = result.max_permitted_dwellings ?? null;
-  const hasYield = floorDwellings > 0;
+  // The dwelling-yield + DCP-setback model only covers residential zones (R1–R5). On
+  // centre/employment/special-use zones a detached-dwelling yield and residential
+  // setbacks are wrong (e.g. E1 delivers housing as shop-top housing; a dwelling house
+  // is prohibited), so suppress those and show only the LEP envelope + a note.
+  const zoneModelled = !zone || /^(R[1-5]|RU5)\b/i.test(zone.trim());
+  const hasYield = floorDwellings > 0 && zoneModelled;
 
   return (
     <Card className="border-blue-200 bg-blue-50/30">
@@ -253,7 +258,7 @@ export function ConstraintArithmeticCard({
           )}
 
           {/* After council DCP — secondary, only when lot geometry resolved */}
-          {result.dcp_adjusted_gfa_m2 != null && (
+          {zoneModelled && result.dcp_adjusted_gfa_m2 != null && (
             <div className="bg-white border border-teal-200 rounded-lg p-3">
               <div className="text-xs font-medium text-teal-700 mb-1">After council DCP</div>
               <div className="text-xl font-bold text-gray-900">
@@ -276,7 +281,7 @@ export function ConstraintArithmeticCard({
                     {floorDwellings}&ndash;{ceilingDwellings}
                   </div>
                   <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    <span className="font-medium text-gray-900">{floorDwellings}</span> without council approval,
+                    <span className="font-medium text-gray-900">{floorDwellings}</span> as-of-right (subject to a DA),
                     {' '}up to <span className="font-medium text-gray-900">{ceilingDwellings}</span>{' '}
                     ({humanizeForm(result.max_permitted_form)}) with council approval.
                   </div>
@@ -304,10 +309,20 @@ export function ConstraintArithmeticCard({
                 <>
                   <div className="text-xl font-bold text-gray-900">{floorDwellings}</div>
                   <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                    {humanizeForm(result.as_of_right_form)} — buildable without council approval.
+                    {humanizeForm(result.as_of_right_form)} — as-of-right yield, subject to a development application.
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Non-residential zone — dwelling yield/setbacks aren't modelled; explain, don't assert. */}
+          {!zoneModelled && (
+            <div className="bg-white border border-amber-200 rounded-lg p-3 col-span-2">
+              <div className="text-xs font-medium text-amber-700 mb-1">Dwelling yield</div>
+              <div className="text-sm text-gray-700 leading-snug">
+                Not modelled for {zone || 'this zone'} — a non-residential zone. Housing here is delivered through the zone&rsquo;s permitted uses (e.g. shop-top housing above retail), not a detached dwelling. The GFA envelope above still applies; see the land use table for the permitted forms.
+              </div>
             </div>
           )}
 
@@ -356,8 +371,8 @@ export function ConstraintArithmeticCard({
           </div>
         )}
 
-        {/* Setbacks summary */}
-        {(result.setback_front_m != null || result.setback_side_m != null || result.setback_rear_m != null) && (
+        {/* Setbacks summary — residential DCP controls; suppress on non-residential zones. */}
+        {zoneModelled && (result.setback_front_m != null || result.setback_side_m != null || result.setback_rear_m != null) && (
           <div className="bg-white border border-blue-100 rounded-lg p-3">
             <div className="text-xs font-medium text-blue-600 mb-2">DCP Setbacks Applied</div>
             <div className="flex gap-4 text-sm">
