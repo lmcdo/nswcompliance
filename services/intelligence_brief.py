@@ -1628,6 +1628,24 @@ def _fetch_pre_da_history(
     return run_pre_da_history(req)
 
 
+def _warn_on_drift(contract_cls, raw: Optional[dict], service: str) -> None:
+    """S3 inline drift tripwire: log a loud CONTRACT-DRIFT warning when a REAL
+    service output is MISSING a contract key (a rename/drop -> the #589 silent-null
+    class). Behaviour is unchanged — the card still fail-softs to None; this just
+    makes the drift visible in prod logs on real traffic. Never raises.
+    """
+    try:
+        from brief_contract_drift import check_drift
+        missing = check_drift(contract_cls, raw or {}).get("missing")
+        if missing:
+            logger.warning(
+                "CONTRACT-DRIFT %s: service output missing contract key(s) %s "
+                "(rename/drop) — those card fields will be null", service, missing,
+            )
+    except Exception:  # drift-logging must never affect the brief
+        pass
+
+
 def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDetail]:
     """Extract BushfireDetail from raw bushfire prescreen output via the S2 contract.
 
@@ -1636,6 +1654,7 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
     """
     if not bushfire_raw:
         return None
+    _warn_on_drift(BushfireServiceOutput, bushfire_raw.get("outputs"), "bushfire")
     out = BushfireServiceOutput.model_validate(bushfire_raw.get("outputs") or {})
     return BushfireDetail(
         is_bushfire_prone=out.is_bushfire_prone,
@@ -1657,6 +1676,7 @@ def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
     """
     if not flood_raw:
         return None
+    _warn_on_drift(FloodServiceOutput, flood_raw.get("outputs"), "flood")
     out = FloodServiceOutput.model_validate(flood_raw.get("outputs") or {})
     epi_class = out.epi_flood_class
     return FloodDetail(
@@ -1679,6 +1699,7 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
     """
     if not shadow_result:
         return None
+    _warn_on_drift(ShadowServiceOutput, shadow_result, "shadow")
     out = ShadowServiceOutput.model_validate(shadow_result)
     scenarios = []
     for s in out.scenarios:
