@@ -1,57 +1,75 @@
 {
   "tier": "standard",
-  "commit_hash": "5cecaedd",
-  "justification": "S3 increment 2 — inline contract-drift tripwire on REAL traffic. Railway CLI is not authed (a sampled cron can't be deployed/verified now), and the inline approach is strictly better: every production brief run now checks each typed service output (flood/bushfire/shadow) against its S2 contract and logs a loud CONTRACT-DRIFT warning the moment a contract key goes missing (a rename/drop -> the #589 silent-null class). Behaviour is unchanged — the card still fail-softs to None — but the drift becomes visible in prod logs on real traffic instead of only when a user notices a blank card. _warn_on_drift wraps check_drift (S3 #599) in try/except so drift-logging can never affect the brief, and lazily imports it (no circular import). Fully unit-tested via caplog. The proactive Telegram-alert cron remains a deploy-after-login follow-up.",
+  "commit_hash": "",
+  "justification": "Backend logic fix to the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_brief_contract_drift.py"
+    "services/constraint_arithmetic.py",
+    "tests/test_setback_conflict_resolution.py"
   ],
   "pre_impl": {
-    "existing_data": "The typed builds (_build_flood_detail/_build_bushfire_detail/_build_shadow_result) parse via the S2 contracts; check_drift (scripts/brief_contract_drift.py) compares an output's keys to a contract. scripts/ is importable in the brief (it already imports conveyancing_db). check_drift does not import intelligence_brief (only _registry does, lazily).",
-    "assumption_mismatch": "A cron sampling demo addresses needs Railway auth + the full image and misses inputs it doesn't sample; checking on real traffic in-process covers every real run with zero infra.",
-    "new_vs_existing": "Reused check_drift (#599); added a thin _warn_on_drift logger call at the top of each typed build. No behaviour change.",
-    "external_source_error": "A drifted real output now logs CONTRACT-DRIFT with the exact missing key; the card still degrades to None as before.",
-    "frontend_type": "Backend only. Full suite passes incl 2 new caplog tests.",
-    "user_failure_mode": "Before: a service rename silently nulled a card and was only found by a user noticing a blank. After: every real brief run that hits the drifted service logs a loud CONTRACT-DRIFT warning naming the missing key."
+    "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
+    "assumption_mismatch": "Assumed one DCP value per control; in reality controls are tiered or sometimes duplicated/garbled, so several rows match. The condition field that distinguishes tiers was being ignored entirely by the selector.",
+    "new_vs_existing": "Extends the existing _get_dcp_value rather than adding a parallel path; adds two small pure helpers (_matching_controls, _dcp_value_conflict) reused by the selector and the gap-flagging. No new DB query or table introduced."
   },
   "functions": [
     {
-      "name": "_warn_on_drift",
-      "file_line": "services/intelligence_brief.py",
-      "input": "a Pydantic contract class, the raw service output, and a service label",
-      "output": "a CONTRACT-DRIFT warning log line naming the missing contract keys when the real output drifts; nothing on a clean output",
-      "if_none": "any exception in the check is swallowed so drift-logging can never affect the brief"
+      "name": "_get_dcp_value",
+      "file_line": "services/constraint_arithmetic.py:103",
+      "input": "a DCPControl list, a control_type string, a dev_type string, and an optional prefer_max flag for cap controls",
+      "output": "a single float chosen deterministically and conservatively across all matching rows (max value_min, or min value_max when prefer_max), or None when nothing matches",
+      "if_none": "returns None when no row matches the control_type for the exact dev_type or the dwelling_house fallback, exactly as before"
+    },
+    {
+      "name": "_matching_controls",
+      "file_line": "services/constraint_arithmetic.py:139",
+      "input": "a DCPControl list, a control_type string and a dev_type string",
+      "output": "every row matching control_type for the exact dev_type, or the dwelling_house fallback rows when there is no exact match",
+      "if_none": "returns an empty list when no row matches, so the callers treat it as no-control-available"
+    },
+    {
+      "name": "_dcp_value_conflict",
+      "file_line": "services/constraint_arithmetic.py:156",
+      "input": "a DCPControl list, a control_type string and a dev_type string",
+      "output": "the sorted distinct value_min values when more than one exists (the selector had to choose), otherwise None",
+      "if_none": "returns None when zero or one distinct value exists, so no spurious conflict gap is raised"
     }
   ],
-  "values": "N/A - logging only, not regulatory values.",
-  "queries": "N/A - no DB query.",
+  "values": "N/A - no new DB/API values read; operates on the already-fetched DCPControl list passed into compute_constraint_arithmetic.",
+  "queries": "N/A - no SQL added or changed; the audit that informed this was a separate read-only probe, not part of the runtime path.",
   "break_it": [
     {
-      "scenario": "The drift import or check raises at runtime",
-      "what_happens": "it must never break the brief",
-      "repro": "force an import error in _warn_on_drift",
+      "scenario": "A tiered control list is passed in a different row order across two runs (DB ORDER BY changes, or re-extraction reorders rows)",
+      "what_happens": "previously the selected setback flipped between tiers (last-row-wins), so the same lot could report different buildable areas run to run",
+      "repro": "_get_dcp_value([front 9, front 15]) vs _get_dcp_value([front 15, front 9]) — covered by test_selection_is_order_independent",
       "mitigated": true,
-      "how": "the whole body is wrapped in try/except: pass; the brief proceeds regardless"
+      "how": "selection now reduces over ALL matching rows with max()/min(), so it is order-independent; the test asserts both orderings return 15.0"
     },
     {
-      "scenario": "A genuine all-None output (real nothing-detected) logs spurious drift",
-      "what_happens": "noise in the logs on a normal run",
-      "repro": "an output with all contract keys present but None",
+      "scenario": "Conflicting setback values exist but the engine silently presents one as a single certain figure (the original Burwood 15m bug)",
+      "what_happens": "a user sees an authoritative-looking setback/footprint built on an arbitrarily-chosen (and possibly mis-extracted) value with no warning",
+      "repro": "compute_constraint_arithmetic with front_setback rows 9m and 15m — covered by test_burwood_conflict_uses_conservative_and_flags_gap",
       "mitigated": true,
-      "how": "drift is key-presence not value; all-None with the right keys logs nothing. Guarded by test_build_flood_no_warning_on_good_output"
+      "how": "_dcp_value_conflict drives a gap listing all differing values and the conservative one used; the engine still picks the largest (smallest buildable) so it never over-reports capacity while the conflict is flagged for verification"
     },
     {
-      "scenario": "A drifted output stops the card from building",
-      "what_happens": "the brief should still build the card (fail-soft) and just log",
-      "repro": "feed a renamed-key output",
+      "scenario": "A cap control (max_site_coverage) has two values and the change wrongly applies the minimum-requirement (max) rule, loosening the cap",
+      "what_happens": "the engine would allow MORE site coverage than the tightest cap, over-reporting buildable area",
+      "repro": "_get_dcp_value([cap 50, cap 67], prefer_max=True) — covered by test_prefer_max_cap_picks_smallest_allowance (expects 50, not 67)",
       "mitigated": true,
-      "how": "the warning is logged then the existing tolerant parse runs; the card still builds. Guarded by test_build_flood_logs_drift_warning (asserts fd is not None)"
+      "how": "prefer_max branch reduces with min() over value_max, so the tightest cap wins; the test locks 50.0"
+    },
+    {
+      "scenario": "An exact dev_type control is diluted by dwelling_house fallback rows of the same control_type",
+      "what_happens": "a secondary_dwelling setback could be mixed with dwelling_house values and mis-resolved",
+      "repro": "_get_dcp_value with a dwelling_house front 6m and a secondary_dwelling front 3m, dev_type='secondary_dwelling' — covered by test_exact_dev_type_preferred_over_dwelling_house (expects 3.0)",
+      "mitigated": true,
+      "how": "_matching_controls returns ONLY exact dev_type rows when any exist; the dwelling_house fallback is used solely when there is no exact match"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief; on a service whose output matches the contract there is no CONTRACT-DRIFT log. The proactive Telegram cron is a deploy-after-`railway login` follow-up."
+    "db_reset": "N/A - no database change; the bad Burwood/camden rows in dcp_setback_controls are a separate data-quality follow-up (the engine now fails safe and flags them, but the rows still need correcting).",
+    "secrets": "None.",
+    "other_repo": "N/A - services-layer logic only; no Trigger.dev/frontend change. The intelligence brief and capacity card consume the same compute_constraint_arithmetic output and gain the conflict gaps automatically.",
+    "manual_verify": "Run the brief for an LGA with conflicting setbacks (e.g. 14 Stanley St, Croydon Park — Burwood front 9/15): the Development Yield card's footprint is now computed from the conservative setback and a Data Gap flags the conflicting front-setback values for verification. Run a single-setback LGA and confirm no conflict gap appears and the value is unchanged."
   }
 }

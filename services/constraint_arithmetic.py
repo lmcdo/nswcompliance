@@ -115,22 +115,59 @@ def _get_dcp_value(
     is stored in value_max, so pass ``prefer_max=True`` — otherwise the cap is
     read as value_min (usually None) and silently dropped (GATE-3). ``prefer_max``
     falls back to value_min when value_max is absent.
+
+    When several rows match the same (control_type, dev_type) — tiered controls
+    (lot size / width / storey bands) or duplicate/conflicting extractions — the
+    value is chosen DETERMINISTICALLY and CONSERVATIVELY, never by list order:
+      * minimum-requirement controls -> the LARGEST value_min (biggest setback /
+        landscaping / parking demand = smallest buildable envelope = fail-safe,
+        never over-reports capacity);
+      * cap controls (``prefer_max``)  -> the SMALLEST value_max (tightest cap).
+    Use :func:`_dcp_value_conflict` to surface a data-gap when this had to choose.
     """
-    exact = None
-    fallback = None
-    for c in controls:
-        if c.control_type != control_type:
-            continue
-        if c.dev_type == dev_type:
-            exact = c
-        elif c.dev_type == "dwelling_house" and fallback is None:
-            fallback = c
-    match = exact or fallback
-    if match is None:
+    matches = _matching_controls(controls, control_type, dev_type)
+    if not matches:
         return None
     if prefer_max:
-        return match.value_max if match.value_max is not None else match.value_min
-    return match.value_min
+        caps = [c.value_max if c.value_max is not None else c.value_min for c in matches]
+        caps = [v for v in caps if v is not None]
+        return min(caps) if caps else None
+    mins = [c.value_min for c in matches if c.value_min is not None]
+    return max(mins) if mins else None
+
+
+def _matching_controls(
+    controls: list[DCPControl],
+    control_type: str,
+    dev_type: str,
+) -> list[DCPControl]:
+    """All controls for ``control_type``, preferring exact ``dev_type`` rows and
+    falling back to ``dwelling_house`` rows only when there is no exact match.
+
+    Returns every matching row (not just the first/last) so callers can choose
+    deterministically rather than relying on iteration order.
+    """
+    exact = [c for c in controls if c.control_type == control_type and c.dev_type == dev_type]
+    if exact:
+        return exact
+    return [c for c in controls if c.control_type == control_type and c.dev_type == "dwelling_house"]
+
+
+def _dcp_value_conflict(
+    controls: list[DCPControl],
+    control_type: str,
+    dev_type: str,
+) -> Optional[list[float]]:
+    """Return the sorted distinct ``value_min`` values when more than one exists
+    for the same (control_type, dev_type) — i.e. :func:`_get_dcp_value` had to
+    choose between conflicting/tiered controls — else ``None``.
+
+    Used to raise an honest data-gap so a chosen-among-conflicts setback is
+    flagged for verification rather than presented as a single certain figure.
+    """
+    matches = _matching_controls(controls, control_type, dev_type)
+    vals = sorted({c.value_min for c in matches if c.value_min is not None})
+    return vals if len(vals) > 1 else None
 
 
 def _dcp_controls_from_setback_rows(
@@ -368,6 +405,19 @@ def compute_constraint_arithmetic(
     result.setback_front_m = front_setback
     result.setback_rear_m = rear_setback
     result.setback_side_m = side_setback
+
+    # Conflicting/tiered setback controls (e.g. lot-size or storey bands, or a
+    # duplicate/garbled extraction): _get_dcp_value used the most conservative
+    # value above; surface the conflict so the chosen figure is flagged for
+    # verification rather than read as a single certain control.
+    for _ct, _label in (("front_setback", "front"), ("rear_setback", "rear"), ("side_setback", "side")):
+        _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type)
+        if _conflict:
+            gaps.append(
+                f"DCP {_label} setback has {len(_conflict)} differing values "
+                f"({', '.join(f'{v:g}m' for v in _conflict)}); used the most conservative "
+                f"({max(_conflict):g}m). Verify the control that applies to this lot against the DCP."
+            )
 
     if front_setback is not None or rear_setback is not None or side_setback is not None:
         effective_front = front_setback or 0.0
