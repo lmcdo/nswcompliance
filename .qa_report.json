@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "",
+  "commit_hash": "a1803ed4",
   "justification": "Two-part setback correctness fix. PART 1 (engine): the capacity engine's DCP control selection. PART 2 (data gate): scripts/validate_dcp_setbacks.py + tests/test_dcp_setback_validation.py — the missing DETERMINISTIC semantic validator that catches setback values mislabelled vs their source clause (the class of defect schema validation, the change-only review queue, and the consuming-engine routing tests all let through; the initial bulk load never passed the human review queue). Multi-signal (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER); run live over 1001 rows it found 10 high-severity defects across 7 LGAs (burwood/camden/canada_bay/cumberland/fairfield/penrith/the_hills). A @pytest.mark.database ratchet locks the high-severity count at <=10 so a future extraction cannot add a mislabelled setback. No LLM is used (project deterministic-only rule); Gemini stays advisory-to-human triage. PART 1 detail: the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
   "files": [
     "services/constraint_arithmetic.py",
@@ -53,7 +53,7 @@
     },
     {
       "name": "audit_setback_controls",
-      "file_line": "scripts/validate_dcp_setbacks.py:154",
+      "file_line": "scripts/validate_dcp_setbacks.py:185",
       "input": "a list of dcp_setback_controls row dicts as fetched from the live table",
       "output": "a flat list of findings across all four signals (conflict, foreign-language, magnitude, placeholder), each tagged high or advisory severity",
       "if_none": "returns an empty list when no signal fires, meaning the extracted setback data passes the semantic gate"
