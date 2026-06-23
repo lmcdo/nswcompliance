@@ -1,33 +1,59 @@
 {
   "tier": "standard",
-  "commit_hash": "pending",
-  "justification": "WO-2 (overlays) + WO-3 (controls) fail-closed — the two sites left tracked by the failsoft lint after S1 (#593). A FAILED overlay fetch rendered the overlay list + coverage at AUTHORITATIVE (and flood/bushfire confidently False), and a FAILED portal-controls fetch rendered zone/height/FSR blank@AUTHORITATIVE — both confident false-negatives. Used _unwrap_or_default to thread overlays_failed/controls_failed into _build_environmental and _build_planning_controls. Precise scope: purely overlay-derived fields (overlays, overlay_coverage) -> NOT_AVAILABLE on overlays_failed; flood_epi + bushfire_designation combine overlays WITH portal controls so only downgrade when BOTH failed (a surviving source still gives a real answer); mine/contaminated/drinking/heritage come from separate fetches and are untouched; biodiversity/riparian/wetlands self-heal via their existing live-query fallback. lot_dimensions stays AUTHORITATIVE under a controls failure (it comes from geometry, not controls). The failsoft lint now reports 0 tracked todos.",
+  "commit_hash": "739c1259",
+  "justification": "WO-4 + WO-5 — the two residual key-null bugs from the adversarial audit (Part A), both single display fields. WO-4: conveyancing_db.fetch_nearby_das SELECTed cost_of_development and unpacked it as `cost` but omitted it from the returned dict, so the brief's NearbyDA.cost (read via d.get('cost_of_development')) was always null; added it to the dict. WO-5: ShadowScenario carried sun_altitude_deg/sun_azimuth_deg which the shadow service never emits (it emits shadow_direction_deg = opposite of sun azimuth) and nothing renders — always-null dead fields; removed them from the model and the brief mapping. The real shadow-direction datum is retained.",
   "files": [
+    "scripts/conveyancing_db.py",
     "services/intelligence_brief.py",
+    "services/constraint_models.py",
     "tests/test_brief_failclosed.py"
   ],
   "pre_impl": {
-    "existing_data": "_build_environmental stamps overlay-derived fields with a shared `auth`; flood_epi/bushfire combine overlay_list with controls; mine/contaminated/drinking/heritage/anef use separate raws. _build_planning_controls stamps all portal fields with `auth`; lot_dimensions uses geometry/area.",
-    "assumption_mismatch": "The audit implied mine/contaminated were overlay-derived false-negatives; in fact they are separate fetches. flood_epi/bushfire are dual-source, so a blanket overlay-failure downgrade would wrongly blank a valid portal answer.",
-    "new_vs_existing": "Reused _unwrap_or_default (S1) + the existing confidence-stamping; added overlays_failed/controls_failed params and precise auth variants (overlay_auth, both_failed).",
-    "external_source_error": "A failed PostGIS overlay or portal-controls fetch now surfaces NOT_AVAILABLE on the affected fields, never a confident 'no hazard'/blank.",
-    "frontend_type": "Backend only; the frontend already renders NOT_AVAILABLE via describeUnavailable. 174 brief tests pass.",
-    "user_failure_mode": "Before: a failed overlay fetch -> confident overlay list/coverage + (if controls also failed) confident 'no flood'; a failed controls fetch -> blank zone/height/FSR read as authoritative. After: those surface NOT_AVAILABLE; a surviving source still answers; geometry-derived lot dimensions are unaffected."
+    "existing_data": "fetch_nearby_das row unpacks cost (10th column) but the appended dict omitted it. ShadowScenario.sun_altitude_deg/sun_azimuth_deg used only by the model decl + the brief mapping + one self-confirming test fixture; the shadow service emits neither.",
+    "assumption_mismatch": "Assumed the brief mapping was wrong for DA cost; in fact the brief reads the right key — the DB helper dropped it. For shadow, the fields were dead (never produced) not mis-mapped.",
+    "new_vs_existing": "WO-4 adds one key to an existing dict. WO-5 removes two dead fields. No new mechanism.",
+    "external_source_error": "N/A — DB row already carried cost; shadow fields were never sourced.",
+    "frontend_type": "Backend only; the frontend ShadowData interface never referenced the sun fields, so no UI change.",
+    "user_failure_mode": "Before: nearby-DA cost always blank; two always-null sun fields on the model. After: DA cost surfaces when present; the dead fields are gone (no field reading a key that isn't produced)."
   },
   "functions": [
-    {"name": "_build_environmental", "file_line": "services/intelligence_brief.py", "input": "controls, overlays_data, heritage, the separate raws, lat/lng, and overlays_failed/controls_failed flags", "output": "overlay list/coverage NOT_AVAILABLE when the overlay fetch failed; flood_epi/bushfire NOT_AVAILABLE only when both the overlay and the portal-controls fetch failed", "if_none": "with both flags False it behaves exactly as before (AUTHORITATIVE)"},
-    {"name": "_build_planning_controls", "file_line": "services/intelligence_brief.py", "input": "controls, overlays_data, lot geometry/area, and a controls_failed flag", "output": "the portal-derived fields (zone/height/FSR/etc) NOT_AVAILABLE when the controls fetch failed, while geometry-derived lot_dimensions stays AUTHORITATIVE", "if_none": "with controls_failed False it behaves exactly as before"}
+    {
+      "name": "fetch_nearby_das",
+      "file_line": "scripts/conveyancing_db.py",
+      "input": "a db connection, lat, lng, optional council, radius and lookback days",
+      "output": "nearby DA dicts that now include cost_of_development from the row",
+      "if_none": "a row with a null cost yields cost_of_development None, which the brief renders as no-cost-recorded"
+    }
   ],
-  "values": "N/A - confidence stamping, not regulatory values.",
-  "queries": "N/A - no DB query changed.",
+  "values": "N/A - DA cost is factual API/DB output, not a regulatory value.",
+  "queries": "N/A - the SELECT already fetched cost_of_development; only the returned dict changed (no query change).",
   "break_it": [
-    {"scenario": "Overlay fetch fails but portal controls succeed and report flood-planning", "what_happens": "flood_epi must keep the real portal answer, not become NOT_AVAILABLE", "repro": "overlays_failed True, controls_failed False, controls.flood_epi truthy", "mitigated": true, "how": "flood_epi only downgrades when both_failed; a surviving controls source keeps AUTHORITATIVE. Guarded by test_flood_epi_survives_when_only_overlays_fail"},
-    {"scenario": "Both overlay and controls fetches fail", "what_happens": "flood_epi must be NOT_AVAILABLE, never a confident False 'no flood'", "repro": "overlays_failed True, controls_failed True", "mitigated": true, "how": "both_failed -> value None + NOT_AVAILABLE. Guarded by test_flood_epi_not_available_when_both_sources_fail"},
-    {"scenario": "A controls failure wrongly blanks lot dimensions that came from geometry", "what_happens": "lot_dimensions should stay AUTHORITATIVE when the polygon/area is present", "repro": "controls_failed True with a valid lot_area_m2", "mitigated": true, "how": "lot_dimensions uses AUTHORITATIVE independent of the controls auth. Guarded by test_controls_failed_does_not_downgrade_lot_dimensions"},
-    {"scenario": "A genuine successful run is wrongly downgraded", "what_happens": "all fields must stay AUTHORITATIVE when nothing failed", "repro": "both flags False", "mitigated": true, "how": "the auth variants reduce to AUTHORITATIVE when no flag is set. Guarded by test_environmental_genuine_success_is_authoritative + test_controls_success_stays_authoritative"}
+    {
+      "scenario": "A DA row has a null cost_of_development",
+      "what_happens": "cost should be None, not fabricated",
+      "repro": "a row with cost None",
+      "mitigated": true,
+      "how": "the value is passed through as-is; None stays None"
+    },
+    {
+      "scenario": "A consumer still reads ShadowScenario.sun_altitude_deg after removal",
+      "what_happens": "an attribute error could occur",
+      "repro": "grep for the field",
+      "mitigated": true,
+      "how": "verified the only references were the model decl, the brief mapping, and a test fixture's extra keys (ignored); the frontend never read them"
+    },
+    {
+      "scenario": "fetch_nearby_das output shape relied on by another caller breaks",
+      "what_happens": "adding a key could surprise a strict consumer",
+      "repro": "grep callers",
+      "mitigated": true,
+      "how": "adding a key is additive; the brief and conveyancing report read by name, so an extra key is ignored by existing consumers"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A",
-    "manual_verify": "Run the brief normally — environmental + planning controls populate as before. The failsoft lint now reports 0 tracked todos (strata/overlays/controls all resolved)."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A",
+    "manual_verify": "Run a brief with nearby DAs that have a cost — the cost now appears. Shadow card renders unchanged (the removed fields were never shown)."
   }
 }

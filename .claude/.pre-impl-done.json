@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T11:00:00+10:00",
-  "target": "WO-2 overlays + WO-3 controls fail-closed: a FAILED fetch must surface NOT_AVAILABLE, not False/blank@AUTHORITATIVE",
-  "findings_summary": "Both annotated failsoft-todo after S1 (#593). WO-2: overlays_df failed -> _build_environmental emits flood_epi/_overlay_field hazard fields at AUTHORITATIVE (confident 'no hazards'); mine/contaminated/drinking/heritage/ANEF come from SEPARATE raws so are NOT affected by overlays_failed. WO-3: controls_df failed -> _build_planning_controls emits zone/height/FSR blank@AUTHORITATIVE. Fix: _unwrap_or_default -> (value, failed); thread overlays_failed into _build_environmental (overlay-derived fields use NOT_AVAILABLE when failed) and controls_failed into _build_planning_controls (its fields NOT_AVAILABLE when failed). No DB/schema change; confidence-stamping logic only."
+  "timestamp": "2026-06-23T13:00:00+10:00",
+  "target": "WO-4 nearby-DA cost key-null + WO-5 shadow sun_altitude/azimuth key-null",
+  "findings_summary": "WO-4: conveyancing_db.fetch_nearby_das SELECTs cost_of_development + unpacks as `cost` but the returned dict omits it -> brief's NearbyDA.cost always null. Fix: add cost_of_development to the returned dict. WO-5: shadow_detector per-scenario dict never emits sun_altitude_deg/sun_azimuth_deg; brief reads them. Fix: emit from the pvlib solar-position calc if available, else drop the 2 fields from the brief read. Pure key-null, no schema/DB change."
 }
