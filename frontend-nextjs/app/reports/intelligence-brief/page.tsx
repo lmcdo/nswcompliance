@@ -449,12 +449,27 @@ function stripDimArea(key: string, value: unknown): unknown {
 
 // Format a field value (dimensions-area stripped) and append its unit — "7 m",
 // "500 m²" — but never onto an empty/dash value.
+// Fields that read as currency — prefix "$" rather than appending a unit.
+const CURRENCY_FIELDS = new Set(['land_value', 'land_value_aud', 'capital_value', 'unimproved_land_value']);
+
 function valueWithUnit(key: string, raw: unknown, unit?: string): string {
   const s = formatValue(stripDimArea(key, raw));
-  return unit && s !== '—' ? `${s} ${unit}` : s;
+  if (s === '—') return s;
+  if (CURRENCY_FIELDS.has(key) && typeof raw === 'number') return `$${s}`;
+  return unit ? `${s} ${unit}` : s;
 }
 
+// Field/overlay labels whose word-by-word title-case is misleading. The coastal
+// SEPP "land application" layer marks where the Coastal Management SEPP *applies*
+// (jurisdictional, much of NSW) — it is NOT a coastal-hazard finding, so label it
+// as the management area, not "Coastal Hazards"/"Coastal Land Application".
+const FIELD_LABEL_OVERRIDES: Record<string, string> = {
+  coastal_land_application: 'Coastal Management Area',
+  coastal_hazards: 'Coastal Management Area',
+};
+
 function formatKey(key: string): string {
+  if (key in FIELD_LABEL_OVERRIDES) return FIELD_LABEL_OVERRIDES[key];
   return key
     .split('_')
     .map((w) => {
@@ -761,9 +776,19 @@ function formatValue(val: unknown): string {
     if (Number.isInteger(val)) return val.toLocaleString();
     return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
-  if (typeof val === 'string') return val;
+  if (typeof val === 'string') {
+    const t = val.trim();
+    // Serialised empties read as data, not a value — collapse to an em dash.
+    if (t === '' || /^(none|null|nan|undefined)$/i.test(t)) return '—';
+    // Lowercase snake_case values are enums (e.g. "not_strata") — humanise them.
+    if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(t)) {
+      const s = t.replace(/_/g, ' ');
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    return val;
+  }
   if (Array.isArray(val)) {
-    if (val.length === 0) return 'None';
+    if (val.length === 0) return '—';
     // Array of primitives — join them
     if (val.every(v => typeof v === 'string' || typeof v === 'number')) {
       return val.join(', ');
@@ -1228,7 +1253,10 @@ function LiveStatusPanel({
 // ---------------------------------------------------------------------------
 
 function CompleteSummary({ data }: { data: BriefComplete }) {
-  const { confidence_summary: cs, compound_constraints, gaps, data_currency_warnings, elapsed_seconds } = data;
+  const { confidence_summary: cs, compound_constraints, gaps: allGaps, data_currency_warnings, elapsed_seconds } = data;
+  // pre_da_history is soft-dropped from the brief (see sectionEvents filter); also
+  // hide it from Data Gaps so it doesn't resurface as a "missing" line.
+  const gaps = allGaps.filter((g) => g.field !== 'satellite.pre_da_history');
 
   return (
     <div className="space-y-4">
@@ -1762,6 +1790,7 @@ function IntelligenceBriefInner() {
                       briefData={ca}
                       lotArea={ca.lot_area_m2}
                       devType={ca.dev_type}
+                      zone={planningCtx.zone}
                     />
                   );
                 }
@@ -1792,6 +1821,19 @@ function IntelligenceBriefInner() {
                 if (cd && Array.isArray(cd.empirical_findings)) {
                   card = <ClimateCard data={cd} />;
                 }
+              }
+              if (section === 'dcp_controls' && planningCtx.zone && !isResidentialZone(planningCtx.zone)) {
+                // The extracted DCP controls in the brief are residential development
+                // controls (setbacks, landscaping for dwellings). On a non-residential
+                // zone they may not apply — caveat rather than present them as binding.
+                card = (
+                  <div className="space-y-2">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                      These are residential development controls. {planningCtx.zone} is a non-residential zone, so they may not apply to development here — see the DCP document below for the controls specific to this zone.
+                    </div>
+                    <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />
+                  </div>
+                );
               }
               if (!card) {
                 card = <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />;

@@ -1,37 +1,45 @@
 {
   "tier": "minor",
-  "commit_hash": "pending",
-  "justification": "Soft-drop the Pre-DA Site History layer from the Intelligence Brief, frontend-only. Pre-DA needs a heavy ML dependency (torch/Tessera embeddings) the lean Railway web container cannot host, so it errored on every run and showed a permanent failure card. Hidden, not deleted: removed the 'Include site history' toggle, forced include_premium=false so the backend never runs pre-DA, removed it from the satellite expected-sections checklist, and filtered the satellite.pre_da_history section out of sectionEvents so the card never renders. All backend code and the frontend label/handler are retained; re-enable by removing the one filter + restoring the toggle (documented inline). No logic, query, or schema change.",
+  "commit_hash": "",
+  "justification": "Intelligence Brief QA corrections, frontend/presentation-layer only — no backend, DB query, or schema change. Five render-layer fixes flagged on a live brief for a heritage E1 (centre) zone: (1) the capacity card claimed a dwelling house was 'buildable without council approval' — reworded to 'as-of-right, subject to a development application' and, because the dwelling-yield + residential-setback model only covers R1-R5/RU5, the yield/DCP-adjusted-GFA/setback tiles are now suppressed on non-residential zones with an explanatory note (the LEP GFA envelope still shows); (2) the residential DCP controls card is caveated on non-residential zones; (3) the SEPP 'coastal land application' overlay (jurisdictional, covers much of NSW) is relabelled 'Coastal Management Area' rather than reading as a coastal-hazard finding; (4) the soft-dropped Pre-DA Site History layer is filtered out of the Data Gaps list; (5) cosmetics — serialised empties (None/null/'') render as an em dash, lowercase snake_case enums (not_strata) are humanised, and currency fields are prefixed with $. Critically, the capacity card was previously rendered without its zone prop, so the zone-aware suppression is also wired through (zone={planningCtx.zone}).",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
   ],
   "break_it": [
     {
-      "scenario": "Backend still emits a satellite.pre_da_history section event",
-      "what_happens": "the card could reappear despite being dropped",
-      "repro": "a brief run where the backend streams the pre_da_history section",
+      "scenario": "Backend sends a residential dwelling-house yield for a non-residential zone (E1/B4/IN1) where a dwelling is prohibited",
+      "what_happens": "the brief would assert a buildable dwelling count and residential setbacks that do not apply, misstating capacity on a commercial lot",
+      "repro": "run a brief for a centre-zone address (e.g. an E1 Haberfield lot) and inspect the Development Yield Estimate card",
       "mitigated": true,
-      "how": "sectionEvents is filtered to exclude satellite.pre_da_history before any render, progress checklist, or source collection, so the section is dropped regardless of what the backend emits"
+      "how": "zoneModelled gates the yield, DCP-adjusted GFA and setback tiles to zones matching /^(R[1-5]|RU5)\\b/; non-residential zones show only the LEP GFA envelope plus a note that yield is delivered via the zone's permitted uses (e.g. shop-top housing). The card is now passed zone={planningCtx.zone} so the gate actually fires."
     },
     {
-      "scenario": "A user still wants site history and the option silently vanished",
-      "what_happens": "a previously-available toggle is gone without explanation",
-      "repro": "open the brief form and look for the site-history checkbox",
+      "scenario": "Zone is unknown/empty because the planning section failed to populate planningCtx.zone",
+      "what_happens": "over-suppression could hide a valid residential yield, or the relabel could mis-fire",
+      "repro": "render the card with zone undefined (planning portal section absent or errored)",
       "mitigated": true,
-      "how": "the toggle only ever produced an error card (the layer could not run in this environment); hiding it removes a broken option rather than a working one, and the code is retained to restore once decoupled to a worker"
+      "how": "zoneModelled defaults to true when zone is falsy (!zone), so an unknown zone falls back to showing the yield rather than wrongly suppressing it; suppression only happens when we positively know the zone is non-residential."
     },
     {
-      "scenario": "Removing the includeSiteHistory state leaves a dangling reference",
-      "what_happens": "a build/type error from an undefined identifier",
-      "repro": "grep the file for includeSiteHistory / setIncludeSiteHistory",
+      "scenario": "formatValue receives a legitimate string that looks like a snake_case enum or contains the word none",
+      "what_happens": "a real value could be mangled into an em dash or unexpectedly title-cased",
+      "repro": "feed formatValue a value such as 'Land Application', 'none of the above', or 'low_density'",
       "mitigated": true,
-      "how": "verified zero remaining references; include_satellite no longer ORs the removed flag and the effect dependency array was updated to match"
+      "how": "the empty collapse only matches the whole trimmed string against /^(none|null|nan|undefined)$/i (anchored), so 'none of the above' is untouched; humanisation only matches all-lowercase snake_case (/^[a-z0-9]+(_[a-z0-9]+)+$/), so mixed-case/spaced values like 'Land Application' pass through unchanged."
+    },
+    {
+      "scenario": "A non-currency numeric field is wrongly prefixed with $, or a currency field arrives as a pre-formatted string",
+      "what_happens": "incorrect $ prefixes on areas/ratios, or a missing $ on land value",
+      "repro": "render an Economics section with land_value as a number and lot_size as a number",
+      "mitigated": true,
+      "how": "the $ prefix is gated on an explicit CURRENCY_FIELDS allow-list AND typeof raw === 'number', so only known currency keys with numeric values get the prefix; everything else uses the existing unit-suffix path."
     }
   ],
   "post_merge": {
     "db_reset": "N/A - no database change.",
     "secrets": "None.",
-    "other_repo": "N/A - frontend-only; backend pre_da_history code is untouched and simply never invoked (include_premium=false).",
-    "manual_verify": "Open the Intelligence Brief: the 'Include site history' checkbox is gone, the satellite checklist no longer lists Pre-DA Site History, and a completed brief shows no Pre-DA card (no error card)."
+    "other_repo": "N/A - frontend-only; no backend or Trigger.dev/Railway change. The capacity engine and DCP fetchers are untouched; this only changes how their output is rendered.",
+    "manual_verify": "Open the Intelligence Brief for a non-residential-zone address (e.g. an E1 Haberfield lot): the Development Yield Estimate shows the GFA envelope plus a 'not modelled for this zone' note (no dwelling count, no residential setbacks), the DCP card carries a non-residential caveat, the coastal row reads 'Coastal Management Area', no Pre-DA line appears in Data Gaps, and any 'not_strata'/empty/land-value fields render cleanly. Then open a residential R-zone address and confirm the yield range still renders normally."
   }
 }
