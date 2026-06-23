@@ -1439,6 +1439,10 @@ function IntelligenceBriefInner() {
   const abortRef = useRef<AbortController | null>(null);
   const stateRef = useRef<PageState>(state);
   stateRef.current = state;
+  // Whether the realtime stream has delivered any real brief data (vs only
+  // keepalive pings). Distinguishes "stream closed after streaming data" from
+  // "stream closed while the run is still queued / never started by a worker".
+  const receivedDataRef = useRef(false);
 
   // Elapsed timer — starts on trigger, stops on complete/error
   const timerRunning = state === 'triggering' || state === 'streaming';
@@ -1588,6 +1592,7 @@ function IntelligenceBriefInner() {
 
                 for (const briefEvent of events) {
                   setParts(prev => [...prev, briefEvent]);
+                  receivedDataRef.current = true;
                   if (briefEvent.event === 'complete') {
                     setState('complete');
                     return;
@@ -1606,9 +1611,27 @@ function IntelligenceBriefInner() {
             if (done) break;
           }
 
-          // Stream ended without complete event — task may have finished
+          // Stream ended without a 'complete' event. Two very different cases:
           if (stateRef.current !== 'complete' && stateRef.current !== 'error') {
-            setState('complete');
+            if (receivedDataRef.current) {
+              // Real data arrived — the stream just closed without a clean
+              // 'complete' terminator. Treat as done (preserves the trailing-
+              // event flush fix).
+              setState('complete');
+              return;
+            }
+            // Zero data: the run hasn't streamed anything yet. Trigger.dev
+            // closes idle streams (~60s) before a queued run gets a worker, so
+            // this close does NOT mean the brief finished. Reconnect and keep
+            // showing "generating" rather than painting a false "Complete".
+            retries++;
+            if (retries >= maxRetries) {
+              setState('error');
+              setErrorMsg('The brief is still queued — no worker picked it up in time. Please try again in a moment.');
+              return;
+            }
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
           }
           return;
         } catch (err: unknown) {
@@ -1637,6 +1660,7 @@ function IntelligenceBriefInner() {
     setRunId(null);
     setBriefType(null);
     setParts([]);
+    receivedDataRef.current = false;
     // Record whether satellite analysis was requested for THIS run, so an empty
     // satellite section reads honestly ("no result") instead of "tick the box".
     setRanWithSatellite(includeSatellite);
