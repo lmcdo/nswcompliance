@@ -18,11 +18,14 @@ from scripts.validate_dcp_setbacks import (
     high_severity,
 )
 
-# High-severity baseline recorded 2026-06-24 over the live dcp_setback_controls
-# table (28 LGAs, 1001 rows). This is a RATCHET: it may only ever be reduced as
-# bad rows are corrected, never increased. A new extraction that adds a mislabelled
-# setback fails this gate.
-LIVE_HIGH_SEVERITY_BASELINE = 10
+# High-severity baseline over the live dcp_setback_controls table. This is a
+# RATCHET: it may only ever be reduced as bad rows are corrected, never increased.
+# A new extraction that adds a mislabelled setback fails this gate.
+#   2026-06-24: initial audit found 10 (28 LGAs, 1001 rows).
+#   2026-06-24: quarantined 3 provably-wrong rows (burwood front 9/15, camden
+#               secondary front 12) + 27 assumed placeholder rows -> 7 remain
+#               (unconditioned conflicts needing per-DCP lookup).
+LIVE_HIGH_SEVERITY_BASELINE = 7
 
 
 def _row(**kw):
