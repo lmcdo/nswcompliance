@@ -1,64 +1,33 @@
 {
   "tier": "standard",
-  "commit_hash": "f3d16af2",
-  "justification": "S2 increment 1 — the typed service->brief boundary, applied to the flood service (the worst key bug, #589: jrc_occurrence_pct vs jrc_water_occurrence_pct). Design choice: do NOT retype the services' return values (they emit dicts that the Trigger.dev relays depend on); instead define a Pydantic CONTRACT model (FloodServiceOutput) at the brief's consumption seam that is the single source of truth for the flood output key names. _build_flood_detail now parses the raw outputs through the contract and reads TYPED attributes (out.jrc_water_occurrence_pct) instead of loose .get('...'), so a typo or a service rename is a static/type error, not a silent null. Values stay nullable (genuine empty preserved); extra service keys (jrc_data_year, refused) are ignored. A contract test locks the model's fields to the documented service emit-keys so the brief's contract can't silently drift; the live drift check (S3) will re-capture real output against it. This is increment 1 of an incremental rollout (bushfire/shadow next).",
+  "commit_hash": "pending",
+  "justification": "S2 increments 2+3 — typed service->brief contracts for bushfire and shadow, mirroring the flood contract (#597). The brief now reads the bushfire and shadow service outputs through Pydantic contracts (BushfireServiceOutput with a nested _BushfireCompliance, ShadowServiceOutput with a ShadowScenarioOutput per scenario) instead of loose dict .get, so a renamed/dropped service key is a typed/test failure not a silent null (the #589 class). Services keep returning dicts (Trigger.dev relays depend on it); the contracts live at the brief's consumption seam. Values stay nullable (genuine empties preserved); extra service keys are ignored. Lock tests pin each contract's fields to the documented service emit-keys. Completes the typed-boundary rollout for the three #589-bugged services.",
   "files": [
     "services/intelligence_brief.py",
     "tests/test_brief_contracts.py"
   ],
   "pre_impl": {
-    "existing_data": "flood_truth.run_flood emits a dict with outputs.{epi_flood_class,epi_flood_label,jrc_water_occurrence_pct,dea_wofs_frequency_pct,bom_gauge_distance_km,flood_studies}; _build_flood_detail read them via loose .get. The Trigger.dev relay consumes the same dict.",
-    "assumption_mismatch": "A naive 'services return Pydantic models' would break the dict-consuming Trigger.dev relays; the contract must live at the brief seam, not in the service signature.",
-    "new_vs_existing": "Reused the existing FloodDetail schema; added a typed contract model + switched the build to typed reads. No service signature change.",
-    "external_source_error": "A flood output that drops/renames a key now nulls the affected typed field (same visible-empty as before for that one field) but the contract test + S3 drift check surface the drift; extra keys are tolerated.",
-    "frontend_type": "Backend only. 180 brief tests pass incl 5 new contract tests.",
-    "user_failure_mode": "Before: the brief read flood keys by raw string; a service rename silently nulled a card (the #589 bug). After: the keys are a typed contract; a brief-side typo is a static error and a service rename is caught by the contract/drift test."
+    "existing_data": "_build_bushfire_detail read outputs.{is_bushfire_prone,designation_category,estimated_bal_band,designation_guideline,fire_signal} + outputs.compliance.cross_overlays via loose .get; _build_shadow_result read the shadow output dict directly (no outputs wrapper) incl scenarios[] with label/time_local/shadow_overlap_fraction/shadow_direction_deg/overlaps_subject_lot.",
+    "assumption_mismatch": "Shadow output has no outputs wrapper (unlike flood/bushfire); the contract validates the shadow_result dict directly. Bushfire compliance is nested so the contract nests _BushfireCompliance.",
+    "new_vs_existing": "Reused the flood-contract pattern (#597); added two contract models + switched the two builds to typed reads. No service signature change.",
+    "external_source_error": "A bushfire/shadow output that drops/renames a key nulls the affected typed field; the lock tests + S3 drift check surface drift; extra keys tolerated.",
+    "frontend_type": "Backend only. 2289 tests pass incl new bushfire/shadow contract tests.",
+    "user_failure_mode": "Before: bushfire/shadow keys read by raw string; a service rename silently nulled a card (the #589 bug). After: the keys are typed contracts; a brief-side typo is a static error and a service rename is caught by the contract/lock test."
   },
   "functions": [
-    {
-      "name": "_build_flood_detail",
-      "file_line": "services/intelligence_brief.py",
-      "input": "the raw flood-service dict with an outputs sub-dict",
-      "output": "a FloodDetail built by reading typed attributes off the FloodServiceOutput contract rather than loose dict .get calls",
-      "if_none": "a falsy flood_raw returns None; an outputs dict missing a key yields that typed field as None"
-    },
-    {
-      "name": "FloodServiceOutput",
-      "file_line": "services/intelligence_brief.py",
-      "input": "the flood service outputs dict via model_validate",
-      "output": "a typed object exposing the flood output keys as nullable attributes, ignoring extra service keys",
-      "if_none": "a missing key parses to None rather than raising, preserving a genuine empty"
-    }
+    {"name": "_build_bushfire_detail", "file_line": "services/intelligence_brief.py", "input": "the raw bushfire-service dict with an outputs sub-dict and a nested compliance object", "output": "a BushfireDetail built by reading typed attributes off the BushfireServiceOutput contract rather than loose dict .get", "if_none": "a falsy input returns None; a missing key yields that typed field as None"},
+    {"name": "_build_shadow_result", "file_line": "services/intelligence_brief.py", "input": "the raw shadow-service output dict with a scenarios list", "output": "a ShadowResult built from the typed ShadowServiceOutput, converting each scenario overlap fraction to a percent", "if_none": "a falsy input returns None; an empty scenarios list yields an empty result"}
   ],
-  "values": "N/A - flood screening percentages, not regulatory values.",
+  "values": "N/A - bushfire/shadow screening fields, not regulatory values.",
   "queries": "N/A - no DB query.",
   "break_it": [
-    {
-      "scenario": "The flood service legitimately omits a key in a partial result",
-      "what_happens": "that typed field is None, not a parse crash",
-      "repro": "outputs missing dea_wofs_frequency_pct",
-      "mitigated": true,
-      "how": "contract fields are Optional with defaults, so a missing key is None (the card shows it unavailable), never an exception that drops the whole flood section. Guarded by test_flood_genuine_empty_values_preserved"
-    },
-    {
-      "scenario": "The flood service adds a new output key",
-      "what_happens": "parsing must tolerate the new key and not raise",
-      "repro": "outputs with an unknown extra key",
-      "mitigated": true,
-      "how": "model_config extra=ignore tolerates new keys. Guarded by test_flood_contract_parses_real_shaped_output (jrc_data_year/refused extras)"
-    },
-    {
-      "scenario": "Someone renames a flood key in the service back to the old name",
-      "what_happens": "the correct contract field stays None (a regression), and the lock test fails if the brief contract is edited to match without updating the expected-keys set",
-      "repro": "outputs with jrc_occurrence_pct (old name)",
-      "mitigated": true,
-      "how": "the contract reads the correct key; test_flood_old_renamed_key_does_not_populate documents it and test_flood_contract_fields_are_the_expected_service_keys locks the field set; the S3 drift check (next) re-validates against real output"
-    }
+    {"scenario": "A bushfire or shadow service legitimately omits a key in a partial result", "what_happens": "that typed field is None, not a parse crash that drops the whole card", "repro": "an outputs dict missing a key", "mitigated": true, "how": "contract fields are Optional with defaults so a missing key is None. Guarded by test_bushfire_genuine_empty_preserved + test_shadow_genuine_empty_preserved"},
+    {"scenario": "The bushfire or shadow service adds a new output key", "what_happens": "parsing must tolerate the new key and not raise", "repro": "an outputs dict with an unknown extra key", "mitigated": true, "how": "model_config extra=ignore tolerates new keys; the scenario contract ignores extras too. Guarded by the parses_real_shaped_output tests (extra_service_key / extra_key)"},
+    {"scenario": "Someone renames a bushfire/shadow key in the service", "what_happens": "the correct contract field stays None (a regression) and the lock test diverges if the contract is edited without updating the expected-keys set", "repro": "rename a key in the service output", "mitigated": true, "how": "the lock tests (fields_are_the_expected_service_keys) pin the contract; the S3 drift check re-validates against real output"},
+    {"scenario": "Shadow overlap fraction to percent loses precision", "what_happens": "a fraction like 0.153 becomes 15.299999", "repro": "fraction * 100 float math", "mitigated": true, "how": "the conversion is unchanged from before (frac*100); the brief/UI round for display. Test asserts rounded equality"}
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A - the Trigger.dev flood consumer still gets the same dict; only the brief's read changed.",
-    "manual_verify": "Run a brief — the flood card behaves identically (it reads the same keys, now typed). The contract test locks the flood output shape."
+    "db_reset": "N/A", "secrets": "None", "other_repo": "N/A - the Trigger.dev bushfire/shadow consumers still get the same dicts; only the brief's read changed.",
+    "manual_verify": "Run a brief — bushfire and shadow cards behave identically (same keys, now typed). The contract tests lock both output shapes."
   }
 }

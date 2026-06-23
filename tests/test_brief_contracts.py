@@ -4,9 +4,16 @@ The brief consumes service outputs through typed contract models (not loose dict
 .get), so a renamed/dropped service key is a typed/test failure instead of a
 silent null in the card (the jrc_occurrence_pct vs jrc_water_occurrence_pct class).
 
-Increment 1: the flood service output.
+Increments: flood, bushfire, shadow service outputs.
 """
-from services.intelligence_brief import FloodServiceOutput, _build_flood_detail
+from services.intelligence_brief import (
+    FloodServiceOutput,
+    BushfireServiceOutput,
+    ShadowServiceOutput,
+    _build_flood_detail,
+    _build_bushfire_detail,
+    _build_shadow_result,
+)
 
 
 # The keys the flood service (flood_truth.run_flood) is documented to emit in
@@ -68,3 +75,94 @@ def test_flood_old_renamed_key_does_not_populate():
     fd = _build_flood_detail(raw)
     assert fd is not None
     assert fd.jrc_occurrence_pct is None  # the correct key was absent
+
+
+# --- Increment 2: bushfire -------------------------------------------------
+
+EXPECTED_BUSHFIRE_KEYS = {
+    "is_bushfire_prone",
+    "designation_category",
+    "estimated_bal_band",
+    "designation_guideline",
+    "fire_signal",
+    "compliance",
+}
+
+
+def test_bushfire_contract_fields_are_the_expected_service_keys():
+    assert set(BushfireServiceOutput.model_fields) == EXPECTED_BUSHFIRE_KEYS
+
+
+def test_bushfire_contract_parses_real_shaped_output():
+    raw = {
+        "confidence": "authoritative",
+        "outputs": {
+            "is_bushfire_prone": True,
+            "designation_category": "Vegetation Category 1",
+            "estimated_bal_band": "BAL-29",
+            "designation_guideline": "Forest",
+            "fire_signal": "elevated",
+            "compliance": {"cross_overlays": {"flood": False}, "extra": 1},
+            "extra_service_key": "ignored",
+        },
+    }
+    bd = _build_bushfire_detail(raw)
+    assert bd is not None
+    assert bd.is_bushfire_prone is True
+    assert bd.category == "Vegetation Category 1"
+    assert bd.bal_estimate == "BAL-29"
+    assert bd.cross_overlays == {"flood": False}
+    assert bd.confidence == "authoritative"
+
+
+def test_bushfire_genuine_empty_preserved():
+    bd = _build_bushfire_detail({"outputs": {}})
+    assert bd is not None
+    assert bd.is_bushfire_prone is None
+    assert bd.cross_overlays is None
+
+
+# --- Increment 3: shadow ---------------------------------------------------
+
+EXPECTED_SHADOW_KEYS = {"height_m", "height_source", "adg_compliant", "worst_case_scenario", "scenarios"}
+
+
+def test_shadow_contract_fields_are_the_expected_service_keys():
+    assert set(ShadowServiceOutput.model_fields) == EXPECTED_SHADOW_KEYS
+
+
+def test_shadow_contract_parses_real_shaped_output():
+    raw = {
+        "height_m": 9.0,
+        "height_source": "LEP control",
+        "adg_compliant": True,
+        "worst_case_scenario": "Jun 21 9:00 AM",
+        "scenarios": [
+            {
+                "label": "Jun 21 (winter solstice)",
+                "time_local": "9:00 AM",
+                "shadow_length_m": 21.7,
+                "shadow_overlap_fraction": 0.153,
+                "shadow_direction_deg": 222.0,
+                "overlaps_subject_lot": True,
+                "extra_key": "ignored",
+            }
+        ],
+    }
+    sr = _build_shadow_result(raw)
+    assert sr is not None
+    assert sr.height_m == 9.0
+    assert sr.adg_compliant is True
+    assert len(sr.scenarios) == 1
+    sc = sr.scenarios[0]
+    assert sc.date_label == "Jun 21 (winter solstice)"
+    assert sc.time_label == "9:00 AM"
+    assert round(sc.overlap_pct, 1) == 15.3  # 0.153 fraction -> percent
+    assert sc.shadow_direction_deg == 222.0
+
+
+def test_shadow_genuine_empty_preserved():
+    sr = _build_shadow_result({"scenarios": []})
+    assert sr is not None
+    assert sr.height_m is None
+    assert sr.scenarios == []
