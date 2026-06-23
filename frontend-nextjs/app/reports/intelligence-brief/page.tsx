@@ -1129,7 +1129,8 @@ const EXPECTED_SECTIONS_BASE = [
 const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.pre_da_history', 'satellite.terrain',
+  'satellite.granny_flat', 'satellite.terrain',
+  // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
 
 function LiveStatusPanel({
@@ -1381,7 +1382,6 @@ function IntelligenceBriefInner() {
   const [runId, setRunId] = useState<string | null>(null);
   const [briefType, setBriefType] = useState<string | null>(null);
   const [includeSatellite, setIncludeSatellite] = useState(false);
-  const [includeSiteHistory, setIncludeSiteHistory] = useState(false);
   const [ranWithSatellite, setRanWithSatellite] = useState(false);
   const [lotPolygon, setLotPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
   const [publicAccessToken, setPublicAccessToken] = useState<string | null>(null);
@@ -1396,7 +1396,13 @@ function IntelligenceBriefInner() {
 
   // Derive state from parts
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
-  const sectionEvents = parts.filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section');
+  const sectionEvents = parts
+    .filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section')
+    // Pre-DA Site History soft-dropped (2026-06): it needs a heavy ML dependency
+    // (torch/Tessera) the web container can't host, so it always errored. Hide the card
+    // until it's decoupled to a worker. Backend code retained — re-enable by removing
+    // this filter, restoring the toggle, and re-adding it to EXPECTED_SECTIONS_SAT.
+    .filter((p) => p.data.section !== 'satellite.pre_da_history');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
 
@@ -1571,7 +1577,7 @@ function IntelligenceBriefInner() {
     setParts([]);
     // Record whether satellite analysis was requested for THIS run, so an empty
     // satellite section reads honestly ("no result") instead of "tick the box".
-    setRanWithSatellite(includeSatellite || includeSiteHistory);
+    setRanWithSatellite(includeSatellite);
 
     try {
       const res = await fetch('/api/intelligence-brief', {
@@ -1581,9 +1587,10 @@ function IntelligenceBriefInner() {
           address: selectedAddress,
           lat: selectedLat,
           lng: selectedLng,
-          // Site history needs both flags; ticking it implies satellite too.
-          include_satellite: includeSatellite || includeSiteHistory,
-          include_premium: includeSiteHistory,
+          include_satellite: includeSatellite,
+          // Pre-DA site history soft-dropped (heavy ML dep can't run in the web
+          // container); keep premium off until it's decoupled to a worker.
+          include_premium: false,
         }),
       });
 
@@ -1600,7 +1607,7 @@ function IntelligenceBriefInner() {
       setState('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
     }
-  }, [selectedAddress, selectedLat, selectedLng, includeSatellite, includeSiteHistory]);
+  }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
 
   const handleReset = useCallback(() => {
     if (abortRef.current) {
@@ -1656,16 +1663,6 @@ function IntelligenceBriefInner() {
               className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
             />
             Include satellite analysis (bushfire, flood, climate, granny flat detection)
-          </label>
-
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeSiteHistory}
-              onChange={(e) => setIncludeSiteHistory(e.target.checked)}
-              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-            />
-            Include site history (slower — adds ~1 min)
           </label>
 
           <button
