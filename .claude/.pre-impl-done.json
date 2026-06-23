@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T14:00:00+10:00",
-  "target": "S2 increment 1 — typed contract at the brief seam for the flood service output (locks the #589 key contract)",
-  "findings_summary": "Design: services return dicts (Trigger.dev consumers depend on that) so DON'T retype them; instead define a Pydantic contract for the EXPECTED flood output and parse the raw dict through it in _build_flood_detail. A renamed/missing key -> validation error (visible) not a silent null. flood_truth.run_flood emits epi_flood_class/epi_flood_label/jrc_water_occurrence_pct/dea_wofs_frequency_pct/bom_gauge_distance_km/flood_studies (+confidence/refused/reason). The brief's FloodDetail already reads the right keys post-#589; the contract makes a future drift fail loudly. Parse must be tolerant (model_validate, extra keys ignored) and must NOT crash the brief on a genuinely-absent field — only on a structural contract break. No service signature change; no DB.",
-  "model_design": "FloodServiceOutput(BaseModel) with the documented emit keys as Optional; _build_flood_detail does FloodServiceOutput.model_validate(raw) then reads typed attributes; a validation error is caught and surfaced as NOT_AVAILABLE with the reason (fail-closed), AND logged loudly so contract drift is visible."
+  "timestamp": "2026-06-23T15:00:00+10:00",
+  "target": "S2 increments 2+3 — typed contracts for bushfire + shadow service outputs (same pattern as flood #597)",
+  "findings_summary": "Mirror the flood contract: define BushfireServiceOutput + ShadowServiceOutput Pydantic contracts at the brief seam (Optional fields, extra=ignore), parse raw via model_validate, read typed attrs in _build_bushfire_detail/_build_shadow_result. A rename -> typed/test failure not a silent null. Lock the contract fields to the documented service emit-keys via tests. Services unchanged (Trigger.dev dict consumers safe). Genuine empties preserved.",
+  "model_design": "Bushfire: is_bushfire_prone/designation_category/estimated_bal_band/designation_guideline/fire_signal + nested compliance.cross_overlays; confidence is top-level. Shadow: top-level height_m/height_source/adg_compliant/worst_case_scenario + scenarios[] each label/time_local/shadow_length_m/shadow_overlap_fraction/shadow_direction_deg/overlaps_subject_lot. Scenario contract for the per-item shape."
 }

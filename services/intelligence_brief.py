@@ -404,6 +404,27 @@ class BushfireDetail(BaseModel):
     confidence: Optional[str] = None
 
 
+class _BushfireCompliance(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    cross_overlays: Optional[dict] = None
+
+
+class BushfireServiceOutput(BaseModel):
+    """S2 typed contract for the bushfire service's ``outputs`` dict.
+
+    Single source of truth for the bushfire output key names the brief consumes;
+    a rename is a typed/test failure here, not a silent null in the card.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    is_bushfire_prone: Optional[bool] = None
+    designation_category: Optional[str] = None
+    estimated_bal_band: Optional[str] = None
+    designation_guideline: Optional[str] = None
+    fire_signal: Optional[str] = None
+    compliance: Optional[_BushfireCompliance] = None
+
+
 class FloodDetail(BaseModel):
     """Multi-source flood analysis beyond statutory EPI flag."""
 
@@ -434,6 +455,33 @@ class FloodServiceOutput(BaseModel):
     dea_wofs_frequency_pct: Optional[float] = None
     bom_gauge_distance_km: Optional[float] = None
     flood_studies: Optional[list[dict]] = None
+
+
+class ShadowScenarioOutput(BaseModel):
+    """S2 typed contract for one shadow service scenario dict."""
+
+    model_config = ConfigDict(extra="ignore")
+    label: Optional[str] = None
+    time_local: Optional[str] = None
+    shadow_length_m: Optional[float] = None
+    shadow_overlap_fraction: Optional[float] = None  # 0-1; brief converts to percent
+    shadow_direction_deg: Optional[float] = None
+    overlaps_subject_lot: Optional[bool] = None
+
+
+class ShadowServiceOutput(BaseModel):
+    """S2 typed contract for the shadow service's output dict (no ``outputs`` wrapper).
+
+    Single source of truth for the shadow output + per-scenario key names the
+    brief consumes; a rename is a typed/test failure, not a silent null.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    height_m: Optional[float] = None
+    height_source: Optional[str] = None
+    adg_compliant: Optional[bool] = None
+    worst_case_scenario: Optional[str] = None
+    scenarios: list[ShadowScenarioOutput] = []
 
 
 class GeometryRelationship(str, Enum):
@@ -1581,18 +1629,21 @@ def _fetch_pre_da_history(
 
 
 def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDetail]:
-    """Extract BushfireDetail from raw bushfire prescreen output."""
+    """Extract BushfireDetail from raw bushfire prescreen output via the S2 contract.
+
+    Reads typed attributes off BushfireServiceOutput so a renamed service key is
+    a typed/test failure, not a silent null.
+    """
     if not bushfire_raw:
         return None
-    outputs = bushfire_raw.get("outputs") or {}
-    compliance = outputs.get("compliance") or {}
+    out = BushfireServiceOutput.model_validate(bushfire_raw.get("outputs") or {})
     return BushfireDetail(
-        is_bushfire_prone=outputs.get("is_bushfire_prone"),
-        category=outputs.get("designation_category"),
-        bal_estimate=outputs.get("estimated_bal_band"),
-        vegetation_type=outputs.get("designation_guideline"),
-        fire_signal=outputs.get("fire_signal"),
-        cross_overlays=compliance.get("cross_overlays"),
+        is_bushfire_prone=out.is_bushfire_prone,
+        category=out.designation_category,
+        bal_estimate=out.estimated_bal_band,
+        vegetation_type=out.designation_guideline,
+        fire_signal=out.fire_signal,
+        cross_overlays=(out.compliance.cross_overlays if out.compliance else None),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -1628,26 +1679,27 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
     """
     if not shadow_result:
         return None
+    out = ShadowServiceOutput.model_validate(shadow_result)
     scenarios = []
-    for s in (shadow_result.get("scenarios") or []):
-        frac = s.get("shadow_overlap_fraction")
+    for s in out.scenarios:
+        frac = s.shadow_overlap_fraction
         scenarios.append(ShadowScenario(
-            date_label=(s.get("label") or ""),
-            time_label=(s.get("time_local") or ""),
+            date_label=(s.label or ""),
+            time_label=(s.time_local or ""),
             # WO-5: sun_altitude_deg/sun_azimuth_deg removed — the shadow service
             # never emits them (it emits shadow_direction_deg = opposite of sun
             # azimuth) and nothing renders them, so they were always-null dead fields.
-            shadow_length_m=s.get("shadow_length_m"),
+            shadow_length_m=s.shadow_length_m,
             overlap_pct=(frac * 100 if frac is not None else None),
-            shadow_direction_deg=s.get("shadow_direction_deg"),
-            overlaps_subject_lot=s.get("overlaps_subject_lot"),
+            shadow_direction_deg=s.shadow_direction_deg,
+            overlaps_subject_lot=s.overlaps_subject_lot,
         ))
     return ShadowResult(
-        height_m=shadow_result.get("height_m"),
-        height_source=shadow_result.get("height_source"),
-        adg_compliant=shadow_result.get("adg_compliant"),
+        height_m=out.height_m,
+        height_source=out.height_source,
+        adg_compliant=out.adg_compliant,
         scenarios=scenarios,
-        worst_case_scenario=shadow_result.get("worst_case_scenario"),
+        worst_case_scenario=out.worst_case_scenario,
     )
 
 
