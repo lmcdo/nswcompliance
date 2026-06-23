@@ -404,6 +404,22 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // The coastal_hazards field wraps the SEPP "land application" layer — a
+          // jurisdictional area covering much of NSW, not a hazard finding. Render
+          // one clean line rather than a doubled "Coastal Management Area: ...".
+          if (key === 'coastal_hazards' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            const within = Object.keys(df.value as Record<string, unknown>).length > 0;
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {within
+                    ? 'Within the Coastal Management SEPP land-application area (jurisdictional — not a coastal-hazard finding).'
+                    : 'Not in a coastal management area.'}
+                </dd>
+              </div>
+            );
+          }
           // An authoritative null is a checked "nothing here" (e.g. not
           // bushfire-designated, no heritage listing) — show "None", not a dash.
           const display = df.value == null && df.confidence === 'authoritative'
@@ -449,12 +465,27 @@ function stripDimArea(key: string, value: unknown): unknown {
 
 // Format a field value (dimensions-area stripped) and append its unit — "7 m",
 // "500 m²" — but never onto an empty/dash value.
+// Fields that read as currency — prefix "$" rather than appending a unit.
+const CURRENCY_FIELDS = new Set(['land_value', 'land_value_aud', 'capital_value', 'unimproved_land_value']);
+
 function valueWithUnit(key: string, raw: unknown, unit?: string): string {
   const s = formatValue(stripDimArea(key, raw));
-  return unit && s !== '—' ? `${s} ${unit}` : s;
+  if (s === '—') return s;
+  if (CURRENCY_FIELDS.has(key) && typeof raw === 'number') return `$${s}`;
+  return unit ? `${s} ${unit}` : s;
 }
 
+// Field/overlay labels whose word-by-word title-case is misleading. The coastal
+// SEPP "land application" layer marks where the Coastal Management SEPP *applies*
+// (jurisdictional, much of NSW) — it is NOT a coastal-hazard finding, so label it
+// as the management area, not "Coastal Hazards"/"Coastal Land Application".
+const FIELD_LABEL_OVERRIDES: Record<string, string> = {
+  coastal_land_application: 'Coastal Management Area',
+  coastal_hazards: 'Coastal Management Area',
+};
+
 function formatKey(key: string): string {
+  if (key in FIELD_LABEL_OVERRIDES) return FIELD_LABEL_OVERRIDES[key];
   return key
     .split('_')
     .map((w) => {
@@ -556,6 +587,20 @@ interface ShadowData {
   scenarios?: ShadowScenario[]; worst_case_scenario?: string | null; temporal_caveat?: string | null;
 }
 
+// Clean a worst-case scenario label for display. The backend labels already
+// embed "ADG worst case" and often both a 12-hour and 24-hour time (e.g.
+// "ADG worst case 9am Jun 21 09:00"); the UI already prefixes "Worst case (…)",
+// so strip the duplicated prefix and the redundant 24-hour time.
+function cleanScenarioLabel(date?: string, time?: string): string {
+  let s = [date, time].filter(Boolean).join(' ').trim();
+  s = s.replace(/^(adg\s+)?worst\s+case\s+/i, '');
+  // If a 12-hour time (9am) is present, drop a redundant HH:MM 24-hour token.
+  if (/\b\d{1,2}\s*(am|pm)\b/i.test(s)) {
+    s = s.replace(/\s*\b\d{1,2}:\d{2}\b/g, '');
+  }
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
 // The shadow field is a nested object — render the overshadowing summary
 // (height, solar-access compliance, worst-case shadow), not a bare "6 fields".
 function ShadowDisplay({ data }: { data: ShadowData }) {
@@ -577,7 +622,7 @@ function ShadowDisplay({ data }: { data: ShadowData }) {
       )}
       {worst && (worst.shadow_length_m != null || worst.overlap_pct != null) && (
         <div className="text-slate-700">
-          Worst case ({[worst.date_label, worst.time_label].filter(Boolean).join(' ')}):{' '}
+          Worst case ({cleanScenarioLabel(worst.date_label, worst.time_label)}):{' '}
           {worst.shadow_length_m != null ? `${worst.shadow_length_m} m shadow` : ''}
           {worst.shadow_length_m != null && worst.overlap_pct != null ? ', ' : ''}
           {worst.overlap_pct != null ? `${worst.overlap_pct}% overlap on neighbours` : ''}
@@ -600,10 +645,16 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
       {rows.map((o, i) => {
         const unit = OVERLAY_UNIT[o.layer_type as string];
         const v = formatValue(o.value);
+        // The additional_permitted_uses overlay returns a bare LEP Schedule-1
+        // reference code (e.g. "51"), not a count — render it as a reference
+        // pointing back to the LEP, not a meaningless number.
+        const display = o.layer_type === 'additional_permitted_uses' && v !== '—'
+          ? `Applies (ref ${v}) — see LEP`
+          : (unit && v !== '—' ? `${v} ${unit}` : v);
         return (
           <li key={i}>
             <span className="text-slate-500">{formatKey(o.layer_type as string)}:</span>{' '}
-            {unit && v !== '—' ? `${v} ${unit}` : v}
+            {display}
           </li>
         );
       })}
@@ -761,9 +812,19 @@ function formatValue(val: unknown): string {
     if (Number.isInteger(val)) return val.toLocaleString();
     return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
-  if (typeof val === 'string') return val;
+  if (typeof val === 'string') {
+    const t = val.trim();
+    // Serialised empties read as data, not a value — collapse to an em dash.
+    if (t === '' || /^(none|null|nan|undefined)$/i.test(t)) return '—';
+    // Lowercase snake_case values are enums (e.g. "not_strata") — humanise them.
+    if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(t)) {
+      const s = t.replace(/_/g, ' ');
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    return val;
+  }
   if (Array.isArray(val)) {
-    if (val.length === 0) return 'None';
+    if (val.length === 0) return '—';
     // Array of primitives — join them
     if (val.every(v => typeof v === 'string' || typeof v === 'number')) {
       return val.join(', ');
@@ -1227,8 +1288,11 @@ function LiveStatusPanel({
 // Complete summary card
 // ---------------------------------------------------------------------------
 
-function CompleteSummary({ data }: { data: BriefComplete }) {
-  const { confidence_summary: cs, compound_constraints, gaps, data_currency_warnings, elapsed_seconds } = data;
+function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hiddenGapFields: Set<string> }) {
+  const { confidence_summary: cs, compound_constraints, gaps: allGaps, data_currency_warnings, elapsed_seconds } = data;
+  // Hide gaps resolved elsewhere (pre_da soft-dropped; bushfire that resolved to
+  // "not bushfire-prone") so the list doesn't contradict the cards above.
+  const gaps = allGaps.filter((g) => !hiddenGapFields.has(g.field));
 
   return (
     <div className="space-y-4">
@@ -1389,6 +1453,10 @@ function IntelligenceBriefInner() {
   const abortRef = useRef<AbortController | null>(null);
   const stateRef = useRef<PageState>(state);
   stateRef.current = state;
+  // Whether the realtime stream has delivered any real brief data (vs only
+  // keepalive pings). Distinguishes "stream closed after streaming data" from
+  // "stream closed while the run is still queued / never started by a worker".
+  const receivedDataRef = useRef(false);
 
   // Elapsed timer — starts on trigger, stops on complete/error
   const timerRunning = state === 'triggering' || state === 'streaming';
@@ -1405,6 +1473,18 @@ function IntelligenceBriefInner() {
     .filter((p) => p.data.section !== 'satellite.pre_da_history');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
+
+  // Gaps to hide from the Data Gaps list because they're resolved elsewhere:
+  // pre_da is soft-dropped, and a bushfire prescreen that resolved to "not
+  // bushfire-prone" (value present, category null) must not also surface as a
+  // "returned no data" gap — the card already shows the answer, so a gap line
+  // reads as a direct contradiction. A genuine failure (value absent) still gaps.
+  const hiddenGapFields = new Set<string>(['satellite.pre_da_history']);
+  const bfEvent = sectionEvents.find((p) => p.data.section === 'satellite.bushfire');
+  const bfData = bfEvent?.data.data as { value?: { category?: unknown } } | null | undefined;
+  if (bfData?.value && typeof bfData.value === 'object' && bfData.value.category == null) {
+    hiddenGapFields.add('satellite.bushfire');
+  }
 
   // Track progress — complete event overrides to 100
   const latestProgress = completeEvent
@@ -1526,6 +1606,7 @@ function IntelligenceBriefInner() {
 
                 for (const briefEvent of events) {
                   setParts(prev => [...prev, briefEvent]);
+                  receivedDataRef.current = true;
                   if (briefEvent.event === 'complete') {
                     setState('complete');
                     return;
@@ -1544,9 +1625,27 @@ function IntelligenceBriefInner() {
             if (done) break;
           }
 
-          // Stream ended without complete event — task may have finished
+          // Stream ended without a 'complete' event. Two very different cases:
           if (stateRef.current !== 'complete' && stateRef.current !== 'error') {
-            setState('complete');
+            if (receivedDataRef.current) {
+              // Real data arrived — the stream just closed without a clean
+              // 'complete' terminator. Treat as done (preserves the trailing-
+              // event flush fix).
+              setState('complete');
+              return;
+            }
+            // Zero data: the run hasn't streamed anything yet. Trigger.dev
+            // closes idle streams (~60s) before a queued run gets a worker, so
+            // this close does NOT mean the brief finished. Reconnect and keep
+            // showing "generating" rather than painting a false "Complete".
+            retries++;
+            if (retries >= maxRetries) {
+              setState('error');
+              setErrorMsg('The brief is still queued — no worker picked it up in time. Please try again in a moment.');
+              return;
+            }
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
           }
           return;
         } catch (err: unknown) {
@@ -1575,6 +1674,7 @@ function IntelligenceBriefInner() {
     setRunId(null);
     setBriefType(null);
     setParts([]);
+    receivedDataRef.current = false;
     // Record whether satellite analysis was requested for THIS run, so an empty
     // satellite section reads honestly ("no result") instead of "tick the box".
     setRanWithSatellite(includeSatellite);
@@ -1762,6 +1862,7 @@ function IntelligenceBriefInner() {
                       briefData={ca}
                       lotArea={ca.lot_area_m2}
                       devType={ca.dev_type}
+                      zone={planningCtx.zone}
                     />
                   );
                 }
@@ -1793,6 +1894,19 @@ function IntelligenceBriefInner() {
                   card = <ClimateCard data={cd} />;
                 }
               }
+              if (section === 'dcp_controls' && planningCtx.zone && !isResidentialZone(planningCtx.zone)) {
+                // The extracted DCP controls in the brief are residential development
+                // controls (setbacks, landscaping for dwellings). On a non-residential
+                // zone they may not apply — caveat rather than present them as binding.
+                card = (
+                  <div className="space-y-2">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                      These are residential development controls. {planningCtx.zone} is a non-residential zone, so they may not apply to development here — see the DCP document below for the controls specific to this zone.
+                    </div>
+                    <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />
+                  </div>
+                );
+              }
               if (!card) {
                 card = <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
@@ -1805,7 +1919,7 @@ function IntelligenceBriefInner() {
           </div>
 
           {/* Complete summary */}
-          {completeEvent && <CompleteSummary data={completeEvent.data} />}
+          {completeEvent && <CompleteSummary data={completeEvent.data} hiddenGapFields={hiddenGapFields} />}
           {/* Data sources + confidence legend — built from the section cards, so it
               shows even when the stream's final 'complete' event is dropped. */}
           {state === 'complete' && sectionEvents.length > 0 && (
