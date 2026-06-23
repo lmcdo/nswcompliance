@@ -322,6 +322,11 @@ def main():
             flag = " [NEEDS REVIEW]" if needs_review else ""
             print(f"  DRY-RUN: {lga} min={row['value_min']}h cond={row['condition'][:60]}{flag}")
         else:
+            # INVARIANT: never store a guessed number. An unverified row
+            # (needs_review = "standard NSW pattern assumed") records only that a
+            # solar rule EXISTS — value_min is NULL so the brief shows "check with
+            # council", never an assumed figure as fact. Verified rows keep theirs.
+            value_min = None if needs_review else row["value_min"]
             cur.execute("""
                 INSERT INTO dcp_setback_controls
                   (lga, dev_type, control_type, value_min, value_max, unit,
@@ -335,7 +340,7 @@ def main():
                         %s, %s)
             """, (
                 lga,
-                row["value_min"],
+                value_min,
                 row["condition"],
                 row["source_text"],
                 row["section_ref"],

@@ -481,6 +481,11 @@ def main():
             flag = " [NEEDS REVIEW]" if needs_review else ""
             print(f"  DRY-RUN: {lga} / {dev_type} min={row['value_min']}{row['unit']} cond={row['condition'][:60]}{flag}")
         else:
+            # INVARIANT: never store a guessed number. An unverified row
+            # (needs_review) records only that a POS rule EXISTS — value_min is
+            # NULL so the brief shows "check with council", never an assumed
+            # figure presented as fact. Verified rows keep their real value.
+            value_min = None if needs_review else row["value_min"]
             cur.execute("""
                 INSERT INTO dcp_setback_controls
                   (lga, dev_type, control_type, value_min, value_max, unit,
@@ -495,7 +500,7 @@ def main():
             """, (
                 lga,
                 dev_type,
-                row["value_min"],
+                value_min,
                 row["unit"],
                 row["condition"],
                 "development_specific" if not needs_review else "universal_residential",

@@ -14,6 +14,7 @@ from scripts.validate_dcp_setbacks import (
     foreign_language,
     implausible_magnitude,
     placeholder_rows,
+    fabricated_value_rows,
     audit_setback_controls,
     high_severity,
 )
@@ -125,6 +126,45 @@ class TestBurwoodRegression:
         assert "CONFLICT" in signals and "FOREIGN" in signals
         # The clean side/rear setbacks must NOT be flagged.
         assert not any(f["control_type"] in ("side_setback", "rear_setback") for f in highs)
+
+
+# --- Lock #2: no fabricated value may carry a number ------------------------
+
+class TestFabricatedValueInvariant:
+    def test_assumed_value_with_a_number_is_flagged(self):
+        rows = [_row(control_type="private_open_space", value_min=24.0,
+                     condition="Assumed standard NSW POS min — verify against X DCP")]
+        assert len(fabricated_value_rows(rows)) == 1
+
+    def test_review_reason_marker_is_flagged(self):
+        rows = [_row(control_type="solar_access_hours", value_min=3.0,
+                     condition="", review_reason="standard_pattern_assumed")]
+        assert len(fabricated_value_rows(rows)) == 1
+
+    def test_assumed_row_with_null_value_is_ok(self):
+        # The fixed state: an unverified row records the rule exists but stores
+        # NO number — so it is NOT a fabrication.
+        rows = [_row(control_type="private_open_space", value_min=None,
+                     condition="Assumed standard NSW POS min — verify against X DCP")]
+        assert fabricated_value_rows(rows) == []
+
+    def test_verified_value_is_not_fabricated(self):
+        rows = [_row(control_type="private_open_space", value_min=35.0,
+                     condition="1-2 bedroom dwelling house; min dimension 3m")]
+        assert fabricated_value_rows(rows) == []
+
+
+@pytest.mark.database
+def test_live_has_no_fabricated_values():
+    """Hard invariant over production: no current row may store a number it
+    admits is assumed. Runs under `pytest -m database`."""
+    from scripts.validate_dcp_setbacks import _fetch_rows
+
+    bad = fabricated_value_rows(_fetch_rows())
+    assert bad == [], (
+        "Fabricated setback values in production (a number stored as 'assumed'): "
+        + "; ".join(f"{f['lga']}/{f['control_type']}={f['value']}" for f in bad)
+    )
 
 
 # --- Standing ratchet over the live table (runs under `pytest -m database`) -

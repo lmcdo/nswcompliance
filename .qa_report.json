@@ -6,7 +6,9 @@
     "services/constraint_arithmetic.py",
     "tests/test_setback_conflict_resolution.py",
     "scripts/validate_dcp_setbacks.py",
-    "tests/test_dcp_setback_validation.py"
+    "tests/test_dcp_setback_validation.py",
+    "scripts/insert_private_open_space.py",
+    "scripts/insert_solar_access_hours.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
@@ -41,6 +43,13 @@
       "input": "a list of dcp_setback_controls row dicts (lga, control_type, dev_type, value_min, condition, source_text)",
       "output": "one high-severity finding per (lga, control_type, dev_type) group that has more than one distinct value_min and no condition on any row to disambiguate",
       "if_none": "returns an empty list when every group is single-valued or carries a disambiguating condition (legitimate tiered controls)"
+    },
+    {
+      "name": "fabricated_value_rows",
+      "file_line": "scripts/validate_dcp_setbacks.py:161",
+      "input": "a list of dcp_setback_controls row dicts including review_reason and condition",
+      "output": "rows that store a non-null value_min while marking it assumed/standard-pattern — the hard-invariant violation (a guessed number presented as fact)",
+      "if_none": "returns an empty list when no row stores a guessed value, the required production state after the insert scripts write NULL for unverified rows"
     },
     {
       "name": "audit_setback_controls",
@@ -93,7 +102,14 @@
       "what_happens": "the original class of bug recurs and a user sees a confident wrong setback again",
       "repro": "pytest -m database test_live_high_severity_within_baseline with a new bad row present pushes the count above 10 and fails",
       "mitigated": true,
-      "how": "the database ratchet test asserts the live high-severity count never exceeds the recorded baseline (10); any new mislabelled setback raises the count and fails the gate, naming the offending lga/control_type/signal"
+      "how": "the database ratchet test asserts the live high-severity count never exceeds the recorded baseline (now 7 after quarantining 3 bad rows); any new mislabelled setback raises the count and fails the gate, naming the offending lga/control_type/signal"
+    },
+    {
+      "scenario": "An import script can't find a real value and fills in a guessed default (the POS=24 / solar=3h 'assumed standard NSW' pattern), presenting it as a council rule",
+      "what_happens": "fabricated data reaches production looking authoritative — exactly what happened with 27 assumed POS/solar rows",
+      "repro": "fabricated_value_rows over a row with value_min set AND condition/review_reason marked assumed — covered by test_assumed_value_with_a_number_is_flagged and the live test_live_has_no_fabricated_values",
+      "mitigated": true,
+      "how": "LOCK #1 — insert_private_open_space.py and insert_solar_access_hours.py now write value_min=NULL for any needs_review row (records the rule exists, value unknown -> 'check council', never a guess). LOCK #2 — fabricated_value_rows + the live database test fail the build if any current row stores a number it admits is assumed; verified live = 0 after the fix."
     }
   ],
   "post_merge": {

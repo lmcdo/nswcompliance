@@ -151,6 +151,37 @@ def placeholder_rows(rows: list[dict]) -> list[dict]:
     return out
 
 
+_FABRICATED_MARKER = re.compile(
+    r"standard.{0,3}pattern.{0,3}assumed|assumed standard|standard nsw pattern|"
+    r"assumed[^.]{0,30}pattern",
+    re.I,
+)
+
+
+def fabricated_value_rows(rows: list[dict]) -> list[dict]:
+    """The hard invariant: a row must NEVER store a number it admits is a guess.
+
+    Flags rows that carry a non-null ``value_min`` AND a marker (``review_reason``
+    or ``condition``) saying the value was assumed/standard-pattern. After the fix
+    in the insert scripts, an unverified row must store ``value_min = NULL`` (the
+    rule exists, value unknown) — so this set must be empty. Any non-empty result
+    is fabricated data presented as fact and fails the build.
+    """
+    out: list[dict] = []
+    for r in rows:
+        if _num(r.get("value_min")) is None:
+            continue
+        marker = f"{r.get('review_reason') or ''} {r.get('condition') or ''}"
+        if _FABRICATED_MARKER.search(marker):
+            out.append({
+                "lga": r.get("lga"), "control_type": r.get("control_type"),
+                "value": _num(r.get("value_min")), "signal": "FABRICATED",
+                "severity": "high",
+                "detail": f"stores a number but marks it assumed: {marker[:90]!r}",
+            })
+    return out
+
+
 def audit_setback_controls(rows: list[dict]) -> list[dict]:
     """Run all signals and return a flat list of flagged rows/groups."""
     return (
@@ -184,7 +215,7 @@ def _fetch_rows():  # pragma: no cover - thin DB shim, exercised by main()
     cur.execute(
         """
         SELECT lga, control_type, dev_type, value_min, value_max,
-               unit, condition, source_text, section_ref
+               unit, condition, source_text, section_ref, review_reason
         FROM dcp_setback_controls
         WHERE is_current = TRUE
         """
