@@ -416,6 +416,26 @@ class FloodDetail(BaseModel):
     confidence: Optional[str] = None
 
 
+class FloodServiceOutput(BaseModel):
+    """S2 typed contract for the flood service's ``outputs`` dict.
+
+    This is the SINGLE SOURCE OF TRUTH for the flood output key names the brief
+    consumes. _build_flood_detail reads typed attributes off it, so a typo or a
+    renamed key is a static/type error here instead of a silent null in the card
+    (the jrc_occurrence_pct vs jrc_water_occurrence_pct class). Extra keys the
+    service emits (jrc_data_year, refused, etc.) are ignored; values stay
+    nullable so a genuine empty reading is preserved.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    epi_flood_class: Optional[str] = None
+    epi_flood_label: Optional[str] = None
+    jrc_water_occurrence_pct: Optional[float] = None
+    dea_wofs_frequency_pct: Optional[float] = None
+    bom_gauge_distance_km: Optional[float] = None
+    flood_studies: Optional[list[dict]] = None
+
+
 class GeometryRelationship(str, Enum):
     """How the property relates to a spatial designation."""
 
@@ -1578,19 +1598,24 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
 
 
 def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
-    """Extract FloodDetail from raw flood truth output."""
+    """Extract FloodDetail from raw flood truth output via the S2 typed contract.
+
+    Reading typed attributes off FloodServiceOutput (not loose .get on the raw
+    dict) makes the flood output key names a single typed contract: a typo or a
+    service rename is a static/type error, not a silent null in the card.
+    """
     if not flood_raw:
         return None
-    outputs = flood_raw.get("outputs") or {}
-    epi_class = outputs.get("epi_flood_class")
+    out = FloodServiceOutput.model_validate(flood_raw.get("outputs") or {})
+    epi_class = out.epi_flood_class
     return FloodDetail(
         # None = not assessed; False = checked, not in a flood class; True = flood class present
         epi_flood=(None if epi_class is None else epi_class != "none"),
-        epi_flood_label=outputs.get("epi_flood_label"),
-        jrc_occurrence_pct=outputs.get("jrc_water_occurrence_pct"),
-        wofs_frequency_pct=outputs.get("dea_wofs_frequency_pct"),
-        bom_gauge_distance_km=outputs.get("bom_gauge_distance_km"),
-        flood_studies=outputs.get("flood_studies"),
+        epi_flood_label=out.epi_flood_label,
+        jrc_occurrence_pct=out.jrc_water_occurrence_pct,
+        wofs_frequency_pct=out.dea_wofs_frequency_pct,
+        bom_gauge_distance_km=out.bom_gauge_distance_km,
+        flood_studies=out.flood_studies,
         confidence=flood_raw.get("confidence"),
     )
 

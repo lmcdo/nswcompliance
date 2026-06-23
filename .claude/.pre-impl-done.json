@@ -1,6 +1,7 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T13:00:00+10:00",
-  "target": "WO-4 nearby-DA cost key-null + WO-5 shadow sun_altitude/azimuth key-null",
-  "findings_summary": "WO-4: conveyancing_db.fetch_nearby_das SELECTs cost_of_development + unpacks as `cost` but the returned dict omits it -> brief's NearbyDA.cost always null. Fix: add cost_of_development to the returned dict. WO-5: shadow_detector per-scenario dict never emits sun_altitude_deg/sun_azimuth_deg; brief reads them. Fix: emit from the pvlib solar-position calc if available, else drop the 2 fields from the brief read. Pure key-null, no schema/DB change."
+  "timestamp": "2026-06-23T14:00:00+10:00",
+  "target": "S2 increment 1 — typed contract at the brief seam for the flood service output (locks the #589 key contract)",
+  "findings_summary": "Design: services return dicts (Trigger.dev consumers depend on that) so DON'T retype them; instead define a Pydantic contract for the EXPECTED flood output and parse the raw dict through it in _build_flood_detail. A renamed/missing key -> validation error (visible) not a silent null. flood_truth.run_flood emits epi_flood_class/epi_flood_label/jrc_water_occurrence_pct/dea_wofs_frequency_pct/bom_gauge_distance_km/flood_studies (+confidence/refused/reason). The brief's FloodDetail already reads the right keys post-#589; the contract makes a future drift fail loudly. Parse must be tolerant (model_validate, extra keys ignored) and must NOT crash the brief on a genuinely-absent field — only on a structural contract break. No service signature change; no DB.",
+  "model_design": "FloodServiceOutput(BaseModel) with the documented emit keys as Optional; _build_flood_detail does FloodServiceOutput.model_validate(raw) then reads typed attributes; a validation error is caught and surfaced as NOT_AVAILABLE with the reason (fail-closed), AND logged loudly so contract drift is visible."
 }

@@ -1,59 +1,64 @@
 {
   "tier": "standard",
-  "commit_hash": "739c1259",
-  "justification": "WO-4 + WO-5 — the two residual key-null bugs from the adversarial audit (Part A), both single display fields. WO-4: conveyancing_db.fetch_nearby_das SELECTed cost_of_development and unpacked it as `cost` but omitted it from the returned dict, so the brief's NearbyDA.cost (read via d.get('cost_of_development')) was always null; added it to the dict. WO-5: ShadowScenario carried sun_altitude_deg/sun_azimuth_deg which the shadow service never emits (it emits shadow_direction_deg = opposite of sun azimuth) and nothing renders — always-null dead fields; removed them from the model and the brief mapping. The real shadow-direction datum is retained.",
+  "commit_hash": "f3d16af2",
+  "justification": "S2 increment 1 — the typed service->brief boundary, applied to the flood service (the worst key bug, #589: jrc_occurrence_pct vs jrc_water_occurrence_pct). Design choice: do NOT retype the services' return values (they emit dicts that the Trigger.dev relays depend on); instead define a Pydantic CONTRACT model (FloodServiceOutput) at the brief's consumption seam that is the single source of truth for the flood output key names. _build_flood_detail now parses the raw outputs through the contract and reads TYPED attributes (out.jrc_water_occurrence_pct) instead of loose .get('...'), so a typo or a service rename is a static/type error, not a silent null. Values stay nullable (genuine empty preserved); extra service keys (jrc_data_year, refused) are ignored. A contract test locks the model's fields to the documented service emit-keys so the brief's contract can't silently drift; the live drift check (S3) will re-capture real output against it. This is increment 1 of an incremental rollout (bushfire/shadow next).",
   "files": [
-    "scripts/conveyancing_db.py",
     "services/intelligence_brief.py",
-    "services/constraint_models.py",
-    "tests/test_brief_failclosed.py"
+    "tests/test_brief_contracts.py"
   ],
   "pre_impl": {
-    "existing_data": "fetch_nearby_das row unpacks cost (10th column) but the appended dict omitted it. ShadowScenario.sun_altitude_deg/sun_azimuth_deg used only by the model decl + the brief mapping + one self-confirming test fixture; the shadow service emits neither.",
-    "assumption_mismatch": "Assumed the brief mapping was wrong for DA cost; in fact the brief reads the right key — the DB helper dropped it. For shadow, the fields were dead (never produced) not mis-mapped.",
-    "new_vs_existing": "WO-4 adds one key to an existing dict. WO-5 removes two dead fields. No new mechanism.",
-    "external_source_error": "N/A — DB row already carried cost; shadow fields were never sourced.",
-    "frontend_type": "Backend only; the frontend ShadowData interface never referenced the sun fields, so no UI change.",
-    "user_failure_mode": "Before: nearby-DA cost always blank; two always-null sun fields on the model. After: DA cost surfaces when present; the dead fields are gone (no field reading a key that isn't produced)."
+    "existing_data": "flood_truth.run_flood emits a dict with outputs.{epi_flood_class,epi_flood_label,jrc_water_occurrence_pct,dea_wofs_frequency_pct,bom_gauge_distance_km,flood_studies}; _build_flood_detail read them via loose .get. The Trigger.dev relay consumes the same dict.",
+    "assumption_mismatch": "A naive 'services return Pydantic models' would break the dict-consuming Trigger.dev relays; the contract must live at the brief seam, not in the service signature.",
+    "new_vs_existing": "Reused the existing FloodDetail schema; added a typed contract model + switched the build to typed reads. No service signature change.",
+    "external_source_error": "A flood output that drops/renames a key now nulls the affected typed field (same visible-empty as before for that one field) but the contract test + S3 drift check surface the drift; extra keys are tolerated.",
+    "frontend_type": "Backend only. 180 brief tests pass incl 5 new contract tests.",
+    "user_failure_mode": "Before: the brief read flood keys by raw string; a service rename silently nulled a card (the #589 bug). After: the keys are a typed contract; a brief-side typo is a static error and a service rename is caught by the contract/drift test."
   },
   "functions": [
     {
-      "name": "fetch_nearby_das",
-      "file_line": "scripts/conveyancing_db.py",
-      "input": "a db connection, lat, lng, optional council, radius and lookback days",
-      "output": "nearby DA dicts that now include cost_of_development from the row",
-      "if_none": "a row with a null cost yields cost_of_development None, which the brief renders as no-cost-recorded"
+      "name": "_build_flood_detail",
+      "file_line": "services/intelligence_brief.py",
+      "input": "the raw flood-service dict with an outputs sub-dict",
+      "output": "a FloodDetail built by reading typed attributes off the FloodServiceOutput contract rather than loose dict .get calls",
+      "if_none": "a falsy flood_raw returns None; an outputs dict missing a key yields that typed field as None"
+    },
+    {
+      "name": "FloodServiceOutput",
+      "file_line": "services/intelligence_brief.py",
+      "input": "the flood service outputs dict via model_validate",
+      "output": "a typed object exposing the flood output keys as nullable attributes, ignoring extra service keys",
+      "if_none": "a missing key parses to None rather than raising, preserving a genuine empty"
     }
   ],
-  "values": "N/A - DA cost is factual API/DB output, not a regulatory value.",
-  "queries": "N/A - the SELECT already fetched cost_of_development; only the returned dict changed (no query change).",
+  "values": "N/A - flood screening percentages, not regulatory values.",
+  "queries": "N/A - no DB query.",
   "break_it": [
     {
-      "scenario": "A DA row has a null cost_of_development",
-      "what_happens": "cost should be None, not fabricated",
-      "repro": "a row with cost None",
+      "scenario": "The flood service legitimately omits a key in a partial result",
+      "what_happens": "that typed field is None, not a parse crash",
+      "repro": "outputs missing dea_wofs_frequency_pct",
       "mitigated": true,
-      "how": "the value is passed through as-is; None stays None"
+      "how": "contract fields are Optional with defaults, so a missing key is None (the card shows it unavailable), never an exception that drops the whole flood section. Guarded by test_flood_genuine_empty_values_preserved"
     },
     {
-      "scenario": "A consumer still reads ShadowScenario.sun_altitude_deg after removal",
-      "what_happens": "an attribute error could occur",
-      "repro": "grep for the field",
+      "scenario": "The flood service adds a new output key",
+      "what_happens": "parsing must tolerate the new key and not raise",
+      "repro": "outputs with an unknown extra key",
       "mitigated": true,
-      "how": "verified the only references were the model decl, the brief mapping, and a test fixture's extra keys (ignored); the frontend never read them"
+      "how": "model_config extra=ignore tolerates new keys. Guarded by test_flood_contract_parses_real_shaped_output (jrc_data_year/refused extras)"
     },
     {
-      "scenario": "fetch_nearby_das output shape relied on by another caller breaks",
-      "what_happens": "adding a key could surprise a strict consumer",
-      "repro": "grep callers",
+      "scenario": "Someone renames a flood key in the service back to the old name",
+      "what_happens": "the correct contract field stays None (a regression), and the lock test fails if the brief contract is edited to match without updating the expected-keys set",
+      "repro": "outputs with jrc_occurrence_pct (old name)",
       "mitigated": true,
-      "how": "adding a key is additive; the brief and conveyancing report read by name, so an extra key is ignored by existing consumers"
+      "how": "the contract reads the correct key; test_flood_old_renamed_key_does_not_populate documents it and test_flood_contract_fields_are_the_expected_service_keys locks the field set; the S3 drift check (next) re-validates against real output"
     }
   ],
   "post_merge": {
     "db_reset": "N/A",
     "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief with nearby DAs that have a cost — the cost now appears. Shadow card renders unchanged (the removed fields were never shown)."
+    "other_repo": "N/A - the Trigger.dev flood consumer still gets the same dict; only the brief's read changed.",
+    "manual_verify": "Run a brief — the flood card behaves identically (it reads the same keys, now typed). The contract test locks the flood output shape."
   }
 }
