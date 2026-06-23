@@ -12,7 +12,8 @@
     "services/extracted_data_integrity.py",
     "tests/test_extracted_data_integrity.py",
     "tests/test_insert_scripts_integrity.py",
-    "docs/extracted-data-integrity.md"
+    "docs/extracted-data-integrity.md",
+    "migrations/052_dcp_setback_fabrication_guard.sql"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
@@ -149,6 +150,13 @@
       "repro": "add a verified row with a value plus an 'Assumed standard NSW' note to POS_ROWS and run pytest — covered by tests/test_insert_scripts_integrity.py",
       "mitigated": true,
       "how": "the two insert scripts now CALL assert_clean_row before every INSERT (write-time block), and tests/test_insert_scripts_integrity.py runs the same gate offline over the scripts' own row data on EVERY commit (no DB needed), so a guessed value fails the build immediately rather than waiting for the live cron."
+    },
+    {
+      "scenario": "One of the ~40 OTHER insert scripts (or an ad-hoc SQL INSERT, or the review-loop commit) writes a fabricated value without calling the app-level gate",
+      "what_happens": "an app-level gate only protects the doors that call it; an un-gated writer could still store a guessed value",
+      "repro": "INSERT a row into dcp_setback_controls with is_current=TRUE, value_min set, and condition 'Assumed standard NSW ...' bypassing the Python gate",
+      "mitigated": true,
+      "how": "migration 052 adds a CHECK constraint UNDER the table (NOT VALID first to avoid a scan; pre-check confirmed 0 violating current rows so VALIDATE is clean) — a current row may not store value_min/value_max while a marker admits it is assumed. Every writer hits the DB, so the constraint blocks fabricated entry regardless of which script/SQL path is used. Prepared as a migration for review (prod DDL not applied unilaterally); reversible via DROP CONSTRAINT."
     }
   ],
   "post_merge": {
