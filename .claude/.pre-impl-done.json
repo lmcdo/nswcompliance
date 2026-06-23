@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T15:00:00+10:00",
-  "target": "S2 increments 2+3 — typed contracts for bushfire + shadow service outputs (same pattern as flood #597)",
-  "findings_summary": "Mirror the flood contract: define BushfireServiceOutput + ShadowServiceOutput Pydantic contracts at the brief seam (Optional fields, extra=ignore), parse raw via model_validate, read typed attrs in _build_bushfire_detail/_build_shadow_result. A rename -> typed/test failure not a silent null. Lock the contract fields to the documented service emit-keys via tests. Services unchanged (Trigger.dev dict consumers safe). Genuine empties preserved.",
-  "model_design": "Bushfire: is_bushfire_prone/designation_category/estimated_bal_band/designation_guideline/fire_signal + nested compliance.cross_overlays; confidence is top-level. Shadow: top-level height_m/height_source/adg_compliant/worst_case_scenario + scenarios[] each label/time_local/shadow_length_m/shadow_overlap_fraction/shadow_direction_deg/overlaps_subject_lot. Scenario contract for the per-item shape."
+  "timestamp": "2026-06-23T16:00:00+10:00",
+  "target": "S3 increment 1 — contract drift checker: validate (live or fixture) service output against the S2 contracts, flag missing/renamed keys",
+  "findings_summary": "The S2 contracts (FloodServiceOutput/BushfireServiceOutput/ShadowServiceOutput) tolerate missing keys (parse to None) so a service RENAME silently nulls the card. The drift check closes that: compare the real service output's keys to the contract's expected fields; a MISSING contract field = a rename/drop (the #589 bug, dangerous), an EXTRA key = a new service field (informational). Pure check_drift(contract_cls, raw) is unit-testable now; a live runner calls the real services for the demo addresses and exits non-zero on drift (runs where DB/network exist = Railway cron / local). Shadow output has no 'outputs' wrapper; flood/bushfire do. Nested (bushfire compliance, shadow scenarios) checked at top level for increment 1.",
+  "model_design": "check_drift(contract_cls, raw)->{service,missing,extra,drift}; SERVICE_CONTRACTS registry maps service->(contract, outputs_subkey). Live runner imports run_flood/run_bushfire/run_shadow (only when invoked) so the pure function + tests don't need heavy deps."
 }
