@@ -1,10 +1,12 @@
 {
   "tier": "standard",
   "commit_hash": "",
-  "justification": "Backend logic fix to the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
+  "justification": "Two-part setback correctness fix. PART 1 (engine): the capacity engine's DCP control selection. PART 2 (data gate): scripts/validate_dcp_setbacks.py + tests/test_dcp_setback_validation.py — the missing DETERMINISTIC semantic validator that catches setback values mislabelled vs their source clause (the class of defect schema validation, the change-only review queue, and the consuming-engine routing tests all let through; the initial bulk load never passed the human review queue). Multi-signal (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER); run live over 1001 rows it found 10 high-severity defects across 7 LGAs (burwood/camden/canada_bay/cumberland/fairfield/penrith/the_hills). A @pytest.mark.database ratchet locks the high-severity count at <=10 so a future extraction cannot add a mislabelled setback. No LLM is used (project deterministic-only rule); Gemini stays advisory-to-human triage. PART 1 detail: the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
   "files": [
     "services/constraint_arithmetic.py",
-    "tests/test_setback_conflict_resolution.py"
+    "tests/test_setback_conflict_resolution.py",
+    "scripts/validate_dcp_setbacks.py",
+    "tests/test_dcp_setback_validation.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
@@ -32,6 +34,20 @@
       "input": "a DCPControl list, a control_type string and a dev_type string",
       "output": "the sorted distinct value_min values when more than one exists (the selector had to choose), otherwise None",
       "if_none": "returns None when zero or one distinct value exists, so no spurious conflict gap is raised"
+    },
+    {
+      "name": "conflict_groups",
+      "file_line": "scripts/validate_dcp_setbacks.py:83",
+      "input": "a list of dcp_setback_controls row dicts (lga, control_type, dev_type, value_min, condition, source_text)",
+      "output": "one high-severity finding per (lga, control_type, dev_type) group that has more than one distinct value_min and no condition on any row to disambiguate",
+      "if_none": "returns an empty list when every group is single-valued or carries a disambiguating condition (legitimate tiered controls)"
+    },
+    {
+      "name": "audit_setback_controls",
+      "file_line": "scripts/validate_dcp_setbacks.py:154",
+      "input": "a list of dcp_setback_controls row dicts as fetched from the live table",
+      "output": "a flat list of findings across all four signals (conflict, foreign-language, magnitude, placeholder), each tagged high or advisory severity",
+      "if_none": "returns an empty list when no signal fires, meaning the extracted setback data passes the semantic gate"
     }
   ],
   "values": "N/A - no new DB/API values read; operates on the already-fetched DCPControl list passed into compute_constraint_arithmetic.",
@@ -64,6 +80,20 @@
       "repro": "_get_dcp_value with a dwelling_house front 6m and a secondary_dwelling front 3m, dev_type='secondary_dwelling' — covered by test_exact_dev_type_preferred_over_dwelling_house (expects 3.0)",
       "mitigated": true,
       "how": "_matching_controls returns ONLY exact dev_type rows when any exist; the dwelling_house fallback is used solely when there is no exact match"
+    },
+    {
+      "scenario": "The validator false-positives on a legitimate tiered or terse setback row (e.g. 'lots 200-300m2: 3m', or 'One storey - 3.5 metres')",
+      "what_happens": "real council controls would be wrongly flagged as defects, drowning the signal and eroding trust in the gate",
+      "repro": "foreign_language / conflict_groups over a tiered row with a condition and a terse storey-tiered row — covered by test_conflict_with_a_condition_is_not_flagged and test_terse_storey_tiered_setback_not_flagged",
+      "mitigated": true,
+      "how": "CONFLICT only fires when NO row in the group has a condition; FOREIGN requires strong foreign-control language AND the absence of setback language and deliberately excludes bare 'storey'; magnitude/placeholder are advisory-only, so the live run yielded 10 high-severity (real) vs 53 advisory"
+    },
+    {
+      "scenario": "A future extraction re-introduces a mislabelled setback (the exact Burwood regression) and silently reaches production",
+      "what_happens": "the original class of bug recurs and a user sees a confident wrong setback again",
+      "repro": "pytest -m database test_live_high_severity_within_baseline with a new bad row present pushes the count above 10 and fails",
+      "mitigated": true,
+      "how": "the database ratchet test asserts the live high-severity count never exceeds the recorded baseline (10); any new mislabelled setback raises the count and fails the gate, naming the offending lga/control_type/signal"
     }
   ],
   "post_merge": {
