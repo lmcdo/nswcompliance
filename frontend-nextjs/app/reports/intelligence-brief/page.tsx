@@ -404,6 +404,22 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // The coastal_hazards field wraps the SEPP "land application" layer — a
+          // jurisdictional area covering much of NSW, not a hazard finding. Render
+          // one clean line rather than a doubled "Coastal Management Area: ...".
+          if (key === 'coastal_hazards' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
+            const within = Object.keys(df.value as Record<string, unknown>).length > 0;
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {within
+                    ? 'Within the Coastal Management SEPP land-application area (jurisdictional — not a coastal-hazard finding).'
+                    : 'Not in a coastal management area.'}
+                </dd>
+              </div>
+            );
+          }
           // An authoritative null is a checked "nothing here" (e.g. not
           // bushfire-designated, no heritage listing) — show "None", not a dash.
           const display = df.value == null && df.confidence === 'authoritative'
@@ -615,10 +631,16 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
       {rows.map((o, i) => {
         const unit = OVERLAY_UNIT[o.layer_type as string];
         const v = formatValue(o.value);
+        // The additional_permitted_uses overlay returns a bare LEP Schedule-1
+        // reference code (e.g. "51"), not a count — render it as a reference
+        // pointing back to the LEP, not a meaningless number.
+        const display = o.layer_type === 'additional_permitted_uses' && v !== '—'
+          ? `Applies (ref ${v}) — see LEP`
+          : (unit && v !== '—' ? `${v} ${unit}` : v);
         return (
           <li key={i}>
             <span className="text-slate-500">{formatKey(o.layer_type as string)}:</span>{' '}
-            {unit && v !== '—' ? `${v} ${unit}` : v}
+            {display}
           </li>
         );
       })}
@@ -1252,11 +1274,11 @@ function LiveStatusPanel({
 // Complete summary card
 // ---------------------------------------------------------------------------
 
-function CompleteSummary({ data }: { data: BriefComplete }) {
+function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hiddenGapFields: Set<string> }) {
   const { confidence_summary: cs, compound_constraints, gaps: allGaps, data_currency_warnings, elapsed_seconds } = data;
-  // pre_da_history is soft-dropped from the brief (see sectionEvents filter); also
-  // hide it from Data Gaps so it doesn't resurface as a "missing" line.
-  const gaps = allGaps.filter((g) => g.field !== 'satellite.pre_da_history');
+  // Hide gaps resolved elsewhere (pre_da soft-dropped; bushfire that resolved to
+  // "not bushfire-prone") so the list doesn't contradict the cards above.
+  const gaps = allGaps.filter((g) => !hiddenGapFields.has(g.field));
 
   return (
     <div className="space-y-4">
@@ -1433,6 +1455,18 @@ function IntelligenceBriefInner() {
     .filter((p) => p.data.section !== 'satellite.pre_da_history');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
+
+  // Gaps to hide from the Data Gaps list because they're resolved elsewhere:
+  // pre_da is soft-dropped, and a bushfire prescreen that resolved to "not
+  // bushfire-prone" (value present, category null) must not also surface as a
+  // "returned no data" gap — the card already shows the answer, so a gap line
+  // reads as a direct contradiction. A genuine failure (value absent) still gaps.
+  const hiddenGapFields = new Set<string>(['satellite.pre_da_history']);
+  const bfEvent = sectionEvents.find((p) => p.data.section === 'satellite.bushfire');
+  const bfData = bfEvent?.data.data as { value?: { category?: unknown } } | null | undefined;
+  if (bfData?.value && typeof bfData.value === 'object' && bfData.value.category == null) {
+    hiddenGapFields.add('satellite.bushfire');
+  }
 
   // Track progress — complete event overrides to 100
   const latestProgress = completeEvent
@@ -1847,7 +1881,7 @@ function IntelligenceBriefInner() {
           </div>
 
           {/* Complete summary */}
-          {completeEvent && <CompleteSummary data={completeEvent.data} />}
+          {completeEvent && <CompleteSummary data={completeEvent.data} hiddenGapFields={hiddenGapFields} />}
           {/* Data sources + confidence legend — built from the section cards, so it
               shows even when the stream's final 'complete' event is dropped. */}
           {state === 'complete' && sectionEvents.length > 0 && (

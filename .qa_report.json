@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "commit_hash": "",
-  "justification": "Intelligence Brief QA corrections, frontend/presentation-layer only — no backend, DB query, or schema change. Five render-layer fixes flagged on a live brief for a heritage E1 (centre) zone: (1) the capacity card claimed a dwelling house was 'buildable without council approval' — reworded to 'as-of-right, subject to a development application' and, because the dwelling-yield + residential-setback model only covers R1-R5/RU5, the yield/DCP-adjusted-GFA/setback tiles are now suppressed on non-residential zones with an explanatory note (the LEP GFA envelope still shows); (2) the residential DCP controls card is caveated on non-residential zones; (3) the SEPP 'coastal land application' overlay (jurisdictional, covers much of NSW) is relabelled 'Coastal Management Area' rather than reading as a coastal-hazard finding; (4) the soft-dropped Pre-DA Site History layer is filtered out of the Data Gaps list; (5) cosmetics — serialised empties (None/null/'') render as an em dash, lowercase snake_case enums (not_strata) are humanised, and currency fields are prefixed with $. Critically, the capacity card was previously rendered without its zone prop, so the zone-aware suppression is also wired through (zone={planningCtx.zone}).",
+  "justification": "Intelligence Brief QA corrections, frontend/presentation-layer only — no backend, DB query, or schema change. Verified against a live stream of the brief for an E1 (Local Centre) heritage lot (100 Ramsay St, Haberfield), confirming the backend genuinely returns dev_type=dwelling_house / as_of_right_dwellings=1 on E1 (a prohibited form) — the render layer now fail-closes it. Fixes: (1) capacity card drops the 'buildable without council approval' claim ('as-of-right, subject to a DA') and, because the yield + residential-setback model only covers R1-R5/RU5, suppresses the yield/DCP-adjusted-GFA/setback tiles on non-residential zones with a note (LEP GFA envelope still shows); the card is now passed zone={planningCtx.zone} so the gate fires; (2) residential DCP controls card caveated on non-residential zones; (3) coastal SEPP 'land application' layer relabelled 'Coastal Management Area' and the coastal_hazards field rendered as a single jurisdictional line (not a doubled label or hazard finding); (4) Pre-DA filtered out of Data Gaps; (5) bushfire that resolved to 'not bushfire-prone' (value present, category null) is suppressed from Data Gaps so the gap no longer contradicts the card; (6) the additional_permitted_uses overlay's bare LEP code (e.g. '51') renders as 'Applies (ref 51) — see LEP', not a meaningless number; (7) cosmetics — serialised empties render as an em dash, lowercase snake_case enums (not_strata) are humanised, currency fields are $-prefixed.",
   "files": [
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx"
@@ -34,6 +34,20 @@
       "repro": "render an Economics section with land_value as a number and lot_size as a number",
       "mitigated": true,
       "how": "the $ prefix is gated on an explicit CURRENCY_FIELDS allow-list AND typeof raw === 'number', so only known currency keys with numeric values get the prefix; everything else uses the existing unit-suffix path."
+    },
+    {
+      "scenario": "Bushfire prescreen genuinely fails (no value object) but the gap is hidden anyway",
+      "what_happens": "a real 'we could not determine bushfire status' gap is silently dropped, hiding missing data",
+      "repro": "stream a brief where satellite.bushfire returns confidence not_available with value null (total failure, not a not-prone resolution)",
+      "mitigated": true,
+      "how": "the gap is only added to hiddenGapFields when the bushfire value is a present object with category == null (the 'ran, not prone' case the card resolves); a null/absent value fails the guard so the genuine gap still shows."
+    },
+    {
+      "scenario": "additional_permitted_uses overlay returns an unexpected value (empty, or a real word rather than a code)",
+      "what_happens": "the 'Applies (ref X) — see LEP' wrapper could render an empty ref or wrap a value that isn't a code",
+      "repro": "feed OverlayList an additional_permitted_uses row with value '' and one with value 'Permitted'",
+      "mitigated": true,
+      "how": "the wrapper only applies when formatValue(o.value) !== '—' (so empty/None values fall through to the em dash), and it presents whatever the overlay returns as a reference pointing back to the LEP rather than asserting any specific use."
     }
   ],
   "post_merge": {
