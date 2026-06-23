@@ -683,6 +683,7 @@ def fetch_nearby_das(
                 "status": status or "",
                 "lodged": str(lodged)[:10] if lodged else "",
                 "distance_m": round(dist),
+                "cost_of_development": cost,  # WO-4: selected + unpacked but was omitted -> NearbyDA.cost always null
             })
 
     nearby.sort(key=lambda x: x["distance_m"])

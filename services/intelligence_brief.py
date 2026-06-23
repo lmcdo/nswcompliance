@@ -1609,8 +1609,9 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
         scenarios.append(ShadowScenario(
             date_label=(s.get("label") or ""),
             time_label=(s.get("time_local") or ""),
-            sun_altitude_deg=s.get("sun_altitude_deg"),
-            sun_azimuth_deg=s.get("sun_azimuth_deg"),
+            # WO-5: sun_altitude_deg/sun_azimuth_deg removed — the shadow service
+            # never emits them (it emits shadow_direction_deg = opposite of sun
+            # azimuth) and nothing renders them, so they were always-null dead fields.
             shadow_length_m=s.get("shadow_length_m"),
             overlap_pct=(frac * 100 if frac is not None else None),
             shadow_direction_deg=s.get("shadow_direction_deg"),

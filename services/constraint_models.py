@@ -78,11 +78,9 @@ class ShadowScenario(BaseModel):
 
     date_label: str  # "Jun 21 (winter solstice)"
     time_label: str  # "9:00 AM", "12:00 PM", "3:00 PM"
-    sun_altitude_deg: Optional[float] = None
-    sun_azimuth_deg: Optional[float] = None
     shadow_length_m: Optional[float] = None
     overlap_pct: Optional[float] = None
-    shadow_direction_deg: Optional[float] = None  # compass bearing the shadow falls toward
+    shadow_direction_deg: Optional[float] = None  # compass bearing the shadow falls toward (opposite of sun azimuth)
     overlaps_subject_lot: Optional[bool] = None
 
 

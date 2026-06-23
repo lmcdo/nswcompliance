@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import textwrap
+from unittest.mock import MagicMock
 
 from services.intelligence_brief import (
     _unwrap_or_default,
@@ -16,6 +17,8 @@ from services.intelligence_brief import (
     DataField,
     ConfidenceLevel,
 )
+from services.constraint_models import ShadowScenario
+from conveyancing_db import fetch_nearby_das
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINT = os.path.join(REPO, "scripts", "lint_brief_failsoft.py")
@@ -24,6 +27,33 @@ NA = ConfidenceLevel.NOT_AVAILABLE
 AUTH = ConfidenceLevel.AUTHORITATIVE
 _CONTROLS = {"zone": "R2", "height": "9", "fsr": "0.5:1", "flood_epi": False}
 _OVERLAYS = {"overlays": [], "covered_layers": [], "proximity_m": {}}
+
+
+# --- WO-4: nearby-DA cost key-null -----------------------------------------
+
+def test_nearby_da_includes_cost_of_development():
+    # The row: (pid, addr, suburb, status, lat, lng, lodged, det, dev_type, cost).
+    # Place it at the query point so it passes the distance filter.
+    lat, lng = -33.86, 151.10
+    row = ("DA/1", "1 Smith St", "Concord", "Approved", lat, lng, "2025-06-01", None, None, 250000)
+    cur = MagicMock()
+    cur.fetchall.return_value = [row]
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    out = fetch_nearby_das(conn, lat, lng, radius_m=200)
+    assert len(out) == 1
+    assert out[0]["cost_of_development"] == 250000  # WO-4: was omitted -> always null
+
+
+# --- WO-5: dead sun-geometry fields removed --------------------------------
+
+def test_shadow_scenario_drops_dead_sun_fields():
+    # The shadow service never emits these and nothing renders them — they must
+    # be gone so there's no always-null field reading a key that isn't produced.
+    assert "sun_altitude_deg" not in ShadowScenario.model_fields
+    assert "sun_azimuth_deg" not in ShadowScenario.model_fields
+    # the real shadow-direction datum stays
+    assert "shadow_direction_deg" in ShadowScenario.model_fields
 
 
 # --- WO-3: controls fail-closed --------------------------------------------
