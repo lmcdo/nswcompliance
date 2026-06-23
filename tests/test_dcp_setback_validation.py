@@ -24,9 +24,11 @@ from scripts.validate_dcp_setbacks import (
 # A new extraction that adds a mislabelled setback fails this gate.
 #   2026-06-24: initial audit found 10 (28 LGAs, 1001 rows).
 #   2026-06-24: quarantined 3 provably-wrong rows (burwood front 9/15, camden
-#               secondary front 12) + 27 assumed placeholder rows -> 7 remain
-#               (unconditioned conflicts needing per-DCP lookup).
-LIVE_HIGH_SEVERITY_BASELINE = 7
+#               secondary front 12) + 27 assumed placeholder rows -> 7 remain.
+#   2026-06-24: resolved the final 7 from their own source_text (quarantined 5
+#               mis-extractions, labelled 11 tiered rows with their clause
+#               condition) -> 0. The gate now blocks ANY new high-severity defect.
+LIVE_HIGH_SEVERITY_BASELINE = 0
 
 
 def _row(**kw):
