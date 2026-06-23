@@ -116,6 +116,40 @@ def conflicting_values(
     return out
 
 
+def value_absent_from_source(
+    rows: Iterable[dict],
+    *,
+    value_field: str,
+    source_field: str,
+) -> list[dict]:
+    """Advisory catcher for SILENT guesses: a numeric value whose digits do not
+    appear anywhere in its own ``source_field`` text was probably not extracted
+    from it.
+
+    ADVISORY only — it has real false positives (e.g. a 9 m2 POS expressed in the
+    source as "3m x 3m", or unit conversions like 900mm vs 0.9), so it routes a
+    row to human review rather than hard-blocking it. Skips non-numeric values and
+    rows with empty source text.
+    """
+    out: list[dict] = []
+    for r in rows:
+        raw = r.get(value_field)
+        src = r.get(source_field)
+        if raw is None or not str(src or "").strip():
+            continue
+        try:
+            num = float(raw)
+        except (TypeError, ValueError):
+            continue
+        # Render the number both as written and as an int when whole (24.0 -> "24").
+        forms = {str(raw).strip(), str(num)}
+        if num.is_integer():
+            forms.add(str(int(num)))
+        if not any(f and f in str(src) for f in forms):
+            out.append(r)
+    return out
+
+
 def assert_clean_row(
     row: dict,
     *,

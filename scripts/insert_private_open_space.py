@@ -40,6 +40,9 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from services.extracted_data_integrity import assert_clean_row  # noqa: E402
+
 load_dotenv(Path(__file__).parent.parent / ".env")
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
 
@@ -486,6 +489,11 @@ def main():
             # NULL so the brief shows "check with council", never an assumed
             # figure presented as fact. Verified rows keep their real value.
             value_min = None if needs_review else row["value_min"]
+            # WRITE-TIME GATE: refuse to store a value that's marked assumed.
+            assert_clean_row(
+                {"value_min": value_min, "condition": row["condition"], "source_text": row["source_text"]},
+                value_field="value_min", marker_fields=["condition", "source_text"],
+            )
             cur.execute("""
                 INSERT INTO dcp_setback_controls
                   (lga, dev_type, control_type, value_min, value_max, unit,

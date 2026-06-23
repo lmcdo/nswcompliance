@@ -10,7 +10,9 @@
     "scripts/insert_private_open_space.py",
     "scripts/insert_solar_access_hours.py",
     "services/extracted_data_integrity.py",
-    "tests/test_extracted_data_integrity.py"
+    "tests/test_extracted_data_integrity.py",
+    "tests/test_insert_scripts_integrity.py",
+    "docs/extracted-data-integrity.md"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
@@ -54,8 +56,15 @@
       "if_none": "returns an empty list when no row stores a guessed value, the required production state after the insert scripts write NULL for unverified rows"
     },
     {
-      "name": "assert_clean_row",
+      "name": "value_absent_from_source",
       "file_line": "services/extracted_data_integrity.py:119",
+      "input": "rows plus value_field and source_field",
+      "output": "advisory list of rows whose numeric value's digits do not appear in their own source text (likely silent guesses)",
+      "if_none": "returns an empty list when every value appears in its source; skips non-numeric values and empty source"
+    },
+    {
+      "name": "assert_clean_row",
+      "file_line": "services/extracted_data_integrity.py:153",
       "input": "a single row dict plus config (value_field, marker_fields, marker_pattern)",
       "output": "nothing on success; raises ValueError when the row would store a value while a marker field admits it is assumed/guessed",
       "if_none": "a row with an empty/NULL value passes even if marked assumed — the honest 'rule exists, value unknown' state is allowed"
@@ -133,6 +142,13 @@
       "repro": "run conflicting_values/fabricated_values (services/extracted_data_integrity.py) against lep_land_use_table, housing_sepp_standards and the non-setback dcp_setback_controls types",
       "mitigated": true,
       "how": "the checks are generalised into a domain-agnostic engine (extracted_data_integrity) configured per table; validate_dcp_setbacks now delegates to it. Swept live: lep_land_use_table (17353 rows) 0/0, housing_sepp_standards (45) 0/0, non-setback DCP controls (708) 1 conflict / 0 fabricated — so the structured tables are clean and only the PDF-prose DCP table carried the bug. assert_clean_row gives a write-time gate so future fabrication is blocked at entry, not just swept after."
+    },
+    {
+      "scenario": "A future edit adds a guessed value to an insert script's row list, or breaks the NULL-for-unverified logic, and it only gets caught by a periodic cron",
+      "what_happens": "fabricated data could enter and serve to users for a full cron cycle before detection",
+      "repro": "add a verified row with a value plus an 'Assumed standard NSW' note to POS_ROWS and run pytest — covered by tests/test_insert_scripts_integrity.py",
+      "mitigated": true,
+      "how": "the two insert scripts now CALL assert_clean_row before every INSERT (write-time block), and tests/test_insert_scripts_integrity.py runs the same gate offline over the scripts' own row data on EVERY commit (no DB needed), so a guessed value fails the build immediately rather than waiting for the live cron."
     }
   ],
   "post_merge": {
