@@ -1,57 +1,37 @@
 {
-  "tier": "standard",
-  "commit_hash": "5cecaedd",
-  "justification": "S3 increment 2 — inline contract-drift tripwire on REAL traffic. Railway CLI is not authed (a sampled cron can't be deployed/verified now), and the inline approach is strictly better: every production brief run now checks each typed service output (flood/bushfire/shadow) against its S2 contract and logs a loud CONTRACT-DRIFT warning the moment a contract key goes missing (a rename/drop -> the #589 silent-null class). Behaviour is unchanged — the card still fail-softs to None — but the drift becomes visible in prod logs on real traffic instead of only when a user notices a blank card. _warn_on_drift wraps check_drift (S3 #599) in try/except so drift-logging can never affect the brief, and lazily imports it (no circular import). Fully unit-tested via caplog. The proactive Telegram-alert cron remains a deploy-after-login follow-up.",
+  "tier": "minor",
+  "commit_hash": "pending",
+  "justification": "Soft-drop the Pre-DA Site History layer from the Intelligence Brief, frontend-only. Pre-DA needs a heavy ML dependency (torch/Tessera embeddings) the lean Railway web container cannot host, so it errored on every run and showed a permanent failure card. Hidden, not deleted: removed the 'Include site history' toggle, forced include_premium=false so the backend never runs pre-DA, removed it from the satellite expected-sections checklist, and filtered the satellite.pre_da_history section out of sectionEvents so the card never renders. All backend code and the frontend label/handler are retained; re-enable by removing the one filter + restoring the toggle (documented inline). No logic, query, or schema change.",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_brief_contract_drift.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
-  "pre_impl": {
-    "existing_data": "The typed builds (_build_flood_detail/_build_bushfire_detail/_build_shadow_result) parse via the S2 contracts; check_drift (scripts/brief_contract_drift.py) compares an output's keys to a contract. scripts/ is importable in the brief (it already imports conveyancing_db). check_drift does not import intelligence_brief (only _registry does, lazily).",
-    "assumption_mismatch": "A cron sampling demo addresses needs Railway auth + the full image and misses inputs it doesn't sample; checking on real traffic in-process covers every real run with zero infra.",
-    "new_vs_existing": "Reused check_drift (#599); added a thin _warn_on_drift logger call at the top of each typed build. No behaviour change.",
-    "external_source_error": "A drifted real output now logs CONTRACT-DRIFT with the exact missing key; the card still degrades to None as before.",
-    "frontend_type": "Backend only. Full suite passes incl 2 new caplog tests.",
-    "user_failure_mode": "Before: a service rename silently nulled a card and was only found by a user noticing a blank. After: every real brief run that hits the drifted service logs a loud CONTRACT-DRIFT warning naming the missing key."
-  },
-  "functions": [
-    {
-      "name": "_warn_on_drift",
-      "file_line": "services/intelligence_brief.py",
-      "input": "a Pydantic contract class, the raw service output, and a service label",
-      "output": "a CONTRACT-DRIFT warning log line naming the missing contract keys when the real output drifts; nothing on a clean output",
-      "if_none": "any exception in the check is swallowed so drift-logging can never affect the brief"
-    }
-  ],
-  "values": "N/A - logging only, not regulatory values.",
-  "queries": "N/A - no DB query.",
   "break_it": [
     {
-      "scenario": "The drift import or check raises at runtime",
-      "what_happens": "it must never break the brief",
-      "repro": "force an import error in _warn_on_drift",
+      "scenario": "Backend still emits a satellite.pre_da_history section event",
+      "what_happens": "the card could reappear despite being dropped",
+      "repro": "a brief run where the backend streams the pre_da_history section",
       "mitigated": true,
-      "how": "the whole body is wrapped in try/except: pass; the brief proceeds regardless"
+      "how": "sectionEvents is filtered to exclude satellite.pre_da_history before any render, progress checklist, or source collection, so the section is dropped regardless of what the backend emits"
     },
     {
-      "scenario": "A genuine all-None output (real nothing-detected) logs spurious drift",
-      "what_happens": "noise in the logs on a normal run",
-      "repro": "an output with all contract keys present but None",
+      "scenario": "A user still wants site history and the option silently vanished",
+      "what_happens": "a previously-available toggle is gone without explanation",
+      "repro": "open the brief form and look for the site-history checkbox",
       "mitigated": true,
-      "how": "drift is key-presence not value; all-None with the right keys logs nothing. Guarded by test_build_flood_no_warning_on_good_output"
+      "how": "the toggle only ever produced an error card (the layer could not run in this environment); hiding it removes a broken option rather than a working one, and the code is retained to restore once decoupled to a worker"
     },
     {
-      "scenario": "A drifted output stops the card from building",
-      "what_happens": "the brief should still build the card (fail-soft) and just log",
-      "repro": "feed a renamed-key output",
+      "scenario": "Removing the includeSiteHistory state leaves a dangling reference",
+      "what_happens": "a build/type error from an undefined identifier",
+      "repro": "grep the file for includeSiteHistory / setIncludeSiteHistory",
       "mitigated": true,
-      "how": "the warning is logged then the existing tolerant parse runs; the card still builds. Guarded by test_build_flood_logs_drift_warning (asserts fd is not None)"
+      "how": "verified zero remaining references; include_satellite no longer ORs the removed flag and the effect dependency array was updated to match"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A",
-    "secrets": "None",
-    "other_repo": "N/A",
-    "manual_verify": "Run a brief; on a service whose output matches the contract there is no CONTRACT-DRIFT log. The proactive Telegram cron is a deploy-after-`railway login` follow-up."
+    "db_reset": "N/A - no database change.",
+    "secrets": "None.",
+    "other_repo": "N/A - frontend-only; backend pre_da_history code is untouched and simply never invoked (include_premium=false).",
+    "manual_verify": "Open the Intelligence Brief: the 'Include site history' checkbox is gone, the satellite checklist no longer lists Pre-DA Site History, and a completed brief shows no Pre-DA card (no error card)."
   }
 }
