@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "a1803ed4",
+  "commit_hash": "",
   "justification": "Two-part setback correctness fix. PART 1 (engine): the capacity engine's DCP control selection. PART 2 (data gate): scripts/validate_dcp_setbacks.py + tests/test_dcp_setback_validation.py — the missing DETERMINISTIC semantic validator that catches setback values mislabelled vs their source clause (the class of defect schema validation, the change-only review queue, and the consuming-engine routing tests all let through; the initial bulk load never passed the human review queue). Multi-signal (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER); run live over 1001 rows it found 10 high-severity defects across 7 LGAs (burwood/camden/canada_bay/cumberland/fairfield/penrith/the_hills). A @pytest.mark.database ratchet locks the high-severity count at <=10 so a future extraction cannot add a mislabelled setback. No LLM is used (project deterministic-only rule); Gemini stays advisory-to-human triage. PART 1 detail: the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
   "files": [
     "services/constraint_arithmetic.py",
@@ -8,7 +8,9 @@
     "scripts/validate_dcp_setbacks.py",
     "tests/test_dcp_setback_validation.py",
     "scripts/insert_private_open_space.py",
-    "scripts/insert_solar_access_hours.py"
+    "scripts/insert_solar_access_hours.py",
+    "services/extracted_data_integrity.py",
+    "tests/test_extracted_data_integrity.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
@@ -52,8 +54,22 @@
       "if_none": "returns an empty list when no row stores a guessed value, the required production state after the insert scripts write NULL for unverified rows"
     },
     {
+      "name": "assert_clean_row",
+      "file_line": "services/extracted_data_integrity.py:119",
+      "input": "a single row dict plus config (value_field, marker_fields, marker_pattern)",
+      "output": "nothing on success; raises ValueError when the row would store a value while a marker field admits it is assumed/guessed",
+      "if_none": "a row with an empty/NULL value passes even if marked assumed — the honest 'rule exists, value unknown' state is allowed"
+    },
+    {
+      "name": "conflicting_values",
+      "file_line": "services/extracted_data_integrity.py:84",
+      "input": "rows plus key_fields, value_field and an optional condition_field; key components may be arrays (coerced hashable)",
+      "output": "one entry per key group holding more than one distinct value with no condition to disambiguate",
+      "if_none": "returns an empty list when every key group is single-valued or carries a disambiguating condition"
+    },
+    {
       "name": "audit_setback_controls",
-      "file_line": "scripts/validate_dcp_setbacks.py:185",
+      "file_line": "scripts/validate_dcp_setbacks.py:195",
       "input": "a list of dcp_setback_controls row dicts as fetched from the live table",
       "output": "a flat list of findings across all four signals (conflict, foreign-language, magnitude, placeholder), each tagged high or advisory severity",
       "if_none": "returns an empty list when no signal fires, meaning the extracted setback data passes the semantic gate"
@@ -110,6 +126,13 @@
       "repro": "fabricated_value_rows over a row with value_min set AND condition/review_reason marked assumed — covered by test_assumed_value_with_a_number_is_flagged and the live test_live_has_no_fabricated_values",
       "mitigated": true,
       "how": "LOCK #1 — insert_private_open_space.py and insert_solar_access_hours.py now write value_min=NULL for any needs_review row (records the rule exists, value unknown -> 'check council', never a guess). LOCK #2 — fabricated_value_rows + the live database test fail the build if any current row stores a number it admits is assumed; verified live = 0 after the fix."
+    },
+    {
+      "scenario": "The same fabricated/conflicting bug exists in other extracted tables (LEP land-use, SEPP standards) and goes unchecked",
+      "what_happens": "the fix would be setback-only and the bug class would persist elsewhere in the database",
+      "repro": "run conflicting_values/fabricated_values (services/extracted_data_integrity.py) against lep_land_use_table, housing_sepp_standards and the non-setback dcp_setback_controls types",
+      "mitigated": true,
+      "how": "the checks are generalised into a domain-agnostic engine (extracted_data_integrity) configured per table; validate_dcp_setbacks now delegates to it. Swept live: lep_land_use_table (17353 rows) 0/0, housing_sepp_standards (45) 0/0, non-setback DCP controls (708) 1 conflict / 0 fabricated — so the structured tables are clean and only the PDF-prose DCP table carried the bug. assert_clean_row gives a write-time gate so future fabrication is blocked at entry, not just swept after."
     }
   ],
   "post_merge": {

@@ -46,6 +46,11 @@ import sys
 from collections import defaultdict
 from typing import Optional
 
+# Reuse the generic, domain-agnostic integrity engine (same check runs on any
+# extracted table; here configured for setbacks).
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from services.extracted_data_integrity import fabricated_values as _generic_fabricated_values  # noqa: E402
+
 SETBACK_TYPES = {"front_setback", "side_setback", "rear_setback"}
 
 # Distances that read as genuine setback / boundary language.
@@ -161,24 +166,29 @@ _FABRICATED_MARKER = re.compile(
 def fabricated_value_rows(rows: list[dict]) -> list[dict]:
     """The hard invariant: a row must NEVER store a number it admits is a guess.
 
-    Flags rows that carry a non-null ``value_min`` AND a marker (``review_reason``
-    or ``condition``) saying the value was assumed/standard-pattern. After the fix
-    in the insert scripts, an unverified row must store ``value_min = NULL`` (the
-    rule exists, value unknown) — so this set must be empty. Any non-empty result
-    is fabricated data presented as fact and fails the build.
+    Setback-specific wrapper over the reusable
+    :func:`services.extracted_data_integrity.fabricated_values` engine — same
+    check that runs on any extracted table, here keyed to value_min and the
+    setback marker fields. After the insert-script fix an unverified row stores
+    ``value_min = NULL`` (rule exists, value unknown), so this set must be empty;
+    any non-empty result is fabricated data presented as fact and fails the build.
     """
+    flagged = _generic_fabricated_values(
+        rows, value_field="value_min",
+        marker_fields=["review_reason", "condition"],
+        marker_pattern=_FABRICATED_MARKER,
+    )
     out: list[dict] = []
-    for r in rows:
-        if _num(r.get("value_min")) is None:
+    for r in flagged:
+        if _num(r.get("value_min")) is None:  # guard: only numeric value_min counts
             continue
         marker = f"{r.get('review_reason') or ''} {r.get('condition') or ''}"
-        if _FABRICATED_MARKER.search(marker):
-            out.append({
-                "lga": r.get("lga"), "control_type": r.get("control_type"),
-                "value": _num(r.get("value_min")), "signal": "FABRICATED",
-                "severity": "high",
-                "detail": f"stores a number but marks it assumed: {marker[:90]!r}",
-            })
+        out.append({
+            "lga": r.get("lga"), "control_type": r.get("control_type"),
+            "value": _num(r.get("value_min")), "signal": "FABRICATED",
+            "severity": "high",
+            "detail": f"stores a number but marks it assumed: {marker[:90]!r}",
+        })
     return out
 
 
