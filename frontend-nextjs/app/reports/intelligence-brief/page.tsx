@@ -587,6 +587,20 @@ interface ShadowData {
   scenarios?: ShadowScenario[]; worst_case_scenario?: string | null; temporal_caveat?: string | null;
 }
 
+// Clean a worst-case scenario label for display. The backend labels already
+// embed "ADG worst case" and often both a 12-hour and 24-hour time (e.g.
+// "ADG worst case 9am Jun 21 09:00"); the UI already prefixes "Worst case (…)",
+// so strip the duplicated prefix and the redundant 24-hour time.
+function cleanScenarioLabel(date?: string, time?: string): string {
+  let s = [date, time].filter(Boolean).join(' ').trim();
+  s = s.replace(/^(adg\s+)?worst\s+case\s+/i, '');
+  // If a 12-hour time (9am) is present, drop a redundant HH:MM 24-hour token.
+  if (/\b\d{1,2}\s*(am|pm)\b/i.test(s)) {
+    s = s.replace(/\s*\b\d{1,2}:\d{2}\b/g, '');
+  }
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
 // The shadow field is a nested object — render the overshadowing summary
 // (height, solar-access compliance, worst-case shadow), not a bare "6 fields".
 function ShadowDisplay({ data }: { data: ShadowData }) {
@@ -608,7 +622,7 @@ function ShadowDisplay({ data }: { data: ShadowData }) {
       )}
       {worst && (worst.shadow_length_m != null || worst.overlap_pct != null) && (
         <div className="text-slate-700">
-          Worst case ({[worst.date_label, worst.time_label].filter(Boolean).join(' ')}):{' '}
+          Worst case ({cleanScenarioLabel(worst.date_label, worst.time_label)}):{' '}
           {worst.shadow_length_m != null ? `${worst.shadow_length_m} m shadow` : ''}
           {worst.shadow_length_m != null && worst.overlap_pct != null ? ', ' : ''}
           {worst.overlap_pct != null ? `${worst.overlap_pct}% overlap on neighbours` : ''}
