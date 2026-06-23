@@ -1,7 +1,7 @@
 {
   "status": "passed",
-  "timestamp": "2026-06-23T16:00:00+10:00",
-  "target": "S3 increment 1 — contract drift checker: validate (live or fixture) service output against the S2 contracts, flag missing/renamed keys",
-  "findings_summary": "The S2 contracts (FloodServiceOutput/BushfireServiceOutput/ShadowServiceOutput) tolerate missing keys (parse to None) so a service RENAME silently nulls the card. The drift check closes that: compare the real service output's keys to the contract's expected fields; a MISSING contract field = a rename/drop (the #589 bug, dangerous), an EXTRA key = a new service field (informational). Pure check_drift(contract_cls, raw) is unit-testable now; a live runner calls the real services for the demo addresses and exits non-zero on drift (runs where DB/network exist = Railway cron / local). Shadow output has no 'outputs' wrapper; flood/bushfire do. Nested (bushfire compliance, shadow scenarios) checked at top level for increment 1.",
-  "model_design": "check_drift(contract_cls, raw)->{service,missing,extra,drift}; SERVICE_CONTRACTS registry maps service->(contract, outputs_subkey). Live runner imports run_flood/run_bushfire/run_shadow (only when invoked) so the pure function + tests don't need heavy deps."
+  "timestamp": "2026-06-23T17:00:00+10:00",
+  "target": "S3 increment 2 — inline contract-drift logging: the brief warns on every real run when a service output is missing contract keys",
+  "findings_summary": "Railway CLI not authed (can't deploy/verify a cron). Better + testable: call check_drift (S3 #599) inside _build_flood_detail/_build_bushfire_detail/_build_shadow_result against the REAL service output and logger.warning a loud CONTRACT-DRIFT line when a contract key is missing (rename/drop = the #589 silent-null). Does NOT change card behaviour (still fail-soft to None) — it makes the drift visible in prod logs on real traffic, not just a sampled cron. scripts/ is importable in prod (the brief already imports conveyancing_db). check_drift doesn't import intelligence_brief (only _registry does, lazily) so no circular import. Wrapped in try/except so drift-logging can never affect the brief.",
+  "model_design": "_warn_on_drift(contract_cls, raw, service) -> logs warning if check_drift finds missing keys; called at the top of each typed _build_*. Testable via caplog."
 }

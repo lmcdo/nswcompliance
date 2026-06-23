@@ -1,34 +1,57 @@
 {
   "tier": "standard",
-  "commit_hash": "pending",
-  "justification": "S3 increment 1 — the contract drift check, the live tripwire on the S2 typed boundary. The S2 contracts tolerate a missing key (parses to None), so a service that RENAMES or DROPS a key silently nulls the brief card (the #589 class). check_drift(contract_cls, raw) compares a real service output's keys to the contract's expected fields: a MISSING contract field = a rename/drop (drift, dangerous), an EXTRA key = a new service field (informational). check_outputs runs it across flood/bushfire/shadow (shadow has no outputs wrapper). A CLI validates a captured-outputs JSON and exits non-zero on drift. Two modes: CI/regression against captured baselines (the tests), and live (a Railway cron captures each service's real output for a demo address, dumps JSON, runs this to fail on drift BEFORE a user hits a blank card). The pure functions are fully unit-tested; the live-capture step needs DB/network so it is documented for the cron, not shipped untested.",
+  "commit_hash": "5cecaedd",
+  "justification": "S3 increment 2 — inline contract-drift tripwire on REAL traffic. Railway CLI is not authed (a sampled cron can't be deployed/verified now), and the inline approach is strictly better: every production brief run now checks each typed service output (flood/bushfire/shadow) against its S2 contract and logs a loud CONTRACT-DRIFT warning the moment a contract key goes missing (a rename/drop -> the #589 silent-null class). Behaviour is unchanged — the card still fail-softs to None — but the drift becomes visible in prod logs on real traffic instead of only when a user notices a blank card. _warn_on_drift wraps check_drift (S3 #599) in try/except so drift-logging can never affect the brief, and lazily imports it (no circular import). Fully unit-tested via caplog. The proactive Telegram-alert cron remains a deploy-after-login follow-up.",
   "files": [
-    "scripts/brief_contract_drift.py",
+    "services/intelligence_brief.py",
     "tests/test_brief_contract_drift.py"
   ],
   "pre_impl": {
-    "existing_data": "The S2 contracts (FloodServiceOutput/BushfireServiceOutput/ShadowServiceOutput) expose their expected keys via model_fields; the brief parses tolerantly (missing key -> None).",
-    "assumption_mismatch": "A tolerant contract can't itself catch a rename at runtime (it just nulls); the drift check is the separate, scheduled tripwire that compares real keys to the contract.",
-    "new_vs_existing": "New tool; complements the failsoft lint (commit-time) and the per-build contract tests (CI). Reuses the S2 contracts as the source of truth.",
-    "external_source_error": "A drifted live output (rename/drop) is flagged with the exact missing key + a non-zero exit, so the cron surfaces it; an extra new key is reported but not failed.",
-    "frontend_type": "Backend tooling only. 2295 tests pass incl 6 new drift tests.",
-    "user_failure_mode": "Before: a service rename silently nulled a card and was only found by a user noticing a blank. After: the scheduled drift check fails loudly the moment a service's keys diverge from the contract."
+    "existing_data": "The typed builds (_build_flood_detail/_build_bushfire_detail/_build_shadow_result) parse via the S2 contracts; check_drift (scripts/brief_contract_drift.py) compares an output's keys to a contract. scripts/ is importable in the brief (it already imports conveyancing_db). check_drift does not import intelligence_brief (only _registry does, lazily).",
+    "assumption_mismatch": "A cron sampling demo addresses needs Railway auth + the full image and misses inputs it doesn't sample; checking on real traffic in-process covers every real run with zero infra.",
+    "new_vs_existing": "Reused check_drift (#599); added a thin _warn_on_drift logger call at the top of each typed build. No behaviour change.",
+    "external_source_error": "A drifted real output now logs CONTRACT-DRIFT with the exact missing key; the card still degrades to None as before.",
+    "frontend_type": "Backend only. Full suite passes incl 2 new caplog tests.",
+    "user_failure_mode": "Before: a service rename silently nulled a card and was only found by a user noticing a blank. After: every real brief run that hits the drifted service logs a loud CONTRACT-DRIFT warning naming the missing key."
   },
   "functions": [
-    {"name": "check_drift", "file_line": "scripts/brief_contract_drift.py", "input": "a Pydantic contract class and one service output dict", "output": "a finding dict with the missing contract keys (rename/drop = drift), the extra service keys (informational), and a drift boolean", "if_none": "an empty or None output reports every contract field as missing (full drift)"},
-    {"name": "check_outputs", "file_line": "scripts/brief_contract_drift.py", "input": "a mapping of service name to its captured raw output", "output": "per-service findings plus an overall has_drift flag, handling the shadow no-outputs-wrapper case", "if_none": "an unknown service is reported with a note and no drift"}
+    {
+      "name": "_warn_on_drift",
+      "file_line": "services/intelligence_brief.py",
+      "input": "a Pydantic contract class, the raw service output, and a service label",
+      "output": "a CONTRACT-DRIFT warning log line naming the missing contract keys when the real output drifts; nothing on a clean output",
+      "if_none": "any exception in the check is swallowed so drift-logging can never affect the brief"
+    }
   ],
-  "values": "N/A - contract key comparison, not regulatory values.",
-  "queries": "N/A - no DB query in the pure checker; the live-capture step (documented) calls the services.",
+  "values": "N/A - logging only, not regulatory values.",
+  "queries": "N/A - no DB query.",
   "break_it": [
-    {"scenario": "A service legitimately adds a new output key", "what_happens": "it must be reported as informational, not failed as drift", "repro": "an output with an unexpected extra key", "mitigated": true, "how": "extra keys go to `extra` and do not set `drift`. Guarded by test_no_drift_when_all_contract_keys_present"},
-    {"scenario": "A service renames a key the brief reads (the #589 bug)", "what_happens": "it must be flagged as drift with the missing key named", "repro": "emit jrc_occurrence_pct instead of jrc_water_occurrence_pct", "mitigated": true, "how": "the missing contract field is detected and the run exits non-zero. Guarded by test_drift_when_a_contract_key_is_renamed + test_check_outputs_flags_one_service_among_many"},
-    {"scenario": "Shadow output is checked with the wrong wrapper assumption", "what_happens": "shadow could falsely show full drift", "repro": "shadow has no outputs sub-key", "mitigated": true, "how": "the registry marks shadow with subkey None so it is checked at the top level. Guarded by test_shadow_uses_no_outputs_wrapper"},
-    {"scenario": "An all-None genuine-empty output is mistaken for drift", "what_happens": "a real 'nothing detected' run could fail the check", "repro": "outputs with every key present but None", "mitigated": true, "how": "drift is about key PRESENCE, not value; all-None with the right keys is no drift. Guarded by test_check_outputs_flags_one_service_among_many (bushfire/shadow all-None pass)"}
+    {
+      "scenario": "The drift import or check raises at runtime",
+      "what_happens": "it must never break the brief",
+      "repro": "force an import error in _warn_on_drift",
+      "mitigated": true,
+      "how": "the whole body is wrapped in try/except: pass; the brief proceeds regardless"
+    },
+    {
+      "scenario": "A genuine all-None output (real nothing-detected) logs spurious drift",
+      "what_happens": "noise in the logs on a normal run",
+      "repro": "an output with all contract keys present but None",
+      "mitigated": true,
+      "how": "drift is key-presence not value; all-None with the right keys logs nothing. Guarded by test_build_flood_no_warning_on_good_output"
+    },
+    {
+      "scenario": "A drifted output stops the card from building",
+      "what_happens": "the brief should still build the card (fail-soft) and just log",
+      "repro": "feed a renamed-key output",
+      "mitigated": true,
+      "how": "the warning is logged then the existing tolerant parse runs; the card still builds. Guarded by test_build_flood_logs_drift_warning (asserts fd is not None)"
+    }
   ],
   "post_merge": {
-    "db_reset": "N/A", "secrets": "None",
-    "other_repo": "N/A - the live-capture cron (to be wired) would run in the Railway python service where the brief already runs.",
-    "manual_verify": "python scripts/brief_contract_drift.py <captured.json> exits 0 on matching keys, 1 on a renamed/dropped key. Wire a Railway cron to capture each service's real output for a demo address and run it on a schedule."
+    "db_reset": "N/A",
+    "secrets": "None",
+    "other_repo": "N/A",
+    "manual_verify": "Run a brief; on a service whose output matches the contract there is no CONTRACT-DRIFT log. The proactive Telegram cron is a deploy-after-`railway login` follow-up."
   }
 }

@@ -8,8 +8,11 @@ from services.intelligence_brief import (
     FloodServiceOutput,
     BushfireServiceOutput,
     ShadowServiceOutput,
+    _build_flood_detail,
 )
 from brief_contract_drift import check_drift, check_outputs
+
+import logging
 
 
 # A realistic, on-contract flood output (all contract keys present).
@@ -76,3 +79,20 @@ def test_shadow_uses_no_outputs_wrapper():
     captured = {"shadow": {k: None for k in ShadowServiceOutput.model_fields}}
     _, has_drift = check_outputs(captured)
     assert has_drift is False
+
+
+# --- inline tripwire: the brief logs CONTRACT-DRIFT on a real drifted output --
+
+def test_build_flood_logs_drift_warning(caplog):
+    raw = {"outputs": {"jrc_occurrence_pct": 0.0}}  # old/renamed key -> drift
+    with caplog.at_level(logging.WARNING):
+        fd = _build_flood_detail(raw)
+    assert fd is not None  # behaviour unchanged — still builds (fail-soft to None)
+    assert any("CONTRACT-DRIFT" in r.getMessage() for r in caplog.records)
+
+
+def test_build_flood_no_warning_on_good_output(caplog):
+    raw = {"outputs": _FLOOD_OK}
+    with caplog.at_level(logging.WARNING):
+        _build_flood_detail(raw)
+    assert not any("CONTRACT-DRIFT" in r.getMessage() for r in caplog.records)
