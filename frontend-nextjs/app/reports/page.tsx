@@ -3,23 +3,19 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Property Intelligence Reports — NSW',
-  description: 'Eight data-driven property intelligence tools for NSW. Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, conveyancing disclosure, and development monitoring.',
+  description: 'Seven data-driven property intelligence tools for NSW. Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and development monitoring.',
   openGraph: {
     title: 'NSW Property Intelligence Reports — PlotDetect',
-    description: 'Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and conveyancing disclosure for any NSW address.',
+    description: 'Flood depth, bushfire BAL, shadow analysis, solar yield, granny flat eligibility, and development monitoring for any NSW address.',
     url: '/reports',
   },
 };
 
+// NOTE: Intelligence Brief and Conveyancing live on their own pro subdomains
+// (brief./conveyance.plotdetect.com.au) under the Option B domain split, so they
+// are intentionally NOT tiles in this consumer (canibuildit) grid. The pages still
+// exist at /reports/intelligence-brief and /reports/conveyancing.
 const TOOLS = [
-  {
-    href: '/reports/intelligence-brief',
-    title: 'Property Intelligence Brief',
-    tagline: 'Every planning layer for a site — in one live brief.',
-    description:
-      'Zoning, LEP development standards, DCP setback controls, SEPP housing standards, environmental constraints, an indicative development yield, and nearby development activity — assembled live from government data and streamed section by section.',
-    badge: 'Free',
-  },
   {
     href: '/reports/flood',
     title: 'Flood Risk Check',
@@ -76,14 +72,6 @@ const TOOLS = [
       'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation.',
     badge: '$39',
   },
-  {
-    href: '/reports/conveyancing',
-    title: 'Conveyancing Planning Disclosure',
-    tagline: 'Planning data a conveyancer needs — instantly.',
-    description:
-      'LEP controls, environmental overlays, heritage status, SEPP overlays, development feasibility screening, and DCP setback controls from live government data.',
-    badge: 'Free + $49',
-  },
 ];
 
 export default function ReportsLanding() {
@@ -95,7 +83,7 @@ export default function ReportsLanding() {
           Know exactly what your property can do
         </h1>
         <p className="mt-2 text-gray-500 max-w-xl">
-          Eight data-driven property intelligence tools for NSW — from flood depth to conveyancing disclosure. No consultants, no waiting rooms.
+          Seven property intelligence tools for NSW — from flood depth to solar yield. No consultants, no waiting rooms.
         </p>
       </div>
 
