@@ -1,168 +1,54 @@
 {
   "tier": "standard",
-  "commit_hash": "",
-  "justification": "Two-part setback correctness fix. PART 1 (engine): the capacity engine's DCP control selection. PART 2 (data gate): scripts/validate_dcp_setbacks.py + tests/test_dcp_setback_validation.py — the missing DETERMINISTIC semantic validator that catches setback values mislabelled vs their source clause (the class of defect schema validation, the change-only review queue, and the consuming-engine routing tests all let through; the initial bulk load never passed the human review queue). Multi-signal (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER); run live over 1001 rows it found 10 high-severity defects across 7 LGAs (burwood/camden/canada_bay/cumberland/fairfield/penrith/the_hills). A @pytest.mark.database ratchet locks the high-severity count at <=10 so a future extraction cannot add a mislabelled setback. No LLM is used (project deterministic-only rule); Gemini stays advisory-to-human triage. PART 1 detail: the capacity engine's DCP control selection. A statewide read-only audit of dcp_setback_controls (28 LGAs, 1001 current rows) found 62 groups where more than one current row shares the same (control_type, dev_type) — 53 legitimately tiered (lot-size/storey/street bands, with conditions) and 9 unconditioned/suspect (e.g. Burwood front_setback 9m AND 15m, both mis-extracted from non-setback clauses P8/P39). _get_dcp_value matched on (control_type, dev_type) and kept the LAST row in iteration order, ignoring the condition field, so the chosen setback was arbitrary and order-dependent. This makes selection deterministic and conservative: max(value_min) for minimum-requirement controls (largest setback = smallest buildable envelope = fail-safe, never over-reports capacity) and min(value_max) for prefer_max caps (tightest allowance); single-row callers are byte-for-byte unchanged. It also surfaces a data-gap when it had to choose between conflicting setback values, so the figure reads as verify-against-DCP rather than a single certain control. Pure in-memory function; no DB query/schema/IO change. Tier-accurate matching (parsing lot size/width/storeys from condition) is a separate, larger follow-up.",
+  "commit_hash": "f3296fed",
+  "justification": "Option B domain split: the three pro products (Verify, Intelligence Brief, Conveyancer report) are plotdetect subdomains; canibuildit is consumer-only. This wires brief.plotdetect.com.au -> /reports/intelligence-brief and conveyance.plotdetect.com.au -> /reports/conveyancing in middleware (mirroring the existing verify -> /assessment rule), and removes the Intelligence Brief + Conveyancing tiles from the consumer /reports grid (they now live on their own subdomains). plotdetect.com.au (info site) is a different project and untouched.",
   "files": [
-    "services/constraint_arithmetic.py",
-    "tests/test_setback_conflict_resolution.py",
-    "scripts/validate_dcp_setbacks.py",
-    "tests/test_dcp_setback_validation.py",
-    "scripts/insert_private_open_space.py",
-    "scripts/insert_solar_access_hours.py",
-    "services/extracted_data_integrity.py",
-    "tests/test_extracted_data_integrity.py",
-    "tests/test_insert_scripts_integrity.py",
-    "docs/extracted-data-integrity.md",
-    "migrations/052_dcp_setback_fabrication_guard.sql"
+    "frontend-nextjs/middleware.ts",
+    "frontend-nextjs/app/reports/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "dcp_setback_controls (1001 current rows, 28 LGAs) is the source; fetch_dcp_setbacks returns all current rows with no dedup and minimal zone filtering. Confirmed via read-only audit that multi-row (control_type, dev_type) groups are common (62) and that _get_dcp_value previously consumed only the last matching row.",
-    "assumption_mismatch": "Assumed one DCP value per control; in reality controls are tiered or sometimes duplicated/garbled, so several rows match. The condition field that distinguishes tiers was being ignored entirely by the selector.",
-    "new_vs_existing": "Extends the existing _get_dcp_value rather than adding a parallel path; adds two small pure helpers (_matching_controls, _dcp_value_conflict) reused by the selector and the gap-flagging. No new DB query or table introduced."
+    "existing_data": "middleware already does hostname routing (verify.plotdetect.com.au and canibuildit at '/' rewrite to /assessment and /reports), reading host via x-forwarded-host first. The /reports grid is a static TOOLS array (9 tiles incl intelligence-brief + conveyancing). The pages /reports/intelligence-brief and /reports/conveyancing already exist.",
+    "assumption_mismatch": "Under Option B the brief + conveyancer are pro products on their own subdomains, not consumer tiles. Previously they had no subdomain route and appeared in the canibuildit consumer grid.",
+    "new_vs_existing": "No new mechanism: adds isBriefDomain/isConveyanceDomain rewrites mirroring isVerifyDomain, and deletes two well-formed objects from the existing TOOLS array. The report pages themselves are unchanged."
   },
   "functions": [
     {
-      "name": "_get_dcp_value",
-      "file_line": "services/constraint_arithmetic.py:103",
-      "input": "a DCPControl list, a control_type string, a dev_type string, and an optional prefer_max flag for cap controls",
-      "output": "a single float chosen deterministically and conservatively across all matching rows (max value_min, or min value_max when prefer_max), or None when nothing matches",
-      "if_none": "returns None when no row matches the control_type for the exact dev_type or the dwelling_house fallback, exactly as before"
-    },
-    {
-      "name": "_matching_controls",
-      "file_line": "services/constraint_arithmetic.py:139",
-      "input": "a DCPControl list, a control_type string and a dev_type string",
-      "output": "every row matching control_type for the exact dev_type, or the dwelling_house fallback rows when there is no exact match",
-      "if_none": "returns an empty list when no row matches, so the callers treat it as no-control-available"
-    },
-    {
-      "name": "_dcp_value_conflict",
-      "file_line": "services/constraint_arithmetic.py:156",
-      "input": "a DCPControl list, a control_type string and a dev_type string",
-      "output": "the sorted distinct value_min values when more than one exists (the selector had to choose), otherwise None",
-      "if_none": "returns None when zero or one distinct value exists, so no spurious conflict gap is raised"
-    },
-    {
-      "name": "conflict_groups",
-      "file_line": "scripts/validate_dcp_setbacks.py:83",
-      "input": "a list of dcp_setback_controls row dicts (lga, control_type, dev_type, value_min, condition, source_text)",
-      "output": "one high-severity finding per (lga, control_type, dev_type) group that has more than one distinct value_min and no condition on any row to disambiguate",
-      "if_none": "returns an empty list when every group is single-valued or carries a disambiguating condition (legitimate tiered controls)"
-    },
-    {
-      "name": "fabricated_value_rows",
-      "file_line": "scripts/validate_dcp_setbacks.py:161",
-      "input": "a list of dcp_setback_controls row dicts including review_reason and condition",
-      "output": "rows that store a non-null value_min while marking it assumed/standard-pattern — the hard-invariant violation (a guessed number presented as fact)",
-      "if_none": "returns an empty list when no row stores a guessed value, the required production state after the insert scripts write NULL for unverified rows"
-    },
-    {
-      "name": "value_absent_from_source",
-      "file_line": "services/extracted_data_integrity.py:119",
-      "input": "rows plus value_field and source_field",
-      "output": "advisory list of rows whose numeric value's digits do not appear in their own source text (likely silent guesses)",
-      "if_none": "returns an empty list when every value appears in its source; skips non-numeric values and empty source"
-    },
-    {
-      "name": "assert_clean_row",
-      "file_line": "services/extracted_data_integrity.py:153",
-      "input": "a single row dict plus config (value_field, marker_fields, marker_pattern)",
-      "output": "nothing on success; raises ValueError when the row would store a value while a marker field admits it is assumed/guessed",
-      "if_none": "a row with an empty/NULL value passes even if marked assumed — the honest 'rule exists, value unknown' state is allowed"
-    },
-    {
-      "name": "conflicting_values",
-      "file_line": "services/extracted_data_integrity.py:84",
-      "input": "rows plus key_fields, value_field and an optional condition_field; key components may be arrays (coerced hashable)",
-      "output": "one entry per key group holding more than one distinct value with no condition to disambiguate",
-      "if_none": "returns an empty list when every key group is single-valued or carries a disambiguating condition"
-    },
-    {
-      "name": "audit_setback_controls",
-      "file_line": "scripts/validate_dcp_setbacks.py:195",
-      "input": "a list of dcp_setback_controls row dicts as fetched from the live table",
-      "output": "a flat list of findings across all four signals (conflict, foreign-language, magnitude, placeholder), each tagged high or advisory severity",
-      "if_none": "returns an empty list when no signal fires, meaning the extracted setback data passes the semantic gate"
+      "name": "middleware",
+      "file_line": "frontend-nextjs/middleware.ts:91",
+      "input": "the incoming NextRequest; host read via x-forwarded-host then host then nextUrl.hostname",
+      "output": "brief.plotdetect.com.au at '/' rewrites to /reports/intelligence-brief; conveyance.plotdetect.com.au at '/' to /reports/conveyancing; verify and canibuildit unchanged; all other hosts/paths fall through",
+      "if_none": "host not one of the mapped subdomains, or path not '/' -> no rewrite; plotdetect.com.au (other Vercel project) is unaffected"
     }
   ],
-  "values": "N/A - no new DB/API values read; operates on the already-fetched DCPControl list passed into compute_constraint_arithmetic.",
-  "queries": "N/A - no SQL added or changed; the audit that informed this was a separate read-only probe, not part of the runtime path.",
+  "values": "N/A - no regulatory values; host-based request routing + a static tile list.",
+  "queries": "N/A - no database queries.",
   "break_it": [
     {
-      "scenario": "A tiered control list is passed in a different row order across two runs (DB ORDER BY changes, or re-extraction reorders rows)",
-      "what_happens": "previously the selected setback flipped between tiers (last-row-wins), so the same lot could report different buildable areas run to run",
-      "repro": "_get_dcp_value([front 9, front 15]) vs _get_dcp_value([front 15, front 9]) — covered by test_selection_is_order_independent",
+      "scenario": "host is misread behind Cloudflare so the brief/conveyance rewrite does not fire",
+      "what_happens": "the subdomain root would show the consumer reports grid instead of its specific report",
+      "repro": "hit brief.plotdetect.com.au/ with a mangled host header",
       "mitigated": true,
-      "how": "selection now reduces over ALL matching rows with max()/min(), so it is order-independent; the test asserts both orderings return 15.0"
+      "how": "host is read via x-forwarded-host first (the same source the working verify rule uses) and matched by exact equality; worst case is the grid, not a 404, because /reports still resolves"
     },
     {
-      "scenario": "Conflicting setback values exist but the engine silently presents one as a single certain figure (the original Burwood 15m bug)",
-      "what_happens": "a user sees an authoritative-looking setback/footprint built on an arbitrarily-chosen (and possibly mis-extracted) value with no warning",
-      "repro": "compute_constraint_arithmetic with front_setback rows 9m and 15m — covered by test_burwood_conflict_uses_conservative_and_flags_gap",
+      "scenario": "removing the two tiles leaves a malformed TOOLS array (dangling comma / type error)",
+      "what_happens": "the /reports page would fail to compile",
+      "repro": "build the frontend",
       "mitigated": true,
-      "how": "_dcp_value_conflict drives a gap listing all differing values and the conservative one used; the engine still picks the largest (smallest buildable) so it never over-reports capacity while the conflict is flagged for verification"
+      "how": "two complete, well-formed objects were removed; seven valid tiles remain and the array literal is intact; tsc + the Vercel build type-check on deploy"
     },
     {
-      "scenario": "A cap control (max_site_coverage) has two values and the change wrongly applies the minimum-requirement (max) rule, loosening the cap",
-      "what_happens": "the engine would allow MORE site coverage than the tightest cap, over-reporting buildable area",
-      "repro": "_get_dcp_value([cap 50, cap 67], prefer_max=True) — covered by test_prefer_max_cap_picks_smallest_allowance (expects 50, not 67)",
+      "scenario": "the Intelligence Brief / Conveyancing pages become unreachable after losing their tiles",
+      "what_happens": "users could not find those two products",
+      "repro": "visit /reports and look for the tiles",
       "mitigated": true,
-      "how": "prefer_max branch reduces with min() over value_max, so the tightest cap wins; the test locks 50.0"
-    },
-    {
-      "scenario": "An exact dev_type control is diluted by dwelling_house fallback rows of the same control_type",
-      "what_happens": "a secondary_dwelling setback could be mixed with dwelling_house values and mis-resolved",
-      "repro": "_get_dcp_value with a dwelling_house front 6m and a secondary_dwelling front 3m, dev_type='secondary_dwelling' — covered by test_exact_dev_type_preferred_over_dwelling_house (expects 3.0)",
-      "mitigated": true,
-      "how": "_matching_controls returns ONLY exact dev_type rows when any exist; the dwelling_house fallback is used solely when there is no exact match"
-    },
-    {
-      "scenario": "The validator false-positives on a legitimate tiered or terse setback row (e.g. 'lots 200-300m2: 3m', or 'One storey - 3.5 metres')",
-      "what_happens": "real council controls would be wrongly flagged as defects, drowning the signal and eroding trust in the gate",
-      "repro": "foreign_language / conflict_groups over a tiered row with a condition and a terse storey-tiered row — covered by test_conflict_with_a_condition_is_not_flagged and test_terse_storey_tiered_setback_not_flagged",
-      "mitigated": true,
-      "how": "CONFLICT only fires when NO row in the group has a condition; FOREIGN requires strong foreign-control language AND the absence of setback language and deliberately excludes bare 'storey'; magnitude/placeholder are advisory-only, so the live run yielded 10 high-severity (real) vs 53 advisory"
-    },
-    {
-      "scenario": "A future extraction re-introduces a mislabelled setback (the exact Burwood regression) and silently reaches production",
-      "what_happens": "the original class of bug recurs and a user sees a confident wrong setback again",
-      "repro": "pytest -m database test_live_high_severity_within_baseline with a new bad row present pushes the count above 10 and fails",
-      "mitigated": true,
-      "how": "the database ratchet test asserts the live high-severity count never exceeds the recorded baseline (now 7 after quarantining 3 bad rows); any new mislabelled setback raises the count and fails the gate, naming the offending lga/control_type/signal"
-    },
-    {
-      "scenario": "An import script can't find a real value and fills in a guessed default (the POS=24 / solar=3h 'assumed standard NSW' pattern), presenting it as a council rule",
-      "what_happens": "fabricated data reaches production looking authoritative — exactly what happened with 27 assumed POS/solar rows",
-      "repro": "fabricated_value_rows over a row with value_min set AND condition/review_reason marked assumed — covered by test_assumed_value_with_a_number_is_flagged and the live test_live_has_no_fabricated_values",
-      "mitigated": true,
-      "how": "LOCK #1 — insert_private_open_space.py and insert_solar_access_hours.py now write value_min=NULL for any needs_review row (records the rule exists, value unknown -> 'check council', never a guess). LOCK #2 — fabricated_value_rows + the live database test fail the build if any current row stores a number it admits is assumed; verified live = 0 after the fix."
-    },
-    {
-      "scenario": "The same fabricated/conflicting bug exists in other extracted tables (LEP land-use, SEPP standards) and goes unchecked",
-      "what_happens": "the fix would be setback-only and the bug class would persist elsewhere in the database",
-      "repro": "run conflicting_values/fabricated_values (services/extracted_data_integrity.py) against lep_land_use_table, housing_sepp_standards and the non-setback dcp_setback_controls types",
-      "mitigated": true,
-      "how": "the checks are generalised into a domain-agnostic engine (extracted_data_integrity) configured per table; validate_dcp_setbacks now delegates to it. Swept live: lep_land_use_table (17353 rows) 0/0, housing_sepp_standards (45) 0/0, non-setback DCP controls (708) 1 conflict / 0 fabricated — so the structured tables are clean and only the PDF-prose DCP table carried the bug. assert_clean_row gives a write-time gate so future fabrication is blocked at entry, not just swept after."
-    },
-    {
-      "scenario": "A future edit adds a guessed value to an insert script's row list, or breaks the NULL-for-unverified logic, and it only gets caught by a periodic cron",
-      "what_happens": "fabricated data could enter and serve to users for a full cron cycle before detection",
-      "repro": "add a verified row with a value plus an 'Assumed standard NSW' note to POS_ROWS and run pytest — covered by tests/test_insert_scripts_integrity.py",
-      "mitigated": true,
-      "how": "the two insert scripts now CALL assert_clean_row before every INSERT (write-time block), and tests/test_insert_scripts_integrity.py runs the same gate offline over the scripts' own row data on EVERY commit (no DB needed), so a guessed value fails the build immediately rather than waiting for the live cron."
-    },
-    {
-      "scenario": "One of the ~40 OTHER insert scripts (or an ad-hoc SQL INSERT, or the review-loop commit) writes a fabricated value without calling the app-level gate",
-      "what_happens": "an app-level gate only protects the doors that call it; an un-gated writer could still store a guessed value",
-      "repro": "INSERT a row into dcp_setback_controls with is_current=TRUE, value_min set, and condition 'Assumed standard NSW ...' bypassing the Python gate",
-      "mitigated": true,
-      "how": "migration 052 adds a CHECK constraint UNDER the table (NOT VALID first to avoid a scan; pre-check confirmed 0 violating current rows so VALIDATE is clean) — a current row may not store value_min/value_max while a marker admits it is assumed. Every writer hits the DB, so the constraint blocks fabricated entry regardless of which script/SQL path is used. Prepared as a migration for review (prod DDL not applied unilaterally); reversible via DROP CONSTRAINT."
+      "how": "the pages still exist and are reached via their own subdomains (brief./conveyance.plotdetect.com.au) and direct /reports/intelligence-brief and /reports/conveyancing URLs; this is the intended Option B placement"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change; the bad Burwood/camden rows in dcp_setback_controls are a separate data-quality follow-up (the engine now fails safe and flags them, but the rows still need correcting).",
-    "secrets": "None.",
-    "other_repo": "N/A - services-layer logic only; no Trigger.dev/frontend change. The intelligence brief and capacity card consume the same compute_constraint_arithmetic output and gain the conflict gaps automatically.",
-    "manual_verify": "Run the brief for an LGA with conflicting setbacks (e.g. 14 Stanley St, Croydon Park — Burwood front 9/15): the Development Yield card's footprint is now computed from the conservative setback and a Data Gap flags the conflicting front-setback values for verification. Run a single-setback LGA and confirm no conflict gap appears and the value is unchanged."
+    "db_reset": "N/A - no database change.",
+    "secrets": "None - no secrets or env vars.",
+    "other_repo": "N/A - frontend auto-deploys on Vercel from GitHub on merge. Requires the brief./conveyance. DNS + Vercel domains (added by the user) to resolve.",
+    "manual_verify": "After deploy + DNS: brief.plotdetect.com.au/ shows the Intelligence Brief; conveyance.plotdetect.com.au/ shows the Conveyancer report; canibuildit.com.au/ shows the 7-tile consumer grid with NO brief or conveyancing tile; verify.plotdetect.com.au/ unchanged."
   }
 }

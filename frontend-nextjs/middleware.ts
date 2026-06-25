@@ -134,14 +134,23 @@ export async function middleware(request: NextRequest) {
     request.headers.get('x-forwarded-host') ??
     request.headers.get('host') ??
     request.nextUrl.hostname;
+  // Option B domain map (see memory: domain-architecture):
+  //   verify / brief / conveyance = the three pro products as plotdetect subdomains;
+  //   canibuildit = the consumer satellite tools; plotdetect.com.au = info site (other project).
   const isVerifyDomain = hostname === 'verify.plotdetect.com.au';
-  // canibuildit.com.au = the satellite apps site (the /reports section).
-  // plotdetect.com.au stays the info site (its root is unchanged).
+  const isBriefDomain = hostname === 'brief.plotdetect.com.au';
+  const isConveyanceDomain = hostname === 'conveyance.plotdetect.com.au';
   const isCanibuilditDomain =
     hostname === 'canibuildit.com.au' || hostname === 'www.canibuildit.com.au';
 
   if (isVerifyDomain && pathname === '/') {
     return NextResponse.rewrite(new URL('/assessment', request.url));
+  }
+  if (isBriefDomain && pathname === '/') {
+    return NextResponse.rewrite(new URL('/reports/intelligence-brief', request.url));
+  }
+  if (isConveyanceDomain && pathname === '/') {
+    return NextResponse.rewrite(new URL('/reports/conveyancing', request.url));
   }
   if (isCanibuilditDomain && pathname === '/') {
     return NextResponse.rewrite(new URL('/reports', request.url));
