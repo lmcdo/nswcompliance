@@ -166,4 +166,46 @@ the Sydney market and the most anxious buyer segment post-Opal/Mascot.
 - NSW Strata Hub public search (levies, capital works fund, defects; 53% serious-defect stat): https://www.nsw.gov.au/housing-and-construction/strata/strata-hub ; https://www.nsw.gov.au/departments-and-agencies/building-commission/news/survey-shows-serious-defects-down-newer-apartment-buildings
 - Building Commission public register of orders + iCIRT: https://www.nsw.gov.au/departments-and-agencies/building-commission ; https://www.nsw.gov.au/departments-and-agencies/building-commission/register-of-building-work-orders/building-work-rectification-order-for-stm123-no17-pty-ltd
 - Valuer General land values + 60-day objection deadline: https://valuation.property.nsw.gov.au/ ; https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/your-assessment-notice/land-tax-objections
+
+---
+
+## Part 4 — Data Source Ledger (so this research is not re-run)
+
+**Verified June 2026. Check this table BEFORE researching external APIs again.** The capability
+audit confirms most "missing" data is already in-house; the genuine gaps are the *severity* layers.
+
+### Confirmed licence facts
+- **NSW Valuer General land values + sales = CC BY** (commercial use + resale of derived output OK,
+  attribution required). NSW-wide; sales ~8 weeks post-settlement; free monthly bulk by LGA from
+  2017. → **Land-Tax product data is green and resale-safe.**
+- **Overture / Microsoft / OSM building footprints = ODbL** (share-alike). Risk of forcing our
+  derived database open → **NOT safe for a proprietary paid report.** Confirms paying **Geoscape**
+  ($300/mo Team, derived-report-through-app permitted) is the correct footprint+height source.
+- **Geoscape** (confirmed earlier, §7A of GTM plan): Free 20k credits ≈ 1,666 buildings/mo, no
+  overage, not a commercial licence. Team $300/mo, 30k credits, $0.015/credit overage, 12
+  credits/building → ~$0.18/address. Height pack refreshes quarterly, national.
+
+### Already in-house vs genuinely missing
+| Need | In-house already | Genuinely missing (no public resale-safe API exists) |
+|---|---|---|
+| DEM (bare earth) | `dem_service.py` | DSM-by-API (ELVIS = LiDAR, no API; compute via whitebox or use Geoscape height) |
+| Building footprint/height | `spike_samgeo_buildings.py` (spike) + Geoscape (paid, clean) | — |
+| Setbacks/DCP controls | `authoritative_setback_calculator.py` (12 LGAs) | **Statewide** setback controls — nobody has this |
+| Flood **presence** | spatial_overlays Hazard + Portal `floodData` + `flood_truth.py` | Resale-safe per-address flood **depth/AEP** (NFID = insurer-only) |
+| Bushfire **category** | spatial_overlays BFPL + Portal `bushfireCategory` + `bushfire_prescreen.py` | Per-property bushfire **intensity/FFDI** |
+| Climate severity | `climate_risk_*` (NARCliM, suburb-res) | Per-property — solved only via **XDI reseller** (paid) |
+| Strata | `intelligence_brief.py: classify_strata` | Strata **financials feed**, Building Commission orders API, iCIRT API — all scrape-only |
+| Solar | `solar_yield.py` (Google Solar + pvlib) | Cheaper-than-Google API (minor; PVGIS free fallback exists) |
+
+**Rule of thumb:** the missing items are the *severity* signals (flood depth, bushfire intensity,
+per-property climate) and the *strata/builder* feeds. These have **no self-serve resale-safe API** —
+the market answer is **XDI reseller** (climate/flood/bushfire) and **scraping** (strata/iCIRT). Do
+not re-research these expecting a clean API; there isn't one.
+
+### Sources (Part 4)
+- Capability audit (in-house): session capability index — `dem_service.py`, `spatial_overlays`
+  (27 layers incl. flood/BFPL/coastal), 134 Planning Portal constraint types, `classify_strata`.
+- VG land values CC BY: https://data.nsw.gov.au/data/dataset/http-www-valuergeneral-nsw-gov-au-land-value-summaries-lv-php
+- Overture ODbL: https://docs.overturemaps.org/ ; https://opendatacommons.org/licenses/odbl/
+- Geoscape pricing/licence: confirmed in-account + Geoscape General Terms of Use v2.0 (July 2025).
 </content>
