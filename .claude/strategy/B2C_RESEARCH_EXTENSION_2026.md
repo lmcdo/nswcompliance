@@ -335,4 +335,31 @@ satellite apps — the tech was sound; it was pointed at predictions instead of 
 Stop generic B2C idea-hunting (diminishing returns; WTP only resolves by shipping). **Build Product
 B + Development Watch; gate Land-Tax on a lawyer; run one B2B sweep.** Everything else = feature,
 funnel, or add-on.
+
+---
+
+## Part 8 — Objectivity caveat (read before treating any verdict as final)
+
+The verdicts above are **tilted bearish** by three mechanisms — don't mistake "weak/unvalidated" for
+"dead":
+1. **The research robot's verify step is skeptical by design** — it tries to *refute* every claim and
+   kills what it can't quickly stand up. Great at catching false claims (correctly killed the "53%
+   defects" stat), but it also **suppresses true-but-hard-to-source claims**, which return as
+   "unvalidated" and read as negative.
+2. **The prompts asked for the bear case** ("strongest reasons each would FAIL") — output is a failure
+   list, not a balanced go/no-go.
+3. **Gov sites 403'd the fetchers** (Revenue NSW, PEXA, Data.NSW) — exactly the sources holding the
+   *positive/quantitative* evidence (payer counts, revenue, success rates), so "insufficient/
+   unquantified" is partly an access artifact.
+
+**Separate two things every time:** REFUTED (proven false → discard) vs UNPROVEN (not found here,
+often a 403 → revisit).
+- **Trustworthy (rest on confirmed *positive* facts):** Solar weak (free SunSPOT); flood locked by
+  NFID; approval-gap has no incumbent; land-tax mechanics; Product B demand/gap.
+- **Over-coloured (really "unproven", not "bad"):** overshadowing demand, apartment willingness-to-pay
+  for the locational layer, land-tax market size.
+
+**Also:** synthesis crashes under broad prompts (apartment + B2B runs died at write-up). Fix = narrow,
+single-focus, **balanced** (bull+bear) re-runs — which also reads more objectively. Balanced re-runs
+of the over-coloured items are in progress.
 </content>
