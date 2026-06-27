@@ -208,4 +208,48 @@ not re-research these expecting a clean API; there isn't one.
 - VG land values CC BY: https://data.nsw.gov.au/data/dataset/http-www-valuergeneral-nsw-gov-au-land-value-summaries-lv-php
 - Overture ODbL: https://docs.overturemaps.org/ ; https://opendatacommons.org/licenses/odbl/
 - Geoscape pricing/licence: confirmed in-account + Geoscape General Terms of Use v2.0 (July 2025).
+
+---
+
+## Part 5 — Deep-research verdicts, adversarial (June 2026)
+
+Source: deep-research run (92 agents, 20/21 claims survived 3-vote adversarial verification).
+**These overturn the earlier "Land-Tax + Solar robust core."**
+
+### Market scale (high-confidence anchor)
+NSW **194,729 settlements CY2024**; Greater Sydney residential **116,360** (+13.3%); **$230.3B**
+residential value (largest state); national $714.7B (+17.3% YoY). [PEXA]
+
+### Product verdicts
+| Product | Verdict | Single biggest kill-risk |
+|---|---|---|
+| **Land-Tax Objection** | **MARGINAL→VIABLE** | Base structurally narrow (principal residence exempt → only investors/large holders) **and already commoditised** by valuers + land-tax lawyers. Threshold freeze is a real tailwind. |
+| **Solar Payback Report** | **WEAK (as a paid report)** | **SunSPOT** (UNSW/APVI, govt+ARENA funded) does the exact job **free**; Solar Choice gives 3 free quotes. **No consumer WTP.** |
+| **Predictive Overshadowing** | **UNVALIDATED** | Zero demand/pricing evidence survived; *Butcher v Lachlan Elder* (High Court) flags **liability for representations in buyer reports** — risky for a *prediction* of a neighbour's future build. |
+
+### Strategy impact (changes to prior plan)
+- **Solar is NOT a paid consumer product.** Reframe as **installer lead-generation** (Solar Choice
+  model: installers pay for the introduction). Different business; keep only as a free funnel/lead.
+- **Overshadowing: demote** from "build next" to **validate-demand-first**, and prefer folding it
+  into **Development Watch** as a *factual* "DA lodged / shadow modelled" feature rather than selling
+  a standalone *prediction* (liability).
+- **Land-Tax: keep, but gated** on the licensing question below before any build.
+- **Unchallenged → now the real core:** **Product B "Was it approved?"**, **Development Watch**, and
+  the **Apartment/Strata** play. None were undercut by this research.
+
+### Open land-tax gaps (must close before building — drives the GO/NO-GO)
+1. How many NSW parcels/owners actually pay land tax; total revenue; investor share (the SAM).
+2. Real objection success rates + typical over-valuation magnitude.
+3. **Is giving objection advice a licensed/regulated activity** (valuer registration / legal advice
+   / ASIC financial-advice boundary)? This is the make-or-break for a success-fee model.
+
+### Caveat
+Revenue NSW + PEXA pages 403'd the fetchers → verified from cached snippets (high-confidence, one
+step removed). Overshadowing verdict is "unvalidated", not "stress-tested as non-viable".
+
+### Sources (Part 5)
+- PEXA CY24 settlements: https://www.pexa-group.com/content-hub/property-insights-and-reports/property-insights-cy-24/
+- NSW land tax thresholds/rates: https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/understanding-land-tax/thresholds-and-rates
+- NSW land tax objections (60-day, dual path, onus): https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/your-assessment-notice/land-tax-objections
+- SunSPOT free calculator: https://www.sunspot.org.au/ ; Solar Choice free brokerage: https://www.solarchoice.net.au/about-us/
 </content>
