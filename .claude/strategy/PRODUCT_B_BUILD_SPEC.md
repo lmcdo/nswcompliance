@@ -52,6 +52,25 @@ Every finding uses factual + conduit + disclaimer framing (per *Butcher v Lachla
 - No internal pipeline names in any consumer-facing copy (use "Title-Check" / "approval gap").
 - Free Snapshot uses free data only; **Geoscape footprint/height fires only on paid unlock** (GTM §7A).
 
+## Scope limit (post-~2018) & honest positioning
+The ePlanning OnlineDA/OnlineCDC API is reliable only from **~2018**; pre-2018 consents are paper
+records at councils, not in the feed. Consequences (do not gloss over these):
+- Product B can **only confidently assess structures built from ~2018 onward**. Older structures →
+  "not assessed, paper records may exist — verify separately." Never flagged.
+- **Low per-property hit rate.** Most structures predate 2018, so most reports find nothing
+  flaggable → the GTM "scary teaser" only fires on a minority; the rest convert (if at all) as a
+  **clean-check / peace-of-mind** result, like building-and-pest finding nothing.
+- It is **not** an "is everything approved?" audit — only **"has anything gone up *recently*
+  without a record?"** That bounded claim is also the liability shield.
+- **Mitigant, not cure:** recent unpermitted works are the *highest-risk* slice (no BIC, active
+  enforcement risk) and the post-2018 window roughly maps to the current owner's tenure.
+
+**Honest positioning consequence:** with this limit, Product B is a **weak standalone $99 hero**.
+Treat it as **(a) a component inside the conveyancing report, and/or (b) a bundle add-on to
+Development Watch** — NOT the lead product. **Development Watch is the stronger B2C horse** because
+it is *forward-looking* (monitors *new* DAs on a live feed) and so is **not** capped by the 2018
+historical-data wall. Lead with Development Watch; attach Product B.
+
 ## Build phases (gated)
 - **Phase 0 — exempt screen + report template.** Build the DB-sourced exempt-development screening
   calc and the factual report template. Unit-test the screen against known exempt/non-exempt cases.
