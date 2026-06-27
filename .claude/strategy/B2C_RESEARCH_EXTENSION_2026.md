@@ -271,4 +271,32 @@ step removed). Overshadowing verdict is "unvalidated", not "stress-tested as non
 - NSW land tax thresholds/rates: https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/understanding-land-tax/thresholds-and-rates
 - NSW land tax objections (60-day, dual path, onus): https://www.revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/your-assessment-notice/land-tax-objections
 - SunSPOT free calculator: https://www.sunspot.org.au/ ; Solar Choice free brokerage: https://www.solarchoice.net.au/about-us/
+
+---
+
+## Part 6 — Consolidated B2C portfolio verdict (5 deep-research runs, June 2026)
+
+All evidence in. Ranked by verified viability. **Corrections to earlier claims noted.**
+
+### Per-product verdicts
+| Product | Verdict | Evidence highlight | Single biggest kill-risk |
+|---|---|---|---|
+| **"Was it approved?" (Product B)** | **VIABLE (framing-gated)** | ~10% NSW properties have non-compliant works; B&P inspections ($350–900) explicitly DON'T check approval-on-record → real gap; $99 anchors cheap | False-positive↔liability — survive via *Butcher v Lachlan Elder* conduit+disclaimer framing ("records gap, verify with council", never "illegal") |
+| **Development Watch** | **VIABLE** (unchallenged) | Recurring, our own data, nearest-neighbour DA alerts | Conversion/retention (not data) |
+| **Land-Tax Objection** | **CONDITIONAL-GO** | Success fee lawful in the value-lane (CPV, not legal advice); no success-fee competitor in market; big growing base ($3.09T) | Must stay valuation-not-legal lane → NSW lawyer sign-off; SAM (payer count) still unquantified |
+| **Apartment / Strata** | **MARGINAL→WEAK** | 17% of NSW in strata, BUT core report commoditised — Before You Bid ~$84, conveyancer reports $250–400 already cover fund/financials | Saturated cheap commodity; our locational layer is the only differentiator and has **no proven WTP** |
+| **Solar Payback** | **WEAK as paid** | — | Free govt SunSPOT does the job → reframe to installer **lead-gen** only |
+| **Predictive Overshadowing** | **UNVALIDATED** | Zero demand evidence | Speculative + liability → fold into Development Watch as a *factual* feature; validate before standalone |
+
+### Refuted earlier claims (do not reuse)
+- "53% of NSW apartment buildings have serious defects" — REFUTED (1-2); newer-building defects are trending DOWN.
+- "83,998 NSW strata schemes" — REFUTED (0-3); exact NSW count unconfirmed.
+
+### The portfolio that the evidence supports
+1. **Core = Product B + Development Watch** — cash now + recurring, both on our own data, both survived adversarial review. Build first.
+2. **Strong adjacent = Land-Tax** (investor segment, recurring annually, success-fee, legal-gated) — second product behind a lawyer's value-lane sign-off.
+3. **Apartment/Solar/Overshadowing are NOT standalone products** — they are a **locational add-on** (apartment), a **lead-gen funnel** (solar), and a **factual feature** (overshadowing), respectively. Sell where we're unique, not where we'd be the 5th cheap commodity.
+
+### Caveat
+The apartment run's synthesis stage failed (returned placeholder output); its verdict here is reconstructed from the intact verify log (18 claims → 14 confirmed, 4 killed) — confident in the votes, but not the harness's own synthesis. Revenue NSW / PEXA pages 403'd across runs → several figures verified from cached snippets.
 </content>
