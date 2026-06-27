@@ -243,6 +243,25 @@ residential value (largest state); national $714.7B (+17.3% YoY). [PEXA]
 3. **Is giving objection advice a licensed/regulated activity** (valuer registration / legal advice
    / ASIC financial-advice boundary)? This is the make-or-break for a success-fee model.
 
+### Land-tax regulatory finding — RESOLVED to CONDITIONAL-GO (follow-up run + direct verification)
+The success-fee model is **lawful in NSW IF scoped to the land-VALUE objection (Valuer-General path,
+via a CPV), not legal advice on liability/exemptions (Revenue-NSW path).**
+- **Valuer licensing: cleared.** NSW abolished state valuer registration (Valuers Act 2003 repealed
+  1 Mar 2016); "suitably qualified valuer" = API Certified Practising Valuer — a credential, not a
+  legal licence. Use a CPV for evidence credibility, not because law requires it.
+- **Success fee: lawful for us.** s183 Legal Profession Uniform Law contingency-fee ban binds **law
+  practices only** — a non-lawyer valuation/advisory service is not caught.
+- **TPB: N/A** (TASA = Commonwealth tax only; state land tax is outside it). **ASIC: N/A** (not a
+  financial product).
+- **The deciding risk:** advising on a *state tax* can be characterised as "legal advice." Stay in
+  the **value-challenge lane** (comparable sales, CPV) = valuation work = safe. Stray into
+  liability/exemption/aggregation advice = legal practice = s183 kills the success fee.
+- **GATE before launch:** NSW lawyer to confirm the value-lane characterisation. Competitor scan
+  found valuation firms doing fixed-fee objections but **no success-fee model in market** (open
+  angle, or a hint others avoid it — confirm with the lawyer).
+- **Still unquantified:** exact land-tax payer count + total revenue (Revenue NSW stats 403'd);
+  base is large/growing ($3.09T NSW land value 2025, residential +4.2%, freeze +$1.5B/4yrs).
+
 ### Caveat
 Revenue NSW + PEXA pages 403'd the fetchers → verified from cached snippets (high-confidence, one
 step removed). Overshadowing verdict is "unvalidated", not "stress-tested as non-viable".
