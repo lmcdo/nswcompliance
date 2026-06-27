@@ -299,4 +299,40 @@ All evidence in. Ranked by verified viability. **Corrections to earlier claims n
 
 ### Caveat
 The apartment run's synthesis stage failed (returned placeholder output); its verdict here is reconstructed from the intact verify log (18 claims → 14 confirmed, 4 killed) — confident in the votes, but not the harness's own synthesis. Revenue NSW / PEXA pages 403'd across runs → several figures verified from cached snippets.
+
+---
+
+## Part 7 — Satellite apps re-judged + the killer-idea pattern + B2C reality
+
+### The 6 satellite apps mapped onto the research verdicts
+| Satellite app | Research verdict | Action |
+|---|---|---|
+| **Neighbour Development Threat Radar** (`threat_radar.py`) | = Development Watch → **VIABLE** | ★ Lead with it — already built (subscribe/check/list) |
+| **Flood Truth Engine** (`flood_truth.py`) | **Underrated** — *did-it-flood* is a factual record (ours); flood *depth* is the locked market (NFID) | Validate next; strong B2B (insurer) pull |
+| **Shadow Ambush Detector** (`shadow_detector.py`) | Overshadowing **UNVALIDATED** | Demote → factual feature inside Development Watch |
+| **Solar Yield Underwriter** (`solar_yield.py`) | **WEAK as B2C** (free SunSPOT) | Lead-gen, or test the B2B "underwriter" angle |
+| **Granny Flat Yield Predictor** (`granny_flat.py`) | **Untested** + prediction-liability | Validate demand before betting |
+| GEE client | infra | Don't build (per CLAUDE.md) |
+
+### The killer-idea pattern (the durable lesson)
+Everything that **survived** is a **uniquely-assembled factual record** (Was-it-approved, Threat
+Radar/Development Watch, Flood-truth). Everything that **died** is a **prediction/advisory** (solar
+payback, overshadowing, granny-flat yield). **The market punishes predictions (free incumbents +
+liability + no WTP) and pays for facts nobody else compiles.** Generate future ideas inside this
+pattern only. Note: "Was it approved" runs on the *same* Sentinel-2 change-detection pipeline as the
+satellite apps — the tech was sound; it was pointed at predictions instead of records.
+
+### B2C reality (the "massive retail" question)
+- **Direct mass retail is not realistic.** The buyable population is hard-capped at people
+  *currently transacting* (~194,729 NSW settlements/yr); 1–5% at $99 = ~$190k–$960k/yr. Solid SME,
+  not a viral-retail rocket. The decision is delegated to conveyancers, so the channel is B2B2C.
+- **Realistic B2C = point-of-sale + recurring**, advisor-distributed (Was-it-approved + Development
+  Watch). Alive and worth building.
+- **Genuine scale = B2B** (insurers/lenders/councils paying recurring for the same factual records).
+  → B2B-buyers research sweep launched separately.
+
+### Decision
+Stop generic B2C idea-hunting (diminishing returns; WTP only resolves by shipping). **Build Product
+B + Development Watch; gate Land-Tax on a lawyer; run one B2B sweep.** Everything else = feature,
+funnel, or add-on.
 </content>
