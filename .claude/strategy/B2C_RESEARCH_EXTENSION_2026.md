@@ -362,4 +362,35 @@ often a 403 → revisit).
 **Also:** synthesis crashes under broad prompts (apartment + B2B runs died at write-up). Fix = narrow,
 single-focus, **balanced** (bull+bear) re-runs — which also reads more objectively. Balanced re-runs
 of the over-coloured items are in progress.
+
+---
+
+## Part 9 — Balanced re-run results (correcting the over-coloured verdicts)
+
+### Apartment / locational layer — REVISED: MARGINAL→WEAK ➜ **MAYBE (leaning YES for a niche)**
+The balanced re-run (96 agents, completed) confirms the original verdict was over-coloured. The
+*value* is real and well-evidenced; only "will they pay EXTRA for a standalone report" is unproven
+(not refuted).
+- **Confirmed (3-0):** Australian buyers pay quantified **view premiums** (Illawarra NSW, n>5,000:
+  beach view ~2-3% per 1% of view share) and the premium **depends on the view being UNOBSTRUCTED**
+  (~32% unobstructed vs ~10% partial) — so future neighbouring construction **destroys real dollar
+  value**.
+- **Confirmed (3-0):** **aspect/sunlight** is a priced attribute (south-facing +7.8%, Beijing
+  n=63,306; ~7-14% Shanghai) — NSW ADG legally mandates mid-winter solar, developers optimise for it.
+  *Caveat: magnitudes are overseas/houses; NSW apartment $ WTP is UNPROVEN, mechanism identical.*
+- **Confirmed (3-0):** view loss is **actively contested with high stakes** (North Sydney $6.91m
+  harbour view, 19 objections, council protected it) and the LEC **Tenacity view-sharing principle**
+  makes "what could be built next door" **assessable, not speculative**.
+- **UNPROVEN (not found, not false):** that buyers will pay *extra* for a standalone locational
+  report on top of the strata report; any existing paid product on that exact differentiator.
+- **Who would pay:** buyers of **premium view/aspect-dependent apartments** (harbour/water/city, high
+  floor, north aspect) + their buyer's agents — where the priced amenity is large and obstruction
+  risk concrete.
+- **Implication:** the locational layer is a **real value-add for a premium niche**, not a dead idea.
+  Still best as an **add-on/feature** (not a standalone strata product), but worth offering on
+  view/aspect-dependent stock. Test by selling to buyer's agents of premium apartments.
+
+### Overshadowing balanced re-run — in progress (`wyyb7hheb`); earlier attempts crashed (scope-step
+transient + synthesis overload). Sources to weight: hedonic view/sunlight premiums, LEC *Tenacity*,
+ADG solar-access.
 </content>
