@@ -97,7 +97,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              <span className="text-sm font-semibold text-amber-900">Lot Dimensions</span>
              <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">Cadastre</Badge>
            </div>
-           <div className="grid grid-cols-3 gap-1.5">
+           <div className={`grid ${propertyData.lotDimensions.battleaxe?.isBattleaxe ? 'grid-cols-1' : 'grid-cols-3'} gap-1.5`}>
              <div className="bg-white rounded p-2 text-center border border-amber-100">
                <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                  <Square className="h-3 w-3" />
@@ -108,26 +108,33 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                </span>
                <span className="text-xs text-gray-500 ml-0.5">m²</span>
              </div>
-             <div className="bg-white rounded p-2 text-center border border-amber-100">
-               <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
-                 <Ruler className="h-3 w-3" />
-                 <span className="text-xs">Frontage</span>
-               </div>
-               <span className="text-base font-bold text-gray-900">
-                 {propertyData.lotDimensions.frontage.toFixed(1)}
-               </span>
-               <span className="text-xs text-gray-500 ml-0.5">m</span>
-             </div>
-             <div className="bg-white rounded p-2 text-center border border-amber-100">
-               <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
-                 <Ruler className="h-3 w-3 rotate-90" />
-                 <span className="text-xs">Depth</span>
-               </div>
-               <span className="text-base font-bold text-gray-900">
-                 {propertyData.lotDimensions.depth.toFixed(1)}
-               </span>
-               <span className="text-xs text-gray-500 ml-0.5">m</span>
-             </div>
+             {/* Rectangular frontage/depth are meaningless for an L-shaped battleaxe
+                 (they classify arbitrary edges of the L). Suppress them and let the
+                 battleaxe block below carry the real handle/head geometry. */}
+             {!propertyData.lotDimensions.battleaxe?.isBattleaxe && (
+               <>
+                 <div className="bg-white rounded p-2 text-center border border-amber-100">
+                   <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                     <Ruler className="h-3 w-3" />
+                     <span className="text-xs">Frontage</span>
+                   </div>
+                   <span className="text-base font-bold text-gray-900">
+                     {propertyData.lotDimensions.frontage.toFixed(1)}
+                   </span>
+                   <span className="text-xs text-gray-500 ml-0.5">m</span>
+                 </div>
+                 <div className="bg-white rounded p-2 text-center border border-amber-100">
+                   <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                     <Ruler className="h-3 w-3 rotate-90" />
+                     <span className="text-xs">Depth</span>
+                   </div>
+                   <span className="text-base font-bold text-gray-900">
+                     {propertyData.lotDimensions.depth.toFixed(1)}
+                   </span>
+                   <span className="text-xs text-gray-500 ml-0.5">m</span>
+                 </div>
+               </>
+             )}
            </div>
            {propertyData.lotDimensions.confidence < 0.8 && (
              <p className="text-xs text-amber-700 mt-2 italic">

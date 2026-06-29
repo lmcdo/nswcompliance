@@ -118,6 +118,43 @@ describe('detectBattleaxeLot', () => {
     });
   });
 
+  describe('Wide-handle (rural) battleaxe — regression for handle-length/area bug', () => {
+    // A large rural battleaxe: 16m-wide handle (wider than the old fixed 9m
+    // MIN_HEAD_WIDTH threshold) feeding a 50m-wide head. Previously the handle
+    // length collapsed to 0 and the "main lot" area was computed over the full
+    // lot length, producing a main-lot area LARGER than the whole lot.
+    const coords: [number, number][] = [
+      [17, 0],   // handle bottom-left
+      [33, 0],   // handle bottom-right (16m wide)
+      [33, 30],  // handle meets head (right) — 30m long handle
+      [50, 30],  // head bottom-right
+      [50, 70],  // head top-right (40m deep)
+      [0, 70],   // head top-left
+      [0, 30],   // head bottom-left (50m wide)
+      [17, 30],  // back to handle
+    ];
+    // Total lot area via shoelace on the raw coords = 2480 m²
+    const TOTAL_AREA = 2480;
+
+    it('detects the wide handle as a battleaxe', () => {
+      const result = detectBattleaxeLot(createGeometry(coords));
+      expect(result.isBattleaxe).toBe(true);
+      // Handle is genuinely wide — the exact scenario the old 9m threshold broke on
+      expect(result.accessWayWidth).toBeGreaterThan(9);
+    });
+
+    it('reports a non-zero access-way length (was 0 before the fix)', () => {
+      const result = detectBattleaxeLot(createGeometry(coords));
+      expect(result.accessWayLength).toBeGreaterThan(0);
+    });
+
+    it('reports a main-lot area smaller than the whole lot (was inflated before)', () => {
+      const result = detectBattleaxeLot(createGeometry(coords));
+      expect(result.mainLotArea).toBeGreaterThan(0);
+      expect(result.mainLotArea).toBeLessThan(TOTAL_AREA);
+    });
+  });
+
   describe('Non-battleaxe lots (should NOT detect)', () => {
     it('rejects standard rectangular lot: 12m × 40m', () => {
       const coords: [number, number][] = [
