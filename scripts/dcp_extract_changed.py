@@ -1183,14 +1183,27 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     all_chapters=False (default): the legacy reactive trigger — only chapters the
     byte-change monitor flagged (needs_extraction=TRUE).
 
-    all_chapters=True: re-extract EVERY active chapter and diff vs the approved
-    baseline — the scheduled re-extract-all cadence. Robust to PDF re-exports that the
-    needs_extraction byte-signal false-positives on (plan
+    all_chapters=True: re-extract EVERY active TEXT-DCP chapter and diff vs the
+    approved baseline — the scheduled re-extract-all cadence. Robust to PDF re-exports
+    that the needs_extraction byte-signal false-positives on (plan
     ce-dcp-targeted-semantic-detection-2026-06). is_active + r2_current_path always required.
+    In this mode the chapter must ALSO already have current provisions, so the
+    quarterly run only re-checks real text DCPs and skips spatial/map "chapters"
+    (e.g. city_of_sydney's sheet-NNN-*-map rows) that carry an r2_current_path but no
+    extractable text and would 404 / extract empty every run. First extractions (no
+    provisions yet) are handled by the reactive needs_extraction path, which keeps no
+    such filter.
     """
     conds = ["is_active = TRUE", "r2_current_path IS NOT NULL"]
     if not all_chapters:
         conds.insert(0, "needs_extraction = TRUE")
+    else:
+        conds.append(
+            "EXISTS (SELECT 1 FROM regulatory_provisions rp "
+            "WHERE rp.source_council = dcp_chapter_registry.council "
+            "AND rp.source_chapter_key = dcp_chapter_registry.chapter_key "
+            "AND rp.is_current = TRUE)"
+        )
     params: list = []
     if council_filter:
         conds.append("council = %s")

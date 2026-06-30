@@ -62,3 +62,18 @@ class TestPendingChaptersSql:
         q, _ = _pending_chapters_sql(None, all_chapters=True)
         assert "is_active = TRUE" in q
         assert "r2_current_path IS NOT NULL" in q
+
+    def test_all_mode_only_text_dcps_with_provisions(self):
+        # --all must skip spatial/map "chapters" that have an r2_current_path but no
+        # extractable text: require existing current provisions for the chapter.
+        q, _ = _pending_chapters_sql(None, all_chapters=True)
+        assert "EXISTS (SELECT 1 FROM regulatory_provisions rp" in q
+        assert "rp.source_council = dcp_chapter_registry.council" in q
+        assert "rp.source_chapter_key = dcp_chapter_registry.chapter_key" in q
+        assert "rp.is_current = TRUE" in q
+
+    def test_reactive_mode_has_no_provisions_filter(self):
+        # First extractions (no provisions yet) must still flow through the reactive
+        # path, so it must NOT carry the EXISTS-provisions scope.
+        q, _ = _pending_chapters_sql(None, all_chapters=False)
+        assert "regulatory_provisions" not in q
