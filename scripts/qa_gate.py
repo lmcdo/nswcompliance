@@ -272,6 +272,80 @@ GUARDED_TABLES = {
 }
 
 
+def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, set[int]]:
+    """Map each changed file -> the set of line numbers the change actually touched.
+
+    Used to diff-scope the scanners below: a finding on a line the change did not
+    touch is dropped, so brushing a pre-existing file (e.g. removing a hardcoded
+    secret from one line of an old script) no longer forces fixing every unrelated
+    issue elsewhere in that file. Computed from `git diff --unified=0 <base>..HEAD`.
+
+    Returns {} when git cannot determine a base — callers then keep ALL findings
+    (safe full-scan fallback). The gate only ever RELAXES when it is confident a
+    flagged line is pre-existing, never when uncertain.
+    """
+    def _git(args: list[str]) -> Optional[str]:
+        try:
+            r = subprocess.run(
+                ["git", *args], capture_output=True, text=True,
+                timeout=10, cwd=project_dir,
+            )
+            return r.stdout if r.returncode == 0 else None
+        except (subprocess.SubprocessError, FileNotFoundError, OSError):
+            return None
+
+    base = None
+    for ref in ("origin/main", "origin/master", "main"):
+        mb = _git(["merge-base", "HEAD", ref])
+        if mb and mb.strip():
+            base = mb.strip()
+            break
+    if not base:
+        return {}
+
+    result: dict[str, set[int]] = {}
+    for f in diff_files:
+        out = _git(["diff", "--unified=0", base, "HEAD", "--", f])
+        if out is None:
+            continue
+        added: set[int] = set()
+        for ln in out.splitlines():
+            if ln.startswith("@@"):
+                m = re.search(r"\+(\d+)(?:,(\d+))?", ln)
+                if m:
+                    start = int(m.group(1))
+                    count = int(m.group(2)) if m.group(2) is not None else 1
+                    added.update(range(start, start + count))
+        result[f] = added
+    return result
+
+
+def filter_to_changed_lines(errors: list[str], changed: dict[str, set[int]]) -> list[str]:
+    """Drop scanner findings whose file:line is NOT a line the change touched.
+
+    Keeps any error with no parseable file:line, any error for a file not present in
+    `changed`, and — when `changed` is empty — ALL errors. So the gate relaxes only
+    when it is certain a flagged line was pre-existing, never when uncertain.
+    """
+    if not changed:
+        return errors
+    kept: list[str] = []
+    for e in errors:
+        m = re.search(r"([\w./\\-]+\.[A-Za-z0-9]+):(\d+)", e)
+        if not m:
+            kept.append(e)
+            continue
+        path, line = m.group(1), int(m.group(2))
+        allowed = None
+        for f, lines_set in changed.items():
+            if f == path or f.endswith(path) or path.endswith(f):
+                allowed = lines_set
+                break
+        if allowed is None or line in allowed:
+            kept.append(e)
+    return kept
+
+
 def scan_diff_for_unguarded_queries(
     diff_files: list[str], project_dir: str
 ) -> list[str]:
@@ -1100,29 +1174,25 @@ def validate_report(
             "matching the current HEAD. Run: git rev-parse --short HEAD"
         )
 
-    # --- DB guard column scanner: detect unguarded queries in changed files ---
+    # --- File-content scanners (DB guard, null guard, type boundaries, silent
+    #     failures, Python adversarial, untyped method calls).
+    #     DIFF-SCOPED: findings on lines the change did not touch are dropped, so
+    #     brushing a pre-existing file does not force fixing its unrelated debt.
+    #     filter_to_changed_lines falls back to keeping everything when git cannot
+    #     determine the changed lines, so the gate never weakens when uncertain. ---
     if diff_files and project_dir:
-        errors.extend(scan_diff_for_unguarded_queries(diff_files, project_dir))
-
-    # --- Null guard scanner: detect .rows[0] without length checks ---
-    if diff_files and project_dir:
-        errors.extend(scan_diff_for_unguarded_nulls(diff_files, project_dir))
-
-    # --- Type boundary scanner: detect falsy JSX guards and strict null checks ---
-    if diff_files and project_dir:
-        errors.extend(scan_diff_for_type_boundaries(diff_files, project_dir))
-
-    # --- Silent failure scanner: detect empty catches and success-on-error ---
-    if diff_files and project_dir:
-        errors.extend(scan_diff_for_silent_failures(diff_files, project_dir))
-
-    # --- Python adversarial scanner: split/cast/get traps, connection leaks ---
-    if diff_files and project_dir:
-        errors.extend(scan_diff_for_python_adversarial(diff_files, project_dir))
-
-    # --- Untyped method call scanner: string methods on untyped TS input ---
-    if diff_files and project_dir:
-        errors.extend(scan_diff_for_untyped_method_calls(diff_files, project_dir))
+        scanner_errors: list[str] = []
+        scanner_errors.extend(scan_diff_for_unguarded_queries(diff_files, project_dir))
+        scanner_errors.extend(scan_diff_for_unguarded_nulls(diff_files, project_dir))
+        scanner_errors.extend(scan_diff_for_type_boundaries(diff_files, project_dir))
+        scanner_errors.extend(scan_diff_for_silent_failures(diff_files, project_dir))
+        scanner_errors.extend(scan_diff_for_python_adversarial(diff_files, project_dir))
+        scanner_errors.extend(scan_diff_for_untyped_method_calls(diff_files, project_dir))
+        errors.extend(
+            filter_to_changed_lines(
+                scanner_errors, changed_line_numbers(diff_files, project_dir)
+            )
+        )
 
     if tier in ("standard", "critical"):
         errors.extend(check_cross_references(report))
