@@ -596,6 +596,98 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
 UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai"}
 
 
+# ── TOC-driven extraction ────────────────────────────────────────────────────
+# Some chapters (heritage conservation areas with margin watermarks, mixed
+# numbering conventions) defeat body-heading detection — the section codes are
+# corrupted by interleaved sidebar text, or the council's SECTION_RE override
+# doesn't fit this chapter's numbering. For these, the chapter's own table of
+# contents is the authoritative section list, lives away from the body noise, and
+# carries clean codes. We parse it, locate each code in the body, and extract by
+# those page ranges (reusing extract_by_page_ranges + COUNCIL_SUBSECTION_PATTERNS).
+#
+# Gated to councils known to need it, AND only applied when sequential detection
+# clearly disagrees with the TOC — so working chapters keep sequential extraction.
+TOC_DRIVEN_COUNCILS = {"woollahra", "leichhardt"}
+
+# A TOC line: section code, title, then dotted leaders / spacing, then a page number.
+_TOC_LINE_RE = re.compile(r'^\s*([A-Z]?\d+(?:\.\d+)*)\s+(.+?)[.\s]{2,}\d{1,3}\s*$')
+
+
+def parse_toc_entries(page_texts: list[str], max_scan: int = 12) -> list[tuple[str, str]]:
+    """Parse a chapter's table of contents into an ordered, de-duplicated list of
+    (section_code, title). Pure — operates on already-extracted page texts. Only
+    the first ``max_scan`` pages are scanned (the TOC sits at the front)."""
+    seen: set[str] = set()
+    out: list[tuple[str, str]] = []
+    for txt in page_texts[:max_scan]:
+        for line in txt.split("\n"):
+            m = _TOC_LINE_RE.match(line.strip())
+            if not m:
+                continue
+            code = m.group(1)
+            title = re.sub(r"\s{2,}", " ", m.group(2)).strip()
+            title = re.sub(r"[.\s]+$", "", title)   # trailing dotted-leader remnants
+            if code and title and code not in seen:
+                seen.add(code)
+                out.append((code, title))
+    return out
+
+
+def _toc_page_indexes(page_texts: list[str], min_lines: int = 3) -> list[int]:
+    """Indexes of pages that look like a TOC (>= min_lines TOC-style lines), so the
+    body search starts AFTER them rather than matching codes on the TOC page itself."""
+    idxs = []
+    for i, txt in enumerate(page_texts):
+        n = sum(1 for ln in txt.split("\n") if _TOC_LINE_RE.match(ln.strip()))
+        if n >= min_lines:
+            idxs.append(i)
+    return idxs
+
+
+def dedupe_ascending(located: list[tuple[str, str, int]]) -> list[tuple[str, str, int]]:
+    """Keep only entries whose body page is non-decreasing in document order. Pure."""
+    out: list[tuple[str, str, int]] = []
+    last = 0
+    for code, title, page in located:
+        if page >= last:
+            out.append((code, title, page))
+            last = page
+    return out
+
+
+def build_toc_ranges(
+    located: list[tuple[str, str, int]], total_pages: int
+) -> list[tuple[str, str, int, int]]:
+    """Turn located (code, title, start_page) entries into contiguous
+    (code, title, start_page, end_page) ranges for extract_by_page_ranges. Pure."""
+    ranges: list[tuple[str, str, int, int]] = []
+    for i, (code, title, sp) in enumerate(located):
+        ep = located[i + 1][2] - 1 if i + 1 < len(located) else total_pages
+        ranges.append((code, title, sp, max(ep, sp)))
+    return ranges
+
+
+def toc_disagrees_with_sequential(
+    sequential_codes: list[str], toc_codes: list[str],
+    min_count_ratio: float = 0.6, min_overlap_ratio: float = 0.6,
+) -> bool:
+    """Decide whether to override sequential extraction with the TOC. True when the
+    sequential result clearly doesn't match the TOC — too few sections, OR the codes
+    it found are mostly absent from the TOC (the Leichhardt control-label case). Pure."""
+    toc_set = {c for c in toc_codes}
+    if len(toc_set) < 3:
+        return False
+    seq_set = {c for c in sequential_codes if c != "preamble"}
+    if not seq_set:
+        return True  # nothing real detected -> TOC wins
+    if len(seq_set) < min_count_ratio * len(toc_set):
+        return True
+    overlap = len(seq_set & toc_set)
+    if overlap < min_overlap_ratio * len(seq_set):
+        return True
+    return False
+
+
 # ── Provision diff helpers ───────────────────────────────────────────────────
 
 def _normalize_for_diff(text: str) -> str:
@@ -728,6 +820,55 @@ class DCPExtractor:
         self.page_count: int = 0
 
     def extract(self) -> list[dict[str, Any]]:
+        """Top-level extraction: sequential body-heading detection, with a
+        TOC-driven override for configured councils whose body headings are
+        unreliable. The override only fires when sequential detection clearly
+        disagrees with the chapter's table of contents, so well-behaved chapters
+        (even within those councils) keep the sequential result."""
+        sections = self._extract_sequential()
+        if self.council in TOC_DRIVEN_COUNCILS:
+            override = self._maybe_toc_override(sections)
+            if override is not None:
+                return override
+        return sections
+
+    def _maybe_toc_override(
+        self, sequential: list[dict[str, Any]]
+    ) -> list[dict[str, Any]] | None:
+        """Return a TOC-driven section list when it should replace the sequential
+        result, else None. Reads the chapter's own TOC for the authoritative section
+        list, locates each code in the body (after the TOC pages), and extracts by
+        those page ranges."""
+        with pdfplumber.open(self.pdf_path) as pdf:
+            total = len(pdf.pages)
+            page_texts = [
+                _clean_page_text(_extract_page_text(p, self.council), self.council)
+                for p in pdf.pages
+            ]
+        entries = parse_toc_entries(page_texts)
+        seq_codes = [(s.get("section_number") or "") for s in sequential]
+        if not toc_disagrees_with_sequential(seq_codes, [c for c, _ in entries]):
+            return None
+
+        body_start = (max(_toc_page_indexes(page_texts)) + 1) if _toc_page_indexes(page_texts) else 0
+        located: list[tuple[str, str, int]] = []
+        for code, title in entries:
+            pat = re.compile(r"(?m)^\s*" + re.escape(code) + r"(?:\b|\s)")
+            for i in range(body_start, total):
+                if pat.search(page_texts[i]):
+                    located.append((code, title, i + 1))
+                    break
+        located = dedupe_ascending(located)
+        if len(located) < 3:
+            return None
+        ranges = build_toc_ranges(located, total)
+        subpats = COUNCIL_SUBSECTION_PATTERNS.get(self.council)
+        toc_sections = self.extract_by_page_ranges(ranges, subpats)
+        print(f"    [TOC] overrode sequential ({len([s for s in sequential if s.get('section_number') != 'preamble'])} "
+              f"sections) with TOC-driven extraction ({len(toc_sections)} sections, {len(located)} TOC anchors)")
+        return toc_sections
+
+    def _extract_sequential(self) -> list[dict[str, Any]]:
         """
         Return list of section dicts:
             section_number, section_title, content, tables, page_start, page_end, pages
