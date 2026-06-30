@@ -1244,6 +1244,69 @@ def is_count_drop(total_old: int, total_new: int) -> bool:
     return total_new < total_old * COUNT_DROP_RATIO
 
 
+# Schema gate (false-negative tail, complements count_drop). A re-extraction can
+# have the right provision COUNT but garbage CONTENT — equation-editor noise, Word
+# cross-reference errors, table-of-contents leaders, or two-column merge. These are
+# unambiguous extraction-FAILURE signatures: they appear at ~0% in a clean extract,
+# so gating on them is high-precision and won't cry wolf on benign formatting quirks
+# (bare page numbers, hash headers, short provisions — deliberately EXCLUDED).
+SERIOUS_ARTIFACT_LABELS = frozenset({
+    "latex_tokens",
+    "word_cross_references",
+    "toc_dotted_leaders",
+    "two_col_interleave",
+    "two_col_numeric",
+})
+SCHEMA_FAIL_MIN_PROVISIONS = 10
+SCHEMA_FAIL_RATIO = 0.10
+
+
+def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
+    """True when too many provisions carry a serious extraction-failure artifact.
+
+    Conservative by design (min provisions floor + >10% ratio) because serious
+    artifacts are ~0% in a clean extraction, so this stays high-precision and does
+    not re-introduce the cry-wolf problem the detector cadence was built to fix.
+    """
+    if total_provisions < SCHEMA_FAIL_MIN_PROVISIONS:
+        return False
+    if total_provisions <= 0:
+        return False
+    return serious_flagged / total_provisions > SCHEMA_FAIL_RATIO
+
+
+def suspect_reason(review_data: dict) -> str | None:
+    """Return a short SUSPECT reason for a review chapter, or None if it looks fine.
+
+    A chapter is suspect when its diff flagged a count_drop OR its extraction
+    failed the schema gate. Pure — drives both the operator summary and the alert.
+    """
+    diff = review_data.get("diff") or {}
+    if diff.get("status") == "count_drop":
+        return (f"count_drop ({diff.get('total_new')} extracted vs "
+                f"{diff.get('total_old')} baseline)")
+    if review_data.get("schema_fail"):
+        return (f"schema_fail ({review_data.get('serious_artifact_provisions')}/"
+                f"{review_data.get('total_provisions')} provisions with serious artifacts)")
+    return None
+
+
+def build_suspect_alert(council: str, suspect: list[dict]) -> str | None:
+    """Format a Telegram alert body for SUSPECT chapters, or None if none.
+
+    Pure (no I/O) so it is unit-testable; the thin sender wraps it.
+    """
+    lines = [(s.get("council"), s.get("chapter_key"), suspect_reason(s)) for s in suspect]
+    lines = [(c, k, r) for c, k, r in lines if r]
+    if not lines:
+        return None
+    body = [f"🚨 DCP extract: {len(lines)} SUSPECT chapter(s) for '{council}' — review before approving:"]
+    for c, k, r in lines:
+        body.append(f"• [{c}] {k}: {r}")
+    body.append("These are likely broken extractions, not amendments. Check the source PDF.")
+    return "\n".join(body)
+
+
 def diff_provisions(
     new_sections: list[dict],
     council: str,
@@ -1661,10 +1724,15 @@ def extract_chapter(
             from collections import Counter as _Counter
             artifact_counts: _Counter = _Counter()
             flagged_samples: _Counter = _Counter()
+            serious_flagged = 0
             for txt in provision_texts:
                 labels, lines = check_provision(txt)
                 artifact_counts.update(labels)
                 flagged_samples.update(lines)
+                if set(labels) & SERIOUS_ARTIFACT_LABELS:
+                    serious_flagged += 1
+
+            schema_fail = is_schema_fail(len(provision_texts), serious_flagged)
 
             return True, {
                 "council": council,
@@ -1683,6 +1751,8 @@ def extract_chapter(
                 "artifact_counts": dict(artifact_counts),
                 "artifact_samples": dict(flagged_samples.most_common(5)),
                 "total_provisions": len(provision_texts),
+                "serious_artifact_provisions": serious_flagged,
+                "schema_fail": schema_fail,
                 "document_id": document_id,
                 "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,
@@ -2114,6 +2184,10 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
         lines.append(DIVIDER)
         lines.append(f"CHAPTER: {chapter_key}")
         lines.append(f"  {ch['section_count']} sections  |  {ch['table_count']} tables  |  {ch['total_provisions']} provisions")
+        if ch.get("schema_fail"):
+            lines.append(f"  ⚠ SUSPECT SCHEMA — {ch.get('serious_artifact_provisions')}/"
+                         f"{ch.get('total_provisions')} provisions carry serious extraction-failure "
+                         f"artifacts; likely a broken parse. DO NOT approve without checking the source PDF.")
         lines.append("")
 
         # Diff summary (if available)
@@ -2362,23 +2436,28 @@ def main() -> None:
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
 
-        # Fail-loud: name any SUSPECT count-drop chapters so the unattended
-        # quarterly run surfaces them in the run log (run_monitors captures stdout).
+        # Fail-loud: name any SUSPECT chapters (count_drop OR schema_fail) so the
+        # unattended quarterly run surfaces them — in the run log AND via Telegram.
         # These are NOT auto-committed and must be checked against the source PDF
         # before approval — they are usually a broken parse, not a real amendment.
-        suspect = [
-            ch for ch in review_chapters
-            if (ch.get("diff") or {}).get("status") == "count_drop"
-        ]
+        suspect = [ch for ch in review_chapters if suspect_reason(ch)]
         if suspect:
             print(f"\n  {'!'*58}")
             print(f"  🚨 {len(suspect)} chapter(s) flagged SUSPECT (possible extraction failure):")
             for ch in suspect:
-                d = ch.get("diff") or {}
-                print(f"     - [{ch.get('council')}] {ch.get('chapter_key')}: "
-                      f"{d.get('total_new')} extracted vs {d.get('total_old')} baseline")
+                print(f"     - [{ch.get('council')}] {ch.get('chapter_key')}: {suspect_reason(ch)}")
             print(f"  Do NOT approve these without checking the source PDF.")
             print(f"  {'!'*58}")
+
+            # Best-effort push so the quarterly run alerts, not just logs. Reuses
+            # run_monitors.send_telegram (no-ops when TELEGRAM_* unset).
+            alert = build_suspect_alert(args.council or "all", suspect)
+            if alert:
+                try:
+                    from run_monitors import send_telegram
+                    send_telegram(alert)
+                except Exception as exc:  # never let alerting break the run
+                    print(f"  [warn] SUSPECT Telegram alert not sent: {exc}")
 
         conn.close()
         sys.exit(2)  # exit 2 = review file written, triggers workflow quality gate
