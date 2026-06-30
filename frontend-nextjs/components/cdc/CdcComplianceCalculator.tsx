@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCdcComplianceCalculator } from '@/hooks/useCdcComplianceCalculator';
 import { useCdcEligibility, type CdcCheckResult } from '@/hooks/useCdcEligibility';
+import { battleaxeAwareLotWidth, battleaxeAwareLotDepth } from '@/lib/geometry/effective-lot-width';
 import { CdcDevelopmentForm } from './CdcDevelopmentForm';
 import { CdcComplianceResults } from './CdcComplianceResults';
 
@@ -32,6 +33,8 @@ interface LotDimensions {
   frontage: number;
   depth: number;
   confidence?: number;
+  lotType?: 'rectangular' | 'battleaxe' | 'irregular';
+  battleaxe?: { isBattleaxe?: boolean; mainLotWidth?: number | null; mainLotArea?: number | null } | null;
 }
 
 interface CdcComplianceCalculatorProps {
@@ -109,8 +112,12 @@ export function CdcComplianceCalculator({
     if (!lotDimensions && !lotSize) return undefined;
 
     const area = lotDimensions?.area || lotSize || 0;
-    const frontage = lotDimensions?.frontage || 0;
-    const depth = lotDimensions?.depth || 0;
+    // For a battleaxe, lotDimensions.frontage/depth describe the access handle;
+    // the buildable-footprint estimate must use the head (mainLotWidth and the
+    // derived head depth), or coverage is badly understated. Non-battleaxe lots
+    // return the raw frontage/depth unchanged.
+    const frontage = battleaxeAwareLotWidth(lotDimensions) ?? 0;
+    const depth = battleaxeAwareLotDepth(lotDimensions) ?? 0;
 
     const usableWidth = Math.max(0, frontage - 1.8);
     const usableDepth = Math.max(0, depth - 9);
