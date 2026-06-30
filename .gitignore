@@ -400,6 +400,7 @@ frontend-nextjs/public/pdfjs/
 
 # Scripts directory (working scripts) - EXCEPT Phase 3+ SEPP utilities
 scripts/
+!scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
 !scripts/xref_pretask_setup.py

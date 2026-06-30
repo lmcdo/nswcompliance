@@ -24,6 +24,12 @@ done
 
 set -e
 
+# ── Advisory: warn if changed files overlap an open PR (non-blocking) ────────
+# Catches accidental duplication of in-flight work that code guards can't see.
+if [ -f scripts/pr_overlap_guard.py ]; then
+  python scripts/pr_overlap_guard.py 2>/dev/null || true
+fi
+
 # ── 1. Python unit tests ─────────────────────────────────────────────────────
 
 echo "=== [1/4] Running Python unit tests ==="
