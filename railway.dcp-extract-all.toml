@@ -1,0 +1,23 @@
+# Railway config-as-code for the `dcp-extract-all` cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Still set per-service env in the dashboard:
+#   MONITOR_NAME=dcp-extract-all, DATABASE_URL, R2_ACCOUNT_ID, R2_BUCKET_NAME,
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+#   (optional) HC_PING_URL.
+#
+# Runs dcp_extract_changed.py --all --review: re-extracts EVERY active chapter and
+# diffs it against the approved baseline (regulatory_provisions WHERE is_current = TRUE),
+# enqueueing real value changes to dcp_review_queue. NO provision commit.
+#
+# This is the primary semantic-change detector cadence (plan
+# ce-dcp-targeted-semantic-detection-2026-06): decoupled from the noisy byte-change
+# trigger so a re-exported-but-identical PDF produces zero queue items, and a silent
+# in-place amendment (no byte change) is still caught. Quarterly matches DCP amendment
+# frequency and keeps single-IP rate-limit pressure low.
+[build]
+dockerfilePath = "Dockerfile.monitors"
+
+[deploy]
+startCommand = "python scripts/run_monitors.py"
+cronSchedule = "0 4 1 1,4,7,10 *"  # quarterly: 1st of Jan/Apr/Jul/Oct, 04:00 UTC
+restartPolicyType = "NEVER"        # cron job: run to completion, do not restart
