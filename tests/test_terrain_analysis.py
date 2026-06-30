@@ -30,6 +30,7 @@ from services.terrain_analysis import (
     _compute_composite_score,
     _classify_composite,
     _run_tool,
+    _central_crop_bounds,
     _interpret_gradient,
     _interpret_landform,
     _interpret_aspect,
@@ -894,3 +895,34 @@ class TestNarrativeContent:
         expected_types = {"flat", "footslope", "shoulder", "slope", "spur",
                           "ridge", "peak", "hollow", "valley", "pit"}
         assert set(_LANDFORM_SEVERITY.keys()) == expected_types
+
+
+# ---------------------------------------------------------------------------
+# _central_crop_bounds — lot-window sizing (the fix for 500m-buffer over-report)
+# ---------------------------------------------------------------------------
+
+
+class TestCentralCropBounds:
+    """Window sizing for the lot-scoped gradient/elevation/ruggedness findings.
+    Pure arithmetic — guards that they read the lot footprint, not the 1km buffer."""
+
+    def test_central_window_is_small_and_centred(self):
+        # 200x200 over a 1000m box (cell 5m); a 90m window is ~19x19 central cells
+        bounds = _central_crop_bounds(200, 200, buffer_m=500.0, window_m=90.0)
+        assert bounds == (91, 110, 91, 110)
+        r0, r1, c0, c1 = bounds
+        assert r0 > 0 and r1 < 200          # genuinely interior — edges excluded
+        assert (r1 - r0) < 30               # far smaller than the 200-cell array
+
+    def test_min_window_floor(self):
+        # Coarse box (cell 50m): a 90m half-window rounds below the 3px floor
+        r0, r1, c0, c1 = _central_crop_bounds(200, 200, buffer_m=5000.0, window_m=90.0)
+        assert (r1 - r0) == 7 and (c1 - c0) == 7   # 2*3 + 1
+
+    def test_tiny_array_clamps_without_crash(self):
+        assert _central_crop_bounds(4, 4, buffer_m=500.0, window_m=90.0) == (0, 4, 0, 4)
+
+    def test_window_scales_with_cell_size(self):
+        # 200px over a 200m box (buffer 100) -> cell 1m -> 90m window is 91px
+        r0, r1, c0, c1 = _central_crop_bounds(200, 200, buffer_m=100.0, window_m=90.0)
+        assert (r1 - r0) == 91 and (c1 - c0) == 91

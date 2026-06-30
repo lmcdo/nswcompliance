@@ -37,6 +37,19 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 # Constants
 # ---------------------------------------------------------------------------
 
+# DEM buffer half-width (metres) fetched for the terrain chain. The buffer is
+# needed for landform / solar-shadow / drainage context, but site gradient,
+# elevation and ruggedness must be read from the LOT, not the neighbourhood —
+# see _site_values and SITE_WINDOW_M.
+TERRAIN_BUFFER_M = 500.0
+
+# Side length (metres) of the square, centred on the property, used for the
+# gradient / elevation / ruggedness findings. ~90m comfortably covers a typical
+# medium-density lot plus a small margin for geocode offset, while excluding the
+# surrounding terrain that made these findings over-report — a steep bank 400m
+# away is not the building pad.
+SITE_WINDOW_M = 90.0
+
 # Stream extraction threshold for HAND — UNCALIBRATED placeholder.
 # Must be calibrated against Copernicus EMS flood extents (EMSR567/570/586)
 # before FloodSusceptibilityDetail can be shipped to users.
@@ -154,9 +167,11 @@ class TerrainInterpretation(BaseModel):
         "Geoscience Australia 5m DEM (SRTM-derived, ±5m vertical accuracy)"
     )
     methodology_note: str = (
-        "Terrain metrics derived from whitebox-tools geomorphometric analysis on a "
-        "500m buffer around the property centroid. Slope and aspect use the Horn (1981) "
-        "finite-difference method. Landform classification uses the Jasiewicz & Stepinski "
+        "Terrain metrics derived from whitebox-tools geomorphometric analysis. Landform, "
+        "aspect and solar-shadow metrics use a 500m buffer around the property centroid; "
+        "site gradient, elevation and ruggedness are read from a ~90m window over the lot "
+        "footprint so they reflect the building pad, not the neighbourhood. Slope uses the "
+        "Horn (1981) finite-difference method. Landform classification uses the Jasiewicz & Stepinski "
         "(2013) geomorphon algorithm. Daylight fraction computed via annual solar position "
         "modelling (sunrise–sunset, AEST UTC+10). All values are indicative — site-specific "
         "survey data should be used for detailed design."
@@ -282,6 +297,51 @@ def _valid_stats(arr: np.ndarray) -> np.ndarray:
     return arr[np.isfinite(arr)]
 
 
+def _central_crop_bounds(
+    ny: int,
+    nx: int,
+    buffer_m: float = TERRAIN_BUFFER_M,
+    window_m: float = SITE_WINDOW_M,
+) -> tuple[int, int, int, int]:
+    """(r0, r1, c0, c1) of a window_m square centred on a DEM that spans
+    2*buffer_m metres across nx columns. Pure arithmetic (no numpy) so it is
+    unit-testable without native deps. A floor of 3px keeps a minimum window."""
+    cell_m = (2.0 * buffer_m) / nx if nx else 0.0
+    half_px = max(3, int(round((window_m / 2.0) / cell_m))) if cell_m > 0 else 3
+    r0, r1 = max(0, ny // 2 - half_px), min(ny, ny // 2 + half_px + 1)
+    c0, c1 = max(0, nx // 2 - half_px), min(nx, nx // 2 + half_px + 1)
+    return r0, r1, c0, c1
+
+
+def _site_values(
+    arr: np.ndarray,
+    buffer_m: float = TERRAIN_BUFFER_M,
+    window_m: float = SITE_WINDOW_M,
+) -> np.ndarray:
+    """Return the finite values within a central window_m square of the DEM.
+
+    The DEM spans 2*buffer_m metres across by construction (fetch_dem_region),
+    so the ground cell size is (2*buffer_m / n_cols). We crop a window_m square
+    centred on the array — the property footprint — and return its valid values.
+
+    This exists so site gradient / elevation / ruggedness reflect the building
+    pad rather than the whole 500m buffer: averaging a lot's grade over ~1 km²
+    of roads, neighbours and creek-lines over-reports the constraint (a steep
+    bank hundreds of metres away is not the pad).
+
+    Falls back to the full array if the window contains no valid pixels (tiny or
+    heavily-nodata DEMs).
+    """
+    if arr.ndim != 2 or arr.size == 0:
+        return _valid_stats(arr)
+    ny, nx = arr.shape
+    r0, r1, c0, c1 = _central_crop_bounds(ny, nx, buffer_m, window_m)
+    window = _valid_stats(arr[r0:r1, c0:c1])
+    if window.size == 0:
+        return _valid_stats(arr)
+    return window
+
+
 # prior-art-checked: no existing hillshade/shaded-relief renderer in services/
 # (grep hillshade|LightSource|shaded_relief = none). This renders the DEM that
 # _run_terrain_chain already loads into a presentation PNG — it is NOT a data
@@ -366,10 +426,11 @@ def _render_hillshade_png(dem_arr, max_px: int = 256) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 _SLOPE_METHOD = (
-    "Slope computed using Horn (1981) finite-difference method on 5m DEM cells "
-    "within 500m buffer. Mean and maximum values reported. Slope values at 5m "
-    "resolution may understate localised gradients — a 2m cliff within a single "
-    "cell would not be resolved."
+    "Slope computed using Horn (1981) finite-difference method on 5m DEM cells, "
+    "summarised over a ~90m window centred on the property (the lot footprint) "
+    "rather than the wider analysis buffer, so the gradient reflects the building "
+    "pad and not surrounding terrain. Slope values at 5m resolution may understate "
+    "localised gradients — a 2m cliff within a single cell would not be resolved."
 )
 
 _LANDFORM_METHOD = (
@@ -396,16 +457,18 @@ _SOLAR_METHOD = (
 )
 
 _ELEVATION_METHOD = (
-    "Elevation values extracted from the 5m DEM within the 500m analysis buffer. "
+    "Elevation values extracted from the 5m DEM over a ~90m window centred on the "
+    "property (the lot footprint), not the wider analysis buffer. "
     "Values in metres above Australian Height Datum (AHD). Absolute elevation "
     "accuracy is \u00b15m — do not use for flood planning level compliance without "
-    "a registered survey. Relative elevation differences within the buffer are more "
+    "a registered survey. Relative elevation differences across the lot are more "
     "reliable (\u00b11\u20132m) as systematic vertical bias cancels."
 )
 
 _RUGGEDNESS_METHOD = (
     "Terrain ruggedness computed as the standard deviation of slope values (degrees) "
-    "within the 500m analysis buffer. Captures gradient variability rather than "
+    "over a ~90m window centred on the property (the lot footprint), not the wider "
+    "analysis buffer. Captures gradient variability rather than "
     "magnitude — a consistent steep slope has low ruggedness; an undulating surface "
     "has high ruggedness. Features smaller than 5m are not resolved."
 )
@@ -927,13 +990,20 @@ def _build_terrain_interpretation(terrain_dict: dict) -> Optional[TerrainInterpr
 # ---------------------------------------------------------------------------
 
 
-def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dict:
+def _run_terrain_chain(
+    work_dir: str,
+    lat: float = 0.0,
+    lng: float = 0.0,
+    buffer_m: float = TERRAIN_BUFFER_M,
+) -> dict:
     """Run terrain analysis tools on dem.tif in work_dir.
 
     Args:
         work_dir: Directory containing dem.tif
         lat: Property latitude (for solar position in time_in_daylight)
         lng: Property longitude (for solar position in time_in_daylight)
+        buffer_m: Half-width (m) of the fetched DEM box — used to size the
+            central lot window for the site-scoped gradient/elevation/ruggedness.
 
     Returns dict with TerrainAnalysisDetail field values.
     """
@@ -981,6 +1051,15 @@ def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dic
     valid_slope = _valid_stats(slope_arr)
     valid_aspect = _valid_stats(aspect_arr)
 
+    # Site-scoped (lot-footprint) values for the gradient / elevation /
+    # ruggedness findings. These must reflect the building pad, NOT the 500m
+    # neighbourhood — otherwise a steep bank hundreds of metres away inflates
+    # slope/elevation/ruggedness and manufactures a false earthworks/geotech
+    # constraint. Landform, aspect, drainage and solar stay buffer-scoped below
+    # because they are meaningless without surrounding terrain.
+    site_dem = _site_values(dem_arr, buffer_m)
+    site_slope = _site_values(slope_arr, buffer_m)
+
     # Dominant aspect: circular mean
     if len(valid_aspect) > 0:
         rad = np.radians(valid_aspect)
@@ -998,8 +1077,9 @@ def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dic
     centre_aspect = aspect_arr[centre_row, centre_col]
     drainage_dir = _aspect_to_compass(centre_aspect) if np.isfinite(centre_aspect) else None
 
-    # Terrain ruggedness — std dev of slope is a simple proxy
-    ruggedness = float(np.nanstd(valid_slope)) if len(valid_slope) > 0 else None
+    # Terrain ruggedness — std dev of slope over the lot footprint (a steep bank
+    # in the wider buffer is not "my building pad is uneven").
+    ruggedness = float(np.nanstd(site_slope)) if len(site_slope) > 0 else None
 
     # Geomorphon landform at centre pixel
     geomorph_arr = _read_band(work_dir, "geomorphons.tif")
@@ -1016,13 +1096,14 @@ def _run_terrain_chain(work_dir: str, lat: float = 0.0, lng: float = 0.0) -> dic
             daylight_fraction = round(float(centre_daylight), 3)
 
     return {
-        "slope_mean_deg": round(float(np.nanmean(valid_slope)), 2) if len(valid_slope) > 0 else None,
-        "slope_max_deg": round(float(np.nanmax(valid_slope)), 2) if len(valid_slope) > 0 else None,
+        # Site-scoped (lot window): gradient + elevation reflect the building pad
+        "slope_mean_deg": round(float(np.nanmean(site_slope)), 2) if len(site_slope) > 0 else None,
+        "slope_max_deg": round(float(np.nanmax(site_slope)), 2) if len(site_slope) > 0 else None,
         "aspect_dominant_deg": round(float(dominant_aspect), 1) if np.isfinite(dominant_aspect) else None,
         "aspect_direction": _aspect_to_compass(dominant_aspect),
-        "elevation_min_m": round(float(np.nanmin(valid_dem)), 2) if len(valid_dem) > 0 else None,
-        "elevation_max_m": round(float(np.nanmax(valid_dem)), 2) if len(valid_dem) > 0 else None,
-        "elevation_range_m": round(float(np.nanmax(valid_dem) - np.nanmin(valid_dem)), 2) if len(valid_dem) > 0 else None,
+        "elevation_min_m": round(float(np.nanmin(site_dem)), 2) if len(site_dem) > 0 else None,
+        "elevation_max_m": round(float(np.nanmax(site_dem)), 2) if len(site_dem) > 0 else None,
+        "elevation_range_m": round(float(np.nanmax(site_dem) - np.nanmin(site_dem)), 2) if len(site_dem) > 0 else None,
         "drainage_direction": drainage_dir,
         "terrain_ruggedness": round(float(ruggedness), 3) if ruggedness is not None else None,
         "landform_class": landform_class,
@@ -1159,7 +1240,7 @@ def run_terrain_analysis(
     """
     with tempfile.TemporaryDirectory(prefix="wbt_") as work_dir:
         # Fetch DEM and write to work_dir
-        dem_bytes = fetch_dem_region(lat, lng, buffer_m=500)
+        dem_bytes = fetch_dem_region(lat, lng, buffer_m=TERRAIN_BUFFER_M)
         dem_path = os.path.join(work_dir, "dem.tif")
 
         with rasterio.open(dem_bytes) as src:
@@ -1168,8 +1249,9 @@ def run_terrain_analysis(
         with rasterio.open(dem_path, "w", **profile) as dst:
             dst.write(data, 1)
 
-        # Terrain analysis (500m buffer)
-        result = _run_terrain_chain(work_dir, lat=lat, lng=lng)
+        # Terrain analysis: landform/aspect/solar use the full buffer; gradient/
+        # elevation/ruggedness are scoped to the lot window (see _site_values).
+        result = _run_terrain_chain(work_dir, lat=lat, lng=lng, buffer_m=TERRAIN_BUFFER_M)
 
         # Flood susceptibility (larger buffer for catchment context)
         if include_flood:
