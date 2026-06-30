@@ -2,7 +2,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning'
+  connectionString: 'postgresql://postgres@127.0.0.1:5432/nsw_planning'
 });
 
 async function check() {

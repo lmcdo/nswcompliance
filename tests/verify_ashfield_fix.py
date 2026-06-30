@@ -3,7 +3,7 @@ import psycopg2
 import os
 
 # Test both LOCAL and SUPABASE
-LOCAL_URL = 'postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning'
+LOCAL_URL = 'postgresql://postgres@127.0.0.1:5432/nsw_planning'
 
 print("=" * 60)
 print("ASHFIELD FIX VERIFICATION")

@@ -4,7 +4,7 @@ pytestmark = pytest.mark.stale
 """Test the actual queries being run for Ashfield"""
 import psycopg2
 
-conn = psycopg2.connect('postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning')
+conn = psycopg2.connect('postgresql://postgres@127.0.0.1:5432/nsw_planning')
 cur = conn.cursor()
 
 print("=" * 70)

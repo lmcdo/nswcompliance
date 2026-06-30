@@ -248,7 +248,7 @@ NS RECORDS (GoDaddy - don't touch):
 
 ```bash
 # In .env.local
-DATABASE_URL=postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning
+DATABASE_URL=postgresql://postgres@127.0.0.1:5432/nsw_planning
 ```
 
 **127.0.0.1 = localhost** - This won't work on Vercel!

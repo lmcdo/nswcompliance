@@ -1,7 +1,7 @@
 """Verify the Leichhardt query fix will return data"""
 import psycopg2
 
-conn = psycopg2.connect('postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning')
+conn = psycopg2.connect('postgresql://postgres@127.0.0.1:5432/nsw_planning')
 cur = conn.cursor()
 
 # Test the new query
