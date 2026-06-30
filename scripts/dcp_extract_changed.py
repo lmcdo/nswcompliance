@@ -1173,21 +1173,39 @@ def resolve_document_id(cur, council: str, chapter_key: str, dcp_name: str) -> s
     return f"{base}__{chapter_slug}"
 
 
-def fetch_pending_chapters(cur, council_filter: str | None) -> list[dict]:
-    query = """
-        SELECT id, council, chapter_key, chapter_label,
-               r2_current_path, r2_version_label, dcp_name, content_hash
-        FROM dcp_chapter_registry
-        WHERE needs_extraction = TRUE
-          AND is_active = TRUE
-          AND r2_current_path IS NOT NULL
+# prior-art-checked: reuse not viable because this EXTENDS this file's own
+# fetch_pending_chapters/diff_provisions detector (the only DCP provision-diff in the
+# repo); the guard's matches (shadow_detector, transport_proximity_detector) are
+# unrelated satellite products sharing only generic words.
+def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False) -> tuple[str, list]:
+    """Build the chapter-selection query (pure, testable).
+
+    all_chapters=False (default): the legacy reactive trigger — only chapters the
+    byte-change monitor flagged (needs_extraction=TRUE).
+
+    all_chapters=True: re-extract EVERY active chapter and diff vs the approved
+    baseline — the scheduled re-extract-all cadence. Robust to PDF re-exports that the
+    needs_extraction byte-signal false-positives on (plan
+    ce-dcp-targeted-semantic-detection-2026-06). is_active + r2_current_path always required.
     """
+    conds = ["is_active = TRUE", "r2_current_path IS NOT NULL"]
+    if not all_chapters:
+        conds.insert(0, "needs_extraction = TRUE")
     params: list = []
     if council_filter:
-        query += " AND council = %s"
+        conds.append("council = %s")
         params.append(council_filter)
-    query += " ORDER BY council, sort_order"
+    query = (
+        "SELECT id, council, chapter_key, chapter_label, "
+        "r2_current_path, r2_version_label, dcp_name, content_hash "
+        "FROM dcp_chapter_registry WHERE " + " AND ".join(conds)
+        + " ORDER BY council, sort_order"
+    )
+    return query, params
 
+
+def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool = False) -> list[dict]:
+    query, params = _pending_chapters_sql(council_filter, all_chapters)
     cur.execute(query, params)
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -2210,6 +2228,15 @@ def main() -> None:
             "Inspect the file, then re-run without --review to commit."
         ),
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help=(
+            "Re-extract EVERY active chapter and diff vs the approved baseline, not "
+            "just byte-change-flagged ones — the scheduled re-extract-all detector "
+            "cadence. Pair with --review for the quarterly run."
+        ),
+    )
     args = parser.parse_args()
 
     s3 = boto3.client(
@@ -2232,7 +2259,7 @@ def main() -> None:
 
     try:
         cur = conn.cursor()
-        chapters = fetch_pending_chapters(cur, args.council)
+        chapters = fetch_pending_chapters(cur, args.council, all_chapters=args.all)
         cur.close()
     except Exception as exc:
         print(f"[ERROR] Could not query dcp_chapter_registry: {exc}")
