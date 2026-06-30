@@ -27,6 +27,11 @@ COPY scripts/run_monitors.py ./scripts/run_monitors.py
 # which dcp_extract_changed imports.
 COPY scripts/dcp_extract_changed.py ./scripts/dcp_extract_changed.py
 COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
+# Sibling modules dcp_extract_changed imports at runtime: check_provision (review
+# path) and check_gate (commit-path quality gate). Without these the worker
+# ModuleNotFounds mid-run (review path crashed on verify_dcp_formatting).
+COPY scripts/verify_dcp_formatting.py ./scripts/verify_dcp_formatting.py
+COPY scripts/dcp_quality_report.py ./scripts/dcp_quality_report.py
 COPY enrichment/ ./enrichment/
 
 ENV PYTHONPATH=/app:/app/scripts
