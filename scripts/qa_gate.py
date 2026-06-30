@@ -477,12 +477,28 @@ def scan_diff_for_unguarded_nulls(
             if stripped.startswith(("//", "*", "/*")):
                 continue
 
-            # Check window for guards
+            # Guard window: scan BACK to the start of the enclosing function (capped
+            # at 60 lines) so a COUNT(*) inside a Promise.all, or an
+            # `if (rows.length === 0) return` guard higher up the handler, still
+            # counts; plus a few lines FORWARD.
             window_start = max(0, i - 10)
-            window_end = min(len(lines), i + 5)
-            window_text = "".join(lines[window_start:window_end])
+            for b in range(i - 1, max(-1, i - 60), -1):
+                window_start = b
+                if re.search(r'\bfunction\b|=>\s*\{|\basync\s+\w', lines[b]):
+                    break
+            window_text = "".join(lines[window_start:min(len(lines), i + 6)])
 
             guarded = any(p.search(window_text) for p in NULL_GUARD_PATTERNS)
+
+            # Also safe: `const X = <...>.rows[0]` where X is then read via X?.
+            # (assign-then-optional-chain is a common, correct pattern).
+            if not guarded:
+                m = re.search(r'(\w+)\s*=\s*[\w.]+\.rows\[0\]', line)
+                if m:
+                    forward = "".join(lines[i:min(len(lines), i + 10)])
+                    if re.search(rf'\b{re.escape(m.group(1))}\?\.', forward):
+                        guarded = True
+
             if not guarded:
                 errors.append(
                     f"Null guard: {filepath}:{i + 1} accesses .rows[0] without "

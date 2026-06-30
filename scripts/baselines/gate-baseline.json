@@ -2,27 +2,20 @@
   "generated": "report-only baseline of qa_gate scanners across all tracked source",
   "note": "Heuristic findings \u2014 an upper bound; some are false positives (e.g. is_current guard on tables lacking that column). Burn down 'production' first; delete dead 'throwaway' scripts. The gate is diff-scoped, so this does not block; it is a worklist.",
   "totals": {
-    "other": 207,
-    "production": 137,
+    "other": 205,
+    "production": 117,
     "throwaway": 113
   },
-  "total": 457,
+  "total": 435,
   "production_by_scanner": {
     "py-adversarial": 28,
     "db-guard": 35,
-    "null-guard": 23,
     "type-boundary": 26,
     "untyped-method": 9,
-    "silent-failure": 16
+    "silent-failure": 16,
+    "null-guard": 3
   },
   "findings": [
-    {
-      "scanner": "null-guard",
-      "file": "/route.ts",
-      "line": 77,
-      "bucket": "other",
-      "message": "Null guard: frontend-nextjs/app/api/documents/[id]/route.ts:77 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
     {
       "scanner": "silent-failure",
       "file": "/route.ts",
@@ -43,13 +36,6 @@
       "line": 185,
       "bucket": "other",
       "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:185 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "/section-responses/route.ts",
-      "line": 53,
-      "bucket": "other",
-      "message": "Null guard: frontend-nextjs/app/api/da-sessions/[token]/section-responses/route.ts:53 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "py-adversarial",
@@ -1571,13 +1557,6 @@
       "message": "DB guard: enrichment/rule_extraction_pipeline.py:367 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
     },
     {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/browse/section/route.ts",
-      "line": 86,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/browse/section/route.ts:86 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
       "scanner": "type-boundary",
       "file": "frontend-nextjs/app/api/browse/section/route.ts",
       "line": 93,
@@ -1611,13 +1590,6 @@
       "line": 64,
       "bucket": "production",
       "message": "DB guard: frontend-nextjs/app/api/capacity/calculate/route.ts:64 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
-      "line": 123,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/compliance/parking/route.ts:123 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "db-guard",
@@ -1655,20 +1627,6 @@
       "message": "DB guard: frontend-nextjs/app/api/debug-418/route.ts:30 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
     },
     {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
-      "line": 62,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/requirement/route.ts:62 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
-      "line": 75,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/requirement/route.ts:75 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
       "scanner": "silent-failure",
       "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
       "line": 118,
@@ -1690,39 +1648,11 @@
       "message": "Silent failure: frontend-nextjs/app/api/feedback/requirement/route.ts:171 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
     },
     {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/route.ts",
-      "line": 101,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/route.ts:101 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/route.ts",
-      "line": 106,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/route.ts:106 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
-      "line": 72,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/submit/route.ts:72 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
       "scanner": "silent-failure",
       "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
       "line": 148,
       "bucket": "production",
       "message": "Silent failure: frontend-nextjs/app/api/feedback/submit/route.ts:148 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
-      "line": 169,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/submit/route.ts:169 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "silent-failure",
@@ -1737,13 +1667,6 @@
       "line": 196,
       "bucket": "production",
       "message": "Silent failure: frontend-nextjs/app/api/feedback/submit/route.ts:196 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/feedback/suggestion/route.ts",
-      "line": 60,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/feedback/suggestion/route.ts:60 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "silent-failure",
@@ -1781,25 +1704,11 @@
       "message": "Silent failure: frontend-nextjs/app/api/health/route.ts:124 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
     },
     {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/lep/permissibility/route.ts",
-      "line": 41,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/lep/permissibility/route.ts:41 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
       "scanner": "db-guard",
       "file": "frontend-nextjs/app/api/lep/provisions/route.ts",
       "line": 37,
       "bucket": "production",
       "message": "DB guard: frontend-nextjs/app/api/lep/provisions/route.ts:37 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/app/api/permissibility/check/route.ts",
-      "line": 155,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/app/api/permissibility/check/route.ts:155 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "type-boundary",
@@ -2063,34 +1972,6 @@
     {
       "scanner": "null-guard",
       "file": "frontend-nextjs/lib/database/client.ts",
-      "line": 361,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/client.ts:361 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/client.ts",
-      "line": 362,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/client.ts:362 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/client.ts",
-      "line": 363,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/client.ts:363 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/client.ts",
-      "line": 364,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/client.ts:364 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/client.ts",
       "line": 379,
       "bucket": "production",
       "message": "Null guard: frontend-nextjs/lib/database/client.ts:379 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
@@ -2138,46 +2019,11 @@
       "message": "DB guard: frontend-nextjs/lib/database/prp-k7-client.js:208 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
     },
     {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
-      "line": 216,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:216 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
-      "line": 217,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:217 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
-      "line": 218,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:218 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
-      "line": 219,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:219 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
-    },
-    {
       "scanner": "db-guard",
       "file": "frontend-nextjs/lib/database/specialized/provision-search-client.ts",
       "line": 80,
       "bucket": "production",
       "message": "DB guard: frontend-nextjs/lib/database/specialized/provision-search-client.ts:80 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
-    },
-    {
-      "scanner": "null-guard",
-      "file": "frontend-nextjs/lib/database/specialized/provision-search-client.ts",
-      "line": 174,
-      "bucket": "production",
-      "message": "Null guard: frontend-nextjs/lib/database/specialized/provision-search-client.ts:174 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
     },
     {
       "scanner": "db-guard",
