@@ -1,4 +1,4 @@
-import { battleaxeAwareLotWidth } from '../effective-lot-width';
+import { battleaxeAwareLotWidth, battleaxeAwareLotDepth } from '../effective-lot-width';
 
 describe('battleaxeAwareLotWidth', () => {
   describe('battleaxe lots — must use the HEAD width, not the handle frontage', () => {
@@ -70,6 +70,54 @@ describe('battleaxeAwareLotWidth', () => {
     it('returns null when frontage is non-numeric', () => {
       // @ts-expect-error — guarding against bad runtime data
       expect(battleaxeAwareLotWidth({ lotType: 'rectangular', frontage: '12' })).toBeNull();
+    });
+  });
+});
+
+describe('battleaxeAwareLotDepth', () => {
+  describe('battleaxe lots — head depth = head area / head width, not the L-shape depth', () => {
+    it('derives head depth from area and width (not the 32.4m heuristic depth)', () => {
+      const ld = {
+        lotType: 'battleaxe' as const,
+        depth: 32.4,
+        battleaxe: { isBattleaxe: true, mainLotWidth: 70, mainLotArea: 3500 },
+      };
+      expect(battleaxeAwareLotDepth(ld)).toBeCloseTo(50, 5); // 3500 / 70
+    });
+
+    it('falls back to raw depth when head area is missing', () => {
+      const ld = {
+        lotType: 'battleaxe' as const,
+        depth: 32.4,
+        battleaxe: { isBattleaxe: true, mainLotWidth: 70, mainLotArea: null },
+      };
+      expect(battleaxeAwareLotDepth(ld)).toBe(32.4);
+    });
+
+    it('falls back to raw depth when head width is zero (no divide-by-zero)', () => {
+      const ld = {
+        lotType: 'battleaxe' as const,
+        depth: 30,
+        battleaxe: { mainLotWidth: 0, mainLotArea: 1000 },
+      };
+      expect(battleaxeAwareLotDepth(ld)).toBe(30);
+    });
+  });
+
+  describe('non-battleaxe and malformed', () => {
+    it('rectangular lot returns raw depth', () => {
+      expect(battleaxeAwareLotDepth({ lotType: 'rectangular', depth: 40 })).toBe(40);
+    });
+
+    it('does NOT derive for a non-battleaxe lot even with head area present', () => {
+      const ld = { lotType: 'rectangular' as const, depth: 40, battleaxe: { mainLotWidth: 70, mainLotArea: 3500 } };
+      expect(battleaxeAwareLotDepth(ld)).toBe(40);
+    });
+
+    it('returns null for null input or non-numeric depth', () => {
+      expect(battleaxeAwareLotDepth(null)).toBeNull();
+      // @ts-expect-error — bad runtime data
+      expect(battleaxeAwareLotDepth({ lotType: 'rectangular', depth: '40' })).toBeNull();
     });
   });
 });
