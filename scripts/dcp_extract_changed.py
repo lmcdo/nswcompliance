@@ -1213,6 +1213,37 @@ def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool =
 
 # ── Provision diff ──────────────────────────────────────────────────────────
 
+# Count-drop fail-loud guard (false-negative tail). A re-extraction that yields
+# far fewer provisions than the approved baseline is almost always a broken parse,
+# truncated/scanned PDF, or partial fetch — NOT a genuine amendment. The commit
+# path already ABORTs on this (see the provision-count gate in extract_chapter),
+# but on the unattended quarterly --all --review run such a chapter would otherwise
+# be enqueued as an ordinary large diff a human might rubber-stamp. is_count_drop
+# makes it a first-class 'count_drop' status so the review run flags it loudly and
+# the commit path can never full-replace (wipe) on it.
+#
+# Thresholds mirror the existing extract_chapter count gate (prev_count > 20 and
+# new_count < 75% of prev_count). total_new == 0 is intentionally EXCLUDED — a
+# genuine spatial/map chapter legitimately extracts no text and is classified
+# 'map_change'; count_drop is specifically "extracted SOME, but far too few".
+COUNT_DROP_MIN_BASELINE = 20
+COUNT_DROP_RATIO = 0.75
+
+
+def is_count_drop(total_old: int, total_new: int) -> bool:
+    """True when a re-extraction lost a suspicious share of provisions.
+
+    Guards the false-negative tail: total_old must be a meaningful baseline
+    (> COUNT_DROP_MIN_BASELINE) and total_new must be > 0 (zero = map_change,
+    handled separately) but below COUNT_DROP_RATIO of the baseline.
+    """
+    if total_old <= COUNT_DROP_MIN_BASELINE:
+        return False
+    if total_new <= 0:
+        return False
+    return total_new < total_old * COUNT_DROP_RATIO
+
+
 def diff_provisions(
     new_sections: list[dict],
     council: str,
@@ -1225,13 +1256,15 @@ def diff_provisions(
 
     Returns:
         {
-          "status": "ok" | "restructure" | "regeneration_artifact" | "map_change",
+          "status": "ok" | "count_drop" | "restructure" | "regeneration_artifact" | "map_change",
           "changed": [...],    # {ref_number, old_text, new_text, has_numeric_change, old_page, new_page}
           "added": [...],      # {ref_number, new_text, new_page}
           "removed": [...],    # {ref_number, old_text}
           "renumbered": [...], # {old_ref_number, new_ref_number, text}
           "page_shift": int | None,
           "unchanged_count": int,
+          "total_old": int,    # baseline provision count (is_current) for this chapter
+          "total_new": int,    # provisions in the fresh extraction
         }
     """
     # Fetch current DB provisions for this chapter
@@ -1263,6 +1296,7 @@ def diff_provisions(
         "changed": [], "added": [], "removed": [],
         "renumbered": [], "page_shift": None,
         "unchanged_count": 0,
+        "total_old": len(old_provisions), "total_new": len(new_provisions),
     }
 
     matched_old: set[str] = set()
@@ -1333,8 +1367,15 @@ def diff_provisions(
     total_old = len(old_provisions)
     total_new = len(new_provisions)
     total_changes = len(result["changed"]) + len(result["added"]) + len(result["removed"])
+    result["total_old"] = total_old
+    result["total_new"] = total_new
 
-    if total_old > 0 and total_changes / total_old > 0.5:
+    # Count-drop guard runs FIRST: a suspicious provision loss would otherwise be
+    # misread as 'restructure', which on the commit path triggers a full-replace
+    # (wipe). Flag it distinctly so the commit path skips and the review run alerts.
+    if is_count_drop(total_old, total_new):
+        result["status"] = "count_drop"
+    elif total_old > 0 and total_changes / total_old > 0.5:
         # >50% of provisions changed/added/removed — wholesale restructure or extraction failure
         result["status"] = "restructure"
     elif len(result["changed"]) > 0 and len(result["changed"]) > 0.3 * total_old:
@@ -1712,6 +1753,18 @@ def extract_chapter(
               + f"  [status={status}]")
 
         # Anomaly gates — abort before touching DB
+        if status == "count_drop":
+            # Fail-loud, fail-safe: the extraction lost a suspicious share of
+            # provisions vs the approved baseline. NEVER full-replace on this (it
+            # would wipe real provisions from a broken parse). Retain
+            # needs_extraction for retry and surface as a failure.
+            print(f"    [SKIP] count_drop — extracted {diff.get('total_new')} provisions "
+                  f"vs {diff.get('total_old')} baseline "
+                  f"(<{int(COUNT_DROP_RATIO*100)}%). Likely broken parse/scanned PDF, "
+                  f"NOT an amendment. Refusing to replace; investigate before re-extract.")
+            cur.close()
+            return False, None
+
         if status == "regeneration_artifact":
             print(f"    [SKIP] regeneration_artifact — PDF re-exported with no substantive "
                   f"changes ({n_changed} tiny diffs across {n_same + n_changed} provisions). "
@@ -2069,6 +2122,11 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
             ds = diff["status"]
             status_label = {
                 "ok": "ok",
+                "count_drop": (
+                    f"⚠ SUSPECT COUNT DROP — extracted {diff.get('total_new')} vs "
+                    f"{diff.get('total_old')} baseline; likely broken parse, DO NOT approve "
+                    f"without checking the source PDF"
+                ),
                 "restructure": "RESTRUCTURE (full replace needed)",
                 "regeneration_artifact": "REGENERATION ARTIFACT (no substantive changes)",
                 "map_change": "MAP/SPATIAL CHANGE (no text to extract)",
@@ -2303,6 +2361,25 @@ def main() -> None:
         print(f"\n  Open this file and inspect section lists + sample provision texts.")
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
+
+        # Fail-loud: name any SUSPECT count-drop chapters so the unattended
+        # quarterly run surfaces them in the run log (run_monitors captures stdout).
+        # These are NOT auto-committed and must be checked against the source PDF
+        # before approval — they are usually a broken parse, not a real amendment.
+        suspect = [
+            ch for ch in review_chapters
+            if (ch.get("diff") or {}).get("status") == "count_drop"
+        ]
+        if suspect:
+            print(f"\n  {'!'*58}")
+            print(f"  🚨 {len(suspect)} chapter(s) flagged SUSPECT (possible extraction failure):")
+            for ch in suspect:
+                d = ch.get("diff") or {}
+                print(f"     - [{ch.get('council')}] {ch.get('chapter_key')}: "
+                      f"{d.get('total_new')} extracted vs {d.get('total_old')} baseline")
+            print(f"  Do NOT approve these without checking the source PDF.")
+            print(f"  {'!'*58}")
+
         conn.close()
         sys.exit(2)  # exit 2 = review file written, triggers workflow quality gate
 
