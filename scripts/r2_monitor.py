@@ -56,6 +56,29 @@ class WAFBlockError(Exception):
     pass
 
 
+class TransientFetchError(Exception):
+    """Raised when a fetch fails for a transient reason (timeout, 429 after retries,
+    network blip). Like WAFBlockError this is INFRASTRUCTURE, not a data problem, so
+    it must NOT fail the run (exit 1) — it is retried next cycle. A chapter that fails
+    transiently every run surfaces via its check_failures>=3 counter, not a red alert."""
+    pass
+
+
+def run_exit_code(n_changed: int, n_real_failed: int) -> int:
+    """The monitor's exit-code contract (pure, testable).
+
+    1 = REAL failure (content/parse/DB error) — pages a human.
+    2 = content changes detected (triggers extraction), no real failures.
+    0 = clean (no real failures, no changes). Transient/WAF infra failures are
+        excluded from n_real_failed, so they never produce a 1 — they retry quietly.
+    """
+    if n_real_failed > 0:
+        return 1
+    if n_changed > 0:
+        return 2
+    return 0
+
+
 @dataclass
 class DiffResult:
     url_same:     list[str] = field(default_factory=list)   # chapter_keys: URL unchanged
@@ -234,7 +257,7 @@ def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures
             print(f"    [attempt {attempt}/{retries}] {exc}")
             if attempt < retries:
                 time.sleep(2 * attempt)
-    raise RuntimeError(f"Failed to download after {retries} attempts: {url}")
+    raise TransientFetchError(f"Failed to download after {retries} attempts (transient): {url}")
 
 
 def next_version_label(current: str) -> str:
@@ -596,6 +619,7 @@ def run_monitor(
         "skipped_no_url": 0,
         "hub_alerts": [],
         "waf_blocked": [],
+        "transient": [],
     }
 
     # Spread the load across the run: randomise council order + a paced gap
@@ -945,8 +969,9 @@ def run_monitor(
                 results["checked"] += 1
 
             except WAFBlockError as exc:
-                # 403 WAF/access denial — skip without incrementing check_failures.
-                # Infrastructure problem (CDN blocking GH Actions IP), not a data issue.
+                # 403 WAF/access denial — infrastructure (CDN blocking the IP), not a
+                # data issue. Bucketed separately and does NOT count as a real failure,
+                # so it never fails the run (exit 1).
                 print(f"    [WAF-BLOCKED] {exc}")
                 cur.execute(
                     "UPDATE dcp_chapter_registry SET url_last_checked=%s WHERE id=%s",
@@ -955,8 +980,27 @@ def run_monitor(
                 if not dry_run:
                     conn.commit()
                 council_failed += 1
-                results["failed"] += 1
                 results["waf_blocked"].append({
+                    "council": ch_council,
+                    "chapter_key": key,
+                    "label": label,
+                    "url": url,
+                })
+
+            except TransientFetchError as exc:
+                # Timeout / 429-after-retries / network blip — infrastructure, retried
+                # next cycle. Bump the chapter's check_failures so a PERSISTENTLY
+                # unfetchable chapter still surfaces (via the >=3 digest), but do NOT
+                # count it as a real failure, so a one-off blip never pages.
+                print(f"    [TRANSIENT] {exc}")
+                cur.execute(
+                    "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=%s WHERE id=%s",
+                    (now, failures + 1, chapter_id),
+                )
+                if not dry_run:
+                    conn.commit()
+                council_failed += 1
+                results["transient"].append({
                     "council": ch_council,
                     "chapter_key": key,
                     "label": label,
@@ -1196,19 +1240,26 @@ def main():
         )
 
     # ── Telegram notifications ───────────────────────────────────────────────
-    # Always notify so we have proof the pipeline ran (or didn't run cleanly).
+    # Always notify so we have proof the pipeline ran. Only REAL failures (content/
+    # parse/DB errors) page; transient + WAF infra failures are noted but never fail
+    # the run, and only confirmed content changes trigger extraction.
     total_checked = results["checked"] + results["unchanged"]
+    n_transient = len(results["transient"])
+    n_waf = len(results["waf_blocked"])
+    real_failed = results["failed"]  # transient + WAF are bucketed separately, not here
+    exit_code = run_exit_code(n_changed, real_failed)
+    infra_note = (
+        f"\n  {n_transient} transient + {n_waf} WAF-blocked (infra — retried next run)."
+        if (n_transient or n_waf) else ""
+    )
 
-    if results["failed"] > 0 and n_changed == 0:
-        # BUG FIX: previously this branch exited 0 — looked like "all clear"
-        # when actually nothing was successfully checked. Now exits 1 to fail CI.
+    if exit_code == 1:
         msg = (
             f"DCP Monitor ERROR\n"
-            f"{results['failed']}/{total_checked} chapters failed to check.\n"
-            f"No changes detected but run was not clean — investigate download errors."
+            f"{real_failed}/{total_checked} chapters failed to check (real errors).{infra_note}\n"
+            f"Investigate — this is a data/extraction problem, not infra."
         )
-        print(f"\n  ERROR: {results['failed']} chapters failed with no changes detected.")
-        print("  This is not a clean 'all current' result — run should be investigated.")
+        print(f"\n  ERROR: {real_failed} real failures (excludes transient/WAF infra).")
         send_telegram(msg)
         sys.exit(1)
 
@@ -1223,22 +1274,18 @@ def main():
             for c in results["changed"]
         )
         warn_text = ("\n" + "\n".join(warnings)) if warnings else ""
-        fail_text = f"\n  {results['failed']} chapter(s) failed to check." if results["failed"] else ""
         send_telegram(
             f"DCP Monitor: {n_changed} chapter(s) changed\n"
-            f"{chapters_list}{fail_text}{warn_text}\n\n"
+            f"{chapters_list}{infra_note}{warn_text}\n\n"
             f"Review file will be generated — approve before provisions go live."
         )
 
         print(f"\n  Next step: run the extraction pipeline on changed chapters.")
         print(f"  Chapters flagged with needs_extraction=TRUE in dcp_chapter_registry.")
-
-        if results["failed"] > 0:
-            sys.exit(1)
-        sys.exit(2)  # exit code 2 = changes detected (CI trigger)
+        sys.exit(exit_code)  # 2 = changes detected (CI trigger); real_failed==0 here
     else:
         send_telegram(
-            f"DCP Monitor: no changes ({results['checked']} chapters checked)"
+            f"DCP Monitor: no changes ({results['checked']} chapters checked){infra_note}"
         )
         print("\n  No changes detected. All chapters are current.")
         sys.exit(0)
