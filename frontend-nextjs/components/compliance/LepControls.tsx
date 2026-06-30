@@ -35,15 +35,17 @@ export function LepControls({
   strataInfo,
   developmentType,
 }: LepControlsProps) {
-  const lepName = constraints?.lga 
-    ? `${constraints.lga} Local Environmental Plan 2022` 
-    : 'Local Environmental Plan';
-
   // Extract layer metadata for child cards
   const landZoningLayer = planningLayers?.find(
     (layer) => layer.layerName === 'Land Zoning Map'
   );
   const zoneResult = landZoningLayer?.results?.[0];
+
+  // Use the actual LEP/EPI instrument name returned by the Planning Portal
+  // (e.g. "Sydney Local Environmental Plan 2012"). Never fabricate a year:
+  // fall back to the council name without a year when no EPI Name is available.
+  const lepName = zoneResult?.['EPI Name']
+    || (constraints?.lga ? `${constraints.lga} Local Environmental Plan` : 'Local Environmental Plan');
 
   return (
     <div className="space-y-6">
