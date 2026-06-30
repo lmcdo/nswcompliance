@@ -1,0 +1,3303 @@
+{
+  "generated": "report-only baseline of qa_gate scanners across all tracked source",
+  "note": "Heuristic findings \u2014 an upper bound; some are false positives (e.g. is_current guard on tables lacking that column). Burn down 'production' first; delete dead 'throwaway' scripts. The gate is diff-scoped, so this does not block; it is a worklist.",
+  "totals": {
+    "other": 208,
+    "production": 148,
+    "throwaway": 113
+  },
+  "total": 469,
+  "production_by_scanner": {
+    "py-adversarial": 28,
+    "db-guard": 35,
+    "null-guard": 23,
+    "type-boundary": 26,
+    "untyped-method": 9,
+    "silent-failure": 27
+  },
+  "findings": [
+    {
+      "scanner": "null-guard",
+      "file": "/route.ts",
+      "line": 77,
+      "bucket": "other",
+      "message": "Null guard: frontend-nextjs/app/api/documents/[id]/route.ts:77 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "/route.ts",
+      "line": 77,
+      "bucket": "other",
+      "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:77 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "/route.ts",
+      "line": 145,
+      "bucket": "other",
+      "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:145 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "/route.ts",
+      "line": 185,
+      "bucket": "other",
+      "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:185 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "/route.ts",
+      "line": 237,
+      "bucket": "other",
+      "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:237 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "/section-responses/route.ts",
+      "line": 53,
+      "bucket": "other",
+      "message": "Null guard: frontend-nextjs/app/api/da-sessions/[token]/section-responses/route.ts:53 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "?",
+      "line": 0,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/validate_parking_extraction.py opens a psycopg2 connection but no .close() or finally: block found. Connection leak risk."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "?",
+      "line": 0,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/verify_dcp_formatting.py opens a psycopg2 connection but no .close() or finally: block found. Connection leak risk."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "?",
+      "line": 0,
+      "bucket": "other",
+      "message": "Python adversarial: services/drawdown_verify.py opens a psycopg2 connection but no .close() or finally: block found. Connection leak risk."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "app/api/compliance/setbacks/route.ts",
+      "line": 196,
+      "bucket": "other",
+      "message": "Silent failure: app/api/compliance/setbacks/route.ts:196 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "app/property/enhanced/page.tsx",
+      "line": 261,
+      "bucket": "other",
+      "message": "Type boundary: app/property/enhanced/page.tsx:261 uses '{formerCouncilArea && <...>}' but formerCouncilArea may be numeric (0 is falsy). Use '{formerCouncilArea != null && <...>}' or '{!!formerCouncilArea && <...>}' instead."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "check-pattern-book-db.js",
+      "line": 49,
+      "bucket": "other",
+      "message": "DB guard: check-pattern-book-db.js:49 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "check-pattern-book-db.js",
+      "line": 52,
+      "bucket": "other",
+      "message": "DB guard: check-pattern-book-db.js:52 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "deploy/flyio-legislation-monitor/legislation_monitor.py",
+      "line": 242,
+      "bucket": "other",
+      "message": "Python adversarial: deploy/flyio-legislation-monitor/legislation_monitor.py:242 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "deploy/flyio-legislation-monitor/pco_client.py",
+      "line": 89,
+      "bucket": "other",
+      "message": "Python adversarial: deploy/flyio-legislation-monitor/pco_client.py:89 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "deploy/flyio-legislation-monitor/pco_client.py",
+      "line": 90,
+      "bucket": "other",
+      "message": "Python adversarial: deploy/flyio-legislation-monitor/pco_client.py:90 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "deploy/flyio-legislation-monitor/pco_client.py",
+      "line": 118,
+      "bucket": "other",
+      "message": "Python adversarial: deploy/flyio-legislation-monitor/pco_client.py:118 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "deploy/flyio-legislation-monitor/pco_client.py",
+      "line": 179,
+      "bucket": "other",
+      "message": "Python adversarial: deploy/flyio-legislation-monitor/pco_client.py:179 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/check-har-roof.py",
+      "line": 12,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/check-har-roof.py:12 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/check-har-roof.py",
+      "line": 13,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/check-har-roof.py:13 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pattern-book-db.js",
+      "line": 41,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check-pattern-book-db.js:41 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pattern-book-db.js",
+      "line": 44,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check-pattern-book-db.js:44 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-sepp-counts.js",
+      "line": 67,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check-sepp-counts.js:67 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-sepp-structure.js",
+      "line": 11,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check-sepp-structure.js:11 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_pg_schema.js",
+      "line": 20,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check_pg_schema.js:20 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_postgres_zones.js",
+      "line": 22,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check_postgres_zones.js:22 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_postgres_zones.js",
+      "line": 40,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check_postgres_zones.js:40 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_postgres_zones.js",
+      "line": 57,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/check_postgres_zones.js:57 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/count_provisions_analysis.js",
+      "line": 14,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/count_provisions_analysis.js:14 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/count_provisions_analysis.js",
+      "line": 21,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/count_provisions_analysis.js:21 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/count_provisions_analysis.js",
+      "line": 34,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/count_provisions_analysis.js:34 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/count_provisions_analysis.js",
+      "line": 55,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/count_provisions_analysis.js:55 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/count_provisions_analysis.js",
+      "line": 68,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/count_provisions_analysis.js:68 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/list-har-topics.py",
+      "line": 11,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/list-har-topics.py:11 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m1.py",
+      "line": 115,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m1.py:115 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m1.py",
+      "line": 116,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m1.py:116 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m1.py",
+      "line": 209,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m1.py:209 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m2.py",
+      "line": 21,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m2.py:21 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m2.py",
+      "line": 22,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m2.py:22 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m2.py",
+      "line": 105,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m2.py:105 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_prp_m2.py",
+      "line": 166,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_prp_m2.py:166 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_ui_swap.py",
+      "line": 159,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_ui_swap.py:159 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_ui_swap.py",
+      "line": 160,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_ui_swap.py:160 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_ui_swap.py",
+      "line": 254,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_ui_swap.py:254 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/migratePRPs/verification/verify_ui_swap.py",
+      "line": 256,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/migratePRPs/verification/verify_ui_swap.py:256 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/pages/api/development-types.ts",
+      "line": 161,
+      "bucket": "other",
+      "message": "Silent failure: frontend-nextjs/pages/api/development-types.ts:161 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "frontend-nextjs/parse-har.py",
+      "line": 12,
+      "bucket": "other",
+      "message": "Python adversarial: frontend-nextjs/parse-har.py:12 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 152,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:152 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 178,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:178 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 252,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:252 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 335,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:335 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 381,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:381 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 406,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:406 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_fixed.js",
+      "line": 432,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_fixed.js:432 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 152,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:152 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 177,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:177 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 251,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:251 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 334,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:334 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 379,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:379 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 404,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:404 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/prp_k7_postgresql_implementation.js",
+      "line": 429,
+      "bucket": "other",
+      "message": "DB guard: frontend-nextjs/prp_k7_postgresql_implementation.js:429 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "lib/semantic-compliance-bridge.ts",
+      "line": 152,
+      "bucket": "other",
+      "message": "Type boundary: lib/semantic-compliance-bridge.ts:152 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/add_pdf_metadata_columns.py",
+      "line": 87,
+      "bucket": "other",
+      "message": "DB guard: migrations/add_pdf_metadata_columns.py:87 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/add_pdf_metadata_columns.py",
+      "line": 132,
+      "bucket": "other",
+      "message": "DB guard: migrations/add_pdf_metadata_columns.py:132 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/backfill_pdf_metadata.py",
+      "line": 129,
+      "bucket": "other",
+      "message": "DB guard: migrations/backfill_pdf_metadata.py:129 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/backfill_pdf_metadata.py",
+      "line": 218,
+      "bucket": "other",
+      "message": "DB guard: migrations/backfill_pdf_metadata.py:218 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/backfill_pdf_metadata.py",
+      "line": 270,
+      "bucket": "other",
+      "message": "DB guard: migrations/backfill_pdf_metadata.py:270 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/delete_orphaned_provisions.py",
+      "line": 52,
+      "bucket": "other",
+      "message": "DB guard: migrations/delete_orphaned_provisions.py:52 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/delete_orphaned_provisions.py",
+      "line": 87,
+      "bucket": "other",
+      "message": "DB guard: migrations/delete_orphaned_provisions.py:87 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/delete_orphaned_provisions.py",
+      "line": 124,
+      "bucket": "other",
+      "message": "DB guard: migrations/delete_orphaned_provisions.py:124 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/delete_orphaned_provisions.py",
+      "line": 177,
+      "bucket": "other",
+      "message": "DB guard: migrations/delete_orphaned_provisions.py:177 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/fix_orphaned_document_ids.py",
+      "line": 80,
+      "bucket": "other",
+      "message": "DB guard: migrations/fix_orphaned_document_ids.py:80 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "migrations/fix_orphaned_document_ids.py",
+      "line": 209,
+      "bucket": "other",
+      "message": "DB guard: migrations/fix_orphaned_document_ids.py:209 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/add_new_chapter.py",
+      "line": 149,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/add_new_chapter.py:149 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/add_new_chapter.py",
+      "line": 170,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/add_new_chapter.py:170 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/analyze_zone_data_in_outputs.py",
+      "line": 151,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/analyze_zone_data_in_outputs.py:151 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/analyze_zone_data_in_outputs.py",
+      "line": 152,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/analyze_zone_data_in_outputs.py:152 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/analyze_zone_data_in_outputs.py",
+      "line": 156,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/analyze_zone_data_in_outputs.py:156 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/analyze_zone_data_in_outputs.py",
+      "line": 178,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/analyze_zone_data_in_outputs.py:178 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/batch_lep_scrape.py",
+      "line": 58,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/batch_lep_scrape.py:58 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/build_compliance_rules.py",
+      "line": 237,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/build_compliance_rules.py:237 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/build_comprehensive_zone_mapping.py",
+      "line": 203,
+      "bucket": "other",
+      "message": "DB guard: scripts/build_comprehensive_zone_mapping.py:203 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/build_comprehensive_zone_mapping.py",
+      "line": 303,
+      "bucket": "other",
+      "message": "DB guard: scripts/build_comprehensive_zone_mapping.py:303 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/compare_apis.py",
+      "line": 85,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/compare_apis.py:85 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/compare_apis.py",
+      "line": 87,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/compare_apis.py:87 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/compare_apis.py",
+      "line": 110,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/compare_apis.py:110 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 335,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:335 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 349,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:349 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 350,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:350 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 353,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:353 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 354,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:354 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 355,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:355 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 356,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:356 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 413,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:413 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/create_lightrag_demo.py",
+      "line": 431,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/create_lightrag_demo.py:431 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/dcp_preflight.py",
+      "line": 372,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/dcp_preflight.py:372 calls int(page_num_str) but page_num_str may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/dcp_preflight.py",
+      "line": 382,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/dcp_preflight.py:382 calls int(page_num_str) but page_num_str may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/dcp_preflight.py",
+      "line": 392,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/dcp_preflight.py:392 calls int(page_num_str) but page_num_str may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/dcp_preflight.py",
+      "line": 831,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/dcp_preflight.py:831 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/direct_nsw_query.py",
+      "line": 192,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/direct_nsw_query.py:192 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/download_hawkesbury_rasters.py",
+      "line": 19,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/download_hawkesbury_rasters.py:19 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/download_hawkesbury_rasters.py",
+      "line": 20,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/download_hawkesbury_rasters.py:20 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/download_hawkesbury_rasters.py",
+      "line": 21,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/download_hawkesbury_rasters.py:21 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/download_hawkesbury_rasters.py",
+      "line": 22,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/download_hawkesbury_rasters.py:22 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/enrichment/enrich_provision_metadata.py",
+      "line": 175,
+      "bucket": "other",
+      "message": "DB guard: scripts/enrichment/enrich_provision_metadata.py:175 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/evaluate_rag_effectiveness.py",
+      "line": 80,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/evaluate_rag_effectiveness.py:80 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/evaluate_rag_effectiveness.py",
+      "line": 496,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/evaluate_rag_effectiveness.py:496 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/extract_from_documents_table.py",
+      "line": 129,
+      "bucket": "other",
+      "message": "DB guard: scripts/extract_from_documents_table.py:129 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/extract_from_documents_table.py",
+      "line": 208,
+      "bucket": "other",
+      "message": "DB guard: scripts/extract_from_documents_table.py:208 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/extract_toc.py",
+      "line": 278,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/extract_toc.py:278 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fix_id_sequence.py",
+      "line": 13,
+      "bucket": "other",
+      "message": "DB guard: scripts/fix_id_sequence.py:13 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fix_leichhardt_part_d_topics.py",
+      "line": 158,
+      "bucket": "other",
+      "message": "DB guard: scripts/fix_leichhardt_part_d_topics.py:158 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/hub_scrapers/city_of_sydney.py",
+      "line": 87,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/hub_scrapers/city_of_sydney.py:87 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_copernicus_ems.py",
+      "line": 108,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_copernicus_ems.py:108 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_copernicus_ems.py",
+      "line": 149,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_copernicus_ems.py:149 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_copernicus_ems.py",
+      "line": 186,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_copernicus_ems.py:186 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_copernicus_ems.py",
+      "line": 198,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_copernicus_ems.py:198 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_copernicus_ems.py",
+      "line": 265,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_copernicus_ems.py:265 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_flood_studies.py",
+      "line": 997,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_flood_studies.py:997 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_flood_studies.py",
+      "line": 1110,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_flood_studies.py:1110 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_flood_studies.py",
+      "line": 1155,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_flood_studies.py:1155 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_flood_studies.py",
+      "line": 1185,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_flood_studies.py:1185 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/ingest_flood_studies.py",
+      "line": 1204,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/ingest_flood_studies.py:1204 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/json_to_ts_stats.py",
+      "line": 65,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/json_to_ts_stats.py:65 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/json_to_ts_stats.py",
+      "line": 135,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/json_to_ts_stats.py:135 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/lightrag_compliance_processor.py",
+      "line": 29,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/lightrag_compliance_processor.py:29 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/lightrag_compliance_processor.py",
+      "line": 30,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/lightrag_compliance_processor.py:30 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/lightrag_compliance_processor.py",
+      "line": 56,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/lightrag_compliance_processor.py:56 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/lightrag_compliance_processor.py",
+      "line": 96,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/lightrag_compliance_processor.py:96 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/mutation_health.py",
+      "line": 85,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/mutation_health.py:85 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/mutation_health.py",
+      "line": 86,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/mutation_health.py:86 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/parse_setback_sections.py",
+      "line": 169,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/parse_setback_sections.py:169 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/pco_client.py",
+      "line": 89,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/pco_client.py:89 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/pco_client.py",
+      "line": 90,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/pco_client.py:90 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/pco_client.py",
+      "line": 118,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/pco_client.py:118 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/pco_client.py",
+      "line": 179,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/pco_client.py:179 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/process_inner_west_semantic.py",
+      "line": 289,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/process_inner_west_semantic.py:289 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/process_real_documents.py",
+      "line": 306,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/process_real_documents.py:306 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/process_real_documents.py",
+      "line": 313,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/process_real_documents.py:313 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/process_real_documents.py",
+      "line": 314,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/process_real_documents.py:314 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/process_real_documents.py",
+      "line": 337,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/process_real_documents.py:337 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k8_completion_tracker.py",
+      "line": 52,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k8_completion_tracker.py:52 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k8_completion_tracker.py",
+      "line": 57,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k8_completion_tracker.py:57 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k8_completion_tracker.py",
+      "line": 74,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k8_completion_tracker.py:74 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k8_completion_tracker.py",
+      "line": 91,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k8_completion_tracker.py:91 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k9_enhanced_zone_inference.py",
+      "line": 90,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k9_enhanced_zone_inference.py:90 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k9_enhanced_zone_inference.py",
+      "line": 295,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k9_enhanced_zone_inference.py:295 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k9_enhanced_zone_inference.py",
+      "line": 298,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k9_enhanced_zone_inference.py:298 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k9_enhanced_zone_inference.py",
+      "line": 333,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k9_enhanced_zone_inference.py:333 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/prp_k9_enhanced_zone_inference.py",
+      "line": 339,
+      "bucket": "other",
+      "message": "DB guard: scripts/prp_k9_enhanced_zone_inference.py:339 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/r2_upload_pdfs.py",
+      "line": 1101,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/r2_upload_pdfs.py:1101 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/refresh_stats_job.py",
+      "line": 91,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/refresh_stats_job.py:91 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/reset_postgresql_database.py",
+      "line": 105,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/reset_postgresql_database.py:105 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/scrape_cb_lep_pdf.py",
+      "line": 57,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/scrape_cb_lep_pdf.py:57 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/security_scan.py",
+      "line": 75,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/security_scan.py:75 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/smoke_parse.py",
+      "line": 35,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/smoke_parse.py:35 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/unified_document_processor.py",
+      "line": 269,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/unified_document_processor.py:269 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/unified_document_processor.py",
+      "line": 305,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/unified_document_processor.py:305 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/unified_document_processor.py",
+      "line": 313,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/unified_document_processor.py:313 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/validate_flood_e2e.py",
+      "line": 212,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/validate_flood_e2e.py:212 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/validate_requirement_data.py",
+      "line": 74,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/validate_requirement_data.py:74 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 116,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:116 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 120,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:120 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 123,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:123 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 129,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:129 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 162,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:162 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 222,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:222 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 248,
+      "bucket": "other",
+      "message": "DB guard: scripts/validate_sqlite_source.py:248 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/validate_sqlite_source.py",
+      "line": 331,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/validate_sqlite_source.py:331 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/verify_controls_monitoring.py",
+      "line": 49,
+      "bucket": "other",
+      "message": "DB guard: scripts/verify_controls_monitoring.py:49 references 'dcp_setback_controls' but none of ['is_current'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/verify_dcp_formatting.py",
+      "line": 293,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/verify_dcp_formatting.py:293 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/verify_dcp_formatting.py",
+      "line": 343,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/verify_dcp_formatting.py:343 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/verify_dcp_formatting.py",
+      "line": 344,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/verify_dcp_formatting.py:344 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/verify_dcp_formatting.py",
+      "line": 389,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/verify_dcp_formatting.py:389 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/verify_inserted_provisions.py",
+      "line": 15,
+      "bucket": "other",
+      "message": "DB guard: scripts/verify_inserted_provisions.py:15 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/verify_inserted_provisions.py",
+      "line": 52,
+      "bucket": "other",
+      "message": "DB guard: scripts/verify_inserted_provisions.py:52 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_detection_audit.py",
+      "line": 102,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_detection_audit.py:102 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/xref_detection_audit.py",
+      "line": 427,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/xref_detection_audit.py:427 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/xref_detection_audit.py",
+      "line": 473,
+      "bucket": "other",
+      "message": "Python adversarial: scripts/xref_detection_audit.py:473 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_pretask_setup.py",
+      "line": 144,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_pretask_setup.py:144 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_pretask_setup.py",
+      "line": 196,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_pretask_setup.py:196 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_pretask_setup.py",
+      "line": 222,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_pretask_setup.py:222 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_pretask_setup.py",
+      "line": 262,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_pretask_setup.py:262 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/xref_pretask_setup.py",
+      "line": 350,
+      "bucket": "other",
+      "message": "DB guard: scripts/xref_pretask_setup.py:350 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/zone_verification_suite.py",
+      "line": 124,
+      "bucket": "other",
+      "message": "DB guard: scripts/zone_verification_suite.py:124 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 255,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:255 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 261,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:261 calls int(avg_text_length) but avg_text_length may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 262,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:262 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 263,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:263 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 265,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:265 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 345,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:345 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/02_parse_markdown_to_json.py",
+      "line": 346,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/02_parse_markdown_to_json.py:346 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/03_update_database_schema.py",
+      "line": 72,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/03_update_database_schema.py:72 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/03_update_database_schema.py",
+      "line": 122,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/03_update_database_schema.py:122 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/03_update_database_schema.py",
+      "line": 151,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/03_update_database_schema.py:151 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/03_update_database_schema.py",
+      "line": 220,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/03_update_database_schema.py:220 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions.py",
+      "line": 72,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions.py:72 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions.py",
+      "line": 233,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions.py:233 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions.py",
+      "line": 339,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions.py:339 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions_FIXED.py",
+      "line": 109,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions_FIXED.py:109 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions_FIXED.py",
+      "line": 297,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions_FIXED.py:297 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions_FIXED.py",
+      "line": 360,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions_FIXED.py:360 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/04_import_full_provisions_FIXED.py",
+      "line": 510,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/04_import_full_provisions_FIXED.py:510 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/05_verify_completeness.py",
+      "line": 77,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/05_verify_completeness.py:77 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/05_verify_completeness.py",
+      "line": 137,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/05_verify_completeness.py:137 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/05_verify_completeness.py",
+      "line": 242,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/05_verify_completeness.py:242 calls float(avg) but avg may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "sepp_full_text_extraction/05_verify_completeness.py",
+      "line": 250,
+      "bucket": "other",
+      "message": "DB guard: sepp_full_text_extraction/05_verify_completeness.py:250 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "sepp_full_text_extraction/run_all.py",
+      "line": 197,
+      "bucket": "other",
+      "message": "Python adversarial: sepp_full_text_extraction/run_all.py:197 calls int(max_time) but max_time may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/extractors/applicability_tagger.py",
+      "line": 370,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/extractors/applicability_tagger.py:370 uses .get(key, {}) but if key exists with value None, the default is NOT used. Use 'val or {}' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/extractors/layer_topic_tagger.py",
+      "line": 507,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/extractors/layer_topic_tagger.py:507 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/extractors/rule_schema.py",
+      "line": 202,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/extractors/rule_schema.py:202 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/extractors/rule_schema.py",
+      "line": 207,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/extractors/rule_schema.py:207 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 352,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:352 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 451,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:451 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 529,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:529 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 599,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:599 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 670,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:670 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 744,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:744 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/pipeline.py",
+      "line": 820,
+      "bucket": "production",
+      "message": "DB guard: enrichment/pipeline.py:820 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/rule_extraction_pipeline.py",
+      "line": 93,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/rule_extraction_pipeline.py:93 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/rule_extraction_pipeline.py",
+      "line": 230,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/rule_extraction_pipeline.py:230 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "enrichment/rule_extraction_pipeline.py",
+      "line": 346,
+      "bucket": "production",
+      "message": "Python adversarial: enrichment/rule_extraction_pipeline.py:346 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "enrichment/rule_extraction_pipeline.py",
+      "line": 367,
+      "bucket": "production",
+      "message": "DB guard: enrichment/rule_extraction_pipeline.py:367 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/browse/section/route.ts",
+      "line": 86,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/browse/section/route.ts:86 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/app/api/browse/section/route.ts",
+      "line": 93,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/app/api/browse/section/route.ts:93 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/app/api/canibuildit/check/route.ts",
+      "line": 241,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/app/api/canibuildit/check/route.ts:241 calls zoneRaw.split() but zoneRaw comes from untyped input (body/params/query). Add 'typeof zoneRaw === \"string\"' guard or use optional chaining (zoneRaw?.split())."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+      "line": 176,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/canibuildit/lead/route.ts:176 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/app/api/capacity/calculate/route.ts",
+      "line": 49,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/app/api/capacity/calculate/route.ts:49 calls lga.split() but lga comes from untyped input (body/params/query). Add 'typeof lga === \"string\"' guard or use optional chaining (lga?.split())."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/capacity/calculate/route.ts",
+      "line": 64,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/capacity/calculate/route.ts:64 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/compliance/dashboard/route.ts",
+      "line": 84,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/compliance/dashboard/route.ts:84 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/compliance/dashboard/route.ts",
+      "line": 159,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/compliance/dashboard/route.ts:159 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
+      "line": 123,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/compliance/parking/route.ts:123 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/dcp/coverage/route.ts",
+      "line": 27,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/dcp/coverage/route.ts:27 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/dcp/coverage/route.ts",
+      "line": 37,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/dcp/coverage/route.ts:37 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/dcp/provisions/route.ts",
+      "line": 255,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/dcp/provisions/route.ts:255 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/dcp/provisions/route.ts",
+      "line": 308,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/dcp/provisions/route.ts:308 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/debug-418/route.ts",
+      "line": 13,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/debug-418/route.ts:13 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/debug-418/route.ts",
+      "line": 30,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/debug-418/route.ts:30 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "line": 62,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/requirement/route.ts:62 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "line": 75,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/requirement/route.ts:75 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "line": 118,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/requirement/route.ts:118 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "line": 143,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/requirement/route.ts:143 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/requirement/route.ts",
+      "line": 171,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/requirement/route.ts:171 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/route.ts",
+      "line": 101,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/route.ts:101 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/route.ts",
+      "line": 106,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/route.ts:106 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
+      "line": 72,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/submit/route.ts:72 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
+      "line": 148,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/submit/route.ts:148 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
+      "line": 169,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/submit/route.ts:169 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
+      "line": 176,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/submit/route.ts:176 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/submit/route.ts",
+      "line": 196,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/submit/route.ts:196 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/suggestion/route.ts",
+      "line": 60,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/suggestion/route.ts:60 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/suggestion/route.ts",
+      "line": 110,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/suggestion/route.ts:110 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/feedback/vote/route.ts",
+      "line": 78,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/feedback/vote/route.ts:78 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/feedback/vote/route.ts",
+      "line": 94,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/feedback/vote/route.ts:94 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/health/metrics/route.ts",
+      "line": 232,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/health/metrics/route.ts:232 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/health/route.ts",
+      "line": 124,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/health/route.ts:124 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/lep/permissibility/route.ts",
+      "line": 41,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/lep/permissibility/route.ts:41 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/lep/provisions/route.ts",
+      "line": 37,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/lep/provisions/route.ts:37 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/app/api/permissibility/check/route.ts",
+      "line": 155,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/app/api/permissibility/check/route.ts:155 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/app/api/property/route.ts",
+      "line": 160,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/app/api/property/route.ts:160 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/property/route.ts",
+      "line": 204,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/property/route.ts:204 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/changes/route.ts",
+      "line": 121,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/changes/route.ts:121 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/control-codes/route.ts",
+      "line": 65,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/control-codes/route.ts:65 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+      "line": 64,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/cross-references/route.ts:64 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+      "line": 714,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/for-property/route.ts:714 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+      "line": 827,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/for-property/route.ts:827 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+      "line": 1100,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/app/api/provisions/for-property/route.ts:1100 calls desc.split() but desc comes from untyped input (body/params/query). Add 'typeof desc === \"string\"' guard or use optional chaining (desc?.split())."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts",
+      "line": 444,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts:444 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/provisions/route.ts",
+      "line": 178,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/provisions/route.ts:178 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/app/api/reports/flood/generate/route.ts",
+      "line": 85,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/app/api/reports/flood/generate/route.ts:85 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts",
+      "line": 86,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/satellite/solar-coverage-interest/route.ts:86 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/sepp/counts/route.ts",
+      "line": 42,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/sepp/counts/route.ts:42 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/app/api/sepp/exempt-complying/route.ts",
+      "line": 42,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/app/api/sepp/exempt-complying/route.ts:42 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/app/api/sepp/structured-requirements/route.ts",
+      "line": 127,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/app/api/sepp/structured-requirements/route.ts:127 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/setbacks/calculate/route.ts",
+      "line": 194,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/setbacks/calculate/route.ts:194 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/app/api/setbacks/reference/route.ts",
+      "line": 28,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/app/api/setbacks/reference/route.ts:28 calls lga.replace() but lga comes from untyped input (body/params/query). Add 'typeof lga === \"string\"' guard or use optional chaining (lga?.replace())."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/app/api/setbacks/reference/route.ts",
+      "line": 29,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/app/api/setbacks/reference/route.ts:29 calls zone.split() but zone comes from untyped input (body/params/query). Add 'typeof zone === \"string\"' guard or use optional chaining (zone?.split())."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 114,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:114 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 145,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:145 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 212,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:212 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 290,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:290 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 387,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:387 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 450,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:450 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 483,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:483 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
+      "line": 562,
+      "bucket": "production",
+      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:562 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/assessment/core/VersionSelector.tsx",
+      "line": 106,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/assessment/core/VersionSelector.tsx:106 uses '{currentVersion && <...>}' but currentVersion may be numeric (0 is falsy). Use '{currentVersion != null && <...>}' or '{!!currentVersion && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/compliance/CDCScreener.tsx",
+      "line": 125,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/compliance/CDCScreener.tsx:125 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/compliance/CDCScreener.tsx",
+      "line": 155,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/compliance/CDCScreener.tsx:155 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/compliance/LocalProvisionsCard.tsx",
+      "line": 106,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/compliance/LocalProvisionsCard.tsx:106 uses '{provision.clauseNumber && <...>}' but provision.clauseNumber may be numeric (0 is falsy). Use '{provision.clauseNumber != null && <...>}' or '{!!provision.clauseNumber && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/compliance/PartBasedDCPSection.tsx",
+      "line": 198,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/compliance/PartBasedDCPSection.tsx:198 uses '{subdivisionFiltered && <...>}' but subdivisionFiltered may be numeric (0 is falsy). Use '{subdivisionFiltered != null && <...>}' or '{!!subdivisionFiltered && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/pdf/ContextSection.tsx",
+      "line": 510,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/pdf/ContextSection.tsx:510 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tod/TODParkingCalculator.tsx",
+      "line": 269,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tod/TODParkingCalculator.tsx:269 uses '{rateSource && <...>}' but rateSource may be numeric (0 is falsy). Use '{rateSource != null && <...>}' or '{!!rateSource && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/BushfireResultCard.tsx",
+      "line": 82,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/BushfireResultCard.tsx:82 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+      "line": 322,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/ConveyancingTool.tsx:322 uses '{ov.value && <...>}' but ov.value may be numeric (0 is falsy). Use '{ov.value != null && <...>}' or '{!!ov.value && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/FloodTool.tsx",
+      "line": 600,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/FloodTool.tsx:600 uses '{o.s1_gap_warning && <...>}' but o.s1_gap_warning may be numeric (0 is falsy). Use '{o.s1_gap_warning != null && <...>}' or '{!!o.s1_gap_warning && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+      "line": 468,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/GrannyFlatTool.tsx:468 uses '{eligibility.checks && <...>}' but eligibility.checks may be numeric (0 is falsy). Use '{eligibility.checks != null && <...>}' or '{!!eligibility.checks && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+      "line": 581,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/GrannyFlatTool.tsx:581 uses '{eligibility.height_of_buildings && <...>}' but eligibility.height_of_buildings may be numeric (0 is falsy). Use '{eligibility.height_of_buildings != null && <...>}' or '{!!eligibility.height_of_buildings && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/components/tools/ThreatRadarTool.tsx",
+      "line": 780,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/components/tools/ThreatRadarTool.tsx:780 uses '{determined && <...>}' but determined may be numeric (0 is falsy). Use '{determined != null && <...>}' or '{!!determined && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/hooks/useDASession.ts",
+      "line": 223,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/hooks/useDASession.ts:223 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/hooks/useDASession.ts",
+      "line": 238,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/hooks/useDASession.ts:238 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/hooks/useProvisionBrowser.ts",
+      "line": 228,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/hooks/useProvisionBrowser.ts:228 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/lib/ai/formatter.ts",
+      "line": 123,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/lib/ai/formatter.ts:123 calls definitions.slice() but definitions comes from untyped input (body/params/query). Add 'typeof definitions === \"string\"' guard or use optional chaining (definitions?.slice())."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/lib/ai/formatter.ts",
+      "line": 186,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/lib/ai/formatter.ts:186 calls topic.replace() but topic comes from untyped input (body/params/query). Add 'typeof topic === \"string\"' guard or use optional chaining (topic?.replace())."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/lib/ai/formatter.ts",
+      "line": 408,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/lib/ai/formatter.ts:408 calls developmentType.replace() but developmentType comes from untyped input (body/params/query). Add 'typeof developmentType === \"string\"' guard or use optional chaining (developmentType?.replace())."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/client.ts",
+      "line": 361,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/client.ts:361 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/client.ts",
+      "line": 362,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/client.ts:362 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/client.ts",
+      "line": 363,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/client.ts:363 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/client.ts",
+      "line": 364,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/client.ts:364 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/client.ts",
+      "line": 379,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/client.ts:379 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/postgres-client.ts",
+      "line": 142,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/postgres-client.ts:142 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/postgres-compliance-client.ts",
+      "line": 392,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/postgres-compliance-client.ts:392 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 48,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/prp-k7-client.js:48 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 102,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/prp-k7-client.js:102 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 202,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/prp-k7-client.js:202 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 208,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/prp-k7-client.js:208 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 216,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:216 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 217,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:217 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 218,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:218 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/prp-k7-client.js",
+      "line": 219,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/prp-k7-client.js:219 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/specialized/provision-search-client.ts",
+      "line": 80,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/specialized/provision-search-client.ts:80 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "null-guard",
+      "file": "frontend-nextjs/lib/database/specialized/provision-search-client.ts",
+      "line": 174,
+      "bucket": "production",
+      "message": "Null guard: frontend-nextjs/lib/database/specialized/provision-search-client.ts:174 accesses .rows[0] without a prior length check, COUNT(*), INSERT RETURNING, or optional chaining (?.) in the surrounding code."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/database/specialized/version-client.ts",
+      "line": 36,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/database/specialized/version-client.ts:36 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/lga-configs/index.ts",
+      "line": 112,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/lga-configs/index.ts:112 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/lga-configs/index.ts",
+      "line": 117,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/lga-configs/index.ts:117 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/lga-configs/index.ts",
+      "line": 248,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/lga-configs/index.ts:248 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/lib/lga-configs/index.ts",
+      "line": 276,
+      "bucket": "production",
+      "message": "DB guard: frontend-nextjs/lib/lga-configs/index.ts:276 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+      "line": 292,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/pdf/bushfire-report.tsx:292 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+      "line": 298,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/pdf/bushfire-report.tsx:298 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+      "line": 335,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/pdf/bushfire-report.tsx:335 uses '{data.bal_assessor_directory_url && <...>}' but data.bal_assessor_directory_url may be numeric (0 is falsy). Use '{data.bal_assessor_directory_url != null && <...>}' or '{!!data.bal_assessor_directory_url && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+      "line": 446,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/pdf/bushfire-report.tsx:446 uses '{c.legislation_url && <...>}' but c.legislation_url may be numeric (0 is falsy). Use '{c.legislation_url != null && <...>}' or '{!!c.legislation_url && <...>}' instead."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/see/daBundleChecklist.ts",
+      "line": 197,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/see/daBundleChecklist.ts:197 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "type-boundary",
+      "file": "frontend-nextjs/lib/see/daBundleChecklist.ts",
+      "line": 219,
+      "bucket": "production",
+      "message": "Type boundary: frontend-nextjs/lib/see/daBundleChecklist.ts:219 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
+    },
+    {
+      "scanner": "untyped-method",
+      "file": "frontend-nextjs/lib/see/propertyContext.ts",
+      "line": 123,
+      "bucket": "production",
+      "message": "Untyped method: frontend-nextjs/lib/see/propertyContext.ts:123 calls nearbyRoads.slice() but nearbyRoads comes from untyped input (body/params/query). Add 'typeof nearbyRoads === \"string\"' guard or use optional chaining (nearbyRoads?.slice())."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/autoschema_kg_query.py",
+      "line": 186,
+      "bucket": "production",
+      "message": "Python adversarial: services/autoschema_kg_query.py:186 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/drawdown_verify.py",
+      "line": 76,
+      "bucket": "production",
+      "message": "Python adversarial: services/drawdown_verify.py:76 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/drawdown_verify.py",
+      "line": 77,
+      "bucket": "production",
+      "message": "Python adversarial: services/drawdown_verify.py:77 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/drawdown_verify.py",
+      "line": 78,
+      "bucket": "production",
+      "message": "Python adversarial: services/drawdown_verify.py:78 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/drawdown_verify.py",
+      "line": 301,
+      "bucket": "production",
+      "message": "Python adversarial: services/drawdown_verify.py:301 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/drawdown_verify.py",
+      "line": 322,
+      "bucket": "production",
+      "message": "Python adversarial: services/drawdown_verify.py:322 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/hierarchy_resolver.py",
+      "line": 204,
+      "bucket": "production",
+      "message": "Python adversarial: services/hierarchy_resolver.py:204 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/hierarchy_resolver.py",
+      "line": 244,
+      "bucket": "production",
+      "message": "Python adversarial: services/hierarchy_resolver.py:244 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/lec_collector.py",
+      "line": 269,
+      "bucket": "production",
+      "message": "Python adversarial: services/lec_collector.py:269 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/lec_collector.py",
+      "line": 343,
+      "bucket": "production",
+      "message": "Python adversarial: services/lec_collector.py:343 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/nsw_imagery.py",
+      "line": 79,
+      "bucket": "production",
+      "message": "Python adversarial: services/nsw_imagery.py:79 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/property_intelligence_4stack.py",
+      "line": 392,
+      "bucket": "production",
+      "message": "Python adversarial: services/property_intelligence_4stack.py:392 calls float(height_value) but height_value may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "services/provision_search.py",
+      "line": 81,
+      "bucket": "production",
+      "message": "DB guard: services/provision_search.py:81 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/setback_calculator.py",
+      "line": 159,
+      "bucket": "production",
+      "message": "Python adversarial: services/setback_calculator.py:159 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/shadow_model.py",
+      "line": 169,
+      "bucket": "production",
+      "message": "Python adversarial: services/shadow_model.py:169 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/special_provisions_integration.py",
+      "line": 89,
+      "bucket": "production",
+      "message": "Python adversarial: services/special_provisions_integration.py:89 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/special_provisions_integration.py",
+      "line": 90,
+      "bucket": "production",
+      "message": "Python adversarial: services/special_provisions_integration.py:90 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/special_provisions_integration.py",
+      "line": 91,
+      "bucket": "production",
+      "message": "Python adversarial: services/special_provisions_integration.py:91 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/special_provisions_integration.py",
+      "line": 92,
+      "bucket": "production",
+      "message": "Python adversarial: services/special_provisions_integration.py:92 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/special_provisions_integration.py",
+      "line": 93,
+      "bucket": "production",
+      "message": "Python adversarial: services/special_provisions_integration.py:93 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "src/processing/rag_enhanced_processor.py",
+      "line": 238,
+      "bucket": "production",
+      "message": "Python adversarial: src/processing/rag_enhanced_processor.py:238 uses .get(key, 0) but if key exists with value None, the default is NOT used. Use 'val or 0' after."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "src/processing/rule_generator.py",
+      "line": 407,
+      "bucket": "production",
+      "message": "Python adversarial: src/processing/rule_generator.py:407 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "silent-failure",
+      "file": "src/regulatory/document-router.ts",
+      "line": 198,
+      "bucket": "production",
+      "message": "Silent failure: src/regulatory/document-router.ts:198 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/add-printed-page.mjs",
+      "line": 18,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/add-printed-page.mjs:18 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/add-printed-page.mjs",
+      "line": 27,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/add-printed-page.mjs:27 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/add-printed-page.mjs",
+      "line": 38,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/add-printed-page.mjs:38 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/apply-known-offsets.mjs",
+      "line": 26,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/apply-known-offsets.mjs:26 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-all-councils-heritage.mjs",
+      "line": 41,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-all-councils-heritage.mjs:41 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-all-councils-heritage.mjs",
+      "line": 63,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-all-councils-heritage.mjs:63 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-all-heritage-elements.mjs",
+      "line": 26,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-all-heritage-elements.mjs:26 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-all-heritage-elements.mjs",
+      "line": 65,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-all-heritage-elements.mjs:65 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-controls.mjs",
+      "line": 16,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-controls.mjs:16 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-controls.mjs",
+      "line": 33,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-controls.mjs:33 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-number-context.mjs",
+      "line": 19,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-number-context.mjs:19 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-number-context.mjs",
+      "line": 68,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-number-context.mjs:68 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-number-context.mjs",
+      "line": 80,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-number-context.mjs:80 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-number-format.mjs",
+      "line": 20,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-number-format.mjs:20 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c-number-format.mjs",
+      "line": 65,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c-number-format.mjs:65 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-c12-provision.mjs",
+      "line": 20,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-c12-provision.mjs:20 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-columns.mjs",
+      "line": 16,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-columns.mjs:16 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-descriptive-sample.mjs",
+      "line": 18,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-descriptive-sample.mjs:18 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-local-vs-prod.mjs",
+      "line": 26,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-local-vs-prod.mjs:26 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-local-vs-prod.mjs",
+      "line": 40,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-local-vs-prod.mjs:40 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-local-vs-prod.mjs",
+      "line": 65,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-local-vs-prod.mjs:65 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-schema.mjs",
+      "line": 10,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-schema.mjs:10 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-schema.mjs",
+      "line": 14,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-schema.mjs:14 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-schema.mjs",
+      "line": 21,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-schema.mjs:21 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage-type-NOW.mjs",
+      "line": 15,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage-type-NOW.mjs:15 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage.mjs",
+      "line": 18,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage.mjs:18 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage.mjs",
+      "line": 29,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage.mjs:29 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage.mjs",
+      "line": 42,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage.mjs:42 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-heritage.mjs",
+      "line": 56,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-heritage.mjs:56 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-local-db.mjs",
+      "line": 21,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-local-db.mjs:21 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-local-db.mjs",
+      "line": 33,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-local-db.mjs:33 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-marrickville-supabase.mjs",
+      "line": 17,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-marrickville-supabase.mjs:17 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-marrickville-supabase.mjs",
+      "line": 27,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-marrickville-supabase.mjs:27 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-marrickville-supabase.mjs",
+      "line": 37,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-marrickville-supabase.mjs:37 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-marrickville-supabase.mjs",
+      "line": 47,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-marrickville-supabase.mjs:47 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-marrickville-supabase.mjs",
+      "line": 59,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-marrickville-supabase.mjs:59 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-missing-images.mjs",
+      "line": 19,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-missing-images.mjs:19 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-missing-images.mjs",
+      "line": 27,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-missing-images.mjs:27 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-missing-images.mjs",
+      "line": 41,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-missing-images.mjs:41 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-offsets.mjs",
+      "line": 11,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-offsets.mjs:11 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-page-offset.mjs",
+      "line": 10,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-page-offset.mjs:10 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pattern-book-db.mjs",
+      "line": 35,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pattern-book-db.mjs:35 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pattern-book-db.mjs",
+      "line": 38,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pattern-book-db.mjs:38 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pdf-resources.mjs",
+      "line": 27,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pdf-resources.mjs:27 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pdf-resources.mjs",
+      "line": 48,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pdf-resources.mjs:48 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pdf-resources.mjs",
+      "line": 65,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pdf-resources.mjs:65 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-pdf-resources.mjs",
+      "line": 73,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-pdf-resources.mjs:73 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 15,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:15 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 23,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:23 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 36,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:36 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 50,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:50 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 59,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:59 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 68,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:68 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-precinct-heritage.mjs",
+      "line": 79,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-precinct-heritage.mjs:79 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-production-column.mjs",
+      "line": 10,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-production-column.mjs:10 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-production-column.mjs",
+      "line": 22,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-production-column.mjs:22 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof-field.mjs",
+      "line": 24,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof-field.mjs:24 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof-field.mjs",
+      "line": 48,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof-field.mjs:48 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof-hca.mjs",
+      "line": 8,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof-hca.mjs:8 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof-printed.mjs",
+      "line": 8,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof-printed.mjs:8 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof-provisions.mjs",
+      "line": 35,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof-provisions.mjs:35 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-roof.mjs",
+      "line": 10,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-roof.mjs:10 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-supabase-heritage-NOW.mjs",
+      "line": 18,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-supabase-heritage-NOW.mjs:18 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-supabase-heritage-NOW.mjs",
+      "line": 34,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-supabase-heritage-NOW.mjs:34 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-supabase-heritage-NOW.mjs",
+      "line": 50,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-supabase-heritage-NOW.mjs:50 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-supabase-heritage-NOW.mjs",
+      "line": 60,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-supabase-heritage-NOW.mjs:60 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-supabase-heritage-NOW.mjs",
+      "line": 80,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-supabase-heritage-NOW.mjs:80 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-topic-tagging.mjs",
+      "line": 17,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-topic-tagging.mjs:17 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-topic-tagging.mjs",
+      "line": 29,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-topic-tagging.mjs:29 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check-topics.mjs",
+      "line": 8,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check-topics.mjs:8 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_prov_count.mjs",
+      "line": 7,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_prov_count.mjs:7 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_prov_count.mjs",
+      "line": 8,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_prov_count.mjs:8 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_prov_count.mjs",
+      "line": 20,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_prov_count.mjs:20 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_version_fields.mjs",
+      "line": 10,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_version_fields.mjs:10 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_version_fields.mjs",
+      "line": 19,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_version_fields.mjs:19 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/check_version_fields.mjs",
+      "line": 30,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/check_version_fields.mjs:30 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/find-ai-commentary.mjs",
+      "line": 58,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/find-ai-commentary.mjs:58 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/find-all-offsets.mjs",
+      "line": 14,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/find-all-offsets.mjs:14 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/find-all-offsets.mjs",
+      "line": 33,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/find-all-offsets.mjs:33 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-last6.mjs",
+      "line": 12,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-last6.mjs:12 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-last6.mjs",
+      "line": 28,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-last6.mjs:28 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-negative-page-numbers.mjs",
+      "line": 24,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-negative-page-numbers.mjs:24 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-negative-page-numbers.mjs",
+      "line": 98,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-negative-page-numbers.mjs:98 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-negative-page-numbers.mjs",
+      "line": 117,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-negative-page-numbers.mjs:117 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/fix-truncated.mjs",
+      "line": 22,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/fix-truncated.mjs:22 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/reextract-test.mjs",
+      "line": 46,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/reextract-test.mjs:46 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/revert-and-fix-correctly.mjs",
+      "line": 55,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/revert-and-fix-correctly.mjs:55 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/revert-and-fix-correctly.mjs",
+      "line": 92,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/revert-and-fix-correctly.mjs:92 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-roof-filtering.mjs",
+      "line": 16,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-roof-filtering.mjs:16 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-roof-filtering.mjs",
+      "line": 26,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-roof-filtering.mjs:26 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-roof-filtering.mjs",
+      "line": 42,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-roof-filtering.mjs:42 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-update.mjs",
+      "line": 18,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-update.mjs:18 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-update.mjs",
+      "line": 33,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-update.mjs:33 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "frontend-nextjs/verify-update.mjs",
+      "line": 50,
+      "bucket": "throwaway",
+      "message": "DB guard: frontend-nextjs/verify-update.mjs:50 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/fixes/DQ11_marrickville_heritage.py",
+      "line": 81,
+      "bucket": "throwaway",
+      "message": "Python adversarial: scripts/fixes/DQ11_marrickville_heritage.py:81 uses .split()[N] without a prior .strip() or emptiness check. Empty/whitespace input causes IndexError."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "scripts/fixes/DQ11_marrickville_heritage.py",
+      "line": 91,
+      "bucket": "throwaway",
+      "message": "Python adversarial: scripts/fixes/DQ11_marrickville_heritage.py:91 uses .get(key, []) but if key exists with value None, the default is NOT used. Use 'val or []' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fixes/DQ11_marrickville_heritage.py",
+      "line": 132,
+      "bucket": "throwaway",
+      "message": "DB guard: scripts/fixes/DQ11_marrickville_heritage.py:132 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fixes/DQ11_marrickville_heritage.py",
+      "line": 218,
+      "bucket": "throwaway",
+      "message": "DB guard: scripts/fixes/DQ11_marrickville_heritage.py:218 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fixes/DQ11_marrickville_heritage.py",
+      "line": 245,
+      "bucket": "throwaway",
+      "message": "DB guard: scripts/fixes/DQ11_marrickville_heritage.py:245 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fixes/DQ7_commercial_industrial_enrichment.py",
+      "line": 142,
+      "bucket": "throwaway",
+      "message": "DB guard: scripts/fixes/DQ7_commercial_industrial_enrichment.py:142 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "scripts/fixes/DQ7_devtype_enrichment.py",
+      "line": 246,
+      "bucket": "throwaway",
+      "message": "DB guard: scripts/fixes/DQ7_devtype_enrichment.py:246 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/spike_samgeo_buildings.py",
+      "line": 215,
+      "bucket": "throwaway",
+      "message": "Python adversarial: services/spike_samgeo_buildings.py:215 calls int(px) but px may be None (from DB/.get()/Optional). Add a None guard."
+    },
+    {
+      "scanner": "py-adversarial",
+      "file": "services/spike_samgeo_buildings.py",
+      "line": 462,
+      "bucket": "throwaway",
+      "message": "Python adversarial: services/spike_samgeo_buildings.py:462 uses .get(key, \"\") but if key exists with value None, the default is NOT used. Use 'val or \"\"' after."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/01_verify_database_tables.py",
+      "line": 64,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/01_verify_database_tables.py:64 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/01_verify_database_tables.py",
+      "line": 202,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/01_verify_database_tables.py:202 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/01_verify_database_tables.py",
+      "line": 209,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/01_verify_database_tables.py:209 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/01_verify_database_tables.py",
+      "line": 240,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/01_verify_database_tables.py:240 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/02_verify_api_queries.py",
+      "line": 46,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/02_verify_api_queries.py:46 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/02_verify_api_queries.py",
+      "line": 218,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/02_verify_api_queries.py:218 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/03_verify_data_transform.py",
+      "line": 90,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/03_verify_data_transform.py:90 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/03_verify_data_transform.py",
+      "line": 244,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/03_verify_data_transform.py:244 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/04_verify_end_to_end.py",
+      "line": 42,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/04_verify_end_to_end.py:42 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    },
+    {
+      "scanner": "db-guard",
+      "file": "tests/verify_leichhardt_fix.py",
+      "line": 12,
+      "bucket": "throwaway",
+      "message": "DB guard: tests/verify_leichhardt_fix.py:12 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
+    }
+  ]
+}
