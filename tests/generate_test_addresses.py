@@ -88,7 +88,7 @@ def get_addresses_from_db(council: str, zone_prefix: str, limit: int = 5) -> Lis
     """Query database for addresses in a given council/zone"""
     try:
         conn = psycopg2.connect(
-            "postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning"
+            "postgresql://postgres@127.0.0.1:5432/nsw_planning"
         )
         cur = conn.cursor()
 

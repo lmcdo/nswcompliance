@@ -23,7 +23,7 @@ import time
 load_dotenv()
 
 # Database connection
-DB_URL = 'postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning'
+DB_URL = 'postgresql://postgres@127.0.0.1:5432/nsw_planning'
 
 # OpenAI client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))

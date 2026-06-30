@@ -81,7 +81,7 @@ def main():
     print("=" * 70)
 
     # Connect to database for precinct boundary info
-    conn = psycopg2.connect('postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning')
+    conn = psycopg2.connect('postgresql://postgres@127.0.0.1:5432/nsw_planning')
     cur = conn.cursor()
 
     # First, check what precincts exist in database
