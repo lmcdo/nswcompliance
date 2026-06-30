@@ -38,6 +38,16 @@ MONITORS = {
         # migration (#506). Needs DATABASE_URL + R2_* creds on the Railway service.
         "cmd": ["python", "scripts/dcp_extract_changed.py", "--review"],
     },
+    "dcp-extract-all": {
+        # Scheduled re-extract-ALL (the targeted-semantic-detection cadence): re-extract
+        # EVERY active chapter and diff vs the approved baseline, not just byte-change-
+        # flagged ones. Identical detector to dcp-extract; only the chapter set differs
+        # (--all drops the needs_extraction filter, keeps is_active + r2_current_path).
+        # Runs on a slow cadence (quarterly) so PDF re-exports that flip the byte signal
+        # no longer gate detection, and a silent in-place amendment is still caught.
+        # --review = NO provision commit; diffs go to dcp_review_queue for human approval.
+        "cmd": ["python", "scripts/dcp_extract_changed.py", "--all", "--review"],
+    },
     "dcp-commit": {
         # Commit-on-approve: commit chapters whose every dcp_review_queue row a human
         # marked 'approved' (currency-guarded). Reuses extract_chapter. --commit makes

@@ -1,0 +1,21 @@
+# Railway config-as-code for the `dcp-monitor` (byte-change) cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Still set per-service env in the dashboard:
+#   MONITOR_NAME=dcp-monitor, DATABASE_URL, R2_ACCOUNT_ID, R2_BUCKET_NAME,
+#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+#   (optional) HC_PING_URL.
+#
+# Runs r2_monitor.py: byte-level change detection across all councils' DCP PDFs.
+# DEMOTED to a secondary signal. The primary detector is now dcp-extract-all
+# (scheduled re-extract-all + diff vs approved baseline). Byte-change is noisy in
+# both directions (re-exports false-positive; silent in-place edits false-negative),
+# so it no longer drives detection — it is a cheap early heads-up only. Combined with
+# the #618 alerting fix (transient/WAF failures bucketed out of the exit-1 page),
+# this brings its cadence under review and cuts single-IP rate-limit pressure.
+[build]
+dockerfilePath = "Dockerfile.monitors"
+
+[deploy]
+startCommand = "python scripts/run_monitors.py"
+cronSchedule = "0 2 1 * *"   # monthly: 1st of month 02:00 UTC (demoted from weekly)
+restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
