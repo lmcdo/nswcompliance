@@ -27,6 +27,7 @@ import { PathwaySummaryCard } from './PathwaySummaryCard';
 import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable } from '@/lib/regulatory-constants';
 import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
+import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -473,8 +474,11 @@ export function StateLevelControls({
     ?? (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) || null : null)
     ?? propertyData?.geometry?.area;
 
-  // Lot width - from calculated geometry (cadastre), then fallbacks
-  const lotWidth = propertyData?.lotDimensions?.frontage
+  // Lot width - from calculated geometry (cadastre), then fallbacks.
+  // battleaxeAwareLotWidth returns the head width for a battleaxe (the cadastral
+  // "frontage" there is the access handle, which would understate width-based
+  // SEPP/LMR eligibility), otherwise the frontage.
+  const lotWidth = battleaxeAwareLotWidth(propertyData?.lotDimensions)
     ?? propertyData?.geometry?.frontageWidth
     ?? propertyData?.geometry?.estimatedWidth
     ?? propertyData?.constraints?.lotWidth
