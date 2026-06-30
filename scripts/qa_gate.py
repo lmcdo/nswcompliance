@@ -701,13 +701,20 @@ def scan_diff_for_silent_failures(
                 has_explicit_return = bool(re.search(
                     r'\breturn\s+\[|return\s+\[\s*\]|return\s+null\b'
                     r'|return\s+\{|return\s+""|return\s+0\b'
-                    r'|return\s+false\b|return\s+None\b',
+                    r'|return\s+false\b|return\s+None\b'
+                    # A catch that returns ANY value (e.g. return NextResponse.json(...),
+                    # return res, return fallback) is handled, not silent. Returning a 200
+                    # ack is the correct idiom in webhooks/best-effort handlers; Heuristic D
+                    # separately flags exported handlers that return success instead of error.
+                    r'|return\s+[A-Za-z_$]',
                     body_text
                 ))
 
                 if has_log_only and not has_rethrow and not has_explicit_return:
-                    # Check if this is in an API route (where silent = user sees nothing)
-                    if 'route' in filepath.lower() or 'api' in filepath.lower():
+                    # Check if this is in an API route (where silent = user sees nothing).
+                    # Webhook routes are exempt: returning 200 on a handler error is the
+                    # REQUIRED idiom (Stripe/etc. retry the whole webhook on a non-2xx).
+                    if ('route' in fp_lower or 'api' in fp_lower) and 'webhook' not in fp_lower:
                         errors.append(
                             f"Silent failure: {filepath}:{i + 1} catch block only logs "
                             f"but doesn't return an error response or rethrow. "
@@ -715,10 +722,11 @@ def scan_diff_for_silent_failures(
                         )
 
             # --- Heuristic D: catch returning success with empty data ---
-            # Only flag in route/API files where this pattern matters,
-            # and only in exported handler functions (not helper functions
-            # where returning a fallback value is graceful degradation).
-            if ('route' in fp_lower or 'api' in fp_lower):
+            # Only flag in route/API files where this pattern matters, and only in
+            # exported handler functions (not helper functions where returning a
+            # fallback value is graceful degradation). Webhook routes are exempt:
+            # returning a 200 ack on a handler error is the required webhook idiom.
+            if ('route' in fp_lower or 'api' in fp_lower) and 'webhook' not in fp_lower:
                 if CATCH_PATTERN.search(line):
                     # Check if this catch is inside an exported function (the handler)
                     # by scanning backwards for the nearest function declaration.

@@ -2,18 +2,18 @@
   "generated": "report-only baseline of qa_gate scanners across all tracked source",
   "note": "Heuristic findings \u2014 an upper bound; some are false positives (e.g. is_current guard on tables lacking that column). Burn down 'production' first; delete dead 'throwaway' scripts. The gate is diff-scoped, so this does not block; it is a worklist.",
   "totals": {
-    "other": 208,
-    "production": 148,
+    "other": 207,
+    "production": 137,
     "throwaway": 113
   },
-  "total": 469,
+  "total": 457,
   "production_by_scanner": {
     "py-adversarial": 28,
     "db-guard": 35,
     "null-guard": 23,
     "type-boundary": 26,
     "untyped-method": 9,
-    "silent-failure": 27
+    "silent-failure": 16
   },
   "findings": [
     {
@@ -43,13 +43,6 @@
       "line": 185,
       "bucket": "other",
       "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:185 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "/route.ts",
-      "line": 237,
-      "bucket": "other",
-      "message": "Silent failure: frontend-nextjs/app/api/property/[address]/route.ts:237 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
     },
     {
       "scanner": "null-guard",
@@ -1620,20 +1613,6 @@
       "message": "DB guard: frontend-nextjs/app/api/capacity/calculate/route.ts:64 references 'regulatory_provisions' but none of ['is_current', 'v2_is_actionable'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_current = TRUE) to prevent stale data."
     },
     {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/compliance/dashboard/route.ts",
-      "line": 84,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/compliance/dashboard/route.ts:84 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/compliance/dashboard/route.ts",
-      "line": 159,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/compliance/dashboard/route.ts:159 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
       "scanner": "null-guard",
       "file": "frontend-nextjs/app/api/compliance/parking/route.ts",
       "line": 123,
@@ -1646,13 +1625,6 @@
       "line": 27,
       "bucket": "production",
       "message": "DB guard: frontend-nextjs/app/api/dcp/coverage/route.ts:27 references 'lga_registry' but none of ['is_active'] found in query (within \u00b110 lines). Add a currency filter (e.g. WHERE is_active = TRUE) to prevent stale data."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/dcp/coverage/route.ts",
-      "line": 37,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/dcp/coverage/route.ts:37 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
     },
     {
       "scanner": "db-guard",
@@ -1954,62 +1926,6 @@
       "line": 29,
       "bucket": "production",
       "message": "Untyped method: frontend-nextjs/app/api/setbacks/reference/route.ts:29 calls zone.split() but zone comes from untyped input (body/params/query). Add 'typeof zone === \"string\"' guard or use optional chaining (zone?.split())."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 114,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:114 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 145,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:145 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 212,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:212 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 290,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:290 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 387,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:387 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 450,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:450 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 483,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:483 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
-    },
-    {
-      "scanner": "silent-failure",
-      "file": "frontend-nextjs/app/api/stripe/webhook/route.ts",
-      "line": 562,
-      "bucket": "production",
-      "message": "Silent failure: frontend-nextjs/app/api/stripe/webhook/route.ts:562 catch block only logs but doesn't return an error response or rethrow. In API routes, this means the user gets no indication of failure."
     },
     {
       "scanner": "type-boundary",
