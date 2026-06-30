@@ -184,9 +184,10 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   // Calculate dimensions
   const { handleLength, headLength } = estimateHandleHeadLengths(
     widths,
-    isVerticallyOriented ? bbox.height : bbox.width
+    isVerticallyOriented ? bbox.height : bbox.width,
+    narrowThreshold
   );
-  const mainLotArea = estimateMainLotArea(widths, maxWidth, headLength);
+  const mainLotArea = estimateMainLotArea(widths, narrowThreshold, headLength);
 
   // Calculate confidence
   const confidence = calculateConfidence(widths, minWidth, maxWidth, narrowPercentage);
@@ -371,18 +372,28 @@ function hasConsecutiveNarrowSection(widths: number[], minConsecutive: number, t
  */
 function estimateHandleHeadLengths(
   widths: number[],
-  totalLength: number
+  totalLength: number,
+  narrowThreshold: number
 ): { handleLength: number; headLength: number } {
-  // Find transition point from narrow to wide
-  let transitionIndex = 0;
-  for (let i = 0; i < widths.length; i++) {
-    if (widths[i] >= MIN_HEAD_WIDTH) {
-      transitionIndex = i;
-      break;
-    }
+  // The handle is the run of "narrow" slices (width < narrowThreshold) at one end
+  // of the principal axis. Use the SAME proportional threshold that battleaxe
+  // detection uses — not a fixed width — so wide rural handles (e.g. 16m on a 70m
+  // head) are still recognised as the handle rather than collapsing to length 0.
+  const isNarrow = (w: number) => w < narrowThreshold;
+
+  let leadingNarrow = 0;
+  for (let i = 0; i < widths.length && isNarrow(widths[i]); i++) {
+    leadingNarrow++;
   }
 
-  const handleRatio = transitionIndex / widths.length;
+  let trailingNarrow = 0;
+  for (let i = widths.length - 1; i >= 0 && isNarrow(widths[i]); i--) {
+    trailingNarrow++;
+  }
+
+  // Handle sits at whichever end the narrow run is longer.
+  const handleSlices = Math.max(leadingNarrow, trailingNarrow);
+  const handleRatio = handleSlices / widths.length;
   const handleLength = handleRatio * totalLength;
   const headLength = totalLength - handleLength;
 
@@ -392,12 +403,15 @@ function estimateHandleHeadLengths(
 /**
  * Estimate main lot area (excluding handle)
  */
-function estimateMainLotArea(widths: number[], maxWidth: number, headLength: number): number {
-  // Simple approximation: average width of wide section × length
-  const wideWidths = widths.filter((w) => w >= MIN_HEAD_WIDTH);
-  if (wideWidths.length === 0) return 0;
+function estimateMainLotArea(widths: number[], narrowThreshold: number, headLength: number): number {
+  // Average width of the head (non-handle) slices × head length. Filter on the
+  // proportional narrowThreshold so handle slices are excluded — otherwise a wide
+  // handle inflates both the average width and (via headLength) the area, which
+  // previously produced a "main lot" larger than the whole lot.
+  const headWidths = widths.filter((w) => w >= narrowThreshold);
+  if (headWidths.length === 0) return 0;
 
-  const avgWidth = wideWidths.reduce((sum, w) => sum + w, 0) / wideWidths.length;
+  const avgWidth = headWidths.reduce((sum, w) => sum + w, 0) / headWidths.length;
   return avgWidth * headLength;
 }
 
