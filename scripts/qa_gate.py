@@ -284,11 +284,21 @@ def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, s
     (safe full-scan fallback). The gate only ever RELAXES when it is confident a
     flagged line is pre-existing, never when uncertain.
     """
+    # Strip the git env a caller (e.g. a pre-push hook) may have exported. `git`
+    # honours GIT_DIR/GIT_WORK_TREE over `cwd`, so without this a hook that runs
+    # us with GIT_DIR set would make every `_git` call resolve to the ambient
+    # repo and ignore the explicit `project_dir` — the diff-scoping this function
+    # exists for. Clearing them makes `cwd=project_dir` authoritative.
+    _env = {
+        k: v for k, v in os.environ.items()
+        if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")
+    }
+
     def _git(args: list[str]) -> Optional[str]:
         try:
             r = subprocess.run(
                 ["git", *args], capture_output=True, text=True,
-                timeout=10, cwd=project_dir,
+                timeout=10, cwd=project_dir, env=_env,
             )
             return r.stdout if r.returncode == 0 else None
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
