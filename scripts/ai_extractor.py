@@ -133,13 +133,21 @@ TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look trunc
 
 def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float, list[str]]:
     """Fraction (and list) of TOC section codes NOT covered by the extraction. A TOC
-    code is covered if an extracted code equals it OR is a sub-provision of it
-    (starts with code + '.'). Pure. Returns (0.0, []) when the TOC is too small to judge."""
+    code (e.g. "C4.1") is covered if an extracted code:
+      - equals it exactly ("C4.1"), OR
+      - is a dotted sub-provision of it ("C4.1.2"), OR
+      - has it as the leading token before the first space ("C4.1 O1", "C4.1 C3") —
+        the AI emits provisions as "<section> <objective/control>", so this is the
+        common case and its absence was the source of false coverage_fail alerts.
+    Pure. Returns (0.0, []) when the TOC is too small to judge."""
     if len(toc_codes) < COVERAGE_MIN_TOC:
         return 0.0, []
+    section_tokens = {e.split(" ", 1)[0] for e in extracted_codes}
     missing = [
         c for c in toc_codes
-        if c not in extracted_codes and not any(e.startswith(c + ".") for e in extracted_codes)
+        if c not in extracted_codes
+        and c not in section_tokens
+        and not any(e.startswith(c + ".") for e in extracted_codes)
     ]
     return len(missing) / len(toc_codes), sorted(missing)
 

@@ -101,6 +101,22 @@ class TestCoverageGap:
         toc = {f"{i}.1" for i in range(1, COVERAGE_MIN_TOC)}
         assert coverage_gap(set(), toc) == (0.0, [])
 
+    def test_section_space_subitem_codes_count_as_covered(self):
+        # regression: the AI emits "<section> <objective/control>" (e.g. "C4.1 O1"),
+        # which must cover TOC section "C4.1". Before the fix this false-fired 100%.
+        toc = {f"C4.{i}" for i in range(1, 11)}  # C4.1 .. C4.10
+        extracted = {f"C4.{i} {sub}" for i in range(1, 11) for sub in ("O1", "C1", "C2")}
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 0.0 and missing == []
+
+    def test_bare_subitem_codes_do_not_cover_sections(self):
+        # the real leichhardt failure: controls coded as bare "C1".."C38" (section
+        # attribution lost across chunks) must NOT be credited to any TOC section.
+        toc = {f"C4.{i}" for i in range(1, 11)}
+        extracted = {f"C{i}" for i in range(1, 39)}  # C1..C38, no section prefix
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 1.0 and len(missing) == 10
+
 
 class TestTruncationRate:
     def test_ellipsis_flagged(self):
