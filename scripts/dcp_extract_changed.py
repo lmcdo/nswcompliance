@@ -1440,8 +1440,9 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
 def suspect_reason(review_data: dict) -> str | None:
     """Return a short SUSPECT reason for a review chapter, or None if it looks fine.
 
-    A chapter is suspect when its diff flagged a count_drop OR its extraction
-    failed the schema gate. Pure — drives both the operator summary and the alert.
+    A chapter is suspect when its diff flagged a count_drop, its extraction failed
+    the schema gate, OR (AI path) it dropped TOC sections / truncated provisions.
+    Pure — drives both the operator summary and the alert.
     """
     diff = review_data.get("diff") or {}
     if diff.get("status") == "count_drop":
@@ -1450,6 +1451,12 @@ def suspect_reason(review_data: dict) -> str | None:
     if review_data.get("schema_fail"):
         return (f"schema_fail ({review_data.get('serious_artifact_provisions')}/"
                 f"{review_data.get('total_provisions')} provisions with serious artifacts)")
+    if review_data.get("coverage_fail"):
+        return (f"coverage_fail ({review_data.get('coverage_missing')}/"
+                f"{review_data.get('coverage_toc')} TOC sections missing)")
+    if review_data.get("truncation_fail"):
+        return (f"truncation_fail ({review_data.get('truncation_flagged')}/"
+                f"{review_data.get('total_provisions')} provisions truncated)")
     return None
 
 
@@ -1896,6 +1903,29 @@ def extract_chapter(
 
             schema_fail = is_schema_fail(len(provision_texts), serious_flagged)
 
+            # AI-path railguards (absolute-quality; only when AI extraction is on).
+            # LLMs can silently drop whole sections or truncate a provision mid-text.
+            coverage_fail = truncation_fail = False
+            coverage_toc = coverage_missing = truncation_flagged = 0
+            if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+                from scripts.ai_extractor import (
+                    coverage_gap, truncation_rate, toc_codes_from_pdf,
+                    COVERAGE_MISS_RATIO, TRUNCATION_RATIO,
+                )
+                toc = toc_codes_from_pdf(pdf_path)
+                extracted_codes = {
+                    s["section_number"] for s in sections
+                    if s.get("section_number") != "preamble"
+                }
+                cov_ratio, missing = coverage_gap(extracted_codes, toc)
+                coverage_toc, coverage_missing = len(toc), len(missing)
+                coverage_fail = cov_ratio > COVERAGE_MISS_RATIO
+                trunc_ratio, truncation_flagged = truncation_rate(provision_texts)
+                truncation_fail = (
+                    len(provision_texts) >= SCHEMA_FAIL_MIN_PROVISIONS
+                    and trunc_ratio > TRUNCATION_RATIO
+                )
+
             return True, {
                 "council": council,
                 "chapter_key": chapter_key,
@@ -1915,6 +1945,11 @@ def extract_chapter(
                 "total_provisions": len(provision_texts),
                 "serious_artifact_provisions": serious_flagged,
                 "schema_fail": schema_fail,
+                "coverage_fail": coverage_fail,
+                "coverage_missing": coverage_missing,
+                "coverage_toc": coverage_toc,
+                "truncation_fail": truncation_fail,
+                "truncation_flagged": truncation_flagged,
                 "document_id": document_id,
                 "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,

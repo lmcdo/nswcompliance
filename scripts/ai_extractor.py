@@ -120,6 +120,63 @@ def provisions_to_sections(provs: list[dict]) -> list[dict]:
     return sections
 
 
+# ── AI-path railguards (absolute-quality; robust to LLM non-determinism) ──────
+# LLM extraction can silently drop whole sections or truncate a provision mid-text
+# (observed in the Haiku/Mistral head-to-head). These guards catch those without
+# relying on a diff, and feed the existing SUSPECT surface (suspect_reason ->
+# build_suspect_alert -> Telegram). Advisory only — they never block a commit.
+COVERAGE_MIN_TOC = 8       # only judge coverage when the TOC lists >= this many codes
+COVERAGE_MISS_RATIO = 0.25  # flag when > this fraction of TOC sections are missing
+TRUNCATION_MIN_CHARS = 40   # a provision shorter than this (and not a bare ref) is thin
+TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look truncated/thin
+
+
+def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float, list[str]]:
+    """Fraction (and list) of TOC section codes NOT covered by the extraction. A TOC
+    code is covered if an extracted code equals it OR is a sub-provision of it
+    (starts with code + '.'). Pure. Returns (0.0, []) when the TOC is too small to judge."""
+    if len(toc_codes) < COVERAGE_MIN_TOC:
+        return 0.0, []
+    missing = [
+        c for c in toc_codes
+        if c not in extracted_codes and not any(e.startswith(c + ".") for e in extracted_codes)
+    ]
+    return len(missing) / len(toc_codes), sorted(missing)
+
+
+def truncation_rate(texts: list[str]) -> tuple[float, int]:
+    """Fraction (and count) of provisions that look truncated or thin — text ending in
+    an ellipsis, or shorter than TRUNCATION_MIN_CHARS and not a bare cross-reference.
+    Pure. Catches LLM output-token cutoffs and dropped bodies."""
+    if not texts:
+        return 0.0, 0
+    flagged = 0
+    for t in texts:
+        s = (t or "").strip()
+        if s.endswith("...") or s.endswith("…"):
+            flagged += 1
+        elif len(s) < TRUNCATION_MIN_CHARS and not re.match(r"(?i)^(see|refer|as per)\b", s):
+            flagged += 1
+    return flagged / len(texts), flagged
+
+
+def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
+    """Return the set of section codes listed in the chapter's TOC, for the coverage
+    guard. Reuses dcp_extract_changed.parse_toc_entries. Returns an empty set if the
+    PDF can't be read or has no parseable TOC (guard then no-ops)."""
+    try:
+        import pdfplumber
+        from scripts.dcp_extract_changed import parse_toc_entries
+    except Exception:
+        return set()
+    try:
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            texts = [(p.extract_text() or "") for p in pdf.pages[:max_scan]]
+        return {code for code, _ in parse_toc_entries(texts, max_scan=max_scan)}
+    except Exception:
+        return set()
+
+
 # ── providers ────────────────────────────────────────────────────────────────
 def _call_haiku(pdf_bytes: bytes) -> str:
     import anthropic
@@ -128,6 +185,7 @@ def _call_haiku(pdf_bytes: bytes) -> str:
     msg = client.messages.create(
         model=os.getenv("AI_MODEL_ID", "claude-haiku-4-5"),
         max_tokens=8000,
+        temperature=0,  # maximise determinism across quarterly re-extracts
         messages=[{"role": "user", "content": [
             {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}},
             {"type": "text", "text": PROMPT}]}],
@@ -141,6 +199,7 @@ def _call_mistral(pdf_bytes: bytes) -> str:
     body = {
         "model": os.getenv("AI_MODEL_ID", "mistral-small-latest"),
         "max_tokens": 8000,
+        "temperature": 0,  # maximise determinism across quarterly re-extracts
         "response_format": {"type": "json_object"},
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": PROMPT},
@@ -187,7 +246,7 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     DCPExtractor.extract(). `council` is accepted for signature parity (the model
     needs no per-council config)."""
     from pypdf import PdfReader
-    model = (model or os.getenv("AI_MODEL", "haiku")).strip().lower()
+    model = (model or os.getenv("AI_MODEL", "mistral")).strip().lower()
     reader = PdfReader(str(pdf_path))
     total = len(reader.pages)
     collected: list[dict] = []
