@@ -75,6 +75,45 @@ export default function DcpReviewQueue() {
     [items, idx, busy],
   );
 
+  // Approve/reject EVERY pending row of the current chapter in one call — for
+  // accepting a whole clean re-extraction (e.g. a baseline swap) without clicking
+  // through hundreds of rows. Still human-initiated: the reviewer clicks the button.
+  const actChapter = useCallback(
+    async (action: Action) => {
+      const item = items[idx];
+      if (!item || busy) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/dcp-review/chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            council: item.council,
+            chapter_key: item.chapter_key,
+          }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || 'chapter action failed');
+        }
+        // Drop every row of this chapter; reset the cursor.
+        setItems((prev) =>
+          prev.filter(
+            (it) => !(it.council === item.council && it.chapter_key === item.chapter_key),
+          ),
+        );
+        setIdx(0);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'chapter action failed');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [items, idx, busy],
+  );
+
   // Keyboard: A approve · R reject · N needs-info · J/K next/prev.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -105,6 +144,9 @@ export default function DcpReviewQueue() {
   }
 
   const item = items[idx];
+  const chapterCount = items.filter(
+    (it) => it.council === item.council && it.chapter_key === item.chapter_key,
+  ).length;
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -198,6 +240,29 @@ export default function DcpReviewQueue() {
               className="rounded border px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
               Needs info (N)
+            </button>
+          </div>
+
+          {/* Chapter-level actions — accept/reject the whole current chapter at once. */}
+          <div className="mt-4 flex items-center gap-2 border-t pt-4">
+            <span className="text-xs text-gray-500">
+              Whole chapter ({chapterCount} pending in {item.chapter_key}):
+            </span>
+            <button
+              onClick={() => actChapter('approve')}
+              disabled={busy}
+              className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              title={`Approve all ${chapterCount} pending changes in ${item.chapter_key}`}
+            >
+              Approve all {chapterCount} in this chapter
+            </button>
+            <button
+              onClick={() => actChapter('reject')}
+              disabled={busy}
+              className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 disabled:opacity-50"
+              title={`Reject all ${chapterCount} pending changes in ${item.chapter_key}`}
+            >
+              Reject all in this chapter
             </button>
           </div>
         </section>
