@@ -18,6 +18,9 @@ COPY scripts/legislation_monitor.py ./scripts/legislation_monitor.py
 COPY scripts/pco_client.py ./scripts/pco_client.py
 COPY scripts/regulatory_freshness_monitor.py ./scripts/regulatory_freshness_monitor.py
 COPY scripts/r2_monitor.py ./scripts/r2_monitor.py
+# Deterministic content-change gate (text-hash) — r2_monitor imports it to reject
+# re-export false positives.
+COPY scripts/pdf_text_hash.py ./scripts/pdf_text_hash.py
 COPY scripts/dcp_watchdog.py ./scripts/dcp_watchdog.py
 COPY scripts/hub_scrapers/ ./scripts/hub_scrapers/
 COPY scripts/run_monitors.py ./scripts/run_monitors.py

@@ -878,6 +878,36 @@ def run_monitor(
                     results["checked"] += 1
                     continue
 
+                # ── Content-change gate ──────────────────────────────────────
+                # The byte hash differs, but a re-export changes bytes without
+                # changing text. Confirm a REAL content change by comparing the
+                # normalised text against the OLD version already in R2. A re-export
+                # (bytes differ, text identical) is treated as unchanged so it never
+                # triggers needless re-extraction/review. Fails open (on any error,
+                # proceeds as a real change) so nothing is silently skipped.
+                if stored_hash and r2_path:
+                    try:
+                        from scripts.pdf_text_hash import is_reexport
+                        old_content = s3.get_object(Bucket=R2_BUCKET_NAME, Key=r2_path)["Body"].read()
+                        if is_reexport(old_content, content):
+                            print(f"    [re-export] bytes changed but text identical — not a real change")
+                            cur.execute(
+                                """
+                                UPDATE dcp_chapter_registry
+                                SET content_hash=%s, url_last_checked=%s, url_content_length=%s,
+                                    url_etag=%s, url_last_modified=%s, check_failures=0
+                                WHERE id=%s
+                                """,
+                                (new_hash, now, new_len, new_etag, new_lm, chapter_id),
+                            )
+                            if not dry_run:
+                                conn.commit()
+                            results["unchanged"] += 1
+                            results["checked"] += 1
+                            continue
+                    except Exception as exc:
+                        print(f"    [re-export check skipped: {exc}]")
+
                 # ── CHANGE DETECTED ──────────────────────────────────────────
                 print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
                 old_size = f"{stored_len:,}" if stored_len else "?"
