@@ -118,6 +118,31 @@ class TestCoverageGap:
         assert ratio == 1.0 and len(missing) == 10
 
 
+class TestSectionThreading:
+    def test_build_prompt_without_section_is_base(self):
+        from ai_extractor import PROMPT, _build_prompt
+        assert _build_prompt(None) == PROMPT
+        assert _build_prompt("") == PROMPT
+
+    def test_build_prompt_carries_section(self):
+        from ai_extractor import PROMPT, _build_prompt
+        p = _build_prompt("C4.9")
+        assert p != PROMPT and "C4.9" in p
+
+    def test_section_regex_matches_real_sections_not_bare_items(self):
+        from ai_extractor import _SECTION_RE
+        for good in ("C4.9", "3.1", "A2.10.1", "C1.0"):
+            assert _SECTION_RE.match(good), good
+        for bad in ("C1", "O1", "C44", "C7", ""):
+            assert not _SECTION_RE.match(bad), bad
+
+    def test_prompt_requires_section_qualified_codes(self):
+        from ai_extractor import PROMPT
+        # regression: the prompt must explicitly forbid bare codes
+        assert "section-qualified" in PROMPT.lower()
+        assert "never a bare" in PROMPT.lower()
+
+
 class TestTruncationRate:
     def test_ellipsis_flagged(self):
         rate, n = truncation_rate([

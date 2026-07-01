@@ -36,10 +36,30 @@ PROMPT = (
     "provision (objectives, controls, clauses). Return a JSON object "
     '{"provisions": [{"code","title","text"}]}. Split each individual objective '
     "(O1, O2...) and control (C1, C2...) into its own provision where they are "
-    "separately numbered. IGNORE running page headers, footers, page numbers, and "
-    "any faint rotated watermark/date characters in the margins. Do not invent "
-    "provisions. Output ONLY the JSON object."
+    "separately numbered. Each provision's \"code\" MUST be fully section-qualified: "
+    "the section number followed by the objective/control label, e.g. \"C4.9 O1\", "
+    "\"C4.9 C2\" — NEVER a bare \"O1\" or \"C1\" without its section number. IGNORE "
+    "running page headers, footers, page numbers, and any faint rotated watermark/date "
+    "characters in the margins. Do not invent provisions. Output ONLY the JSON object."
 )
+
+
+def _build_prompt(current_section: str | None = None) -> str:
+    """PROMPT plus, when a page range continues a section whose heading fell in an
+    earlier chunk, the section number so the model still qualifies those codes."""
+    if current_section:
+        return PROMPT + (
+            f" These pages may continue section {current_section} from the previous page: "
+            f"any objective/control appearing before the next section heading belongs to "
+            f"{current_section}, so qualify it as \"{current_section} O1\", "
+            f"\"{current_section} C1\", etc."
+        )
+    return PROMPT
+
+
+# a section code looks like "C4.9" / "3.1" / "A2.10.1" — an optional letter then
+# dotted numbers; used to carry the current section across chunk boundaries.
+_SECTION_RE = re.compile(r"^[A-Za-z]?\d+(?:\.\d+)+$")
 
 
 # ── chunking ─────────────────────────────────────────────────────────────────
@@ -186,7 +206,7 @@ def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
 
 
 # ── providers ────────────────────────────────────────────────────────────────
-def _call_haiku(pdf_bytes: bytes) -> str:
+def _call_haiku(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     import anthropic
     client = anthropic.Anthropic()
     data = base64.standard_b64encode(pdf_bytes).decode()
@@ -196,12 +216,12 @@ def _call_haiku(pdf_bytes: bytes) -> str:
         temperature=0,  # maximise determinism across quarterly re-extracts
         messages=[{"role": "user", "content": [
             {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}},
-            {"type": "text", "text": PROMPT}]}],
+            {"type": "text", "text": prompt}]}],
     )
     return msg.content[0].text
 
 
-def _call_mistral(pdf_bytes: bytes) -> str:
+def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     key = os.environ["MISTRAL_API_KEY"]
     b64 = base64.standard_b64encode(pdf_bytes).decode()
     body = {
@@ -210,7 +230,7 @@ def _call_mistral(pdf_bytes: bytes) -> str:
         "temperature": 0,  # maximise determinism across quarterly re-extracts
         "response_format": {"type": "json_object"},
         "messages": [{"role": "user", "content": [
-            {"type": "text", "text": PROMPT},
+            {"type": "text", "text": prompt},
             {"type": "document_url", "document_url": f"data:application/pdf;base64,{b64}"}]}],
     }
     req = urllib.request.Request(
@@ -232,14 +252,14 @@ def _is_retryable(exc: Exception) -> bool:
     return name in ("RateLimitError", "OverloadedError", "APIStatusError") or status in (429, 500, 502, 503, 529)
 
 
-def _call_with_retry(model: str, pdf_bytes: bytes) -> str:
+def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     fn = _PROVIDERS.get(model)
     if fn is None:
         raise ValueError(f"Unknown AI_MODEL={model!r}. Known: {', '.join(_PROVIDERS)}")
     last: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
-            return fn(pdf_bytes)
+            return fn(pdf_bytes, prompt)
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise varied types
             last = exc
             if not _is_retryable(exc) or attempt == _MAX_RETRIES - 1:
@@ -258,9 +278,18 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     reader = PdfReader(str(pdf_path))
     total = len(reader.pages)
     collected: list[dict] = []
+    current_section: str | None = None
     for (a, b) in chunk_ranges(total):
-        raw = _call_with_retry(model, _subset_bytes(reader, a, b))
-        for p in parse_provisions(raw):
+        raw = _call_with_retry(model, _subset_bytes(reader, a, b), _build_prompt(current_section))
+        chunk_provs = parse_provisions(raw)
+        for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)
+        # carry the last real section seen into the next chunk, so a chunk that opens
+        # mid-section (its heading fell in this chunk) still qualifies its codes.
+        for p in reversed(chunk_provs):
+            token = str(p.get("code", "")).split(" ", 1)[0]
+            if _SECTION_RE.match(token):
+                current_section = token
+                break
     return provisions_to_sections(dedupe_provisions(collected))
