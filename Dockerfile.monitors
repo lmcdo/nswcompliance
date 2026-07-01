@@ -32,6 +32,8 @@ COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
 # ModuleNotFounds mid-run (review path crashed on verify_dcp_formatting).
 COPY scripts/verify_dcp_formatting.py ./scripts/verify_dcp_formatting.py
 COPY scripts/dcp_quality_report.py ./scripts/dcp_quality_report.py
+# AI extraction engine (AI_EXTRACTION=1) — dcp_extract_changed imports it at runtime.
+COPY scripts/ai_extractor.py ./scripts/ai_extractor.py
 COPY enrichment/ ./enrichment/
 
 ENV PYTHONPATH=/app:/app/scripts

@@ -824,7 +824,15 @@ class DCPExtractor:
         TOC-driven override for configured councils whose body headings are
         unreliable. The override only fires when sequential detection clearly
         disagrees with the chapter's table of contents, so well-behaved chapters
-        (even within those councils) keep the sequential result."""
+        (even within those councils) keep the sequential result.
+
+        When AI_EXTRACTION=1, all of the above is bypassed in favour of an LLM
+        document extractor that reads any layout with no per-council config
+        (ce-ai-extraction-decision-2026-07). The result is the same section-dict
+        shape, so the downstream diff/enqueue/guard pipeline is unchanged."""
+        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+            from scripts.ai_extractor import ai_extract_chapter
+            return ai_extract_chapter(self.pdf_path, self.council)
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
             override = self._maybe_toc_override(sections)
