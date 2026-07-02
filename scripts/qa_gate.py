@@ -285,10 +285,18 @@ def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, s
     flagged line is pre-existing, never when uncertain.
     """
     def _git(args: list[str]) -> Optional[str]:
+        # Git hooks export repo-location vars (GIT_DIR is absolute when pushing
+        # from a worktree); left in the env they override cwd and point these
+        # commands at the hook's repo instead of project_dir. Scrub them so
+        # project_dir is authoritative.
+        env = {
+            k: v for k, v in os.environ.items()
+            if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR")
+        }
         try:
             r = subprocess.run(
                 ["git", *args], capture_output=True, text=True,
-                timeout=10, cwd=project_dir,
+                timeout=10, cwd=project_dir, env=env,
             )
             return r.stdout if r.returncode == 0 else None
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
