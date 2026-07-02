@@ -16,6 +16,7 @@ interface ReviewItem {
   new_page: number | null;
   has_numeric_change: boolean;
   summary: string | null;
+  pdf_url: string | null;
 }
 
 type Action = 'approve' | 'reject' | 'needs-info';
@@ -26,6 +27,7 @@ export default function DcpReviewQueue() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,6 +220,26 @@ export default function DcpReviewQueue() {
               </pre>
             </div>
           </div>
+
+          {/* Source PDF — verify the NEW text against the actual council page.
+              The page is approximate (extraction records the chunk's first page). */}
+          {item.pdf_url && (
+            <div className="mt-4 border-t pt-4">
+              <button
+                onClick={() => setShowPdf((v) => !v)}
+                className="rounded border px-3 py-1.5 text-sm font-medium"
+              >
+                {showPdf ? 'Hide' : 'Show'} source PDF (near p.{item.new_page ?? item.old_page ?? 1})
+              </button>
+              {showPdf && (
+                <iframe
+                  title="source PDF page"
+                  src={`${item.pdf_url}#page=${item.new_page ?? item.old_page ?? 1}&view=FitH`}
+                  className="mt-3 h-[70vh] w-full rounded border"
+                />
+              )}
+            </div>
+          )}
 
           <div className="mt-4 flex gap-2">
             <button
