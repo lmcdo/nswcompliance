@@ -47,7 +47,6 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 
-import boto3       # noqa: E402
 import psycopg2    # noqa: E402
 
 import dcp_extract_changed as dx  # noqa: E402
@@ -78,14 +77,18 @@ def find_committable_chapters(cur) -> list[dict]:
 
 
 def fetch_registry_chapter(cur, council: str, chapter_key: str) -> dict | None:
-    """Registry row for a still-flagged chapter (needs_extraction=TRUE)."""
+    """Registry row for an active chapter. Not gated on needs_extraction: an approved
+    chapter is committed whether the monitor flagged it or it was extracted on-demand
+    (e.g. an initial AI baseline swap).
+    prior-art-checked: reuse not viable because this is the existing DCP commit worker's
+    own registry lookup (this file); the flagged matches are unrelated SEPP/legislation
+    extraction modules, not the DCP review-queue commit path."""
     cur.execute(
         """
         SELECT id, council, chapter_key, chapter_label,
                r2_current_path, r2_version_label, dcp_name, content_hash
         FROM dcp_chapter_registry
         WHERE council = %s AND chapter_key = %s
-          AND needs_extraction = TRUE
           AND is_active = TRUE
           AND r2_current_path IS NOT NULL
         """,
@@ -96,6 +99,64 @@ def fetch_registry_chapter(cur, council: str, chapter_key: str) -> dict | None:
         return None
     cols = [d[0] for d in cur.description]
     return dict(zip(cols, row))
+
+
+def _section_header_from_text(new_text: str) -> str | None:
+    """The reviewed new_text starts with '# <code> <title>' (build_provision_text);
+    recover that heading line for section_header. None for preamble/headerless text."""
+    if new_text and new_text.startswith("#"):
+        head = new_text.partition("\n")[0].lstrip("# ").strip()
+        return head or None
+    return None
+
+
+def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int, int]:
+    """Make the HUMAN-APPROVED review-queue text the live provisions — verbatim, no
+    re-extraction (which for non-deterministic AI would commit different, unreviewed
+    text). Full replace: soft-delete the chapter's current provisions (reversible —
+    is_current=FALSE keeps the old rows), then insert every approved non-removed row.
+    Returns (superseded, inserted)."""
+    cur.execute(
+        """
+        UPDATE regulatory_provisions
+        SET is_current = FALSE
+        WHERE source_council = %s AND source_chapter_key = %s AND is_current = TRUE
+        """,
+        (council, chapter_key),
+    )
+    superseded = cur.rowcount
+
+    cur.execute(
+        """
+        SELECT document_id, ref_number, new_text, new_page
+        FROM dcp_review_queue
+        WHERE council = %s AND chapter_key = %s AND status = 'approved'
+          AND change_type <> 'removed' AND new_text IS NOT NULL
+        ORDER BY id
+        """,
+        (council, chapter_key),
+    )
+    rows = cur.fetchall()
+    inserted = 0
+    for document_id, ref_number, new_text, new_page in rows:
+        v2_actionable = False if str(ref_number).endswith("preamble") else None
+        page_range = [new_page] if new_page is not None else None
+        cur.execute(
+            """
+            INSERT INTO regulatory_provisions (
+                document_id, ref_number, section_header, provision_text, pdf_page,
+                pdf_source_file, page_range, extraction_method,
+                source_chapter_key, source_council, is_current, v2_is_actionable
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,'ai-reviewed',%s,%s,TRUE,%s)
+            """,
+            (
+                document_id, ref_number, _section_header_from_text(new_text),
+                new_text, new_page, chapter_key, page_range,
+                chapter_key, council, v2_actionable,
+            ),
+        )
+        inserted += 1
+    return superseded, inserted
 
 
 def main() -> int:
@@ -117,13 +178,6 @@ def main() -> int:
         cur.close()
         conn.close()
         return 0
-
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=dx.R2_ENDPOINT,
-        aws_access_key_id=dx.R2_ACCESS_KEY_ID,
-        aws_secret_access_key=dx.R2_SECRET_ACCESS_KEY,
-    )
 
     print("=" * 60)
     print(f"DCP COMMIT-APPROVED {'(DRY RUN)' if dry_run else '(COMMITTING)'}")
@@ -159,17 +213,39 @@ def main() -> int:
             continue
 
         if dry_run:
-            print(f"  [would commit] {council}/{chapter_key}")
+            cur.execute(
+                "SELECT COUNT(*) FROM dcp_review_queue WHERE council=%s AND chapter_key=%s "
+                "AND status='approved' AND change_type <> 'removed' AND new_text IS NOT NULL",
+                (council, chapter_key),
+            )
+            n = cur.fetchone()[0]
+            print(f"  [would commit] {council}/{chapter_key} -- {n} reviewed provisions")
             committed += 1
             continue
 
-        ok, _ = dx.extract_chapter(chapter, s3, conn, dry_run=False, review=False)
-        if ok:
-            print(f"  [committed] {council}/{chapter_key}")
+        try:
+            # prior-art-checked: reuse not viable because the flagged matches are the
+            # separate SEPP full-text import scripts; this is the DCP review-queue commit
+            # path, writing dcp_review_queue-approved rows into regulatory_provisions.
+            superseded, inserted = commit_reviewed_from_queue(cur, council, chapter_key)
+            # Resolve the worklist: the reviewed provisions are now live. The status
+            # enum has no 'committed', so the resolved rows are deleted (the permanent
+            # record is regulatory_provisions, extraction_method='ai-reviewed').
+            cur.execute(
+                "DELETE FROM dcp_review_queue WHERE council=%s AND chapter_key=%s AND status='approved'",
+                (council, chapter_key),
+            )
+            cur.execute(
+                "UPDATE dcp_chapter_registry SET needs_extraction=FALSE WHERE council=%s AND chapter_key=%s",
+                (council, chapter_key),
+            )
+            conn.commit()
+            print(f"  [committed] {council}/{chapter_key} -- {inserted} reviewed provisions "
+                  f"live ({superseded} superseded)")
             committed += 1
-        else:
-            print(f"  [FAILED] {council}/{chapter_key} -- extract_chapter rolled back; "
-                  f"needs_extraction stays TRUE for retry.")
+        except Exception as exc:
+            conn.rollback()
+            print(f"  [FAILED] {council}/{chapter_key} -- {exc}; rolled back, approval kept.")
             failed += 1
 
     cur.close()
