@@ -99,7 +99,7 @@ export async function POST(
     const valueMax = optionalNumber(body.value_max);
     const sectionRef = typeof body.section_ref === 'string' ? body.section_ref.trim() : '';
     const sourceText = typeof body.source_text === 'string' ? body.source_text.trim() : '';
-    if (valueMin === null && valueMax === null) {
+    if (valueMin == null && valueMax == null) {
       return NextResponse.json(
         { error: 'fix requires a corrected value (value_min and/or value_max)' },
         { status: 400 },
