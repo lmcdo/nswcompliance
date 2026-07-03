@@ -19,9 +19,13 @@ interface LandingHeroProps {
   ctaLabel: string
   stats?: HeroStat[]
   heroImage?: string
+  /** Product-specific controls rendered under the search bar (e.g. the brief's
+      satellite toggle) — options must be visible where the run starts, not
+      buried in a second input further down the page. */
+  searchExtras?: React.ReactNode
 }
 
-export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaLabel, stats, heroImage }: LandingHeroProps) {
+export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaLabel, stats, heroImage, searchExtras }: LandingHeroProps) {
   const [address, setAddress] = useState("")
   const [isFocused, setIsFocused] = useState(false)
 
@@ -113,6 +117,8 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
             <Shield className="mr-1 inline-block h-4 w-4" />
             Free instant check · No signup required · Full NSW coverage
           </p>
+
+          {searchExtras}
         </form>
 
         {/* Quick stats */}

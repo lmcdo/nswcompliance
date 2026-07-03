@@ -1,32 +1,123 @@
 {
-  "tier": "minor",
-  "commit_hash": "c879b9da",
-  "justification": "Brief showed 'Address not matched - check the address' for the DCP section when the real situation was a council we have not onboarded (e.g. Wingecarribee): backend reason said 'Former council could not be determined' and the frontend mapped any 'could not' to the address-mismatch card, blaming the user's input for our coverage gap. Reworded the backend reason to 'not onboarded' (routes to the honest 'Not assessed' card) and narrowed the frontend address-mismatch match to genuine resolution failures ('prop_id').",
+  "tier": "standard",
+  "commit_hash": "ab6ec24c",
+  "justification": "The Intelligence Brief page was a bare input card while the Conveyancing page has a full product landing (hero, data sources, what-it-covers, methodology). This gives the Brief the same landing using the existing ProductLandingV2 config pattern: a new intelligence-brief config, optional pricing in the landing types (the Brief is free, so no invented price table), idle-state mounting on the brief page, a landing-search listener so the hero's address input starts a brief, and route metadata via a new layout. Also: canibuildit no longer serves the two pro report pages (307 to their subdomains), and the branch merges main to pick up #642's point-in-polygon strata fix (the Brief imports detect_strata from the conveyancing script, so the Bowral wrong-strata bug is fixed here too); the duplicate GIT_DIR scrub both branches carried in qa_gate was deduplicated to main's version.",
   "files": [
-    "services/intelligence_brief.py",
+    "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts",
+    "frontend-nextjs/components/reports/landing/types.ts",
+    "frontend-nextjs/components/reports/landing/ProductLandingV2.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_intelligence_brief_orchestrator.py"
+    "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
+    "frontend-nextjs/middleware.ts",
+    "scripts/qa_gate.py",
+    "frontend-nextjs/components/reports/landing/LandingHero.tsx"
   ],
-  "break_it": [
+  "pre_impl": {
+    "existing_data": "ProductLandingV2 renders a landing from per-product configs (7 existed: flood, shadow, solar, threat-radar, pre-da, bushfire, conveyancing). LandingHero already dispatches a window 'landing-search' CustomEvent with the typed address. The brief page is a 1900-line client component with idle/triggering/streaming/complete states and a POST /api/intelligence-brief trigger where lat/lng are optional (server resolves). The Brief's strata classification imports detect_strata from scripts/generate_conveyancing_report.py — fixed on main in #642.",
+    "assumption_mismatch": "The landing config type required a price + free/paid comparison table; the Brief has no paid tier today, and inventing one would fabricate pricing. Made pricing optional and render the methodology block standalone.",
+    "new_vs_existing": "No new mechanism: one new config file following data/conveyancing.ts, one new metadata layout following the conveyancing page's metadata (the brief page is 'use client' so metadata cannot live there), and wiring inside the existing page state machine. The trigger body was extracted from handleGenerate into startBrief(address, lat, lng) so the landing event and the button share one code path."
+  },
+  "functions": [
     {
-      "scenario": "Council without onboarded DCP data (Wingecarribee) runs a brief",
-      "what_happens": "DCP card now shows 'Not assessed - this council's DCP isn't in our dataset yet' instead of telling the user their address is wrong",
-      "mitigated": true,
-      "how": "test_none_dcp_no_lga pins the reason contains 'not onboarded' and not 'could not'; frontend 'not onboarded' branch renders the honest card",
-      "repro": "python -m pytest tests/test_intelligence_brief_orchestrator.py::TestBuildDcpControls::test_none_dcp_no_lga -q"
+      "name": "intelligenceBriefConfig",
+      "file_line": "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts:8",
+      "input": "none - a static exported config object consumed by ProductLandingV2 via its product-key record",
+      "output": "hero copy, 6 data sources, 9 feature cards mirroring the brief's streamed sections, methodology text; no price and no comparison (free product)",
+      "if_none": "key missing from the configs record -> ProductLandingV2 returns null and the page falls back to the plain input card"
     },
     {
-      "scenario": "Genuine address-resolution failure (no prop_id resolved)",
-      "what_happens": "sections with reason 'No prop_id resolved' still render the 'Address not matched' error card - the narrowed frontend match keeps the 'prop_id' token",
+      "name": "ProductLandingV2",
+      "file_line": "frontend-nextjs/components/reports/landing/ProductLandingV2.tsx:57",
+      "input": "product key -> config; config.price/config.comparison now optional",
+      "output": "renders PricingTable only when price AND comparison exist; otherwise a standalone How It Works block with config.methodology",
+      "if_none": "config absent -> null (unchanged); all 7 existing configs still define price+comparison so their rendering is unchanged"
+    },
+    {
+      "name": "startBrief / handleGenerate / landing-search effect",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1669",
+      "input": "startBrief(address, lat|null, lng|null); the effect reads CustomEvent detail.address with optional chaining",
+      "output": "same POST body and state transitions as before; the landing hero submit starts a brief with lat/lng null (server resolves); the button path passes the autocomplete's lat/lng exactly as before",
+      "if_none": "empty/missing event address -> ignored; event while a brief is running (stateRef !== 'idle') -> ignored; listener removed on unmount"
+    },
+    {
+      "name": "IntelligenceBriefLayout",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/layout.tsx:26",
+      "input": "the route's children (the client brief page), passed through untouched",
+      "output": "route metadata (title/OG/twitter) + SoftwareAppJsonLd, then children unchanged",
+      "if_none": "no conditional paths - a static server wrapper with no data fetching or state"
+    },
+    {
+      "name": "middleware",
+      "file_line": "frontend-nextjs/middleware.ts:91",
+      "input": "the incoming NextRequest; host resolved via x-forwarded-host, then host, then nextUrl.hostname (same chain the existing domain rules use)",
+      "output": "on the canibuildit host, /reports/intelligence-brief 307-redirects to https://brief.plotdetect.com.au and /reports/conveyancing to https://conveyance.plotdetect.com.au, preserving the query string; every other host and path is untouched",
+      "if_none": "host is not canibuildit or path is any other route -> falls through to the existing rewrite and API rules exactly as before"
+    },
+    {
+      "name": "changed_line_numbers",
+      "file_line": "scripts/qa_gate.py:275",
+      "input": "git args; subprocess env scrubbed of GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE (deduplicated to main's #642 version after the merge)",
+      "output": "git runs against cwd=project_dir as intended, instead of the hook's exported repo location",
+      "if_none": "git fails or no merge-base -> returns None/{} -> gate keeps ALL findings (unchanged fail-safe full-scan fallback)"
+    }
+  ],
+  "values": "N/A - no regulatory values. The landing copy deliberately carries no LGA counts or control numbers (hero stats are '15+ data layers', '~40 sec typical brief', 'Live NSW Planning Portal'); liability grep on the new copy returned zero matches.",
+  "queries": "N/A - no database queries.",
+  "break_it": [
+    {
+      "scenario": "landing hero submits a free-typed address that never went through autocomplete (no lat/lng, possibly garbage)",
+      "what_happens": "the brief is triggered with lat/lng null; a bad address makes the run fail",
+      "repro": "type 'asdf' in the hero and submit",
       "mitigated": true,
-      "how": "frontend branch still matches 'prop_id'; all 'No prop_id resolved' reasons in intelligence_brief.py contain that token",
-      "repro": "grep -n 'No prop_id resolved' services/intelligence_brief.py; run a brief with a nonsense address"
+      "how": "the API contract already declares lat/lng optional and resolves server-side; a failed run lands in the existing visible error state with 'Try another address' - a loud failure, not wrong data"
+    },
+    {
+      "scenario": "landing-search fires while a brief is already streaming (stale landing state, double submit)",
+      "what_happens": "a second run would clobber the in-flight one",
+      "repro": "dispatch the event twice quickly",
+      "mitigated": true,
+      "how": "the listener checks stateRef.current !== 'idle' and ignores the event; the landing itself unmounts once state leaves idle"
+    },
+    {
+      "scenario": "making pricing optional breaks the seven existing landings",
+      "what_happens": "their pricing tables would disappear or crash on undefined",
+      "repro": "render each product landing",
+      "mitigated": true,
+      "how": "render is gated on config.price && config.comparison, and all seven existing configs still define both; tsc clean and all 713 jest tests pass"
+    },
+    {
+      "scenario": "a consumer mid-brief on canibuildit gets redirected and loses their run, or the redirect gets stuck in browser cache",
+      "what_happens": "in-flight state is lost on the domain hop; a cached permanent redirect would be hard to undo later",
+      "repro": "open canibuildit.com.au/reports/intelligence-brief and watch the redirect",
+      "mitigated": true,
+      "how": "the redirect fires before the page loads (no run can be in flight on that URL), uses 307 (temporary, not cached like the 308s that made a past domain move painful), and the destination subdomain root rewrites to the same page - the user lands on the identical product, pro-branded"
+    },
+    {
+      "scenario": "the merge stacking two copies of the qa_gate env scrub reintroduces the worktree push failure or shadows one fix",
+      "what_happens": "duplicate env assignments could drift apart and silently reintroduce the GIT_DIR leak",
+      "repro": "push from a git worktree so hooks export an absolute GIT_DIR",
+      "mitigated": true,
+      "how": "deduplicated to main's single copy (#642); the previously failing test passes with an absolute GIT_DIR exported and the full pytest suite (2479) passes post-merge"
+    },
+    {
+      "scenario": "duplicate H1 / competing address inputs when the landing and the classic input card render together",
+      "what_happens": "confusing double title and two entry points styled differently",
+      "repro": "load /reports/intelligence-brief with no address",
+      "mitigated": true,
+      "how": "the compact page header now renders only when state !== 'idle' (the hero carries the title while idle), matching the conveyancing page's landing-plus-tool layout; the classic card keeps the satellite toggle the hero lacks"
+    },
+    {
+      "scenario": "User starts a brief from the landing hero search and wants satellite layers (the hero previously had no toggle, so hero-started briefs always ran with satellite off and the option looked removed)",
+      "what_happens": "the satellite checkbox now renders directly under the hero search bar via the searchExtras slot; the landing-search handler reads the live includeSatellite state so a hero-started brief honours the tick",
+      "mitigated": true,
+      "how": "searchExtras threaded LandingHero <- ProductLandingV2 <- page.tsx bound to the existing includeSatellite state; startBrief's useCallback dep on includeSatellite rebinds the landing-search listener on toggle",
+      "repro": "open /reports/intelligence-brief while idle: the 'Include satellite analysis' checkbox is visible under the hero search; tick it, run from the hero, network POST body has include_satellite: true"
     }
   ],
   "post_merge": {
-    "db_reset": "none - wording-only change, no schema or data touched",
-    "secrets": "none touched",
-    "other_repo": "none - Trigger.dev relay passes sections through transparently",
-    "manual_verify": "run an Intelligence Brief for 38 Park Rd Bowral NSW 2576 after Railway redeploys: DCP section should read 'Not assessed - this council's DCP isn't in our dataset yet' instead of 'Address not matched'"
+    "db_reset": "N/A - no database change.",
+    "secrets": "None - no secrets or env vars.",
+    "other_repo": "N/A - Vercel auto-deploys the frontend on merge.",
+    "manual_verify": "After deploy: brief.plotdetect.com.au shows the landing; typing an address in the hero starts a brief; re-run 38 Park Rd Bowral - it must now classify as Torrens (DP702113) and produce a full Development Brief with DCP/SEPP/neighbourhood/capacity sections; canibuildit.com.au/reports/intelligence-brief redirects to brief.plotdetect.com.au; /reports/conveyancing landing unchanged."
   }
 }

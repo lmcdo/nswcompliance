@@ -6,6 +6,7 @@ import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
+import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -1670,8 +1671,8 @@ function IntelligenceBriefInner() {
     return () => { ac.abort(); };
   }, [runId, publicAccessToken]);
 
-  const handleGenerate = useCallback(async () => {
-    if (!selectedAddress.trim()) return;
+  const startBrief = useCallback(async (address: string, lat: number | null, lng: number | null) => {
+    if (!address.trim()) return;
 
     setState('triggering');
     setErrorMsg('');
@@ -1688,9 +1689,9 @@ function IntelligenceBriefInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: selectedAddress,
-          lat: selectedLat,
-          lng: selectedLng,
+          address,
+          lat,
+          lng,
           include_satellite: includeSatellite,
           // Pre-DA site history soft-dropped (heavy ML dep can't run in the web
           // container); keep premium off until it's decoupled to a worker.
@@ -1711,7 +1712,28 @@ function IntelligenceBriefInner() {
       setState('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
     }
-  }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
+  }, [includeSatellite]);
+
+  const handleGenerate = useCallback(() => {
+    startBrief(selectedAddress, selectedLat, selectedLng);
+  }, [startBrief, selectedAddress, selectedLat, selectedLng]);
+
+  // The landing hero (ProductLandingV2) dispatches a window 'landing-search'
+  // CustomEvent carrying the typed address — the same contract the other report
+  // landings use. Start a brief from it; lat/lng resolve server-side.
+  useEffect(() => {
+    const onLandingSearch = (e: Event) => {
+      const address = (e as CustomEvent<{ address?: string }>).detail?.address?.trim();
+      if (!address || stateRef.current !== 'idle') return;
+      setInputAddress(address);
+      setSelectedAddress(address);
+      setSelectedLat(null);
+      setSelectedLng(null);
+      startBrief(address, null, null);
+    };
+    window.addEventListener('landing-search', onLandingSearch);
+    return () => window.removeEventListener('landing-search', onLandingSearch);
+  }, [startBrief]);
 
   const handleReset = useCallback(() => {
     if (abortRef.current) {
@@ -1733,20 +1755,47 @@ function IntelligenceBriefInner() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
-        <p className="text-sm text-slate-500 mt-1 max-w-3xl">
-          For a single NSW property: what the rules allow, what physically constrains the site,
-          what environmental risk applies, what it&apos;s worth, and what&apos;s happening
-          next door — fifteen-plus government, satellite and computed layers fused into one brief,
-          every figure traced to its source.
-        </p>
-      </div>
-
-      {/* Address input */}
+      {/* Landing — hero (with its own search), data sources, coverage and method.
+          Idle only; the hero carries the page title, so the compact header below
+          renders only once a brief is running. Mirrors /reports/conveyancing.
+          The satellite toggle rides under the hero search: briefs started from
+          the hero use it, so the option is visible where the run actually starts
+          (not only in the secondary input card further down). */}
       {state === 'idle' && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4 max-w-2xl">
+        <ProductLandingV2
+          product="intelligence-brief"
+          searchExtras={
+            <label className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeSatellite}
+                onChange={(e) => setIncludeSatellite(e.target.checked)}
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              Include satellite analysis (bushfire, flood, climate, granny flat detection)
+            </label>
+          }
+        />
+      )}
+
+      {/* Header */}
+      {state !== 'idle' && (
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
+          <p className="text-sm text-slate-500 mt-1 max-w-3xl">
+            For a single NSW property: what the rules allow, what physically constrains the site,
+            what environmental risk applies, what it&apos;s worth, and what&apos;s happening
+            next door — fifteen-plus government, satellite and computed layers fused into one brief,
+            every figure traced to its source.
+          </p>
+        </div>
+      )}
+
+      {/* Address input — the functional entry point (carries the satellite toggle
+          the landing hero doesn't have). Sits below the landing, like the tool
+          input on the conveyancing page. */}
+      {state === 'idle' && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4 max-w-2xl mx-auto">
           <AddressAutocomplete
             value={inputAddress}
             onChange={setInputAddress}
