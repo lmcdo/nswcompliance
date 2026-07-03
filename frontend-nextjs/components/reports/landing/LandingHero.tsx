@@ -112,13 +112,15 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
             </div>
           </div>
 
+          {/* Product options directly under the search bar — above the helper
+              text so they read as part of the input, not as fine print. */}
+          {searchExtras}
+
           {/* Helper text */}
           <p className="mt-3 text-center text-sm text-muted-foreground">
             <Shield className="mr-1 inline-block h-4 w-4" />
             Free instant check · No signup required · Full NSW coverage
           </p>
-
-          {searchExtras}
         </form>
 
         {/* Quick stats */}

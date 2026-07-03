@@ -1765,15 +1765,18 @@ function IntelligenceBriefInner() {
         <ProductLandingV2
           product="intelligence-brief"
           searchExtras={
-            <label className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeSatellite}
-                onChange={(e) => setIncludeSatellite(e.target.checked)}
-                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-              />
-              Include satellite analysis (bushfire, flood, climate, granny flat detection)
-            </label>
+            <div className="mt-4 flex justify-center">
+              <label className="inline-flex items-center gap-2.5 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-md ring-1 ring-border/50 cursor-pointer hover:ring-primary/50 transition-all">
+                <input
+                  type="checkbox"
+                  checked={includeSatellite}
+                  onChange={(e) => setIncludeSatellite(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                Include satellite analysis
+                <span className="font-normal text-muted-foreground">bushfire · flood · climate · granny flat detection</span>
+              </label>
+            </div>
           }
         />
       )}
