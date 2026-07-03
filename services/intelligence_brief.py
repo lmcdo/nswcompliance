@@ -2000,7 +2000,17 @@ def _build_dcp_controls(
     today = date.today().isoformat()
 
     if dcp_data is None:
-        reason = f"DCP controls not yet extracted for '{lga_slug}'" if lga_slug else "Former council could not be determined"
+        # No slug means the council is not in the DCP-onboarded set (the common
+        # case — e.g. Wingecarribee), NOT that the address failed to resolve.
+        # The wording matters: the frontend routes "not onboarded" to an honest
+        # "Not assessed" card, while "could not ..." used to render as
+        # "Address not matched — check the address", blaming the user's input
+        # for our coverage gap.
+        reason = (
+            f"DCP controls not yet extracted for '{lga_slug}'"
+            if lga_slug
+            else "This council's DCP is not onboarded in our dataset yet"
+        )
         return DCPControls(
             controls=DataField(value=[], confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
             dcp_name=DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),

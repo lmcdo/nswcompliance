@@ -181,7 +181,11 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
     };
   }
   if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
-  if (r.includes('prop_id') || r.includes('could not') || r.includes('couldn')) {
+  // Only a genuine resolution failure ("No prop_id resolved") is the user's
+  // address problem. A bare "could not ..." from any backend layer used to land
+  // here too, so a council we simply haven't onboarded (e.g. Wingecarribee DCP)
+  // rendered as "Address not matched — check the address".
+  if (r.includes('prop_id') || r.includes('address not')) {
     return {
       label: 'Address not matched',
       detail: 'We could not match this address to a property in the NSW register — check the address.',
