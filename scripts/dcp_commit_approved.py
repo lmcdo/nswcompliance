@@ -285,6 +285,30 @@ def main() -> int:
     cur.close()
     conn.close()
 
+    # Enrichment: reviewed provisions are inserted with v2_is_actionable / v2_topic /
+    # v2_applicable_dev_types UNSET. The end-user UI filters and groups by exactly those
+    # tags, so a committed-but-unenriched council is effectively invisible in the UI. Run
+    # the same three-phase enrichment the extraction path runs (dcp_extract_changed) so a
+    # published council is immediately usable. The phases process only v2_is_actionable
+    # IS NULL rows, so they touch just the freshly committed provisions and are idempotent.
+    # Wrapped: an enrichment error must NOT fail the already-committed provisions — they can
+    # be re-enriched — so it degrades to a loud warning, not a rollback.
+    if committed and not dry_run:
+        print("Enriching newly committed provisions (actionability -> topics -> applicability)...")
+        try:
+            from enrichment.pipeline import (
+                run_actionability_classification,
+                run_layer_tagging,
+                run_applicability_tagging,
+            )
+            run_actionability_classification(batch_size=500)
+            run_layer_tagging(batch_size=500)
+            run_applicability_tagging(batch_size=500)
+            print("  enrichment complete.")
+        except Exception as exc:  # noqa: BLE001 — never fail a committed provision on enrichment
+            print(f"  [warn] enrichment failed: {exc}. Provisions ARE committed but untagged; "
+                  f"re-run enrichment (they will not show correctly in the UI until you do).")
+
     print("-" * 60)
     verb = "would commit" if dry_run else "committed"
     print(f"  {verb}: {committed}   failed: {failed}   skipped: {skipped}")
