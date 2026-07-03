@@ -113,32 +113,66 @@ def _section_header_from_text(new_text: str) -> str | None:
 def commit_reviewed_from_queue(cur, council: str, chapter_key: str) -> tuple[int, int]:
     """Make the HUMAN-APPROVED review-queue text the live provisions — verbatim, no
     re-extraction (which for non-deterministic AI would commit different, unreviewed
-    text). Full replace: soft-delete the chapter's current provisions (reversible —
-    is_current=FALSE keeps the old rows), then insert every approved non-removed row.
+    text). Soft-delete is reversible (is_current=FALSE keeps the old rows).
+
+    Two modes, from is_full_replace stored at enqueue:
+      * FULL REPLACE (restructure / empty baseline, or legacy NULL) — the queue holds the
+        whole chapter, so blanket soft-delete the chapter's current provisions, then
+        insert every approved non-removed row.
+      * TARGETED (an amendment where only some provisions changed) — the queue holds only
+        the changes, so supersede ONLY the refs that are changed/removed/re-added and leave
+        every unchanged provision intact. A blanket delete here would drop the unchanged
+        rules.
     Returns (superseded, inserted)."""
     cur.execute(
         """
-        UPDATE regulatory_provisions
-        SET is_current = FALSE
-        WHERE source_council = %s AND source_chapter_key = %s AND is_current = TRUE
+        SELECT bool_or(is_full_replace) FROM dcp_review_queue
+        WHERE council = %s AND chapter_key = %s AND status = 'approved'
         """,
         (council, chapter_key),
     )
-    superseded = cur.rowcount
+    row = cur.fetchone()
+    # NULL (legacy rows) -> full replace: the pre-054 baseline is all full re-extractions.
+    full_replace = True if (row is None or row[0] is None) else bool(row[0])
+
+    superseded = 0
+    if full_replace:
+        cur.execute(
+            """
+            UPDATE regulatory_provisions
+            SET is_current = FALSE
+            WHERE source_council = %s AND source_chapter_key = %s AND is_current = TRUE
+            """,
+            (council, chapter_key),
+        )
+        superseded = cur.rowcount
 
     cur.execute(
         """
-        SELECT document_id, ref_number, new_text, new_page
+        SELECT document_id, ref_number, new_text, new_page, change_type
         FROM dcp_review_queue
         WHERE council = %s AND chapter_key = %s AND status = 'approved'
-          AND change_type <> 'removed' AND new_text IS NOT NULL
         ORDER BY id
         """,
         (council, chapter_key),
     )
     rows = cur.fetchall()
     inserted = 0
-    for document_id, ref_number, new_text, new_page in rows:
+    for document_id, ref_number, new_text, new_page, change_type in rows:
+        if not full_replace:
+            # Targeted: supersede ONLY this ref's current version (changed / removed /
+            # re-added). Unchanged provisions are never named here, so they stay live.
+            cur.execute(
+                """
+                UPDATE regulatory_provisions SET is_current = FALSE
+                WHERE source_council = %s AND source_chapter_key = %s
+                  AND ref_number = %s AND is_current = TRUE
+                """,
+                (council, chapter_key, ref_number),
+            )
+            superseded += cur.rowcount
+        if change_type == "removed" or not new_text:
+            continue
         v2_actionable = False if str(ref_number).endswith("preamble") else None
         page_range = [new_page] if new_page is not None else None
         cur.execute(
