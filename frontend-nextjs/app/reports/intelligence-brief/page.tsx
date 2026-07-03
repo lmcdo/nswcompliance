@@ -1753,8 +1753,26 @@ function IntelligenceBriefInner() {
     <div className="max-w-6xl mx-auto">
       {/* Landing — hero (with its own search), data sources, coverage and method.
           Idle only; the hero carries the page title, so the compact header below
-          renders only once a brief is running. Mirrors /reports/conveyancing. */}
-      {state === 'idle' && <ProductLandingV2 product="intelligence-brief" />}
+          renders only once a brief is running. Mirrors /reports/conveyancing.
+          The satellite toggle rides under the hero search: briefs started from
+          the hero use it, so the option is visible where the run actually starts
+          (not only in the secondary input card further down). */}
+      {state === 'idle' && (
+        <ProductLandingV2
+          product="intelligence-brief"
+          searchExtras={
+            <label className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeSatellite}
+                onChange={(e) => setIncludeSatellite(e.target.checked)}
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              Include satellite analysis (bushfire, flood, climate, granny flat detection)
+            </label>
+          }
+        />
+      )}
 
       {/* Header */}
       {state !== 'idle' && (

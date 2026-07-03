@@ -1,116 +1,123 @@
 {
   "tier": "standard",
-  "commit_hash": "8787a059",
-  "justification": "Conveyancer free-check report for 38 Park Rd Bowral showed the wrong title type: the cadastre query's always-20m buffer captured the NEIGHBOUR's strata scheme (SP105471) and first-SP-wins confirmed it, cascading into three wrong feasibility cards. Fix makes point-in-polygon decide (buffer only as no-hit fallback needing address corroboration), drops the statewide SEPP R&H 'Land Application' polygon from hazard overlays (false coastal hit on every NSW property), hides lot_size from the hazard UI section, dedupes SEPP rows in the free check, and scrubs hook-exported GIT_DIR from qa_gate diff-scoping subprocesses (worktree pushes failed the test suite).",
+  "commit_hash": "ab6ec24c",
+  "justification": "The Intelligence Brief page was a bare input card while the Conveyancing page has a full product landing (hero, data sources, what-it-covers, methodology). This gives the Brief the same landing using the existing ProductLandingV2 config pattern: a new intelligence-brief config, optional pricing in the landing types (the Brief is free, so no invented price table), idle-state mounting on the brief page, a landing-search listener so the hero's address input starts a brief, and route metadata via a new layout. Also: canibuildit no longer serves the two pro report pages (307 to their subdomains), and the branch merges main to pick up #642's point-in-polygon strata fix (the Brief imports detect_strata from the conveyancing script, so the Bowral wrong-strata bug is fixed here too); the duplicate GIT_DIR scrub both branches carried in qa_gate was deduplicated to main's version.",
   "files": [
-    "scripts/generate_conveyancing_report.py",
-    "frontend-nextjs/components/tools/ConveyancingTool.tsx",
-    "tests/test_cadastral_plan_type.py",
+    "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts",
+    "frontend-nextjs/components/reports/landing/types.ts",
+    "frontend-nextjs/components/reports/landing/ProductLandingV2.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
+    "frontend-nextjs/middleware.ts",
     "scripts/qa_gate.py",
-    "tests/test_qa_gate_diff_scoping.py"
+    "frontend-nextjs/components/reports/landing/LandingHero.tsx"
   ],
   "pre_impl": {
-    "existing_data": "detect_strata/get_cadastral_info already existed in scripts/generate_conveyancing_report.py and are consumed by services/conveyancing.py (is_strata feeds calc_feasibility and the Title Type banner) and services/intelligence_brief.py (classify_strata + StrataHub lot-count enrichment). climate_risk_score.py already contained the 'Land Application covers all NSW, only Subject Land is a hazard' rule; the PDF path already deduped SEPP rows by (name, type) while the free-check UI did not.",
-    "assumption_mismatch": "The old code assumed any SP/CP lot within 20 m of the property centroid belonged to the subject property. Live reproduction showed the point-in-polygon result for 38 Park Rd Bowral is exactly one Torrens lot (12/DP702113) while the 20 m buffer adds two neighbouring strata schemes; the buffer exists only for imprecise geocodes, not as the primary signal.",
-    "new_vs_existing": "No new mechanism or data source: the same cadastre endpoint is queried in two stages (containment first, buffer fallback), a containment flag is threaded through the existing dict contract (all previous keys preserved), the coastal filter mirrors the existing _normalize_coastal rule, and the UI changes are render-time filters over data already fetched."
+    "existing_data": "ProductLandingV2 renders a landing from per-product configs (7 existed: flood, shadow, solar, threat-radar, pre-da, bushfire, conveyancing). LandingHero already dispatches a window 'landing-search' CustomEvent with the typed address. The brief page is a 1900-line client component with idle/triggering/streaming/complete states and a POST /api/intelligence-brief trigger where lat/lng are optional (server resolves). The Brief's strata classification imports detect_strata from scripts/generate_conveyancing_report.py — fixed on main in #642.",
+    "assumption_mismatch": "The landing config type required a price + free/paid comparison table; the Brief has no paid tier today, and inventing one would fabricate pricing. Made pricing optional and render the methodology block standalone.",
+    "new_vs_existing": "No new mechanism: one new config file following data/conveyancing.ts, one new metadata layout following the conveyancing page's metadata (the brief page is 'use client' so metadata cannot live there), and wiring inside the existing page state machine. The trigger body was extracted from handleGenerate into startBrief(address, lat, lng) so the landing event and the button share one code path."
   },
   "functions": [
     {
-      "name": "get_cadastral_info",
-      "file_line": "scripts/generate_conveyancing_report.py:324",
-      "input": "lat/lng WGS84 point from resolve_address lot centroid or coordinate-first resolution",
-      "output": "dict with is_strata, strata_plan, plan_type, parent_has_strata, plan_label, lot_number plus new containment flag stating whether returned lots actually contain the point",
-      "if_none": "on request exception or empty results from both stages it returns the all-False dict with containment False, so detect_strata falls through to the address heuristic exactly as before"
+      "name": "intelligenceBriefConfig",
+      "file_line": "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts:8",
+      "input": "none - a static exported config object consumed by ProductLandingV2 via its product-key record",
+      "output": "hero copy, 6 data sources, 9 feature cards mirroring the brief's streamed sections, methodology text; no price and no comparison (free product)",
+      "if_none": "key missing from the configs record -> ProductLandingV2 returns null and the page falls back to the plain input card"
     },
     {
-      "name": "detect_strata",
-      "file_line": "scripts/generate_conveyancing_report.py:419",
-      "input": "street address string plus optional lat/lng coordinates for the cadastre lookup",
-      "output": "strata_info dict consumed by calc_feasibility, the Title Type banner and intelligence_brief classify_strata; containment-confirmed SP keeps source cadastre, buffered SP needs unit-style address and is marked cadastre+address",
-      "if_none": "with no coordinates or no cadastre hits the pre-existing address-heuristic fallback returns is_strata from the unit-prefix regex with source address_heuristic"
+      "name": "ProductLandingV2",
+      "file_line": "frontend-nextjs/components/reports/landing/ProductLandingV2.tsx:57",
+      "input": "product key -> config; config.price/config.comparison now optional",
+      "output": "renders PricingTable only when price AND comparison exist; otherwise a standalone How It Works block with config.methodology",
+      "if_none": "config absent -> null (unchanged); all 7 existing configs still define price+comparison so their rendering is unchanged"
     },
     {
-      "name": "_drop_jurisdictional_overlays",
-      "file_line": "scripts/generate_conveyancing_report.py:1247",
-      "input": "deduped overlay row dicts from the spatial_overlays PostGIS query in get_unique_overlays",
-      "output": "same rows minus coastal_land_application rows whose value is not Subject Land, so the statewide jurisdictional polygon never renders as a hazard",
-      "if_none": "empty input list returns empty list unchanged and a missing value key is treated as not Subject Land so the row is dropped rather than shown as a false coastal hazard"
+      "name": "startBrief / handleGenerate / landing-search effect",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1669",
+      "input": "startBrief(address, lat|null, lng|null); the effect reads CustomEvent detail.address with optional chaining",
+      "output": "same POST body and state transitions as before; the landing hero submit starts a brief with lat/lng null (server resolves); the button path passes the autocomplete's lat/lng exactly as before",
+      "if_none": "empty/missing event address -> ignored; event while a brief is running (stateRef !== 'idle') -> ignored; listener removed on unmount"
+    },
+    {
+      "name": "IntelligenceBriefLayout",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/layout.tsx:26",
+      "input": "the route's children (the client brief page), passed through untouched",
+      "output": "route metadata (title/OG/twitter) + SoftwareAppJsonLd, then children unchanged",
+      "if_none": "no conditional paths - a static server wrapper with no data fetching or state"
+    },
+    {
+      "name": "middleware",
+      "file_line": "frontend-nextjs/middleware.ts:91",
+      "input": "the incoming NextRequest; host resolved via x-forwarded-host, then host, then nextUrl.hostname (same chain the existing domain rules use)",
+      "output": "on the canibuildit host, /reports/intelligence-brief 307-redirects to https://brief.plotdetect.com.au and /reports/conveyancing to https://conveyance.plotdetect.com.au, preserving the query string; every other host and path is untouched",
+      "if_none": "host is not canibuildit or path is any other route -> falls through to the existing rewrite and API rules exactly as before"
     },
     {
       "name": "changed_line_numbers",
       "file_line": "scripts/qa_gate.py:275",
-      "input": "changed file paths plus the project directory whose git history should be queried",
-      "output": "mapping of file to changed line numbers computed against the merge-base with origin/main, now immune to hook-exported GIT_DIR redirecting the subprocess to another repo",
-      "if_none": "when no git base is resolvable it returns an empty dict and callers keep ALL findings as the safe full-scan fallback"
+      "input": "git args; subprocess env scrubbed of GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE (deduplicated to main's #642 version after the merge)",
+      "output": "git runs against cwd=project_dir as intended, instead of the hook's exported repo location",
+      "if_none": "git fails or no merge-base -> returns None/{} -> gate keeps ALL findings (unchanged fail-safe full-scan fallback)"
     }
   ],
-  "values": [
-    {
-      "value": "cadastre classsubtype (3=strata, 4=community) and hasstratum (2=scheme present) attributes",
-      "read_at": "scripts/generate_conveyancing_report.py sp_lots classification inside get_cadastral_info",
-      "if_missing": "attribute absent means the lot is not counted as SP/CP unless the planlabel prefix says otherwise, matching pre-existing behaviour"
-    },
-    {
-      "value": "spatial_overlays.value for coastal_land_application rows (Land Application vs Subject Land)",
-      "read_at": "scripts/generate_conveyancing_report.py _drop_jurisdictional_overlays",
-      "if_missing": "null or empty value is not Subject Land so the row is dropped, which fails toward not showing an unverifiable coastal designation"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "spatial_overlays overlay fetch feeding the free check, PDF and intelligence brief",
-      "file_line": "scripts/generate_conveyancing_report.py:1290",
-      "where_clause": "layer_type IN (env layers) AND ST_Intersects(geom, lot polygon) with ST_Contains centroid fallback — unchanged; the fix is a post-filter on the returned rows"
-    }
-  ],
+  "values": "N/A - no regulatory values. The landing copy deliberately carries no LGA counts or control numbers (hero stats are '15+ data layers', '~40 sec typical brief', 'Live NSW Planning Portal'); liability grep on the new copy returned zero matches.",
+  "queries": "N/A - no database queries.",
   "break_it": [
     {
-      "scenario": "Torrens house adjacent to a strata townhouse complex, geocode lands correctly inside the lot (the live 38 Park Rd Bowral case)",
-      "what_happens": "containment query returns only the DP lot so the neighbour's SP never enters classification; report shows Torrens title with the correct DP number",
+      "scenario": "landing hero submits a free-typed address that never went through autocomplete (no lat/lng, possibly garbage)",
+      "what_happens": "the brief is triggered with lat/lng null; a bad address makes the run fail",
+      "repro": "type 'asdf' in the hero and submit",
       "mitigated": true,
-      "how": "test_torrens_lot_ignores_neighbouring_sp_in_buffer pins that the buffer query is not consulted when the point hits a lot; live-verified against the real cadastre API",
-      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_torrens_lot_ignores_neighbouring_sp_in_buffer -q; live: POST /api/satellite/conveyancing {\"address\": \"38 Park Rd, Bowral NSW 2576\"}"
+      "how": "the API contract already declares lat/lng optional and resolves server-side; a failed run lands in the existing visible error state with 'Try another address' - a loud failure, not wrong data"
     },
     {
-      "scenario": "genuine strata apartment where the geocoded point sits inside the SP scheme polygon",
-      "what_happens": "stage-1 containment returns the SP lot and strata is confirmed with source cadastre exactly as before the change",
+      "scenario": "landing-search fires while a brief is already streaming (stale landing state, double submit)",
+      "what_happens": "a second run would clobber the in-flight one",
+      "repro": "dispatch the event twice quickly",
       "mitigated": true,
-      "how": "test_contained_sp_lot_still_confirms_strata plus live verification of 5/1 Treacy Street Hurstville returning SP91614",
-      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_contained_sp_lot_still_confirms_strata -q; live: detect_strata('5/1 Treacy Street, Hurstville NSW 2220', -33.96, 151.10)"
+      "how": "the listener checks stateRef.current !== 'idle' and ignores the event; the landing itself unmounts once state leaves idle"
     },
     {
-      "scenario": "imprecise geocode lands on the road so the point hits no lot and the 20 m fallback returns a neighbouring SP for a non-unit address",
-      "what_happens": "strata is NOT confirmed; the result degrades to the ambiguous parent_has_strata path instead of asserting the neighbour's plan number",
+      "scenario": "making pricing optional breaks the seven existing landings",
+      "what_happens": "their pricing tables would disappear or crash on undefined",
+      "repro": "render each product landing",
       "mitigated": true,
-      "how": "test_buffer_fallback_sp_alone_is_ambiguous_not_strata and test_buffer_fallback_sp_plus_unit_address_confirms pin both directions of the fallback",
-      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_buffer_fallback_sp_alone_is_ambiguous_not_strata tests/test_cadastral_plan_type.py::test_buffer_fallback_sp_plus_unit_address_confirms -q"
+      "how": "render is gated on config.price && config.comparison, and all seven existing configs still define both; tsc clean and all 713 jest tests pass"
     },
     {
-      "scenario": "property genuinely inside a SEPP R&H Subject Land coastal designation",
-      "what_happens": "the Subject Land row survives the jurisdictional filter and still renders as a coastal overlay in the free check and PDF",
+      "scenario": "a consumer mid-brief on canibuildit gets redirected and loses their run, or the redirect gets stuck in browser cache",
+      "what_happens": "in-flight state is lost on the domain hop; a cached permanent redirect would be hard to undo later",
+      "repro": "open canibuildit.com.au/reports/intelligence-brief and watch the redirect",
       "mitigated": true,
-      "how": "test_subject_land_row_is_kept plus live query of a real Subject Land point (-33.8644, 151.2512) returning the row after the filter",
-      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_subject_land_row_is_kept -q; live: get_unique_overlays(-33.8644, 151.2512)"
+      "how": "the redirect fires before the page loads (no run can be in flight on that URL), uses 307 (temporary, not cached like the 308s that made a past domain move painful), and the destination subdomain root rewrites to the same page - the user lands on the identical product, pro-branded"
     },
     {
-      "scenario": "cadastre API down or timing out during a conveyancer run",
-      "what_happens": "both stages raise inside the existing try/except, the all-False dict returns and detect_strata falls back to the address heuristic as before the change",
+      "scenario": "the merge stacking two copies of the qa_gate env scrub reintroduces the worktree push failure or shadows one fix",
+      "what_happens": "duplicate env assignments could drift apart and silently reintroduce the GIT_DIR leak",
+      "repro": "push from a git worktree so hooks export an absolute GIT_DIR",
       "mitigated": true,
-      "how": "unchanged exception envelope around both queries; test_no_cadastre_result_falls_back_to_address_heuristic covers the empty-result path",
-      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_no_cadastre_result_falls_back_to_address_heuristic -q (both cadastre stages mocked empty)"
+      "how": "deduplicated to main's single copy (#642); the previously failing test passes with an absolute GIT_DIR exported and the full pytest suite (2479) passes post-merge"
     },
     {
-      "scenario": "push from a git worktree where the hook exports an absolute GIT_DIR",
-      "what_happens": "qa_gate diff-scoping subprocesses previously resolved the wrong repo and a unit test failed on every worktree push; now the env is scrubbed and cwd decides",
+      "scenario": "duplicate H1 / competing address inputs when the landing and the classic input card render together",
+      "what_happens": "confusing double title and two entry points styled differently",
+      "repro": "load /reports/intelligence-brief with no address",
       "mitigated": true,
-      "how": "test_hook_exported_git_dir_does_not_leak sets GIT_DIR to the real repo and asserts the non-repo tmp dir still yields the empty full-scan fallback",
-      "repro": "GIT_DIR=<repo>/.git python -m pytest tests/test_qa_gate_diff_scoping.py::TestChangedLineNumbers::test_hook_exported_git_dir_does_not_leak -q"
+      "how": "the compact page header now renders only when state !== 'idle' (the hero carries the title while idle), matching the conveyancing page's landing-plus-tool layout; the classic card keeps the satellite toggle the hero lacks"
+    },
+    {
+      "scenario": "User starts a brief from the landing hero search and wants satellite layers (the hero previously had no toggle, so hero-started briefs always ran with satellite off and the option looked removed)",
+      "what_happens": "the satellite checkbox now renders directly under the hero search bar via the searchExtras slot; the landing-search handler reads the live includeSatellite state so a hero-started brief honours the tick",
+      "mitigated": true,
+      "how": "searchExtras threaded LandingHero <- ProductLandingV2 <- page.tsx bound to the existing includeSatellite state; startBrief's useCallback dep on includeSatellite rebinds the landing-search listener on toggle",
+      "repro": "open /reports/intelligence-brief while idle: the 'Include satellite analysis' checkbox is visible under the hero search; tick it, run from the hero, network POST body has include_satellite: true"
     }
   ],
   "post_merge": {
-    "db_reset": "none — no schema or data changes; the statewide Land Application rows stay in spatial_overlays for climate_risk_score which filters them itself",
-    "secrets": "none touched",
-    "other_repo": "none",
-    "manual_verify": "run the free conveyancer check for 38 Park Rd Bowral NSW 2576 on the preview deployment: expect Torrens title (DP702113), feasibility cards no longer strata-blocked, no coastal land application row, no lot size row under hazards, one SEPP Sustainable Buildings row"
+    "db_reset": "N/A - no database change.",
+    "secrets": "None - no secrets or env vars.",
+    "other_repo": "N/A - Vercel auto-deploys the frontend on merge.",
+    "manual_verify": "After deploy: brief.plotdetect.com.au shows the landing; typing an address in the hero starts a brief; re-run 38 Park Rd Bowral - it must now classify as Torrens (DP702113) and produce a full Development Brief with DCP/SEPP/neighbourhood/capacity sections; canibuildit.com.au/reports/intelligence-brief redirects to brief.plotdetect.com.au; /reports/conveyancing landing unchanged."
   }
 }

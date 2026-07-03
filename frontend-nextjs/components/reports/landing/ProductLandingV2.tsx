@@ -28,9 +28,11 @@ const configs: Record<string, ProductLandingConfig> = {
 
 interface ProductLandingV2Props {
   product: string
+  /** Rendered under the hero search bar — see LandingHero.searchExtras. */
+  searchExtras?: React.ReactNode
 }
 
-export function ProductLandingV2({ product }: ProductLandingV2Props) {
+export function ProductLandingV2({ product, searchExtras }: ProductLandingV2Props) {
   const config = configs[product]
   if (!config) return null
 
@@ -44,6 +46,7 @@ export function ProductLandingV2({ product }: ProductLandingV2Props) {
         ctaLabel={config.ctaLabel}
         stats={config.heroStats}
         heroImage={config.heroImage}
+        searchExtras={searchExtras}
       />
 
       <DataSourceStrip sources={config.dataSources} />

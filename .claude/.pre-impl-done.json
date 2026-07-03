@@ -1,7 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-06-24T11:00:00+10:00",
-  "target": "services/extracted_data_integrity.py — generic, domain-agnostic integrity checks (fabricated_values, conflicting_values) + a write-time assert_clean_row gate, reusable across any extracted-data table. Refactor scripts/validate_dcp_setbacks.py to delegate its fabricated/conflict logic to it. Run the sweep on lep_land_use_table.",
-  "findings_summary": "Pure in-memory functions over already-fetched row dicts — NO new DB query/schema. Discovery confirms the reusable targets: dcp_setback_controls (done), lep_land_use_table (17353 rows: zone, zone_name, lga, development_type, permissibility, notes) is the LEP-controls table for the same bug class (extracted permissibility per zone+lga+dev_type; conflict = same key with contradictory permitted/prohibited; fabrication = notes admitting assumed). housing_sepp_standards (45) is a numeric secondary target. development_controls/quantitative_standards are empty. The generic module takes config (value_field, key_fields, marker_fields, condition_field) so the engine is shared and only the vocabulary/keys are per-domain. Write-gate (assert_clean_row) raises BEFORE insert so fabrication is blocked at entry, not just detected after — closing the per-script gap the user flagged.",
-  "model_design": "fabricated_values(rows, value_field, marker_fields, marker_pattern) -> rows with a value AND an assumed marker. conflicting_values(rows, key_fields, value_field, condition_field) -> groups with >1 distinct value and no disambiguator. assert_clean_row(row, ...) raises ValueError at write time. validate_dcp_setbacks.fabricated_value_rows delegates to fabricated_values. Offline tests in tests/test_extracted_data_integrity.py; LEP sweep run read-only."
+  "status": "trivial",
+  "timestamp": "2026-07-03T11:00:00+10:00",
+  "reason": "removing dead duplicate env-scrub block in qa_gate._git left by merging origin/main (both branches carried the same fix); no logic or query change"
 }
