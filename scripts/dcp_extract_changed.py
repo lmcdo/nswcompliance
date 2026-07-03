@@ -1326,7 +1326,8 @@ def resolve_document_id(cur, council: str, chapter_key: str, dcp_name: str) -> s
 # fetch_pending_chapters/diff_provisions detector (the only DCP provision-diff in the
 # repo); the guard's matches (shadow_detector, transport_proximity_detector) are
 # unrelated satellite products sharing only generic words.
-def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False) -> tuple[str, list]:
+def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False,
+                          chapter_filter: str | None = None) -> tuple[str, list]:
     """Build the chapter-selection query (pure, testable).
 
     all_chapters=False (default): the legacy reactive trigger — only chapters the
@@ -1357,6 +1358,12 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     if council_filter:
         conds.append("council = %s")
         params.append(council_filter)
+    # prior-art-checked: reuse not viable because this is this module's own DCP chapter
+    # registry query builder; the flagged matches are unrelated frontend provision-display
+    # components. Adding a single-chapter filter to enable a targeted re-extraction.
+    if chapter_filter:
+        conds.append("chapter_key = %s")
+        params.append(chapter_filter)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
         "r2_current_path, r2_version_label, dcp_name, content_hash "
@@ -1366,8 +1373,9 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     return query, params
 
 
-def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool = False) -> list[dict]:
-    query, params = _pending_chapters_sql(council_filter, all_chapters)
+def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool = False,
+                           chapter_filter: str | None = None) -> list[dict]:
+    query, params = _pending_chapters_sql(council_filter, all_chapters, chapter_filter)
     cur.execute(query, params)
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -2565,6 +2573,7 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="DCP chapter extraction pipeline")
     parser.add_argument("--council", help="Filter to specific council")
+    parser.add_argument("--chapter", help="Filter to a single chapter_key (for a targeted re-extraction/retry)")
     parser.add_argument("--dry-run", action="store_true", help="Extract but no DB writes")
     parser.add_argument(
         "--review",
@@ -2606,7 +2615,8 @@ def main() -> None:
 
     try:
         cur = conn.cursor()
-        chapters = fetch_pending_chapters(cur, args.council, all_chapters=args.all)
+        chapters = fetch_pending_chapters(cur, args.council, all_chapters=args.all,
+                                          chapter_filter=args.chapter)
         cur.close()
     except Exception as exc:
         print(f"[ERROR] Could not query dcp_chapter_registry: {exc}")
