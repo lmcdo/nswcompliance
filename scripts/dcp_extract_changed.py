@@ -1784,7 +1784,12 @@ def extract_chapter(
         if page_ranges is None:
             page_ranges = COUNCIL_PAGE_RANGES.get(council)
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
-        if page_ranges:
+        # When AI extraction is on it reads any layout, so bypass the per-council
+        # page-range/regex config entirely and use extract() (which dispatches to the
+        # LLM at DCPExtractor.extract). Otherwise a council WITH a page-range config
+        # (e.g. ashfield) would silently run the old regex despite AI_EXTRACTION=1.
+        ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
+        if page_ranges and not ai_on:
             try:
                 sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
             except Exception as exc:
@@ -1803,7 +1808,9 @@ def extract_chapter(
 
             # Apply subsection patterns to the default extraction path too.
             # (extract_by_page_ranges handles this internally; the default path does not.)
-            if subsection_patterns and sections:
+            # Skip when AI is on — the LLM already returns split provisions; re-splitting
+            # its output with the regex patterns would mangle it.
+            if subsection_patterns and sections and not ai_on:
                 expanded: list[dict] = []
                 for sec in sections:
                     sub_secs = split_content_at_subsections(
