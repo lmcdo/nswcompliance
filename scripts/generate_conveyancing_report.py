@@ -428,14 +428,14 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
       "5/3 ...", "Unit N ...", "Apt N ..." → likely strata.
 
     Decision logic:
-      SP/CP lot CONTAINS the point      → strata confirmed (cadastre)
-      SP/CP lot in 20m fallback + addr A → strata confirmed (combined) — the
+      SP/CP lot CONTAINS the point       -> strata (source: cadastre)
+      SP/CP lot in 20m fallback + addr A -> strata (source: combined) — the
         point itself hit no lot, so a nearby SP alone is NOT proof: it may be
         the neighbour's scheme (38 Park Rd Bowral was misreported this way)
-      SP/CP lot in 20m fallback alone   → ambiguous — treated as parent_has_strata
-      parent_has_strata=True + addr A   → strata confirmed (combined)
-      parent_has_strata=True alone      → ambiguous — note in report
-      addr A alone (no cadastre result) → strata likely (heuristic fallback)
+      SP/CP lot in 20m fallback alone    -> ambiguous — treated as parent_has_strata
+      parent_has_strata=True + addr A    -> strata (source: combined)
+      parent_has_strata=True alone       -> ambiguous — note in report
+      addr A alone (no cadastre result)  -> strata likely (heuristic fallback)
     """
     addr_unit = _addr_has_unit_prefix(address)
 
