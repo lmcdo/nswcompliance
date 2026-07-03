@@ -79,7 +79,9 @@ export default function DcpReviewQueue() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action }),
         });
-        if (!res.ok) {
+        // 404 = the row was already resolved (double-click / stale list). That's not an
+        // error — just drop it and move on. Only other failures surface a banner.
+        if (!res.ok && res.status !== 404) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || 'action failed');
         }
@@ -109,7 +111,9 @@ export default function DcpReviewQueue() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action, council, chapter_key: chapterKey }),
         });
-        if (!res.ok) {
+        // 404 = the chapter was already resolved (double-click / stale button). Treat it
+        // as done rather than an error — just drop the chapter and move on.
+        if (!res.ok && res.status !== 404) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || 'chapter action failed');
         }
