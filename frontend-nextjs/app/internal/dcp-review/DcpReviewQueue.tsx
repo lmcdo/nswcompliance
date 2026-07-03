@@ -36,6 +36,7 @@ export default function DcpReviewQueue() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState(false);
+  const [total, setTotal] = useState(0); // total pending on the server (queue caps loads at 500)
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,7 +45,9 @@ export default function DcpReviewQueue() {
       const res = await fetch('/api/dcp-review', { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'failed to load');
-      setItems(json.items ?? []);
+      const fetched: ReviewItem[] = json.items ?? [];
+      setItems(fetched);
+      setTotal(json.total ?? fetched.length);
       setIdx(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to load');
@@ -56,6 +59,13 @@ export default function DcpReviewQueue() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // The queue returns at most 500 rows. When the loaded batch is fully resolved but the
+  // server still has pending rows, fetch the next batch — so we never falsely report
+  // "empty" while thousands remain. Only a fetch that returns 0 shows the empty state.
+  useEffect(() => {
+    if (!loading && !busy && items.length === 0 && total > 0) load();
+  }, [items.length, loading, busy, total, load]);
 
   const act = useCallback(
     async (action: Action) => {
@@ -69,7 +79,9 @@ export default function DcpReviewQueue() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action }),
         });
-        if (!res.ok) {
+        // 404 = the row was already resolved (double-click / stale list). That's not an
+        // error — just drop it and move on. Only other failures surface a banner.
+        if (!res.ok && res.status !== 404) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || 'action failed');
         }
@@ -99,7 +111,9 @@ export default function DcpReviewQueue() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action, council, chapter_key: chapterKey }),
         });
-        if (!res.ok) {
+        // 404 = the chapter was already resolved (double-click / stale button). Treat it
+        // as done rather than an error — just drop the chapter and move on.
+        if (!res.ok && res.status !== 404) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || 'chapter action failed');
         }
@@ -161,7 +175,13 @@ export default function DcpReviewQueue() {
     );
   }
   if (items.length === 0) {
-    return <main className="p-8 text-sm text-gray-600">✅ Review queue empty — nothing pending.</main>;
+    // total > 0 means the loaded batch is cleared but more remain — the auto-reload
+    // effect is fetching them; don't claim the queue is empty.
+    return total > 0 ? (
+      <main className="p-8 text-sm text-gray-500">Loading next batch… ({total} still pending)</main>
+    ) : (
+      <main className="p-8 text-sm text-gray-600">✅ Review queue empty — nothing pending.</main>
+    );
   }
 
   const item = items[idx];
@@ -181,7 +201,8 @@ export default function DcpReviewQueue() {
           )}
         </h1>
         <p className="text-xs text-gray-500">
-          {items.length} changes across {chapters.length} sections. Approve a whole clean section
+          {items.length}{total > items.length ? ` of ${total}` : ''} changes across {chapters.length} sections
+          {total > items.length ? ' (loaded 500 at a time — more load as you clear these)' : ''}. Approve a whole clean section
           with its <b>Approve</b> button; ⚠ sections were flagged by the extraction checks — open
           those and review before approving. Keys: <kbd>A</kbd>/<kbd>R</kbd>/<kbd>N</kbd> per row · <kbd>J</kbd>/<kbd>K</kbd> move.
         </p>
