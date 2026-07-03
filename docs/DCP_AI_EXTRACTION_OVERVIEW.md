@@ -74,6 +74,13 @@ is **approving**. Nothing re-reads unchanged documents; nothing publishes itself
 | **#626** | **AI extraction engine** — `scripts/ai_extractor.py`, drop-in behind `AI_EXTRACTION` |
 | **#627** | **Mistral default + coverage/truncation guards** |
 | **#628** | **deterministic content-change gate** — `scripts/pdf_text_hash.py` + r2_monitor |
+| #632, #634 | section-code correctness (coverage guard + chunk-boundary code loss) |
+| #635, #636, #639 | review UI: per-chapter bulk approve · source-PDF view · group-by-section + ⚠ flags |
+| **#637** | **commit the *reviewed* text, not a re-read** (`dcp_commit_approved`) |
+| **#641** | **amendment-safe commit** — `is_full_replace`; targeted amendments update only changed refs, never wipe unchanged rules |
+| #643 | **AI was silently bypassed for page-range-configured councils** (ashfield/waverley ran regex) — now every council uses the AI |
+| #644 | AI timeout resilience on large PDFs (300s + retry) + `--chapter` single-chapter retry |
+| #645, #646 | review UI: true total / auto-load next 500 (no false "empty") · already-resolved isn't an error |
 
 Key files: `scripts/ai_extractor.py` (reader), `scripts/pdf_text_hash.py` (watcher),
 `scripts/dcp_extract_changed.py` (pipeline + guards + review-queue enqueue),
@@ -91,11 +98,51 @@ Key files: `scripts/ai_extractor.py` (reader), `scripts/pdf_text_hash.py` (watch
 is non-deterministic, so that produces fake changes. Re-extract a chapter only when the
 **watcher** says its text actually changed.
 
-## What's left (optional, scoped)
-- **Review-UI upgrades** (scoped in the decision doc, not built): show the source PDF page
-  next to each change (reuse `PdfImageModal`, populate `dcp_review_queue.crop_url`); let a
-  reviewer edit a provision's text; capture correction notes. Makes approving faster and
-  more defensible; not required to run.
+## Baseline vs amendment — the ongoing process (READ THIS)
+The heavy work is a **one-time baseline per council**, not the steady state:
+
+- **Baseline (once per council):** the *whole* DCP is read fresh → thousands of changes →
+  a large human review. This is `is_full_replace=TRUE` (a full re-extraction). It's what
+  the review sessions on leichhardt/ashfield are.
+- **Amendment (ongoing, a few times a year):** a council edits its PDF → only the *changed*
+  rules surface. `is_full_replace=FALSE`, so the commit **updates only the changed refs and
+  leaves every unchanged rule live** (#641). A 3-rule amendment = 3 review items, not 2,300.
+
+The ongoing loop, all built:
+```
+1. WATCHER  — hashes each council PDF's text on a schedule; a real edit flags the chapter   [#628]
+2. READER   — AI re-reads only the flagged chapter
+3. DIFF     — enqueues only the changed rules (is_full_replace=FALSE)                        [#641]
+4. REVIEW   — a handful of items, ⚠-flagged if the guards fire; human approves
+5. PUBLISH  — dcp_commit_approved --commit; reversible (old rows kept is_current=FALSE)
+```
+
+### Turning on hands-off monitoring (the last flip — NOT yet on)
+The pieces exist but the schedules are off; today extraction is triggered manually. To make
+it autonomous: (1) schedule the byte/text-hash monitor (`r2_monitor` / `pdf_text_hash`) so
+it flags changed chapters; (2) run the reactive AI extraction on `needs_extraction=TRUE`
+chapters (the no-`--all` path) on a cadence; (3) the flagged diffs land in `/internal/dcp-review`
+as usual. **Do this only after baselining the councils you care about**, so the monitor only
+ever sees small amendments (never a first full re-read via the wobbly AI-vs-AI diff).
+
+## Status (2026-07-03)
+- **Leichhardt: 18/18 sections live** on clean AI-reviewed rules (first full baseline).
+- **Ashfield: 6/7 live**; `chapter-e1-heritage` held by one rejected row (see governance note).
+- Extraction is **manual/on-demand** per council; the autonomous monitor is not yet switched on.
+
+### Governance note — a rejected row holds the chapter
+`dcp_commit_approved` will not commit a chapter that has ANY `rejected` row — a rejection
+means "investigate the source" before any of it goes live. The review UI only lists
+`pending` rows, so a rejected one currently can't be un-rejected from the screen (a known
+gap); flip it back in the DB (status='approved' or 'pending') to release the chapter.
+
+## What's left (optional)
+- **Switch on the autonomous monitor** (the three steps above) — when you're ready.
+- **Un-reject in the UI** — let a reviewer see/reverse a rejected row without a DB edit.
+- **Tidy odd codes** — some appendices/manuals label rules oddly (`S1`, `1 O1`, `Control C2`);
+  content is correct, labels are cosmetic. A prompt/normalisation pass would clean them.
+- **Numeric layer link** — extract the structured setback numbers *from* the clean AI text
+  (the two layers are still separate pipelines; see the coverage doc).
 
 ## One-line summary
 From hand-written PDF rules that never scaled → a cheap, self-running system that reads
