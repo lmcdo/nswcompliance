@@ -21,7 +21,14 @@ export async function GET() {
       ORDER BY q.has_numeric_change DESC, q.council, q.chapter_key, q.created_at
       LIMIT 500
     `);
-    return NextResponse.json({ items: rows, count: rows.length });
+    // Total pending across the whole queue (the SELECT is capped at 500), so the UI can
+    // show the real backlog and know to load the next batch instead of falsely reporting
+    // "empty" once the loaded 500 are cleared.
+    const totalRes = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM dcp_review_queue WHERE status = 'pending'`,
+    );
+    const total = totalRes.rows[0]?.total ?? rows.length;
+    return NextResponse.json({ items: rows, count: rows.length, total });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'query failed';
     return NextResponse.json({ error: message }, { status: 500 });
