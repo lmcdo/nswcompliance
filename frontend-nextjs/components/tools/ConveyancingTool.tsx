@@ -96,6 +96,24 @@ const FLAG_META: Record<string, { icon: string; bg: string; text: string }> = {
   alert: { icon: '\u2717', bg: 'bg-red-50',    text: 'text-red-700' },
 };
 
+// The API returns one row per portal map sheet, so the same SEPP repeats with
+// different labels ("2576", "WINGECARRIBEE"). Collapse to one row per SEPP,
+// keeping the distinct labels. Mirrors the (name, type) dedup in the PDF report.
+function dedupeSeppOverlays(
+  rows: { name: string; type: string; label?: string }[],
+): { name: string; labels: string[] }[] {
+  const byName = new Map<string, { name: string; labels: string[] }>();
+  for (const row of rows) {
+    const name = row.name || row.type;
+    if (!name) continue;
+    const entry = byName.get(name) ?? { name, labels: [] };
+    const label = (row.label || '').trim();
+    if (label && !entry.labels.includes(label)) entry.labels.push(label);
+    byName.set(name, entry);
+  }
+  return [...byName.values()];
+}
+
 export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [address, setAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
@@ -177,6 +195,13 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
     setErrorMsg('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
   };
+
+  // lot_size is fetched as a data fallback for the Min Lot Size field — it is a
+  // planning control, not a hazard, so keep it out of the hazard overlay section.
+  const hazardOverlays = (result?.outputs.unique_overlays ?? []).filter(
+    (ov) => ov.layer_type !== 'lot_size',
+  );
+  const seppOverlays = dedupeSeppOverlays(result?.outputs.sepp_overlays ?? []);
 
   return (
     <div className="mb-8">
@@ -310,10 +335,10 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           )}
 
           {/* Environmental overlays */}
-          {result.outputs.unique_overlays.length > 0 && (
+          {hazardOverlays.length > 0 && (
             <Section title="Environmental and Hazard Overlays">
               <div className="space-y-2">
-                {result.outputs.unique_overlays.map((ov, i) => (
+                {hazardOverlays.map((ov, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     <span className="shrink-0 w-2 h-2 mt-1.5 rounded-full bg-amber-500" />
                     <div>
@@ -330,13 +355,15 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           )}
 
           {/* SEPP overlays */}
-          {result.outputs.sepp_overlays.length > 0 && (
+          {seppOverlays.length > 0 && (
             <Section title="SEPP Overlays">
               <div className="space-y-1">
-                {result.outputs.sepp_overlays.map((sepp, i) => (
-                  <div key={i} className="text-sm text-gray-700 p-2 bg-gray-50 rounded">
-                    <span className="font-medium">{sepp.name || sepp.type}</span>
-                    {sepp.label && <span className="text-gray-500"> &mdash; {sepp.label}</span>}
+                {seppOverlays.map((sepp) => (
+                  <div key={sepp.name} className="text-sm text-gray-700 p-2 bg-gray-50 rounded">
+                    <span className="font-medium">{sepp.name}</span>
+                    {sepp.labels.length > 0 && (
+                      <span className="text-gray-500"> &mdash; {sepp.labels.join(', ')}</span>
+                    )}
                   </div>
                 ))}
               </div>

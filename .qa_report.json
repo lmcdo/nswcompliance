@@ -1,54 +1,116 @@
 {
   "tier": "standard",
-  "commit_hash": "f3296fed",
-  "justification": "Option B domain split: the three pro products (Verify, Intelligence Brief, Conveyancer report) are plotdetect subdomains; canibuildit is consumer-only. This wires brief.plotdetect.com.au -> /reports/intelligence-brief and conveyance.plotdetect.com.au -> /reports/conveyancing in middleware (mirroring the existing verify -> /assessment rule), and removes the Intelligence Brief + Conveyancing tiles from the consumer /reports grid (they now live on their own subdomains). plotdetect.com.au (info site) is a different project and untouched.",
+  "commit_hash": "8787a059",
+  "justification": "Conveyancer free-check report for 38 Park Rd Bowral showed the wrong title type: the cadastre query's always-20m buffer captured the NEIGHBOUR's strata scheme (SP105471) and first-SP-wins confirmed it, cascading into three wrong feasibility cards. Fix makes point-in-polygon decide (buffer only as no-hit fallback needing address corroboration), drops the statewide SEPP R&H 'Land Application' polygon from hazard overlays (false coastal hit on every NSW property), hides lot_size from the hazard UI section, dedupes SEPP rows in the free check, and scrubs hook-exported GIT_DIR from qa_gate diff-scoping subprocesses (worktree pushes failed the test suite).",
   "files": [
-    "frontend-nextjs/middleware.ts",
-    "frontend-nextjs/app/reports/page.tsx"
+    "scripts/generate_conveyancing_report.py",
+    "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+    "tests/test_cadastral_plan_type.py",
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_diff_scoping.py"
   ],
   "pre_impl": {
-    "existing_data": "middleware already does hostname routing (verify.plotdetect.com.au and canibuildit at '/' rewrite to /assessment and /reports), reading host via x-forwarded-host first. The /reports grid is a static TOOLS array (9 tiles incl intelligence-brief + conveyancing). The pages /reports/intelligence-brief and /reports/conveyancing already exist.",
-    "assumption_mismatch": "Under Option B the brief + conveyancer are pro products on their own subdomains, not consumer tiles. Previously they had no subdomain route and appeared in the canibuildit consumer grid.",
-    "new_vs_existing": "No new mechanism: adds isBriefDomain/isConveyanceDomain rewrites mirroring isVerifyDomain, and deletes two well-formed objects from the existing TOOLS array. The report pages themselves are unchanged."
+    "existing_data": "detect_strata/get_cadastral_info already existed in scripts/generate_conveyancing_report.py and are consumed by services/conveyancing.py (is_strata feeds calc_feasibility and the Title Type banner) and services/intelligence_brief.py (classify_strata + StrataHub lot-count enrichment). climate_risk_score.py already contained the 'Land Application covers all NSW, only Subject Land is a hazard' rule; the PDF path already deduped SEPP rows by (name, type) while the free-check UI did not.",
+    "assumption_mismatch": "The old code assumed any SP/CP lot within 20 m of the property centroid belonged to the subject property. Live reproduction showed the point-in-polygon result for 38 Park Rd Bowral is exactly one Torrens lot (12/DP702113) while the 20 m buffer adds two neighbouring strata schemes; the buffer exists only for imprecise geocodes, not as the primary signal.",
+    "new_vs_existing": "No new mechanism or data source: the same cadastre endpoint is queried in two stages (containment first, buffer fallback), a containment flag is threaded through the existing dict contract (all previous keys preserved), the coastal filter mirrors the existing _normalize_coastal rule, and the UI changes are render-time filters over data already fetched."
   },
   "functions": [
     {
-      "name": "middleware",
-      "file_line": "frontend-nextjs/middleware.ts:91",
-      "input": "the incoming NextRequest; host read via x-forwarded-host then host then nextUrl.hostname",
-      "output": "brief.plotdetect.com.au at '/' rewrites to /reports/intelligence-brief; conveyance.plotdetect.com.au at '/' to /reports/conveyancing; verify and canibuildit unchanged; all other hosts/paths fall through",
-      "if_none": "host not one of the mapped subdomains, or path not '/' -> no rewrite; plotdetect.com.au (other Vercel project) is unaffected"
+      "name": "get_cadastral_info",
+      "file_line": "scripts/generate_conveyancing_report.py:324",
+      "input": "lat/lng WGS84 point from resolve_address lot centroid or coordinate-first resolution",
+      "output": "dict with is_strata, strata_plan, plan_type, parent_has_strata, plan_label, lot_number plus new containment flag stating whether returned lots actually contain the point",
+      "if_none": "on request exception or empty results from both stages it returns the all-False dict with containment False, so detect_strata falls through to the address heuristic exactly as before"
+    },
+    {
+      "name": "detect_strata",
+      "file_line": "scripts/generate_conveyancing_report.py:419",
+      "input": "street address string plus optional lat/lng coordinates for the cadastre lookup",
+      "output": "strata_info dict consumed by calc_feasibility, the Title Type banner and intelligence_brief classify_strata; containment-confirmed SP keeps source cadastre, buffered SP needs unit-style address and is marked cadastre+address",
+      "if_none": "with no coordinates or no cadastre hits the pre-existing address-heuristic fallback returns is_strata from the unit-prefix regex with source address_heuristic"
+    },
+    {
+      "name": "_drop_jurisdictional_overlays",
+      "file_line": "scripts/generate_conveyancing_report.py:1247",
+      "input": "deduped overlay row dicts from the spatial_overlays PostGIS query in get_unique_overlays",
+      "output": "same rows minus coastal_land_application rows whose value is not Subject Land, so the statewide jurisdictional polygon never renders as a hazard",
+      "if_none": "empty input list returns empty list unchanged and a missing value key is treated as not Subject Land so the row is dropped rather than shown as a false coastal hazard"
+    },
+    {
+      "name": "changed_line_numbers",
+      "file_line": "scripts/qa_gate.py:275",
+      "input": "changed file paths plus the project directory whose git history should be queried",
+      "output": "mapping of file to changed line numbers computed against the merge-base with origin/main, now immune to hook-exported GIT_DIR redirecting the subprocess to another repo",
+      "if_none": "when no git base is resolvable it returns an empty dict and callers keep ALL findings as the safe full-scan fallback"
     }
   ],
-  "values": "N/A - no regulatory values; host-based request routing + a static tile list.",
-  "queries": "N/A - no database queries.",
+  "values": [
+    {
+      "value": "cadastre classsubtype (3=strata, 4=community) and hasstratum (2=scheme present) attributes",
+      "read_at": "scripts/generate_conveyancing_report.py sp_lots classification inside get_cadastral_info",
+      "if_missing": "attribute absent means the lot is not counted as SP/CP unless the planlabel prefix says otherwise, matching pre-existing behaviour"
+    },
+    {
+      "value": "spatial_overlays.value for coastal_land_application rows (Land Application vs Subject Land)",
+      "read_at": "scripts/generate_conveyancing_report.py _drop_jurisdictional_overlays",
+      "if_missing": "null or empty value is not Subject Land so the row is dropped, which fails toward not showing an unverifiable coastal designation"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "spatial_overlays overlay fetch feeding the free check, PDF and intelligence brief",
+      "file_line": "scripts/generate_conveyancing_report.py:1290",
+      "where_clause": "layer_type IN (env layers) AND ST_Intersects(geom, lot polygon) with ST_Contains centroid fallback — unchanged; the fix is a post-filter on the returned rows"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "host is misread behind Cloudflare so the brief/conveyance rewrite does not fire",
-      "what_happens": "the subdomain root would show the consumer reports grid instead of its specific report",
-      "repro": "hit brief.plotdetect.com.au/ with a mangled host header",
+      "scenario": "Torrens house adjacent to a strata townhouse complex, geocode lands correctly inside the lot (the live 38 Park Rd Bowral case)",
+      "what_happens": "containment query returns only the DP lot so the neighbour's SP never enters classification; report shows Torrens title with the correct DP number",
       "mitigated": true,
-      "how": "host is read via x-forwarded-host first (the same source the working verify rule uses) and matched by exact equality; worst case is the grid, not a 404, because /reports still resolves"
+      "how": "test_torrens_lot_ignores_neighbouring_sp_in_buffer pins that the buffer query is not consulted when the point hits a lot; live-verified against the real cadastre API",
+      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_torrens_lot_ignores_neighbouring_sp_in_buffer -q; live: POST /api/satellite/conveyancing {\"address\": \"38 Park Rd, Bowral NSW 2576\"}"
     },
     {
-      "scenario": "removing the two tiles leaves a malformed TOOLS array (dangling comma / type error)",
-      "what_happens": "the /reports page would fail to compile",
-      "repro": "build the frontend",
+      "scenario": "genuine strata apartment where the geocoded point sits inside the SP scheme polygon",
+      "what_happens": "stage-1 containment returns the SP lot and strata is confirmed with source cadastre exactly as before the change",
       "mitigated": true,
-      "how": "two complete, well-formed objects were removed; seven valid tiles remain and the array literal is intact; tsc + the Vercel build type-check on deploy"
+      "how": "test_contained_sp_lot_still_confirms_strata plus live verification of 5/1 Treacy Street Hurstville returning SP91614",
+      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_contained_sp_lot_still_confirms_strata -q; live: detect_strata('5/1 Treacy Street, Hurstville NSW 2220', -33.96, 151.10)"
     },
     {
-      "scenario": "the Intelligence Brief / Conveyancing pages become unreachable after losing their tiles",
-      "what_happens": "users could not find those two products",
-      "repro": "visit /reports and look for the tiles",
+      "scenario": "imprecise geocode lands on the road so the point hits no lot and the 20 m fallback returns a neighbouring SP for a non-unit address",
+      "what_happens": "strata is NOT confirmed; the result degrades to the ambiguous parent_has_strata path instead of asserting the neighbour's plan number",
       "mitigated": true,
-      "how": "the pages still exist and are reached via their own subdomains (brief./conveyance.plotdetect.com.au) and direct /reports/intelligence-brief and /reports/conveyancing URLs; this is the intended Option B placement"
+      "how": "test_buffer_fallback_sp_alone_is_ambiguous_not_strata and test_buffer_fallback_sp_plus_unit_address_confirms pin both directions of the fallback",
+      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_buffer_fallback_sp_alone_is_ambiguous_not_strata tests/test_cadastral_plan_type.py::test_buffer_fallback_sp_plus_unit_address_confirms -q"
+    },
+    {
+      "scenario": "property genuinely inside a SEPP R&H Subject Land coastal designation",
+      "what_happens": "the Subject Land row survives the jurisdictional filter and still renders as a coastal overlay in the free check and PDF",
+      "mitigated": true,
+      "how": "test_subject_land_row_is_kept plus live query of a real Subject Land point (-33.8644, 151.2512) returning the row after the filter",
+      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_subject_land_row_is_kept -q; live: get_unique_overlays(-33.8644, 151.2512)"
+    },
+    {
+      "scenario": "cadastre API down or timing out during a conveyancer run",
+      "what_happens": "both stages raise inside the existing try/except, the all-False dict returns and detect_strata falls back to the address heuristic as before the change",
+      "mitigated": true,
+      "how": "unchanged exception envelope around both queries; test_no_cadastre_result_falls_back_to_address_heuristic covers the empty-result path",
+      "repro": "python -m pytest tests/test_cadastral_plan_type.py::test_no_cadastre_result_falls_back_to_address_heuristic -q (both cadastre stages mocked empty)"
+    },
+    {
+      "scenario": "push from a git worktree where the hook exports an absolute GIT_DIR",
+      "what_happens": "qa_gate diff-scoping subprocesses previously resolved the wrong repo and a unit test failed on every worktree push; now the env is scrubbed and cwd decides",
+      "mitigated": true,
+      "how": "test_hook_exported_git_dir_does_not_leak sets GIT_DIR to the real repo and asserts the non-repo tmp dir still yields the empty full-scan fallback",
+      "repro": "GIT_DIR=<repo>/.git python -m pytest tests/test_qa_gate_diff_scoping.py::TestChangedLineNumbers::test_hook_exported_git_dir_does_not_leak -q"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None - no secrets or env vars.",
-    "other_repo": "N/A - frontend auto-deploys on Vercel from GitHub on merge. Requires the brief./conveyance. DNS + Vercel domains (added by the user) to resolve.",
-    "manual_verify": "After deploy + DNS: brief.plotdetect.com.au/ shows the Intelligence Brief; conveyance.plotdetect.com.au/ shows the Conveyancer report; canibuildit.com.au/ shows the 7-tile consumer grid with NO brief or conveyancing tile; verify.plotdetect.com.au/ unchanged."
+    "db_reset": "none — no schema or data changes; the statewide Land Application rows stay in spatial_overlays for climate_risk_score which filters them itself",
+    "secrets": "none touched",
+    "other_repo": "none",
+    "manual_verify": "run the free conveyancer check for 38 Park Rd Bowral NSW 2576 on the preview deployment: expect Torrens title (DP702113), feasibility cards no longer strata-blocked, no coastal land application row, no lot size row under hazards, one SEPP Sustainable Buildings row"
   }
 }

@@ -294,37 +294,61 @@ CADASTRE_URL = (
 STRATA_HUB_URL = "https://www.fairtrading.nsw.gov.au/housing-and-property/strata-living/strata-schemes-register"
 
 
+# prior-art-checked: not a new capability — refactor of the existing cadastre query
+# in THIS file (extracted helper + containment flag) to fix strata misdetection.
+def _query_cadastre_lots(lat: float, lng: float, buffer_m: int = 0) -> list[dict]:
+    """Return attribute dicts for cadastre lots at (or within ``buffer_m`` of) a point.
+
+    ``buffer_m=0`` is a strict point-in-polygon query: only lots whose geometry
+    contains the point are returned.
+    """
+    import json as _json
+    params = {
+        "geometry": _json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4283}}),
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4283",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    if buffer_m:
+        params["distance"] = buffer_m
+        params["units"] = "esriSRUnit_Meter"
+    r = requests.get(CADASTRE_URL, params=params, timeout=10)
+    r.raise_for_status()
+    features = r.json().get("features") or []
+    return [f["attributes"] for f in features]
+
+
 def get_cadastral_info(lat: float, lng: float) -> dict:
     """
     Query NSW Cadastre (maps.six.nsw.gov.au) for the lot at lat/lng.
 
+    Point-in-polygon first: only lots that CONTAIN the point are classified. A
+    20 m buffer is used solely as a fallback when the point lands in no lot
+    (imprecise geocode on a road/verge). The old always-20 m buffer captured
+    neighbouring strata schemes and misreported adjacent Torrens lots as strata
+    (38 Park Rd Bowral: DP lot correct at 0 m, neighbour's SP returned at 20 m).
+
     Returns:
-        is_strata        bool   — True if classsubtype=3 (SP lot) found within buffer
-        strata_plan      str    — "SP56913" if strata confirmed, else None
-        parent_has_strata bool  — True if any lot within buffer has hasstratum=2
+        is_strata        bool   — True if an SP/CP lot (classsubtype 3/4) was found
+        strata_plan      str    — "SP56913" if strata found, else None
+        parent_has_strata bool  — True if any returned lot has hasstratum=2
         plan_label       str    — planlabel of primary lot (e.g. "DP605756")
         lot_number       str    — lotnumber of primary lot
+        containment      bool   — True if the lots CONTAIN the point (authoritative);
+                                  False if they only came from the 20 m fallback buffer
     """
     try:
-        import json as _json
-        r = requests.get(
-            CADASTRE_URL,
-            params={
-                "geometry": _json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4283}}),
-                "geometryType": "esriGeometryPoint",
-                "inSR": "4283",
-                "distance": 20,
-                "units": "esriSRUnit_Meter",
-                "spatialRel": "esriSpatialRelIntersects",
-                "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
-                "returnGeometry": "false",
-                "f": "json",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        features = r.json().get("features") or []
-        attrs_list = [f["attributes"] for f in features]
+        containment = True
+        attrs_list = _query_cadastre_lots(lat, lng, buffer_m=0)
+        if not attrs_list:
+            # Point hit no lot polygon — geocode likely on road/water. Widen the
+            # search, but flag the result as non-containing so callers do not
+            # treat a neighbouring lot as authoritative.
+            containment = False
+            attrs_list = _query_cadastre_lots(lat, lng, buffer_m=20)
 
         # classsubtype=3 = strata lot (SP plan)
         # classsubtype=4 = community title lot (CP plan) — treated same as strata
@@ -355,6 +379,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": True,
                 "plan_label": plan,
                 "lot_number": sp_lots[0].get("lotnumber"),
+                "containment": containment,
             }
 
         # No SP/CP lot, but parent DP has strata built on it — ambiguous
@@ -367,6 +392,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": parent_strata,
                 "plan_label": primary.get("planlabel"),
                 "lot_number": primary.get("lotnumber"),
+                "containment": containment,
             }
     except Exception as e:
         print(f"  [warn] cadastral query: {e}")
@@ -378,6 +404,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         "parent_has_strata": False,
         "plan_label": None,
         "lot_number": None,
+        "containment": False,
     }
 
 
@@ -401,22 +428,48 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
       "5/3 ...", "Unit N ...", "Apt N ..." → likely strata.
 
     Decision logic:
-      classsubtype=3 found              → strata confirmed (cadastre)
-      parent_has_strata=True + addr A   → strata confirmed (combined)
-      parent_has_strata=True alone      → ambiguous — note in report
-      addr A alone (no cadastre result) → strata likely (heuristic fallback)
+      SP/CP lot CONTAINS the point       -> strata (source: cadastre)
+      SP/CP lot in 20m fallback + addr A -> strata (source: combined) — the
+        point itself hit no lot, so a nearby SP alone is NOT proof: it may be
+        the neighbour's scheme (38 Park Rd Bowral was misreported this way)
+      SP/CP lot in 20m fallback alone    -> ambiguous — treated as parent_has_strata
+      parent_has_strata=True + addr A    -> strata (source: combined)
+      parent_has_strata=True alone       -> ambiguous — note in report
+      addr A alone (no cadastre result)  -> strata likely (heuristic fallback)
     """
     addr_unit = _addr_has_unit_prefix(address)
 
     if lat is not None and lng is not None:
         cad = get_cadastral_info(lat, lng)
 
-        # Definitive: SP/CP lot found in cadastre
-        if cad["is_strata"]:
+        # Definitive: SP/CP lot found in cadastre, containing the point
+        if cad["is_strata"] and cad.get("containment", True):
             return {
                 "is_strata": True,
                 "strata_plan": cad["strata_plan"],
                 "plan_type": cad.get("plan_type", "strata"),
+                "source": "cadastre",
+                "parent_has_strata": True,
+                "plan_label": cad["plan_label"],
+            }
+
+        # SP/CP lot only within the fallback buffer (point contained in no lot):
+        # confirm only with the corroborating unit-style address; otherwise
+        # downgrade to the ambiguous parent_has_strata path below.
+        if cad["is_strata"] and not cad.get("containment", True):
+            if addr_unit:
+                return {
+                    "is_strata": True,
+                    "strata_plan": cad["strata_plan"],
+                    "plan_type": cad.get("plan_type", "strata"),
+                    "source": "cadastre+address",
+                    "parent_has_strata": True,
+                    "plan_label": cad["plan_label"],
+                }
+            return {
+                "is_strata": False,
+                "strata_plan": None,
+                "plan_type": None,
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
@@ -1188,6 +1241,27 @@ POSTGIS_NOTES = {
 }
 
 
+# prior-art-checked: reuse not viable because _normalize_coastal in
+# services/climate_risk_score.py returns a HazardScore for the scoring pipeline;
+# this is a row-level filter for the overlay list this file already produces.
+def _drop_jurisdictional_overlays(results: list[dict]) -> list[dict]:
+    """Drop overlay rows that mark a policy's jurisdiction, not a hazard.
+
+    SEPP R&H 2021 "Land Application" polygons cover ALL of NSW — a
+    jurisdictional boundary, not a hazard. Only "Subject Land" marks a specific
+    coastal designation. Without this filter every NSW property (including
+    inland LGAs) shows a false coastal overlay in the free check and the PDF.
+    Mirrors _normalize_coastal in services/climate_risk_score.py.
+    """
+    return [
+        o for o in results
+        if not (
+            o.get("layer_type") == "coastal_land_application"
+            and (o.get("value") or "").strip() != "Subject Land"
+        )
+    ]
+
+
 def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str], dict[str, float]]:
     """
     Query PostGIS for overlays not (or unreliably) returned by the portal:
@@ -1247,6 +1321,8 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
             if key not in seen:
                 seen.add(key)
                 results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
+
+        results = _drop_jurisdictional_overlays(results)
 
         # Classified road: any land_reservation with "Classified Road" value within 30m
         # (property point may sit just inside the lot, road reservation is adjacent)

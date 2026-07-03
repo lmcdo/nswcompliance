@@ -286,9 +286,16 @@ def changed_line_numbers(diff_files: list[str], project_dir: str) -> dict[str, s
     """
     def _git(args: list[str]) -> Optional[str]:
         try:
+            # cwd decides the repo, per this function's contract. Git hooks
+            # export GIT_DIR (absolute when pushing from a worktree), which
+            # would silently redirect these queries to the hook's repo even
+            # when cwd is not a repository at all — scrub it.
+            env = os.environ.copy()
+            for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+                env.pop(var, None)
             r = subprocess.run(
                 ["git", *args], capture_output=True, text=True,
-                timeout=10, cwd=project_dir,
+                timeout=10, cwd=project_dir, env=env,
             )
             return r.stdout if r.returncode == 0 else None
         except (subprocess.SubprocessError, FileNotFoundError, OSError):
