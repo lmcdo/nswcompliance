@@ -177,8 +177,13 @@ class TestBuildDCPControls:
         assert "canterbury" in dcp.controls.reason
 
     def test_none_dcp_no_lga(self):
+        # No slug = council not in the DCP-onboarded set. The reason must say
+        # "not onboarded" (frontend routes it to an honest "Not assessed" card)
+        # and must NOT say "could not" (which used to render as "Address not
+        # matched — check the address", blaming the user for a coverage gap).
         dcp = _build_dcp_controls(None, None)
-        assert "could not be determined" in dcp.controls.reason
+        assert "not onboarded" in dcp.controls.reason
+        assert "could not" not in dcp.controls.reason
 
     def test_nonnumeric_requirement_does_not_crash(self):
         # Regression: some councils (e.g. Penrith, Inner West) store a free-text
