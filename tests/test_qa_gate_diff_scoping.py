@@ -55,3 +55,12 @@ class TestChangedLineNumbers:
     def test_returns_empty_when_no_git_base(self, tmp_path):
         # An empty dir is not a git repo -> merge-base fails -> {} (full-scan fallback)
         assert changed_line_numbers(["x.py"], str(tmp_path)) == {}
+
+    def test_hook_exported_git_dir_does_not_leak(self, tmp_path, monkeypatch):
+        # Git hooks export GIT_DIR (absolute when pushing from a worktree).
+        # cwd must still decide the repo: a non-repo dir yields {} even when
+        # GIT_DIR points at a real repository.
+        import os
+        repo_git_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".git")
+        monkeypatch.setenv("GIT_DIR", repo_git_dir)
+        assert changed_line_numbers(["x.py"], str(tmp_path)) == {}

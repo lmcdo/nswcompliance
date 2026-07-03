@@ -2299,6 +2299,17 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         if not rows:
             continue
 
+        # Guard verdict for the whole chapter (count_drop / schema_fail / coverage_fail /
+        # truncation_fail), stored on every row so the review UI can flag the chapter.
+        reason = suspect_reason(ch)
+
+        # Full re-extraction vs targeted amendment — drives whether the commit worker
+        # blanket-replaces the chapter or updates only the changed refs. A restructure or
+        # an empty baseline (total_old == 0) is a full replace; anything else is targeted.
+        is_full_replace = (
+            diff.get("status") == "restructure" or int(diff.get("total_old") or 0) == 0
+        )
+
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
         # Only 'pending' rows are cleared — approved/rejected history is preserved.
         cur.execute(
@@ -2312,11 +2323,11 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                 INSERT INTO dcp_review_queue
                     (council, chapter_key, document_id, ref_number, change_type,
                      old_text, new_text, old_page, new_page, has_numeric_change,
-                     source_content_hash, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                     source_content_hash, suspect_reason, is_full_replace, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
                 """,
                 (council, chapter_key, document_id, ref, change_type,
-                 old_t, new_t, old_p, new_p, has_num, content_hash),
+                 old_t, new_t, old_p, new_p, has_num, content_hash, reason, is_full_replace),
             )
             total += 1
 

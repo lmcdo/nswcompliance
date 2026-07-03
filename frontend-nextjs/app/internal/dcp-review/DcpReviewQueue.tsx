@@ -1,7 +1,7 @@
 'use client';
 
 // prior-art-checked: no existing DCP review-queue UI in the repo (audited 2026-06-20).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ReviewItem {
   id: number;
@@ -17,6 +17,14 @@ interface ReviewItem {
   has_numeric_change: boolean;
   summary: string | null;
   pdf_url: string | null;
+  suspect_reason: string | null;
+}
+
+interface ChapterGroup {
+  council: string;
+  chapter_key: string;
+  suspect_reason: string | null;
+  items: ReviewItem[];
 }
 
 type Action = 'approve' | 'reject' | 'needs-info';
@@ -80,21 +88,16 @@ export default function DcpReviewQueue() {
   // Approve/reject EVERY pending row of the current chapter in one call — for
   // accepting a whole clean re-extraction (e.g. a baseline swap) without clicking
   // through hundreds of rows. Still human-initiated: the reviewer clicks the button.
-  const actChapter = useCallback(
-    async (action: Action) => {
-      const item = items[idx];
-      if (!item || busy) return;
+  const actChapterFor = useCallback(
+    async (council: string, chapterKey: string, action: Action) => {
+      if (busy) return;
       setBusy(true);
       setError(null);
       try {
         const res = await fetch('/api/dcp-review/chapter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action,
-            council: item.council,
-            chapter_key: item.chapter_key,
-          }),
+          body: JSON.stringify({ action, council, chapter_key: chapterKey }),
         });
         if (!res.ok) {
           const json = await res.json().catch(() => ({}));
@@ -102,9 +105,7 @@ export default function DcpReviewQueue() {
         }
         // Drop every row of this chapter; reset the cursor.
         setItems((prev) =>
-          prev.filter(
-            (it) => !(it.council === item.council && it.chapter_key === item.chapter_key),
-          ),
+          prev.filter((it) => !(it.council === council && it.chapter_key === chapterKey)),
         );
         setIdx(0);
       } catch (e) {
@@ -113,7 +114,7 @@ export default function DcpReviewQueue() {
         setBusy(false);
       }
     },
-    [items, idx, busy],
+    [busy],
   );
 
   // Keyboard: A approve · R reject · N needs-info · J/K next/prev.
@@ -129,6 +130,24 @@ export default function DcpReviewQueue() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [act, items.length]);
+
+  // Group the flat worklist into chapters; a chapter is "flagged" if the extraction
+  // guards left a suspect_reason on it — those are the ones to review, not blind-approve.
+  const chapters = useMemo<ChapterGroup[]>(() => {
+    const map = new Map<string, ChapterGroup>();
+    for (const it of items) {
+      const key = `${it.council}/${it.chapter_key}`;
+      let g = map.get(key);
+      if (!g) {
+        g = { council: it.council, chapter_key: it.chapter_key, suspect_reason: null, items: [] };
+        map.set(key, g);
+      }
+      g.items.push(it);
+      if (it.suspect_reason && !g.suspect_reason) g.suspect_reason = it.suspect_reason;
+    }
+    return [...map.values()];
+  }, [items]);
+  const flaggedCount = chapters.filter((c) => c.suspect_reason).length;
 
   if (loading) {
     return <main className="p-8 text-sm text-gray-500">Loading review queue…</main>;
@@ -153,34 +172,78 @@ export default function DcpReviewQueue() {
   return (
     <main className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
-        <h1 className="text-xl font-semibold">DCP review queue — {items.length} pending</h1>
+        <h1 className="text-xl font-semibold">
+          DCP review — {chapters.length} sections
+          {flaggedCount > 0 && (
+            <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-sm font-semibold text-amber-800">
+              ⚠ {flaggedCount} need a careful look
+            </span>
+          )}
+        </h1>
         <p className="text-xs text-gray-500">
-          Keys: <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>N</kbd> needs-info · <kbd>J</kbd>/<kbd>K</kbd> next/prev
+          {items.length} changes across {chapters.length} sections. Approve a whole clean section
+          with its <b>Approve</b> button; ⚠ sections were flagged by the extraction checks — open
+          those and review before approving. Keys: <kbd>A</kbd>/<kbd>R</kbd>/<kbd>N</kbd> per row · <kbd>J</kbd>/<kbd>K</kbd> move.
         </p>
       </header>
 
-      <div className="grid grid-cols-[18rem_1fr] gap-4">
-        {/* Worklist rail */}
+      <div className="grid grid-cols-[20rem_1fr] gap-4">
+        {/* Worklist rail — grouped by section, flagged sections highlighted */}
         <ul className="max-h-[70vh] overflow-auto rounded border text-sm">
-          {items.map((it, i) => (
-            <li key={it.id}>
-              <button
-                onClick={() => setIdx(i)}
-                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
-                  i === idx ? 'bg-blue-50 font-medium' : 'hover:bg-gray-50'
-                }`}
-              >
-                <span className="truncate">
-                  {it.council} / {it.chapter_key} {it.ref_number ? `· ${it.ref_number}` : ''}
-                </span>
-                {it.has_numeric_change && (
-                  <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                    NUM
-                  </span>
+          {chapters.map((ch) => {
+            const active = item.council === ch.council && item.chapter_key === ch.chapter_key;
+            return (
+              <li key={`${ch.council}/${ch.chapter_key}`} className="border-b last:border-b-0">
+                <div
+                  className={`flex items-center justify-between gap-2 px-3 py-2 ${
+                    ch.suspect_reason ? 'bg-amber-50' : ''
+                  }`}
+                >
+                  <button
+                    onClick={() => setIdx(items.indexOf(ch.items[0]))}
+                    className="flex-1 truncate text-left"
+                    title={ch.suspect_reason ?? undefined}
+                  >
+                    {ch.suspect_reason && <span aria-label="flagged">⚠ </span>}
+                    <span className={active ? 'font-semibold' : ''}>{ch.chapter_key}</span>
+                    <span className="text-gray-400"> ({ch.items.length})</span>
+                  </button>
+                  <button
+                    onClick={() => actChapterFor(ch.council, ch.chapter_key, 'approve')}
+                    disabled={busy}
+                    className="shrink-0 rounded border border-green-600 px-2 py-0.5 text-[11px] font-medium text-green-700 disabled:opacity-50"
+                    title={`Approve all ${ch.items.length} changes in ${ch.chapter_key}`}
+                  >
+                    Approve
+                  </button>
+                </div>
+                {ch.suspect_reason && (
+                  <div className="px-3 pb-1 text-[10px] text-amber-700">{ch.suspect_reason}</div>
                 )}
-              </button>
-            </li>
-          ))}
+                {active && (
+                  <ul className="bg-gray-50/60">
+                    {ch.items.map((it) => (
+                      <li key={it.id}>
+                        <button
+                          onClick={() => setIdx(items.indexOf(it))}
+                          className={`flex w-full items-center justify-between gap-2 py-1 pl-6 pr-3 text-left text-xs ${
+                            it === item ? 'bg-blue-100 font-medium' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className="truncate">{it.ref_number ?? '(no ref)'}</span>
+                          {it.has_numeric_change && (
+                            <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">
+                              NUM
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {/* Detail + diff */}
@@ -271,7 +334,7 @@ export default function DcpReviewQueue() {
               Whole chapter ({chapterCount} pending in {item.chapter_key}):
             </span>
             <button
-              onClick={() => actChapter('approve')}
+              onClick={() => actChapterFor(item.council, item.chapter_key, 'approve')}
               disabled={busy}
               className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               title={`Approve all ${chapterCount} pending changes in ${item.chapter_key}`}
@@ -279,7 +342,7 @@ export default function DcpReviewQueue() {
               Approve all {chapterCount} in this chapter
             </button>
             <button
-              onClick={() => actChapter('reject')}
+              onClick={() => actChapterFor(item.council, item.chapter_key, 'reject')}
               disabled={busy}
               className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 disabled:opacity-50"
               title={`Reject all ${chapterCount} pending changes in ${item.chapter_key}`}

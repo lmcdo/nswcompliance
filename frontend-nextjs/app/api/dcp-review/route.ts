@@ -13,7 +13,7 @@ export async function GET() {
       SELECT q.id, q.council, q.chapter_key, q.document_id, q.ref_number, q.change_type,
              q.old_text, q.new_text, q.old_page, q.new_page, q.has_numeric_change,
              q.numeric_diff, q.summary, q.crop_url, q.source_content_hash, q.created_at,
-             r.r2_public_pdf_url AS pdf_url
+             q.suspect_reason, r.r2_public_pdf_url AS pdf_url
       FROM dcp_review_queue q
       LEFT JOIN dcp_chapter_registry r
              ON r.council = q.council AND r.chapter_key = q.chapter_key
