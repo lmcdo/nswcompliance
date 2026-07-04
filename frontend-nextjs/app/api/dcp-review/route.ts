@@ -13,12 +13,16 @@ export async function GET() {
       SELECT q.id, q.council, q.chapter_key, q.document_id, q.ref_number, q.change_type,
              q.old_text, q.new_text, q.old_page, q.new_page, q.has_numeric_change,
              q.numeric_diff, q.summary, q.crop_url, q.source_content_hash, q.created_at,
-             q.suspect_reason, r.r2_public_pdf_url AS pdf_url
+             q.suspect_reason, q.fidelity_status, q.fidelity_detail, q.source_page_verified,
+             r.r2_public_pdf_url AS pdf_url
       FROM dcp_review_queue q
       LEFT JOIN dcp_chapter_registry r
              ON r.council = q.council AND r.chapter_key = q.chapter_key
       WHERE q.status = 'pending'
-      ORDER BY q.has_numeric_change DESC, q.council, q.chapter_key, q.created_at
+      -- Flagged rows first (fidelity_status='flagged'), then unchecked, then grounded, so a
+      -- reviewer meets the rows that need a human before the source-matched bulk.
+      ORDER BY (q.fidelity_status = 'flagged') DESC NULLS LAST,
+               q.has_numeric_change DESC, q.council, q.chapter_key, q.created_at
       LIMIT 500
     `);
     // Total pending across the whole queue (the SELECT is capped at 500), so the UI can
