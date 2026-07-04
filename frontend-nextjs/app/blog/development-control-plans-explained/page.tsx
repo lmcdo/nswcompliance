@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -449,12 +450,14 @@ export default function DCPExplainedPage() {
           Enter any NSW address. Get setbacks, parking, landscaping, and site coverage with
           clause citations.
         </p>
-        <Link
+        <TrackedLink
           href="/assessment"
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
+          page="development-control-plans-explained"
+          cta="run_verify"
         >
           Open Verify <ArrowRight className="w-4 h-4" />
-        </Link>
+        </TrackedLink>
       </div>
 
       <BlogDisclaimer />

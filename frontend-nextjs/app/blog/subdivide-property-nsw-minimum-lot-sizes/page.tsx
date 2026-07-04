@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -564,13 +565,15 @@ export default function SubdividePropertyPage() {
               applicable DCP controls for any NSW property. Enter an address to
               see whether subdivision is feasible for your lot.
             </p>
-            <Link
+            <TrackedLink
               href="/check"
               className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+              page="subdivide-property-nsw-minimum-lot-sizes"
+              cta="check_address"
             >
               Check a property
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

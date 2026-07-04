@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -631,13 +632,15 @@ export default function Section107CertificateGapsPage() {
               development potential, and hazard exposure &mdash; the information
               the s10.7 leaves out.
             </p>
-            <Link
+            <TrackedLink
               href="/reports/conveyancing"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
+              page="section-10-7-certificate-gaps-nsw"
+              cta="check_conveyancing"
             >
               Run a planning disclosure report
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

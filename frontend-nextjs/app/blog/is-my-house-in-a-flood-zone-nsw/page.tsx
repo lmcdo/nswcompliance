@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -278,13 +279,15 @@ export default function FloodZoneCheckPage() {
               data is available, it shows modelled depth at 1-in-20 through 1-in-500 year return
               intervals — plus LEP flood overlay status from the NSW Planning Portal. No account required.
             </p>
-            <Link
+            <TrackedLink
               href="/reports/flood"
+              page="is-my-house-in-a-flood-zone-nsw"
+              cta="check_flood"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
             >
               Check flood risk — free
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

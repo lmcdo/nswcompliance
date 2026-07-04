@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react'
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer'
 import { COUNCIL_STATS, DATA_AS_OF } from '@/lib/lga-data/secondary-dwelling-stats'
@@ -321,13 +322,15 @@ export default function GrannyFlatBlogIndexPage() {
           Enter an address to check lot size, zoning, heritage, flood, and
           environmental overlays against SEPP Housing 2021 requirements.
         </p>
-        <Link
+        <TrackedLink
           href="/reports/granny-flat"
+          page="granny-flat"
+          cta="check_granny_flat"
           className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
         >
           Run free eligibility check
           <ArrowRight className="h-4 w-4" />
-        </Link>
+        </TrackedLink>
       </div>
 
       {/* Related articles */}

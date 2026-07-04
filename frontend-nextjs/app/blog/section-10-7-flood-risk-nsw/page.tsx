@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -824,13 +825,15 @@ export default function Section107FloodRiskPage() {
               from the planning certificate. Enter any NSW address for instant
               results. No account required.
             </p>
-            <Link
+            <TrackedLink
               href="/reports/flood"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
+              page="section-10-7-flood-risk-nsw"
+              cta="check_flood"
             >
               Check flood risk &mdash; free
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

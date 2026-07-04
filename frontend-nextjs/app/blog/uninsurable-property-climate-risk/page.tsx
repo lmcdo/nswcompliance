@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -243,13 +244,15 @@ export default function UninsurablePropertyPage() {
               data from government sources. No account required.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
                 href="/reports/flood"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+                page="uninsurable-property-climate-risk"
+                cta="check_flood"
               >
                 Check flood risk
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </TrackedLink>
               <Link
                 href="/reports/bushfire"
                 className="inline-flex items-center gap-2 px-6 py-3 text-slate-700 text-sm font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
