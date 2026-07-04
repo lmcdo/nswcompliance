@@ -27,6 +27,8 @@ Usage:
 import argparse
 import sys
 
+import re
+
 import psycopg2
 
 import dcp_extract_changed as dx
@@ -36,6 +38,32 @@ import verify_extraction_fidelity as vf
 # ~77% of provisions clear this; the ~23% that don't are repeated/short/straddling rules).
 _MIN_BEST = 0.5
 _MIN_MARGIN = 0.15
+_SENT_RE = re.compile(r"(?<=[.;:])\s+")
+
+
+def _source_quote(ai_text: str, absent: list[str], source_text: str) -> str | None:
+    """The sentence from the source PDF the reviewer should compare a flag against.
+
+    Find the AI sentence that carries a flagged number, then the source sentence with the
+    highest word overlap — that is what the council's document actually says. Lets the UI
+    show 'AI wrote 2.9m / source says 0.9m' so a flag is resolvable at a glance, not by
+    opening the PDF and hunting. Returns None when nothing lines up well enough (>=40%)."""
+    if not absent or not source_text:
+        return None
+    ai_sents = _SENT_RE.split(ai_text or "")
+    target = next((s for s in ai_sents if any(n in s for n in absent)), ai_text or "")
+    tw = set(vf._content_words(target))
+    if not tw:
+        return None
+    best, best_score = "", 0.0
+    for s in _SENT_RE.split(source_text):
+        sw = set(vf._content_words(s))
+        score = len(tw & sw) / len(tw)
+        if score > best_score:
+            best, best_score = s, score
+    if best_score < 0.4:
+        return None
+    return re.sub(r"\s+", " ", best).strip()[:240]
 
 
 def _best_page(prov_words: set, pages: dict) -> tuple[int | None, bool]:
@@ -74,8 +102,11 @@ def ground_row(text: str, ref_number: str, pages: dict) -> dict:
             detail.append(f"numbers not in source: {', '.join(absent)}")
         if ground_ratio < 0.75:
             detail.append(f"only {int(ground_ratio*100)}% of words found in source")
-        return {"status": "flagged", "detail": "; ".join(detail), "verified_page": verified_page}
-    return {"status": "grounded", "detail": None, "verified_page": verified_page}
+        quote = _source_quote(text, absent, source) if absent else None
+        return {"status": "flagged", "detail": "; ".join(detail),
+                "verified_page": verified_page, "source_quote": quote}
+    return {"status": "grounded", "detail": None, "verified_page": verified_page,
+            "source_quote": None}
 
 
 def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple[int, int]:
@@ -96,8 +127,8 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
         r = ground_row(new_text, ref_number, pages)
         cur.execute(
             "UPDATE dcp_review_queue SET fidelity_status=%s, fidelity_detail=%s, "
-            "source_page_verified=%s WHERE id=%s",
-            (r["status"], r["detail"], r["verified_page"], row_id),
+            "source_page_verified=%s, fidelity_source_quote=%s WHERE id=%s",
+            (r["status"], r["detail"], r["verified_page"], r["source_quote"], row_id),
         )
         if r["status"] == "grounded":
             grounded += 1
