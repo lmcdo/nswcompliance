@@ -170,6 +170,19 @@ def capture_climate() -> None:
     _write("climate_risk", CONCORD, result.to_dict())
 
 
+def capture_env_overlays() -> None:
+    """get_unique_overlays real run — overlays hit + coverage + measured
+    nearest-feature distances (proximity_m), the Slice-2 distance source."""
+    from generate_conveyancing_report import get_unique_overlays
+
+    overlays, covered, proximity = get_unique_overlays(CONCORD["lat"], CONCORD["lng"])
+    _write("env_overlays", CONCORD, {
+        "overlays": overlays,
+        "covered_layers": sorted(covered),
+        "proximity_m": proximity,
+    })
+
+
 CAPTURES = {
     "vg_comparables": capture_vg_comparables,
     "vg_sales": capture_vg_sales,
@@ -177,6 +190,7 @@ CAPTURES = {
     "housing_sepp": capture_housing_sepp,
     "lep_land_use": capture_lep_land_use,
     "climate": capture_climate,
+    "env_overlays": capture_env_overlays,
 }
 
 

@@ -1457,8 +1457,9 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
 
         # Proximity distances — for layers that are covered but not intersecting at this property,
         # find the nearest feature distance (metres). Helps distinguish "1.5km away" from "50m away".
-        # Only queried for ecologically sensitive layers where proximity is actionable.
-        PROXIMITY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide"})
+        # flood added (brief Slice 2): a "No" flood row carrying the measured distance to the
+        # nearest mapped flood polygon — same covered-not-hit ST_Distance mechanism, never an estimate.
+        PROXIMITY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide", "flood"})
         hit_types = {r["layer_type"] for r in results}
         proximity_m: dict[str, float] = {}
         prox_candidates = PROXIMITY_LAYERS & covered_layers - hit_types

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
+import { ConstraintArithmeticCard, type ConstraintArithmeticResult, type EnvelopeGap, type InputLedgerRow } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
@@ -340,15 +340,22 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
     const u = isDataField(v) ? v.value : v;
     if (typeof u === 'string' && u) unitFor[k.slice(0, -6)] = u;
   }
+  // Measured nearest-feature distances (decorate the "No" rows below; the map
+  // itself is not a row).
+  const nearestRaw = (data.nearest_features as { value?: Record<string, number> | null } | undefined)?.value ?? null;
+
   // Hide: internal QA fields; standalone units rows (merged above); the duplicate
-  // lot area (kept in Economics); and empty "...reason" rows (e.g. an ineligible
-  // reason when the lot is actually eligible).
+  // lot area (kept in Economics); empty "...reason" rows (e.g. an ineligible
+  // reason when the lot is actually eligible); the nearest_features map
+  // (rendered as decorations); and null detail rows whose host boolean already
+  // answers (contaminated_detail etc.).
   const entries = Object.entries(data).filter(
     ([key, val]) =>
-      !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key) &&
+      !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage', 'nearest_features'].includes(key) &&
       !key.endsWith('_units') &&
       !(key === 'lot_area_m2' && section !== 'economics') &&
-      !(/reason/i.test(key) && (val === null || val === undefined || val === '')),
+      !(/reason/i.test(key) && (val === null || val === undefined || val === '')) &&
+      !(HIDE_WHEN_NULL_KEYS.has(key) && (isDataField(val) ? val.value == null : val == null)),
   );
 
   if (entries.length === 0) {
@@ -443,6 +450,44 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
                   {within
                     ? 'Within the Coastal Management SEPP land-application area (jurisdictional — not a coastal-hazard finding).'
                     : 'Not in a coastal management area.'}
+                </dd>
+              </div>
+            );
+          }
+          // A "No" row with a measured distance to the nearest mapped feature —
+          // "No — nearest mapped flood polygon 830 m away" says far more than a
+          // bare "No". Distance shown only when PostGIS measured one.
+          if (
+            section === 'environmental_constraints' && key in NEAREST_FEATURE_ROWS &&
+            df.value === false
+          ) {
+            const { layer, label } = NEAREST_FEATURE_ROWS[key];
+            const dist = nearestRaw?.[layer];
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  No{typeof dist === 'number' ? (
+                    <span className="text-slate-500"> — nearest {label} {formatDistance(dist)} away</span>
+                  ) : null}
+                </dd>
+              </div>
+            );
+          }
+          // Contaminated-land detail — the notified sites behind the "Yes",
+          // straight from the EPA register (name, class, measured distance).
+          if (key === 'contaminated_detail' && df.value && typeof df.value === 'object') {
+            const d = df.value as { site_count?: number; nearest_site?: { name?: string; street?: string; suburb?: string; management_class?: string; distance_m?: number } };
+            const site = d.nearest_site ?? {};
+            const bits = [site.name, [site.street, site.suburb].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {d.site_count ?? 1} notified site{(d.site_count ?? 1) === 1 ? '' : 's'} on the EPA register within 500 m
+                  {bits ? <> — nearest: {bits}</> : null}
+                  {site.management_class ? <span className="text-slate-500"> ({site.management_class})</span> : null}
+                  {typeof site.distance_m === 'number' ? <span className="text-slate-500">, {formatDistance(site.distance_m)} away</span> : null}
                 </dd>
               </div>
             );
@@ -567,6 +612,12 @@ const FIELD_HINTS: Record<string, string> = {
     'Development types the LEP Land Use Table lists as permitted in this zone for this council.',
   prohibited_uses:
     'Development types the LEP Land Use Table lists as prohibited in this zone for this council.',
+  anef_level:
+    'Aircraft-noise exposure contour value (ANEF) published for this location.',
+  contaminated_detail:
+    'Sites on the EPA contaminated-land register within 500 m, with the nearest site’s details and measured distance.',
+  mine_subsidence_district:
+    'The proclaimed mine subsidence district this lot falls within.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -581,6 +632,26 @@ function FieldLabel({ fieldKey }: { fieldKey: string }) {
     </dt>
   );
 }
+
+// Environmental "No" rows that carry a measured nearest-feature distance
+// (PostGIS ST_Distance over the mapped polygons — measured, never estimated).
+// key = the brief field; layer = the key inside nearest_features; label = the
+// factual noun for the sentence ("nearest mapped flood polygon 830 m away").
+const NEAREST_FEATURE_ROWS: Record<string, { layer: string; label: string }> = {
+  flood_epi: { layer: 'flood', label: 'mapped flood polygon' },
+  terrestrial_biodiversity: { layer: 'biodiversity', label: 'mapped biodiversity area' },
+  riparian_land: { layer: 'riparian', label: 'mapped riparian land' },
+  wetlands: { layer: 'wetlands', label: 'mapped wetland' },
+};
+
+function formatDistance(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km` : `${Math.round(m)} m`;
+}
+
+// Detail fields that only carry information when their host boolean is Yes —
+// a null here is covered by the boolean row, so render nothing instead of a
+// noise "None" row.
+const HIDE_WHEN_NULL_KEYS = new Set(['contaminated_detail', 'mine_subsidence_district', 'anef_level']);
 
 // LEP principal development standards that legitimately have no mapped layer on
 // some lots (e.g. Wingecarribee maps no FSR for parts of Bowral). A checked
@@ -1123,6 +1194,109 @@ function getPlanningContext(sections: { data: { section: string; data: unknown }
 // Is this a residential zone where the Housing-SEPP residential forms can apply?
 function isResidentialZone(zone?: string): boolean {
   return /^(R1|R2|R3|R4|R5|RU5)\b/.test((zone || '').trim());
+}
+
+// ---------------------------------------------------------------------------
+// Yield-card ledger context — each arithmetic input with its value and source,
+// plus the named-missing-control explanation when the envelope can't compute.
+// Composed entirely from data the stream already carries (no new fetches).
+// ---------------------------------------------------------------------------
+
+type SectionEvt = { data: { section: string; data: unknown } };
+
+function _sectionValue(sections: SectionEvt[], name: string): Record<string, unknown> | null {
+  const s = sections.find((e) => e.data.section === name);
+  const d = s?.data.data as Record<string, unknown> | null | undefined;
+  if (!d) return null;
+  return (isDataField(d) ? (d.value as Record<string, unknown> | null) : d) ?? null;
+}
+
+function _df(obj: Record<string, unknown> | null, key: string): { value?: unknown; source?: string; as_at?: string | null; confidence?: string } | null {
+  const v = obj?.[key];
+  return v && isDataField(v) ? v : null;
+}
+
+function buildYieldLedgerContext(
+  sections: SectionEvt[],
+  ca: ConstraintArithmeticResult,
+): { inputProvenance: InputLedgerRow[]; envelopeGap: EnvelopeGap | null } {
+  const pc = _sectionValue(sections, 'planning_controls');
+  const eco = _sectionValue(sections, 'economics');
+  const dcpSection = _sectionValue(sections, 'dcp_controls');
+
+  const src = (df: ReturnType<typeof _df>) => (df?.source ?? '').replace(/_/g, ' ');
+  const rows: InputLedgerRow[] = [];
+
+  const lotDf = _df(eco, 'lot_area_m2');
+  if (ca.lot_area_m2 > 0) {
+    rows.push({
+      label: 'Lot area',
+      value: `${Math.round(ca.lot_area_m2).toLocaleString()} m²`,
+      source: src(lotDf) || 'nsw valuation service',
+      asAt: lotDf?.as_at ?? null,
+    });
+  }
+  const fsrDf = _df(pc, 'fsr');
+  rows.push({
+    label: 'Floor space ratio (LEP)',
+    value: ca.lep_fsr != null ? `${ca.lep_fsr}:1` : 'no control mapped',
+    source: src(fsrDf) || 'planning portal',
+    asAt: fsrDf?.as_at ?? null,
+  });
+  const heightDf = _df(pc, 'height');
+  rows.push({
+    label: 'Height of buildings (LEP)',
+    value: ca.lep_height_m != null ? `${ca.lep_height_m} m` : 'no control mapped',
+    source: src(heightDf) || 'planning portal',
+    asAt: heightDf?.as_at ?? null,
+  });
+  const dims = _df(pc, 'lot_dimensions')?.value as { frontage_m?: number | null; depth_m?: number | null } | null | undefined;
+  if (dims?.frontage_m != null && dims?.depth_m != null) {
+    rows.push({
+      label: 'Lot dimensions',
+      value: `${dims.frontage_m} m × ${dims.depth_m} m`,
+      source: 'cadastral lot polygon',
+    });
+  }
+  if (ca.dev_type) {
+    rows.push({
+      label: 'Development form basis',
+      value: formatKey(ca.dev_type),
+      source: 'zone tier + LEP land use table',
+    });
+  }
+  const setbacks = [
+    ca.setback_front_m != null ? `F ${ca.setback_front_m} m` : null,
+    ca.setback_side_m != null ? `S ${ca.setback_side_m} m` : null,
+    ca.setback_rear_m != null ? `R ${ca.setback_rear_m} m` : null,
+  ].filter(Boolean);
+  if (setbacks.length > 0) {
+    const dcpName = _df(dcpSection, 'dcp_name')?.value as string | null | undefined;
+    rows.push({
+      label: 'DCP setbacks',
+      value: setbacks.join(' · '),
+      source: dcpName || 'extracted DCP controls',
+      asAt: _df(dcpSection, 'controls')?.as_at ?? null,
+    });
+  }
+
+  let envelopeGap: EnvelopeGap | null = null;
+  if (ca.realistic_gfa_m2 == null) {
+    const missing: string[] = [];
+    if (ca.lep_fsr == null) missing.push('floor space ratio');
+    if (ca.lep_height_m == null) missing.push('height of buildings');
+    if (missing.length > 0) {
+      const instrument = (_df(pc, 'zone_epi')?.value as string | null | undefined) ?? null;
+      const dcpControls = _df(dcpSection, 'controls');
+      envelopeGap = {
+        missing,
+        instrument,
+        dcpOnboarded: dcpControls != null && dcpControls.confidence !== 'not_available',
+        dcpName: (_df(dcpSection, 'dcp_name')?.value as string | null | undefined) ?? null,
+      };
+    }
+  }
+  return { inputProvenance: rows, envelopeGap };
 }
 
 function formatValue(val: unknown): string {
@@ -2309,12 +2483,15 @@ function IntelligenceBriefInner() {
               if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;
                 if (ca) {
+                  const ledger = buildYieldLedgerContext(sectionEvents, ca);
                   card = (
                     <ConstraintArithmeticCard
                       briefData={ca}
                       lotArea={ca.lot_area_m2}
                       devType={ca.dev_type}
                       zone={planningCtx.zone}
+                      inputProvenance={ledger.inputProvenance}
+                      envelopeGap={ledger.envelopeGap}
                     />
                   );
                 }

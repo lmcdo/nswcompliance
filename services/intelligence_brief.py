@@ -434,9 +434,32 @@ class EnvironmentalConstraints(BaseModel):
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="postgis_overlays", reason="Not yet extracted from overlays",
     )
+    # Numeric ANEF contour value (when one applies) — the display string above
+    # stays for the card; this carries the number for downstream consumers.
+    anef_level: DataField[Optional[float]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="anef_zones", reason="Not yet extracted from overlays",
+    )
     coastal_hazards: DataField[Optional[dict]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="sepp_resilience_hazards", reason="Not yet extracted from overlays",
+    )
+    # Nearest-feature distances (metres) for mapped layers that are covered for
+    # this LGA but do NOT intersect this lot — measured by PostGIS ST_Distance
+    # in get_unique_overlays, never estimated. Decorates the "No" rows
+    # ("Flood: No — nearest mapped flood polygon 830 m away").
+    nearest_features: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    # Detail behind the booleans above — already returned by their services.
+    contaminated_detail: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="epa_contaminated_sites", reason="Not yet wired in orchestrator",
+    )
+    mine_subsidence_district: DataField[Optional[str]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="nsw_spatial_services", reason="Not yet wired in orchestrator",
     )
 
 
@@ -2636,6 +2659,9 @@ def _build_environmental(
     lng: Optional[float] = None,
     overlays_failed: bool = False,
     controls_failed: bool = False,
+    mine_failed: bool = False,
+    contam_failed: bool = False,
+    drinking_failed: bool = False,
 ) -> EnvironmentalConstraints:
     """Map overlays + heritage to EnvironmentalConstraints.
 
@@ -2643,8 +2669,12 @@ def _build_environmental(
     overlay-derived fields (the overlay list + coverage) are emitted NOT_AVAILABLE.
     flood_epi and bushfire_designation combine overlays WITH the portal controls,
     so they are only downgraded when BOTH sources failed — otherwise a single
-    surviving source still gives a real answer. mine/contaminated/drinking/heritage
-    come from separate fetches and are unaffected.
+    surviving source still gives a real answer.
+
+    mine/contaminated/drinking return None BOTH when the lot is genuinely outside
+    the layer AND when the fetch failed — the ``*_failed`` flags (from the fetch
+    DataField) are the only way to keep those apart, so a failed fetch renders
+    NOT_AVAILABLE, never a confident False (the WO-2 class).
     """
     today = date.today().isoformat()
     auth = ConfidenceLevel.AUTHORITATIVE
@@ -2685,40 +2715,77 @@ def _build_environmental(
             reason="Layer not ingested for this LGA",
         )
 
-    def _anef_field() -> DataField:
+    def _parse_anef_number(raw) -> Optional[float]:
+        """Leading numeric part of an ANEF value ('25', 25, '20-25') — None when
+        no clean number leads the value (never a guess)."""
+        if raw is None:
+            return None
+        if isinstance(raw, (int, float)):
+            return float(raw)
+        m = re.match(r"\s*(\d+(?:\.\d+)?)", str(raw))
+        return float(m.group(1)) if m else None
+
+    def _anef_fields() -> tuple[DataField, DataField]:
         # prior-art-checked: ANEF reuses anef_zones (Sydney, via fetch_anef_zone)
         # + the existing portal_constraints.fetch_anef (regional). Not a new source.
         # Only trust the ingested overlay when it actually carries a value. The
         # anef overlay is "covered" for many LGAs but empty at most lots, while
         # anef_zones holds the real Sydney contour — so a null overlay must fall
         # through to the live query, not short-circuit to a blank.
+        # Returns (display string field, numeric level field) from ONE lookup.
+        def _level(num: Optional[float], src: str) -> DataField:
+            if num is None:
+                # Checked; no numeric contour applies (or the value isn't numeric).
+                return DataField(value=None, confidence=auth, source=src, as_at=today)
+            return DataField(value=num, confidence=auth, source=src, as_at=today)
+
         if "anef" in covered and anef_value is not None:
-            return DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today)
+            return (
+                DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today),
+                _level(_parse_anef_number(anef_value), "postgis_overlays"),
+            )
         if lat is None or lng is None:
-            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-                             source="anef_zones", as_at=today, reason="Layer not ingested for this LGA")
+            na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                                 source="anef_zones", as_at=today, reason="Layer not ingested for this LGA")
+            return na_field, na_field.model_copy()
+        zone, zone_failed = None, False
         try:
             zone = fetch_anef_zone(lat, lng)
         except Exception:
-            zone = None
+            zone_failed = True
         if zone:
-            return DataField(
-                value=f"ANEF {zone.get('anef_level')} ({zone.get('airport')})",
-                confidence=auth, source="anef_zones", as_at=today,
+            return (
+                DataField(
+                    value=f"ANEF {zone.get('anef_level')} ({zone.get('airport')})",
+                    confidence=auth, source="anef_zones", as_at=today,
+                ),
+                _level(_parse_anef_number(zone.get("anef_level")), "anef_zones"),
             )
-        regional = None
+        regional, regional_failed = None, False
         try:
             from services.portal_constraints import fetch_anef
             regional = fetch_anef(lat, lng)
         except Exception:
-            regional = None
+            regional_failed = True
         if regional:
             code = regional.get("anef_code") or regional.get("anef_level")
-            return DataField(value=f"ANEF contour {code}".strip(),
-                             confidence=auth, source="planning_portal_protection", as_at=today)
-        # Checked both published ANEF sources — none. Honest (NOT "no aircraft noise").
-        return DataField(value="No published ANEF contour at this property",
-                         confidence=auth, source="anef_zones", as_at=today)
+            return (
+                DataField(value=f"ANEF contour {code}".strip(),
+                          confidence=auth, source="planning_portal_protection", as_at=today),
+                _level(_parse_anef_number(code), "planning_portal_protection"),
+            )
+        if zone_failed or regional_failed:
+            # A lookup FAILED — "no contour" cannot be claimed off a failed check.
+            na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                                 source="anef_zones", as_at=today,
+                                 reason="ANEF contour lookup did not complete")
+            return na_field, na_field.model_copy()
+        # Both published ANEF sources genuinely checked — none applies here.
+        return (
+            DataField(value="No published ANEF contour at this property",
+                      confidence=auth, source="anef_zones", as_at=today),
+            _level(None, "anef_zones"),
+        )
 
     flood_epi = any(
         o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
@@ -2759,6 +2826,19 @@ def _build_environmental(
         if o.get("layer_type", "").startswith("coastal_") or o.get("layer_type") == "littoral_rainforest"
     }
 
+    # Measured nearest-feature distances (metres) from get_unique_overlays —
+    # only for covered layers with no intersection at this lot. Keys are layer
+    # types (flood, biodiversity, riparian, wetlands, landslide). Values must be
+    # numeric; anything else is dropped rather than rendered as a distance.
+    proximity_raw = (overlays_data.get("proximity_m") or {}) if overlays_data else {}
+    proximity = {
+        k: round(float(v))
+        for k, v in proximity_raw.items()
+        if isinstance(v, (int, float))
+    }
+
+    anef_display_field, anef_level_field = _anef_fields()
+
     return EnvironmentalConstraints(
         flood_epi=DataField(
             value=None if both_failed else flood_epi,
@@ -2784,7 +2864,20 @@ def _build_environmental(
         terrestrial_biodiversity=_overlay_field("biodiversity", has_biodiversity, 10),
         riparian_land=_overlay_field("riparian", has_riparian, 7),
         wetlands=_overlay_field("wetlands", has_wetlands, 11),
-        anef=_anef_field(),
+        anef=anef_display_field,
+        anef_level=anef_level_field,
+        nearest_features=DataField(
+            # Measured metres to the nearest mapped feature for covered layers
+            # that do NOT intersect this lot. Legit-empty = value None with NO
+            # reason (per the DataField contract, a reason on a null value means
+            # the fetch FAILED and the S1 validator coerces to NOT_AVAILABLE);
+            # the overlay failure case carries its reason via overlay_auth.
+            value=proximity or None,
+            confidence=overlay_auth,
+            source="postgis_overlays",
+            as_at=today,
+            reason="Overlay query did not complete" if overlays_failed else None,
+        ),
         coastal_hazards=DataField(
             value=coastal_layers if coastal_layers else None,
             confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
@@ -2793,22 +2886,49 @@ def _build_environmental(
             reason=None if coastal_layers else "No coastal hazard overlays at this location",
         ),
         mine_subsidence=DataField(
-            value=mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False,
-            confidence=auth,
+            value=None if mine_failed else (mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False),
+            confidence=na if mine_failed else auth,
             source="nsw_spatial_services",
             as_at=today,
+            reason="Mine subsidence lookup did not complete" if mine_failed else None,
+        ),
+        mine_subsidence_district=DataField(
+            value=(mine_subsidence_raw or {}).get("district_name"),
+            confidence=na if mine_failed else auth,
+            source="nsw_spatial_services",
+            as_at=today,
+            reason="Mine subsidence lookup did not complete" if mine_failed else None,
         ),
         contaminated_land=DataField(
-            value=contaminated_land_raw.get("has_notified_sites", False) if contaminated_land_raw else False,
-            confidence=auth,
+            value=None if contam_failed else (contaminated_land_raw.get("has_notified_sites", False) if contaminated_land_raw else False),
+            confidence=na if contam_failed else auth,
             source="epa_contaminated_sites",
             as_at=today,
+            reason="Contaminated land register lookup did not complete" if contam_failed else None,
+        ),
+        contaminated_detail=DataField(
+            value=(
+                {
+                    "site_count": contaminated_land_raw.get("site_count"),
+                    "nearest_site": contaminated_land_raw.get("nearest_site"),
+                }
+                if contaminated_land_raw and not contam_failed
+                else None
+            ),
+            confidence=na if contam_failed else auth,
+            source="epa_contaminated_sites",
+            as_at=today,
+            # Genuinely no sites = value None with NO reason (legit-empty per the
+            # DataField contract — a reason would mark it failed and coerce to
+            # NOT_AVAILABLE, surfacing a false gap). The boolean row answers.
+            reason="Contaminated land register lookup did not complete" if contam_failed else None,
         ),
         drinking_water_catchment=DataField(
-            value=drinking_water_raw.get("in_catchment", False) if drinking_water_raw else False,
-            confidence=auth,
+            value=None if drinking_failed else (drinking_water_raw.get("in_catchment", False) if drinking_water_raw else False),
+            confidence=na if drinking_failed else auth,
             source="sepp_resilience_hazards",
             as_at=today,
+            reason="Drinking water catchment lookup did not complete" if drinking_failed else None,
         ),
     )
 
@@ -3363,9 +3483,12 @@ def _generate_brief_sse(
 
         overlays_data, overlays_failed = _unwrap_or_default(overlays_df, {"overlays": [], "covered_layers": [], "proximity_m": {}})  # WO-2: overlays_failed -> _build_environmental stamps overlay-derived fields NOT_AVAILABLE instead of False@AUTHORITATIVE
         heritage_postgis = heritage_df.value
-        mine_subsidence_raw = mine_sub_df.value
-        contaminated_land_raw = contam_df.value
-        drinking_water_raw = drinking_df.value
+        # These services return None BOTH for "genuinely outside the layer" and
+        # (via _safe_call) for a failed fetch — the confidence flag is the only
+        # way to keep the two apart downstream (WO-2 class).
+        mine_subsidence_raw, mine_failed = _unwrap_or_default(mine_sub_df, None)
+        contaminated_land_raw, contam_failed = _unwrap_or_default(contam_df, None)
+        drinking_water_raw, drinking_failed = _unwrap_or_default(drinking_df, None)
         # lot_geometry already awaited + reconciled before economics (above).
         contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
             value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -3379,6 +3502,8 @@ def _generate_brief_sse(
             drinking_water_raw=drinking_water_raw,
             lat=lat, lng=lng,
             overlays_failed=overlays_failed, controls_failed=controls_failed,
+            mine_failed=mine_failed, contam_failed=contam_failed,
+            drinking_failed=drinking_failed,
         )
         sections_yielded += 1
         yield _sse_event("section", {
