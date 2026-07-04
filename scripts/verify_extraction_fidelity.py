@@ -128,8 +128,13 @@ def verify_council(cur, s3, council: str, limit: int | None) -> dict:
         if not page_text:
             continue
 
-        # NUMERIC FIDELITY — reuse the tested number-form matcher.
-        nums = _numbers(provision_text)
+        # NUMERIC FIDELITY — reuse the tested number-form matcher, EXCLUDING the provision's
+        # own section code (e.g. "14.2" derived from ref C14_2). A section code is a structural
+        # label the model reproduces from the heading, not a value read off the page, and it
+        # false-flags against a differently-formatted source heading. Regulatory values
+        # (setbacks, heights, areas) in the body are still fully checked.
+        code_nums = set(_NUM_RE.findall((ref_number or "").split("__")[-1].replace("_", ".")))
+        nums = [n for n in _numbers(provision_text) if n not in code_nums]
         nums_checked += len(nums)
         rows_for_check = [{"v": n, "src": page_text} for n in nums]
         absent = value_absent_from_source(rows_for_check, value_field="v", source_field="src")
