@@ -1,24 +1,115 @@
 {
-  "tier": "minor",
-  "commit_hash": "c8225425",
-  "justification": "Layout-only: the satellite checkbox on the brief landing hero moves ABOVE the 'Free instant check' helper text (it read as fine print below it) and gets a card-style pill treatment so it is visible as part of the search input. No data-path or behaviour change.",
+  "tier": "standard",
+  "commit_hash": "0116b0ef",
+  "justification": "Structural plumbing for the Intelligence Brief (Slice 0 of the content-enrichment plan): S1 DataField fail-closed invariant, S2 typed service contracts for six services, S3 golden fixtures captured from the real services plus a field-coverage ratchet wired into pre-push. No user-visible change; verified by A/B live smoke on the four demo addresses.",
   "files": [
-    "frontend-nextjs/components/reports/landing/LandingHero.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "services/intelligence_brief.py",
+    "scripts/brief_contract_drift.py",
+    "scripts/brief_field_coverage_ratchet.py",
+    "scripts/brief_field_coverage_baseline.json",
+    "scripts/capture_brief_golden_fixtures.py",
+    ".githooks/pre-push",
+    "tests/test_brief_slice0_failclosed.py",
+    "tests/test_brief_golden_fixtures.py",
+    "tests/test_brief_field_coverage_ratchet.py",
+    "tests/fixtures/brief_golden/strata_cadastre.json",
+    "tests/fixtures/brief_golden/strata_hub.json",
+    "tests/fixtures/brief_golden/climate_risk.json",
+    "tests/fixtures/brief_golden/housing_sepp_eligibility.json",
+    "tests/fixtures/brief_golden/lep_land_use_rows.json",
+    "tests/fixtures/brief_golden/vg_comparables.json",
+    "tests/fixtures/brief_golden/vg_sales.json"
+  ],
+  "pre_impl": {
+    "existing_data": "Prior PRs 593-600 already shipped the failsoft lint, unwrap helper, WO-1..5 fail-closed fixes and flood/bushfire/shadow contracts; this slice extends that system rather than duplicating it. lep_land_use_table columns (lga, zone, development_type, permissibility) confirmed by live read-only SELECT during fixture capture.",
+    "assumption_mismatch": "Two assumptions fell to real data: permissibility is not binary (real vocabulary includes exempt, caught by the golden fixture), and a blunt AUTHORITATIVE-plus-null coercion would flip the documented legitimately-empty state (zone with no height control), so the S1 validator is gated on the error reason field instead.",
+    "new_vs_existing": "Contracts live beside the existing three in intelligence_brief.py (single contract home, same _warn_on_drift mechanism); the ratchet and capture scripts are new because no existing tool locks the brief output surface or persists real service emissions; development_permissions_db.py was checked and queries the older regulatory_provisions table, not lep_land_use_table."
+  },
+  "functions": [
+    {
+      "name": "_fail_closed_on_errored_authoritative",
+      "file_line": "services/intelligence_brief.py:161",
+      "input": "the constructed DataField instance after normal pydantic validation completes",
+      "output": "the same DataField, with confidence coerced to NOT_AVAILABLE when value is None and an error reason is present at AUTHORITATIVE",
+      "if_none": "value None with no reason is the documented legitimately-empty state and is deliberately left untouched so honest empty cards keep their badge"
+    },
+    {
+      "name": "collect_from_roots",
+      "file_line": "scripts/brief_field_coverage_ratchet.py:42",
+      "input": "list of pydantic model classes to walk recursively including parametrised DataField generics",
+      "output": "mapping of model name to sorted field names for every reachable model; raises RuntimeError on a same-name collision with different fields",
+      "if_none": "an empty roots list yields an empty map which then fails the baseline comparison loudly rather than passing vacuously"
+    },
+    {
+      "name": "check",
+      "file_line": "scripts/brief_field_coverage_ratchet.py:131",
+      "input": "current field map and the checked-in baseline field map loaded from JSON",
+      "output": "exit code 1 when any baseline model or field is missing from current code; renames count as losses",
+      "if_none": "a missing baseline file is reported as failure instructing regen, never silently treated as a pass"
+    },
+    {
+      "name": "_build_terrain_detail",
+      "file_line": "services/intelligence_brief.py:1984",
+      "input": "raw terrain service dict or None when the fetch failed or was not requested",
+      "output": "TerrainAnalysisDetail built from the terrain service's shared model with a drift warning logged when a contract key is missing",
+      "if_none": "returns None so the terrain card renders NOT_AVAILABLE with the real failure reason, distinct from a populated detail with null metrics"
+    }
+  ],
+  "values": [
+    {
+      "value": "permissibility vocabulary permitted/prohibited/exempt from lep_land_use_table",
+      "read_at": "scripts/capture_brief_golden_fixtures.py capture_lep_land_use via live SELECT DISTINCT",
+      "if_missing": "the golden-fixture test asserts permitted and prohibited exist in the vocabulary; if the DB renamed them the capture plus test fail visibly"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "capture a real row spread and the permissibility vocabulary for the LEP land-use golden fixture",
+      "file_line": "scripts/capture_brief_golden_fixtures.py:136",
+      "where_clause": "WHERE zone = %s (parameterised, read-only, ORDER BY permissibility LIMIT 60)"
+    }
   ],
   "break_it": [
     {
-      "scenario": "Products without searchExtras (flood, shadow, conveyancing landings) render the hero",
-      "what_happens": "searchExtras is undefined so nothing renders between the search bar and the helper text - identical layout to before",
+      "scenario": "A failed upstream fetch's value and error reason are copied into a new DataField stamped AUTHORITATIVE by a future refactor",
+      "what_happens": "Before this slice the card rendered a confident blank that reads as checked-and-empty; now the model validator coerces it to NOT_AVAILABLE at construction so the failure stays visible",
       "mitigated": true,
-      "how": "the slot renders the prop verbatim; undefined renders nothing in JSX",
-      "repro": "open /reports/flood while idle - hero unchanged; npx jest passes 713 tests"
+      "how": "S1 model_validator on DataField plus test_errored_fetch_at_authoritative_is_coerced_to_not_available and the all-failed assembly walk asserting zero authoritative-null fields",
+      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -q"
+    },
+    {
+      "scenario": "StrataHub enrichment returns lot_total as text junk so the count check is skipped and the weak lot-area heuristic classifies a 77-lot apartment parcel as DEVELOPMENT",
+      "what_happens": "The brief would emit a DevelopmentBrief with capacity claims for a strata lot; the S2 tripwire now turns the type violation into the fail-closed AMBIGUOUS route with a NOT_AVAILABLE strata card",
+      "mitigated": true,
+      "how": "StrataServiceOutput validation in the SSE path routes contract violations to strata_failed; covered by test_strata_type_junk_routes_to_renovation_not_silent_development",
+      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -k junk -q"
+    },
+    {
+      "scenario": "The climate service reshapes hazards from a list to a dict keyed by hazard name",
+      "what_happens": "Previously ClimateDisclosureProfile construction raised inside assembly and killed the stream; now the contract violation is logged and climate is counted as a failed source while UHI ARR FIRMS still report",
+      "mitigated": true,
+      "how": "ClimateRiskServiceOutput tripwire in _build_climate_disclosure; test asserts sources_queried drops from 4 to 3 versus the on-contract fixture",
+      "repro": "python -m pytest tests/test_brief_golden_fixtures.py -q"
+    },
+    {
+      "scenario": "A refactor renames a field on a brief section model, deleting the old one, so a card quietly stops surfacing data it used to show",
+      "what_happens": "The field-coverage ratchet compares 52 locked models against the baseline in pre-push and fails the push naming the exact model and field lost; a rename counts as a loss plus an addition, never a wash",
+      "mitigated": true,
+      "how": "scripts/brief_field_coverage_ratchet.py wired as pre-push step 1c plus test_rename_is_a_loss_not_a_wash",
+      "repro": "python scripts/brief_field_coverage_ratchet.py after deleting any model field"
+    },
+    {
+      "scenario": "The cadastre service renames is_strata; the tolerant contract parses it to the default False so validation alone cannot catch the rename",
+      "what_happens": "Runtime logs a CONTRACT-DRIFT warning via the core-keys drift check, and the golden fixture plus check_drift test fail on re-capture, so the rename is caught by the S3 layer instead of shipping as silent not-strata",
+      "mitigated": true,
+      "how": "StrataCoreOutput drift check on real traffic plus test_strata_renamed_key_is_visible_drift_not_clean",
+      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -k renamed -q"
     }
   ],
   "post_merge": {
-    "db_reset": "none - JSX layout only",
-    "secrets": "none touched",
-    "other_repo": "none",
-    "manual_verify": "open /reports/intelligence-brief while idle: checkbox pill sits directly under the search bar, above the 'Free instant check' line; ticking it and running from the hero sends include_satellite true"
+    "db_reset": "none \u2014 all database access in this slice is read-only fixture capture",
+    "secrets": "none touched; capture script reads DATABASE_URL from the existing .env",
+    "other_repo": "none \u2014 no plotdetect-agents or frontend contract change; SSE payload shape unchanged",
+    "manual_verify": "A/B live smoke already run: real brief for Concord, Belmore, Hurstville, Bowral on main versus branch, per-card population states compared; re-run scripts/capture_brief_golden_fixtures.py quarterly or when a service changes"
   }
 }

@@ -31,7 +31,7 @@ from typing import Any, Generator, Generic, Literal, NamedTuple, Optional, TypeV
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +156,28 @@ class DataField(BaseModel, Generic[T]):
     reason: Optional[str] = None  # populated when value is None due to error
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def _fail_closed_on_errored_authoritative(self) -> "DataField":
+        """S1 fail-closed invariant, enforced at every construction site.
+
+        A DataField with no value that carries an error ``reason`` is a FAILED
+        fetch (per the field contract above) — it must never present
+        AUTHORITATIVE confidence, or a failed lookup renders as a confident
+        answer (the strata/overlay false-negative class). Coerce, don't raise:
+        the brief must degrade to an honest NOT_AVAILABLE card, not 500.
+
+        ``value=None, reason=None`` is deliberately untouched — that is the
+        documented queried-and-legitimately-empty state (e.g. a zone with no
+        height control), which must keep its AUTHORITATIVE badge.
+        """
+        if (
+            self.confidence == ConfidenceLevel.AUTHORITATIVE
+            and self.value is None
+            and self.reason
+        ):
+            self.confidence = ConfidenceLevel.NOT_AVAILABLE
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +504,110 @@ class ShadowServiceOutput(BaseModel):
     adg_compliant: Optional[bool] = None
     worst_case_scenario: Optional[str] = None
     scenarios: list[ShadowScenarioOutput] = []
+
+
+class StrataCoreOutput(BaseModel):
+    """Keys ``detect_strata`` (cadastre) emits on EVERY return path.
+
+    The runtime drift tripwire checks against this class only — the StrataHub
+    enrichment keys below are conditionally present by design, so their absence
+    is not drift.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    is_strata: bool = False
+    strata_plan: Optional[str] = None
+    plan_type: Optional[str] = None
+    source: Optional[str] = None
+    parent_has_strata: bool = False
+    plan_label: Optional[str] = None
+
+
+class StrataServiceOutput(StrataCoreOutput):
+    """S2 typed contract for the cadastre strata dict (``detect_strata``,
+    optionally enriched with StrataHub ``lot_total``/``dwelling_type`` by
+    ``_fetch_strata``).
+
+    Single source of truth for the strata key names the brief consumes
+    (``classify_strata`` + the strata card); a renamed service key is a
+    drift-warning + test failure, not a silent "not strata" routing.
+    """
+
+    # StrataHub enrichment — present only when the parcel is strata and the
+    # StrataHub lookup succeeded (best-effort, see _fetch_strata).
+    lot_total: Optional[int] = None
+    dwelling_type: Optional[str] = None
+
+
+class ClimateHazardOutput(BaseModel):
+    """S2 typed contract for one hazard entry in the climate risk output.
+
+    Mirrors ``climate_risk_score.HazardScore.to_dict()`` — these dicts pass
+    through to ``ClimateDisclosureProfile.per_hazard_detail`` and the UI reads
+    them by key, so the key set is locked here and in the golden-fixture test.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    hazard: Optional[str] = None
+    raw_score: Optional[float] = None
+    weight: Optional[float] = None
+    weighted_score: Optional[float] = None
+    present: Optional[bool] = None
+    detail: Optional[str] = None
+    confidence: Optional[str] = None
+    data_source: Optional[str] = None
+    available: Optional[bool] = None
+
+
+class ClimateRiskServiceOutput(BaseModel):
+    """S2 typed contract for ``climate_risk_score(...).to_dict()`` at the brief seam."""
+
+    model_config = ConfigDict(extra="ignore")
+    score: Optional[int] = None
+    band: Optional[str] = None
+    hazards: list[ClimateHazardOutput] = []
+    interaction_bonus: Optional[float] = None
+    methodology_version: Optional[str] = None
+    data_date: Optional[str] = None
+    disclaimer: Optional[str] = None
+
+
+class HousingSeppFormOutput(BaseModel):
+    """S2 typed contract mirroring ``housing_sepp_eligibility.FormEligibility``.
+
+    ``evaluate_eligibility`` returns dataclasses (attribute access is already
+    fail-loud), so this mirror exists to (a) lock the field names the brief's
+    per-form wire-in (Phase 2) will consume — the lock test fails if the
+    dataclass renames a field — and (b) give that wire-in a serialisable model.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    development_type: Optional[str] = None
+    eligible: Optional[bool] = None
+    reason: Optional[str] = None
+    requires_lmr_area: Optional[bool] = None
+    applicable_zones: list = []
+    min_lot_size_m2: Optional[float] = None
+    min_lot_width_m: Optional[float] = None
+    source_clause: Optional[str] = None
+    source_document: Optional[str] = None
+    legislation_url: Optional[str] = None
+    effective_date: Optional[str] = None
+
+
+class LepLandUseRow(BaseModel):
+    """S2 typed contract for one ``lep_land_use_table`` row at the brief seam.
+
+    Locks the column names the brief consumes (``_permitted_engine_forms`` now;
+    the permitted/prohibited-uses wire-in in Phase 2). A renamed column is a
+    fixture/test failure, not a silently empty permitted-forms set.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    lga: Optional[str] = None
+    zone: Optional[str] = None
+    development_type: Optional[str] = None
+    permissibility: Optional[str] = None
 
 
 class GeometryRelationship(str, Enum):
@@ -1735,6 +1861,19 @@ def _build_climate_disclosure(
     if not (climate_raw or uhi_raw or arr_raw or firms_raw):
         return None
 
+    # S2 boundary: tripwire-validate the climate output against the typed
+    # contract. The hazard dicts pass through to per_hazard_detail RAW (no
+    # re-shaping — a new service key must not be silently dropped here); the
+    # contract catches type-level violations, which are treated as a FAILED
+    # climate source rather than silently-wrong hazard rows.
+    if climate_raw:
+        _warn_on_drift(ClimateRiskServiceOutput, climate_raw, "climate")
+        try:
+            ClimateRiskServiceOutput.model_validate(climate_raw)
+        except ValidationError as e:
+            logger.warning("climate output failed the S2 contract — treating as unavailable: %s", e)
+            climate_raw = None
+
     hazards_raw = (climate_raw.get("hazards") or []) if climate_raw else []
     empirical = []
     sources_queried = 0
@@ -1843,10 +1982,17 @@ def _fetch_terrain(lat: float, lng: float) -> dict:
 
 
 def _build_terrain_detail(terrain_raw: Optional[dict]) -> Optional[TerrainAnalysisDetail]:
-    """Extract TerrainAnalysisDetail from raw terrain output."""
+    """Extract TerrainAnalysisDetail from raw terrain output via the S2 contract.
+
+    The contract IS the service's own ``TerrainAnalysisDetail`` (shared class —
+    the strongest coupling: a service-side rename renames the brief side too).
+    ``_run_terrain_chain`` emits every field on every run (values may be None),
+    so a missing key in real output is genuine drift, not noise.
+    """
     if not terrain_raw:
         return None
     terrain_fields = terrain_raw.get("terrain") or terrain_raw
+    _warn_on_drift(TerrainAnalysisDetail, terrain_fields, "terrain")
     return TerrainAnalysisDetail(**{
         k: v for k, v in terrain_fields.items()
         if k in TerrainAnalysisDetail.model_fields
@@ -2834,6 +2980,18 @@ def _generate_brief_sse(
         # ── Yield strata (depends on cadastre + lot_area_m2) ─────────────
         strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
         strata_raw, strata_failed = _unwrap_or_default(strata_df, {"is_strata": False})  # failsoft-ok: strata_failed branch below restamps NOT_AVAILABLE + AMBIGUOUS routing
+        if not strata_failed:
+            # S2 boundary: tripwire-validate the cadastre dict against the typed
+            # contract (drift check against the always-emitted core keys only —
+            # StrataHub enrichment keys are conditionally present by design).
+            # A type-level contract violation is a FAILED lookup: it takes the
+            # fail-closed AMBIGUOUS route below, never a silent "not strata".
+            _warn_on_drift(StrataCoreOutput, strata_raw, "strata")
+            try:
+                StrataServiceOutput.model_validate(strata_raw or {})
+            except ValidationError as e:
+                logger.warning("strata output failed the S2 contract — routing fail-closed: %s", e)
+                strata_raw, strata_failed = {"is_strata": False}, True
         # Fail-closed: a FAILED strata lookup must NOT be served as a confident
         # "not strata" — that would silently route a possible apartment into a full
         # DevelopmentBrief (capacity claims it can't support). Treat unknown strata
