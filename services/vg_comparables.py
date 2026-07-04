@@ -178,6 +178,12 @@ def get_comparable_values(
     data = arcgis_get_with_retry(VG_LAYER5_URL, params)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
+    # arcgis_get_with_retry returns {} on ANY failure (circuit open, 429, 5xx,
+    # ArcGIS error payload). A genuine empty result is {"features": []}. The
+    # missing KEY must raise — otherwise a failed VG query is indistinguishable
+    # from "zero comparable lots nearby" (the da_outcome silent-failure class).
+    if "features" not in data:
+        raise RuntimeError("VG valuation query failed (transport or ArcGIS error)")
     features = data.get("features") or []
     logger.info("vg_layer5 query: %d raw features in %dms", len(features), elapsed_ms)
 
@@ -313,6 +319,10 @@ def get_recent_sales(
     data = arcgis_get_with_retry(VG_SALES_URL, params)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
+    # Same fail-loud rule as get_comparable_values: {} = failed query (raise);
+    # {"features": []} = genuinely no sales. Never conflate the two.
+    if "features" not in data:
+        raise RuntimeError("VG sales query failed (transport or ArcGIS error)")
     features = data.get("features") or []
     logger.info("vg_sales query: %d features in %dms", len(features), elapsed_ms)
 

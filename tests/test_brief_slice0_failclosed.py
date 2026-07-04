@@ -82,12 +82,13 @@ def _run_generator(monkeypatch, strata_fetch):
         "_fetch_overlays", "_fetch_heritage_postgis", "_fetch_mine_subsidence",
         "_fetch_contaminated_land", "_fetch_drinking_water_catchment",
         "_fetch_nearby_das", "_fetch_shadow", "_fetch_dcp_controls",
-        "_fetch_sepp_housing",
+        "_fetch_sepp_housing", "_fetch_market_context", "_fetch_land_use_lists",
     ]:
         monkeypatch.setattr(ib, fetch, _boom)
     monkeypatch.setattr(ib, "fetch_lot_geometry", _boom)
     monkeypatch.setattr(ib, "_fetch_strata", strata_fetch)
     # DB-dependent helpers inside the generator (not fetches) — deterministic no-ops.
+    monkeypatch.setattr(ib, "_sepp_eligibility_results", lambda *a, **k: None)
     monkeypatch.setattr(ib, "detect_former_council", lambda addr, epi: None)
     monkeypatch.setattr(ib, "_validate_former_council_postgis",
                         lambda slug, lat, lng, addr: (slug, None))

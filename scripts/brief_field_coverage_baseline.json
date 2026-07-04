@@ -194,6 +194,7 @@
     "gaps",
     "lat",
     "lng",
+    "market_context",
     "narrative",
     "neighbourhood",
     "planning_controls",
@@ -201,6 +202,7 @@
     "run_date",
     "satellite",
     "scope_limitations",
+    "sepp_eligibility",
     "sepp_housing",
     "sepp_lep_overrides",
     "strata"
@@ -301,6 +303,12 @@
     "frontage_m",
     "is_corner"
   ],
+  "MarketContext": [
+    "comparables",
+    "radius_m",
+    "recent_sales",
+    "sales_years_back"
+  ],
   "NearbyDA": [
     "address",
     "cost",
@@ -327,6 +335,8 @@
     "lot_dimensions",
     "lot_size",
     "lot_size_units",
+    "permitted_uses",
+    "prohibited_uses",
     "sepp_overlays",
     "tod_area",
     "zone",

@@ -57,6 +57,7 @@ type PageState = 'idle' | 'triggering' | 'streaming' | 'complete' | 'error';
 // Section display metadata
 const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   economics: { label: 'Economics', description: 'Land value, lot area, valuation history' },
+  market_context: { label: 'Market Context', description: 'Comparable land valuations and recent sales nearby (NSW Valuer General)' },
   strata: { label: 'Strata & Cadastre', description: 'Lot type, strata plan, ownership structure' },
   environmental_constraints: { label: 'Environmental Constraints', description: 'Overlays, heritage, contamination, mine subsidence' },
   planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR, lot size, heritage items' },
@@ -75,7 +76,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
 // Bento spans — the headline (development capacity) and the field-heavy sections
 // get two columns; everything else is a single tile. Driving the layout off the
 // section key keeps it stable as cards stream in at uneven heights.
-const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints']);
+const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints', 'market_context']);
 // DCP controls carries a long PDF URL — give it the full row so it reads cleanly.
 const FULL_ROW_SECTIONS = new Set(['dcp_controls']);
 function spanFor(section: string): string {
@@ -210,7 +211,7 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.includes('not requested')) {
     return { label: 'Not run', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
   }
-  if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
+  if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
     return {
       label: 'Unavailable',
       detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
@@ -399,6 +400,27 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // Valuation history — a year/value series, rendered as a trend with
+          // per-year change, not "5 items".
+          if (key === 'val_history' && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><ValuationTrend history={df.value as ValuationYear[]} /></dd>
+              </div>
+            );
+          }
+          // LEP Land Use Table lists — collapsible so 600+ uses don't swamp the card.
+          if ((key === 'permitted_uses' || key === 'prohibited_uses') && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5">
+                  <UseList kind={key === 'permitted_uses' ? 'permitted' : 'prohibited'} uses={df.value as string[]} />
+                </dd>
+              </div>
+            );
+          }
           // Planning overlays are a list of {layer_type, value} — render them as
           // a readable list with units, not "2 items".
           if (key === 'overlays' && Array.isArray(df.value)) {
@@ -421,6 +443,22 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
                   {within
                     ? 'Within the Coastal Management SEPP land-application area (jurisdictional — not a coastal-hazard finding).'
                     : 'Not in a coastal management area.'}
+                </dd>
+              </div>
+            );
+          }
+          // An LEP principal development standard the Portal genuinely returns
+          // no layer for is "not mapped in this LEP for this lot" — a checked
+          // answer, worded distinctly from a fetch failure ("not available").
+          if (
+            section === 'planning_controls' && UNMAPPED_LEP_CONTROLS.has(key) &&
+            df.value == null && df.confidence === 'authoritative'
+          ) {
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-500 mt-0.5">
+                  No {UNMAPPED_LEP_CONTROLS.get(key)} mapped in this LEP for this lot.
                 </dd>
               </div>
             );
@@ -522,6 +560,13 @@ const FIELD_HINTS: Record<string, string> = {
   nearby_das:
     'Development applications lodged on nearby properties (within 500 m) in the last 12 months.',
   da_count: 'Number of development applications within 500 m in the last 12 months.',
+  val_history:
+    'The lot’s land value over the last five valuing years (NSW Valuer General). Land only — it excludes buildings.',
+  land_value: 'The NSW Valuer General’s most recent land value for this lot. Land only — it excludes buildings.',
+  permitted_uses:
+    'Development types the LEP Land Use Table lists as permitted in this zone for this council.',
+  prohibited_uses:
+    'Development types the LEP Land Use Table lists as prohibited in this zone for this council.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -536,6 +581,15 @@ function FieldLabel({ fieldKey }: { fieldKey: string }) {
     </dt>
   );
 }
+
+// LEP principal development standards that legitimately have no mapped layer on
+// some lots (e.g. Wingecarribee maps no FSR for parts of Bowral). A checked
+// null here means "no control mapped", NOT a retrieval failure.
+const UNMAPPED_LEP_CONTROLS = new Map<string, string>([
+  ['height', 'height of buildings control'],
+  ['fsr', 'floor space ratio control'],
+  ['lot_size', 'minimum lot size control'],
+]);
 
 // Units to append to a planning-overlay value when it's a bare number/string.
 const OVERLAY_UNIT: Record<string, string> = {
@@ -665,6 +719,267 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
       })}
     </ul>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Valuation history — render the 5-year series as a readable trend (year,
+// value, change on the prior year), not "5 items". Factual figures only.
+// ---------------------------------------------------------------------------
+
+interface ValuationYear { year?: string | number; value?: number | null; }
+
+function ValuationTrend({ history }: { history: ValuationYear[] }) {
+  const rows = (history || [])
+    .filter((h) => h && h.value != null)
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  if (rows.length === 0) {
+    return <span className="text-sm text-slate-400">No valuation history recorded.</span>;
+  }
+  return (
+    <ul className="text-sm text-slate-900 space-y-0.5 tabular-nums">
+      {rows.map((h, i) => {
+        const prev = i > 0 ? rows[i - 1].value : null;
+        const pct = prev && h.value ? ((h.value - prev) / prev) * 100 : null;
+        return (
+          <li key={String(h.year)} className="flex items-baseline gap-2">
+            <span className="text-slate-500 w-12 shrink-0">{h.year}</span>
+            <span>${h.value!.toLocaleString()}</span>
+            {pct != null && Math.abs(pct) >= 0.05 && (
+              <span className={`text-[11px] ${pct > 0 ? 'text-slate-500' : 'text-amber-700'}`}>
+                {pct > 0 ? '+' : ''}{pct.toFixed(1)}% on prior year
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LEP land-use lists — collapsible, so 600+ uses don't swamp the card. The
+// counts are always visible; the full lists expand on demand.
+// ---------------------------------------------------------------------------
+
+function UseList({ kind, uses }: { kind: 'permitted' | 'prohibited'; uses: string[] }) {
+  const label = kind === 'permitted' ? 'Permitted in the zone' : 'Prohibited in the zone';
+  if (!uses || uses.length === 0) {
+    return (
+      <span className="text-sm text-slate-500">
+        No {kind} uses listed for this zone in the LEP Land Use Table extract.
+      </span>
+    );
+  }
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer select-none text-slate-900">
+        <span className="font-medium">{uses.length}</span> {kind} land uses
+        <span className="text-slate-400 text-xs ml-1.5">(click to expand the LEP Land Use Table list)</span>
+      </summary>
+      <ul className="mt-2 columns-1 sm:columns-2 gap-x-6 text-slate-700 text-[13px] leading-relaxed" aria-label={label}>
+        {uses.map((u) => (
+          <li key={u} className="break-inside-avoid">{formatKey(u)}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Market context — VG comparables + recent sales. Wording contract: the
+// percentile/band lines state the lot's factual position within the comparable
+// set — never an over/under-valuation opinion or advice.
+// ---------------------------------------------------------------------------
+
+interface ComparableRow { propid?: number; address?: string; zone?: string; area_m2?: number; land_value?: number | null; valuation_date?: string | null; }
+interface ComparablesData {
+  subject_value?: number | null; subject_area_m2?: number; comparable_count?: number;
+  median_value?: number | null; mean_value?: number | null; percentile_rank?: number | null;
+  comparables?: ComparableRow[]; assessment_signal?: string | null;
+}
+interface SaleRow { propid?: number; address?: string; price?: number; area_m2?: number; sale_date?: string | null; price_per_m2?: number | null; is_strata?: boolean; }
+interface MarketContextData {
+  comparables?: { value?: ComparablesData | null; confidence?: string; reason?: string | null; as_at?: string | null };
+  recent_sales?: { value?: SaleRow[] | null; confidence?: string; reason?: string | null; as_at?: string | null };
+  radius_m?: number;
+  sales_years_back?: number;
+}
+
+// assessment_signal -> a factual position within the comparable set.
+const SIGNAL_POSITION: Record<string, string> = {
+  potentially_over: 'in the upper band of',
+  in_range: 'within the middle band of',
+  potentially_under: 'in the lower band of',
+};
+
+function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknown>; satelliteRan: boolean }) {
+  const df = data as { value?: MarketContextData | null; confidence?: string; reason?: string | null; source?: string; as_at?: string | null };
+  const mc = df.value ?? null;
+  const radius = mc?.radius_m ?? 500;
+  const yearsBack = mc?.sales_years_back ?? 3;
+
+  const header = (
+    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">Market Context</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Comparable land valuations and recent sales within {radius} m (NSW Valuer General{df.as_at ? `, as at ${df.as_at}` : ''})
+        </p>
+      </div>
+      {df.confidence === 'not_available'
+        ? <span className={`px-2 py-0.5 text-xs font-medium rounded ${UNAVAILABLE_TONE_STYLES.error}`}>Unavailable</span>
+        : confidenceBadge(df.confidence ?? 'derived')}
+    </div>
+  );
+
+  if (!mc) {
+    const u = describeUnavailable(df.reason, 'market_context', satelliteRan);
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        {header}
+        <div className={`px-5 py-4 text-sm ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.detail}</div>
+      </div>
+    );
+  }
+
+  const comps = mc.comparables?.value ?? null;
+  const compsReason = mc.comparables?.reason;
+  const sales = mc.recent_sales?.value ?? null;
+  const salesReason = mc.recent_sales?.reason;
+  const position = comps?.assessment_signal ? SIGNAL_POSITION[comps.assessment_signal] : null;
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      {header}
+      <div className="px-5 py-4 space-y-4">
+        {/* Comparable valuations */}
+        <div>
+          <h4 className="text-xs font-medium text-slate-500 mb-1.5">Comparable land valuations
+            <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+              Lots in the same zone with a similar lot size within {radius} m. Land value only — it excludes buildings.
+            </span>
+          </h4>
+          {comps ? (
+            <div className="text-sm text-slate-900 space-y-1">
+              <div className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
+                <span><span className="text-slate-500">Comparables:</span> {comps.comparable_count ?? 0}</span>
+                {comps.median_value != null && <span><span className="text-slate-500">Median:</span> ${comps.median_value.toLocaleString()}</span>}
+                {comps.mean_value != null && <span><span className="text-slate-500">Mean:</span> ${comps.mean_value.toLocaleString()}</span>}
+                {comps.subject_value != null && <span><span className="text-slate-500">This lot:</span> ${comps.subject_value.toLocaleString()}</span>}
+              </div>
+              {comps.percentile_rank != null && (
+                <p className="text-slate-700">
+                  This lot&apos;s land value sits at the {ordinal(Math.round(comps.percentile_rank))} percentile of{' '}
+                  {comps.comparable_count} comparable valuations{position ? ` — ${position} the comparable set` : ''}.
+                </p>
+              )}
+              {(comps.comparables?.length ?? 0) > 0 && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer select-none text-xs text-slate-500">
+                    Show the {comps.comparables!.length} comparable lots
+                  </summary>
+                  <table className="w-full text-[13px] mt-2">
+                    <thead>
+                      <tr className="text-xs text-slate-500 text-left">
+                        <th className="font-medium pb-1 pr-3">Address</th>
+                        <th className="font-medium pb-1 pr-3">Lot</th>
+                        <th className="font-medium pb-1">Land value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="tabular-nums">
+                      {comps.comparables!.map((c, i) => (
+                        <tr key={c.propid ?? `${c.address}-${i}`} className="border-t border-slate-100">
+                          <td className="py-1 pr-3 text-slate-700">{c.address ?? '—'}</td>
+                          <td className="py-1 pr-3 text-slate-500">{c.area_m2 != null ? `${Math.round(c.area_m2)} m²` : '—'}</td>
+                          <td className="py-1 text-slate-700">{c.land_value != null ? `$${c.land_value.toLocaleString()}` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
+          ) : /resolved/i.test(compsReason ?? '') ? (
+            <p className="text-sm text-slate-500">
+              Comparable matching needs the lot&apos;s zone and area, which didn&apos;t resolve for this address.
+            </p>
+          ) : (
+            <p className="text-sm text-amber-700">
+              Couldn&apos;t retrieve comparable valuations — run the brief again to retry.
+            </p>
+          )}
+        </div>
+
+        {/* Recent sales */}
+        <div>
+          <h4 className="text-xs font-medium text-slate-500 mb-1.5">Recent sales
+            <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+              Sales recorded by the NSW Valuer General within {radius} m in the last {yearsBack} years. Sale prices include buildings.
+            </span>
+          </h4>
+          {sales ? (
+            sales.length === 0 ? (
+              <p className="text-sm text-slate-500">No sales recorded within {radius} m in the last {yearsBack} years.</p>
+            ) : (
+              <SalesTable sales={sales} />
+            )
+          ) : (
+            <p className="text-sm text-amber-700">Couldn&apos;t retrieve recent sales{salesReason ? '' : ''} — run the brief again to retry.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SALES_PREVIEW_COUNT = 6;
+
+// Module scope: pure row renderer (no component state) — rebuilt-per-render
+// closures waste work and break memoized children.
+function saleRow(s: SaleRow, i: number) {
+  return (
+    <tr key={`${s.propid ?? s.address}-${s.sale_date ?? i}`} className="border-t border-slate-100">
+      <td className="py-1 pr-3 text-slate-700">{s.address ?? '—'}{s.is_strata ? <span className="text-[10px] text-slate-400 ml-1">strata</span> : null}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-700">{s.price != null ? `$${s.price.toLocaleString()}` : '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-500">{s.price_per_m2 != null ? `$${Math.round(s.price_per_m2).toLocaleString()}/m²` : '—'}</td>
+      <td className="py-1 tabular-nums text-slate-500">{s.sale_date ?? '—'}</td>
+    </tr>
+  );
+}
+
+function SalesTable({ sales }: { sales: SaleRow[] }) {
+  const sorted = [...sales].sort((a, b) => String(b.sale_date ?? '').localeCompare(String(a.sale_date ?? '')));
+  const preview = sorted.slice(0, SALES_PREVIEW_COUNT);
+  const rest = sorted.slice(SALES_PREVIEW_COUNT);
+  return (
+    <div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-xs text-slate-500 text-left">
+            <th className="font-medium pb-1 pr-3">Address</th>
+            <th className="font-medium pb-1 pr-3">Price</th>
+            <th className="font-medium pb-1 pr-3">$/m² of land</th>
+            <th className="font-medium pb-1">Date</th>
+          </tr>
+        </thead>
+        <tbody>{preview.map(saleRow)}</tbody>
+      </table>
+      {rest.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-slate-500">Show {rest.length} more sales</summary>
+          <table className="w-full text-[13px] mt-1"><tbody>{rest.map(saleRow)}</tbody></table>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const rem10 = n % 10, rem100 = n % 100;
+  if (rem10 === 1 && rem100 !== 11) return `${n}st`;
+  if (rem10 === 2 && rem100 !== 12) return `${n}nd`;
+  if (rem10 === 3 && rem100 !== 13) return `${n}rd`;
+  return `${n}th`;
 }
 
 interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; }
@@ -863,7 +1178,80 @@ interface SeppStandard {
   reason_ineligible?: string | null;
 }
 
-function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
+// Per-form eligibility from the Housing-SEPP engine (the same run that drives
+// the capacity ceiling), with the clause citation each outcome rests on.
+interface EligibilityForm {
+  development_type?: string; eligible?: boolean; reason?: string;
+  requires_lmr_area?: boolean; min_lot_size_m2?: number | null; min_lot_width_m?: number | null;
+  source_clause?: string | null; source_document?: string | null;
+  legislation_url?: string | null; effective_date?: string | null;
+}
+interface EligibilityField { value?: EligibilityForm[] | null; confidence?: string; reason?: string | null; }
+
+// "4,096 m² ≥ 600 m² min" / "310 m² < 600 m² min" — the lot's actual number
+// against the standard's minimum, stated as the comparison it is.
+function lotVsMin(actual: number | null | undefined, min: number | null | undefined, unit: string): string | null {
+  if (min == null) return null;
+  if (actual == null) return `${min.toLocaleString()} ${unit} min`;
+  const cmp = actual >= min ? '≥' : '<';
+  return `${Math.round(actual).toLocaleString()} ${unit} ${cmp} ${min.toLocaleString()} ${unit} min`;
+}
+
+function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
+  forms: EligibilityForm[]; lotAreaM2?: number | null; lotWidthM?: number | null;
+}) {
+  return (
+    <div className="border-t border-slate-100 pt-3 mt-1">
+      <h4 className="text-xs font-medium text-slate-500 mb-2">
+        Per-form eligibility for this lot
+        <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+          Each outcome cites the SEPP clause it rests on; the figures compare this lot&apos;s numbers to the standard&apos;s minimums.
+        </span>
+      </h4>
+      <ul className="space-y-2 text-sm">
+        {forms.map((f, i) => {
+          const area = lotVsMin(lotAreaM2, f.min_lot_size_m2, 'm²');
+          const width = lotVsMin(lotWidthM, f.min_lot_width_m, 'm');
+          return (
+            <li key={f.development_type ?? i} className="flex flex-col gap-0.5">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-slate-900">{formatKey(f.development_type ?? '')}</span>
+                {f.eligible
+                  ? <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">Eligible</span>
+                  : <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">Not eligible</span>}
+                {(area || width) && (
+                  <span className="text-xs text-slate-500 tabular-nums">
+                    {[area, width].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+              {!f.eligible && f.reason && (
+                <span className="text-xs text-slate-500">{f.reason}</span>
+              )}
+              {f.source_clause && (
+                <span className="text-[11px] text-slate-400">
+                  {f.legislation_url
+                    ? <a href={f.legislation_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">{f.source_clause}</a>
+                    : f.source_clause}
+                  {f.source_document ? `, ${f.source_document}` : ''}
+                  {f.effective_date ? ` (as at ${f.effective_date})` : ''}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
+  standards: SeppStandard[];
+  eligibility?: EligibilityField | null;
+  lotAreaM2?: number | null;
+  lotWidthM?: number | null;
+}) {
+  const forms = eligibility?.value ?? null;
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -902,6 +1290,14 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
             ))}
           </tbody>
         </table>
+        {forms && forms.length > 0 && (
+          <EligibilityRows forms={forms} lotAreaM2={lotAreaM2} lotWidthM={lotWidthM} />
+        )}
+        {eligibility && eligibility.value == null && eligibility.confidence === 'not_available' && (
+          <p className="text-xs text-slate-400 mt-3 border-t border-slate-100 pt-3">
+            Per-form eligibility couldn&apos;t be assessed on this run — the standards above still apply; run the brief again to retry.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1192,7 +1588,7 @@ function formatElapsed(seconds: number): string {
 const EXPECTED_SECTIONS_BASE = [
   'economics', 'strata', 'environmental_constraints', 'planning_controls',
 ];
-const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood'];
+const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood', 'market_context'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
   'satellite.granny_flat', 'satellite.terrain',
@@ -1925,11 +2321,26 @@ function IntelligenceBriefInner() {
               }
               if (section === 'sepp_housing') {
                 const standards = (event.data.data?.value ?? null) as SeppStandard[] | null;
+                const evData = event.data as unknown as {
+                  eligibility_forms?: EligibilityField | null;
+                  lot_area_m2?: number | null;
+                  lot_width_m?: number | null;
+                };
                 if (standards && standards.length) {
-                  card = <SeppHousingCard standards={standards} />;
+                  card = (
+                    <SeppHousingCard
+                      standards={standards}
+                      eligibility={evData.eligibility_forms}
+                      lotAreaM2={evData.lot_area_m2}
+                      lotWidthM={evData.lot_width_m}
+                    />
+                  );
                 } else {
                   card = <SeppContextCard ctx={planningCtx} />;
                 }
+              }
+              if (section === 'market_context') {
+                card = <MarketContextCard data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
               if (section === 'satellite.terrain') {
                 // Terrain may arrive as a plain dict or a DataField wrapping it in .value.

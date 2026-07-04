@@ -33,6 +33,21 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+try:
+    from vg_comparables import (  # noqa: E402 — Railway runs from services/
+        ComparableAnalysis,
+        PropertySale,
+        get_comparable_values,
+        get_recent_sales,
+    )
+except ImportError:
+    from services.vg_comparables import (  # noqa: E402
+        ComparableAnalysis,
+        PropertySale,
+        get_comparable_values,
+        get_recent_sales,
+    )
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -65,6 +80,13 @@ class BriefConfig:
     # Search parameters
     da_radius_m: int = 500  # neighbourhood scope — 200m was too tight to be useful
     da_lookback_days: int = 365
+    # Market context (VG comparables + sales). Same 500m scope as the DA radius —
+    # the bounding box + zone + lot-area filters keep a neighbour's different
+    # market segment from leaking into "comparable" statistics.
+    market_radius_m: int = 500
+    market_sales_years_back: int = 3
+    timeout_market: float = 15.0  # two VG ArcGIS queries (~0.3s each live); headroom for a slow VG day
+    timeout_land_use: float = 10.0  # one indexed lep_land_use_table query (~0.3s live)
 
     # Concurrency — single pool runs all sources; dependents submitted after
     # their prerequisite completes, so effective parallelism is ~15-20.
@@ -280,6 +302,32 @@ class PlanningControls(BaseModel):
     housing_sepp: DataField[bool]
     tod_area: DataField[bool]
     lot_dimensions: DataField[Optional[LotDimensions]]
+    # LEP Land Use Table lists for this zone + LGA (lep_land_use_table, the
+    # structured 25-LGA dataset). value=None + reason = not extracted for this
+    # council yet / fetch failed \u2014 never a silent empty list.
+    permitted_uses: DataField[Optional[list[str]]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="lep_land_use_table", reason="Land-use lists not queried",
+    )
+    prohibited_uses: DataField[Optional[list[str]]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="lep_land_use_table", reason="Land-use lists not queried",
+    )
+
+
+class MarketContext(BaseModel):
+    """VG comparables + recent sales around the subject lot.
+
+    Wording contract (liability): percentile_rank / assessment_signal are the
+    subject's FACTUAL position within the comparable set \u2014 rendered as
+    "sits at the Nth percentile of comparable lots within X m", never as an
+    over/under-valuation opinion.
+    """
+
+    comparables: DataField[Optional[ComparableAnalysis]]
+    recent_sales: DataField[Optional[list[PropertySale]]]
+    radius_m: int = CONFIG.market_radius_m
+    sales_years_back: int = CONFIG.market_sales_years_back
 
 
 class DCPControls(BaseModel):
@@ -819,9 +867,14 @@ class DevelopmentBrief(BaseModel):
     dcp_controls: DCPControls
     sepp_housing: DataField[list[SEPPStandard]]
     sepp_lep_overrides: list[SeppLepOverride] = []
+    # Per-form Housing-SEPP eligibility with clause citations, from the SAME
+    # evaluate_eligibility run the capacity ceiling uses (computed once).
+    # value=None = engine errored; [] = ran, no applicable forms for this zone.
+    sepp_eligibility: Optional[DataField[Optional[list[HousingSeppFormOutput]]]] = None
     environmental_constraints: EnvironmentalConstraints
     neighbourhood: Neighbourhood
     economics: Economics
+    market_context: Optional[DataField[Optional[MarketContext]]] = None
     contributions: Optional[DataField[ContributionsResult]] = None
     satellite: Optional[SatelliteData] = None
     constraint_arithmetic: Optional[DataField[ConstraintArithmeticResult]] = None
@@ -1306,9 +1359,69 @@ _SEPP_FORM_TO_ENGINE = {
 }
 
 
+def _sepp_eligibility_results(
+    zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
+    lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+) -> Optional[list]:
+    """Run the Housing-SEPP eligibility engine ONCE per brief, fail-safe.
+
+    prior-art-checked: this is the extraction of the existing evaluate_eligibility
+    call out of _lmr_uplift_form (below) so the SEPP card and the capacity ceiling
+    SHARE one engine run — reuse of services/housing_sepp_eligibility.py, not a
+    new eligibility implementation.
+
+    Three states: a populated list = per-form outcomes with citations;
+    [] = the engine ran and no forms apply (non-residential zone / no standards);
+    None = the engine errored (callers surface NOT_AVAILABLE, never a silent
+    "nothing applies").
+    """
+    try:
+        from services.housing_sepp_eligibility import evaluate_eligibility
+        return evaluate_eligibility(
+            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+        )
+    except Exception as e:  # fail-safe — never block the brief on the eligibility engine
+        logger.warning("SEPP eligibility evaluation failed: %s", e)
+        return None
+
+
+def _build_sepp_eligibility_field(results: Optional[list]) -> "DataField":
+    """Wrap per-form eligibility outcomes for the SEPP card (S2-typed rows).
+
+    Serialises each FormEligibility dataclass through the HousingSeppFormOutput
+    contract so a renamed engine field is a validation error here, not a silent
+    null in the card.
+    """
+    today = date.today().isoformat()
+    if results is None:
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="housing_sepp_standards", as_at=today,
+            reason="Eligibility assessment did not complete",
+        )
+    from dataclasses import asdict
+
+    try:
+        forms = [HousingSeppFormOutput.model_validate(asdict(r)) for r in results]
+    except ValidationError as e:
+        # A contract violation is a FAILED assessment, never a stream-killing
+        # exception or silently-wrong rows.
+        logger.warning("SEPP eligibility rows failed the S2 contract: %s", e)
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="housing_sepp_standards", as_at=today,
+            reason="Eligibility rows failed the typed contract",
+        )
+    return DataField(
+        value=forms, confidence=ConfidenceLevel.AUTHORITATIVE,
+        source="housing_sepp_standards", as_at=today,
+    )
+
+
 def _lmr_uplift_form(
     zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
     lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+    results: Optional[list] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
     """Densest engine form ELIGIBLE under the Housing-SEPP / LMR engine (the catchment/area
     uplift, subject to a DA), plus the CITATION of the standard that grants it, or (None, None).
@@ -1316,14 +1429,16 @@ def _lmr_uplift_form(
     Delegates to the single-source-of-truth eligibility engine, which carries the clause /
     document / legislation URL / effective date from housing_sepp_standards — so any LMR claim
     the card makes is sourced. Fail-safe: any error -> (None, None) (no uplift; base tier stands).
+
+    ``results``: a precomputed ``evaluate_eligibility`` list (from
+    ``_sepp_eligibility_results``) — pass it when the brief already ran the
+    engine for the SEPP card so it is never invoked twice per brief.
     """
-    try:
-        from services.housing_sepp_eligibility import evaluate_eligibility
-        results = evaluate_eligibility(
-            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+    if results is None:
+        results = _sepp_eligibility_results(
+            zone_code, lat, lng, lot_area_m2, lot_width_m, heritage,
         )
-    except Exception as e:  # fail-safe — never block the brief on the uplift engine
-        logger.warning("LMR eligibility uplift failed: %s", e)
+    if results is None:  # engine errored — no uplift; base tier stands
         return None, None
     # Map each eligible SEPP form to its engine form, keeping the FormEligibility so the
     # winning form's citation can be attached.
@@ -1626,6 +1741,118 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
     finally:
         if conn:
             conn.close()
+
+
+def _fetch_market_context(
+    lng: float, lat: float, zone_code: Optional[str],
+    lot_area_m2: Optional[float], subject_propid: Optional[int],
+) -> dict:
+    """VG comparables + recent sales around the subject lot.
+
+    prior-art-checked: this WIRES the existing services/vg_comparables.py
+    (get_comparable_values / get_recent_sales) into the brief — the Tier-1
+    wire-in the enrichment plan specifies; no new comparables implementation.
+
+    The two halves are isolated: comparables need zone + lot area (same-zone,
+    similar-size matching — the scope that keeps a neighbour's different market
+    segment out), sales only need coordinates. One half failing must not blank
+    the other; only if BOTH fail does this raise so _safe_call stamps the whole
+    fetch NOT_AVAILABLE.
+    """
+    out: dict = {"comparables": None, "comparables_reason": None,
+                 "sales": None, "sales_reason": None}
+    if zone_code and lot_area_m2:
+        try:
+            out["comparables"] = get_comparable_values(
+                lng, lat, zone_code, lot_area_m2=lot_area_m2,
+                radius_m=CONFIG.market_radius_m, subject_propid=subject_propid,
+            )
+        except Exception as e:
+            out["comparables_reason"] = f"{type(e).__name__}: {str(e)[:160]}"
+            logger.warning("VG comparables query failed: %s", e)
+    else:
+        out["comparables_reason"] = "No zone or lot area resolved for comparable matching"
+    try:
+        out["sales"] = get_recent_sales(
+            lng, lat, radius_m=CONFIG.market_radius_m,
+            years_back=CONFIG.market_sales_years_back,
+        )
+    except Exception as e:
+        out["sales_reason"] = f"{type(e).__name__}: {str(e)[:160]}"
+        logger.warning("VG sales query failed: %s", e)
+    if out["comparables"] is None and out["sales"] is None:  # noqa: bracket-access — local dict, keys set above
+        raise RuntimeError(out["sales_reason"] or out["comparables_reason"] or "VG queries failed")  # noqa: bracket-access
+    return out
+
+
+def _build_market_context(market_raw: Optional[dict]) -> Optional[MarketContext]:
+    """Assemble MarketContext with per-half three-state fields.
+
+    comparables: DERIVED (median/percentile are statistics computed from
+    authoritative VG valuations). recent_sales: AUTHORITATIVE records; an empty
+    list is a genuine "no sales within the radius/window", kept distinct from a
+    failed query (None + reason).
+    """
+    if not market_raw:
+        return None
+    today = date.today().isoformat()
+    comps = market_raw.get("comparables")
+    sales = market_raw.get("sales")
+    return MarketContext(
+        comparables=DataField(
+            value=comps,
+            confidence=ConfidenceLevel.DERIVED if comps is not None else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuer_general",
+            as_at=today,
+            reason=None if comps is not None else (market_raw.get("comparables_reason") or "Comparables query did not complete"),
+        ),
+        recent_sales=DataField(
+            value=[s for s in sales] if sales is not None else None,
+            confidence=ConfidenceLevel.AUTHORITATIVE if sales is not None else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuer_general_sales",
+            as_at=today,
+            reason=None if sales is not None else (market_raw.get("sales_reason") or "Sales query did not complete"),
+        ),
+    )
+
+
+def _fetch_land_use_lists(zone_code: str, lga_name: str) -> dict:
+    """Permitted/prohibited development types for this zone + LGA from the
+    structured ``lep_land_use_table``.
+
+    prior-art-checked: reads the SAME table `_permitted_engine_forms` already
+    consumes (rows validated through the S2 ``LepLandUseRow`` contract) — this
+    surfaces the full lists the plan's Tier-1 item specifies, not a new source.
+
+    Returns {"permitted": [...], "prohibited": [...], "row_count": N}. Zero rows
+    = this council/zone is not in the structured dataset (queried-empty — the
+    caller renders "not extracted yet", distinct from a DB failure, which raises
+    so _safe_call stamps NOT_AVAILABLE with the error).
+    """
+    target = _norm_lga(lga_name)
+    conn = None
+    try:
+        conn = _get_db_conn()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT lga, zone, development_type, permissibility "
+            "FROM lep_land_use_table "
+            "WHERE zone = %s AND permissibility IN ('permitted', 'prohibited')",
+            (zone_code,),
+        )
+        rows = [
+            LepLandUseRow.model_validate(
+                {"lga": r[0], "zone": r[1], "development_type": r[2], "permissibility": r[3]}
+            )
+            for r in cur.fetchall()
+        ]
+    finally:
+        if conn:
+            conn.close()
+    matched = [r for r in rows if _norm_lga(r.lga) == target]
+    permitted = sorted({r.development_type for r in matched if r.permissibility == "permitted" and r.development_type})
+    prohibited = sorted({r.development_type for r in matched if r.permissibility == "prohibited" and r.development_type})
+    return {"permitted": permitted, "prohibited": prohibited, "row_count": len(matched)}
 
 
 def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
@@ -2077,16 +2304,52 @@ def _build_planning_controls(
     lot_geometry: Optional[dict] = None,
     lot_area_m2: Optional[float] = None,
     controls_failed: bool = False,
+    land_use_df: Optional["DataField"] = None,
 ) -> PlanningControls:
     """Map conveyancing parse_controls output to PlanningControls schema.
+
+    prior-art-checked: extends THIS module's existing builder with the land-use
+    lists from _fetch_land_use_lists (same lep_land_use_table the engine already
+    reads) — no new source or parallel builder.
 
     Fail-closed: when the portal controls fetch FAILED (``controls_failed``), the
     portal-derived fields are emitted NOT_AVAILABLE — never blank@AUTHORITATIVE,
     which would read as a confident "no zone / no height control".
+
+    ``land_use_df``: the _fetch_land_use_lists result (a DataField from
+    _safe_call/_timed_result). Three states surface distinctly: rows →
+    AUTHORITATIVE lists; zero rows → NOT_AVAILABLE "not extracted for this
+    council yet"; fetch failure → NOT_AVAILABLE with the error reason.
     """
     today = date.today().isoformat()
     # A FAILED controls fetch must not produce confident blanks.
     auth = ConfidenceLevel.NOT_AVAILABLE if controls_failed else ConfidenceLevel.AUTHORITATIVE
+
+    def _use_list_field(kind: str) -> DataField:
+        if land_use_df is None:
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason="No zone resolved for a land-use lookup",
+            )
+        if land_use_df.confidence == ConfidenceLevel.NOT_AVAILABLE or land_use_df.value is None:
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason=land_use_df.reason or "Land-use table query did not complete",
+            )
+        lists = land_use_df.value
+        if not lists.get("row_count"):
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason="Land-use table not yet extracted for this council",
+            )
+        return DataField(
+            value=lists.get(kind) or [],
+            confidence=ConfidenceLevel.AUTHORITATIVE,
+            source="lep_land_use_table", as_at=today,
+        )
 
     overlay_list = overlays_data.get("overlays", []) if overlays_data else []
 
@@ -2135,6 +2398,8 @@ def _build_planning_controls(
             source="planning_portal",
             as_at=today,
         ),
+        permitted_uses=_use_list_field("permitted"),
+        prohibited_uses=_use_list_field("prohibited"),
     )
 
 
@@ -2837,7 +3102,7 @@ def _generate_brief_sse(
     base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
     dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
     satellite_sections = 6 if req.include_satellite else 0
-    total_sections = base_sections + satellite_sections + 4  # +4 for dependent (max estimate)
+    total_sections = base_sections + satellite_sections + 5  # +5 for dependent (max estimate)
 
     import uuid
     report_id = str(uuid.uuid4())
@@ -3011,7 +3276,7 @@ def _generate_brief_sse(
         if is_apartment:
             total_sections = base_sections + satellite_sections  # no dcp/sepp/neighbourhood
         else:
-            total_sections = base_sections + 4 + satellite_sections  # +dcp, sepp, neighbourhood, constraint_arithmetic
+            total_sections = base_sections + 5 + satellite_sections  # +dcp, sepp, neighbourhood, constraint_arithmetic, market_context
 
         sections_yielded += 1
         yield _sse_event("section", {
@@ -3068,6 +3333,26 @@ def _generate_brief_sse(
             lambda: _fetch_sepp_housing(zone_code),
             "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
         )
+        # Land-use lists need the zone; without one there is nothing to query
+        # (the builder emits an honest "no zone resolved" state instead).
+        land_use_lga = _bare_lga_from_epi(zone_epi) or council_name
+        f_land_use = None
+        if zone_code and land_use_lga:
+            f_land_use = pool.submit(
+                _safe_call,
+                lambda: _fetch_land_use_lists(zone_code, land_use_lga),
+                "lep_land_use_table", ConfidenceLevel.AUTHORITATIVE,
+            )
+        # Market context is development-lot analysis (same-zone, similar-size
+        # comparables) — meaningless for an individual strata lot, so it is
+        # only fetched on the development path.
+        f_market = None
+        if not is_apartment:
+            f_market = pool.submit(
+                _safe_call,
+                lambda: _fetch_market_context(lng, lat, zone_code, lot_area_m2, resolved_prop_id),
+                "nsw_valuer_general", ConfidenceLevel.DERIVED,
+            )
 
         # ── Yield environmental (overlays + heritage + env sources) ──────
         overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
@@ -3110,7 +3395,8 @@ def _generate_brief_sse(
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
             controls["lot_size"] = ov_by_type["lot_size"].get("value")
 
-        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2, controls_failed=controls_failed)
+        land_use_df = _timed_result(f_land_use, CONFIG.timeout_land_use, "lep_land_use_table", timings) if f_land_use else None
+        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2, controls_failed=controls_failed, land_use_df=land_use_df)
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "planning_controls",
@@ -3149,10 +3435,20 @@ def _generate_brief_sse(
                     sse_lep_fsr = float(str(fsr_str_sse).replace(":1", "").strip())
                 except (ValueError, TypeError):
                     pass
+            _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
             sepp_lep_overrides = _detect_sepp_lep_overrides(
                 sepp_housing, height_m, sse_lep_fsr,
-                is_heritage=_is_heritage_land(controls, heritage_postgis),
+                is_heritage=_heritage_lmr,
             )
+
+            # Per-form eligibility with citations — the ONE engine run this
+            # brief makes; the capacity ceiling below reuses the same results.
+            lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
+            eligibility_results = _sepp_eligibility_results(
+                zone_code, lat, lng, lot_area_m2, _lot_width, _heritage_lmr,
+            )
+            sepp_eligibility_field = _build_sepp_eligibility_field(eligibility_results)
 
             sections_yielded += 1
             yield _sse_event("section", {
@@ -3162,6 +3458,9 @@ def _generate_brief_sse(
                     source="housing_sepp_standards", as_at=today,
                 ).model_dump(),
                 "sepp_lep_overrides": [o.model_dump() for o in sepp_lep_overrides],
+                "eligibility_forms": sepp_eligibility_field.model_dump(),
+                "lot_area_m2": lot_area_m2,
+                "lot_width_m": _lot_width,
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -3172,11 +3471,13 @@ def _generate_brief_sse(
                 try:
                     from services.constraint_arithmetic import compute_constraint_arithmetic
 
-                    lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
-                    _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
-                    _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
-                    _uplift_form, _uplift_citation = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
+                    # Reuse the eligibility run from the SEPP card above — the
+                    # engine is never invoked twice per brief.
+                    _uplift_form, _uplift_citation = _lmr_uplift_form(
+                        controls.get("zone"), lat, lng, lot_area_m2, _lot_width,
+                        _heritage_lmr, results=eligibility_results,
+                    )
                     _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
                         excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
@@ -3214,6 +3515,25 @@ def _generate_brief_sse(
             yield _sse_event("section", {
                 "section": "neighbourhood",
                 "data": neighbourhood.model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            # ── Market context: VG comparables + recent sales (dev path only) ──
+            market_df = _timed_result(f_market, CONFIG.timeout_market, "nsw_valuer_general", timings) if f_market else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="nsw_valuer_general", reason="Market context not fetched",
+            )
+            market_context = _build_market_context(market_df.value)
+            market_field = DataField(
+                value=market_context,
+                confidence=ConfidenceLevel.DERIVED if market_context else ConfidenceLevel.NOT_AVAILABLE,
+                source="nsw_valuer_general", as_at=today,
+                reason=None if market_context else (market_df.reason or "Valuer-General queries did not complete"),
+            )
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "market_context",
+                "data": market_field.model_dump(),
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -3377,9 +3697,11 @@ def _generate_brief_sse(
             dcp_controls=dcp_controls,
             sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
             sepp_lep_overrides=sepp_lep_overrides if not is_apartment else [],
+            sepp_eligibility=sepp_eligibility_field,
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
+            market_context=market_field,
             contributions=contributions_field,
             constraint_arithmetic=constraint_field,
             satellite=satellite_data,
