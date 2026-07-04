@@ -2657,6 +2657,38 @@ def main() -> None:
         print(f"{'='*60}")
         print(f"\n  {review_path}")
         print(f"  Enqueued {queued} change(s) to dcp_review_queue for human review.")
+
+        # prior-art-checked: reuse not viable as-is — this CALLS the existing grader
+        # (dcp_fidelity_gate.gate_chapter) rather than reimplementing it; the flagged
+        # sepp_full_text_extraction scripts are a different pipeline. Only the wiring is new.
+        # Auto-grade the freshly enqueued rows against their source PDFs (fidelity gate), so
+        # the reviewer sees only flagged rows with a source quote instead of the whole batch.
+        # Lazy import dodges the circular import (dcp_fidelity_gate imports this module).
+        # Advisory: a grading failure never fails the extract — the rows are still queued.
+        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+            try:
+                import dcp_fidelity_gate as _gate
+                pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
+                gcur = conn.cursor()
+                g_tot = f_tot = 0
+                for g_council, g_chapter in pairs:
+                    gcur.execute(
+                        "SELECT r2_current_path FROM dcp_chapter_registry "
+                        "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL",
+                        (g_council, g_chapter),
+                    )
+                    r2row = gcur.fetchone()
+                    if not r2row:
+                        continue
+                    g, f = _gate.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
+                    conn.commit()
+                    g_tot += g
+                    f_tot += f
+                gcur.close()
+                print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review.")
+            except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows
+                print(f"  [warn] fidelity gate skipped ({exc}); rows queued but ungraded.")
+
         print(f"\n  Open this file and inspect section lists + sample provision texts.")
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
