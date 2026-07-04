@@ -31,13 +31,21 @@ export async function POST(
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;
+  // Optional inline correction: when a reviewer fixes a flagged value (e.g. 2.9m -> 0.9m)
+  // the edited text is saved as new_text and the row is marked source-matched. Commit still
+  // writes new_text verbatim later, so the corrected text is exactly what goes live.
+  const editedText =
+    typeof body?.edited_text === 'string' && body.edited_text.trim() ? body.edited_text : null;
   const pool = getPool();
   try {
     const { rowCount } = await pool.query(
       `UPDATE dcp_review_queue
-          SET status = $1, reviewed_by = $2, reviewed_at = NOW(), review_reason = $3
+          SET status = $1, reviewed_by = $2, reviewed_at = NOW(), review_reason = $3,
+              new_text = COALESCE($5, new_text),
+              fidelity_status = CASE WHEN $5 IS NOT NULL THEN 'grounded' ELSE fidelity_status END,
+              fidelity_detail = CASE WHEN $5 IS NOT NULL THEN 'human-corrected in review' ELSE fidelity_detail END
         WHERE id = $4 AND status IN ('pending', 'in_progress')`,
-      [status, reviewer, reason, id],
+      [status, reviewer, reason, id, editedText],
     );
     if (!rowCount) {
       return NextResponse.json(

@@ -21,6 +21,7 @@ interface ReviewItem {
   fidelity_status: 'grounded' | 'flagged' | null;
   fidelity_detail: string | null;
   source_page_verified: number | null;
+  fidelity_source_quote: string | null;
 }
 
 interface ChapterGroup {
@@ -42,6 +43,7 @@ export default function DcpReviewQueue() {
   const [error, setError] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState(false);
   const [total, setTotal] = useState(0); // total pending on the server (queue caps loads at 500)
+  const [editText, setEditText] = useState(''); // inline correction of the current row's text
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,6 +66,37 @@ export default function DcpReviewQueue() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Reset the inline-correction box to the current row's text whenever the row changes.
+  useEffect(() => {
+    setEditText(items[idx]?.new_text ?? '');
+  }, [idx, items]);
+
+  // Save an inline correction (edited text) and approve the row in one step — for fixing a
+  // flagged value (e.g. 2.9m -> 0.9m) without leaving the screen.
+  const saveCorrectionAndApprove = useCallback(async () => {
+    const cur = items[idx];
+    if (!cur || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/dcp-review/${cur.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', edited_text: editText }),
+      });
+      if (!res.ok && res.status !== 404) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'save failed');
+      }
+      setItems((prev) => prev.filter((it) => it.id !== cur.id));
+      setIdx((i) => Math.max(0, Math.min(i, items.length - 2)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'save failed');
+    } finally {
+      setBusy(false);
+    }
+  }, [items, idx, busy, editText]);
 
   // The queue returns at most 500 rows. When the loaded batch is fully resolved but the
   // server still has pending rows, fetch the next batch — so we never falsely report
@@ -313,10 +346,39 @@ export default function DcpReviewQueue() {
           </div>
 
           {item.fidelity_status === 'flagged' && (
-            <p className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              ⚠ <b>Source check flagged this:</b> {item.fidelity_detail ?? 'something was not in the source PDF'}
-              {item.source_page_verified ? ` — check source page ${item.source_page_verified}.` : '.'}
-            </p>
+            <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              <p className="font-semibold">⚠ This rule needs a human check.</p>
+              <p className="mt-1">
+                The source check could not match {item.fidelity_detail?.includes('number') ? 'a number' : 'some wording'} in
+                this rule to the council&apos;s PDF
+                {item.source_page_verified ? ` (page ${item.source_page_verified})` : ''}.
+                {item.fidelity_detail ? ` [${item.fidelity_detail}]` : ''}
+              </p>
+              {item.fidelity_source_quote && (
+                <div className="mt-2 rounded border border-amber-200 bg-white px-3 py-2 text-gray-800">
+                  <div className="text-xs font-semibold text-gray-500">What the council&apos;s PDF says here:</div>
+                  <div className="mt-1 italic">&ldquo;{item.fidelity_source_quote}&rdquo;</div>
+                </div>
+              )}
+              <p className="mt-2 text-xs">
+                Compare it to the rule text on the right. If the AI got a value wrong, fix it in
+                the box below and <b>Save correction &amp; approve</b>. If the rule is actually
+                fine (e.g. the number is a street address), just <b>Approve</b>.
+              </p>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded border border-amber-300 p-2 font-mono text-xs text-gray-900"
+              />
+              <button
+                onClick={saveCorrectionAndApprove}
+                disabled={busy}
+                className="mt-2 rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Save correction &amp; approve
+              </button>
+            </div>
           )}
           {item.fidelity_status === 'grounded' && (
             <p className="mb-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">

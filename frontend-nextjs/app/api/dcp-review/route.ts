@@ -14,6 +14,7 @@ export async function GET() {
              q.old_text, q.new_text, q.old_page, q.new_page, q.has_numeric_change,
              q.numeric_diff, q.summary, q.crop_url, q.source_content_hash, q.created_at,
              q.suspect_reason, q.fidelity_status, q.fidelity_detail, q.source_page_verified,
+             q.fidelity_source_quote,
              r.r2_public_pdf_url AS pdf_url
       FROM dcp_review_queue q
       LEFT JOIN dcp_chapter_registry r
