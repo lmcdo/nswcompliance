@@ -87,6 +87,15 @@ class BriefConfig:
     market_sales_years_back: int = 3
     timeout_market: float = 15.0  # two VG ArcGIS queries (~0.3s each live); headroom for a slow VG day
     timeout_land_use: float = 10.0  # one indexed lep_land_use_table query (~0.3s live)
+    # DA outcomes (determined applications with results) — tighter radius than
+    # the recent-DA feed: outcomes describe THIS street's determinations.
+    da_outcomes_radius_m: int = 200
+    # The tracking layer's outcome field is only backfilled up to ~2022
+    # lodgements (verified live 2026-07-04) — a 3-year window held 4 records
+    # for a whole LGA. 8 years gives a meaningful cohort; the period is always
+    # displayed with the counts.
+    da_outcomes_years_back: int = 8
+    timeout_da_outcomes: float = 15.0
 
     # Concurrency — single pool runs all sources; dependents submitted after
     # their prerequisite completes, so effective parallelism is ~15-20.
@@ -474,6 +483,17 @@ class Neighbourhood(BaseModel):
     nearby_das: DataField[list[NearbyDA]]
     da_count: DataField[Optional[int]]
     shadow: DataField[Optional[ShadowResult]]
+    # Determined applications with OUTCOMES (DA tracking layer) + the LGA-wide
+    # determination counts. value carries radius/period so the UI states them
+    # from data. Defaults = not queried (legacy constructors).
+    da_outcomes: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="da_tracking_mapserver", reason="DA outcomes not queried",
+    )
+    da_refusal_stats: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="da_tracking_mapserver", reason="Refusal counts not queried",
+    )
 
 
 class Economics(BaseModel):
@@ -1735,6 +1755,41 @@ def _fetch_nearby_das(
     finally:
         if conn:
             conn.close()
+
+
+def _fetch_da_outcomes(lng: float, lat: float) -> dict:
+    """Determined DAs with outcomes near the lot (DA tracking MapServer).
+
+    prior-art-checked: wires the existing services/da_outcome.py (fixed in this
+    PR — the TYPE_OF_DEVELOPMENT field rename made every query silently zero).
+    Raises on a failed query so _safe_call stamps NOT_AVAILABLE; [] = genuinely
+    no determined applications within the radius/window.
+    """
+    from services.da_outcome import query_da_outcomes_near
+
+    rows = query_da_outcomes_near(
+        lng, lat,
+        radius_m=CONFIG.da_outcomes_radius_m,
+        years_back=CONFIG.da_outcomes_years_back,
+    )
+    return {
+        "outcomes": [r.model_dump() for r in rows],
+        "radius_m": CONFIG.da_outcomes_radius_m,
+        "years_back": CONFIG.da_outcomes_years_back,
+    }
+
+
+def _fetch_refusal_stats(lga_name: str) -> Optional[dict]:
+    """LGA-wide determination counts + refusal rate (DA tracking MapServer).
+
+    Counts and rate only; the period rides along for display. None = the layer
+    holds no determined applications for this LGA in the window (queried-empty);
+    a failed count query raises (visible failure, never a silent zero).
+    """
+    from services.da_outcome import get_refusal_rate
+
+    stats = get_refusal_rate(lga_name, years=CONFIG.da_outcomes_years_back)
+    return stats.model_dump() if stats is not None else None
 
 
 def _fetch_shadow(
@@ -3008,6 +3063,8 @@ def _build_environmental(
 def _build_neighbourhood(
     das_df: "DataField",
     shadow_result: Optional[dict],
+    da_outcomes_df: Optional["DataField"] = None,
+    refusal_df: Optional["DataField"] = None,
 ) -> Neighbourhood:
     """Map DA list + shadow to Neighbourhood schema.
 
@@ -3042,9 +3099,25 @@ def _build_neighbourhood(
         nearby_field = DataField(value=nearby, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
         count_field = DataField(value=len(nearby), confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
 
+    def _outcome_field(df: Optional["DataField"], label: str) -> DataField:
+        """Three states: populated payload / queried-empty (None value from a
+        successful run) / failed or not queried (NOT_AVAILABLE + reason)."""
+        if df is None:
+            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                             source="da_tracking_mapserver", as_at=today,
+                             reason=f"{label} not queried for this brief")
+        if df.confidence == ConfidenceLevel.NOT_AVAILABLE:
+            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                             source="da_tracking_mapserver", as_at=today,
+                             reason=df.reason or f"{label} lookup did not complete")
+        return DataField(value=df.value, confidence=ConfidenceLevel.AUTHORITATIVE,
+                         source="da_tracking_mapserver", as_at=today)
+
     return Neighbourhood(
         nearby_das=nearby_field,
         da_count=count_field,
+        da_outcomes=_outcome_field(da_outcomes_df, "Determination outcomes"),
+        da_refusal_stats=_outcome_field(refusal_df, "Determination counts"),
         shadow=DataField(
             value=shadow_schema,
             confidence=ConfidenceLevel.DERIVED if shadow_schema else ConfidenceLevel.NOT_AVAILABLE,
@@ -3538,6 +3611,19 @@ def _generate_brief_sse(
                 lambda: _fetch_land_use_lists(zone_code, land_use_lga),
                 "lep_land_use_table", ConfidenceLevel.AUTHORITATIVE,
             )
+        # DA outcomes need the LGA for the refusal counts; development path only
+        # (a strata unit's street-level determination history reads as noise).
+        f_da_outcomes = f_refusal = None
+        if not is_apartment:
+            f_da_outcomes = pool.submit(
+                _safe_call, lambda: _fetch_da_outcomes(lng, lat),
+                "da_tracking_mapserver", ConfidenceLevel.AUTHORITATIVE,
+            )
+            if land_use_lga:
+                f_refusal = pool.submit(
+                    _safe_call, lambda: _fetch_refusal_stats(land_use_lga),
+                    "da_tracking_mapserver", ConfidenceLevel.AUTHORITATIVE,
+                )
         # Market context is development-lot analysis (same-zone, similar-size
         # comparables) — meaningless for an individual strata lot, so it is
         # only fetched on the development path.
@@ -3710,7 +3796,9 @@ def _generate_brief_sse(
                 except Exception as e:
                     logger.warning("Constraint arithmetic (SSE) failed: %s", e)
 
-            neighbourhood = _build_neighbourhood(das_df, shadow_raw)
+            da_outcomes_df = _timed_result(f_da_outcomes, CONFIG.timeout_da_outcomes, "da_tracking_mapserver", timings) if f_da_outcomes else None
+            refusal_df = _timed_result(f_refusal, CONFIG.timeout_da_outcomes, "da_tracking_refusal", timings) if f_refusal else None
+            neighbourhood = _build_neighbourhood(das_df, shadow_raw, da_outcomes_df=da_outcomes_df, refusal_df=refusal_df)
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "neighbourhood",

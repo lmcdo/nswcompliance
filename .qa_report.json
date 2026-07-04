@@ -1,104 +1,103 @@
 {
   "tier": "standard",
-  "commit_hash": "ca961396",
-  "justification": "Slice 3 wire-ins: StrataHub supplementary detail on the strata card, bushfire BAL band with RFS/CDC pathway and cross-overlay names, terrain interpretation narratives, NARCLIM projected findings, nearby-DA rows with stated cost, and detected-structure detail on the secondary-dwelling card. All existing service output surfaced through the typed boundary; live smoke proves the Hurstville strata detail (SP91614, 77 lots, apartment, registered 2019-09-25).",
+  "commit_hash": "d734ec2c",
+  "justification": "Fix the DA-outcomes silent failure and wire determination outcomes plus council refusal counts into the Neighbourhood card. Root cause found by live probe: outFields requested DEVELOPMENT_TYPE but the layer's column is TYPE_OF_DEVELOPMENT, so ArcGIS errored and the empty-dict client response rendered as a silent zero for every query; the suspected LODGEMENT_DATE date filter was innocent (string field, lexicographic filter verified working). All queries now fail loudly; verified live: 38 outcomes near Concord, Canada Bay 992 determined / 45 refused over 8 years.",
   "files": [
+    "services/da_outcome.py",
     "services/intelligence_brief.py",
-    "services/terrain_analysis.py",
     "scripts/capture_brief_golden_fixtures.py",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_brief_slice3_wireins.py",
-    "tests/test_brief_contracts.py",
-    "tests/test_brief_satellite_field_mapping.py",
-    "tests/test_satellite_integration.py",
-    "tests/test_brief_golden_fixtures.py",
-    "tests/fixtures/brief_golden/climate_risk.json",
+    "tests/test_brief_da_outcomes.py",
+    "tests/test_da_outcome.py",
+    "tests/test_intelligence_brief_schema.py",
+    "tests/fixtures/brief_golden/da_outcomes.json",
+    "tests/fixtures/brief_golden/da_refusal_stats.json",
     "scripts/brief_field_coverage_baseline.json"
   ],
   "pre_impl": {
-    "existing_data": "Every wired value already exists: StrataHub returns registration_date alongside the lot count the brief already fetches; bushfire_prescreen emits the RFS referral and CDC pathway keys under compliance; _build_terrain_interpretation existed unused in the terrain service; query_narclim_summary emits delta_2050/2090 keys; the nearby-DA rows already carry cost_of_development in the stream (proved live: Belmore row at 1,824,903 dollars) and only the display was missing.",
-    "assumption_mismatch": "Trace-before-fix caught that bushfire cross_overlays is emitted as a LIST of type-keyed dicts while the Slice-0 contract typed it as a dict \u2014 validation would have raised on every bushfire-prone lot with overlays and killed the whole stream; four old tests had encoded the wrong dict shape (self-confirming mocks) and were corrected to the real service shape.",
-    "new_vs_existing": "No new sources: terrain interpretation is computed inside the existing terrain service run (fail-safe so a narrative failure never blanks the metrics); the NARCLIM summary rides on the existing climate fetch with three distinct states (deltas / no grid coverage / lookup failed); the climate golden fixture is now captured through the brief's actual fetch seam instead of the bare to_dict so the contract check exercises what the brief really sees."
+    "existing_data": "services/da_outcome.py existed unwired (merged in the Tier-1 service PR); the live layer metadata was probed before any code change: 63 fields, LODGEMENT_DATE and ASSESMENT_RESULT are string-typed, DEVELOPMENT_TYPE and ZONE_DESC do not exist, supportsStatistics advertises true but the groupBy statistics query returns Unable to complete operation.",
+    "assumption_mismatch": "Three assumptions fell to the live probe: the suspected date-filter bug was innocent; the real killer was one wrong column name; and the statistics endpoint the old code and its tests relied on is rejected by the live server (the old tests mocked a response shape that can never occur \u2014 self-confirming). Also the tracking layer only backfills outcomes for applications lodged up to about 2022, so a 3-year refusal window held 4 records for a whole LGA \u2014 the brief uses an 8-year window with the period always displayed.",
+    "new_vs_existing": "No new source: this wires the existing da_outcome service through the established _safe_call/_timed_result/DataField pattern as new fields on the existing Neighbourhood section (kept separate from the recent-applications feed, which stays on the consolidated DB table). The refusal computation was rewritten from the rejected statistics query to three verified returnCountOnly queries."
   },
   "functions": [
     {
-      "name": "_fetch_climate_risk",
-      "file_line": "services/intelligence_brief.py:1996",
-      "input": "coordinates for the per-hazard climate scores plus the NARCLIM projection summary",
-      "output": "the climate dict with a narclim key \u2014 a populated summary, an empty dict for no grid coverage, or None when the lookup failed",
-      "if_none": "a failed projection lookup becomes an honest manifest gap on the card, never fabricated projections or a silent absence"
+      "name": "query_da_outcomes_near",
+      "file_line": "services/da_outcome.py:144",
+      "input": "coordinates, radius and lookback window for the bbox query with Haversine post-filter",
+      "output": "DAOutcome rows with the recorded result, development type, stated cost and dates",
+      "if_none": "an empty-dict client response (any transport or ArcGIS failure) raises instead of returning [] \u2014 a failed query is never a silent zero determinations"
     },
     {
-      "name": "_build_climate_disclosure",
-      "file_line": "services/intelligence_brief.py:2137",
-      "input": "the climate dict including the narclim summary and the uhi/arr/firms raws",
-      "output": "ClimateDisclosureProfile with projected_findings rows each carrying model, scenario and timeframe",
-      "if_none": "non-numeric delta values are skipped rather than rendered; missing narclim adds an UnavailableSource entry naming which state occurred"
+      "name": "get_refusal_rate",
+      "file_line": "services/da_outcome.py:220",
+      "input": "the LGA name (case-normalised against the layer's uppercase LGA_NAME) and the period in years",
+      "output": "RefusalStats with approved/refused/deferred counts, the total and the rate, via three returnCountOnly queries",
+      "if_none": "a missing count key raises so a refusal rate is never fabricated from a silently-zero count; zero determined rows returns None (a checked empty); a zone filter raises because the layer has no zone column"
     },
     {
-      "name": "_build_bushfire_detail",
-      "file_line": "services/intelligence_brief.py:2056",
-      "input": "the raw bushfire prescreen envelope with compliance.cross_overlays as the list the service actually emits",
-      "output": "BushfireDetail with BAL band, RFS referral flag and triggers, CDC pathway flag and the overlay list",
-      "if_none": "a null compliance block leaves the pathway fields None and the card hides them (bushfire-prone-only detail)"
+      "name": "_fetch_da_outcomes",
+      "file_line": "services/intelligence_brief.py:1760",
+      "input": "coordinates; radius and window from CONFIG so the UI states them from the payload",
+      "output": "the outcomes list wrapped with its radius_m and years_back",
+      "if_none": "raises through _safe_call to NOT_AVAILABLE with the reason \u2014 the card says the lookup did not complete"
     },
     {
-      "name": "_fetch_strata",
-      "file_line": "services/intelligence_brief.py:1691",
-      "input": "address and coordinates; cadastre decides strata, StrataHub enriches",
-      "output": "the strata dict now also carrying registration_date beside lot_total and dwelling_type",
-      "if_none": "a StrataHub failure never fails the brief \u2014 the supplementary fields stay absent and classify_strata falls back exactly as before; routing is untouched by the new fields (pinned by test)"
+      "name": "_build_neighbourhood",
+      "file_line": "services/intelligence_brief.py:3063",
+      "input": "the DA feed plus the new outcomes and refusal DataFields from their timed fetches",
+      "output": "Neighbourhood with da_outcomes and da_refusal_stats in three distinct states",
+      "if_none": "not-queried (renovation path), failed, and queried-empty each carry their own reason and confidence \u2014 never conflated"
     }
   ],
   "values": [
     {
-      "value": "narclim delta keys ({prefix}_delta_2050/2090) from query_narclim_summary",
-      "read_at": "services/intelligence_brief.py _build_climate_disclosure NARCLIM mapping",
-      "if_missing": "absent or non-numeric keys produce no ProjectedFinding rows and the manifest records the honest gap state"
+      "value": "radius_m and years_back inside the da_outcomes payload",
+      "read_at": "services/intelligence_brief.py _fetch_da_outcomes from CONFIG",
+      "if_missing": "the frontend falls back to stating the configured defaults; the period and radius are always displayed with the counts"
     }
   ],
-  "queries": "N/A \u2014 no new database queries in this slice; all wiring is over existing fetches",
+  "queries": "N/A \u2014 ArcGIS REST queries only, all parameter-built with the layer's verified field names; no database queries",
   "break_it": [
     {
-      "scenario": "A bushfire-prone lot with flood and heritage cross-overlays streams its brief",
-      "what_happens": "The old dict-typed contract raised ValidationError inside assembly and the whole stream died with an error event; the list-typed contract parses the real shape and the card names the intersecting layers",
+      "scenario": "The tracking endpoint rate-limits or its circuit opens mid-brief",
+      "what_happens": "The empty-dict response raises, _safe_call stamps NOT_AVAILABLE and the card says the outcomes lookup did not complete \u2014 before this fix the same condition rendered as zero nearby determinations at full confidence",
       "mitigated": true,
-      "how": "cross_overlays retyped to the emitted list shape; test_prone_lot_with_overlay_list_does_not_kill_the_stream uses the exact service shape",
-      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k prone -q"
+      "how": "features-key and count-key guards; test_failed_outcomes_query_raises_instead_of_silent_zero and test_failed_count_query_raises_never_a_fabricated_rate",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k raises -q"
     },
     {
-      "scenario": "The NARCLIM dataset is not deployed on the runtime (the current state)",
-      "what_happens": "The card shows projected findings absent WITH a manifest entry saying the projection lookup failed or data is not deployed \u2014 confirmed on the live smoke \u2014 never a fabricated projection and never a silent nothing",
+      "scenario": "A caller filters the refusal cohort by zone",
+      "what_happens": "The layer has no zone column (verified live) \u2014 the old code silently zeroed the cohort; it now raises ValueError naming the limitation",
       "mitigated": true,
-      "how": "three-state narclim handling (populated / empty coverage / None failed); test_narclim_lookup_failure_is_distinct_from_no_coverage",
-      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k narclim -q"
+      "how": "explicit guard in get_refusal_rate; test_zone_filter_refuses_loudly",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k zone -q"
     },
     {
-      "scenario": "NARCLIM emits a junk non-numeric delta for one variable",
-      "what_happens": "That row is skipped; the remaining numeric deltas still render with model and timeframe attached",
+      "scenario": "A mixed-case council name (Canada Bay) is matched against the layer's uppercase LGA_NAME values",
+      "what_happens": "UPPER() on both sides \u2014 verified live on all three demo LGAs (Canada Bay, Canterbury-Bankstown, Wingecarribee all return real counts)",
       "mitigated": true,
-      "how": "isinstance numeric guard in the projection mapping; test_narclim_junk_delta_is_skipped_not_rendered",
-      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k junk -q"
+      "how": "case-normalised LIKE in get_refusal_rate; test_lga_match_is_case_insensitive",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k case -q"
     },
     {
-      "scenario": "A future edit makes the StrataHub supplementary fields influence brief-type routing",
-      "what_happens": "classify_strata output must be identical with and without dwelling_type/registration_date present \u2014 the pin test fails any such change",
+      "scenario": "The renovation (strata) path renders the Neighbourhood-less brief",
+      "what_happens": "The outcome fields default to a distinct not-queried state \u2014 never an implied zero determinations for a lot we did not query",
       "mitigated": true,
-      "how": "test_supplementary_fields_never_change_routing compares routing across both shapes",
-      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k routing -q"
+      "how": "default DataFields on the Neighbourhood model plus the not-queried branch in _build_neighbourhood; test_neighbourhood_outcomes_not_queried_renders_distinctly",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k not_queried -q"
     },
     {
-      "scenario": "The terrain narrative builder throws on an unusual metrics combination",
-      "what_happens": "run_terrain_analysis catches it and returns the metrics without an interpretation \u2014 the terrain card still renders slope/aspect/drainage, only the narrative block is absent",
+      "scenario": "The outcome backfill gap makes a short refusal window meaningless",
+      "what_happens": "The brief queries an 8-year window and the card always states the period and counts with the rate; the field hint notes the tracking data records outcomes mainly for applications lodged up to 2022",
       "mitigated": true,
-      "how": "fail-safe try/except around _build_terrain_interpretation inside run_terrain_analysis",
-      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k interpretation -q"
+      "how": "CONFIG.da_outcomes_years_back documented with the live finding; counts and period ride inside the payload",
+      "repro": "run the brief for 14 Stanley St Concord and open the Neighbourhood card"
     }
   ],
   "post_merge": {
-    "db_reset": "none \u2014 no schema or data changes",
-    "secrets": "none touched; env-gated layers (GOOGLE_MAPS_API_KEY, NASA_FIRMS_MAP_KEY) stay gated and render as not-configured",
-    "other_repo": "none \u2014 the terrain interpretation sibling and new model fields pass through the Trigger.dev relay transparently",
-    "manual_verify": "after Railway deploys, run the brief for 5/1 Treacy St Hurstville (strata card shows 77 lots, apartment, registered 2019-09-25) and any address with satellite on (terrain card shows the findings narratives \u2014 needs the Railway runtime where rasterio exists); if NARCLIM data is added to the image later the projected block lights up with no code change"
+    "db_reset": "none",
+    "secrets": "none touched",
+    "other_repo": "none \u2014 new Neighbourhood fields pass through the Trigger.dev relay transparently",
+    "manual_verify": "after Railway deploys, run the brief for 14 Stanley St Concord: Neighbourhood shows determined applications within 200 m and the Canada Bay counts (992 determined, 45 refused, 4.5% over 8 years at capture time)"
   }
 }

@@ -191,10 +191,12 @@ class TestQueryDAOutcomesNear:
         assert results == []
 
     @patch("services.da_outcome.arcgis_get_with_retry")
-    def test_api_failure(self, mock_get):
-        mock_get.return_value = {}  # Circuit breaker or timeout
-        results = query_da_outcomes_near(lng=151.0, lat=-33.0)
-        assert results == []
+    def test_api_failure_raises_not_silent_zero(self, mock_get):
+        # {} = a FAILED query (circuit breaker/timeout/ArcGIS error). Returning
+        # [] made it indistinguishable from "no determinations nearby".
+        mock_get.return_value = {}
+        with pytest.raises(RuntimeError, match="failed"):
+            query_da_outcomes_near(lng=151.0, lat=-33.0)
 
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_filters_by_haversine(self, mock_get):
@@ -251,9 +253,10 @@ class TestQueryDAByPan:
         assert query_da_by_pan("PAN-NONEXISTENT") is None
 
     @patch("services.da_outcome.arcgis_get_with_retry")
-    def test_api_failure(self, mock_get):
+    def test_api_failure_raises(self, mock_get):
         mock_get.return_value = {}
-        assert query_da_by_pan("PAN-123") is None
+        with pytest.raises(RuntimeError, match="failed"):
+            query_da_by_pan("PAN-123")
 
 
 # ---------------------------------------------------------------------------
@@ -261,15 +264,13 @@ class TestQueryDAByPan:
 # ---------------------------------------------------------------------------
 
 class TestGetRefusalRate:
+    # NB: the old tests mocked a groupBy-statistics response shape the LIVE
+    # server actually rejects ("Unable to complete operation") — self-confirming
+    # mocks. The implementation now issues one returnCountOnly query per outcome
+    # value ({"count": N} responses, verified live).
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_calculates_rate(self, mock_get):
-        mock_get.return_value = {
-            "features": [
-                {"attributes": {"ASSESMENT_RESULT": "Approved", "count": 2491}},
-                {"attributes": {"ASSESMENT_RESULT": "Refused", "count": 177}},
-                {"attributes": {"ASSESMENT_RESULT": "Deferred Commencement Consent", "count": 75}},
-            ],
-        }
+        mock_get.side_effect = [{"count": 2491}, {"count": 177}, {"count": 75}]
         stats = get_refusal_rate("Inner West")
         assert stats is not None
         assert stats.approved == 2491
@@ -280,21 +281,18 @@ class TestGetRefusalRate:
 
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_empty_results(self, mock_get):
-        mock_get.return_value = {"features": []}
+        mock_get.side_effect = [{"count": 0}, {"count": 0}, {"count": 0}]
         assert get_refusal_rate("Nonexistent LGA") is None
 
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_all_approved(self, mock_get):
-        mock_get.return_value = {
-            "features": [
-                {"attributes": {"ASSESMENT_RESULT": "Approved", "count": 100}},
-            ],
-        }
+        mock_get.side_effect = [{"count": 100}, {"count": 0}, {"count": 0}]
         stats = get_refusal_rate("Test LGA")
         assert stats is not None
         assert stats.refusal_rate == 0.0
 
     @patch("services.da_outcome.arcgis_get_with_retry")
-    def test_api_failure(self, mock_get):
+    def test_api_failure_raises_never_a_fabricated_rate(self, mock_get):
         mock_get.return_value = {}
-        assert get_refusal_rate("Inner West") is None
+        with pytest.raises(RuntimeError, match="count query failed"):
+            get_refusal_rate("Inner West")
