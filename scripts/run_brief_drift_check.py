@@ -71,7 +71,7 @@ def main() -> int:
     for f in failures:
         print(f"[CAPTURE-FAILED] {f}")
 
-    hc_url = os.environ.get("HC_PING_URL", "")
+    hc_url = os.environ.get("HC_PING_URL") or ""  # env var set-but-empty must not crash the ping
     if has_drift or failures:
         drifted = [f["service"] for f in findings if f["drift"]]
         msg = "⚠️ BRIEF CONTRACT DRIFT CHECK\n"
