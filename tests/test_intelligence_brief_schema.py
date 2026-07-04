@@ -84,6 +84,10 @@ def _make_planning_controls(**overrides):
         housing_sepp=_auth(False),
         tod_area=_auth(False),
         lot_dimensions=_auth(LotDimensions(area_m2=467.0)),
+        # Slice-1 land-use lists — populated on the fully-available fixture so
+        # gap-collection tests keep meaning "this brief has zero gaps".
+        permitted_uses=_auth(["dwelling_house", "dual_occupancy"]),
+        prohibited_uses=_auth(["heavy_industry"]),
     )
     defaults.update(overrides)
     return PlanningControls(**defaults)

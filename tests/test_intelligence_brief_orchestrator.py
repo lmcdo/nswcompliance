@@ -682,6 +682,10 @@ def _make_brief_with_n_available(n_ok: int, n_fail: int) -> DevelopmentBrief:
         housing_sepp=DataField(value=False, confidence=_conf(), source="test", as_at=today),
         tod_area=DataField(value=False, confidence=_conf(), source="test", as_at=today),
         lot_dimensions=DataField(value=None, confidence=_conf(), source="test", as_at=today),
+        # Slice-1 land-use lists — participate in the controlled ok/fail spread
+        # like every other DataField so the viability ratios stay exact.
+        permitted_uses=DataField(value=["dwelling_house"], confidence=_conf(), source="test", as_at=today),
+        prohibited_uses=DataField(value=["heavy_industry"], confidence=_conf(), source="test", as_at=today),
     )
 
     return DevelopmentBrief(

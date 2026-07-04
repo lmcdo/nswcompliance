@@ -1,115 +1,122 @@
 {
   "tier": "standard",
-  "commit_hash": "0116b0ef",
-  "justification": "Structural plumbing for the Intelligence Brief (Slice 0 of the content-enrichment plan): S1 DataField fail-closed invariant, S2 typed service contracts for six services, S3 golden fixtures captured from the real services plus a field-coverage ratchet wired into pre-push. No user-visible change; verified by A/B live smoke on the four demo addresses.",
+  "commit_hash": "c816b83b",
+  "justification": "Slice 1 of the brief enrichment plan: wire the already-built VG comparables and sales into a new market_context card, surface the LEP land-use permitted/prohibited lists on the planning controls card, and per-form Housing SEPP eligibility with clause citations reusing the single engine run. Verified by live A/B smoke on the four demo addresses: only the intended additions changed, no pre-existing card state moved.",
   "files": [
     "services/intelligence_brief.py",
-    "scripts/brief_contract_drift.py",
-    "scripts/brief_field_coverage_ratchet.py",
-    "scripts/brief_field_coverage_baseline.json",
-    "scripts/capture_brief_golden_fixtures.py",
-    ".githooks/pre-push",
+    "services/vg_comparables.py",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_brief_slice1_wiring.py",
     "tests/test_brief_slice0_failclosed.py",
-    "tests/test_brief_golden_fixtures.py",
-    "tests/test_brief_field_coverage_ratchet.py",
-    "tests/fixtures/brief_golden/strata_cadastre.json",
-    "tests/fixtures/brief_golden/strata_hub.json",
-    "tests/fixtures/brief_golden/climate_risk.json",
-    "tests/fixtures/brief_golden/housing_sepp_eligibility.json",
-    "tests/fixtures/brief_golden/lep_land_use_rows.json",
-    "tests/fixtures/brief_golden/vg_comparables.json",
-    "tests/fixtures/brief_golden/vg_sales.json"
+    "tests/test_vg_comparables.py",
+    "tests/test_intelligence_brief_orchestrator.py",
+    "tests/test_intelligence_brief_schema.py",
+    "scripts/brief_field_coverage_baseline.json"
   ],
   "pre_impl": {
-    "existing_data": "Prior PRs 593-600 already shipped the failsoft lint, unwrap helper, WO-1..5 fail-closed fixes and flood/bushfire/shadow contracts; this slice extends that system rather than duplicating it. lep_land_use_table columns (lga, zone, development_type, permissibility) confirmed by live read-only SELECT during fixture capture.",
-    "assumption_mismatch": "Two assumptions fell to real data: permissibility is not binary (real vocabulary includes exempt, caught by the golden fixture), and a blunt AUTHORITATIVE-plus-null coercion would flip the documented legitimately-empty state (zone with no height control), so the S1 validator is gated on the error reason field instead.",
-    "new_vs_existing": "Contracts live beside the existing three in intelligence_brief.py (single contract home, same _warn_on_drift mechanism); the ratchet and capture scripts are new because no existing tool locks the brief output surface or persists real service emissions; development_permissions_db.py was checked and queries the older regulatory_provisions table, not lep_land_use_table."
+    "existing_data": "All three cards wire EXISTING data: services/vg_comparables.py (117 comps / 97 sales at Concord in the Slice-0 golden capture), lep_land_use_table (the same table _permitted_engine_forms reads, columns confirmed live in Slice 0), and evaluate_eligibility (already invoked for the capacity ceiling). No new analysis or source was built.",
+    "assumption_mismatch": "Adversarial review found arcgis_get_with_retry returns an empty dict on ANY failure, so a failed VG query was indistinguishable from zero comparables (the da_outcome silent-zero class) \u2014 fixed at source by raising when the features key is absent. Also the real Concord capture has ALL seven SEPP forms ineligible, which corrected a wrong test expectation.",
+    "new_vs_existing": "market_context is a NEW SSE section rather than a re-emit into economics because the frontend renders every section event (a re-emit would duplicate the card) and comparables need zone + lot area, which resolve after economics streams. The land-use fetch and eligibility extraction extend existing functions in intelligence_brief.py; development_permissions_db.py was checked and reads the older regulatory_provisions table, not lep_land_use_table."
   },
   "functions": [
     {
-      "name": "_fail_closed_on_errored_authoritative",
-      "file_line": "services/intelligence_brief.py:161",
-      "input": "the constructed DataField instance after normal pydantic validation completes",
-      "output": "the same DataField, with confidence coerced to NOT_AVAILABLE when value is None and an error reason is present at AUTHORITATIVE",
-      "if_none": "value None with no reason is the documented legitimately-empty state and is deliberately left untouched so honest empty cards keep their badge"
+      "name": "_fetch_market_context",
+      "file_line": "services/intelligence_brief.py:1746",
+      "input": "coordinates, zone code, lot area and the subject propid for the comparable and sales queries",
+      "output": "dict with comparables analysis, sales list and a per-half failure reason; raises only when both halves fail",
+      "if_none": "a missing zone or lot area sets the comparables reason and still fetches sales, so one resolution gap never blanks the whole card"
     },
     {
-      "name": "collect_from_roots",
-      "file_line": "scripts/brief_field_coverage_ratchet.py:42",
-      "input": "list of pydantic model classes to walk recursively including parametrised DataField generics",
-      "output": "mapping of model name to sorted field names for every reachable model; raises RuntimeError on a same-name collision with different fields",
-      "if_none": "an empty roots list yields an empty map which then fails the baseline comparison loudly rather than passing vacuously"
+      "name": "_build_market_context",
+      "file_line": "services/intelligence_brief.py:1788",
+      "input": "the raw fetch dict from _fetch_market_context or None when the whole fetch failed",
+      "output": "MarketContext with per-half DataFields \u2014 comparables DERIVED, sales AUTHORITATIVE, failures NOT_AVAILABLE with the reason",
+      "if_none": "returns None so the section renders an honest unavailable card, never a fabricated zero-comparables answer"
     },
     {
-      "name": "check",
-      "file_line": "scripts/brief_field_coverage_ratchet.py:131",
-      "input": "current field map and the checked-in baseline field map loaded from JSON",
-      "output": "exit code 1 when any baseline model or field is missing from current code; renames count as losses",
-      "if_none": "a missing baseline file is reported as failure instructing regen, never silently treated as a pass"
+      "name": "_fetch_land_use_lists",
+      "file_line": "services/intelligence_brief.py:1819",
+      "input": "zone code and the LGA name, matched via the same _norm_lga normalisation the engine uses",
+      "output": "permitted and prohibited development-type lists plus the matched row count, rows validated through LepLandUseRow",
+      "if_none": "zero matched rows means the council is not in the structured dataset \u2014 the builder renders a distinct not-extracted state, while a DB error raises and surfaces as a retryable failure"
     },
     {
-      "name": "_build_terrain_detail",
-      "file_line": "services/intelligence_brief.py:1984",
-      "input": "raw terrain service dict or None when the fetch failed or was not requested",
-      "output": "TerrainAnalysisDetail built from the terrain service's shared model with a drift warning logged when a contract key is missing",
-      "if_none": "returns None so the terrain card renders NOT_AVAILABLE with the real failure reason, distinct from a populated detail with null metrics"
+      "name": "_sepp_eligibility_results",
+      "file_line": "services/intelligence_brief.py:1362",
+      "input": "zone, coordinates, lot area, lot width and the heritage flag for the eligibility engine",
+      "output": "the per-form FormEligibility list, an empty list when no forms apply, or None when the engine errored",
+      "if_none": "None surfaces as a NOT_AVAILABLE eligibility field on the SEPP card, never a silent no-forms-apply"
+    },
+    {
+      "name": "_build_sepp_eligibility_field",
+      "file_line": "services/intelligence_brief.py:1388",
+      "input": "the eligibility results list or None from the single engine run",
+      "output": "DataField of HousingSeppFormOutput rows carrying clause citations for the card",
+      "if_none": "a typed-contract violation in the rows is caught and returned as NOT_AVAILABLE with a reason instead of killing the stream"
     }
   ],
   "values": [
     {
-      "value": "permissibility vocabulary permitted/prohibited/exempt from lep_land_use_table",
-      "read_at": "scripts/capture_brief_golden_fixtures.py capture_lep_land_use via live SELECT DISTINCT",
-      "if_missing": "the golden-fixture test asserts permitted and prohibited exist in the vocabulary; if the DB renamed them the capture plus test fail visibly"
+      "value": "lot_area_m2 and lot_width_m siblings on the sepp_housing SSE event",
+      "read_at": "services/intelligence_brief.py sepp_housing yield, from the valuation and the cadastral lot dimensions",
+      "if_missing": "the frontend lot-versus-minimum line degrades to showing only the standard's minimum, never a wrong comparison"
     }
   ],
   "queries": [
     {
-      "purpose": "capture a real row spread and the permissibility vocabulary for the LEP land-use golden fixture",
-      "file_line": "scripts/capture_brief_golden_fixtures.py:136",
-      "where_clause": "WHERE zone = %s (parameterised, read-only, ORDER BY permissibility LIMIT 60)"
+      "purpose": "permitted/prohibited development types for the resolved zone, LGA-matched in Python via _norm_lga",
+      "file_line": "services/intelligence_brief.py:1840",
+      "where_clause": "WHERE zone = %s AND permissibility IN ('permitted', 'prohibited') \u2014 parameterised, read-only"
     }
   ],
   "break_it": [
     {
-      "scenario": "A failed upstream fetch's value and error reason are copied into a new DataField stamped AUTHORITATIVE by a future refactor",
-      "what_happens": "Before this slice the card rendered a confident blank that reads as checked-and-empty; now the model validator coerces it to NOT_AVAILABLE at construction so the failure stays visible",
+      "scenario": "The VG ArcGIS endpoint rate-limits or its circuit opens, so arcgis_get_with_retry returns an empty dict",
+      "what_happens": "Before the fix the card would confidently render zero comparable lots nearby; now get_comparable_values raises, the half is NOT_AVAILABLE with the reason, and the card says it couldn't retrieve",
       "mitigated": true,
-      "how": "S1 model_validator on DataField plus test_errored_fetch_at_authoritative_is_coerced_to_not_available and the all-failed assembly walk asserting zero authoritative-null fields",
-      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -q"
+      "how": "features-key check raises in services/vg_comparables.py; test_vg_transport_failure_raises_instead_of_zero_comparables plus the genuine-empty twin test",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k transport -q"
     },
     {
-      "scenario": "StrataHub enrichment returns lot_total as text junk so the count check is skipped and the weak lot-area heuristic classifies a 77-lot apartment parcel as DEVELOPMENT",
-      "what_happens": "The brief would emit a DevelopmentBrief with capacity claims for a strata lot; the S2 tripwire now turns the type violation into the fail-closed AMBIGUOUS route with a NOT_AVAILABLE strata card",
+      "scenario": "The comparables half fails while the sales query succeeds",
+      "what_happens": "The sales table still renders with its genuine data; only the comparables block shows the retry message \u2014 one VG layer down never blanks the other",
       "mitigated": true,
-      "how": "StrataServiceOutput validation in the SSE path routes contract violations to strata_failed; covered by test_strata_type_junk_routes_to_renovation_not_silent_development",
-      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -k junk -q"
+      "how": "per-half isolation in _fetch_market_context; test_comparables_failure_does_not_blank_sales",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k blank -q"
     },
     {
-      "scenario": "The climate service reshapes hazards from a list to a dict keyed by hazard name",
-      "what_happens": "Previously ClimateDisclosureProfile construction raised inside assembly and killed the stream; now the contract violation is logged and climate is counted as a failed source while UHI ARR FIRMS still report",
+      "scenario": "Another council's land-use rows share the queried zone (Bayside rows when the lot is in Burwood)",
+      "what_happens": "The permitted/prohibited development types query matches by zone across all councils by design; the _norm_lga filter excludes the foreign rows, the row count is zero and the card shows the not-extracted state \u2014 a neighbouring council's permitted uses are never presented as this lot's",
       "mitigated": true,
-      "how": "ClimateRiskServiceOutput tripwire in _build_climate_disclosure; test asserts sources_queried drops from 4 to 3 versus the on-contract fixture",
-      "repro": "python -m pytest tests/test_brief_golden_fixtures.py -q"
+      "how": "the WHERE zone query at services/intelligence_brief.py:1840 returns all-LGA rows by design; the _norm_lga filter excludes non-matching councils, exercised with real captured Bayside rows; test_other_council_rows_do_not_leak_into_this_lga",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k leak -q"
     },
     {
-      "scenario": "A refactor renames a field on a brief section model, deleting the old one, so a card quietly stops surfacing data it used to show",
-      "what_happens": "The field-coverage ratchet compares 52 locked models against the baseline in pre-push and fails the push naming the exact model and field lost; a rename counts as a loss plus an addition, never a wash",
+      "scenario": "Wingecarribee (Bowral) is not in the 25-LGA structured land-use dataset and its LEP maps no height or FSR layer for the lot",
+      "what_happens": "The land-use fields render the not-extracted state distinct from a DB failure, and height/FSR render as no-control-mapped-in-this-LEP rather than a retrieval failure \u2014 confirmed on the live Bowral smoke run",
       "mitigated": true,
-      "how": "scripts/brief_field_coverage_ratchet.py wired as pre-push step 1c plus test_rename_is_a_loss_not_a_wash",
-      "repro": "python scripts/brief_field_coverage_ratchet.py after deleting any model field"
+      "how": "three-state tests for the land-use field plus the UNMAPPED_LEP_CONTROLS frontend branch; live smoke output shows height None at authoritative on Bowral",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k state -q"
     },
     {
-      "scenario": "The cadastre service renames is_strata; the tolerant contract parses it to the default False so validation alone cannot catch the rename",
-      "what_happens": "Runtime logs a CONTRACT-DRIFT warning via the core-keys drift check, and the golden fixture plus check_drift test fail on re-capture, so the rename is caught by the S3 layer instead of shipping as silent not-strata",
+      "scenario": "The eligibility engine errors mid-run",
+      "what_happens": "The SEPP card notes the per-form assessment couldn't run while the standards table still renders; the capacity ceiling independently retries once \u2014 never a silent no-forms-apply on either surface",
       "mitigated": true,
-      "how": "StrataCoreOutput drift check on real traffic plus test_strata_renamed_key_is_visible_drift_not_clean",
-      "repro": "python -m pytest tests/test_brief_slice0_failclosed.py -k renamed -q"
+      "how": "_sepp_eligibility_results returns None which _build_sepp_eligibility_field wraps as NOT_AVAILABLE; test_eligibility_engine_error_is_not_available_never_empty",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k engine_error -q"
+    },
+    {
+      "scenario": "A refactor re-invokes evaluate_eligibility for the capacity ceiling",
+      "what_happens": "The precomputed results from the SEPP card are passed into _lmr_uplift_form; the guard test patches the engine to explode so any second invocation fails the suite",
+      "mitigated": true,
+      "how": "results parameter on _lmr_uplift_form; test_lmr_uplift_reuses_precomputed_results_never_reinvokes",
+      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k reinvoke -q"
     }
   ],
   "post_merge": {
-    "db_reset": "none \u2014 all database access in this slice is read-only fixture capture",
-    "secrets": "none touched; capture script reads DATABASE_URL from the existing .env",
-    "other_repo": "none \u2014 no plotdetect-agents or frontend contract change; SSE payload shape unchanged",
-    "manual_verify": "A/B live smoke already run: real brief for Concord, Belmore, Hurstville, Bowral on main versus branch, per-card population states compared; re-run scripts/capture_brief_golden_fixtures.py quarterly or when a service changes"
+    "db_reset": "none \u2014 the land-use query is read-only and parameterised",
+    "secrets": "none touched",
+    "other_repo": "none \u2014 new SSE section and sibling keys pass through the Trigger.dev relay transparently (verified pattern from prior section additions); backend goes live via Railway from main on merge",
+    "manual_verify": "live A/B smoke already run on Concord, Belmore, Hurstville, Bowral: only the intended additions differ from baseline; after Railway deploys, open /reports/intelligence-brief for Concord and confirm the Market Context card and per-form SEPP citations render"
   }
 }
