@@ -420,12 +420,13 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // LGA determination counts — counts and rate with the period, nothing else.
           if (key === 'da_refusal_stats' && df.value && typeof df.value === 'object') {
             const r = df.value as RefusalStatsRow;
+            const granted: number | null = r.approved ?? null;
             return (
               <div key={key} className="flex flex-col sm:col-span-2">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   Of {r.total_determined?.toLocaleString()} applications determined in {formatKey(String(r.lga ?? 'this council').toLowerCase())} over the last {r.period_years} years:{' '}
-                  {r.approved?.toLocaleString()} approved, {r.refused?.toLocaleString()} refused
+                  {granted?.toLocaleString()} granted development consent, {r.refused?.toLocaleString()} refused
                   {r.deferred_commencement ? <>, {r.deferred_commencement.toLocaleString()} deferred commencement</> : null}
                   {r.refusal_rate != null ? <> ({(r.refusal_rate * 100).toFixed(1)}% refused)</> : null}.
                 </dd>

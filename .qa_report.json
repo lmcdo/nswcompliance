@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "d734ec2c",
+  "commit_hash": "59ae03f1",
   "justification": "Fix the DA-outcomes silent failure and wire determination outcomes plus council refusal counts into the Neighbourhood card. Root cause found by live probe: outFields requested DEVELOPMENT_TYPE but the layer's column is TYPE_OF_DEVELOPMENT, so ArcGIS errored and the empty-dict client response rendered as a silent zero for every query; the suspected LODGEMENT_DATE date filter was innocent (string field, lexicographic filter verified working). All queries now fail loudly; verified live: 38 outcomes near Concord, Canada Bay 992 determined / 45 refused over 8 years.",
   "files": [
     "services/da_outcome.py",
