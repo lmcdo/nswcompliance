@@ -102,7 +102,7 @@ def test_climate_contract_violation_becomes_failed_source_not_garbage():
     good = _load("climate_risk")
     ok_profile = _build_climate_disclosure(good, uhi_raw={"uhi_intensity": 1.5},
                                            arr_raw=None, firms_raw=None)
-    assert ok_profile.manifest.sources_queried == 4  # distinct from the violation case
+    assert ok_profile.manifest.sources_queried == 5  # distinct from the violation case (incl. NARCLIM slot)
 
 
 def test_climate_queried_empty_distinct_from_failed():

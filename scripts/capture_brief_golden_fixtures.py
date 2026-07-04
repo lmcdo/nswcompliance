@@ -164,10 +164,11 @@ def capture_lep_land_use() -> None:
 
 
 def capture_climate() -> None:
-    from services.climate_risk_score import climate_risk_score
+    """Capture through the brief's ACTUAL fetch seam (_fetch_climate_risk),
+    which attaches the NARCLIM projection summary - not the bare to_dict."""
+    import services.intelligence_brief as ib
 
-    result = climate_risk_score(CONCORD["lat"], CONCORD["lng"])
-    _write("climate_risk", CONCORD, result.to_dict())
+    _write("climate_risk", CONCORD, ib._fetch_climate_risk(CONCORD["lat"], CONCORD["lng"]))
 
 
 def capture_env_overlays() -> None:

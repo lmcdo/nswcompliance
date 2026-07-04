@@ -1,103 +1,104 @@
 {
   "tier": "standard",
-  "commit_hash": "ac1c9857",
-  "justification": "Slice 2 of the brief enrichment plan: measured nearest-feature distances on the environmental No rows, contaminated-land nearest-site detail, mine-subsidence district name, numeric ANEF value, and the yield card's inputs ledger plus the named-missing-control explanation per the 3a/3b spec. Presentation of existing engine output only \u2014 the realistic_gfa computation is untouched. Live smoke on the four demo addresses shows exactly the four intended environmental additions per address and nothing else.",
+  "commit_hash": "ca961396",
+  "justification": "Slice 3 wire-ins: StrataHub supplementary detail on the strata card, bushfire BAL band with RFS/CDC pathway and cross-overlay names, terrain interpretation narratives, NARCLIM projected findings, nearby-DA rows with stated cost, and detected-structure detail on the secondary-dwelling card. All existing service output surfaced through the typed boundary; live smoke proves the Hurstville strata detail (SP91614, 77 lots, apartment, registered 2019-09-25).",
   "files": [
     "services/intelligence_brief.py",
-    "scripts/generate_conveyancing_report.py",
+    "services/terrain_analysis.py",
     "scripts/capture_brief_golden_fixtures.py",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_brief_slice2_distances.py",
-    "tests/test_brief_slice0_failclosed.py",
-    "tests/test_intelligence_brief_orchestrator.py",
-    "tests/test_intelligence_brief_schema.py",
-    "tests/fixtures/brief_golden/env_overlays.json",
+    "tests/test_brief_slice3_wireins.py",
+    "tests/test_brief_contracts.py",
+    "tests/test_brief_satellite_field_mapping.py",
+    "tests/test_satellite_integration.py",
+    "tests/test_brief_golden_fixtures.py",
+    "tests/fixtures/brief_golden/climate_risk.json",
     "scripts/brief_field_coverage_baseline.json"
   ],
   "pre_impl": {
-    "existing_data": "All surfaced values already exist: proximity_m is measured by get_unique_overlays via PostGIS ST_Distance for covered-but-not-intersecting layers; fetch_contaminated_land already returns the nearest site with its measured distance; fetch_mine_subsidence returns the district name; fetch_anef_zone returns the numeric level; the two-phase yield ledger shipped in PR 563 so the yield work is inputs provenance and the missing-control message only.",
-    "assumption_mismatch": "Two of my own Slice-0 guards fired on this slice's first draft: attaching an informational reason to a legitimately-empty AUTHORITATIVE field is failure evidence per the DataField contract and got coerced to NOT_AVAILABLE (fixed by keeping legit-empty reason-free), and the all-failed assembly walk exposed that the ANEF path claimed a checked no-contour answer even when both lookups had errored (now NOT_AVAILABLE when either check failed).",
-    "new_vs_existing": "flood joined the existing PROXIMITY_LAYERS frozenset so its distance is measured by the same covered-not-hit ST_Distance query \u2014 no new query shape and never an estimate. The residual WO-2 conflation (mine/contaminated/drinking rendering False at AUTHORITATIVE when the fetch FAILED, because the services return None for both no-hit and the callers dropped the failure flag) is fixed with the established _unwrap_or_default flag pattern while wiring the detail fields."
+    "existing_data": "Every wired value already exists: StrataHub returns registration_date alongside the lot count the brief already fetches; bushfire_prescreen emits the RFS referral and CDC pathway keys under compliance; _build_terrain_interpretation existed unused in the terrain service; query_narclim_summary emits delta_2050/2090 keys; the nearby-DA rows already carry cost_of_development in the stream (proved live: Belmore row at 1,824,903 dollars) and only the display was missing.",
+    "assumption_mismatch": "Trace-before-fix caught that bushfire cross_overlays is emitted as a LIST of type-keyed dicts while the Slice-0 contract typed it as a dict \u2014 validation would have raised on every bushfire-prone lot with overlays and killed the whole stream; four old tests had encoded the wrong dict shape (self-confirming mocks) and were corrected to the real service shape.",
+    "new_vs_existing": "No new sources: terrain interpretation is computed inside the existing terrain service run (fail-safe so a narrative failure never blanks the metrics); the NARCLIM summary rides on the existing climate fetch with three distinct states (deltas / no grid coverage / lookup failed); the climate golden fixture is now captured through the brief's actual fetch seam instead of the bare to_dict so the contract check exercises what the brief really sees."
   },
   "functions": [
     {
-      "name": "_build_environmental",
-      "file_line": "services/intelligence_brief.py:2651",
-      "input": "controls, overlay data with proximity_m, the raw mine/contaminated/drinking dicts plus their fetch-failure flags",
-      "output": "EnvironmentalConstraints with nearest_features, contaminated_detail, mine_subsidence_district, anef_level populated three-state",
-      "if_none": "a failed mine/contaminated/drinking fetch renders NOT_AVAILABLE with a reason, never a confident False; genuinely-outside stays False at AUTHORITATIVE"
+      "name": "_fetch_climate_risk",
+      "file_line": "services/intelligence_brief.py:1996",
+      "input": "coordinates for the per-hazard climate scores plus the NARCLIM projection summary",
+      "output": "the climate dict with a narclim key \u2014 a populated summary, an empty dict for no grid coverage, or None when the lookup failed",
+      "if_none": "a failed projection lookup becomes an honest manifest gap on the card, never fabricated projections or a silent absence"
     },
     {
-      "name": "_anef_fields",
-      "file_line": "services/intelligence_brief.py:2728",
-      "input": "the covered overlay value or the two live ANEF lookups, tracking whether each lookup actually ran",
-      "output": "a display string field and a numeric level field from one lookup pass",
-      "if_none": "no-contour is only claimed when both checks genuinely ran; a failed lookup returns NOT_AVAILABLE for both fields"
+      "name": "_build_climate_disclosure",
+      "file_line": "services/intelligence_brief.py:2137",
+      "input": "the climate dict including the narclim summary and the uhi/arr/firms raws",
+      "output": "ClimateDisclosureProfile with projected_findings rows each carrying model, scenario and timeframe",
+      "if_none": "non-numeric delta values are skipped rather than rendered; missing narclim adds an UnavailableSource entry naming which state occurred"
     },
     {
-      "name": "_parse_anef_number",
-      "file_line": "services/intelligence_brief.py:2718",
-      "input": "the raw ANEF value which may be an int, a float, a numeric string or a range like 20-25",
-      "output": "the leading number as float, or None when no clean number leads the value",
-      "if_none": "None means no numeric contour is claimed \u2014 never a guessed midpoint"
+      "name": "_build_bushfire_detail",
+      "file_line": "services/intelligence_brief.py:2056",
+      "input": "the raw bushfire prescreen envelope with compliance.cross_overlays as the list the service actually emits",
+      "output": "BushfireDetail with BAL band, RFS referral flag and triggers, CDC pathway flag and the overlay list",
+      "if_none": "a null compliance block leaves the pathway fields None and the card hides them (bushfire-prone-only detail)"
+    },
+    {
+      "name": "_fetch_strata",
+      "file_line": "services/intelligence_brief.py:1691",
+      "input": "address and coordinates; cadastre decides strata, StrataHub enriches",
+      "output": "the strata dict now also carrying registration_date beside lot_total and dwelling_type",
+      "if_none": "a StrataHub failure never fails the brief \u2014 the supplementary fields stay absent and classify_strata falls back exactly as before; routing is untouched by the new fields (pinned by test)"
     }
   ],
   "values": [
     {
-      "value": "proximity_m distances (metres) per layer type",
-      "read_at": "scripts/generate_conveyancing_report.py:1462 PROXIMITY_LAYERS covered-not-hit ST_Distance query",
-      "if_missing": "non-numeric values are dropped in _build_environmental and an empty map is the legit-empty state \u2014 a distance is never estimated or fabricated"
+      "value": "narclim delta keys ({prefix}_delta_2050/2090) from query_narclim_summary",
+      "read_at": "services/intelligence_brief.py _build_climate_disclosure NARCLIM mapping",
+      "if_missing": "absent or non-numeric keys produce no ProjectedFinding rows and the manifest records the honest gap state"
     }
   ],
-  "queries": [
-    {
-      "purpose": "nearest mapped feature distances for covered layers not intersecting the lot, now including flood",
-      "file_line": "scripts/generate_conveyancing_report.py:1462",
-      "where_clause": "WHERE layer_type IN (covered-not-hit set) AND lga_name = %s GROUP BY layer_type \u2014 parameterised, read-only"
-    }
-  ],
+  "queries": "N/A \u2014 no new database queries in this slice; all wiring is over existing fetches",
   "break_it": [
     {
-      "scenario": "The mine subsidence lookup times out on a lot that IS in a proclaimed district",
-      "what_happens": "Previously the card said No at AUTHORITATIVE (a confident wrong answer); now the failure flag renders NOT_AVAILABLE with a retry reason for both the boolean and the district name",
+      "scenario": "A bushfire-prone lot with flood and heritage cross-overlays streams its brief",
+      "what_happens": "The old dict-typed contract raised ValidationError inside assembly and the whole stream died with an error event; the list-typed contract parses the real shape and the card names the intersecting layers",
       "mitigated": true,
-      "how": "_unwrap_or_default failure flags threaded into _build_environmental; test_mine_fetch_failure_is_not_available_never_false",
-      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k mine_fetch_failure -q"
+      "how": "cross_overlays retyped to the emitted list shape; test_prone_lot_with_overlay_list_does_not_kill_the_stream uses the exact service shape",
+      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k prone -q"
     },
     {
-      "scenario": "Both ANEF lookups error on a property that actually sits under a flight path",
-      "what_happens": "Previously the card claimed No published ANEF contour at this property off two failed checks; now either lookup failing renders NOT_AVAILABLE and the no-contour claim needs both checks to have genuinely run",
+      "scenario": "The NARCLIM dataset is not deployed on the runtime (the current state)",
+      "what_happens": "The card shows projected findings absent WITH a manifest entry saying the projection lookup failed or data is not deployed \u2014 confirmed on the live smoke \u2014 never a fabricated projection and never a silent nothing",
       "mitigated": true,
-      "how": "zone_failed/regional_failed tracking in _anef_fields; test_anef_lookup_failures_are_not_available_not_no_contour",
-      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k anef_lookup -q"
+      "how": "three-state narclim handling (populated / empty coverage / None failed); test_narclim_lookup_failure_is_distinct_from_no_coverage",
+      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k narclim -q"
     },
     {
-      "scenario": "A junk non-numeric proximity value arrives from the overlay layer for a nearest feature distance",
-      "what_happens": "It is dropped in the builder rather than rendered as a distance \u2014 the No row shows plain No instead of a nonsense measurement",
+      "scenario": "NARCLIM emits a junk non-numeric delta for one variable",
+      "what_happens": "That row is skipped; the remaining numeric deltas still render with model and timeframe attached",
       "mitigated": true,
-      "how": "isinstance numeric filter over proximity_m in _build_environmental; test_junk_proximity_value_is_dropped_not_rendered_as_distance",
-      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k junk -q"
+      "how": "isinstance numeric guard in the projection mapping; test_narclim_junk_delta_is_skipped_not_rendered",
+      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k junk -q"
     },
     {
-      "scenario": "An informational reason is attached to a legitimately-empty AUTHORITATIVE field (no nearby features to measure)",
-      "what_happens": "The Slice-0 DataField validator reads a reason on a null value as failure evidence and coerces it to NOT_AVAILABLE, which would surface a false gap line \u2014 legit-empty fields now carry no reason and the fixture test pins it",
+      "scenario": "A future edit makes the StrataHub supplementary fields influence brief-type routing",
+      "what_happens": "classify_strata output must be identical with and without dwelling_type/registration_date present \u2014 the pin test fails any such change",
       "mitigated": true,
-      "how": "reason only set on genuine failure for nearest_features and contaminated_detail; test_no_proximity_is_legit_empty_not_failure",
-      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k legit_empty -q"
+      "how": "test_supplementary_fields_never_change_routing compares routing across both shapes",
+      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k routing -q"
     },
     {
-      "scenario": "The LEP maps neither an FSR nor a height control (Bowral, Wingecarribee LEP 2010) so the envelope cannot compute",
-      "what_happens": "The yield card previously rendered nearly empty with no explanation; it now names the exact missing controls, the instrument, and that the DCP which sets the built form is not onboarded \u2014 composed entirely from data already in the stream",
+      "scenario": "The terrain narrative builder throws on an unusual metrics combination",
+      "what_happens": "run_terrain_analysis catches it and returns the metrics without an interpretation \u2014 the terrain card still renders slope/aspect/drainage, only the narrative block is absent",
       "mitigated": true,
-      "how": "EnvelopeGap composed in buildYieldLedgerContext from the null lep_fsr/lep_height_m plus zone_epi and the dcp_controls state; confirmed on the live Bowral smoke run",
-      "repro": "run the brief for 38 Park Road Bowral and open the Development Yield card"
+      "how": "fail-safe try/except around _build_terrain_interpretation inside run_terrain_analysis",
+      "repro": "python -m pytest tests/test_brief_slice3_wireins.py -k interpretation -q"
     }
   ],
   "post_merge": {
-    "db_reset": "none \u2014 the proximity query is read-only and parameterised; flood only joins the existing IN-list",
-    "secrets": "none touched",
-    "other_repo": "none \u2014 new environmental fields and card props pass through the Trigger.dev relay transparently",
-    "manual_verify": "after Railway deploys from main, run the brief for 38 Park Road Bowral (named-missing-control ledger + flood 45 m distance) and 14 Stanley St Concord (full computed ledger with inputs and sources)"
+    "db_reset": "none \u2014 no schema or data changes",
+    "secrets": "none touched; env-gated layers (GOOGLE_MAPS_API_KEY, NASA_FIRMS_MAP_KEY) stay gated and render as not-configured",
+    "other_repo": "none \u2014 the terrain interpretation sibling and new model fields pass through the Trigger.dev relay transparently",
+    "manual_verify": "after Railway deploys, run the brief for 5/1 Treacy St Hurstville (strata card shows 77 lots, apartment, registered 2019-09-25) and any address with satellite on (terrain card shows the findings narratives \u2014 needs the Railway runtime where rasterio exists); if NARCLIM data is added to the image later the projected block lights up with no code change"
   }
 }

@@ -102,7 +102,7 @@ def test_bushfire_contract_parses_real_shaped_output():
             "estimated_bal_band": "BAL-29",
             "designation_guideline": "Forest",
             "fire_signal": "elevated",
-            "compliance": {"cross_overlays": {"flood": False}, "extra": 1},
+            "compliance": {"cross_overlays": [{"type": "flood", "value": "Flood planning area"}], "extra": 1},
             "extra_service_key": "ignored",
         },
     }
@@ -111,7 +111,7 @@ def test_bushfire_contract_parses_real_shaped_output():
     assert bd.is_bushfire_prone is True
     assert bd.category == "Vegetation Category 1"
     assert bd.bal_estimate == "BAL-29"
-    assert bd.cross_overlays == {"flood": False}
+    assert bd.cross_overlays == [{"type": "flood", "value": "Flood planning area"}]
     assert bd.confidence == "authoritative"
 
 
