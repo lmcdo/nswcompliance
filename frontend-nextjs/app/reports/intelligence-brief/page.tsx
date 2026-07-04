@@ -407,6 +407,29 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // Bushfire cross-overlays — a list of {type,...} dicts; name the layers
+          // rather than dumping objects.
+          if (key === 'cross_overlays' && Array.isArray(df.value) && df.value.length > 0) {
+            const names = (df.value as Array<{ type?: string }>)
+              .map((o) => formatKey(String(o?.type ?? ''))).filter(Boolean);
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  Also intersects: {names.join(', ')}
+                </dd>
+              </div>
+            );
+          }
+          // Nearby DAs — application rows with cost of development, not "5 items".
+          if (key === 'nearby_das' && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><NearbyDAList rows={df.value as NearbyDARow[]} /></dd>
+              </div>
+            );
+          }
           // Valuation history — a year/value series, rendered as a trend with
           // per-year change, not "5 items".
           if (key === 'val_history' && Array.isArray(df.value)) {
@@ -618,6 +641,16 @@ const FIELD_HINTS: Record<string, string> = {
     'Sites on the EPA contaminated-land register within 500 m, with the nearest site’s details and measured distance.',
   mine_subsidence_district:
     'The proclaimed mine subsidence district this lot falls within.',
+  lot_total: 'Number of lots in the strata scheme (NSW Strata Hub).',
+  dwelling_type: 'Building form classified from the strata scheme’s lot count (NSW Strata Hub).',
+  registration_date: 'Date the strata plan was registered (NSW Strata Hub).',
+  bal_estimate: 'Indicative Bushfire Attack Level band from the RFS mapping category — a formal BAL assessment is a separate report.',
+  rfs_referral_required: 'Whether a development application here triggers a referral to the NSW Rural Fire Service.',
+  rfs_referral_triggers: 'Which conditions trigger the RFS referral.',
+  cdc_pathway_available: 'Whether the complying-development (CDC) pathway remains open under the bushfire provisions.',
+  cross_overlays: 'Other mapped constraint layers that intersect this lot alongside the bushfire mapping.',
+  cost: 'Estimated cost of development stated on the application.',
+  nearby_das_cost: 'Estimated cost of development stated on the application.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -651,7 +684,13 @@ function formatDistance(m: number): string {
 // Detail fields that only carry information when their host boolean is Yes —
 // a null here is covered by the boolean row, so render nothing instead of a
 // noise "None" row.
-const HIDE_WHEN_NULL_KEYS = new Set(['contaminated_detail', 'mine_subsidence_district', 'anef_level']);
+const HIDE_WHEN_NULL_KEYS = new Set([
+  'contaminated_detail', 'mine_subsidence_district', 'anef_level',
+  // StrataHub supplementary detail — only meaningful on strata lots.
+  'lot_total', 'dwelling_type', 'registration_date',
+  // Bushfire pathway detail — only meaningful on bushfire-prone lots.
+  'rfs_referral_required', 'rfs_referral_triggers', 'cdc_pathway_available', 'cross_overlays',
+]);
 
 // LEP principal development standards that legitimately have no mapped layer on
 // some lots (e.g. Wingecarribee maps no FSR for parts of Bowral). A checked
@@ -789,6 +828,65 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
         );
       })}
     </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Nearby DAs — application rows (type, status, distance, stated cost), not a
+// bare "5 items". Cost is the applicant's stated cost of development.
+// ---------------------------------------------------------------------------
+
+interface NearbyDARow {
+  number?: string; address?: string | null; distance_m?: number | null;
+  status?: string | null; dev_type?: string | null; lodgement_date?: string | null;
+  cost?: number | null;
+}
+
+const NEARBY_DA_PREVIEW_COUNT = 6;
+
+function nearbyDARow(d: NearbyDARow, i: number) {
+  return (
+    <tr key={d.number ?? i} className="border-t border-slate-100 align-top">
+      <td className="py-1 pr-3 text-slate-700">
+        {d.dev_type ? formatKey(String(d.dev_type)) : (d.number ?? '—')}
+        {d.address ? <span className="block text-[11px] text-slate-400">{d.address}</span> : null}
+      </td>
+      <td className="py-1 pr-3 text-slate-500">{d.status ?? '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-500">{d.distance_m != null ? `${Math.round(d.distance_m)} m` : '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-700">{d.cost != null ? `$${Math.round(d.cost).toLocaleString()}` : '—'}</td>
+      <td className="py-1 tabular-nums text-slate-500">{d.lodgement_date ?? '—'}</td>
+    </tr>
+  );
+}
+
+function NearbyDAList({ rows }: { rows: NearbyDARow[] }) {
+  if (!rows || rows.length === 0) {
+    return <span className="text-sm text-slate-500">No development applications within 500 m in the last 12 months.</span>;
+  }
+  const sorted = [...rows].sort((a, b) => String(b.lodgement_date ?? '').localeCompare(String(a.lodgement_date ?? '')));
+  const preview = sorted.slice(0, NEARBY_DA_PREVIEW_COUNT);
+  const rest = sorted.slice(NEARBY_DA_PREVIEW_COUNT);
+  return (
+    <div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-xs text-slate-500 text-left">
+            <th className="font-medium pb-1 pr-3">Application</th>
+            <th className="font-medium pb-1 pr-3">Status</th>
+            <th className="font-medium pb-1 pr-3">Distance</th>
+            <th className="font-medium pb-1 pr-3">Stated cost</th>
+            <th className="font-medium pb-1">Lodged</th>
+          </tr>
+        </thead>
+        <tbody>{preview.map(nearbyDARow)}</tbody>
+      </table>
+      {rest.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-slate-500">Show {rest.length} more applications</summary>
+          <table className="w-full text-[13px] mt-1"><tbody>{rest.map(nearbyDARow)}</tbody></table>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -1105,7 +1203,53 @@ function ClimateCard({ data }: { data: Record<string, unknown> }) {
             ))}
           </dl>
         )}
+        <ProjectedFindings rows={(data.projected_findings as ProjectedRow[] | undefined) ?? []} />
       </div>
+    </div>
+  );
+}
+
+// NARCliM 2.0 projections — model outputs, always shown with their model,
+// scenario and timeframe. Factual changes only, no advice.
+interface ProjectedRow { hazard?: string; value?: number | null; model?: string | null; scenario?: string | null; timeframe?: string | null; }
+
+const PROJECTED_LABELS: Record<string, { label: string; unit: string }> = {
+  extreme_heat_days: { label: 'Days ≥35°C per year', unit: 'days' },
+  mean_temperature: { label: 'Mean temperature', unit: '°C' },
+  daily_precipitation: { label: 'Mean daily rainfall', unit: 'mm/day' },
+};
+
+function ProjectedFindings({ rows }: { rows: ProjectedRow[] }) {
+  const usable = (rows || []).filter((r) => r && r.value != null && r.hazard);
+  if (usable.length === 0) return null;
+  const byHazard = new Map<string, ProjectedRow[]>();
+  for (const r of usable) {
+    const k = String(r.hazard);
+    byHazard.set(k, [...(byHazard.get(k) ?? []), r]);
+  }
+  const model = usable[0].model ?? 'NARCliM 2.0';
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="text-xs font-medium text-slate-500 mb-1.5">
+        Projected change ({model})
+        <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+          Climate-model projections against the 2015–2024 baseline — modelled scenarios, not observations.
+        </span>
+      </div>
+      <dl className="space-y-1.5 text-sm">
+        {[...byHazard.entries()].map(([hazard, hz]) => {
+          const meta = PROJECTED_LABELS[hazard] ?? { label: formatKey(hazard), unit: '' };
+          const parts = hz
+            .sort((a, b) => String(a.timeframe).localeCompare(String(b.timeframe)))
+            .map((r) => `${r.value! > 0 ? '+' : ''}${r.value!.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${meta.unit} by ${r.timeframe}`);
+          return (
+            <div key={hazard} className="flex flex-col">
+              <dt className="text-xs text-slate-500">{meta.label}</dt>
+              <dd className="text-slate-900 tabular-nums">{parts.join(' · ')}</dd>
+            </div>
+          );
+        })}
+      </dl>
     </div>
   );
 }
@@ -1535,7 +1679,7 @@ function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
 type GfState =
   | { kind: 'loading' }
   | { kind: 'ineligible'; reason: string; evidence?: string }
-  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number }
+  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number; structures?: DetectedStructureRow[] }
   | { kind: 'error'; message: string };
 
 function GrannyFlatCard({ address, active }: { address?: string; active: boolean }) {
@@ -1560,6 +1704,9 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
               seppEligible: !!o.sepp_eligible,
               ineligibleReason: (o.sepp_ineligible_reason as string) || undefined,
               lotAreaM2: (o.lot_area_m2 as number) || undefined,
+              structures: Array.isArray(o.detected_structures)
+                ? (o.detected_structures as DetectedStructureRow[])
+                : undefined,
             });
             return;
           }
@@ -1619,10 +1766,26 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
           ? <>This lot <span className="font-medium">meets</span> the SEPP (Housing) 2021 secondary-dwelling lot standard{state.lotAreaM2 ? ` (lot ${Math.round(state.lotAreaM2)} m²)` : ''} — a granny flat is a permissible form, subject to the detailed controls.</>
           : (state.ineligibleReason || 'This lot does not meet the SEPP secondary-dwelling lot standard.')}
       </p>
+      {/* Detected structures — display only what the detection service
+          returned (AI-classified building type + measured footprint area). */}
+      {state.structures && state.structures.length > 0 && (
+        <ul className="mt-2 text-xs text-slate-500 space-y-0.5">
+          {state.structures.map((st, i) => (
+            <li key={i} className="tabular-nums">
+              {formatKey(String(st.matched_prompt ?? 'structure'))}
+              {st.is_main_dwelling ? ' (main dwelling)' : ''}
+              {st.area_m2 != null ? ` — ~${Math.round(st.area_m2)} m² footprint` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="mt-2 text-xs text-slate-400">Confirm the detected building count in the Granny Flat tool before relying on the figure.</p>
     </Shell>
   );
 }
+
+// Detected structure row from the granny-flat detection service.
+interface DetectedStructureRow { matched_prompt?: string; area_m2?: number | null; is_main_dwelling?: boolean; }
 
 // ---------------------------------------------------------------------------
 // Terrain — slope/aspect/drainage as a compass + plain-English summary, not a
@@ -1668,7 +1831,16 @@ function AspectCompass({ deg }: { deg?: number | null }) {
   );
 }
 
-function TerrainCard({ data }: { data: TerrainData }) {
+interface TerrainFindingRow { title?: string; narrative?: string; severity?: string; classification?: string; }
+interface TerrainInterpretationData { findings?: TerrainFindingRow[]; disclaimer?: string; }
+
+const TERRAIN_SEVERITY_STYLES: Record<string, string> = {
+  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+  red: 'bg-red-50 text-red-700 ring-red-200',
+};
+
+function TerrainCard({ data, interpretation }: { data: TerrainData; interpretation?: TerrainInterpretationData | null }) {
   const parts: string[] = [];
   if (data.slope_mean_deg != null) {
     const w = slopeWord(data.slope_mean_deg).toLowerCase();
@@ -1718,6 +1890,28 @@ function TerrainCard({ data }: { data: TerrainData }) {
           </dl>
         </div>
       </div>
+      {/* Structured findings computed by the terrain service (gradient,
+          landform, solar access) — each a factual reading with severity. */}
+      {interpretation?.findings && interpretation.findings.length > 0 && (
+        <div className="px-5 pb-4">
+          <div className="text-xs font-medium text-slate-500 mb-1.5">What the terrain readings mean</div>
+          <ul className="space-y-1.5">
+            {interpretation.findings.map((f, i) => (
+              <li key={f.title ?? i} className="text-sm text-slate-700 leading-snug">
+                {f.severity && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 mr-1.5 text-[10px] font-medium ring-1 align-middle ${TERRAIN_SEVERITY_STYLES[f.severity] ?? 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
+                    {f.title ?? f.severity}
+                  </span>
+                )}
+                {f.narrative}
+              </li>
+            ))}
+          </ul>
+          {interpretation.disclaimer && (
+            <p className="text-[11px] text-slate-400 mt-2 leading-snug">{interpretation.disclaimer}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2526,7 +2720,8 @@ function IntelligenceBriefInner() {
                   ? ((raw.value as TerrainData) ?? (raw as unknown as TerrainData))
                   : null);
                 if (t && typeof t === 'object' && t.slope_mean_deg != null) {
-                  card = <TerrainCard data={t} />;
+                  const interp = (event.data as unknown as { interpretation?: TerrainInterpretationData | null }).interpretation ?? null;
+                  card = <TerrainCard data={t} interpretation={interp} />;
                 }
               }
               if (section === 'satellite.climate_disclosure') {

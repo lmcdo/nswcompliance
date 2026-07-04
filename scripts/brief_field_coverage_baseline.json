@@ -16,10 +16,13 @@
   "BushfireDetail": [
     "bal_estimate",
     "category",
+    "cdc_pathway_available",
     "confidence",
     "cross_overlays",
     "fire_signal",
     "is_bushfire_prone",
+    "rfs_referral_required",
+    "rfs_referral_triggers",
     "vegetation_type"
   ],
   "BushfireServiceOutput": [
@@ -62,6 +65,7 @@
     "hazards",
     "interaction_bonus",
     "methodology_version",
+    "narclim",
     "score"
   ],
   "ComparableAnalysis": [
@@ -465,9 +469,12 @@
     "statutory_data_age_days"
   ],
   "StrataInfo": [
+    "dwelling_type",
     "is_strata",
     "lot_area_m2",
+    "lot_total",
     "plan_label",
+    "registration_date",
     "source",
     "strata_plan",
     "strata_type"
@@ -479,6 +486,7 @@
     "parent_has_strata",
     "plan_label",
     "plan_type",
+    "registration_date",
     "source",
     "strata_plan"
   ],
@@ -506,6 +514,9 @@
     "year"
   ],
   "_BushfireCompliance": [
-    "cross_overlays"
+    "cdc_pathway_available",
+    "cross_overlays",
+    "rfs_referral_required",
+    "rfs_referral_triggers"
   ]
 }

@@ -372,6 +372,11 @@ class StrataInfo(BaseModel):
     plan_label: Optional[str] = None
     source: Optional[str] = None
     lot_area_m2: Optional[float] = None
+    # StrataHub supplementary detail (display only — never drives the
+    # development/renovation brief-type routing, which classify_strata owns).
+    lot_total: Optional[int] = None
+    dwelling_type: Optional[str] = None
+    registration_date: Optional[str] = None
 
 
 class NearbyDA(BaseModel):
@@ -493,13 +498,21 @@ class BushfireDetail(BaseModel):
     bal_estimate: Optional[str] = None
     vegetation_type: Optional[str] = None  # RFS designation guideline
     fire_signal: Optional[str] = None  # none/low/moderate/elevated/unavailable
-    cross_overlays: Optional[dict] = None  # flood, heritage, zone intersections
+    cross_overlays: Optional[list[dict]] = None  # flood, heritage, zone intersections
+    rfs_referral_required: Optional[bool] = None
+    rfs_referral_triggers: Optional[list[str]] = None
+    cdc_pathway_available: Optional[bool] = None
     confidence: Optional[str] = None
 
 
 class _BushfireCompliance(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    cross_overlays: Optional[dict] = None
+    # The service emits a LIST of {type, ...} overlay dicts (or null) — typing
+    # this as dict crashed validation on every bushfire-prone lot with overlays.
+    cross_overlays: Optional[list[dict]] = None
+    rfs_referral_required: Optional[bool] = None
+    rfs_referral_triggers: Optional[list[str]] = None
+    cdc_pathway_available: Optional[bool] = None
 
 
 class BushfireServiceOutput(BaseModel):
@@ -608,6 +621,7 @@ class StrataServiceOutput(StrataCoreOutput):
     # StrataHub lookup succeeded (best-effort, see _fetch_strata).
     lot_total: Optional[int] = None
     dwelling_type: Optional[str] = None
+    registration_date: Optional[str] = None
 
 
 class ClimateHazardOutput(BaseModel):
@@ -641,6 +655,9 @@ class ClimateRiskServiceOutput(BaseModel):
     methodology_version: Optional[str] = None
     data_date: Optional[str] = None
     disclaimer: Optional[str] = None
+    # NARCliM 2.0 projection summary attached by _fetch_climate_risk:
+    # {} = queried, no grid coverage here; None/absent = lookup failed/not run.
+    narclim: Optional[dict] = None
 
 
 class HousingSeppFormOutput(BaseModel):
@@ -1690,6 +1707,7 @@ def _fetch_strata(address: str, lat: float, lng: float) -> dict:
             if sh is not None and sh.lot_total:
                 result["lot_total"] = sh.lot_total
                 result["dwelling_type"] = sh.dwelling_type
+                result["registration_date"] = sh.registration_date
         except Exception as e:  # best-effort enrichment only
             logger.warning("StrataHub lot-count enrichment failed: %s", e)
     return result
@@ -1976,9 +1994,22 @@ def _fetch_flood(
 
 
 def _fetch_climate_risk(lat: float, lng: float) -> dict:
-    """Per-hazard climate scores (shim feeds into ClimateDisclosureProfile)."""
+    """Per-hazard climate scores (shim feeds into ClimateDisclosureProfile).
+
+    Also attaches the NARCliM 2.0 projection summary for projected_findings:
+    a dict of {prefix}_delta_2050/2090 changes ({} = queried, no grid coverage;
+    None = the projection lookup failed — the card shows an honest gap, never
+    fabricated projections).
+    """
     result = _climate_risk_score_fn(lat, lng)
-    return result.to_dict()
+    out = result.to_dict()
+    try:
+        from services.climate_risk_raster import query_narclim_summary
+        out["narclim"] = query_narclim_summary(lat, lng)
+    except Exception as e:  # projection data missing must not blank the hazard card
+        logger.warning("NARCLIM summary lookup failed: %s", e)
+        out["narclim"] = None
+    return out
 
 
 def _fetch_granny_flat_detect(
@@ -2039,6 +2070,9 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
         vegetation_type=out.designation_guideline,
         fire_signal=out.fire_signal,
         cross_overlays=(out.compliance.cross_overlays if out.compliance else None),
+        rfs_referral_required=(out.compliance.rfs_referral_required if out.compliance else None),
+        rfs_referral_triggers=(out.compliance.rfs_referral_triggers if out.compliance else None),
+        cdc_pathway_available=(out.compliance.cdc_pathway_available if out.compliance else None),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -2184,6 +2218,43 @@ def _build_climate_disclosure(
         sources_queried += 1
         sources_successful += 1
 
+    # NARCliM 2.0 projections -> Layer-3 projected findings. Three states:
+    # populated dict = grid coverage with deltas; {} = queried, no coverage at
+    # this location; None = the lookup failed. Values are model outputs — the
+    # scenario/timeframe ride along so a number is never presented bare.
+    projected: list[ProjectedFinding] = []
+    narclim = climate_raw.get("narclim") if climate_raw else None
+    _NARCLIM_HAZARDS = {
+        "hot_days": ("extreme_heat_days", "additional days ≥35°C per year"),
+        "temp": ("mean_temperature", "°C change in mean temperature"),
+        "precip": ("daily_precipitation", "mm/day change in mean precipitation"),
+    }
+    if climate_raw is not None:
+        sources_queried += 1
+        if narclim is None:
+            unavailable.append(UnavailableSource(
+                source="narclim_projections",
+                reason="NARCliM projection lookup failed or data not deployed",
+            ))
+        elif not narclim:
+            unavailable.append(UnavailableSource(
+                source="narclim_projections",
+                reason="No NARCliM grid coverage at this location",
+            ))
+        else:
+            sources_successful += 1
+            for prefix, (hazard, _unit_note) in _NARCLIM_HAZARDS.items():
+                for horizon in ("2050", "2090"):
+                    val = narclim.get(f"{prefix}_delta_{horizon}")
+                    if isinstance(val, (int, float)):
+                        projected.append(ProjectedFinding(
+                            hazard=hazard,
+                            value=float(val),  # qa-ignore: guarded by the isinstance numeric check above
+                            model="NARCliM 2.0 (AdaptNSW)",
+                            scenario="worst available scenario vs 2015–2024 baseline",
+                            timeframe=horizon,
+                        ))
+
     coverage = (sources_successful / sources_queried * 100) if sources_queried > 0 else 0.0
 
     return ClimateDisclosureProfile(
@@ -2198,6 +2269,7 @@ def _build_climate_disclosure(
         ),
         per_hazard_detail=hazards_raw,
         empirical_findings=empirical,
+        projected_findings=projected,
     )
 
 
@@ -3389,6 +3461,9 @@ def _generate_brief_sse(
             plan_label=strata_raw.get("plan_label"),
             source=strata_raw.get("source"),
             lot_area_m2=lot_area_m2,
+            lot_total=strata_raw.get("lot_total"),
+            dwelling_type=strata_raw.get("dwelling_type"),
+            registration_date=strata_raw.get("registration_date"),
         )
         is_apartment = strata_type == StrataType.APARTMENT or strata_type == StrataType.AMBIGUOUS
 
@@ -3770,6 +3845,9 @@ def _generate_brief_sse(
                 terrain_reason = terrain_df.reason or "Terrain analysis did not complete"
             else:
                 terrain_reason = "Terrain analysis not requested"
+            # Structured interpretation (findings with narratives) computed by
+            # the terrain service itself — passthrough, only when it is a dict.
+            terrain_interp = terrain_raw.get("interpretation") if isinstance(terrain_raw, dict) else None
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "satellite.terrain",
@@ -3779,6 +3857,7 @@ def _generate_brief_sse(
                     source="terrain_analysis", as_at=today,
                     reason=terrain_reason,
                 ).model_dump(),
+                "interpretation": terrain_interp if isinstance(terrain_interp, dict) else None,
                 "progress": int(sections_yielded / total_sections * 100),
             })
 

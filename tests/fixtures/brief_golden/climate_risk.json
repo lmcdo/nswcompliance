@@ -84,6 +84,7 @@
     "interaction_bonus": 0.0,
     "methodology_version": "1.1",
     "data_date": "2026-05-18",
-    "disclaimer": "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data and NARCliM 2.0 climate projections. This is not financial, insurance, or property advice. Does not account for property-specific construction, mitigation works, or individual vulnerability. Not a guarantee of future conditions."
+    "disclaimer": "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data and NARCliM 2.0 climate projections. This is not financial, insurance, or property advice. Does not account for property-specific construction, mitigation works, or individual vulnerability. Not a guarantee of future conditions.",
+    "narclim": null
   }
 }
