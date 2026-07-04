@@ -20,7 +20,10 @@ interface ConstraintStep {
   note: string;
 }
 
+interface SeppOverrideRow { dev_type?: string; control?: string; lep_value?: number; sepp_value?: number; source_clause?: string | null; }
+
 export interface ConstraintArithmeticResult {
+  sepp_overrides_applied?: SeppOverrideRow[];
   lot_area_m2: number;
   dev_type: string;
   lep_height_m: number | null;
@@ -428,12 +431,20 @@ export function ConstraintArithmeticCard({
          result.effective_height_m > result.lep_height_m && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
             SEPP override: height increased from {result.lep_height_m}m to {result.effective_height_m}m
+            {(() => {
+              const ov = (result.sepp_overrides_applied ?? []).find((o) => o.control === 'height' && o.source_clause);
+              return ov ? <> — cl {ov.source_clause}, SEPP (Housing) 2021</> : null;
+            })()}
           </div>
         )}
         {result.effective_fsr != null && result.lep_fsr != null &&
          result.effective_fsr > result.lep_fsr && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
             SEPP override: FSR increased from {result.lep_fsr}:1 to {result.effective_fsr}:1
+            {(() => {
+              const ov = (result.sepp_overrides_applied ?? []).find((o) => o.control === 'fsr' && o.source_clause);
+              return ov ? <> — cl {ov.source_clause}, SEPP (Housing) 2021</> : null;
+            })()}
           </div>
         )}
 

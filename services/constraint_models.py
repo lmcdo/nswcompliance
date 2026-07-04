@@ -60,6 +60,11 @@ class SEPPStandard(BaseModel):
     max_total_floor_area_m2: Optional[float] = None
     # All raw standards for dev types with non-standard fields
     additional_standards: Optional[dict[str, float]] = None
+    # Citations of the rows granting the height/FSR standards — carried so a
+    # SEPP-over-LEP override can cite the clause it rests on (no citation, no claim).
+    height_source_clause: Optional[str] = None
+    fsr_source_clause: Optional[str] = None
+    source_document: Optional[str] = None
 
 
 class SeppLepOverride(BaseModel):
