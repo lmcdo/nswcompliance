@@ -328,6 +328,8 @@
   ],
   "Neighbourhood": [
     "da_count",
+    "da_outcomes",
+    "da_refusal_stats",
     "nearby_das",
     "shadow"
   ],

@@ -407,6 +407,32 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
               </div>
             );
           }
+          // Determined DA outcomes — rows with recorded results, radius and
+          // period stated from the payload itself.
+          if (key === 'da_outcomes' && df.value && typeof df.value === 'object') {
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><DAOutcomesDisplay data={df.value as DAOutcomesPayload} /></dd>
+              </div>
+            );
+          }
+          // LGA determination counts — counts and rate with the period, nothing else.
+          if (key === 'da_refusal_stats' && df.value && typeof df.value === 'object') {
+            const r = df.value as RefusalStatsRow;
+            const granted: number | null = r.approved ?? null;
+            return (
+              <div key={key} className="flex flex-col sm:col-span-2">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  Of {r.total_determined?.toLocaleString()} applications determined in {formatKey(String(r.lga ?? 'this council').toLowerCase())} over the last {r.period_years} years:{' '}
+                  {granted?.toLocaleString()} granted development consent, {r.refused?.toLocaleString()} refused
+                  {r.deferred_commencement ? <>, {r.deferred_commencement.toLocaleString()} deferred commencement</> : null}
+                  {r.refusal_rate != null ? <> ({(r.refusal_rate * 100).toFixed(1)}% refused)</> : null}.
+                </dd>
+              </div>
+            );
+          }
           // Bushfire cross-overlays — a list of {type,...} dicts; name the layers
           // rather than dumping objects.
           if (key === 'cross_overlays' && Array.isArray(df.value) && df.value.length > 0) {
@@ -651,6 +677,10 @@ const FIELD_HINTS: Record<string, string> = {
   cross_overlays: 'Other mapped constraint layers that intersect this lot alongside the bushfire mapping.',
   cost: 'Estimated cost of development stated on the application.',
   nearby_das_cost: 'Estimated cost of development stated on the application.',
+  da_outcomes:
+    'Applications near this lot that reached a determination, with their recorded results (NSW planning application tracking).',
+  da_refusal_stats:
+    'Counts of determined applications across the council area and the share refused, for the stated period. The tracking data records outcomes mainly for applications lodged up to 2022.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -690,6 +720,8 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'lot_total', 'dwelling_type', 'registration_date',
   // Bushfire pathway detail — only meaningful on bushfire-prone lots.
   'rfs_referral_required', 'rfs_referral_triggers', 'cdc_pathway_available', 'cross_overlays',
+  // LGA determination stats — null means the layer holds none for this council.
+  'da_refusal_stats',
 ]);
 
 // LEP principal development standards that legitimately have no mapped layer on
@@ -828,6 +860,86 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
         );
       })}
     </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Determined DA outcomes — recorded results near the lot. Radius and period
+// come from the payload; counts only, no advice.
+// ---------------------------------------------------------------------------
+
+interface DAOutcomeRowFE {
+  planning_portal_number?: string; da_number?: string | null; status?: string;
+  outcome?: string | null; dev_type?: string | null; cost?: string | null;
+  address?: string; lodgement_date?: string | null; determined_date?: string | null;
+}
+interface DAOutcomesPayload { outcomes?: DAOutcomeRowFE[]; radius_m?: number; years_back?: number; }
+interface RefusalStatsRow {
+  lga?: string; period_years?: number; total_determined?: number;
+  approved?: number; refused?: number; deferred_commencement?: number; refusal_rate?: number | null;
+}
+
+const DA_OUTCOMES_PREVIEW_COUNT = 6;
+
+function daOutcomeRow(d: DAOutcomeRowFE, i: number) {
+  const costNum = d.cost != null && d.cost !== '' ? Number(d.cost) : null;
+  return (
+    <tr key={d.planning_portal_number ?? i} className="border-t border-slate-100 align-top">
+      <td className="py-1 pr-3 text-slate-700">
+        {d.dev_type ? formatKey(String(d.dev_type)) : (d.da_number ?? d.planning_portal_number ?? '—')}
+        {d.address ? <span className="block text-[11px] text-slate-400">{d.address}</span> : null}
+      </td>
+      <td className="py-1 pr-3">
+        {d.outcome
+          ? <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ring-1 ${d.outcome === 'Refused' ? 'bg-amber-50 text-amber-700 ring-amber-200' : 'bg-slate-50 text-slate-600 ring-slate-200'}`}>{d.outcome}</span>
+          : <span className="text-slate-400 text-xs">{d.status ?? '—'}</span>}
+      </td>
+      <td className="py-1 pr-3 tabular-nums text-slate-700">{costNum != null && Number.isFinite(costNum) ? `$${Math.round(costNum).toLocaleString()}` : '—'}</td>
+      <td className="py-1 tabular-nums text-slate-500">{d.determined_date ?? d.lodgement_date ?? '—'}</td>
+    </tr>
+  );
+}
+
+function DAOutcomesDisplay({ data }: { data: DAOutcomesPayload }) {
+  const rows = data.outcomes ?? [];
+  const radius = data.radius_m ?? 200;
+  const years = data.years_back ?? 8;
+  if (rows.length === 0) {
+    return (
+      <span className="text-sm text-slate-500">
+        No applications determined within {radius} m in the last {years} years are recorded on the tracking layer.
+      </span>
+    );
+  }
+  const sorted = [...rows].sort((a, b) => String(b.determined_date ?? b.lodgement_date ?? '').localeCompare(String(a.determined_date ?? a.lodgement_date ?? '')));
+  const preview = sorted.slice(0, DA_OUTCOMES_PREVIEW_COUNT);
+  const rest = sorted.slice(DA_OUTCOMES_PREVIEW_COUNT);
+  const refused = rows.filter((r) => r.outcome === 'Refused').length;
+  const determined = rows.filter((r) => r.outcome != null).length;
+  return (
+    <div>
+      <p className="text-sm text-slate-700 mb-1.5">
+        {rows.length.toLocaleString()} application{rows.length === 1 ? '' : 's'} within {radius} m in the last {years} years
+        {determined > 0 ? <> — {determined.toLocaleString()} with a recorded result ({refused.toLocaleString()} refused)</> : null}.
+      </p>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-xs text-slate-500 text-left">
+            <th className="font-medium pb-1 pr-3">Application</th>
+            <th className="font-medium pb-1 pr-3">Result</th>
+            <th className="font-medium pb-1 pr-3">Stated cost</th>
+            <th className="font-medium pb-1">Determined</th>
+          </tr>
+        </thead>
+        <tbody>{preview.map(daOutcomeRow)}</tbody>
+      </table>
+      {rest.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-slate-500">Show {rest.length} more applications</summary>
+          <table className="w-full text-[13px] mt-1"><tbody>{rest.map(daOutcomeRow)}</tbody></table>
+        </details>
+      )}
+    </div>
   );
 }
 

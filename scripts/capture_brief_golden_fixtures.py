@@ -184,6 +184,15 @@ def capture_env_overlays() -> None:
     })
 
 
+def capture_da_outcomes() -> None:
+    """Real DA tracking outcomes near Concord + LGA determination counts —
+    through the brief's fetch seam (post-fix; was a silent zero)."""
+    import services.intelligence_brief as ib
+
+    _write("da_outcomes", CONCORD, ib._fetch_da_outcomes(CONCORD["lng"], CONCORD["lat"]))
+    _write("da_refusal_stats", {"lga": "CANADA BAY"}, ib._fetch_refusal_stats("CANADA BAY"))
+
+
 CAPTURES = {
     "vg_comparables": capture_vg_comparables,
     "vg_sales": capture_vg_sales,
@@ -192,6 +201,7 @@ CAPTURES = {
     "lep_land_use": capture_lep_land_use,
     "climate": capture_climate,
     "env_overlays": capture_env_overlays,
+    "da_outcomes": capture_da_outcomes,
 }
 
 

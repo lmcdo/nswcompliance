@@ -111,7 +111,7 @@ def _parse_feature(attrs: dict) -> DAOutcome:
         status=attrs.get("STATUS") or "Unknown",
         outcome=attrs.get("ASSESMENT_RESULT"),  # Their typo, not ours
         determining_authority=attrs.get("DETERMINING_AUTHORITY"),
-        dev_type=attrs.get("DEVELOPMENT_TYPE"),
+        dev_type=attrs.get("TYPE_OF_DEVELOPMENT"),
         dwellings_constructed=_safe_int(attrs.get("DWELLINGS_TO_BE_CONSTRUCTED")),
         cost=str(attrs.get("COST_OF_DEVELOPMENT")) if attrs.get("COST_OF_DEVELOPMENT") is not None else None,
         address=attrs.get("PRIMARY_ADDRESS") or "",
@@ -127,9 +127,14 @@ def _parse_feature(attrs: dict) -> DAOutcome:
 # Public API
 # ---------------------------------------------------------------------------
 
+# Field names verified against the LIVE layer metadata (2026-07-04): the layer
+# calls the development-type column TYPE_OF_DEVELOPMENT; requesting the old
+# DEVELOPMENT_TYPE name made ArcGIS return "Failed to execute query" -> {} ->
+# a silent zero for every consumer (LODGEMENT_DATE is a string field; the
+# lexicographic date filter was never the problem).
 _OUT_FIELDS = (
     "OBJECTID,PLANNING_PORTAL_APP_NUMBER,DA_NUMBER,STATUS,"
-    "ASSESMENT_RESULT,DETERMINING_AUTHORITY,DEVELOPMENT_TYPE,"
+    "ASSESMENT_RESULT,DETERMINING_AUTHORITY,TYPE_OF_DEVELOPMENT,"
     "DWELLINGS_TO_BE_CONSTRUCTED,COST_OF_DEVELOPMENT,"
     "PRIMARY_ADDRESS,SUBURBNAME,X,Y,"
     "LODGEMENT_DATE,DETERMINED_DATE"
@@ -171,6 +176,8 @@ def query_da_outcomes_near(
     data = arcgis_get_with_retry(DA_TRACKING_URL, params)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
+    if "features" not in data:
+        raise RuntimeError("DA tracking query failed (transport or ArcGIS error)")
     features = data.get("features") or []
     results = []
     for f in features:
@@ -202,6 +209,8 @@ def query_da_by_pan(pan: str) -> Optional[DAOutcome]:
         "f": "json",
     }
     data = arcgis_get_with_retry(DA_TRACKING_URL, params)
+    if "features" not in data:
+        raise RuntimeError("DA tracking PAN lookup failed (transport or ArcGIS error)")
     features = data.get("features") or []
     if not features:
         return None
@@ -223,36 +232,36 @@ def get_refusal_rate(
     date_cutoff = f"{cutoff_year}0101"
 
     where_parts = [
-        f"LGA_NAME LIKE '%{lga}%'",
+        # LGA_NAME is stored uppercase ('CANADA BAY') — normalise both sides so
+        # a mixed-case council name can't silently match nothing.
+        f"UPPER(LGA_NAME) LIKE '%{lga.upper()}%'",
         f"LODGEMENT_DATE >= '{date_cutoff}'",
         "ASSESMENT_RESULT IS NOT NULL",
     ]
     if zone:
-        where_parts.append(f"ZONE_DESC LIKE '%{zone}%'")
+        # Verified live: the layer has NO zone column — a ZONE_DESC filter made
+        # ArcGIS error and the stats silently vanish. Refuse loudly instead.
+        raise ValueError("zone filtering is not supported: the DA tracking layer has no zone field")
     if dev_type:
-        where_parts.append(f"DEVELOPMENT_TYPE='{dev_type}'")
+        where_parts.append(f"TYPE_OF_DEVELOPMENT='{dev_type}'")
 
-    params = {
-        "where": " AND ".join(where_parts),
-        "groupByFieldsForStatistics": "ASSESMENT_RESULT",
-        "outStatistics": json.dumps([{
-            "statisticType": "count",
-            "onStatisticField": "OBJECTID",
-            "outStatisticFieldName": "count",
-        }]),
-        "f": "json",
-    }
-
-    data = arcgis_get_with_retry(DA_TRACKING_URL, params)
-    features = data.get("features") or []
-    if not features:
-        return None
-
+    # The layer advertises supportsStatistics but the outStatistics query
+    # returns "Unable to complete operation" (verified live 2026-07-04).
+    # returnCountOnly per outcome value works reliably — three cheap counts.
+    base_where = " AND ".join(where_parts)
     counts: dict[str, int] = {}
-    for f in features:
-        attrs = f.get("attributes") or {}
-        result = attrs.get("ASSESMENT_RESULT") or "Unknown"
-        counts[result] = attrs.get("count", 0)
+    for outcome in ("Approved", "Refused", "Deferred Commencement Consent"):
+        params = {
+            "where": f"{base_where} AND ASSESMENT_RESULT = '{outcome}'",
+            "returnCountOnly": "true",
+            "f": "json",
+        }
+        data = arcgis_get_with_retry(DA_TRACKING_URL, params)
+        if "count" not in data:
+            # {} from the client = a FAILED query — a refusal rate must never be
+            # built on a silently-zero count.
+            raise RuntimeError("DA refusal-rate count query failed (transport or ArcGIS error)")
+        counts[outcome] = int(data.get("count") or 0)
 
     approved = counts.get("Approved") or 0
     refused = counts.get("Refused") or 0
