@@ -53,6 +53,25 @@ else
 fi
 echo ""
 
+# ── 1c. Brief field-coverage ratchet ─────────────────────────────────────────
+# A brief layer may gain fields, never silently lose them (S3 enforcement).
+
+echo "=== [1c/5] Brief field-coverage ratchet ==="
+if [ -f scripts/brief_field_coverage_ratchet.py ]; then
+  python scripts/brief_field_coverage_ratchet.py 2>&1
+  RATCHET_RESULT=$?
+  if [ $RATCHET_RESULT -ne 0 ]; then
+    echo ""
+    echo "Brief field-coverage ratchet FAILED. Push blocked."
+    echo "Intentional field addition: python scripts/brief_field_coverage_ratchet.py --regen"
+    echo "Intentional removal: edit scripts/brief_field_coverage_baseline.json and explain in the PR."
+    exit 1
+  fi
+else
+  echo "  Skipping (no ratchet script)."
+fi
+echo ""
+
 # ── 2. Frontend Jest tests ──────────────────────────────────────────────────
 
 echo "=== [2/4] Running frontend Jest tests ==="

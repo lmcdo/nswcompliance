@@ -1,0 +1,959 @@
+{
+  "service": "vg_comparables",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "address": "14 Stanley Street, Concord",
+    "prop_id": 1456609,
+    "lat": -33.86382,
+    "lng": 151.10586,
+    "zone": "R3",
+    "lot_area_m2": 486.9
+  },
+  "output": {
+    "subject_value": 1860000,
+    "subject_area_m2": 486.9,
+    "comparable_count": 117,
+    "median_value": 1690000,
+    "mean_value": 1724358,
+    "percentile_rank": 75.2,
+    "comparables": [
+      {
+        "propid": 1456608,
+        "address": "12 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 490.4,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448514,
+        "address": "53 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 366.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451374,
+        "address": "8 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452979,
+        "address": "15 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 385.7,
+        "land_value": 1610000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448798,
+        "address": "63 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 512.2,
+        "land_value": 1540000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451365,
+        "address": "29 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 467.9,
+        "land_value": 1770000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451354,
+        "address": "7 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451145,
+        "address": "38 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451366,
+        "address": "31 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 442.98,
+        "land_value": 1680000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451144,
+        "address": "40 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452874,
+        "address": "22A GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 493.4,
+        "land_value": 1460000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456316,
+        "address": "10 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456607,
+        "address": "10 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 461.0,
+        "land_value": 1830000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451367,
+        "address": "33 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 442.6,
+        "land_value": 1680000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451358,
+        "address": "15 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 461.6,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456602,
+        "address": "6 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 541.54,
+        "land_value": 1940000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449361,
+        "address": "46B BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 429.26,
+        "land_value": 1510000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451355,
+        "address": "9 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 474.2,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456314,
+        "address": "6 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 524.8,
+        "land_value": 1660000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448512,
+        "address": "57 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 518.5,
+        "land_value": 1780000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456611,
+        "address": "18 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 486.9,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452970,
+        "address": "33 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 531.1,
+        "land_value": 1610000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456606,
+        "address": "8C STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 366.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451147,
+        "address": "34 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 569.0,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456313,
+        "address": "4 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 524.8,
+        "land_value": 1660000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449357,
+        "address": "54 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 537.5,
+        "land_value": 1730000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448803,
+        "address": "83 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 562.8,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448804,
+        "address": "85 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 562.8,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451363,
+        "address": "25 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 430.0,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448801,
+        "address": "79 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 588.1,
+        "land_value": 2210000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448799,
+        "address": "65 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 505.9,
+        "land_value": 1540000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451160,
+        "address": "18 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 427.2,
+        "land_value": 1770000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456315,
+        "address": "8 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449363,
+        "address": "46 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 524.8,
+        "land_value": 1580000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451149,
+        "address": "28 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 379.4,
+        "land_value": 1300000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456603,
+        "address": "8 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 379.4,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456318,
+        "address": "3 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 398.4,
+        "land_value": 1730000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449362,
+        "address": "46A BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 429.26,
+        "land_value": 1510000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452873,
+        "address": "22 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 469.3,
+        "land_value": 1420000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451146,
+        "address": "36 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449353,
+        "address": "60 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 445.91,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448513,
+        "address": "55 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 518.5,
+        "land_value": 1780000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456605,
+        "address": "8B STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 379.4,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448805,
+        "address": "87 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 562.8,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451352,
+        "address": "5 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456312,
+        "address": "2 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 524.8,
+        "land_value": 1660000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451375,
+        "address": "6 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449352,
+        "address": "62 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 442.6,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451368,
+        "address": "35 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 442.6,
+        "land_value": 1680000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452074,
+        "address": "4 FLAVELLE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 474.2,
+        "land_value": 1880000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451161,
+        "address": "16 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1770000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451356,
+        "address": "11 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 467.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451361,
+        "address": "21 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 467.9,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451376,
+        "address": "4 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 392.0,
+        "land_value": 1460000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456589,
+        "address": "27 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.4,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456588,
+        "address": "29 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 436.3,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448508,
+        "address": "65 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 537.5,
+        "land_value": 1820000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451360,
+        "address": "19 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 467.9,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451370,
+        "address": "16 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 392.0,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448510,
+        "address": "61 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 537.5,
+        "land_value": 1820000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449354,
+        "address": "58 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 442.6,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451372,
+        "address": "12 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448523,
+        "address": "37A BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 392.0,
+        "land_value": 1770000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452985,
+        "address": "3 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 373.1,
+        "land_value": 1410000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451353,
+        "address": "5A DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 430.0,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452978,
+        "address": "17 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 561.0,
+        "land_value": 1830000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448774,
+        "address": "45 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 505.9,
+        "land_value": 1540000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448517,
+        "address": "47 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 367.99,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456598,
+        "address": "9 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 371.55,
+        "land_value": 1660000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451373,
+        "address": "10 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452984,
+        "address": "5 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 392.0,
+        "land_value": 1420000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456591,
+        "address": "23 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.4,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448511,
+        "address": "59 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 512.2,
+        "land_value": 1780000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449356,
+        "address": "54A BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 423.7,
+        "land_value": 1610000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448509,
+        "address": "63 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 537.5,
+        "land_value": 1820000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451357,
+        "address": "13 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 454.4,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456317,
+        "address": "12 SALISBURY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448536,
+        "address": "27 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 575.4,
+        "land_value": 2080000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1449355,
+        "address": "56 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 625.0,
+        "land_value": 1920000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456590,
+        "address": "25 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 557.33,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452977,
+        "address": "19 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 435.0,
+        "land_value": 1680000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448773,
+        "address": "43 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 446.0,
+        "land_value": 1690000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456587,
+        "address": "31 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 408.2,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448535,
+        "address": "29 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 575.4,
+        "land_value": 2000000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451151,
+        "address": "26 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 578.47,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456592,
+        "address": "21 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 557.33,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1452986,
+        "address": "1 GIPPS ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 366.7,
+        "land_value": 1410000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448516,
+        "address": "49 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 366.7,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456610,
+        "address": "16 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 490.4,
+        "land_value": 1860000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451377,
+        "address": "2 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 499.5,
+        "land_value": 1560000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456595,
+        "address": "15 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 543.8,
+        "land_value": 1940000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451359,
+        "address": "17 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 449.0,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456604,
+        "address": "8A STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 373.1,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456601,
+        "address": "4 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 531.1,
+        "land_value": 1940000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448809,
+        "address": "97 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 455.2,
+        "land_value": 1690000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451150,
+        "address": "26A CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 379.4,
+        "land_value": 1700000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456613,
+        "address": "22 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 531.5,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448808,
+        "address": "95 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 455.2,
+        "land_value": 1690000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448810,
+        "address": "99 BURWOOD RD, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 455.2,
+        "land_value": 1690000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448515,
+        "address": "51 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 366.7,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448534,
+        "address": "31 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 531.1,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451159,
+        "address": "20 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 581.7,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456593,
+        "address": "19 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.4,
+        "land_value": 1740000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448522,
+        "address": "37B BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.4,
+        "land_value": 2140000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456596,
+        "address": "13 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 426.8,
+        "land_value": 1760000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456597,
+        "address": "11 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 426.8,
+        "land_value": 1760000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1456594,
+        "address": "17 STANLEY ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.4,
+        "land_value": 2000000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448521,
+        "address": "39 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 550.1,
+        "land_value": 2080000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4423285,
+        "address": "54 BURTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 556.8,
+        "land_value": 2290000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4464050,
+        "address": "30 BURTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 453.6,
+        "land_value": 1770000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4464051,
+        "address": "28 BURTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 452.6,
+        "land_value": 1840000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1451369,
+        "address": "37 DAVID ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 445.6,
+        "land_value": 1680000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448520,
+        "address": "41 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 361.9,
+        "land_value": 1600000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 1448518,
+        "address": "45 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 461.6,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4476236,
+        "address": "43 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 470.1,
+        "land_value": 1630000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4319696,
+        "address": "67 BROUGHTON ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 530.3,
+        "land_value": 1910000,
+        "valuation_date": "1 July 2025"
+      },
+      {
+        "propid": 4458509,
+        "address": "32 CRANE ST, CONCORD NSW 2137    ",
+        "zone": "R3 - Medium Density Residential",
+        "area_m2": 557.2,
+        "land_value": 1940000,
+        "valuation_date": "1 July 2025"
+      }
+    ],
+    "assessment_signal": "in_range"
+  }
+}
