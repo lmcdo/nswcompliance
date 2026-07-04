@@ -18,6 +18,9 @@ interface ReviewItem {
   summary: string | null;
   pdf_url: string | null;
   suspect_reason: string | null;
+  fidelity_status: 'grounded' | 'flagged' | null;
+  fidelity_detail: string | null;
+  source_page_verified: number | null;
 }
 
 interface ChapterGroup {
@@ -25,6 +28,8 @@ interface ChapterGroup {
   chapter_key: string;
   suspect_reason: string | null;
   items: ReviewItem[];
+  grounded: number;
+  flagged: number;
 }
 
 type Action = 'approve' | 'reject' | 'needs-info';
@@ -153,15 +158,23 @@ export default function DcpReviewQueue() {
       const key = `${it.council}/${it.chapter_key}`;
       let g = map.get(key);
       if (!g) {
-        g = { council: it.council, chapter_key: it.chapter_key, suspect_reason: null, items: [] };
+        g = {
+          council: it.council, chapter_key: it.chapter_key, suspect_reason: null,
+          items: [], grounded: 0, flagged: 0,
+        };
         map.set(key, g);
       }
       g.items.push(it);
       if (it.suspect_reason && !g.suspect_reason) g.suspect_reason = it.suspect_reason;
+      if (it.fidelity_status === 'grounded') g.grounded += 1;
+      else if (it.fidelity_status === 'flagged') g.flagged += 1;
     }
     return [...map.values()];
   }, [items]);
   const flaggedCount = chapters.filter((c) => c.suspect_reason).length;
+  // Source-check totals across the loaded batch (the fidelity gate's verdict).
+  const fidFlagged = items.filter((it) => it.fidelity_status === 'flagged').length;
+  const fidGrounded = items.filter((it) => it.fidelity_status === 'grounded').length;
 
   if (loading) {
     return <main className="p-8 text-sm text-gray-500">Loading review queue…</main>;
@@ -206,6 +219,17 @@ export default function DcpReviewQueue() {
           with its <b>Approve</b> button; ⚠ sections were flagged by the extraction checks — open
           those and review before approving. Keys: <kbd>A</kbd>/<kbd>R</kbd>/<kbd>N</kbd> per row · <kbd>J</kbd>/<kbd>K</kbd> move.
         </p>
+        {(fidFlagged > 0 || fidGrounded > 0) && (
+          <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+            <b>Source check:</b>{' '}
+            <span className="font-semibold text-amber-800">⚠ {fidFlagged} need a look</span>
+            {' · '}
+            <span className="font-semibold text-green-700">{fidGrounded} matched the source PDF</span>
+            . The flagged rows are listed first — review those; the rest matched the source and
+            you can approve them in bulk. (A row <b>matched</b> when every number and its key
+            words appear in the council&apos;s own PDF; <b>flagged</b> means one did not.)
+          </div>
+        )}
       </header>
 
       <div className="grid grid-cols-[20rem_1fr] gap-4">
@@ -228,6 +252,9 @@ export default function DcpReviewQueue() {
                     {ch.suspect_reason && <span aria-label="flagged">⚠ </span>}
                     <span className={active ? 'font-semibold' : ''}>{ch.chapter_key}</span>
                     <span className="text-gray-400"> ({ch.items.length})</span>
+                    {ch.flagged > 0 && (
+                      <span className="ml-1 text-[10px] text-amber-700">⚠{ch.flagged} to check</span>
+                    )}
                   </button>
                   <button
                     onClick={() => actChapterFor(ch.council, ch.chapter_key, 'approve')}
@@ -251,7 +278,10 @@ export default function DcpReviewQueue() {
                             it === item ? 'bg-blue-100 font-medium' : 'hover:bg-gray-100'
                           }`}
                         >
-                          <span className="truncate">{it.ref_number ?? '(no ref)'}</span>
+                          <span className="truncate">
+                            {it.fidelity_status === 'flagged' && <span title="source check flagged this">⚠ </span>}
+                            {it.ref_number ?? '(no ref)'}
+                          </span>
                           {it.has_numeric_change && (
                             <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">
                               NUM
@@ -281,6 +311,19 @@ export default function DcpReviewQueue() {
               {item.ref_number ? ` · ${item.ref_number}` : ''}
             </span>
           </div>
+
+          {item.fidelity_status === 'flagged' && (
+            <p className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              ⚠ <b>Source check flagged this:</b> {item.fidelity_detail ?? 'something was not in the source PDF'}
+              {item.source_page_verified ? ` — check source page ${item.source_page_verified}.` : '.'}
+            </p>
+          )}
+          {item.fidelity_status === 'grounded' && (
+            <p className="mb-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              <b>Matched to source:</b> every number and its key words appear in the
+              council&apos;s PDF{item.source_page_verified ? ` (page ${item.source_page_verified})` : ''}.
+            </p>
+          )}
 
           {item.summary && (
             <p className="mb-3 rounded bg-blue-50 px-3 py-2 text-sm">{item.summary}</p>

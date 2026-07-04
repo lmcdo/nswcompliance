@@ -48,6 +48,9 @@ EXCLUDE_PATTERNS = [
     # camelCase/snake_case identifiers containing flagged words
     r'[a-z](?:Safe|Feasible|Compliant|Sufficient|Reliable|Accurate|Verified|Confirmed|Approved|Certified)',
     r'is_(?:safe|feasible|compliant|sufficient|reliable|accurate|verified|confirmed|approved|certified)',
+    # any snake_case identifier ending in a flagged word (e.g. source_page_verified) — an
+    # internal identifier, which the language rule permits; underscore+word is never prose.
+    r'_(?:safe|feasible|compliant|sufficient|reliable|accurate|verified|confirmed|approved|certified)\b',
     r'console\.\w+\(', r'logger\.\w+\(', r'logging\.\w+\(',
     r':\s*(?:boolean|string|number|Optional)',
     r'assert\s', r'expect\(',
