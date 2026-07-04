@@ -100,6 +100,25 @@ function humanizeForm(form?: string | null): string {
 // Component
 // ---------------------------------------------------------------------------
 
+/** One row of the inputs ledger: what went into the arithmetic, its value, and
+ * where that value came from (source + currency date). */
+export interface InputLedgerRow {
+  label: string;
+  value: string;
+  source: string;
+  asAt?: string | null;
+}
+
+/** Why the LEP envelope could not be computed: which principal development
+ * standards are missing, from which instrument, and whether the council's DCP
+ * (the document that then sets the built form) is in our dataset. */
+export interface EnvelopeGap {
+  missing: string[]; // e.g. ['floor space ratio', 'height of buildings']
+  instrument?: string | null; // e.g. 'Wingecarribee Local Environmental Plan 2010'
+  dcpOnboarded?: boolean;
+  dcpName?: string | null;
+}
+
 interface ConstraintArithmeticCardProps {
   lotArea: number;
   devType: string;
@@ -112,6 +131,11 @@ interface ConstraintArithmeticCardProps {
   depth?: number | null;
   /** Pre-computed result from intelligence brief — skips independent fetch when provided. */
   briefData?: ConstraintArithmeticResult | null;
+  /** Inputs ledger (value + source per input) — composed by the brief page from
+   * the sections' provenance; absent in the assessment UI. */
+  inputProvenance?: InputLedgerRow[] | null;
+  /** Named-missing-control context, shown when the envelope could not compute. */
+  envelopeGap?: EnvelopeGap | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -125,6 +149,8 @@ export function ConstraintArithmeticCard({
   frontage,
   depth,
   briefData,
+  inputProvenance,
+  envelopeGap,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -242,6 +268,46 @@ export function ConstraintArithmeticCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* The envelope could not be computed — name the exact missing control
+            and where the buildable form is set instead, rather than showing an
+            empty card. Rendered only when the caller supplies the context. */}
+        {result.realistic_gfa_m2 == null && envelopeGap && envelopeGap.missing.length > 0 && (
+          <div className="bg-white border border-amber-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
+            <div className="text-xs font-medium text-amber-700 mb-1">Why there is no computed envelope</div>
+            No {envelopeGap.missing.join(' or ')} control is mapped in{' '}
+            {envelopeGap.instrument || 'the LEP'} for this lot, so a maximum GFA
+            envelope cannot be computed from the LEP. The built form here is set
+            by the council&rsquo;s development control plan
+            {envelopeGap.dcpOnboarded
+              ? envelopeGap.dcpName
+                ? <> — see the DCP Controls card ({envelopeGap.dcpName}).</>
+                : <> — see the DCP Controls card.</>
+              : <>, which is not in our structured dataset for this council yet — check the DCP on the council&rsquo;s website.</>}
+          </div>
+        )}
+
+        {/* Inputs ledger — each input, its value, and its source. */}
+        {inputProvenance && inputProvenance.length > 0 && (
+          <div className="bg-white border border-blue-100 rounded-lg overflow-hidden">
+            <div className="bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+              Inputs used by this calculation
+            </div>
+            <table className="w-full text-xs">
+              <tbody className="divide-y divide-blue-50">
+                {inputProvenance.map((row) => (
+                  <tr key={row.label} className="hover:bg-blue-50/50">
+                    <td className="px-3 py-1.5 text-gray-500">{row.label}</td>
+                    <td className="px-3 py-1.5 font-medium text-gray-900">{row.value}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-400">
+                      {row.source}{row.asAt ? ` · as at ${row.asAt}` : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Key metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Maximum GFA — the clean LEP envelope (headline) */}

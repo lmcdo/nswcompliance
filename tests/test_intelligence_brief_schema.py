@@ -108,6 +108,12 @@ def _make_env_constraints(**overrides):
         wetlands=_auth(False),
         anef=_auth(None),
         coastal_hazards=_auth(None),
+        # Slice-2 detail fields — populated on the fully-available fixture so
+        # gap-collection tests keep meaning "this brief has zero gaps".
+        anef_level=_auth(None),
+        nearest_features=_auth({"flood": 830}),
+        contaminated_detail=_auth(None),
+        mine_subsidence_district=_auth(None),
     )
     defaults.update(overrides)
     return EnvironmentalConstraints(**defaults)
