@@ -51,6 +51,9 @@ from services.extracted_data_integrity import value_absent_from_source
 # A "number" worth checking: integers/decimals of 2+ digits, or any decimal. Single bare
 # digits (a "1." list marker, "3 phases") are too noisy and rarely a regulatory value.
 _NUM_RE = re.compile(r"\d+\.\d+|\d{2,}")
+# Descriptive numbers that are NOT regulatory values and only create false flags:
+# ordinals ("19th century", "21st"), and standalone 4-digit years (legislation dates).
+_ORDINAL_RE = re.compile(r"\b\d+(?:st|nd|rd|th)\b", re.IGNORECASE)
 _STOP = {
     "the", "and", "for", "with", "that", "this", "must", "should", "which", "development",
     "council", "provision", "provisions", "control", "controls", "shall", "any", "are",
@@ -59,7 +62,13 @@ _STOP = {
 
 
 def _numbers(text: str) -> list[str]:
-    return _NUM_RE.findall(text or "")
+    # Drop ordinals first ("19th century" -> no "19"), then extract; discard standalone
+    # 4-digit years (1900-2099), which are dates/legislation refs, not rule values.
+    cleaned = _ORDINAL_RE.sub(" ", text or "")
+    return [
+        n for n in _NUM_RE.findall(cleaned)
+        if not (n.isdigit() and len(n) == 4 and 1900 <= int(n) <= 2099)
+    ]
 
 
 def _content_words(text: str) -> list[str]:
