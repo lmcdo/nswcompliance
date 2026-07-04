@@ -59,8 +59,8 @@ def _registry():
         ShadowServiceOutput,
         StrataCoreOutput,
         ClimateRiskServiceOutput,
+        TerrainAnalysisDetail,  # via the brief's rasterio-tolerant import shim
     )
-    from services.terrain_analysis import TerrainAnalysisDetail
 
     return {
         "flood": (FloodServiceOutput, "outputs"),

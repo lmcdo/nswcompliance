@@ -2067,6 +2067,15 @@ def _fetch_climate_risk(lat: float, lng: float) -> dict:
     return out
 
 
+def _fetch_solar_marker() -> dict:
+    """Solar — DECOUPLED like granny flat. The brief never calls the paid Google
+    Solar API inline; the frontend SolarBriefCard fires the existing rate-limited
+    /api/satellite/solar-yield route (the same pipeline the standalone tool uses),
+    so gating/billing stay in one place. This marker only reserves the card slot.
+    """
+    return {"decoupled": True}
+
+
 def _fetch_granny_flat_detect(
     address: str, lat: float, lng: float,
     prop_id: str,
@@ -2661,14 +2670,19 @@ def _build_sepp_housing(
     if not standards_raw:
         return []
 
-    # Group by development_type
+    # Group by development_type — values AND the citation each standard row
+    # carries (source_clause/source_document), so an override can cite it.
     by_dev_type: dict[str, dict[str, Any]] = {}
+    citations: dict[str, dict[str, tuple]] = {}
     for s in standards_raw:
         dt = s["development_type"]
         st = s["standard_type"]
         if dt not in by_dev_type:
             by_dev_type[dt] = {}
+            citations[dt] = {}
         by_dev_type[dt][st] = s["numeric_value"]
+        if s.get("source_clause"):
+            citations[dt][st] = (s.get("source_clause"), s.get("source_document"))
 
     results = []
     for dt, vals in by_dev_type.items():
@@ -2700,9 +2714,14 @@ def _build_sepp_housing(
             if k not in known_keys and not any(k.startswith(p) for p in banded_prefixes)
         }
 
+        height_cit = citations.get(dt, {}).get("max_height")
+        fsr_cit = citations.get(dt, {}).get("max_fsr")
         results.append(SEPPStandard(
             dev_type=dt,
             eligible=eligible,
+            height_source_clause=height_cit[0] if height_cit else None,
+            fsr_source_clause=fsr_cit[0] if fsr_cit else None,
+            source_document=(height_cit or fsr_cit)[1] if (height_cit or fsr_cit) else None,
             min_lot_area_m2=min_lot,
             max_gfa_m2=max_gfa,
             max_fsr=max_fsr,
@@ -2764,6 +2783,7 @@ def _detect_sepp_lep_overrides(
                 control="height",
                 lep_value=lep_height_m,
                 sepp_value=std.max_height_m,
+                source_clause=std.height_source_clause,
             ))
         if std.max_fsr and lep_fsr and std.max_fsr > lep_fsr:
             overrides.append(SeppLepOverride(
@@ -2771,6 +2791,7 @@ def _detect_sepp_lep_overrides(
                 control="fsr",
                 lep_value=lep_fsr,
                 sepp_value=std.max_fsr,
+                source_clause=std.fsr_source_clause,
             ))
     return overrides
 
@@ -3366,7 +3387,7 @@ def _generate_brief_sse(
     # Count expected sections for progress tracking
     base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
     dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
-    satellite_sections = 6 if req.include_satellite else 0
+    satellite_sections = 7 if req.include_satellite else 0  # incl. the solar marker slot
     total_sections = base_sections + satellite_sections + 5  # +5 for dependent (max estimate)
 
     import uuid
@@ -3888,6 +3909,17 @@ def _generate_brief_sse(
                     value=granny_detail,
                     confidence=ConfidenceLevel.ESTIMATED if granny_detail else ConfidenceLevel.NOT_AVAILABLE,
                     source="granny_flat_detect", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            # Solar — marker slot only; the card fires the gated route client-side.
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.solar",
+                "data": DataField(
+                    value=_fetch_solar_marker(), confidence=ConfidenceLevel.ESTIMATED,
+                    source="google_solar_api", as_at=today,
                 ).model_dump(),
                 "progress": int(sections_yielded / total_sections * 100),
             })

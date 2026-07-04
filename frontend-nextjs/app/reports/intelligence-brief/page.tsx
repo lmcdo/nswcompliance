@@ -71,6 +71,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
+  'satellite.solar': { label: 'Solar Potential', description: 'Roof capacity and yield from aerial imagery (Google Solar)' },
 };
 
 // Bento spans — the headline (development capacity) and the field-heavy sections
@@ -119,7 +120,7 @@ type UnavailableTone = 'clear' | 'optional' | 'pending' | 'error' | 'neutral';
 // path is to tick it and re-run. (Verified against include_satellite gating.)
 const SATELLITE_SECTIONS = new Set([
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain',
+  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
 ]);
 
 interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
@@ -437,7 +438,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // rather than dumping objects.
           if (key === 'cross_overlays' && Array.isArray(df.value) && df.value.length > 0) {
             const names = (df.value as Array<{ type?: string }>)
-              .map((o) => formatKey(String(o?.type ?? ''))).filter(Boolean);
+              .flatMap((o) => (o?.type ? [formatKey(String(o.type))] : []));
             return (
               <div key={key} className="flex flex-col sm:col-span-2">
                 <FieldLabel fieldKey={key} />
@@ -1883,7 +1884,7 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
       {state.structures && state.structures.length > 0 && (
         <ul className="mt-2 text-xs text-slate-500 space-y-0.5">
           {state.structures.map((st, i) => (
-            <li key={i} className="tabular-nums">
+            <li key={`${st.matched_prompt ?? 'structure'}-${i}`} className="tabular-nums">
               {formatKey(String(st.matched_prompt ?? 'structure'))}
               {st.is_main_dwelling ? ' (main dwelling)' : ''}
               {st.area_m2 != null ? ` — ~${Math.round(st.area_m2)} m² footprint` : ''}
@@ -1898,6 +1899,111 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
 
 // Detected structure row from the granny-flat detection service.
 interface DetectedStructureRow { matched_prompt?: string; area_m2?: number | null; is_main_dwelling?: boolean; }
+
+// ---------------------------------------------------------------------------
+// Solar — fires the SAME rate-limited route the standalone solar tool uses
+// (Google Solar API on Railway), once per satellite run. Figures are imagery-
+// derived estimates; every number carries its imagery date.
+// ---------------------------------------------------------------------------
+
+interface SolarOutputs {
+  max_panels?: number; max_panel_area_m2?: number; annual_kwh_estimate?: number;
+  sunshine_hours_per_year?: number; roof_area_m2?: number; is_heritage?: boolean;
+  imagery_date?: string; coverage_available?: boolean;
+}
+// null = not fetched yet (renders the loading shell while active)
+type SolarState =
+  | { kind: 'result'; o: SolarOutputs }
+  | { kind: 'no_coverage' }
+  | { kind: 'error'; message: string };
+
+// Module scope (not nested) so React never remounts it mid-stream.
+function SolarShell({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) {
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Solar Potential</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Roof capacity and yield from aerial imagery (Google Solar)</p>
+        </div>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
+      </div>
+      <div className="px-5 py-4 text-sm">{children}</div>
+    </div>
+  );
+}
+
+function SolarBriefCard({ address, active }: { address?: string; active: boolean }) {
+  const [state, setState] = useState<SolarState | null>(null);
+  useEffect(() => {
+    if (!active || !address) return;  // inactive is derived at render, not stored
+    let cancelled = false;
+    fetch('/api/satellite/solar-yield', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    })
+      .then(async (r) => {
+        if (cancelled) return;
+        const d = await r.json().catch(() => null);
+        if (!r.ok || !d) {
+          setState({ kind: 'error', message: d?.error || `Solar analysis did not complete (HTTP ${r.status}) — try again.` });
+          return;
+        }
+        const o = (d.data?.outputs ?? {}) as SolarOutputs;
+        if (o.coverage_available === false) { setState({ kind: 'no_coverage' }); return; }
+        setState({ kind: 'result', o });
+      })
+      .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Solar analysis did not complete — try again.' }); });
+    return () => { cancelled = true; };
+  }, [address, active]);
+
+  if (!active || !address) return (
+    <SolarShell badge="Not run" badgeClass="bg-teal-50 text-teal-700">
+      <span className="text-slate-500">Tick “Include satellite analysis” above and re-run to add the solar assessment.</span>
+    </SolarShell>
+  );
+  if (!state) return (
+    <SolarShell badge="Analysing…" badgeClass="bg-slate-100 text-slate-500">
+      <span className="text-slate-500 animate-pulse">Reading the roof from aerial imagery… (up to ~50s)</span>
+    </SolarShell>
+  );
+  if (state.kind === 'no_coverage') return (
+    <SolarShell badge="No imagery here" badgeClass="bg-slate-100 text-slate-500">
+      <span className="text-slate-500">Google Solar has no aerial coverage at this address — no solar figures are available from this source.</span>
+    </SolarShell>
+  );
+  if (state.kind === 'error') return (
+    <SolarShell badge="Couldn’t complete" badgeClass="bg-amber-50 text-amber-700">
+      <span className="text-amber-700">{state.message}</span>
+    </SolarShell>
+  );
+  const o = state.o;
+  return (
+    <SolarShell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
+        {o.max_panels != null && (
+          <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
+        )}
+        {o.annual_kwh_estimate != null && (
+          <div><dt className="text-xs text-slate-500">Estimated yield</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year</dd></div>
+        )}
+        {o.sunshine_hours_per_year != null && (
+          <div><dt className="text-xs text-slate-500">Sunshine</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.sunshine_hours_per_year).toLocaleString()} hours/year</dd></div>
+        )}
+        {o.roof_area_m2 != null && (
+          <div><dt className="text-xs text-slate-500">Roof area (clipped to lot)</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.roof_area_m2).toLocaleString()} m²</dd></div>
+        )}
+      </dl>
+      {o.is_heritage && (
+        <p className="mt-2 text-xs text-amber-700">A heritage listing applies at this property — panel placement can be restricted; check with the council.</p>
+      )}
+      <p className="mt-2 text-xs text-slate-400">
+        Imagery-derived estimate{o.imagery_date ? ` (imagery ${o.imagery_date})` : ''} — panel counts and yield are modelled from the roof geometry, not a system design.
+      </p>
+    </SolarShell>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Terrain — slope/aspect/drainage as a compass + plain-English summary, not a
@@ -2071,7 +2177,7 @@ const EXPECTED_SECTIONS_BASE = [
 const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood', 'market_context'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain',
+  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
   // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
 
@@ -2781,6 +2887,9 @@ function IntelligenceBriefInner() {
               // own binding-constraint breakdown + disclaimer). Falls back to the
               // generic SectionCard when the value is absent (not computed).
               let card: ReactNode = null;
+              if (section === 'satellite.solar') {
+                card = <SolarBriefCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} />;
+              }
               if (section === 'satellite.granny_flat') {
                 // Decoupled: the card fires the gated async route itself (gate +
                 // real Modal scan), rather than the brief's timed-out inline run.

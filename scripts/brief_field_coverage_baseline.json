@@ -399,6 +399,8 @@
     "additional_standards",
     "dev_type",
     "eligible",
+    "fsr_source_clause",
+    "height_source_clause",
     "max_fsr",
     "max_gfa_m2",
     "max_height_m",
@@ -411,7 +413,8 @@
     "reason_ineligible",
     "setback_front_m",
     "setback_rear_m",
-    "setback_side_m"
+    "setback_side_m",
+    "source_document"
   ],
   "SatelliteData": [
     "bushfire",

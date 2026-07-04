@@ -1,0 +1,17 @@
+# Railway config-as-code for the `brief-drift-check` cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Set per-service env in the dashboard:
+#   DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, (optional) HC_PING_URL.
+#
+# Runs scripts/run_brief_drift_check.py: captures LIVE output from the services
+# the Intelligence Brief consumes (strata cadastre, climate, bushfire) and
+# diffs the emitted keys against the brief's S2 typed contracts. A government
+# API renaming/dropping a key alerts Telegram here — before a user hits a
+# blank card ("test the context ahead", enrichment-plan enforcement item 5).
+[build]
+dockerfilePath = "Dockerfile.python"
+
+[deploy]
+startCommand = "python scripts/run_brief_drift_check.py"
+cronSchedule = "0 3 * * 1"   # weekly: Mondays 03:00 UTC
+restartPolicyType = "NEVER"  # cron job: run to completion, do not restart

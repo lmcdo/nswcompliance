@@ -1,103 +1,102 @@
 {
   "tier": "standard",
-  "commit_hash": "59ae03f1",
-  "justification": "Fix the DA-outcomes silent failure and wire determination outcomes plus council refusal counts into the Neighbourhood card. Root cause found by live probe: outFields requested DEVELOPMENT_TYPE but the layer's column is TYPE_OF_DEVELOPMENT, so ArcGIS errored and the empty-dict client response rendered as a silent zero for every query; the suspected LODGEMENT_DATE date filter was innocent (string field, lexicographic filter verified working). All queries now fail loudly; verified live: 38 outcomes near Concord, Canada Bay 992 determined / 45 refused over 8 years.",
+  "commit_hash": "63e9d632",
+  "justification": "Closes the three actionable deferrals from the enrichment plan: SEPP-over-LEP override banners now cite the clause of the standards row that grants the overriding value; the brief gains a Solar Potential card that fires the SAME rate-limited route the standalone solar tool already uses in production (no inline paid API calls); and the scheduled contract-drift check exists as a runner script plus Railway config-as-code, dry-run verified live.",
   "files": [
-    "services/da_outcome.py",
     "services/intelligence_brief.py",
-    "scripts/capture_brief_golden_fixtures.py",
+    "services/constraint_models.py",
+    "scripts/run_brief_drift_check.py",
+    "scripts/brief_contract_drift.py",
+    "railway.brief-drift.toml",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_brief_da_outcomes.py",
-    "tests/test_da_outcome.py",
-    "tests/test_intelligence_brief_schema.py",
-    "tests/fixtures/brief_golden/da_outcomes.json",
-    "tests/fixtures/brief_golden/da_refusal_stats.json",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "tests/test_brief_followups.py",
     "scripts/brief_field_coverage_baseline.json"
   ],
   "pre_impl": {
-    "existing_data": "services/da_outcome.py existed unwired (merged in the Tier-1 service PR); the live layer metadata was probed before any code change: 63 fields, LODGEMENT_DATE and ASSESMENT_RESULT are string-typed, DEVELOPMENT_TYPE and ZONE_DESC do not exist, supportsStatistics advertises true but the groupBy statistics query returns Unable to complete operation.",
-    "assumption_mismatch": "Three assumptions fell to the live probe: the suspected date-filter bug was innocent; the real killer was one wrong column name; and the statistics endpoint the old code and its tests relied on is rejected by the live server (the old tests mocked a response shape that can never occur \u2014 self-confirming). Also the tracking layer only backfills outcomes for applications lodged up to about 2022, so a 3-year refusal window held 4 records for a whole LGA \u2014 the brief uses an 8-year window with the period always displayed.",
-    "new_vs_existing": "No new source: this wires the existing da_outcome service through the established _safe_call/_timed_result/DataField pattern as new fields on the existing Neighbourhood section (kept separate from the recent-applications feed, which stays on the consolidated DB table). The refusal computation was rewritten from the rejected statistics query to three verified returnCountOnly queries."
+    "existing_data": "The solar pipeline (services/solar_yield.py, Google Solar API) is already live behind the rate-limited /api/satellite/solar-yield route in the reports hub, so the production key exists; fetch_sepp_housing_standards rows already carry source_clause and source_document per standard; the drift checker and capture logic already exist from Slice 0 \u2014 only the scheduled runner was missing.",
+    "assumption_mismatch": "My earlier claim that solar was blocked on a missing key described only the dev box \u2014 the standalone tool works in production, so the brief card was wired via the granny-flat marker pattern. The drift cron's first draft included the bushfire capture; that was removed because run_bushfire persists a report row and a cron must never write junk rows into production data.",
+    "new_vs_existing": "The solar card fires the EXISTING gated route (billing, rate limits and future Stripe gating stay in one place \u2014 the brief never calls the paid API inline; the backend emits only a marker slot like granny flat). The cron runner composes the two existing drift tools; the citation work threads existing row fields through the existing grouping, no new source."
   },
   "functions": [
     {
-      "name": "query_da_outcomes_near",
-      "file_line": "services/da_outcome.py:144",
-      "input": "coordinates, radius and lookback window for the bbox query with Haversine post-filter",
-      "output": "DAOutcome rows with the recorded result, development type, stated cost and dates",
-      "if_none": "an empty-dict client response (any transport or ArcGIS failure) raises instead of returning [] \u2014 a failed query is never a silent zero determinations"
+      "name": "_fetch_solar_marker",
+      "file_line": "services/intelligence_brief.py:2070",
+      "input": "nothing \u2014 a pure constant marker",
+      "output": "the decoupled marker dict that reserves the solar card slot in the stream",
+      "if_none": "a test asserts the function contains no requests or key usage, so the paid API can never be invoked inline by the brief"
     },
     {
-      "name": "get_refusal_rate",
-      "file_line": "services/da_outcome.py:220",
-      "input": "the LGA name (case-normalised against the layer's uppercase LGA_NAME) and the period in years",
-      "output": "RefusalStats with approved/refused/deferred counts, the total and the rate, via three returnCountOnly queries",
-      "if_none": "a missing count key raises so a refusal rate is never fabricated from a silently-zero count; zero determined rows returns None (a checked empty); a zone filter raises because the layer has no zone column"
+      "name": "_build_sepp_housing",
+      "file_line": "services/intelligence_brief.py:2664",
+      "input": "the standards rows including each row's source_clause and source_document",
+      "output": "SEPPStandard entries carrying the height and FSR granting-row citations",
+      "if_none": "a dev type whose granting row has no citation yields citation fields of None \u2014 no fabricated clause"
     },
     {
-      "name": "_fetch_da_outcomes",
-      "file_line": "services/intelligence_brief.py:1760",
-      "input": "coordinates; radius and window from CONFIG so the UI states them from the payload",
-      "output": "the outcomes list wrapped with its radius_m and years_back",
-      "if_none": "raises through _safe_call to NOT_AVAILABLE with the reason \u2014 the card says the lookup did not complete"
+      "name": "_detect_sepp_lep_overrides",
+      "file_line": "services/intelligence_brief.py:2757",
+      "input": "the eligible standards with their per-control citations plus the LEP height and FSR",
+      "output": "SeppLepOverride rows whose source_clause is the clause of the row that grants the overriding value",
+      "if_none": "no citation on the granting row leaves source_clause None and the banner renders without a clause \u2014 never an invented reference"
     },
     {
-      "name": "_build_neighbourhood",
-      "file_line": "services/intelligence_brief.py:3063",
-      "input": "the DA feed plus the new outcomes and refusal DataFields from their timed fetches",
-      "output": "Neighbourhood with da_outcomes and da_refusal_stats in three distinct states",
-      "if_none": "not-queried (renovation path), failed, and queried-empty each carry their own reason and confidence \u2014 never conflated"
+      "name": "main",
+      "file_line": "scripts/run_brief_drift_check.py:55",
+      "input": "live captures from the read-only services the brief consumes (strata cadastre, climate)",
+      "output": "exit 0 on contract, exit 1 with a Telegram alert on drift or capture failure",
+      "if_none": "a harness crash itself pages Telegram and exits 1 \u2014 the cron can never fail silently"
     }
   ],
   "values": [
     {
-      "value": "radius_m and years_back inside the da_outcomes payload",
-      "read_at": "services/intelligence_brief.py _fetch_da_outcomes from CONFIG",
-      "if_missing": "the frontend falls back to stating the configured defaults; the period and radius are always displayed with the counts"
+      "value": "coverage_available flag from the Google Solar response",
+      "read_at": "SolarBriefCard in frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+      "if_missing": "false renders an explicit no-imagery-coverage state; a transport error renders the retry state \u2014 neither is a data claim"
     }
   ],
-  "queries": "N/A \u2014 ArcGIS REST queries only, all parameter-built with the layer's verified field names; no database queries",
+  "queries": "N/A \u2014 no new database queries; the drift cron is read-only by design (report-writing services excluded)",
   "break_it": [
     {
-      "scenario": "The tracking endpoint rate-limits or its circuit opens mid-brief",
-      "what_happens": "The empty-dict response raises, _safe_call stamps NOT_AVAILABLE and the card says the outcomes lookup did not complete \u2014 before this fix the same condition rendered as zero nearby determinations at full confidence",
+      "scenario": "A refactor makes the brief call the paid Google Solar API inline during assembly",
+      "what_happens": "The marker-only design is pinned: a test inspects _fetch_solar_marker's source for any requests or key usage and fails the suite",
       "mitigated": true,
-      "how": "features-key and count-key guards; test_failed_outcomes_query_raises_instead_of_silent_zero and test_failed_count_query_raises_never_a_fabricated_rate",
-      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k raises -q"
+      "how": "test_solar_marker_never_calls_the_paid_api",
+      "repro": "python -m pytest tests/test_brief_followups.py -k paid_api -q"
     },
     {
-      "scenario": "A caller filters the refusal cohort by zone",
-      "what_happens": "The layer has no zone column (verified live) \u2014 the old code silently zeroed the cohort; it now raises ValueError naming the limitation",
+      "scenario": "An override banner shows a SEPP value increase with no clause behind it",
+      "what_happens": "The citation rides from the standards row that grants the overriding value; when that row has no clause the banner simply omits the reference \u2014 no citation, no claim, and never a fabricated one",
       "mitigated": true,
-      "how": "explicit guard in get_refusal_rate; test_zone_filter_refuses_loudly",
-      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k zone -q"
+      "how": "citation threading through _build_sepp_housing into _detect_sepp_lep_overrides; test_override_without_a_row_citation_has_no_fabricated_clause",
+      "repro": "python -m pytest tests/test_brief_followups.py -k fabricated -q"
     },
     {
-      "scenario": "A mixed-case council name (Canada Bay) is matched against the layer's uppercase LGA_NAME values",
-      "what_happens": "UPPER() on both sides \u2014 verified live on all three demo LGAs (Canada Bay, Canterbury-Bankstown, Wingecarribee all return real counts)",
+      "scenario": "Someone adds the bushfire capture back into the drift cron",
+      "what_happens": "run_bushfire persists a property report row, so a weekly cron would write junk rows into production data \u2014 a source-scan test fails on any report-writing service in the runner",
       "mitigated": true,
-      "how": "case-normalised LIKE in get_refusal_rate; test_lga_match_is_case_insensitive",
-      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k case -q"
+      "how": "test_drift_cron_scope_is_read_only",
+      "repro": "python -m pytest tests/test_brief_followups.py -k read_only -q"
     },
     {
-      "scenario": "The renovation (strata) path renders the Neighbourhood-less brief",
-      "what_happens": "The outcome fields default to a distinct not-queried state \u2014 never an implied zero determinations for a lot we did not query",
+      "scenario": "Google Solar has no imagery at the address",
+      "what_happens": "coverage_available false renders the explicit no-imagery state \u2014 distinct from a failed request, which renders the retry state",
       "mitigated": true,
-      "how": "default DataFields on the Neighbourhood model plus the not-queried branch in _build_neighbourhood; test_neighbourhood_outcomes_not_queried_renders_distinctly",
-      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k not_queried -q"
+      "how": "three rendered states in SolarBriefCard plus the derived loading state",
+      "repro": "run the brief with satellite for a rural address without Solar coverage"
     },
     {
-      "scenario": "The outcome backfill gap makes a short refusal window meaningless",
-      "what_happens": "The brief queries an 8-year window and the card always states the period and counts with the rate; the field hint notes the tracking data records outcomes mainly for applications lodged up to 2022",
+      "scenario": "The drift cron itself crashes (import error, network down)",
+      "what_happens": "The crash handler pages Telegram with the traceback and exits 1 \u2014 the schedule can never rot silently",
       "mitigated": true,
-      "how": "CONFIG.da_outcomes_years_back documented with the live finding; counts and period ride inside the payload",
-      "repro": "run the brief for 14 Stanley St Concord and open the Neighbourhood card"
+      "how": "top-level except in run_brief_drift_check.py; dry-run verified live (2 services on contract, exit 0)",
+      "repro": "python scripts/run_brief_drift_check.py with DATABASE_URL set"
     }
   ],
   "post_merge": {
-    "db_reset": "none",
-    "secrets": "none touched",
-    "other_repo": "none \u2014 new Neighbourhood fields pass through the Trigger.dev relay transparently",
-    "manual_verify": "after Railway deploys, run the brief for 14 Stanley St Concord: Neighbourhood shows determined applications within 200 m and the Canada Bay counts (992 determined, 45 refused, 4.5% over 8 years at capture time)"
+    "db_reset": "none \u2014 the cron is read-only",
+    "secrets": "none in code; the cron service needs DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID set in the Railway dashboard",
+    "other_repo": "none",
+    "manual_verify": "Railway: create service brief-drift-check from this repo, point Config Path at railway.brief-drift.toml, set the env vars (CLI session expired mid-creation \u2014 needs railway login). Then run the brief with satellite for Concord: the Solar Potential card fires the existing route and renders panel capacity and yield"
   }
 }
