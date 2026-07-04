@@ -2249,7 +2249,7 @@ def _build_climate_disclosure(
                     if isinstance(val, (int, float)):
                         projected.append(ProjectedFinding(
                             hazard=hazard,
-                            value=float(val),
+                            value=float(val),  # qa-ignore: guarded by the isinstance numeric check above
                             model="NARCliM 2.0 (AdaptNSW)",
                             scenario="worst available scenario vs 2015–2024 baseline",
                             timeframe=horizon,
