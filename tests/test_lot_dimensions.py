@@ -83,6 +83,7 @@ class TestCalculateLotDimensions:
         assert result.frontage_m == pytest.approx(15.0, abs=0.5)
         assert result.depth_m == pytest.approx(40.0, abs=0.5)
         assert result.is_corner is False
+        assert result.irregular is False
 
     def test_square_20x20(self):
         geometry = {"rings": [_rect_ring(20, 20)]}
@@ -135,6 +136,9 @@ class TestCalculateLotDimensions:
         assert result.area_m2 == pytest.approx(175.0, abs=1.0)
         assert result.frontage_m is None
         assert result.depth_m is None
+        # flagged so the UI reads "can't be measured", not a broken lookup
+        # (Bowral regression: fill ratio 0.594 just under the 0.6 gate)
+        assert result.irregular is True
 
     def test_closing_point_dedup(self):
         """Ring with duplicate closing point is handled."""

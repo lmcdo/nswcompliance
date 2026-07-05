@@ -598,7 +598,12 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
 function stripDimArea(key: string, value: unknown): unknown {
   if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
   const obj = value as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2'));
+  // Irregular polygon (fills <60% of its bounding box): frontage/depth are null
+  // BY MEASUREMENT, not by failure — "Frontage: —, Depth: —" reads as broken.
+  if (obj.irregular === true && obj.frontage_m == null && obj.depth_m == null) {
+    return 'Irregular lot shape — frontage and depth can’t be measured from the cadastral polygon';
+  }
+  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2' && k !== 'irregular'));
 }
 
 // Format a field value (dimensions-area stripped) and append its unit — "7 m",
@@ -1613,6 +1618,10 @@ interface SeppStandard {
 // the capacity ceiling), with the clause citation each outcome rests on.
 interface EligibilityForm {
   development_type?: string; eligible?: boolean; reason?: string;
+  // True when eligible=false only because the input to test the standard is
+  // missing (lot width/area unmeasured, or the standard absent from the
+  // dataset) — render as "Unconfirmed", never as a failed standard.
+  unconfirmed?: boolean;
   requires_lmr_area?: boolean; min_lot_size_m2?: number | null; min_lot_width_m?: number | null;
   source_clause?: string | null; source_document?: string | null;
   legislation_url?: string | null; effective_date?: string | null;
@@ -1649,7 +1658,9 @@ function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
                 <span className="text-slate-900">{formatKey(f.development_type ?? '')}</span>
                 {f.eligible
                   ? <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">Eligible</span>
-                  : <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">Not eligible</span>}
+                  : f.unconfirmed
+                    ? <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">Unconfirmed</span>
+                    : <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">Not eligible</span>}
                 {(area || width) && (
                   <span className="text-xs text-slate-500 tabular-nums">
                     {[area, width].filter(Boolean).join(' · ')}
@@ -1697,7 +1708,11 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
           <thead>
             <tr className="text-xs text-slate-500 text-left">
               <th className="font-medium pb-2 pr-3">Form</th>
-              <th className="font-medium pb-2 pr-3">Eligible</th>
+              {/* This column tests ONLY lot area against the form's minimum —
+                  the full per-form verdict (width, TOD, LMR, heritage gates)
+                  is in the rows below. Labelling it "Eligible" contradicted
+                  them on lots that pass area but fail another gate. */}
+              <th className="font-medium pb-2 pr-3">Lot area test</th>
               <th className="font-medium pb-2 pr-3">Min lot</th>
               <th className="font-medium pb-2 pr-3">Min width</th>
               <th className="font-medium pb-2">Max FSR / height</th>
@@ -1708,9 +1723,13 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
               <tr key={i} className="border-t border-slate-100 align-top">
                 <td className="py-1.5 pr-3 text-slate-900">{formatKey(s.dev_type)}</td>
                 <td className="py-1.5 pr-3">
-                  {s.eligible
-                    ? <span className="text-emerald-700">Yes</span>
-                    : <span className="text-slate-400" title={s.reason_ineligible ?? undefined}>No</span>}
+                  {/* No minimum in the dataset, or no measured lot area →
+                      nothing was tested; a green "Passes" here would be false. */}
+                  {s.min_lot_area_m2 == null || lotAreaM2 == null
+                    ? <span className="text-slate-400" title="No lot-size minimum to test for this form">—</span>
+                    : s.eligible
+                      ? <span className="text-emerald-700">Passes</span>
+                      : <span className="text-slate-400" title={s.reason_ineligible ?? undefined}>Below minimum</span>}
                 </td>
                 <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_area_m2 ? `${s.min_lot_area_m2} m²` : '—'}</td>
                 <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_width_m ? `${s.min_lot_width_m} m` : '—'}</td>
@@ -2180,6 +2199,38 @@ const EXPECTED_SECTIONS_SAT = [
   'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
   // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
+
+// When satellite analysis wasn't requested, the backend emits NO events for the
+// six opt-in layers — without this card the finished brief carries zero trace
+// they exist (a silent absence, not an honest "not run").
+function SatelliteLayersNotRunCard() {
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Satellite analysis</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Six further layers were not part of this run</p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-teal-50 text-teal-700">Not run</span>
+      </div>
+      <div className="px-5 py-4">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+          {EXPECTED_SECTIONS_SAT.map((s) => (
+            <li key={s} className="flex flex-col">
+              <span className="text-slate-900">{SECTION_LABELS[s]?.label ?? formatKey(s.replace(/^satellite\./, ''))}</span>
+              {SECTION_LABELS[s]?.description && (
+                <span className="text-xs text-slate-500">{SECTION_LABELS[s].description}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-slate-500 mt-3 border-t border-slate-100 pt-3">
+          Tick &ldquo;Include satellite analysis&rdquo; above and run the brief again to add these layers.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function LiveStatusPanel({
   elapsed,
@@ -2976,6 +3027,13 @@ function IntelligenceBriefInner() {
                 </div>
               );
             })}
+            {/* Satellite off → the stream carried no satellite events at all;
+                name the absent layers rather than leave a silent gap. */}
+            {state === 'complete' && !ranWithSatellite && sectionEvents.length > 0 && (
+              <div className="min-w-0 md:col-span-2 xl:col-span-3">
+                <SatelliteLayersNotRunCard />
+              </div>
+            )}
           </div>
 
           {/* Complete summary */}

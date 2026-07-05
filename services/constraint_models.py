@@ -25,6 +25,10 @@ class LotDimensions(BaseModel):
     frontage_m: Optional[float] = None
     depth_m: Optional[float] = None
     is_corner: Optional[bool] = None
+    # True when the polygon is too irregular for frontage/depth to be measured
+    # (fills <60% of its oriented bounding box) — so a null frontage renders as
+    # "can't be measured", not as a broken lookup. None = shape not assessed.
+    irregular: Optional[bool] = None
 
 
 class DCPControl(BaseModel):

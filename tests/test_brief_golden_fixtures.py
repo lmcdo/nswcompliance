@@ -139,6 +139,23 @@ def test_real_eligibility_output_parses_with_citations():
     assert any(p.source_clause for p in parsed)
 
 
+def test_bowral_width_gaps_are_unconfirmed_not_failed_standards():
+    # Regional worst-case capture: irregular lot → width unmeasurable. Every
+    # row that failed on a MISSING input must carry unconfirmed=True (the UI
+    # renders "Unconfirmed"), while staying conservatively ineligible.
+    rows = _load("housing_sepp_eligibility_bowral")
+    parsed = [HousingSeppFormOutput.model_validate(r) for r in rows]
+    gap_rows = [p for p in parsed if p.reason and "unconfirmed" in p.reason.lower()]
+    assert gap_rows, "capture must include width-unconfirmed rows (frontage unmeasurable)"
+    for p in gap_rows:
+        assert p.eligible is False   # the conservative outcome stands
+        assert p.unconfirmed is True  # but it is labelled a data gap
+    # rows that failed a MEASURED standard or a gate are never mislabelled
+    for p in parsed:
+        if p.eligible is False and not (p.reason and ("unconfirmed" in p.reason.lower() or "dataset" in p.reason.lower())):
+            assert p.unconfirmed is not True
+
+
 # ── LEP land-use rows ────────────────────────────────────────────────────────
 
 def test_real_lep_rows_satisfy_contract():
