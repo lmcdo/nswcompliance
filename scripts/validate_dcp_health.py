@@ -17,6 +17,12 @@ per council:
      shares the same section_ref.
   3. DUPLICATE is_current — the same (council, chapter_key, ref_number) live more than once.
      A commit should leave exactly one current version per code.
+  4. REGISTRY FANOUT — duplicate active (council, chapter_key) rows in
+     dcp_chapter_registry. A duplicated key multiplies every joined control row in
+     the structured-controls API output. Must be 0.
+  5. MIXED DCP NAMES — an LGA whose live numeric controls resolve to >1 distinct
+     dcp_name through the council-scoped registry join (the join the API uses).
+     Contamination or inconsistent registry naming; users see mixed citations.
 
 Read-only by default. --fix-backlinks performs ONLY the backlink re-point (bounded, logged).
 
@@ -96,6 +102,48 @@ def orphaned_backlinks(cur) -> list[int]:
     return [r[0] for r in cur.fetchall()]
 
 
+def registry_fanout_duplicates(cur) -> list[tuple[str, str, int]]:
+    """Active registry rows sharing the same (council, chapter_key). This is the
+    mechanism of the cross-council contamination bug at the within-council level:
+    a duplicated key multiplies every joined control row in the API output.
+    Must always be 0."""
+    cur.execute(
+        """
+        SELECT council, chapter_key, count(*)
+        FROM dcp_chapter_registry
+        WHERE is_active = TRUE
+        GROUP BY council, chapter_key
+        HAVING count(*) > 1
+        ORDER BY council, chapter_key
+        """
+    )
+    return [(r[0], r[1], r[2]) for r in cur.fetchall()]
+
+
+def dcp_name_variance(cur) -> list[tuple[str, list[str]]]:
+    """LGAs whose live numeric controls resolve to more than one registry DCP name
+    through the council-scoped join the API uses. One LGA slug = one former-council
+    DCP, so >1 name means either contamination (bad ingest / migration writing the
+    wrong lga) or inconsistent registry naming across a council's chapters — both
+    surface to end users as mixed citations. DB-layer version of the API sweep
+    that caught the cross-council leak."""
+    cur.execute(
+        """
+        SELECT sc.lga, array_agg(DISTINCT cr.dcp_name ORDER BY cr.dcp_name)
+        FROM dcp_setback_controls sc
+        JOIN dcp_chapter_registry cr
+          ON cr.chapter_key = sc.source_chapter_key
+         AND cr.council = sc.lga
+         AND cr.is_active = TRUE
+        WHERE (sc.is_current IS NULL OR sc.is_current = TRUE)
+        GROUP BY sc.lga
+        HAVING count(DISTINCT cr.dcp_name) > 1
+        ORDER BY sc.lga
+        """
+    )
+    return [(r[0], r[1]) for r in cur.fetchall()]
+
+
 def fix_backlink(cur, control_id: int) -> bool:
     """Re-point one orphaned control to the current provision sharing its section_ref."""
     cur.execute(
@@ -158,13 +206,28 @@ def main() -> int:
     issues += 1 if orphans else 0
     if args.fix_backlinks:
         print(f"backlinks re-pointed: {fixed}")
+
+    # Contamination canary — global, mirrors the API's registry join.
+    fanout = registry_fanout_duplicates(cur)
+    print(f"duplicate active (council, chapter_key) registry rows: {len(fanout)}")
+    for council_key in fanout:
+        print(f"  FANOUT {council_key[0]} / {council_key[1]}: {council_key[2]} active rows")
+    issues += 1 if fanout else 0
+
+    variance = dcp_name_variance(cur)
+    print(f"LGAs serving >1 DCP name through the registry join: {len(variance)}")
+    for lga, names in variance:
+        print(f"  MIXED-NAME {lga}: {names}")
+    issues += 1 if variance else 0
     if issues:
         print(f"RESULT: {issues} issue group(s) found. Unenriched provisions won't show in the "
               f"UI; run enrichment. Orphan links: re-run with --fix-backlinks. Dup current: "
-              f"investigate the commit.")
+              f"investigate the commit. FANOUT/MIXED-NAME: fix the registry rows — the "
+              f"structured-controls API serves these.")
     else:
         print("RESULT: healthy — every live provision is enriched, one current version per "
-              "code, no orphaned numeric links. The end-user UI will reflect these correctly.")
+              "code, no orphaned numeric links, no registry fanout or mixed DCP names. "
+              "The end-user UI will reflect these correctly.")
     cur.close()
     conn.close()
     return 1 if issues else 0

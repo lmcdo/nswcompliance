@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { captureServerException } from '@/lib/posthog-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,11 +131,12 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(
       `SELECT sc.control_type, sc.value_min, sc.value_max, sc.unit, sc.condition,
               sc.section_ref, sc.source_text, sc.dcp_version, sc.pdf_page,
-              sc.source_chapter_key, sc.needs_review,
-              cr.r2_public_pdf_url, cr.chapter_label, cr.dcp_name
+              sc.source_chapter_key, sc.needs_review, sc.lga,
+              cr.r2_public_pdf_url, cr.chapter_label, cr.dcp_name, cr.council AS registry_council
        FROM dcp_setback_controls sc
        LEFT JOIN dcp_chapter_registry cr
          ON sc.source_chapter_key = cr.chapter_key
+         AND cr.council = sc.lga
          AND cr.is_active = true
        WHERE sc.lga IN (${placeholders})
          AND sc.dev_type = $${lgaSlugs.length + 1}
@@ -165,10 +167,29 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Defence-in-depth output invariant.
+    // The registry join above is scoped to the council (cr.council = sc.lga),
+    // which fixes the cross-council contamination bug where a generic
+    // chapter_key (e.g. "part-e-s4.6") shared across councils fanned one control
+    // into several rows carrying foreign councils' DCP names. If a future change
+    // ever lets a foreign council's chapter attach again, drop the leaked rows
+    // and alert — never serve another council's controls on a compliance
+    // surface. Silent wrong data is the worst failure mode here.
+    const cleanRows = result.rows.filter(
+      (r) => !r.registry_council || r.registry_council === r.lga,
+    );
+    if (cleanRows.length !== result.rows.length) {
+      captureServerException(new Error('DCP registry cross-council leak detected'), {
+        endpoint: '/api/dcp/structured-controls',
+        council,
+        leaked_rows: result.rows.length - cleanRows.length,
+      });
+    }
+
     // Group by category
     const categoryMap = new Map<string, ControlCategory>();
 
-    for (const row of result.rows) {
+    for (const row of cleanRows) {
       const catInfo = CONTROL_CATEGORIES[row.control_type] || { label: 'Other', order: 99 };
       const catKey = catInfo.label;
 
@@ -220,7 +241,7 @@ export async function GET(request: NextRequest) {
     const categories = Array.from(categoryMap.values()).sort((a, b) => a.order - b.order);
 
     // Extract DCP name — prefer the longest dcp_version (usually the formal name)
-    const dcpName = result.rows
+    const dcpName = cleanRows
       .map(r => r.dcp_name || r.dcp_version)
       .filter(Boolean)
       .sort((a: string, b: string) => b.length - a.length)[0] || null;
