@@ -86,12 +86,12 @@ function sectionAnchorId(section: string): string {
 
 // Confidence level styling
 // Ring-pill badge with a status dot. Display labels only — the enum values are
-// unchanged. 'estimated' renders as "Modelled": these figures are exact
+// unchanged. 'estimated' renders as "Calculated": these figures are exact
 // calculations on satellite/statistical/model data, and "Estimated" read as
 // guesswork; the legend spells out the distinction from on-site measurement.
 const CONFIDENCE_BADGE_STYLES: Record<string, { label: string; pill: string; dot: string }> = {
   authoritative: { label: 'Authoritative', pill: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20', dot: 'bg-emerald-500' },
-  estimated: { label: 'Modelled', pill: 'bg-amber-50 text-amber-800 ring-amber-600/25', dot: 'bg-amber-500' },
+  estimated: { label: 'Calculated', pill: 'bg-amber-50 text-amber-800 ring-amber-600/25', dot: 'bg-amber-500' },
   derived: { label: 'Derived', pill: 'bg-blue-50 text-blue-800 ring-blue-600/20', dot: 'bg-blue-500' },
   extracted: { label: 'Extracted', pill: 'bg-purple-50 text-purple-800 ring-purple-600/20', dot: 'bg-purple-500' },
   not_available: { label: 'Not Available', pill: 'bg-red-50 text-red-800 ring-red-600/20', dot: 'bg-red-500' },
@@ -821,7 +821,7 @@ function ShadowDisplay({ data }: { data: ShadowData }) {
   return (
     <div className="text-sm text-slate-900 space-y-1.5">
       {data.height_m != null && (
-        <div>Modelled building height: <span className="font-medium">{data.height_m} m</span>{data.height_source ? ` (${data.height_source})` : ''}</div>
+        <div>Building height used: <span className="font-medium">{data.height_m} m</span>{data.height_source ? ` (${data.height_source})` : ''}</div>
       )}
       {data.adg_compliant != null && (
         <div>
@@ -1339,7 +1339,7 @@ function ClimateCard({ data }: { data: Record<string, unknown> }) {
           <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Climate Hazards &amp; Projections</h3>
           <p className="text-xs text-slate-500 mt-0.5">Hazard screening, heat and rainfall calculations, climate-model projections — each with its dataset</p>
         </div>
-        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Modelled</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Calculated</span>
       </div>
       <div className="px-5 py-4 space-y-4">
         {lines.length > 0 && (
@@ -1957,7 +1957,7 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   );
   if (state.kind === 'error') return <Shell badge="Couldn’t complete" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500">{state.message}</span></Shell>;
   return (
-    <Shell badge="Modelled" badgeClass="bg-amber-50 text-amber-800">
+    <Shell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
       <p className="text-slate-900">
         {state.count != null
           ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
@@ -2069,7 +2069,7 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
   );
   const o = state.o;
   return (
-    <SolarShell badge="Modelled" badgeClass="bg-amber-50 text-amber-800">
+    <SolarShell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
       <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
         {o.max_panels != null && (
           <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
@@ -2166,7 +2166,7 @@ function TerrainCard({ data, interpretation }: { data: TerrainData; interpretati
           <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Terrain</h3>
           <p className="text-xs text-slate-500 mt-0.5">Slope, aspect and drainage from elevation</p>
         </div>
-        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Modelled</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Calculated</span>
       </div>
       {data.hillshade_png_b64 && (
         <div className="px-5 pt-4">
@@ -2434,7 +2434,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           <div><span className="text-slate-500">Total fields:</span> <span className="font-medium">{cs.total}</span></div>
           <div><span className="text-emerald-600">Authoritative:</span> <span className="font-medium">{cs.authoritative}</span></div>
-          <div><span className="text-amber-600">Modelled:</span> <span className="font-medium">{cs.estimated}</span></div>
+          <div><span className="text-amber-600">Calculated:</span> <span className="font-medium">{cs.estimated}</span></div>
           <div><span className="text-blue-600">Derived:</span> <span className="font-medium">{cs.derived}</span></div>
           <div><span className="text-purple-600">Extracted:</span> <span className="font-medium">{cs.extracted}</span></div>
           <div><span className="text-slate-500">Not available:</span> <span className="font-medium">{cs.not_available}</span></div>
@@ -2510,7 +2510,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
   { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
-  { label: 'Modelled', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. It is calculated, not measured on site.' },
+  { label: 'Calculated', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. Calculated from data, not measured on site.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
 ];
