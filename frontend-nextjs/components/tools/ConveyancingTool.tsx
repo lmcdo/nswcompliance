@@ -121,6 +121,9 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
+  // Named early-access grant (?access=<code>) — validated server-side against
+  // CONVEYANCING_ACCESS_CODES; unlocks the full-PDF CTA without checkout.
+  const [accessGranted, setAccessGranted] = useState(false);
 
   const runCheck = useCallback(async (addr: string) => {
     if (!addr.trim()) return;
@@ -181,6 +184,38 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
       }
       window.history.replaceState({}, '', window.location.pathname);
     }
+
+    const accessParam = params.get('access')?.trim();
+    if (accessParam) {
+      sessionStorage.setItem('conveyancing_access_code', accessParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    const grantCode = accessParam || sessionStorage.getItem('conveyancing_access_code');
+    if (!grantCode) return;
+
+    let ignore = false;
+    fetch('/api/reports/conveyancing/access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: grantCode }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (ignore) return;
+        if (json?.valid) {
+          setAccessGranted(true);
+          posthog.capture('conveyancing_access_grant', { code: grantCode });
+        } else {
+          // Invalid or revoked code: drop it so the page behaves as normal free tier.
+          sessionStorage.removeItem('conveyancing_access_code');
+        }
+      })
+      .catch(() => {
+        // Network failure leaves the page in the normal free state.
+      });
+    return () => {
+      ignore = true;
+    };
   }, [runCheck]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -202,6 +237,11 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
     (ov) => ov.layer_type !== 'lot_size',
   );
   const seppOverlays = dedupeSeppOverlays(result?.outputs.sepp_overlays ?? []);
+
+  // A report is unlocked either by Stripe redirect (paidReportId) or by a
+  // validated named grant plus the free check's own report_id.
+  const unlockedReportId =
+    paidReportId ?? (accessGranted ? result?.report_id ?? null : null);
 
   return (
     <div className="mb-8">
@@ -258,14 +298,15 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </button>
           </div>
 
-          {/* Paid download CTA — shown after Stripe redirect */}
-          {paidReportId && result && (
+          {/* Full-report download CTA — Stripe redirect or named early-access grant */}
+          {unlockedReportId && result && (
             <ConveyancingPaidDownloadCTA
-              reportId={paidReportId}
+              reportId={unlockedReportId}
               address={result.address}
               lat={result.lat}
               lng={result.lng}
               propId={result.prop_id ? String(result.prop_id) : undefined}
+              grant={!paidReportId}
             />
           )}
 
@@ -466,7 +507,13 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             />
 
             <div className="mt-5">
-              <WaitlistButton interestType="conveyancing" address={result.address} />
+              {unlockedReportId ? (
+                <p className="text-xs text-teal-700">
+                  Early access — the full PDF report is unlocked in the panel above.
+                </p>
+              ) : (
+                <WaitlistButton interestType="conveyancing" address={result.address} />
+              )}
             </div>
           </div>
 
@@ -522,6 +569,7 @@ function Flag({ type, text }: { type: 'ok' | 'warn' | 'alert'; text: string }) {
 
 // ---------------------------------------------------------------------------
 // ConveyancingPaidDownloadCTA — shown after Stripe payment=success redirect
+// or when a named early-access grant code (?access=) validated
 // ---------------------------------------------------------------------------
 
 function ConveyancingPaidDownloadCTA({
@@ -530,12 +578,15 @@ function ConveyancingPaidDownloadCTA({
   lat,
   lng,
   propId,
+  grant,
 }: {
   reportId: string;
   address: string;
   lat: number;
   lng: number;
   propId?: string;
+  /** true when unlocked by a named early-access grant rather than payment */
+  grant?: boolean;
 }) {
   const [generating, setGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -564,7 +615,9 @@ function ConveyancingPaidDownloadCTA({
 
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
-      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-sm font-semibold text-teal-900 mb-1">
+        {grant ? 'Early access — your report is ready.' : 'Payment received — your report is ready.'}
+      </p>
       <p className="text-xs text-teal-700 mb-3">Click below to generate and download the full PDF report.</p>
       {pdfUrl ? (
         <a
