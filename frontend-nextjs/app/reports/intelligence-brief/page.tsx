@@ -821,7 +821,18 @@ function ShadowDisplay({ data }: { data: ShadowData }) {
   return (
     <div className="text-sm text-slate-900 space-y-1.5">
       {data.height_m != null && (
-        <div>Building height used: <span className="font-medium">{data.height_m} m</span>{data.height_source ? ` (${data.height_source})` : ''}</div>
+        <div>
+          Building height used: <span className="font-medium">{data.height_m} m</span>
+          <span className="text-slate-500">
+            {data.height_source === 'default'
+              // The 9 m fallback (shadow_detector DEFAULT_HEIGHT_M) — say WHY it
+              // was used, not the internal slug.
+              ? ' — no LEP height limit is mapped for this lot, so the analysis uses a standard two-storey height'
+              : data.height_source
+                ? ' — the LEP height limit mapped for this lot'
+                : ''}
+          </span>
+        </div>
       )}
       {data.adg_compliant != null && (
         <div>
