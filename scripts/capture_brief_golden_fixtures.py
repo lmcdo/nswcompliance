@@ -52,6 +52,12 @@ OUT_DIR = REPO / "tests" / "fixtures" / "brief_golden"
 CONCORD = {"address": "14 Stanley Street, Concord", "prop_id": 1456609,
            "lat": -33.86382, "lng": 151.10586, "zone": "R3"}
 HURSTVILLE = {"address": "5/1 Treacy Street, Hurstville", "prop_id": 4241915}
+# Regional worst-case profile: R3 in a non-DCP-onboarded council, big irregular
+# lot (polygon fills 59.4% of its OBB → frontage unmeasurable → width-gated
+# forms UNCONFIRMED), no LEP height/FSR. The metro fixtures never exercised
+# these fallbacks together — that's how the 2026-07-05 Bowral brief shipped a
+# contradictory SEPP card unnoticed.
+BOWRAL = {"address": "38 Park Road, Bowral", "prop_id": 1119594, "zone": "R3"}
 
 
 def _write(name: str, inputs: dict, output) -> None:
@@ -133,6 +139,34 @@ def capture_housing_sepp() -> None:
            [asdict(r) for r in results])
 
 
+def capture_housing_sepp_bowral() -> None:
+    """Eligibility with a REAL unmeasurable lot width — the brief's exact
+    Bowral inputs (width from the live cadastral polygon, None when irregular),
+    so the data-gap-vs-failed-standard distinction is locked by a real shape."""
+    from dataclasses import asdict
+
+    from generate_conveyancing_report import get_valuation
+    from services.housing_sepp_eligibility import evaluate_eligibility
+    from services.lot_dimensions import calculate_lot_dimensions, fetch_lot_geometry
+    from services.vg_comparables import _webmercator_to_wgs84
+
+    geom = fetch_lot_geometry(str(BOWRAL["prop_id"]))
+    dims = calculate_lot_dimensions(geom)
+    ring = geom["rings"][0]
+    cx = sum(p[0] for p in ring) / len(ring)
+    cy = sum(p[1] for p in ring) / len(ring)
+    lat, lng = _webmercator_to_wgs84(cx, cy)
+    val = get_valuation(BOWRAL["prop_id"])
+    lot_area = val.get("lot_area_m2")
+    width = dims.frontage_m if dims else None
+    results = evaluate_eligibility(BOWRAL["zone"], lot_area, width, lat, lng)
+    _write("housing_sepp_eligibility_bowral",
+           {**BOWRAL, "lat": lat, "lng": lng, "lot_area_m2": lot_area,
+            "lot_width_m": width,
+            "lot_irregular": dims.irregular if dims else None},
+           [asdict(r) for r in results])
+
+
 def capture_lep_land_use() -> None:
     import psycopg2
 
@@ -198,6 +232,7 @@ CAPTURES = {
     "vg_sales": capture_vg_sales,
     "strata": capture_strata,
     "housing_sepp": capture_housing_sepp,
+    "housing_sepp_bowral": capture_housing_sepp_bowral,
     "lep_land_use": capture_lep_land_use,
     "climate": capture_climate,
     "env_overlays": capture_env_overlays,

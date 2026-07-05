@@ -694,6 +694,7 @@ class HousingSeppFormOutput(BaseModel):
     eligible: Optional[bool] = None
     reason: Optional[str] = None
     requires_lmr_area: Optional[bool] = None
+    unconfirmed: Optional[bool] = None
     applicable_zones: list = []
     min_lot_size_m2: Optional[float] = None
     min_lot_width_m: Optional[float] = None

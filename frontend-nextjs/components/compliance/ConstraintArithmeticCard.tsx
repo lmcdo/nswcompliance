@@ -90,6 +90,32 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   low: 'bg-red-100 text-red-800',
 };
 
+// The backend tier is a ratio of available calculation inputs (height, FSR,
+// three setbacks, lot dimensions, SEPP overrides — constraint_arithmetic.py).
+// "low confidence" read as doubt about the arithmetic; instead state the actual
+// measure: how many planning controls went into this calculation, and which.
+// The tier key still drives the colour.
+const YIELD_INPUTS: Array<{ label: string; has: (r: ConstraintArithmeticResult) => boolean }> = [
+  { label: 'height of buildings', has: (r) => r.lep_height_m != null },
+  { label: 'floor space ratio', has: (r) => r.lep_fsr != null },
+  { label: 'front setback', has: (r) => r.setback_front_m != null },
+  { label: 'rear setback', has: (r) => r.setback_rear_m != null },
+  { label: 'side setback', has: (r) => r.setback_side_m != null },
+  { label: 'SEPP standards', has: (r) => (r.sepp_overrides_applied?.length ?? 0) > 0 },
+];
+
+function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; title: string } {
+  const used = YIELD_INPUTS.filter((i) => i.has(result));
+  const missing = YIELD_INPUTS.filter((i) => !i.has(result));
+  return {
+    text: `Calculated from ${used.length} of ${YIELD_INPUTS.length} planning controls`,
+    title: [
+      used.length ? `In this calculation: ${used.map((i) => i.label).join(', ')}` : '',
+      missing.length ? `Not mapped for this lot: ${missing.map((i) => i.label).join(', ')}` : '',
+    ].filter(Boolean).join(' · '),
+  };
+}
+
 /** Engine dev_type slug → readable built-form label (e.g. "multi-dwelling housing"). */
 function humanizeForm(form?: string | null): string {
   if (!form) return 'dwelling';
@@ -254,6 +280,7 @@ export function ConstraintArithmeticCard({
   // is prohibited), so suppress those and show only the LEP envelope + a note.
   const zoneModelled = !zone || /^(R[1-5]|RU5)\b/i.test(zone.trim());
   const hasYield = floorDwellings > 0 && zoneModelled;
+  const inputsBadge = yieldInputsBadge(result);
 
   return (
     <Card className="border-blue-200 bg-blue-50/30">
@@ -265,8 +292,11 @@ export function ConstraintArithmeticCard({
               Development Yield Estimate
             </CardTitle>
           </div>
-          <Badge className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}>
-            {result.confidence} confidence
+          <Badge
+            className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}
+            title={inputsBadge.title}
+          >
+            {inputsBadge.text}
           </Badge>
         </div>
       </CardHeader>

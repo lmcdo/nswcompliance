@@ -38,12 +38,19 @@ _BASE_FORMS = {"dwelling_houses", "dwelling_house", "dual_occupancy", "secondary
 
 @dataclass
 class FormEligibility:
-    """Per-development-type eligibility outcome (serves both the brief and the tab)."""
+    """Per-development-type eligibility outcome (serves both the brief and the tab).
+
+    ``unconfirmed`` distinguishes WHY ``eligible`` is False: True means the input
+    needed to test the standard is missing (lot width/area unmeasured, or the
+    standard itself absent from the dataset) — the conservative outcome stands,
+    but the UI must not present a data gap as a failed standard.
+    """
 
     development_type: str
     eligible: bool
     reason: str
     requires_lmr_area: bool
+    unconfirmed: bool = False
     applicable_zones: list = field(default_factory=list)
     min_lot_size_m2: Optional[float] = None
     min_lot_width_m: Optional[float] = None
@@ -199,10 +206,11 @@ def evaluate_eligibility(
         min_size = g.get("min_lot_size")
         min_width = g.get("min_lot_width")
 
-        def _result(eligible: bool, reason: str) -> FormEligibility:
+        def _result(eligible: bool, reason: str, unconfirmed: bool = False) -> FormEligibility:
             return FormEligibility(
                 development_type=dev_type, eligible=eligible, reason=reason,
-                requires_lmr_area=lmr_req, applicable_zones=zones,
+                requires_lmr_area=lmr_req, unconfirmed=unconfirmed,
+                applicable_zones=zones,
                 min_lot_size_m2=min_size, min_lot_width_m=min_width,
                 source_clause=g.get("source_clause"),
                 source_document=g.get("source_document"),
@@ -224,21 +232,21 @@ def evaluate_eligibility(
             and "residential_flat_r3r4" not in dev_type
             and min_size is None
         ):
-            results.append(_result(False, "Lot standard for this form is not in the dataset (treated conservatively)"))
+            results.append(_result(False, "Lot standard for this form is not in the dataset (treated conservatively)", unconfirmed=True))
             continue
         if min_size is not None and (lot_area_m2 is None or lot_area_m2 < min_size):
             reason = (
                 f"Lot area unconfirmed (minimum {min_size:.0f} m²)" if lot_area_m2 is None
                 else f"Lot area {lot_area_m2:.0f} m² is below the minimum {min_size:.0f} m²"
             )
-            results.append(_result(False, reason))
+            results.append(_result(False, reason, unconfirmed=lot_area_m2 is None))
             continue
         if min_width is not None and (lot_width_m is None or lot_width_m < min_width):
             reason = (
                 f"Lot width unconfirmed (minimum {min_width:.0f} m)" if lot_width_m is None
                 else f"Lot width {lot_width_m:.0f} m is below the minimum {min_width:.0f} m"
             )
-            results.append(_result(False, reason))
+            results.append(_result(False, reason, unconfirmed=lot_width_m is None))
             continue
         if "residential_flat" in dev_type and not in_tod:
             # Residential flat buildings are the MID-RISE tier (R1/R2 and R3/R4) and apply
