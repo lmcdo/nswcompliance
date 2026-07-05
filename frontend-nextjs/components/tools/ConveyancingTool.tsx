@@ -616,7 +616,7 @@ function ConveyancingPaidDownloadCTA({
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
       <p className="text-sm font-semibold text-teal-900 mb-1">
-        {grant ? 'Early access — your report is ready.' : 'Payment confirmed — your report is ready.'}
+        {grant ? 'Early access — your report is ready.' : 'Payment received — your report is ready.'}
       </p>
       <p className="text-xs text-teal-700 mb-3">Click below to generate and download the full PDF report.</p>
       {pdfUrl ? (

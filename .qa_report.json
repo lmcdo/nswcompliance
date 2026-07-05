@@ -1,6 +1,6 @@
 {
  "tier": "standard",
- "commit_hash": "c5ae4b18",
+ "commit_hash": "09d4a133",
  "justification": "Adds a named early-access grant mechanism so the payment-gated conveyancing report can be sent to founding members and tested internally before Stripe billing exists: an ?access=<code> link validated server-side against CONVEYANCING_ACCESS_CODES unlocks the existing full-PDF download CTA.",
  "files": [
   "frontend-nextjs/lib/access-codes.ts",
