@@ -17,7 +17,7 @@ export function isValidAccessCode(
   code: string | null | undefined,
   envList: string | null | undefined,
 ): boolean {
-  if (!code || !envList) return false;
+  if (typeof code !== 'string' || typeof envList !== 'string') return false;
   const trimmed = code.trim();
   if (!trimmed) return false;
   return envList

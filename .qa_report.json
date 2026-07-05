@@ -1,102 +1,89 @@
 {
-  "tier": "standard",
-  "commit_hash": "63e9d632",
-  "justification": "Closes the three actionable deferrals from the enrichment plan: SEPP-over-LEP override banners now cite the clause of the standards row that grants the overriding value; the brief gains a Solar Potential card that fires the SAME rate-limited route the standalone solar tool already uses in production (no inline paid API calls); and the scheduled contract-drift check exists as a runner script plus Railway config-as-code, dry-run verified live.",
-  "files": [
-    "services/intelligence_brief.py",
-    "services/constraint_models.py",
-    "scripts/run_brief_drift_check.py",
-    "scripts/brief_contract_drift.py",
-    "railway.brief-drift.toml",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "tests/test_brief_followups.py",
-    "scripts/brief_field_coverage_baseline.json"
-  ],
-  "pre_impl": {
-    "existing_data": "The solar pipeline (services/solar_yield.py, Google Solar API) is already live behind the rate-limited /api/satellite/solar-yield route in the reports hub, so the production key exists; fetch_sepp_housing_standards rows already carry source_clause and source_document per standard; the drift checker and capture logic already exist from Slice 0 \u2014 only the scheduled runner was missing.",
-    "assumption_mismatch": "My earlier claim that solar was blocked on a missing key described only the dev box \u2014 the standalone tool works in production, so the brief card was wired via the granny-flat marker pattern. The drift cron's first draft included the bushfire capture; that was removed because run_bushfire persists a report row and a cron must never write junk rows into production data.",
-    "new_vs_existing": "The solar card fires the EXISTING gated route (billing, rate limits and future Stripe gating stay in one place \u2014 the brief never calls the paid API inline; the backend emits only a marker slot like granny flat). The cron runner composes the two existing drift tools; the citation work threads existing row fields through the existing grouping, no new source."
+ "tier": "standard",
+ "commit_hash": "c5ae4b18",
+ "justification": "Adds a named early-access grant mechanism so the payment-gated conveyancing report can be sent to founding members and tested internally before Stripe billing exists: an ?access=<code> link validated server-side against CONVEYANCING_ACCESS_CODES unlocks the existing full-PDF download CTA.",
+ "files": [
+  "frontend-nextjs/lib/access-codes.ts",
+  "frontend-nextjs/app/api/reports/conveyancing/access/route.ts",
+  "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+  "frontend-nextjs/__tests__/api/reports/conveyancing-access.test.ts",
+  "docs/CONFIGURATION.md"
+ ],
+ "pre_impl": {
+  "existing_data": "Explore audit confirmed no entitlement or access-code infrastructure exists anywhere: lib/report-token.ts is an HMAC anti-injection guard not an entitlement, the satellite routes use an ADMIN_SECRET header per-route, and Stripe promo codes only matter once checkout is wired (it is not — the live UI shows a waitlist button). The free conveyancing check already mints a report_id and the paid download CTA component already exists and works when given one.",
+  "assumption_mismatch": "Assumed the conveyancing report was actively payment-gated; in reality the checkout route is dormant and the frontend gate trusts a ?payment=success query param with no server verification, and the PDF generate route is unauthenticated. The grant mechanism therefore adds the first server-checked access decision this product has; hardening the generate route itself is flagged as follow-up, not silently bundled.",
+  "new_vs_existing": "Reuses the existing ConveyancingPaidDownloadCTA, the existing free-check report_id, and the existing PDF generate path unchanged. New code is only the pure validator, one small validate route, and the unlock wiring — no new tables, no new entitlement framework, matching the outreach RULE 4 decision that comps stay a spreadsheet plus codes until billing lands."
+ },
+ "functions": [
+  {
+   "name": "isValidAccessCode",
+   "file_line": "frontend-nextjs/lib/access-codes.ts:20",
+   "input": "a candidate code string and the comma-separated env list, both possibly null or undefined or non-string",
+   "output": "true only when the trimmed code exactly matches one trimmed non-empty entry in the list",
+   "if_none": "any missing, non-string, empty or whitespace input returns false, so an unset env var fails closed and no code is ever valid by default"
   },
-  "functions": [
-    {
-      "name": "_fetch_solar_marker",
-      "file_line": "services/intelligence_brief.py:2070",
-      "input": "nothing \u2014 a pure constant marker",
-      "output": "the decoupled marker dict that reserves the solar card slot in the stream",
-      "if_none": "a test asserts the function contains no requests or key usage, so the paid API can never be invoked inline by the brief"
-    },
-    {
-      "name": "_build_sepp_housing",
-      "file_line": "services/intelligence_brief.py:2664",
-      "input": "the standards rows including each row's source_clause and source_document",
-      "output": "SEPPStandard entries carrying the height and FSR granting-row citations",
-      "if_none": "a dev type whose granting row has no citation yields citation fields of None \u2014 no fabricated clause"
-    },
-    {
-      "name": "_detect_sepp_lep_overrides",
-      "file_line": "services/intelligence_brief.py:2757",
-      "input": "the eligible standards with their per-control citations plus the LEP height and FSR",
-      "output": "SeppLepOverride rows whose source_clause is the clause of the row that grants the overriding value",
-      "if_none": "no citation on the granting row leaves source_clause None and the banner renders without a clause \u2014 never an invented reference"
-    },
-    {
-      "name": "main",
-      "file_line": "scripts/run_brief_drift_check.py:55",
-      "input": "live captures from the read-only services the brief consumes (strata cadastre, climate)",
-      "output": "exit 0 on contract, exit 1 with a Telegram alert on drift or capture failure",
-      "if_none": "a harness crash itself pages Telegram and exits 1 \u2014 the cron can never fail silently"
-    }
-  ],
-  "values": [
-    {
-      "value": "coverage_available flag from the Google Solar response",
-      "read_at": "SolarBriefCard in frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-      "if_missing": "false renders an explicit no-imagery-coverage state; a transport error renders the retry state \u2014 neither is a data claim"
-    }
-  ],
-  "queries": "N/A \u2014 no new database queries; the drift cron is read-only by design (report-writing services excluded)",
-  "break_it": [
-    {
-      "scenario": "A refactor makes the brief call the paid Google Solar API inline during assembly",
-      "what_happens": "The marker-only design is pinned: a test inspects _fetch_solar_marker's source for any requests or key usage and fails the suite",
-      "mitigated": true,
-      "how": "test_solar_marker_never_calls_the_paid_api",
-      "repro": "python -m pytest tests/test_brief_followups.py -k paid_api -q"
-    },
-    {
-      "scenario": "An override banner shows a SEPP value increase with no clause behind it",
-      "what_happens": "The citation rides from the standards row that grants the overriding value; when that row has no clause the banner simply omits the reference \u2014 no citation, no claim, and never a fabricated one",
-      "mitigated": true,
-      "how": "citation threading through _build_sepp_housing into _detect_sepp_lep_overrides; test_override_without_a_row_citation_has_no_fabricated_clause",
-      "repro": "python -m pytest tests/test_brief_followups.py -k fabricated -q"
-    },
-    {
-      "scenario": "Someone adds the bushfire capture back into the drift cron",
-      "what_happens": "run_bushfire persists a property report row, so a weekly cron would write junk rows into production data \u2014 a source-scan test fails on any report-writing service in the runner",
-      "mitigated": true,
-      "how": "test_drift_cron_scope_is_read_only",
-      "repro": "python -m pytest tests/test_brief_followups.py -k read_only -q"
-    },
-    {
-      "scenario": "Google Solar has no imagery at the address",
-      "what_happens": "coverage_available false renders the explicit no-imagery state \u2014 distinct from a failed request, which renders the retry state",
-      "mitigated": true,
-      "how": "three rendered states in SolarBriefCard plus the derived loading state",
-      "repro": "run the brief with satellite for a rural address without Solar coverage"
-    },
-    {
-      "scenario": "The drift cron itself crashes (import error, network down)",
-      "what_happens": "The crash handler pages Telegram with the traceback and exits 1 \u2014 the schedule can never rot silently",
-      "mitigated": true,
-      "how": "top-level except in run_brief_drift_check.py; dry-run verified live (2 services on contract, exit 0)",
-      "repro": "python scripts/run_brief_drift_check.py with DATABASE_URL set"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "none \u2014 the cron is read-only",
-    "secrets": "none in code; the cron service needs DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID set in the Railway dashboard",
-    "other_repo": "none",
-    "manual_verify": "Railway: create service brief-drift-check from this repo, point Config Path at railway.brief-drift.toml, set the env vars (CLI session expired mid-creation \u2014 needs railway login). Then run the brief with satellite for Concord: the Solar Potential card fires the existing route and renders panel capacity and yield"
+  {
+   "name": "POST /api/reports/conveyancing/access",
+   "file_line": "frontend-nextjs/app/api/reports/conveyancing/access/route.ts:23",
+   "input": "JSON body with a code field of unknown type from an untrusted client",
+   "output": "200 with valid true or false only, never the configured code list; 400 on bad JSON, missing code or codes over 100 chars",
+   "if_none": "invalid JSON or a non-string code returns 400 before any env comparison, and a valid hit logs the named code for the usage trail"
+  },
+  {
+   "name": "ConveyancingTool grant unlock effect",
+   "file_line": "frontend-nextjs/components/tools/ConveyancingTool.tsx:167",
+   "input": "the access query param or a previously stored sessionStorage code from an earlier page load",
+   "output": "accessGranted state set true only after the server validates the code; invalid codes are removed from sessionStorage",
+   "if_none": "no param and no stored code returns early with no fetch; a network failure leaves the page in the normal free state with the waitlist button"
   }
+ ],
+ "values": [
+  {
+   "value": "json.valid from the access validation response",
+   "read_at": "grant unlock effect in frontend-nextjs/components/tools/ConveyancingTool.tsx",
+   "if_missing": "optional-chained json?.valid treats a malformed response as invalid, so the page stays in the free tier rather than unlocking"
+  },
+  {
+   "value": "result.report_id from the free instant check response",
+   "read_at": "unlockedReportId derivation in ConveyancingTool render",
+   "if_missing": "result?.report_id ?? null keeps unlockedReportId null so the download CTA simply does not render — no crash and no CTA with a broken id"
+  }
+ ],
+ "queries": "N/A — no database queries in this change; validation is a pure env-var string comparison",
+ "break_it": [
+  {
+   "scenario": "Someone brute-forces or guesses grant codes against the public validate route",
+   "what_happens": "Codes are random-hex-suffixed and capped at 100 chars; a wrong code returns valid false with no hint and the response never echoes the configured list, so guessing yields nothing enumerable",
+   "mitigated": true,
+   "how": "random suffixes, exact-match-only comparison, no code list in any response, and a jest test asserts the list is never echoed",
+   "repro": "curl -X POST /api/reports/conveyancing/access -H 'Content-Type: application/json' -d '{\"code\":\"guess-01\"}' and observe valid false"
+  },
+  {
+   "scenario": "CONVEYANCING_ACCESS_CODES is unset in an environment, for example a preview deploy before the var was added",
+   "what_happens": "isValidAccessCode returns false for every code so the page silently behaves as the normal free tier with the waitlist button; the founder link appears dead rather than granting access",
+   "mitigated": true,
+   "how": "fail-closed is the intended direction (never accidental free access); the jest test for the unset env var pins it, and docs/CONFIGURATION.md documents the preview-env requirement",
+   "repro": "npx jest --testPathPattern=conveyancing-access -t 'env var is unset' or unset the var locally and load /reports/conveyancing?access=any-code"
+  },
+  {
+   "scenario": "A grant is revoked while the grantee still has the code cached in sessionStorage from an earlier visit",
+   "what_happens": "The next page load re-validates against the server, gets valid false, removes the stored code and renders the ordinary free tier, so revocation takes effect on next load rather than persisting client-side forever",
+   "mitigated": true,
+   "how": "every page load re-validates server-side; the invalid branch explicitly deletes the sessionStorage entry",
+   "repro": "load the page with a valid ?access code, remove that code from the env var, redeploy, reload the page and confirm the waitlist button is back"
+  },
+  {
+   "scenario": "The free check response arrives without a report_id while a grant is active",
+   "what_happens": "unlockedReportId stays null because the derivation optional-chains result report_id, so the download CTA is not rendered and the user sees results plus waitlist copy instead of a CTA that would post an undefined id",
+   "mitigated": true,
+   "how": "null-safe derivation keeps the CTA unrendered rather than generating with a missing id",
+   "repro": "mock /api/satellite/conveyancing to omit report_id in a jest DOM test or devtools override, run a check with a granted session and observe no download panel"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "none — this change touches no database anywhere",
+  "secrets": "set CONVEYANCING_ACCESS_CODES in Vercel for Preview and Production before testing; the named comp list itself stays in the private spreadsheet per outreach RULE 4, never in git",
+  "other_repo": "none",
+  "manual_verify": "on the PR preview open /reports/conveyancing?access=<internal code>, run an address, confirm the early-access download panel renders and the PDF generates via Railway; then confirm ?access=wrong-code shows the plain free tier"
+ }
 }
