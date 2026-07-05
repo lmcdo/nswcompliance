@@ -1,9 +1,20 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Metadata } from 'next';
+import { Fraunces } from 'next/font/google';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { REPORTS_LAYOUT_FOOTER } from '@/lib/disclaimers';
+
+// Display face for report/section titles — a characterful serif that gives the
+// reports the read of a produced dossier rather than default UI chrome. Exposed
+// as a CSS variable so pages opt in per element (body text stays the app sans).
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  style: ['normal'],
+  variable: '--font-display',
+});
 
 export const metadata: Metadata = {
   title: 'NSW Property Intelligence — PlotDetect',
@@ -32,7 +43,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={`min-h-screen bg-slate-50 ${fraunces.variable}`}>
       <header className="bg-slate-950 border-b border-slate-800/50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
