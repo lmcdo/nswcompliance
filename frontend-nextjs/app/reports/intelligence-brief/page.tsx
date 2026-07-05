@@ -55,19 +55,21 @@ type BriefEvent =
 type PageState = 'idle' | 'triggering' | 'streaming' | 'complete' | 'error';
 
 // Section display metadata
+// Titles say what the reader GETS, not the instrument's acronym — the acronym
+// rides in the description for the planners who want it.
 const SECTION_LABELS: Record<string, { label: string; description: string }> = {
-  economics: { label: 'Economics', description: 'Land value, lot area, valuation history' },
+  economics: { label: 'Land Value & Economics', description: 'The Valuer General’s land value, lot area and five-year valuation history' },
   market_context: { label: 'Market Context', description: 'Comparable land valuations and recent sales nearby (NSW Valuer General)' },
-  strata: { label: 'Strata & Cadastre', description: 'Lot type, strata plan, ownership structure' },
-  environmental_constraints: { label: 'Environmental Constraints', description: 'Overlays, heritage, contamination, mine subsidence' },
-  planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR, lot size, heritage items' },
-  dcp_controls: { label: 'DCP Controls', description: 'Development control plan provisions' },
+  strata: { label: 'Title & Ownership', description: 'Lot type, plan number, strata structure from the NSW cadastre' },
+  environmental_constraints: { label: 'Environmental Constraints', description: 'Flood, bushfire, heritage, contamination and other mapped overlays' },
+  planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR and lot-size standards from the LEP' },
+  dcp_controls: { label: 'Council Development Controls', description: 'Setbacks, landscaping and built-form provisions from the DCP' },
   sepp_housing: { label: 'SEPP Housing', description: 'State policy housing standards' },
-  neighbourhood: { label: 'Neighbourhood', description: 'Nearby DAs, shadow analysis' },
+  neighbourhood: { label: 'Neighbourhood Activity', description: 'Development applications nearby, outcomes, and shadow analysis' },
   constraint_arithmetic: { label: 'Development Capacity', description: 'Indicative yield and the binding planning constraint' },
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
-  'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
+  'satellite.climate_disclosure': { label: 'Climate Hazards & Projections', description: 'Hazard screening, heat and rainfall calculations, climate-model projections' },
   'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
@@ -83,21 +85,27 @@ function sectionAnchorId(section: string): string {
 }
 
 // Confidence level styling
+// Ring-pill badge with a status dot. Display labels only — the enum values are
+// unchanged. 'estimated' renders as "Modelled": these figures are exact
+// calculations on satellite/statistical/model data, and "Estimated" read as
+// guesswork; the legend spells out the distinction from on-site measurement.
+const CONFIDENCE_BADGE_STYLES: Record<string, { label: string; pill: string; dot: string }> = {
+  authoritative: { label: 'Authoritative', pill: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20', dot: 'bg-emerald-500' },
+  estimated: { label: 'Modelled', pill: 'bg-amber-50 text-amber-800 ring-amber-600/25', dot: 'bg-amber-500' },
+  derived: { label: 'Derived', pill: 'bg-blue-50 text-blue-800 ring-blue-600/20', dot: 'bg-blue-500' },
+  extracted: { label: 'Extracted', pill: 'bg-purple-50 text-purple-800 ring-purple-600/20', dot: 'bg-purple-500' },
+  not_available: { label: 'Not Available', pill: 'bg-red-50 text-red-800 ring-red-600/20', dot: 'bg-red-500' },
+};
+
 function confidenceBadge(confidence: string) {
-  switch (confidence) {
-    case 'authoritative':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800">Authoritative</span>;
-    case 'estimated':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>;
-    case 'derived':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">Derived</span>;
-    case 'extracted':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">Extracted</span>;
-    case 'not_available':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800">Not Available</span>;
-    default:
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600">{confidence}</span>;
-  }
+  const s = CONFIDENCE_BADGE_STYLES[confidence]
+    ?? { label: confidence, pill: 'bg-slate-100 text-slate-600 ring-slate-400/20', dot: 'bg-slate-400' };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${s.pill}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} aria-hidden="true" />
+      {s.label}
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -273,10 +281,10 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
     : null;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{meta.label}</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">{meta.label}</h3>
           <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -379,7 +387,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           if (key === 'heritage_postgis' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             return (
               <div key={key} className="flex flex-col col-span-full">
-                <dt className="text-xs font-medium text-slate-500">Heritage</dt>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Heritage</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{humanizeHeritage(df.value as Record<string, unknown>)}</dd>
               </div>
             );
@@ -480,7 +488,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           if (key === 'overlays' && Array.isArray(df.value)) {
             return (
               <div key={key} className="flex flex-col col-span-full">
-                <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{formatKey(key)}</dt>
                 <dd className="mt-0.5"><OverlayList overlays={df.value as OverlayItem[]} /></dd>
               </div>
             );
@@ -690,7 +698,7 @@ const FIELD_HINTS: Record<string, string> = {
 function FieldLabel({ fieldKey }: { fieldKey: string }) {
   const hint = FIELD_HINTS[fieldKey];
   return (
-    <dt className="text-xs font-medium text-slate-500">
+    <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
       {formatKey(fieldKey)}
       {hint && (
         <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">{hint}</span>
@@ -1103,9 +1111,9 @@ function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknow
   const yearsBack = mc?.sales_years_back ?? 3;
 
   const header = (
-    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">Market Context</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Market Context</h3>
         <p className="text-xs text-slate-500 mt-0.5">
           Comparable land valuations and recent sales within {radius} m (NSW Valuer General{df.as_at ? `, as at ${df.as_at}` : ''})
         </p>
@@ -1119,7 +1127,7 @@ function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknow
   if (!mc) {
     const u = describeUnavailable(df.reason, 'market_context', satelliteRan);
     return (
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+      <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
         {header}
         <div className={`px-5 py-4 text-sm ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.detail}</div>
       </div>
@@ -1133,7 +1141,7 @@ function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknow
   const position = comps?.assessment_signal ? SIGNAL_POSITION[comps.assessment_signal] : null;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
       {header}
       <div className="px-5 py-4 space-y-4">
         {/* Comparable valuations */}
@@ -1266,11 +1274,26 @@ function ordinal(n: number): string {
   return `${n}th`;
 }
 
-interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; }
+interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; source?: string; }
+interface ClimateHazardRow { hazard?: string; present?: boolean; detail?: string; data_source?: string; available?: boolean; }
+interface ClimateUnavailable { source?: string; reason?: string; }
+interface ClimateManifest {
+  sources_queried?: number; sources_successful?: number;
+  sources_unavailable?: ClimateUnavailable[]; data_quality_notes?: string[];
+}
+
+// Internal source slugs -> what was actually checked, so a gap names the dataset
+// rather than vanishing. Keep external-safe: no key/config talk in the label.
+const CLIMATE_SOURCE_LABELS: Record<string, string> = {
+  nsw_uhgc: 'Urban heat island (NSW urban heat meshblock dataset, 2016)',
+  arr_data_hub: 'Design rainfall intensity (Bureau of Meteorology IFD via ARR Data Hub)',
+  nasa_firms: 'Fire hotspot detections (NASA FIRMS satellite)',
+  narclim_projections: 'Climate projections (NARCliM 2.0, AdaptNSW)',
+};
 
 // Turn a raw climate empirical finding into one plain-English line, e.g.
 // "Urban heat: +7.3 °C above surrounding areas (2016 data — most recent available)".
-function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: string } | null {
+function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: string; source?: string } | null {
   if (!f || f.value == null) return null;
   const yr = f.data_date ? f.data_date.slice(0, 4) : '';
   const stale = f.confidence === 'stale';
@@ -1278,47 +1301,97 @@ function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: str
     return {
       label: 'Urban heat',
       detail: `+${f.value.toFixed(1)} °C above surrounding areas${yr ? ` (${yr} data${stale ? ' — most recent available' : ''})` : ''}`,
+      source: f.source,
     };
   }
   if (f.hazard === 'extreme_rainfall') {
     return {
       label: 'Extreme rainfall',
       detail: `${f.value.toFixed(1)} mm in 60 min (1% annual chance)${yr ? ` (${yr})` : ''}`,
+      source: f.source,
     };
   }
   // Fallback: humanise the hazard name + value, drop the snake_case unit jargon.
   return {
     label: formatKey(f.hazard ?? 'Hazard'),
     detail: `${f.value}${f.unit ? ` ${f.unit.replace(/_/g, ' ')}` : ''}${yr ? ` (${yr})` : ''}`,
+    source: f.source,
   };
 }
 
 function ClimateCard({ data }: { data: Record<string, unknown> }) {
   const empirical = (data.empirical_findings as ClimateFinding[] | undefined) ?? [];
-  const lines = empirical.map(humanizeClimateFinding).filter(Boolean) as { label: string; detail: string }[];
+  const lines = empirical.flatMap((f) => {
+    const line = humanizeClimateFinding(f);
+    return line ? [line] : [];
+  });
+  // The six per-hazard screening rows (flood/bushfire/coastal/landslide/fire
+  // history/heat) — previously computed by the backend and silently dropped here.
+  const hazards = ((data.per_hazard_detail as ClimateHazardRow[] | undefined) ?? [])
+    .filter((h) => h && h.available !== false);
+  const manifest = (data.manifest as ClimateManifest | undefined) ?? {};
+  const unavailable = manifest.sources_unavailable ?? [];
+  const notes = manifest.data_quality_notes ?? [];
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Climate Disclosure</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Heat island, rainfall intensity</p>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Climate Hazards &amp; Projections</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Hazard screening, heat and rainfall calculations, climate-model projections — each with its dataset</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Modelled</span>
       </div>
-      <div className="px-5 py-4">
-        {lines.length === 0 ? (
-          <div className="text-sm text-slate-400">No climate hazards recorded at this property.</div>
-        ) : (
+      <div className="px-5 py-4 space-y-4">
+        {lines.length > 0 && (
           <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-col">
-                <dt className="text-xs font-medium text-slate-500">{l.label}</dt>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{l.label}</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{l.detail}</dd>
+                {l.source && <dd className="text-[11px] text-slate-400 mt-0.5">{l.source}</dd>}
               </div>
             ))}
           </dl>
         )}
+        {hazards.length > 0 && (
+          <div className={lines.length > 0 ? 'border-t border-slate-100 pt-3' : ''}>
+            <h4 className="text-xs font-medium text-slate-500 mb-2">Hazard screening
+              <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+                Each hazard checked against its government dataset — a &ldquo;not detected&rdquo; is a checked result, not missing data.
+              </span>
+            </h4>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+              {hazards.map((h, i) => (
+                <div key={h.hazard ?? i} className="flex flex-col">
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{formatKey(h.hazard ?? 'hazard')}</dt>
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    {h.detail || (h.present === false ? 'Not detected at this property' : h.present === true ? 'Detected' : '—')}
+                  </dd>
+                  {h.data_source && <dd className="text-[11px] text-slate-400 mt-0.5">{h.data_source}</dd>}
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+        {lines.length === 0 && hazards.length === 0 && (
+          <div className="text-sm text-slate-400">No climate hazard indicators could be calculated for this property on this run.</div>
+        )}
         <ProjectedFindings rows={(data.projected_findings as ProjectedRow[] | undefined) ?? []} />
+        {unavailable.length > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <h4 className="text-xs font-medium text-slate-500 mb-1.5">Checked, not available for this location on this run</h4>
+            <ul className="space-y-1">
+              {unavailable.map((u, i) => (
+                <li key={u.source ?? i} className="text-xs text-slate-500" title={u.reason ?? undefined}>
+                  {CLIMATE_SOURCE_LABELS[u.source ?? ''] ?? formatKey(u.source ?? 'source')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {notes.length > 0 && (
+          <p className="text-[11px] text-slate-400">{notes.join(' · ')}</p>
+        )}
       </div>
     </div>
   );
@@ -1692,13 +1765,13 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
 }) {
   const forms = eligibility?.value ?? null;
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
           <p className="text-xs text-slate-500 mt-0.5">Denser forms the policy permits, and whether this lot qualifies</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800">Authoritative</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20">Authoritative</span>
       </div>
       <div className="px-5 py-4 overflow-x-auto">
         <table className="w-full text-sm">
@@ -1760,9 +1833,9 @@ function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
   const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
   const residential = isResidentialZone(ctx.zone);
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
       <div className="px-5 py-4 border-b border-slate-100">
-        <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
         <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
       </div>
       <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
@@ -1862,13 +1935,13 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   }, [active, address]);
 
   const Shell = ({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) => (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Secondary Dwelling</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Secondary Dwelling</h3>
           <p className="text-xs text-slate-500 mt-0.5">Granny-flat feasibility — buildings on the lot + eligibility</p>
         </div>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-slate-900/10 ${badgeClass}`}>{badge}</span>
       </div>
       <div className="px-5 py-4 text-sm leading-relaxed">{children}</div>
     </div>
@@ -1884,7 +1957,7 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   );
   if (state.kind === 'error') return <Shell badge="Couldn’t complete" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500">{state.message}</span></Shell>;
   return (
-    <Shell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
+    <Shell badge="Modelled" badgeClass="bg-amber-50 text-amber-800">
       <p className="text-slate-900">
         {state.count != null
           ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
@@ -1936,13 +2009,13 @@ type SolarState =
 // Module scope (not nested) so React never remounts it mid-stream.
 function SolarShell({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Solar Potential</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Solar Potential</h3>
           <p className="text-xs text-slate-500 mt-0.5">Roof capacity and yield from aerial imagery (Google Solar)</p>
         </div>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-slate-900/10 ${badgeClass}`}>{badge}</span>
       </div>
       <div className="px-5 py-4 text-sm">{children}</div>
     </div>
@@ -1996,13 +2069,13 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
   );
   const o = state.o;
   return (
-    <SolarShell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
+    <SolarShell badge="Modelled" badgeClass="bg-amber-50 text-amber-800">
       <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
         {o.max_panels != null && (
           <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
         )}
         {o.annual_kwh_estimate != null && (
-          <div><dt className="text-xs text-slate-500">Estimated yield</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year</dd></div>
+          <div><dt className="text-xs text-slate-500">Calculated yield</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year</dd></div>
         )}
         {o.sunshine_hours_per_year != null && (
           <div><dt className="text-xs text-slate-500">Sunshine</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.sunshine_hours_per_year).toLocaleString()} hours/year</dd></div>
@@ -2087,13 +2160,13 @@ function TerrainCard({ data, interpretation }: { data: TerrainData; interpretati
   const summary = joined ? joined.charAt(0).toUpperCase() + joined.slice(1) + '.' : 'Terrain measured for this lot.';
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Terrain</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Terrain</h3>
           <p className="text-xs text-slate-500 mt-0.5">Slope, aspect and drainage from elevation</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Modelled</span>
       </div>
       {data.hillshade_png_b64 && (
         <div className="px-5 pt-4">
@@ -2226,10 +2299,10 @@ function SectionJumpBar({ sections }: { sections: string[] }) {
 // they exist (a silent absence, not an honest "not run").
 function SatelliteLayersNotRunCard() {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Satellite analysis</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Satellite analysis</h3>
           <p className="text-xs text-slate-500 mt-0.5">Six further layers were not part of this run</p>
         </div>
         <span className="px-2 py-0.5 text-xs font-medium rounded bg-teal-50 text-teal-700">Not run</span>
@@ -2361,7 +2434,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           <div><span className="text-slate-500">Total fields:</span> <span className="font-medium">{cs.total}</span></div>
           <div><span className="text-emerald-600">Authoritative:</span> <span className="font-medium">{cs.authoritative}</span></div>
-          <div><span className="text-amber-600">Estimated:</span> <span className="font-medium">{cs.estimated}</span></div>
+          <div><span className="text-amber-600">Modelled:</span> <span className="font-medium">{cs.estimated}</span></div>
           <div><span className="text-blue-600">Derived:</span> <span className="font-medium">{cs.derived}</span></div>
           <div><span className="text-purple-600">Extracted:</span> <span className="font-medium">{cs.extracted}</span></div>
           <div><span className="text-slate-500">Not available:</span> <span className="font-medium">{cs.not_available}</span></div>
@@ -2437,7 +2510,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
   { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
-  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — a guide to investigate, not a measured value.' },
+  { label: 'Modelled', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. It is calculated, not measured on site.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
 ];
@@ -2838,8 +2911,9 @@ function IntelligenceBriefInner() {
       {/* Header */}
       {state !== 'idle' && (
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-3xl">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 mb-1.5">PlotDetect · Property Dossier</div>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Intelligence Brief</h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed">
             For a single NSW property: what the rules allow, what physically constrains the site,
             what environmental risk applies, what it&apos;s worth, and what&apos;s happening
             next door — fifteen-plus government, satellite and computed layers fused into one brief,
@@ -2926,7 +3000,7 @@ function IntelligenceBriefInner() {
 
           {/* Aerial — NSW SIX Maps 10cm imagery for the lot (reuses AerialTile). */}
           {(metadataEvent?.data.lat ?? selectedLat) != null && (metadataEvent?.data.lng ?? selectedLng) != null && (
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+            <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
               <AerialTile
                 lat={(metadataEvent?.data.lat ?? selectedLat) as number}
                 lng={(metadataEvent?.data.lng ?? selectedLng) as number}

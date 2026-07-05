@@ -90,6 +90,15 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   low: 'bg-red-100 text-red-800',
 };
 
+// The confidence tier reflects INPUT COMPLETENESS (which controls were mapped),
+// not doubt about the arithmetic — say that, instead of "low confidence", which
+// reads as a guess. The tier key still drives the colour.
+const CONFIDENCE_BADGE_LABELS: Record<string, string> = {
+  high: 'All controls mapped',
+  medium: 'Some controls not mapped',
+  low: 'Key controls not mapped',
+};
+
 /** Engine dev_type slug → readable built-form label (e.g. "multi-dwelling housing"). */
 function humanizeForm(form?: string | null): string {
   if (!form) return 'dwelling';
@@ -266,7 +275,7 @@ export function ConstraintArithmeticCard({
             </CardTitle>
           </div>
           <Badge className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}>
-            {result.confidence} confidence
+            {CONFIDENCE_BADGE_LABELS[result.confidence] ?? `${result.confidence} confidence`}
           </Badge>
         </div>
       </CardHeader>
