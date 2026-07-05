@@ -74,15 +74,12 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.solar': { label: 'Solar Potential', description: 'Roof capacity and yield from aerial imagery (Google Solar)' },
 };
 
-// Bento spans — the headline (development capacity) and the field-heavy sections
-// get two columns; everything else is a single tile. Driving the layout off the
-// section key keeps it stable as cards stream in at uneven heights.
-const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints', 'market_context']);
-// DCP controls carries a long PDF URL — give it the full row so it reads cleanly.
-const FULL_ROW_SECTIONS = new Set(['dcp_controls']);
-function spanFor(section: string): string {
-  if (FULL_ROW_SECTIONS.has(section)) return 'col-span-1 md:col-span-2 xl:col-span-3';
-  return WIDE_SECTIONS.has(section) ? 'md:col-span-2' : 'col-span-1';
+// Cards stack full-width, one per row — field-heavy sections were unreadable as
+// narrow grid tiles (a <400px container forces every label/value pair into a
+// tall tower; at full width the key-value grid inside each card spreads to 3-4
+// columns instead). The anchor id lets the sticky section bar jump here.
+function sectionAnchorId(section: string): string {
+  return `brief-${section.replace(/\./g, '-')}`;
 }
 
 // Confidence level styling
@@ -364,7 +361,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
   }
 
   return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+    <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-3.5">
       {entries.map(([key, val]) => {
         // Unwrap DataField: extract .value and show confidence badge
         if (isDataField(val)) {
@@ -381,7 +378,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // Heritage dict -> one plain sentence, not a raw object dump.
           if (key === 'heritage_postgis' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <dt className="text-xs font-medium text-slate-500">Heritage</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{humanizeHeritage(df.value as Record<string, unknown>)}</dd>
               </div>
@@ -391,7 +388,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // not "6 fields".
           if (key === 'shadow' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><ShadowDisplay data={df.value as ShadowData} /></dd>
               </div>
@@ -402,7 +399,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // not a comma run-on.
           if ((key === 'heritage_items' || key === 'heritage_hca') && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><HeritageList items={df.value as string[]} /></dd>
               </div>
@@ -412,7 +409,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // period stated from the payload itself.
           if (key === 'da_outcomes' && df.value && typeof df.value === 'object') {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><DAOutcomesDisplay data={df.value as DAOutcomesPayload} /></dd>
               </div>
@@ -423,7 +420,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             const r = df.value as RefusalStatsRow;
             const granted: number | null = r.approved ?? null;
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   Of {r.total_determined?.toLocaleString()} applications determined in {formatKey(String(r.lga ?? 'this council').toLowerCase())} over the last {r.period_years} years:{' '}
@@ -440,7 +437,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             const names = (df.value as Array<{ type?: string }>)
               .flatMap((o) => (o?.type ? [formatKey(String(o.type))] : []));
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   Also intersects: {names.join(', ')}
@@ -451,7 +448,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // Nearby DAs — application rows with cost of development, not "5 items".
           if (key === 'nearby_das' && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><NearbyDAList rows={df.value as NearbyDARow[]} /></dd>
               </div>
@@ -461,7 +458,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // per-year change, not "5 items".
           if (key === 'val_history' && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><ValuationTrend history={df.value as ValuationYear[]} /></dd>
               </div>
@@ -470,7 +467,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // LEP Land Use Table lists — collapsible so 600+ uses don't swamp the card.
           if ((key === 'permitted_uses' || key === 'prohibited_uses') && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5">
                   <UseList kind={key === 'permitted_uses' ? 'permitted' : 'prohibited'} uses={df.value as string[]} />
@@ -482,7 +479,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // a readable list with units, not "2 items".
           if (key === 'overlays' && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
                 <dd className="mt-0.5"><OverlayList overlays={df.value as OverlayItem[]} /></dd>
               </div>
@@ -494,7 +491,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           if (key === 'coastal_hazards' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             const within = Object.keys(df.value as Record<string, unknown>).length > 0;
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   {within
@@ -531,7 +528,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
             const site = d.nearest_site ?? {};
             const bits = [site.name, [site.street, site.suburb].filter(Boolean).join(' ')].filter(Boolean).join(', ');
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   {d.site_count ?? 1} notified site{(d.site_count ?? 1) === 1 ? '' : 's'} on the EPA register within 500 m
@@ -1312,7 +1309,7 @@ function ClimateCard({ data }: { data: Record<string, unknown> }) {
         {lines.length === 0 ? (
           <div className="text-sm text-slate-400">No climate hazards recorded at this property.</div>
         ) : (
-          <dl className="space-y-2">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-col">
                 <dt className="text-xs font-medium text-slate-500">{l.label}</dt>
@@ -1354,7 +1351,7 @@ function ProjectedFindings({ rows }: { rows: ProjectedRow[] }) {
           Climate-model projections against the 2015–2024 baseline — modelled scenarios, not observations.
         </span>
       </div>
-      <dl className="space-y-1.5 text-sm">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
         {[...byHazard.entries()].map(([hazard, hz]) => {
           const meta = PROJECTED_LABELS[hazard] ?? { label: formatKey(hazard), unit: '' };
           const parts = hz
@@ -2000,7 +1997,7 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
   const o = state.o;
   return (
     <SolarShell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
         {o.max_panels != null && (
           <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
         )}
@@ -2119,7 +2116,7 @@ function TerrainCard({ data, interpretation }: { data: TerrainData; interpretati
         </div>
         <div className="min-w-0">
           <p className="text-sm text-slate-900">{summary}</p>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-3 text-xs">
+          <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-1.5 mt-3 text-xs">
             <div><dt className="text-slate-400">Slope</dt><dd className="text-slate-700">{data.slope_mean_deg != null ? `${data.slope_mean_deg.toFixed(1)}° avg${data.slope_max_deg != null ? ` · ${Math.round(data.slope_max_deg)}° max` : ''}` : '—'}</dd></div>
             <div><dt className="text-slate-400">Fall</dt><dd className="text-slate-700">{data.elevation_range_m != null ? `${data.elevation_range_m.toFixed(1)} m` : '—'}</dd></div>
             <div><dt className="text-slate-400">Drains to</dt><dd className="text-slate-700">{data.drainage_direction ?? '—'}</dd></div>
@@ -2199,6 +2196,30 @@ const EXPECTED_SECTIONS_SAT = [
   'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
   // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
+
+// Sticky section jump bar — cards stack one per row, so a finished brief is a
+// long page; the bar lists the sections that have streamed in, in order, and
+// jumps to them. Hidden until there is something to jump between.
+function SectionJumpBar({ sections }: { sections: string[] }) {
+  const seen = new Set<string>();
+  const ordered = sections.filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
+  if (ordered.length < 2) return null;
+  return (
+    <nav aria-label="Brief sections" className="sticky top-2 z-20">
+      <div className="flex gap-1 overflow-x-auto rounded-full border border-slate-200 bg-white/85 backdrop-blur-md px-2 py-1.5 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {ordered.map((s) => (
+          <a
+            key={s}
+            href={`#${sectionAnchorId(s)}`}
+            className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
+          >
+            {SECTION_LABELS[s]?.label ?? formatKey(s.replace(/^satellite\./, ''))}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 // When satellite analysis wasn't requested, the backend emits NO events for the
 // six opt-in layers — without this card the finished brief carries zero trace
@@ -2928,10 +2949,14 @@ function IntelligenceBriefInner() {
             state={state}
           />
 
-          {/* Section cards — bento grid; appear as they arrive. The headline and
-              field-heavy sections span two columns; the rest are single tiles, and
-              grid-auto-flow:dense packs gaps as cards stream in at uneven heights. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 [grid-auto-flow:dense] items-start">
+          {/* Sticky jump bar — one card per row makes the page long; this tracks
+              the sections that have streamed in and jumps to them. */}
+          <SectionJumpBar sections={sectionEvents.map((e) => e.data.section)} />
+
+          {/* Section cards — stacked full-width, one per row, in stream order.
+              Wide cards let each card's internal key-value grid run 3-4 columns;
+              the old 3-column bento starved field-heavy sections into towers. */}
+          <div className="flex flex-col gap-4">
             {sectionEvents.map((event, i) => {
               const section = event.data.section;
               // Development Capacity renders via the dedicated card (carries its
@@ -3022,7 +3047,7 @@ function IntelligenceBriefInner() {
                 card = <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
               return (
-                <div key={`${section}-${i}`} className={cn('min-w-0', spanFor(section))}>
+                <div key={`${section}-${i}`} id={sectionAnchorId(section)} className="min-w-0 scroll-mt-20">
                   {card}
                 </div>
               );
@@ -3030,7 +3055,7 @@ function IntelligenceBriefInner() {
             {/* Satellite off → the stream carried no satellite events at all;
                 name the absent layers rather than leave a silent gap. */}
             {state === 'complete' && !ranWithSatellite && sectionEvents.length > 0 && (
-              <div className="min-w-0 md:col-span-2 xl:col-span-3">
+              <div className="min-w-0">
                 <SatelliteLayersNotRunCard />
               </div>
             )}
