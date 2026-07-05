@@ -57,6 +57,7 @@ Backup before any schema change. See `DB_SCHEMA.md` before writing queries.
 | `GEMINI_API_KEY` | — |
 | `ADMIN_API_KEY` | Internal admin routes |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Redis cache |
+| `CONVEYANCING_ACCESS_CODES` | `/api/reports/conveyancing/access` — comma-separated named early-access grant codes (one per grantee, e.g. `hamada-fm-xxxxxx,internal-fm-xxxxxx`). A valid `?access=<code>` link unlocks the full conveyancing PDF without checkout. Revoke a grant by removing its code. Unset = no grants (fails closed). Comp list itself lives outside git per outreach RULE 4. |
 
 ---
 
