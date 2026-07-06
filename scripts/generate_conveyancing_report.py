@@ -3535,10 +3535,10 @@ def generate_pdf(
             "SEPP (Resilience and Hazards) 2021",
             "Contaminated land (all land); coastal management (mapped areas)",
             "The consent authority must consider whether land is contaminated and, if so, "
-            "whether it is suitable (or can be remediated) for the proposed use (Ch 4). "
-            "Coastal management provisions apply only within mapped coastal areas — see the "
-            "spatial overlays in this report. Flood planning controls sit in the LEP (cl 5.21), "
-            "not this SEPP.",
+            "whether remediation is required before the land can be used for the proposed "
+            "purpose (Ch 4). Coastal management provisions apply only within mapped coastal "
+            "areas — see the spatial overlays in this report. Flood planning controls sit in "
+            "the LEP (cl 5.21), not this SEPP.",
         ],
     ])
 
