@@ -141,6 +141,56 @@ def test_form_missing_lot_standard_is_conservatively_ineligible():
     assert r2["manor_house"].eligible is False
 
 
+# --- unconfirmed: a data gap must not read as a failed standard ---------------
+# (Bowral regression: an irregular 4,096 m² lot has no measurable frontage, so
+# every width-gated form failed — the UI showed "Not eligible" for a lot that
+# passed every measurable standard. The outcome stays conservative; the flag
+# lets the UI say "Unconfirmed" instead.)
+
+def test_missing_width_is_unconfirmed_but_still_conservatively_ineligible():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 4096, None, -33.8, 151.1, gate_inputs=gates))
+    assert r["terraces"].eligible is False
+    assert r["terraces"].unconfirmed is True
+    assert "unconfirmed" in r["terraces"].reason
+
+
+def test_width_below_minimum_is_a_failed_standard_not_unconfirmed():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 600, 15, -33.8, 151.1, gate_inputs=gates))
+    assert r["terraces"].eligible is False
+    assert r["terraces"].unconfirmed is False
+
+
+def test_missing_area_is_unconfirmed_but_area_below_minimum_is_not():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", None, 20, -33.8, 151.1, gate_inputs=gates))
+    assert r["terraces"].eligible is False
+    assert r["terraces"].unconfirmed is True
+    r2 = _by_type(evaluate_eligibility("R2", 400, 20, -33.8, 151.1, gate_inputs=gates))
+    assert r2["terraces"].eligible is False
+    assert r2["terraces"].unconfirmed is False
+
+
+def test_missing_lot_standard_is_unconfirmed():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 900, 25, -33.8, 151.1, gate_inputs=gates))
+    assert r["manor_house"].eligible is False
+    assert r["manor_house"].unconfirmed is True
+
+
+def test_eligible_and_genuine_gate_failures_are_never_unconfirmed():
+    gates = {**ALL_FALSE, "in_lmr_area": True}
+    r = _by_type(evaluate_eligibility("R2", 600, 20, -33.8, 151.1, gate_inputs=gates))
+    assert r["terraces"].eligible is True and r["terraces"].unconfirmed is False
+    # not-in-LMR-area is a gate outcome, not a measurement gap
+    r2 = _by_type(evaluate_eligibility("R2", 600, 20, -33.8, 151.1, gate_inputs=ALL_FALSE))
+    assert r2["terraces"].eligible is False and r2["terraces"].unconfirmed is False
+    # TOD absence likewise
+    r3 = _by_type(evaluate_eligibility("R3", 800, 20, -33.8, 151.1, gate_inputs=gates))
+    assert r3["residential_flat_r3r4_inner"].unconfirmed is False
+
+
 def test_rfb_r3r4_without_min_lot_is_NOT_caught_by_the_gap_guard():
     # r3r4 RFB legitimately has no min_lot (TOD-gated, not a data gap) -> stays eligible in TOD.
     gates = {**ALL_FALSE, "in_lmr_area": True, "in_tod": True}

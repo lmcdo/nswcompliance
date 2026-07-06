@@ -36,10 +36,30 @@ PROMPT = (
     "provision (objectives, controls, clauses). Return a JSON object "
     '{"provisions": [{"code","title","text"}]}. Split each individual objective '
     "(O1, O2...) and control (C1, C2...) into its own provision where they are "
-    "separately numbered. IGNORE running page headers, footers, page numbers, and "
-    "any faint rotated watermark/date characters in the margins. Do not invent "
-    "provisions. Output ONLY the JSON object."
+    "separately numbered. Each provision's \"code\" MUST be fully section-qualified: "
+    "the section number followed by the objective/control label, e.g. \"C4.9 O1\", "
+    "\"C4.9 C2\" — NEVER a bare \"O1\" or \"C1\" without its section number. IGNORE "
+    "running page headers, footers, page numbers, and any faint rotated watermark/date "
+    "characters in the margins. Do not invent provisions. Output ONLY the JSON object."
 )
+
+
+def _build_prompt(current_section: str | None = None) -> str:
+    """PROMPT plus, when a page range continues a section whose heading fell in an
+    earlier chunk, the section number so the model still qualifies those codes."""
+    if current_section:
+        return PROMPT + (
+            f" These pages may continue section {current_section} from the previous page: "
+            f"any objective/control appearing before the next section heading belongs to "
+            f"{current_section}, so qualify it as \"{current_section} O1\", "
+            f"\"{current_section} C1\", etc."
+        )
+    return PROMPT
+
+
+# a section code looks like "C4.9" / "3.1" / "A2.10.1" — an optional letter then
+# dotted numbers; used to carry the current section across chunk boundaries.
+_SECTION_RE = re.compile(r"^[A-Za-z]?\d+(?:\.\d+)+$")
 
 
 # ── chunking ─────────────────────────────────────────────────────────────────
@@ -120,37 +140,106 @@ def provisions_to_sections(provs: list[dict]) -> list[dict]:
     return sections
 
 
+# ── AI-path railguards (absolute-quality; robust to LLM non-determinism) ──────
+# LLM extraction can silently drop whole sections or truncate a provision mid-text
+# (observed in the Haiku/Mistral head-to-head). These guards catch those without
+# relying on a diff, and feed the existing SUSPECT surface (suspect_reason ->
+# build_suspect_alert -> Telegram). Advisory only — they never block a commit.
+COVERAGE_MIN_TOC = 8       # only judge coverage when the TOC lists >= this many codes
+COVERAGE_MISS_RATIO = 0.25  # flag when > this fraction of TOC sections are missing
+TRUNCATION_MIN_CHARS = 40   # a provision shorter than this (and not a bare ref) is thin
+TRUNCATION_RATIO = 0.10     # flag when > this fraction of provisions look truncated/thin
+
+
+def coverage_gap(extracted_codes: set[str], toc_codes: set[str]) -> tuple[float, list[str]]:
+    """Fraction (and list) of TOC section codes NOT covered by the extraction. A TOC
+    code (e.g. "C4.1") is covered if an extracted code:
+      - equals it exactly ("C4.1"), OR
+      - is a dotted sub-provision of it ("C4.1.2"), OR
+      - has it as the leading token before the first space ("C4.1 O1", "C4.1 C3") —
+        the AI emits provisions as "<section> <objective/control>", so this is the
+        common case and its absence was the source of false coverage_fail alerts.
+    Pure. Returns (0.0, []) when the TOC is too small to judge."""
+    if len(toc_codes) < COVERAGE_MIN_TOC:
+        return 0.0, []
+    section_tokens = {e.split(" ", 1)[0] for e in extracted_codes}
+    missing = [
+        c for c in toc_codes
+        if c not in extracted_codes
+        and c not in section_tokens
+        and not any(e.startswith(c + ".") for e in extracted_codes)
+    ]
+    return len(missing) / len(toc_codes), sorted(missing)
+
+
+def truncation_rate(texts: list[str]) -> tuple[float, int]:
+    """Fraction (and count) of provisions that look truncated or thin — text ending in
+    an ellipsis, or shorter than TRUNCATION_MIN_CHARS and not a bare cross-reference.
+    Pure. Catches LLM output-token cutoffs and dropped bodies."""
+    if not texts:
+        return 0.0, 0
+    flagged = 0
+    for t in texts:
+        s = (t or "").strip()
+        if s.endswith("...") or s.endswith("…"):
+            flagged += 1
+        elif len(s) < TRUNCATION_MIN_CHARS and not re.match(r"(?i)^(see|refer|as per)\b", s):
+            flagged += 1
+    return flagged / len(texts), flagged
+
+
+def toc_codes_from_pdf(pdf_path, max_scan: int = 12) -> set[str]:
+    """Return the set of section codes listed in the chapter's TOC, for the coverage
+    guard. Reuses dcp_extract_changed.parse_toc_entries. Returns an empty set if the
+    PDF can't be read or has no parseable TOC (guard then no-ops)."""
+    try:
+        import pdfplumber
+        from scripts.dcp_extract_changed import parse_toc_entries
+    except Exception:
+        return set()
+    try:
+        with pdfplumber.open(str(pdf_path)) as pdf:
+            texts = [(p.extract_text() or "") for p in pdf.pages[:max_scan]]
+        return {code for code, _ in parse_toc_entries(texts, max_scan=max_scan)}
+    except Exception:
+        return set()
+
+
 # ── providers ────────────────────────────────────────────────────────────────
-def _call_haiku(pdf_bytes: bytes) -> str:
+def _call_haiku(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     import anthropic
     client = anthropic.Anthropic()
     data = base64.standard_b64encode(pdf_bytes).decode()
     msg = client.messages.create(
         model=os.getenv("AI_MODEL_ID", "claude-haiku-4-5"),
         max_tokens=8000,
+        temperature=0,  # maximise determinism across quarterly re-extracts
         messages=[{"role": "user", "content": [
             {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}},
-            {"type": "text", "text": PROMPT}]}],
+            {"type": "text", "text": prompt}]}],
     )
     return msg.content[0].text
 
 
-def _call_mistral(pdf_bytes: bytes) -> str:
+def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     key = os.environ["MISTRAL_API_KEY"]
     b64 = base64.standard_b64encode(pdf_bytes).decode()
     body = {
         "model": os.getenv("AI_MODEL_ID", "mistral-small-latest"),
         "max_tokens": 8000,
+        "temperature": 0,  # maximise determinism across quarterly re-extracts
         "response_format": {"type": "json_object"},
         "messages": [{"role": "user", "content": [
-            {"type": "text", "text": PROMPT},
+            {"type": "text", "text": prompt},
             {"type": "document_url", "document_url": f"data:application/pdf;base64,{b64}"}]}],
     }
     req = urllib.request.Request(
         "https://api.mistral.ai/v1/chat/completions",
         data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=180) as r:
+    # 300s: large image-heavy chapter PDFs (20 MB+) can push a single chunk past the
+    # old 180s. Read timeouts are also made retryable in _is_retryable.
+    with urllib.request.urlopen(req, timeout=300) as r:
         return json.load(r)["choices"][0]["message"]["content"]
 
 
@@ -160,19 +249,24 @@ _PROVIDERS = {"haiku": _call_haiku, "mistral": _call_mistral}
 def _is_retryable(exc: Exception) -> bool:
     if isinstance(exc, urllib.error.HTTPError):
         return exc.code in (429, 500, 502, 503, 529)
+    # Read/connect timeouts and transient network errors (urllib URLError wraps
+    # socket.timeout; socket.timeout is TimeoutError on 3.10+) — retry them.
+    if isinstance(exc, (TimeoutError, urllib.error.URLError)):
+        return True
     name = type(exc).__name__
     status = getattr(exc, "status_code", None)
-    return name in ("RateLimitError", "OverloadedError", "APIStatusError") or status in (429, 500, 502, 503, 529)
+    return name in ("RateLimitError", "OverloadedError", "APIStatusError", "APITimeoutError") \
+        or status in (429, 500, 502, 503, 529)
 
 
-def _call_with_retry(model: str, pdf_bytes: bytes) -> str:
+def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:
     fn = _PROVIDERS.get(model)
     if fn is None:
         raise ValueError(f"Unknown AI_MODEL={model!r}. Known: {', '.join(_PROVIDERS)}")
     last: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
-            return fn(pdf_bytes)
+            return fn(pdf_bytes, prompt)
         except Exception as exc:  # noqa: BLE001 — provider SDKs raise varied types
             last = exc
             if not _is_retryable(exc) or attempt == _MAX_RETRIES - 1:
@@ -187,13 +281,22 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
     DCPExtractor.extract(). `council` is accepted for signature parity (the model
     needs no per-council config)."""
     from pypdf import PdfReader
-    model = (model or os.getenv("AI_MODEL", "haiku")).strip().lower()
+    model = (model or os.getenv("AI_MODEL", "mistral")).strip().lower()
     reader = PdfReader(str(pdf_path))
     total = len(reader.pages)
     collected: list[dict] = []
+    current_section: str | None = None
     for (a, b) in chunk_ranges(total):
-        raw = _call_with_retry(model, _subset_bytes(reader, a, b))
-        for p in parse_provisions(raw):
+        raw = _call_with_retry(model, _subset_bytes(reader, a, b), _build_prompt(current_section))
+        chunk_provs = parse_provisions(raw)
+        for p in chunk_provs:
             p.setdefault("page", a + 1)  # approximate: first page of the chunk
             collected.append(p)
+        # carry the last real section seen into the next chunk, so a chunk that opens
+        # mid-section (its heading fell in this chunk) still qualifies its codes.
+        for p in reversed(chunk_provs):
+            token = str(p.get("code", "")).split(" ", 1)[0]
+            if _SECTION_RE.match(token):
+                current_section = token
+                break
     return provisions_to_sections(dedupe_provisions(collected))

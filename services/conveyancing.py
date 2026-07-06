@@ -86,8 +86,7 @@ from conveyancing_db import (  # noqa: E402
     fetch_heritage_postgis,
     fetch_lep_clauses,
     fetch_nearby_das,
-    fetch_sepp_housing_standards,
-    fetch_tax_thresholds,
+    load_regulatory_configs,
 )
 from lga_lookup import lookup_lga  # noqa: E402
 
@@ -166,39 +165,11 @@ def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
     Returns (sepp_standards, tax_config) — both None if DB unavailable.
+    Implementation moved to conveyancing_db.load_regulatory_configs so the CLI
+    report path injects the same configs (a None tax_config renders "Not
+    assessed", never hardcoded figures).
     """
-    import psycopg2
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        logger.warning("Regulatory configs: DATABASE_URL not set, using fallback values for SEPP + tax")
-        return None, None
-    conn = None
-    try:
-        conn = psycopg2.connect(db_url)
-        conn.autocommit = True
-        # SEPP secondary dwelling standards
-        sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
-        sepp_standards = None
-        if sd_rows:
-            sd_by_type = {r["standard_type"]: r for r in sd_rows}
-            min_lot_row = sd_by_type.get("min_lot_size")
-            sepp_standards = {
-                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
-                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
-            }
-        else:
-            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
-        # Tax thresholds
-        tax_config = fetch_tax_thresholds(conn)
-        if tax_config is None:
-            logger.warning("Regulatory configs: no tax_thresholds row for current year — using fallback")
-        return sepp_standards, tax_config
-    except Exception as e:
-        logger.warning(f"Failed to load regulatory configs from DB: {e}")
-        return None, None
-    finally:
-        if conn:
-            conn.close()
+    return load_regulatory_configs(os.getenv("DATABASE_URL"))
 
 
 class ConveyancingRequest(BaseModel):
@@ -371,7 +342,10 @@ def run_conveyancing(req: ConveyancingRequest):
             "da_count": da_count,
             "dcp_available": bool(dcp_former_council),
         },
-        "confidence": _compute_confidence(controls, unique_overlays, valuation),
+        "confidence": _compute_confidence(
+            controls, unique_overlays, valuation, covered_layers=covered_layers,
+            tax_config_missing=tax_config is None,
+        ),
         "data_sources": data_sources,
     }
 
@@ -459,8 +433,12 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     db_url = os.getenv("DATABASE_URL")
 
     def _fetch_db_data():
-        """DB queries: DAs (local), LEP clauses, DCP setbacks, heritage."""
-        _das = []
+        """DB queries: DAs (local), LEP clauses, DCP setbacks, heritage.
+
+        _das is None until fetched: a DB failure renders as "Not assessed" in
+        the PDF DA section, never as "No development applications lodged".
+        """
+        _das = None
         _lep = []
         _dcp = None
         _heritage = {"hca": [], "items": [], "has_heritage": False, "raw": []}
@@ -499,11 +477,49 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 lep_height = float(m.group(1))
         return get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    def _fetch_bushfire():
+        """Live NSW RFS BFPL point query (~1-2s) — governs the PDF bushfire row.
+
+        Returns None on failure; the renderer shows "Not assessed", never "Clear".
+        """
+        try:
+            # Plain import first: services modules import siblings top-level
+            # (e.g. `from audit_trail import ...`), so the package-qualified
+            # form fails unless the runtime happens to have both paths set up.
+            try:
+                from bushfire_prescreen import _query_rfs_bfpl
+            except ImportError:
+                from services.bushfire_prescreen import _query_rfs_bfpl
+            return _query_rfs_bfpl(req.lat, req.lng)
+        except Exception as e:
+            logger.warning("Live RFS BFPL query failed: %s", e)
+            return None
+
+    def _fetch_anef():
+        """ANEF contour value (anef_zones + live ePlanning fallback) — three-state.
+
+        A {"status": "failed"} result renders "not assessed" wording in the
+        ANEF row, never a silent omission (RFS-future pattern from #674).
+        """
+        try:
+            try:
+                from portal_constraints import resolve_anef_value
+            except ImportError:
+                from services.portal_constraints import resolve_anef_value
+            return resolve_anef_value(req.lat, req.lng)
+        except Exception as e:
+            logger.warning("ANEF value lookup failed: %s", e)
+            return {"status": "failed"}
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
+        bushfire_future = executor.submit(_fetch_bushfire)
+        anef_future = executor.submit(_fetch_anef)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
+        bushfire_live = bushfire_future.result()
+        anef_live = anef_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -531,6 +547,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         lep_clauses=lep_clauses,
         dcp_setbacks_db=dcp_setbacks_db,
         proximity_m=proximity_m,
+        bushfire_live=bushfire_live,
+        anef_live=anef_live,
     )
 
     # Upload to R2
@@ -630,8 +648,40 @@ def _load_pipeline_cache(report_id: str) -> Optional[dict]:
             conn.close()
 
 
-def _compute_confidence(controls: dict, overlays: list, valuation: dict) -> str:
-    """Rate confidence based on data completeness."""
+# Layers whose ingest coverage caps confidence when absent for the LGA —
+# matches the layers the PDF's coverage footnote reports on (bushfire excluded:
+# it is live-checked against NSW RFS, not our ingest).
+_CONFIDENCE_COVERAGE_LAYERS = frozenset({
+    "flood", "riparian", "wetlands", "landslide", "biodiversity",
+})
+
+_CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+
+
+def _cap_confidence(current: str, ceiling: str) -> str:
+    """Return the lower of two confidence ratings."""
+    return current if _CONFIDENCE_ORDER[current] <= _CONFIDENCE_ORDER[ceiling] else ceiling
+
+
+def _compute_confidence(
+    controls: dict,
+    overlays: list,
+    valuation: dict,
+    covered_layers=None,
+    shadow_height_source: Optional[str] = None,
+    live_query_failures: int = 0,
+    tax_config_missing: bool = False,
+) -> str:
+    """Rate confidence on data completeness AND data integrity (QA-S7).
+
+    Field presence builds the base score; integrity gaps cap it:
+      - any coverage-footnote layer unmapped for this LGA → at most "medium"
+      - shadow height from the assumed default envelope   → at most "medium"
+      - 1 live-query failure → at most "medium"; ≥2 → "low"
+      - land-tax config absent (section rendered "Not assessed") → at most "medium"
+    A report that had to assume, or whose coverage has holes, must not claim
+    "high" confidence regardless of how many fields are populated.
+    """
     score = 0
     if controls.get("zone"):
         score += 2
@@ -644,7 +694,23 @@ def _compute_confidence(controls: dict, overlays: list, valuation: dict) -> str:
     if overlays:
         score += 1
     if score >= 5:
-        return "high"
-    if score >= 3:
-        return "medium"
-    return "low"
+        rating = "high"
+    elif score >= 3:
+        rating = "medium"
+    else:
+        rating = "low"
+
+    if covered_layers is not None:
+        covered = set(covered_layers)
+        if _CONFIDENCE_COVERAGE_LAYERS - covered:
+            rating = _cap_confidence(rating, "medium")
+    if shadow_height_source == "default":
+        rating = _cap_confidence(rating, "medium")
+    if tax_config_missing:
+        rating = _cap_confidence(rating, "medium")
+    if live_query_failures >= 2:
+        rating = _cap_confidence(rating, "low")
+    elif live_query_failures == 1:
+        rating = _cap_confidence(rating, "medium")
+
+    return rating

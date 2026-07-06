@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -571,13 +572,15 @@ export default function DCPSetbacksGrannyFlatPage() {
               area.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
                 href="/dcp-browse"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 text-white text-sm font-medium rounded-xl hover:bg-violet-500 transition-colors"
+                page="dcp-setbacks-granny-flat-nsw"
+                cta="browse_dcp"
               >
                 Browse DCP controls
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </TrackedLink>
               <Link
                 href="/check"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-violet-700 text-sm font-medium rounded-xl border border-violet-200 hover:bg-violet-50 transition-colors"

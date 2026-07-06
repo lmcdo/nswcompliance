@@ -1,7 +1,7 @@
 'use client';
 
 // prior-art-checked: no existing DCP review-queue UI in the repo (audited 2026-06-20).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ReviewItem {
   id: number;
@@ -16,6 +16,21 @@ interface ReviewItem {
   new_page: number | null;
   has_numeric_change: boolean;
   summary: string | null;
+  pdf_url: string | null;
+  suspect_reason: string | null;
+  fidelity_status: 'grounded' | 'flagged' | null;
+  fidelity_detail: string | null;
+  source_page_verified: number | null;
+  fidelity_source_quote: string | null;
+}
+
+interface ChapterGroup {
+  council: string;
+  chapter_key: string;
+  suspect_reason: string | null;
+  items: ReviewItem[];
+  grounded: number;
+  flagged: number;
 }
 
 type Action = 'approve' | 'reject' | 'needs-info';
@@ -26,6 +41,9 @@ export default function DcpReviewQueue() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
+  const [total, setTotal] = useState(0); // total pending on the server (queue caps loads at 500)
+  const [editText, setEditText] = useState(''); // inline correction of the current row's text
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,7 +52,9 @@ export default function DcpReviewQueue() {
       const res = await fetch('/api/dcp-review', { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'failed to load');
-      setItems(json.items ?? []);
+      const fetched: ReviewItem[] = json.items ?? [];
+      setItems(fetched);
+      setTotal(json.total ?? fetched.length);
       setIdx(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to load');
@@ -46,6 +66,44 @@ export default function DcpReviewQueue() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Reset the inline-correction box to the current row's text whenever the row changes.
+  useEffect(() => {
+    setEditText(items[idx]?.new_text ?? '');
+  }, [idx, items]);
+
+  // Save an inline correction (edited text) and approve the row in one step — for fixing a
+  // flagged value (e.g. 2.9m -> 0.9m) without leaving the screen.
+  const saveCorrectionAndApprove = useCallback(async () => {
+    const cur = items[idx];
+    if (!cur || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/dcp-review/${cur.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', edited_text: editText }),
+      });
+      if (!res.ok && res.status !== 404) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'save failed');
+      }
+      setItems((prev) => prev.filter((it) => it.id !== cur.id));
+      setIdx((i) => Math.max(0, Math.min(i, items.length - 2)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'save failed');
+    } finally {
+      setBusy(false);
+    }
+  }, [items, idx, busy, editText]);
+
+  // The queue returns at most 500 rows. When the loaded batch is fully resolved but the
+  // server still has pending rows, fetch the next batch — so we never falsely report
+  // "empty" while thousands remain. Only a fetch that returns 0 shows the empty state.
+  useEffect(() => {
+    if (!loading && !busy && items.length === 0 && total > 0) load();
+  }, [items.length, loading, busy, total, load]);
 
   const act = useCallback(
     async (action: Action) => {
@@ -59,7 +117,9 @@ export default function DcpReviewQueue() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action }),
         });
-        if (!res.ok) {
+        // 404 = the row was already resolved (double-click / stale list). That's not an
+        // error — just drop it and move on. Only other failures surface a banner.
+        if (!res.ok && res.status !== 404) {
           const json = await res.json().catch(() => ({}));
           throw new Error(json.error || 'action failed');
         }
@@ -73,6 +133,40 @@ export default function DcpReviewQueue() {
       }
     },
     [items, idx, busy],
+  );
+
+  // Approve/reject EVERY pending row of the current chapter in one call — for
+  // accepting a whole clean re-extraction (e.g. a baseline swap) without clicking
+  // through hundreds of rows. Still human-initiated: the reviewer clicks the button.
+  const actChapterFor = useCallback(
+    async (council: string, chapterKey: string, action: Action) => {
+      if (busy) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/dcp-review/chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, council, chapter_key: chapterKey }),
+        });
+        // 404 = the chapter was already resolved (double-click / stale button). Treat it
+        // as done rather than an error — just drop the chapter and move on.
+        if (!res.ok && res.status !== 404) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error || 'chapter action failed');
+        }
+        // Drop every row of this chapter; reset the cursor.
+        setItems((prev) =>
+          prev.filter((it) => !(it.council === council && it.chapter_key === chapterKey)),
+        );
+        setIdx(0);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'chapter action failed');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy],
   );
 
   // Keyboard: A approve · R reject · N needs-info · J/K next/prev.
@@ -89,6 +183,32 @@ export default function DcpReviewQueue() {
     return () => window.removeEventListener('keydown', handler);
   }, [act, items.length]);
 
+  // Group the flat worklist into chapters; a chapter is "flagged" if the extraction
+  // guards left a suspect_reason on it — those are the ones to review, not blind-approve.
+  const chapters = useMemo<ChapterGroup[]>(() => {
+    const map = new Map<string, ChapterGroup>();
+    for (const it of items) {
+      const key = `${it.council}/${it.chapter_key}`;
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          council: it.council, chapter_key: it.chapter_key, suspect_reason: null,
+          items: [], grounded: 0, flagged: 0,
+        };
+        map.set(key, g);
+      }
+      g.items.push(it);
+      if (it.suspect_reason && !g.suspect_reason) g.suspect_reason = it.suspect_reason;
+      if (it.fidelity_status === 'grounded') g.grounded += 1;
+      else if (it.fidelity_status === 'flagged') g.flagged += 1;
+    }
+    return [...map.values()];
+  }, [items]);
+  const flaggedCount = chapters.filter((c) => c.suspect_reason).length;
+  // Source-check totals across the loaded batch (the fidelity gate's verdict).
+  const fidFlagged = items.filter((it) => it.fidelity_status === 'flagged').length;
+  const fidGrounded = items.filter((it) => it.fidelity_status === 'grounded').length;
+
   if (loading) {
     return <main className="p-8 text-sm text-gray-500">Loading review queue…</main>;
   }
@@ -101,42 +221,113 @@ export default function DcpReviewQueue() {
     );
   }
   if (items.length === 0) {
-    return <main className="p-8 text-sm text-gray-600">✅ Review queue empty — nothing pending.</main>;
+    // total > 0 means the loaded batch is cleared but more remain — the auto-reload
+    // effect is fetching them; don't claim the queue is empty.
+    return total > 0 ? (
+      <main className="p-8 text-sm text-gray-500">Loading next batch… ({total} still pending)</main>
+    ) : (
+      <main className="p-8 text-sm text-gray-600">✅ Review queue empty — nothing pending.</main>
+    );
   }
 
   const item = items[idx];
+  const chapterCount = items.filter(
+    (it) => it.council === item.council && it.chapter_key === item.chapter_key,
+  ).length;
 
   return (
     <main className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
-        <h1 className="text-xl font-semibold">DCP review queue — {items.length} pending</h1>
+        <h1 className="text-xl font-semibold">
+          DCP review — {chapters.length} sections
+          {flaggedCount > 0 && (
+            <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-sm font-semibold text-amber-800">
+              ⚠ {flaggedCount} need a careful look
+            </span>
+          )}
+        </h1>
         <p className="text-xs text-gray-500">
-          Keys: <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>N</kbd> needs-info · <kbd>J</kbd>/<kbd>K</kbd> next/prev
+          {items.length}{total > items.length ? ` of ${total}` : ''} changes across {chapters.length} sections
+          {total > items.length ? ' (loaded 500 at a time — more load as you clear these)' : ''}. Approve a whole clean section
+          with its <b>Approve</b> button; ⚠ sections were flagged by the extraction checks — open
+          those and review before approving. Keys: <kbd>A</kbd>/<kbd>R</kbd>/<kbd>N</kbd> per row · <kbd>J</kbd>/<kbd>K</kbd> move.
         </p>
+        {(fidFlagged > 0 || fidGrounded > 0) && (
+          <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+            <b>Source check:</b>{' '}
+            <span className="font-semibold text-amber-800">⚠ {fidFlagged} need a look</span>
+            {' · '}
+            <span className="font-semibold text-green-700">{fidGrounded} matched the source PDF</span>
+            . The flagged rows are listed first — review those; the rest matched the source and
+            you can approve them in bulk. (A row <b>matched</b> when every number and its key
+            words appear in the council&apos;s own PDF; <b>flagged</b> means one did not.)
+          </div>
+        )}
       </header>
 
-      <div className="grid grid-cols-[18rem_1fr] gap-4">
-        {/* Worklist rail */}
+      <div className="grid grid-cols-[20rem_1fr] gap-4">
+        {/* Worklist rail — grouped by section, flagged sections highlighted */}
         <ul className="max-h-[70vh] overflow-auto rounded border text-sm">
-          {items.map((it, i) => (
-            <li key={it.id}>
-              <button
-                onClick={() => setIdx(i)}
-                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${
-                  i === idx ? 'bg-blue-50 font-medium' : 'hover:bg-gray-50'
-                }`}
-              >
-                <span className="truncate">
-                  {it.council} / {it.chapter_key} {it.ref_number ? `· ${it.ref_number}` : ''}
-                </span>
-                {it.has_numeric_change && (
-                  <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                    NUM
-                  </span>
+          {chapters.map((ch) => {
+            const active = item.council === ch.council && item.chapter_key === ch.chapter_key;
+            return (
+              <li key={`${ch.council}/${ch.chapter_key}`} className="border-b last:border-b-0">
+                <div
+                  className={`flex items-center justify-between gap-2 px-3 py-2 ${
+                    ch.suspect_reason ? 'bg-amber-50' : ''
+                  }`}
+                >
+                  <button
+                    onClick={() => setIdx(items.indexOf(ch.items[0]))}
+                    className="flex-1 truncate text-left"
+                    title={ch.suspect_reason ?? undefined}
+                  >
+                    {ch.suspect_reason && <span aria-label="flagged">⚠ </span>}
+                    <span className={active ? 'font-semibold' : ''}>{ch.chapter_key}</span>
+                    <span className="text-gray-400"> ({ch.items.length})</span>
+                    {ch.flagged > 0 && (
+                      <span className="ml-1 text-[10px] text-amber-700">⚠{ch.flagged} to check</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => actChapterFor(ch.council, ch.chapter_key, 'approve')}
+                    disabled={busy}
+                    className="shrink-0 rounded border border-green-600 px-2 py-0.5 text-[11px] font-medium text-green-700 disabled:opacity-50"
+                    title={`Approve all ${ch.items.length} changes in ${ch.chapter_key}`}
+                  >
+                    Approve
+                  </button>
+                </div>
+                {ch.suspect_reason && (
+                  <div className="px-3 pb-1 text-[10px] text-amber-700">{ch.suspect_reason}</div>
                 )}
-              </button>
-            </li>
-          ))}
+                {active && (
+                  <ul className="bg-gray-50/60">
+                    {ch.items.map((it) => (
+                      <li key={it.id}>
+                        <button
+                          onClick={() => setIdx(items.indexOf(it))}
+                          className={`flex w-full items-center justify-between gap-2 py-1 pl-6 pr-3 text-left text-xs ${
+                            it === item ? 'bg-blue-100 font-medium' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className="truncate">
+                            {it.fidelity_status === 'flagged' && <span title="source check flagged this">⚠ </span>}
+                            {it.ref_number ?? '(no ref)'}
+                          </span>
+                          {it.has_numeric_change && (
+                            <span className="shrink-0 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">
+                              NUM
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         {/* Detail + diff */}
@@ -153,6 +344,48 @@ export default function DcpReviewQueue() {
               {item.ref_number ? ` · ${item.ref_number}` : ''}
             </span>
           </div>
+
+          {item.fidelity_status === 'flagged' && (
+            <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              <p className="font-semibold">⚠ This rule needs a human check.</p>
+              <p className="mt-1">
+                The source check could not match {item.fidelity_detail?.includes('number') ? 'a number' : 'some wording'} in
+                this rule to the council&apos;s PDF
+                {item.source_page_verified ? ` (page ${item.source_page_verified})` : ''}.
+                {item.fidelity_detail ? ` [${item.fidelity_detail}]` : ''}
+              </p>
+              {item.fidelity_source_quote && (
+                <div className="mt-2 rounded border border-amber-200 bg-white px-3 py-2 text-gray-800">
+                  <div className="text-xs font-semibold text-gray-500">What the council&apos;s PDF says here:</div>
+                  <div className="mt-1 italic">&ldquo;{item.fidelity_source_quote}&rdquo;</div>
+                </div>
+              )}
+              <p className="mt-2 text-xs">
+                Compare it to the rule text on the right. If the AI got a value wrong, fix it in
+                the box below and <b>Save correction &amp; approve</b>. If the rule is actually
+                fine (e.g. the number is a street address), just <b>Approve</b>.
+              </p>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded border border-amber-300 p-2 font-mono text-xs text-gray-900"
+              />
+              <button
+                onClick={saveCorrectionAndApprove}
+                disabled={busy}
+                className="mt-2 rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                Save correction &amp; approve
+              </button>
+            </div>
+          )}
+          {item.fidelity_status === 'grounded' && (
+            <p className="mb-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              <b>Matched to source:</b> every number and its key words appear in the
+              council&apos;s PDF{item.source_page_verified ? ` (page ${item.source_page_verified})` : ''}.
+            </p>
+          )}
 
           {item.summary && (
             <p className="mb-3 rounded bg-blue-50 px-3 py-2 text-sm">{item.summary}</p>
@@ -177,6 +410,26 @@ export default function DcpReviewQueue() {
             </div>
           </div>
 
+          {/* Source PDF — verify the NEW text against the actual council page.
+              The page is approximate (extraction records the chunk's first page). */}
+          {item.pdf_url && (
+            <div className="mt-4 border-t pt-4">
+              <button
+                onClick={() => setShowPdf((v) => !v)}
+                className="rounded border px-3 py-1.5 text-sm font-medium"
+              >
+                {showPdf ? 'Hide' : 'Show'} source PDF (near p.{item.new_page ?? item.old_page ?? 1})
+              </button>
+              {showPdf && (
+                <iframe
+                  title="source PDF page"
+                  src={`${item.pdf_url}#page=${item.new_page ?? item.old_page ?? 1}&view=FitH`}
+                  className="mt-3 h-[70vh] w-full rounded border"
+                />
+              )}
+            </div>
+          )}
+
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => act('approve')}
@@ -198,6 +451,29 @@ export default function DcpReviewQueue() {
               className="rounded border px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
               Needs info (N)
+            </button>
+          </div>
+
+          {/* Chapter-level actions — accept/reject the whole current chapter at once. */}
+          <div className="mt-4 flex items-center gap-2 border-t pt-4">
+            <span className="text-xs text-gray-500">
+              Whole chapter ({chapterCount} pending in {item.chapter_key}):
+            </span>
+            <button
+              onClick={() => actChapterFor(item.council, item.chapter_key, 'approve')}
+              disabled={busy}
+              className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              title={`Approve all ${chapterCount} pending changes in ${item.chapter_key}`}
+            >
+              Approve all {chapterCount} in this chapter
+            </button>
+            <button
+              onClick={() => actChapterFor(item.council, item.chapter_key, 'reject')}
+              disabled={busy}
+              className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 disabled:opacity-50"
+              title={`Reject all ${chapterCount} pending changes in ${item.chapter_key}`}
+            >
+              Reject all in this chapter
             </button>
           </div>
         </section>

@@ -230,6 +230,85 @@ def fetch_anef(lat: float, lng: float) -> Optional[dict]:
     }
 
 
+# prior-art-checked: LIFTED from intelligence_brief.fetch_anef_zone (not a fork —
+# that function now delegates here) so the conveyancing PDF and the brief share
+# ONE anef_zones implementation. Moved to this module because intelligence_brief
+# imports fastapi (unavailable in the CLI report context) and already imports
+# this module, so the reverse import would be circular.
+def fetch_anef_zone_exact(lat: float, lng: float) -> Optional[dict]:
+    """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
+    verify app's /api/environmental/anef route uses. Exact point-in-polygon via
+    PostGIS ST_Contains over the stored GeoJSON (bbox pre-filter for speed).
+
+    Returns ``{"anef_level": int, "airport": str, "anef_version": str}`` or
+    None when the point is in no stored contour. RAISES on DB unavailability
+    or query failure — callers decide fail-open vs fail-closed.
+    """
+    import psycopg2
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise EnvironmentError("DATABASE_URL not set")
+    conn = psycopg2.connect(db_url, options="-c statement_timeout=5000")
+    try:
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT anef_level, airport_name, anef_version FROM anef_zones "
+            "WHERE bbox_min_lon <= %s AND bbox_max_lon >= %s "
+            "AND bbox_min_lat <= %s AND bbox_max_lat >= %s "
+            "AND ST_Contains("
+            "  ST_SetSRID(ST_GeomFromGeoJSON(geometry_json::text), 4326), "
+            "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
+            "ORDER BY anef_level DESC LIMIT 1",
+            (lng, lng, lat, lat, lng, lat),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    level, airport, version = row
+    return {"anef_level": level, "airport": airport, "anef_version": version}
+
+
+# prior-art-checked: no new source — this narrows resolve_anef_value to the
+# EXISTING fetch_anef (same module, above) after measuring that the curated
+# anef_zones geometries are too coarse for parcel-level value claims.
+def resolve_anef_value(lat: float, lng: float) -> dict:
+    """Resolve the ANEF contour value at a point — three-state, never silent.
+
+    Queries the live ePlanning Protection ANEF layer ONLY (LEP/SEPP-mapped
+    airport-noise contours: Bankstown/Liverpool, Upper Hunter, Western Sydney
+    Airport precincts — 29 features, verified 2026-07-06). The curated
+    ``anef_zones`` table (Sydney KSA) is deliberately NOT consulted here: its
+    contours are 10-13-vertex digitisations whose ANEF-20 polygon covers
+    ~789 km² (far beyond the published ANEF 2039 20-contour), so it cannot
+    support parcel-level value claims in a legal document. Returns:
+
+      {"status": "found", "anef_level": int | None, "anef_code": str | None,
+       "epi_name": str | None, "source": "eplanning_protection_live"}
+      {"status": "empty"}   -- the lookup ran; no mapped contour at this point
+      {"status": "failed"}  -- the lookup errored; the value is unknown, not absent
+
+    Callers must render "failed" as not-assessed wording, never as a clear/empty
+    result (PR #674 bushfire-row precedent).
+    """
+    try:
+        live = fetch_anef(lat, lng)
+    except Exception:
+        logger.warning("resolve_anef_value: live ePlanning ANEF query failed")
+        return {"status": "failed"}
+    if live and (live.get("anef_level") is not None or live.get("anef_code")):
+        return {
+            "status": "found",
+            "anef_level": live.get("anef_level"),
+            "anef_code": live.get("anef_code") or None,
+            "epi_name": live.get("epi_name") or None,
+            "source": "eplanning_protection_live",
+        }
+    return {"status": "empty"}
+
+
 def fetch_protection_overlay(
     lat: float, lng: float, layer_id: int, value_field: str = "LAY_CLASS",
 ) -> Optional[dict]:

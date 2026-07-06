@@ -1253,6 +1253,15 @@ def run_terrain_analysis(
         # elevation/ruggedness are scoped to the lot window (see _site_values).
         result = _run_terrain_chain(work_dir, lat=lat, lng=lng, buffer_m=TERRAIN_BUFFER_M)
 
+        # Structured interpretation (professional findings with methodology) —
+        # fail-safe: a narrative failure must never blank the terrain metrics.
+        try:
+            interp = _build_terrain_interpretation(result)
+            if interp is not None:
+                result["interpretation"] = interp.model_dump()
+        except Exception as e:
+            logger.warning("terrain interpretation failed: %s", e)
+
         # Flood susceptibility (larger buffer for catchment context)
         if include_flood:
             flood_dir = tempfile.mkdtemp(prefix="wbt_flood_", dir=work_dir)

@@ -5,12 +5,14 @@ chunking, JSON parsing, dedupe, and section-shape mapping are pure and are.
 """
 import os
 import sys
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from ai_extractor import (  # noqa: E402
     chunk_ranges, parse_provisions, dedupe_provisions, provisions_to_sections,
     _call_with_retry, _is_retryable,
+    coverage_gap, truncation_rate, COVERAGE_MIN_TOC,
 )
 
 
@@ -76,6 +78,124 @@ class TestToSections:
         assert provisions_to_sections([{"title": "no code", "text": "x"}]) == []
 
 
+class TestCoverageGap:
+    def _toc(self, n):  # a TOC of n distinct top-level codes (>= COVERAGE_MIN_TOC)
+        return {f"{i}.1" for i in range(1, n + 1)}
+
+    def test_sub_provisions_count_as_covered(self):
+        toc = self._toc(10)  # 1.1 .. 10.1
+        # extracted has each section only as sub-codes (1.1.1 etc.) — still covered
+        extracted = {f"{i}.1.{j}" for i in range(1, 11) for j in (1, 2)}
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 0.0 and missing == []
+
+    def test_missing_sections_flagged(self):
+        toc = self._toc(10)
+        extracted = {f"{i}.1" for i in range(1, 5)}  # only 4 of 10 covered
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 0.6
+        assert "10.1" in missing
+
+    def test_small_toc_never_judged(self):
+        # below COVERAGE_MIN_TOC -> no opinion (avoids false positives on tiny chapters)
+        toc = {f"{i}.1" for i in range(1, COVERAGE_MIN_TOC)}
+        assert coverage_gap(set(), toc) == (0.0, [])
+
+    def test_section_space_subitem_codes_count_as_covered(self):
+        # regression: the AI emits "<section> <objective/control>" (e.g. "C4.1 O1"),
+        # which must cover TOC section "C4.1". Before the fix this false-fired 100%.
+        toc = {f"C4.{i}" for i in range(1, 11)}  # C4.1 .. C4.10
+        extracted = {f"C4.{i} {sub}" for i in range(1, 11) for sub in ("O1", "C1", "C2")}
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 0.0 and missing == []
+
+    def test_bare_subitem_codes_do_not_cover_sections(self):
+        # the real leichhardt failure: controls coded as bare "C1".."C38" (section
+        # attribution lost across chunks) must NOT be credited to any TOC section.
+        toc = {f"C4.{i}" for i in range(1, 11)}
+        extracted = {f"C{i}" for i in range(1, 39)}  # C1..C38, no section prefix
+        ratio, missing = coverage_gap(extracted, toc)
+        assert ratio == 1.0 and len(missing) == 10
+
+
+class TestSectionThreading:
+    def test_build_prompt_without_section_is_base(self):
+        from ai_extractor import PROMPT, _build_prompt
+        assert _build_prompt(None) == PROMPT
+        assert _build_prompt("") == PROMPT
+
+    def test_build_prompt_carries_section(self):
+        from ai_extractor import PROMPT, _build_prompt
+        p = _build_prompt("C4.9")
+        assert p != PROMPT and "C4.9" in p
+
+    def test_section_regex_matches_real_sections_not_bare_items(self):
+        from ai_extractor import _SECTION_RE
+        for good in ("C4.9", "3.1", "A2.10.1", "C1.0"):
+            assert _SECTION_RE.match(good), good
+        for bad in ("C1", "O1", "C44", "C7", ""):
+            assert not _SECTION_RE.match(bad), bad
+
+    def test_prompt_requires_section_qualified_codes(self):
+        from ai_extractor import PROMPT
+        # regression: the prompt must explicitly forbid bare codes
+        assert "section-qualified" in PROMPT.lower()
+        assert "never a bare" in PROMPT.lower()
+
+
+class TestTruncationRate:
+    def test_ellipsis_flagged(self):
+        rate, n = truncation_rate([
+            "A full, complete provision that clearly is not truncated at all here.",
+            "This one is cut off mid sentence and ends with...",
+            "…",
+        ])
+        assert n == 2 and rate == 2 / 3
+
+    def test_short_text_flagged_but_bare_refs_exempt(self):
+        rate, n = truncation_rate([
+            "See clause 3.2 for details",                    # bare ref -> exempt
+            "x",                                             # too short -> flagged
+            "A perfectly reasonable length provision body here that is fine.",
+        ])
+        assert n == 1
+
+    def test_empty(self):
+        assert truncation_rate([]) == (0.0, 0)
+
+
+_STUBS = ("boto3", "botocore", "pdfplumber", "psycopg2", "dotenv", "enrichment", "enrichment.pipeline")
+
+
+class TestSuspectReasonNewGuards:
+    """suspect_reason lives in dcp_extract_changed; import it with heavy deps stubbed."""
+
+    def test_coverage_and_truncation_surface(self):
+        # import suspect_reason under the heavy-dep stubs
+        _saved = {k: sys.modules.get(k) for k in _STUBS}
+        for k in _STUBS:
+            sys.modules[k] = MagicMock()
+        sys.modules["dotenv"].load_dotenv = MagicMock()
+        os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
+        for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"):
+            os.environ.setdefault(_k, "x")
+        try:
+            from dcp_extract_changed import suspect_reason
+        finally:
+            for k, v in _saved.items():
+                if v is None:
+                    sys.modules.pop(k, None)
+                else:
+                    sys.modules[k] = v
+        cov = {"diff": {"status": "ok"}, "schema_fail": False,
+               "coverage_fail": True, "coverage_missing": 8, "coverage_toc": 27}
+        trunc = {"diff": {"status": "ok"}, "schema_fail": False, "coverage_fail": False,
+                 "truncation_fail": True, "truncation_flagged": 5, "total_provisions": 30}
+        assert suspect_reason(cov).startswith("coverage_fail")
+        assert suspect_reason(trunc).startswith("truncation_fail")
+        assert suspect_reason({"diff": {"status": "ok"}, "schema_fail": False}) is None
+
+
 class TestRetry:
     def test_unknown_model_raises(self):
         try:
@@ -91,3 +211,20 @@ class TestRetry:
         assert _is_retryable(err429) is True
         assert _is_retryable(err400) is False
         assert _is_retryable(ValueError("x")) is False
+
+
+class TestRetryableTimeouts:
+    def test_read_timeout_is_retryable(self):
+        import urllib.error
+        from ai_extractor import _is_retryable
+        # the chapter-d failure mode: a socket read timeout
+        assert _is_retryable(TimeoutError("read timed out")) is True
+        assert _is_retryable(urllib.error.URLError("timed out")) is True
+
+    def test_http_500_retryable_400_not(self):
+        import urllib.error
+        from ai_extractor import _is_retryable
+        e500 = urllib.error.HTTPError("u", 503, "x", {}, None)
+        e400 = urllib.error.HTTPError("u", 400, "x", {}, None)
+        assert _is_retryable(e500) is True
+        assert _is_retryable(e400) is False

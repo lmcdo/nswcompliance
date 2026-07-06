@@ -209,12 +209,14 @@ class TestGetComparableValues:
         assert result.comparables == []
 
     @patch("services.vg_comparables.arcgis_get_with_retry")
-    def test_api_failure(self, mock_get):
+    def test_api_failure_raises_not_silent_zero(self, mock_get):
+        # arcgis_get_with_retry returns {} on ANY failure. That must RAISE —
+        # returning comparable_count=0 made a failed query indistinguishable
+        # from "no comparable lots nearby" (the da_outcome silent-zero class).
         mock_get.return_value = {}
-        result = get_comparable_values(
-            lng=151.15, lat=-33.88, zone="R2", lot_area_m2=650,
-        )
-        assert result.comparable_count == 0
+        import pytest
+        with pytest.raises(RuntimeError, match="failed"):
+            get_comparable_values(lng=151.15, lat=-33.88, zone="R2", lot_area_m2=650)
 
     @patch("services.vg_comparables.arcgis_get_with_retry")
     def test_null_values_skipped(self, mock_get):

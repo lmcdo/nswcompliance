@@ -21,7 +21,7 @@ BUSHFIRE_RAW = {
         "designation_guideline": "10/50 Vegetation Clearing",
         "estimated_bal_band": "BAL-29",
         "fire_signal": "elevated",
-        "compliance": {"cross_overlays": {"flood": False, "heritage": True}},
+        "compliance": {"cross_overlays": [{"type": "flood"}, {"type": "heritage"}]},
     },
     "confidence": "medium",
 }
@@ -34,7 +34,7 @@ def test_bushfire_surfaces_real_fields():
     assert d.category == "Vegetation Category 1"
     assert d.bal_estimate == "BAL-29"
     assert d.fire_signal == "elevated"
-    assert d.cross_overlays == {"flood": False, "heritage": True}
+    assert d.cross_overlays == [{"type": "flood"}, {"type": "heritage"}]
     assert d.confidence == "medium"
 
 

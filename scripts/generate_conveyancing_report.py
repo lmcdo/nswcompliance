@@ -24,6 +24,7 @@ Requires (local venv, NOT services/requirements.txt):
 
 import argparse
 import json
+import logging
 import math
 import os
 import re
@@ -42,9 +43,11 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=project_root / ".env")
 
+logger = logging.getLogger(__name__)
+
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp  # noqa: E402
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -150,11 +153,17 @@ BUSHFIRE_NOTE_DEFAULT = (
     "restricted. Source: NSW Rural Fire Service BFPL mapping."
 )
 
-ANEF_NOTE = (
+# Split so the value-known variant (build_anef_note) reuses the liability-audited
+# AS 2021 / TI-SEPP wording verbatim; ANEF_NOTE itself is byte-identical to the
+# pre-split constant (golden fallback for when no contour value resolves).
+_ANEF_NOTE_BASE = (
     "Aircraft Noise Contour — this property falls within an Australian Noise Exposure "
     "Forecast (ANEF) contour. Under SEPP (Transport and Infrastructure) 2021 and AS 2021, "
     "residential development within ANEF contours may require acoustic attenuation design "
-    "and an acoustic report from an accredited acoustic consultant. The specific restrictions "
+    "and an acoustic report from an accredited acoustic consultant. "
+)
+ANEF_NOTE = _ANEF_NOTE_BASE + (
+    "The specific restrictions "
     "depend on the contour value — obtain the ANEF value from the relevant airport authority "
     "and confirm development requirements with council or a qualified acoustic consultant. "
     "Source: NSW Government ArcGIS spatial overlay (ANEF mapping)."
@@ -198,21 +207,24 @@ FIRE_HISTORY_NOTE = (
     "current BFPL mapping. Source: NSW NPWS Fire History dataset."
 )
 
+# source_ref: SEPP (Transport and Infrastructure) 2021 s2.120 (development with
+# frontage to a classified road — consent authority considerations); Codes SEPP
+# (Exempt and Complying Development Codes) 2008 Housing Code (classified road
+# setback for complying development). The 9 m figure is a Codes SEPP CDC
+# standard — it is NOT a TI SEPP or Housing SEPP control (D5).
 CLASSIFIED_ROAD_NOTE = (
-    "Classified Road Frontage — a statutory minimum setback of 9 metres applies to any "
-    "dwelling house or attached development on a boundary with a classified road "
-    "(SEPP Housing 2021). This is a hard LEP/SEPP number, independent of the DCP. "
-    "Applies to Parramatta Road, Pacific Highway, Victoria Road and other state roads."
+    "Classified Road Frontage — this lot adjoins a classified road. Under SEPP (Transport and "
+    "Infrastructure) 2021 s2.120, development with frontage to a classified road requires the "
+    "consent authority to be satisfied on access arrangements and road safety. Under the Codes "
+    "SEPP Housing Code, complying development for a dwelling house is subject to a 9 m setback "
+    "from the classified road boundary. Confirm the applicable pathway and setback with a "
+    "certifier or town planner."
 )
 
-# Land tax fallbacks — used only when DB is unreachable.
-# Authoritative source: tax_thresholds table (migration 046).
-_LT_FALLBACK = {
-    "tax_year": 2025,
-    "threshold_dollars": 1_075_000,
-    "rate": 0.016,
-    "base_amount_dollars": 100,
-}
+# Land tax: NO hardcoded fallback. The only source is the tax_thresholds table
+# (migration 046) — a fallback constant IS a hardcoded regulatory value, and it
+# rendered silently-stale figures in a legal document (PR #674 D1/D3 defect
+# class). When no config is injected the section renders "Not assessed".
 
 # Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
 # Authoritative source: housing_sepp_standards table (migration 045).
@@ -294,37 +306,61 @@ CADASTRE_URL = (
 STRATA_HUB_URL = "https://www.fairtrading.nsw.gov.au/housing-and-property/strata-living/strata-schemes-register"
 
 
+# prior-art-checked: not a new capability — refactor of the existing cadastre query
+# in THIS file (extracted helper + containment flag) to fix strata misdetection.
+def _query_cadastre_lots(lat: float, lng: float, buffer_m: int = 0) -> list[dict]:
+    """Return attribute dicts for cadastre lots at (or within ``buffer_m`` of) a point.
+
+    ``buffer_m=0`` is a strict point-in-polygon query: only lots whose geometry
+    contains the point are returned.
+    """
+    import json as _json
+    params = {
+        "geometry": _json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4283}}),
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4283",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    if buffer_m:
+        params["distance"] = buffer_m
+        params["units"] = "esriSRUnit_Meter"
+    r = requests.get(CADASTRE_URL, params=params, timeout=10)
+    r.raise_for_status()
+    features = r.json().get("features") or []
+    return [f["attributes"] for f in features]
+
+
 def get_cadastral_info(lat: float, lng: float) -> dict:
     """
     Query NSW Cadastre (maps.six.nsw.gov.au) for the lot at lat/lng.
 
+    Point-in-polygon first: only lots that CONTAIN the point are classified. A
+    20 m buffer is used solely as a fallback when the point lands in no lot
+    (imprecise geocode on a road/verge). The old always-20 m buffer captured
+    neighbouring strata schemes and misreported adjacent Torrens lots as strata
+    (38 Park Rd Bowral: DP lot correct at 0 m, neighbour's SP returned at 20 m).
+
     Returns:
-        is_strata        bool   — True if classsubtype=3 (SP lot) found within buffer
-        strata_plan      str    — "SP56913" if strata confirmed, else None
-        parent_has_strata bool  — True if any lot within buffer has hasstratum=2
+        is_strata        bool   — True if an SP/CP lot (classsubtype 3/4) was found
+        strata_plan      str    — "SP56913" if strata found, else None
+        parent_has_strata bool  — True if any returned lot has hasstratum=2
         plan_label       str    — planlabel of primary lot (e.g. "DP605756")
         lot_number       str    — lotnumber of primary lot
+        containment      bool   — True if the lots CONTAIN the point (authoritative);
+                                  False if they only came from the 20 m fallback buffer
     """
     try:
-        import json as _json
-        r = requests.get(
-            CADASTRE_URL,
-            params={
-                "geometry": _json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4283}}),
-                "geometryType": "esriGeometryPoint",
-                "inSR": "4283",
-                "distance": 20,
-                "units": "esriSRUnit_Meter",
-                "spatialRel": "esriSpatialRelIntersects",
-                "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
-                "returnGeometry": "false",
-                "f": "json",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        features = r.json().get("features") or []
-        attrs_list = [f["attributes"] for f in features]
+        containment = True
+        attrs_list = _query_cadastre_lots(lat, lng, buffer_m=0)
+        if not attrs_list:
+            # Point hit no lot polygon — geocode likely on road/water. Widen the
+            # search, but flag the result as non-containing so callers do not
+            # treat a neighbouring lot as authoritative.
+            containment = False
+            attrs_list = _query_cadastre_lots(lat, lng, buffer_m=20)
 
         # classsubtype=3 = strata lot (SP plan)
         # classsubtype=4 = community title lot (CP plan) — treated same as strata
@@ -355,6 +391,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": True,
                 "plan_label": plan,
                 "lot_number": sp_lots[0].get("lotnumber"),
+                "containment": containment,
             }
 
         # No SP/CP lot, but parent DP has strata built on it — ambiguous
@@ -367,6 +404,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": parent_strata,
                 "plan_label": primary.get("planlabel"),
                 "lot_number": primary.get("lotnumber"),
+                "containment": containment,
             }
     except Exception as e:
         print(f"  [warn] cadastral query: {e}")
@@ -378,6 +416,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         "parent_has_strata": False,
         "plan_label": None,
         "lot_number": None,
+        "containment": False,
     }
 
 
@@ -401,22 +440,48 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
       "5/3 ...", "Unit N ...", "Apt N ..." → likely strata.
 
     Decision logic:
-      classsubtype=3 found              → strata confirmed (cadastre)
-      parent_has_strata=True + addr A   → strata confirmed (combined)
-      parent_has_strata=True alone      → ambiguous — note in report
-      addr A alone (no cadastre result) → strata likely (heuristic fallback)
+      SP/CP lot CONTAINS the point       -> strata (source: cadastre)
+      SP/CP lot in 20m fallback + addr A -> strata (source: combined) — the
+        point itself hit no lot, so a nearby SP alone is NOT proof: it may be
+        the neighbour's scheme (38 Park Rd Bowral was misreported this way)
+      SP/CP lot in 20m fallback alone    -> ambiguous — treated as parent_has_strata
+      parent_has_strata=True + addr A    -> strata (source: combined)
+      parent_has_strata=True alone       -> ambiguous — note in report
+      addr A alone (no cadastre result)  -> strata likely (heuristic fallback)
     """
     addr_unit = _addr_has_unit_prefix(address)
 
     if lat is not None and lng is not None:
         cad = get_cadastral_info(lat, lng)
 
-        # Definitive: SP/CP lot found in cadastre
-        if cad["is_strata"]:
+        # Definitive: SP/CP lot found in cadastre, containing the point
+        if cad["is_strata"] and cad.get("containment", True):
             return {
                 "is_strata": True,
                 "strata_plan": cad["strata_plan"],
                 "plan_type": cad.get("plan_type", "strata"),
+                "source": "cadastre",
+                "parent_has_strata": True,
+                "plan_label": cad["plan_label"],
+            }
+
+        # SP/CP lot only within the fallback buffer (point contained in no lot):
+        # confirm only with the corroborating unit-style address; otherwise
+        # downgrade to the ambiguous parent_has_strata path below.
+        if cad["is_strata"] and not cad.get("containment", True):
+            if addr_unit:
+                return {
+                    "is_strata": True,
+                    "strata_plan": cad["strata_plan"],
+                    "plan_type": cad.get("plan_type", "strata"),
+                    "source": "cadastre+address",
+                    "parent_has_strata": True,
+                    "plan_label": cad["plan_label"],
+                }
+            return {
+                "is_strata": False,
+                "strata_plan": None,
+                "plan_type": None,
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
@@ -547,10 +612,12 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
 
     sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
-        sd_min_lot (float), sd_zones (set[str]).
+        sd_min_lot (float), sd_zones (set[str]). Falls back to hardcoded
+        values if not provided or if DB was unreachable.
     tax_config: pre-loaded from tax_thresholds table. Keys:
         tax_year, threshold_dollars, rate, base_amount_dollars.
-    Both fall back to hardcoded values if not provided or if DB was unreachable.
+        NO fallback: when absent the land-tax section renders "Not assessed"
+        — a stale or hardcoded regulatory figure never renders silently.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
@@ -697,7 +764,11 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "question": "Complying Development Certificate (CDC)",
                 "answer": "Potentially eligible",
                 "flag": "ok",
-                "basis": "No heritage, biodiversity or flood constraints identified. CDC may be available for dwelling alterations and additions subject to SEPP (Housing) 2021 controls."
+                "basis": (
+                    "No heritage listing, biodiversity mapping or flood planning area identified "
+                    "in the layers checked (see Section 1 coverage notes). CDC availability is "
+                    "subject to SEPP (Housing) 2021 controls — confirm with a certifier."
+                )
             })
         else:
             results.append({
@@ -725,45 +796,77 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         })
 
     # 5. Land tax (investment property)
-    # Source: tax_thresholds table (migration 046), fallback to hardcoded.
+    # Source: tax_thresholds table (migration 046) ONLY — no hardcoded fallback
+    # (invariant: a legal document never renders a regulatory figure the DB did
+    # not supply). Absent config renders fail-visible as "Not assessed".
     # Suppress for strata: VG returns whole-lot land value (building site), not unit value
-    _lt = tax_config or _LT_FALLBACK
-    if not tax_config:
-        print("  [warn] calc_feasibility: using land tax fallback values (no DB config injected)")
-    lt_year = _lt["tax_year"]
-    lt_threshold = _lt["threshold_dollars"]
-    lt_rate = _lt["rate"]
-    lt_base = _lt["base_amount_dollars"]
-
     lv = valuation.get("land_value")
     if lv and not is_strata:
-        lv_int = int(lv)
-        if lv_int > lt_threshold:
-            annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
-            results.append({
-                "question": f"Land tax (investment, {lt_year} thresholds)",
-                "answer": f"${round(annual_lt):,}/year",
-                "flag": "warn",
-                "basis": (
-                    f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
-                    f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
-                    f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
-                    f"Verify current thresholds at revenue.nsw.gov.au."
-                )
-            })
-        else:
-            results.append({
-                "question": f"Land tax (investment, {lt_year} thresholds)",
-                "answer": "Below threshold — nil",
-                "flag": "ok",
-                "basis": (
-                    f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
-                    "No land tax payable on investment property. PPOR always exempt. "
-                    "Verify current thresholds at revenue.nsw.gov.au."
-                )
-            })
+        results.extend(build_land_tax_rows(int(lv), tax_config))
 
     return results
+
+
+def build_land_tax_rows(lv_int: int, tax_config: Optional[dict]) -> list[dict]:
+    """Land-tax feasibility rows — pure sentence builder, golden-tested.
+
+    tax_config absent → "Not assessed" with the expected year named; figures are
+    NEVER computed from constants (fail-visible, invariant 7). A stale-year row
+    renders with its own tax_year visible plus a WARNING log.
+    """
+    if tax_config is None:
+        _expected_year = date.today().year
+        logger.warning(
+            "calc_feasibility: land tax config unavailable for the %s year — "
+            "rendering 'Not assessed' (no figures computed)", _expected_year,
+        )
+        return [{
+            "question": "Land tax (investment property)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                f"Land tax configuration unavailable for the {_expected_year} land tax "
+                f"year — no threshold or liability figures were computed for this report. "
+                f"Current thresholds and rates: revenue.nsw.gov.au."
+            )
+        }]
+
+    lt_year = tax_config["tax_year"]
+    lt_threshold = tax_config["threshold_dollars"]
+    lt_rate = tax_config["rate"]
+    lt_base = tax_config["base_amount_dollars"]
+    if lt_year < date.today().year:
+        # Stale-year config renders anyway — the sentence carries its own year
+        # verbatim, which keeps it honest — but loudly.
+        logger.warning(
+            "calc_feasibility: tax_thresholds row is for %s but the current land tax "
+            "year is %s — rendering the %s figures with their year visible",
+            lt_year, date.today().year, lt_year,
+        )
+
+    if lv_int > lt_threshold:
+        annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
+        return [{
+            "question": f"Land tax (investment, {lt_year} thresholds)",
+            "answer": f"${round(annual_lt):,}/year",
+            "flag": "warn",
+            "basis": (
+                f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
+                f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
+                f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
+                f"Verify current thresholds at revenue.nsw.gov.au."
+            )
+        }]
+    return [{
+        "question": f"Land tax (investment, {lt_year} thresholds)",
+        "answer": "Below threshold — nil",
+        "flag": "ok",
+        "basis": (
+            f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
+            "No land tax payable on investment property. PPOR always exempt. "
+            "Verify current thresholds at revenue.nsw.gov.au."
+        )
+    }]
 
 
 def calc_development_headroom(controls: dict, valuation: dict) -> dict:
@@ -1025,18 +1128,20 @@ def get_valuation(prop_id: int) -> dict:
                 m = re.search(r"[\d,]+\.?\d*", str(v).replace(",", ""))
                 return float(m.group().replace(",", "")) if m else None
 
-            # Build 5-year history: val5 = oldest, val1 = most recent
+            # Build 5-year history: val5 = oldest, val1 = most recent.
+            # VG land values are whole dollars — keep them int so no rendering
+            # path can produce a "$1,610,000.0" float artifact (D7).
             history = []
             for i in range(5, 0, -1):
                 lv_i = _num(attrs.get(f"val{i}_lv"))
                 bd_i = (attrs.get(f"val{i}_bd") or "").strip() or None
                 if lv_i:
-                    history.append({"year": bd_i or f"val{i}", "value": lv_i})
+                    history.append({"year": bd_i or f"val{i}", "value": int(lv_i)})
 
             lv = _num(attrs.get("val1_lv"))
             return {
                 "lot_area_m2": _num(area),
-                "land_value": lv,
+                "land_value": int(lv) if lv is not None else None,
                 "val_base_date": (attrs.get("val1_bd") or "").strip() or None,
                 "val_history": history,
             }
@@ -1084,10 +1189,18 @@ def parse_controls(raw: list[dict]) -> dict:
         "basix_zone": None,
         "riparian_epi": False,
         "flood_epi": False,
+        # Sydney Drinking Water Catchment — a named DA constraint (B&C SEPP 2021
+        # Pt 6.2/6.5 neutral-or-beneficial-effect test + s171A EP&A Reg 2021).
+        "sdwc": None,
+        # Fail-open capture: every layerintersect group this parser does not
+        # recognise, verbatim. Rendered as "Other planning instruments" — never
+        # silently dropped (Bowral SDWC regression, 2026-07).
+        "other_instruments": [],
     }
 
     for block in raw:
-        layer = block.get("layerName", "").lower()
+        raw_layer_name = block.get("layerName", "")
+        layer = raw_layer_name.lower()
         results = block.get("results", [])
         if not results:
             continue
@@ -1140,14 +1253,54 @@ def parse_controls(raw: list[dict]) -> dict:
                 epi = res.get("EPI Name") or ""
                 type_ = res.get("Type") or res.get("Class") or res.get("title") or ""
                 label = res.get("Label") or ""
+                # Class carries the actual standard value (e.g. Water Use "40%",
+                # Climate Zone "6"); title names the specific SEPP map. Both are
+                # needed to render the row meaningfully instead of a bare
+                # postcode/LGA Label.
+                class_ = res.get("Class") or ""
+                map_title = res.get("title") or ""
                 if epi or type_:
-                    out["sepp_overlays"].append({"name": epi, "type": type_, "label": label})
+                    out["sepp_overlays"].append({
+                        "name": epi, "type": type_, "label": label,
+                        "class": class_, "map_title": map_title,
+                    })
                 if "housing" in epi.lower() or "housing" in type_.lower():
                     out["housing_sepp"] = True
                 if "transport" in epi.lower() and "tod" in str(type_).lower():
                     out["tod_area"] = True
                 if "basix" in epi.lower() or "climate" in str(type_).lower():
                     out["basix_zone"] = label or type_
+
+        elif "drinking water catchment" in layer:
+            # Sydney Drinking Water Catchment Map — portal result carries the
+            # statutory citation in Label/title; extract verbatim, no interpretation.
+            _sdwc_label = None
+            for res in results:
+                _sdwc_label = res.get("Label") or res.get("title")
+                if _sdwc_label:
+                    break
+            out["sdwc"] = {
+                "layer": raw_layer_name,
+                "label": _sdwc_label or raw_layer_name,
+            }
+
+        else:
+            # Fail-open: capture unrecognised groups verbatim so a new portal
+            # layer surfaces in the report and in logs instead of vanishing.
+            titles = []
+            for res in results:
+                t = res.get("title") or res.get("EPI Name") or res.get("Label")
+                if t and str(t).strip():
+                    titles.append(str(t).strip())
+            titles = list(dict.fromkeys(titles))
+            out["other_instruments"].append({
+                "layer": raw_layer_name,
+                "titles": titles,
+            })
+            logger.warning(
+                "parse_controls: unrecognised layerintersect group %r captured as other_instruments (titles=%s)",
+                raw_layer_name, titles,
+            )
 
     out["heritage_items"] = list(dict.fromkeys(out["heritage_items"]))
     return out
@@ -1186,6 +1339,27 @@ POSTGIS_NOTES = {
     "coastal_use_area": COASTAL_USE_AREA_NOTE,
     "fire_history": FIRE_HISTORY_NOTE,
 }
+
+
+# prior-art-checked: reuse not viable because _normalize_coastal in
+# services/climate_risk_score.py returns a HazardScore for the scoring pipeline;
+# this is a row-level filter for the overlay list this file already produces.
+def _drop_jurisdictional_overlays(results: list[dict]) -> list[dict]:
+    """Drop overlay rows that mark a policy's jurisdiction, not a hazard.
+
+    SEPP R&H 2021 "Land Application" polygons cover ALL of NSW — a
+    jurisdictional boundary, not a hazard. Only "Subject Land" marks a specific
+    coastal designation. Without this filter every NSW property (including
+    inland LGAs) shows a false coastal overlay in the free check and the PDF.
+    Mirrors _normalize_coastal in services/climate_risk_score.py.
+    """
+    return [
+        o for o in results
+        if not (
+            o.get("layer_type") == "coastal_land_application"
+            and (o.get("value") or "").strip() != "Subject Land"
+        )
+    ]
 
 
 def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str], dict[str, float]]:
@@ -1247,6 +1421,8 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
             if key not in seen:
                 seen.add(key)
                 results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
+
+        results = _drop_jurisdictional_overlays(results)
 
         # Classified road: any land_reservation with "Classified Road" value within 30m
         # (property point may sit just inside the lot, road reservation is adjacent)
@@ -1381,8 +1557,9 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
 
         # Proximity distances — for layers that are covered but not intersecting at this property,
         # find the nearest feature distance (metres). Helps distinguish "1.5km away" from "50m away".
-        # Only queried for ecologically sensitive layers where proximity is actionable.
-        PROXIMITY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide"})
+        # flood added (brief Slice 2): a "No" flood row carrying the measured distance to the
+        # nearest mapped flood polygon — same covered-not-hit ST_Distance mechanism, never an estimate.
+        PROXIMITY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide", "flood"})
         hit_types = {r["layer_type"] for r in results}
         proximity_m: dict[str, float] = {}
         prox_candidates = PROXIMITY_LAYERS & covered_layers - hit_types
@@ -1719,6 +1896,313 @@ def get_shadow_risk(
         return None
 
 
+# prior-art-checked: reuse not viable because the honest shadow-provenance
+# wording exists only in TypeScript (intelligence-brief/page.tsx, ShadowTool.tsx)
+# and cannot be imported into this Python renderer; get_bushfire_live wraps and
+# REUSES the existing prod client services/bushfire_prescreen._query_rfs_bfpl
+# rather than reimplementing it. These pure builders exist so the PDF's exact
+# sentences are golden-tested (tests/test_conveyancing_truth.py, guardrail G1).
+def get_bushfire_live(lat: float, lng: float) -> Optional[dict]:
+    """Live NSW RFS BFPL point query for the conveyancing report.
+
+    Wraps services.bushfire_prescreen._query_rfs_bfpl (the existing prod client).
+    Returns its result dict, or None when the client cannot be imported/run —
+    build_bushfire_row treats None as "Not assessed", never "Clear".
+    """
+    try:
+        try:
+            from bushfire_prescreen import _query_rfs_bfpl
+        except ImportError:
+            # CLI context: services/ is not on sys.path (its modules import
+            # siblings as top-level, e.g. `from audit_trail import ...`).
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from bushfire_prescreen import _query_rfs_bfpl
+        return _query_rfs_bfpl(lat, lng)
+    except Exception as e:
+        print(f"  [warn] Live RFS BFPL query unavailable: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Risk-row sentence builders — pure functions (golden-sentence tested in
+# tests/test_conveyancing_truth.py). Keep these free of reportlab so the exact
+# user-visible wording is testable without rendering a PDF.
+# ---------------------------------------------------------------------------
+
+# Source labels for the shadow row. "NSW LEP" may ONLY be claimed when the
+# height actually came from an LEP control (portal/spatial_overlays/provisions).
+_SHADOW_SOURCE_LEP = "NSW LEP · shadow model"
+_SHADOW_SOURCE_ASSUMED = "assumed envelope · shadow model"
+# height_source values that genuinely trace to an LEP control — anything else
+# (default, None, unrecognised) must fail closed to the assumed-envelope label.
+_LEP_HEIGHT_SOURCES = frozenset({"spatial_overlays", "regulatory_provisions", "planning_portal"})
+
+
+def build_shadow_row(shadow_result: Optional[dict]) -> tuple[str, str, str]:
+    """Build the Risk Summary shadow row: (text, style_key, source_label).
+
+    style_key ∈ {"ok", "warn", "alert", "note"} — maps to PDF paragraph styles.
+
+    When height_source == "default" the 9 m figure is an assumption
+    (shadow_detector.DEFAULT_HEIGHT_M), not an LEP control: the row must not
+    claim "LEP maximum height", must not assert "Clear", and must carry the
+    assumed-envelope source label. Mirrors the Intelligence Brief wording
+    (frontend-nextjs/app/reports/intelligence-brief/page.tsx).
+    """
+    if shadow_result is None:
+        return ("Not assessed", "note", "shadow model")
+
+    jun21 = [s for s in (shadow_result.get("scenarios") or [])
+             if s.get("scenario") in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
+    overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
+    height_m = shadow_result.get("height_m") or "?"
+    adg_ok = shadow_result.get("adg_compliant", True)
+    noon = next((s for s in jun21 if s.get("scenario") == "jun21_12pm"), None)
+    noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
+    height_source = shadow_result.get("height_source")
+
+    if height_source == "default":
+        # Assumed envelope — no LEP height limit is mapped for this lot.
+        text = (
+            f"Not determinable from LEP controls — no LEP height limit is mapped for this lot, "
+            f"so the analysis uses a standard two-storey height ({height_m} m assumed envelope). "
+            f"A {height_m} m building on the northern adjacent lot would shadow {noon_pct}% of "
+            f"this property at Jun 21 noon. A taller merit-assessed build is possible and is not "
+            f"modelled here."
+        )
+        return (text, "warn", _SHADOW_SOURCE_ASSUMED)
+
+    if height_source not in _LEP_HEIGHT_SOURCES:
+        # Unknown provenance (missing/unrecognised height_source) — fail closed:
+        # never attribute an unverified height to the LEP.
+        text = (
+            f"Modelled with a {height_m} m building envelope whose height provenance was not "
+            f"recorded — not attributed to LEP controls. A {height_m} m building on the northern "
+            f"adjacent lot would shadow {noon_pct}% of this property at Jun 21 noon."
+        )
+        return (text, "warn", _SHADOW_SOURCE_ASSUMED)
+
+    hob_note = f" (LEP maximum height of buildings: {height_m} m)"
+    if adg_ok and overlap_count == 0:
+        text = (
+            f"Clear — a {height_m} m building on the northern adjacent lot would not "
+            f"significantly shadow this property on any Jun 21 scenario.{hob_note}"
+        )
+        return (text, "ok", _SHADOW_SOURCE_LEP)
+    if adg_ok:
+        text = (
+            f"Low risk — a {height_m} m building on the northern adjacent lot would shadow "
+            f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.{hob_note}"
+        )
+        return (text, "warn", _SHADOW_SOURCE_LEP)
+    text = (
+        f"ADG concern — a {height_m} m building on the northern adjacent lot would shadow "
+        f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
+        f"2-hour ADG requirement.{hob_note}"
+    )
+    return (text, "alert", _SHADOW_SOURCE_LEP)
+
+
+def build_bushfire_row(
+    bushfire_live: Optional[dict],
+    postgis_hit: Optional[dict],
+) -> tuple[str, str, str]:
+    """Build the Risk Summary bushfire row: (text, style_key, source_label).
+
+    Semantics (D3): the live NSW RFS BFPL query governs.
+      live prone       → alert row with the RFS category
+      live not prone   → "Clear" citing the live RFS query
+      live failed/None → fall back to the ingested PostGIS hit if present
+                         (alert), otherwise "Not assessed" — NEVER "Clear"
+                         from a failed query.
+    """
+    live_prone = (bushfire_live or {}).get("is_bushfire_prone")
+    if live_prone is True:
+        category = (bushfire_live.get("designation_category") or "").strip()
+        cat_str = f" — {category}" if category else ""
+        return (
+            f"Bushfire Prone Land{cat_str}. BAL assessment required before any development application.",
+            "alert",
+            "NSW RFS BFPL (live query)",
+        )
+    if live_prone is False:
+        return (
+            "Clear — not mapped as bushfire prone (NSW RFS BFPL, live query)",
+            "ok",
+            "NSW RFS BFPL (live query)",
+        )
+    # Live query failed or was not run
+    if postgis_hit:
+        val = (postgis_hit.get("value") or "").strip()
+        val_str = f" — {val}" if val else ""
+        return (
+            f"Bushfire Prone Land{val_str}. BAL assessment required before any development application. "
+            f"(Live RFS check unavailable — showing ingested NSW RFS BFPL data.)",
+            "alert",
+            "PostGIS (ingested NSW RFS BFPL)",
+        )
+    return (
+        "Not assessed — RFS service unavailable. Confirm bushfire-prone status via a s10.7(2) "
+        "certificate or the NSW RFS BFPL map.",
+        "note",
+        "NSW RFS BFPL",
+    )
+
+
+# prior-art-checked: mirrors build_bushfire_row above (same file) — a pure,
+# golden-tested row builder; the value RESOLUTION reuses the existing
+# portal_constraints.resolve_anef_value (lifted anef_zones query + existing
+# fetch_anef), nothing reimplemented.
+def _anef_value_display(anef_live: dict) -> str:
+    """Verbatim contour value for display: the source's code (e.g. "25-30")
+    when present, else the numeric level."""
+    code = anef_live.get("anef_code")
+    if code:
+        return str(code)
+    return str(anef_live.get("anef_level"))
+
+
+def _anef_source_label(anef_live: dict) -> str:
+    """Human-readable provenance for a resolved ANEF value — names the mapping
+    instrument the government layer attributes the contour to (EPI_NAME),
+    never an implied 'current' (PR #678 precedent)."""
+    epi = anef_live.get("epi_name")
+    epi_str = f"{epi} airport-noise mapping, " if epi else ""
+    return f"{epi_str}NSW ePlanning Protection ANEF layer, live query at report generation"
+
+
+def build_anef_row(
+    anef_live: Optional[dict],
+    postgis_hit: Optional[dict],
+) -> Optional[tuple[str, str, str]]:
+    """Build the Risk Summary ANEF row: (text, style_key, source_label) or None.
+
+    Semantics (three-state, bushfire-row precedent):
+      no ingested ANEF overlay        → None (row omitted — Bowral regression)
+      overlay + value resolved        → row states the contour value + provenance
+      overlay + lookup ran, no value  → today's wording (honest fallback)
+      overlay + lookup FAILED         → value explicitly "not assessed",
+                                        never a silent omission
+    """
+    status = (anef_live or {}).get("status")
+    if postgis_hit is None:
+        if status == "found":
+            # The curated/live value source governs over the ingest (bushfire
+            # D3 precedent) — a resolved contour is a TRUE constraint and must
+            # not vanish because our ingest lacks the polygon (Mascot gap,
+            # verified 2026-07-06: anef_zones=35, spatial_overlays=no hit).
+            logger.warning(
+                "ANEF value resolved (%s) but no ingested anef overlay hit — "
+                "rendering from the value lookup; check spatial_overlays anef ingest",
+                _anef_value_display(anef_live),
+            )
+            return (
+                f"Aircraft noise contour — ANEF {_anef_value_display(anef_live)} "
+                f"({_anef_source_label(anef_live)})",
+                "warn",
+                "ANEF value lookup",
+            )
+        # No ingest hit and no resolved value → no contour claim (row omitted);
+        # a failed lookup on a lot with no mapped contour is a non-event.
+        return None
+    if status == "found":
+        # A synthesized hit (ingest missed the contour; overlay added from the
+        # value lookup) must not be attributed to PostGIS.
+        _synthetic = (postgis_hit or {}).get("instrument") == "ANEF_VALUE_LOOKUP"
+        return (
+            f"Aircraft noise contour — ANEF {_anef_value_display(anef_live)} "
+            f"({_anef_source_label(anef_live)})",
+            "warn",
+            "ANEF value lookup" if _synthetic else "PostGIS + ANEF value lookup",
+        )
+    if status == "failed":
+        return (
+            "Aircraft noise contour — ANEF applies. Contour value not assessed — "
+            "value lookup unavailable at report generation.",
+            "warn",
+            "PostGIS",
+        )
+    # status "empty", or the lookup was not run: today's exact wording
+    return (
+        "Aircraft noise contour — ANEF applies",
+        "warn",
+        "PostGIS",
+    )
+
+
+def build_anef_note(anef_live: Optional[dict]) -> Optional[str]:
+    """Section 5 note override when the contour value is known or the lookup
+    failed; None keeps the static ANEF_NOTE (the honest no-value fallback)."""
+    status = (anef_live or {}).get("status")
+    if status == "found":
+        return _ANEF_NOTE_BASE + (
+            f"ANEF contour value at this location: {_anef_value_display(anef_live)} "
+            f"(source: {_anef_source_label(anef_live)}). The specific restrictions "
+            f"depend on the contour value — confirm development requirements with "
+            f"council or a qualified acoustic consultant."
+        )
+    if status == "failed":
+        return ANEF_NOTE + (
+            " The contour value lookup was unavailable when this report was "
+            "generated — the contour value is not assessed in this report."
+        )
+    return None
+
+
+def get_anef_live(lat: float, lng: float) -> dict:
+    """ANEF contour value lookup for the CLI report path — three-state.
+
+    Wraps services.portal_constraints.resolve_anef_value (the shared resolver).
+    Import or runtime failure returns {"status": "failed"} — build_anef_row
+    renders that as not-assessed wording, never silence.
+    """
+    try:
+        try:
+            from portal_constraints import resolve_anef_value
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import resolve_anef_value
+        return resolve_anef_value(lat, lng)
+    except Exception as e:
+        print(f"  [warn] ANEF value lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
+# Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
+# absent: it is checked live against the NSW RFS BFPL service, not our ingest.
+_UNMAPPED_NOTE_LAYERS = (
+    ("flood", "flood"), ("riparian", "riparian"),
+    ("wetlands", "wetlands"), ("landslide", "landslide"),
+    ("biodiversity", "biodiversity"),
+)
+
+
+def build_unmapped_note(covered_layers: Optional[set]) -> Optional[str]:
+    """Coverage footnote for PostGIS layers with no ingested data for this LGA.
+
+    The wording owns the gap as OURS ("PlotDetect's ingested…") — absence from
+    our ingest is not a statement about the NSW state layer or the council's
+    own mapping (D3 regression: the old text blamed the NSW state layer).
+    Returns None when everything is covered or coverage is unknown.
+    """
+    if covered_layers is None:
+        return None
+    unmapped = [lbl for lbl, lt in _UNMAPPED_NOTE_LAYERS if lt not in covered_layers]
+    if not unmapped:
+        return None
+    return (
+        f"<i>Not present in PlotDetect's ingested state-layer data for this LGA:</i> "
+        f"{', '.join(unmapped)}. "
+        "These layers are ingested from NSW Government ArcGIS services; absence here means our "
+        "ingestion has no features for this council — it is not a statement about the council's "
+        "own mapping. Confirm with council or a Section 10.7 planning certificate."
+    )
+
+
 def _check_reportlab():
     try:
         import reportlab  # noqa
@@ -1750,6 +2234,8 @@ def generate_pdf(
     lep_clauses: Optional[list] = None,
     dcp_setbacks_db: Optional[dict] = None,
     proximity_m: Optional[dict] = None,
+    bushfire_live: Optional[dict] = None,
+    anef_live: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -1805,6 +2291,47 @@ def generate_pdf(
 
     story = []
     CW = W - 2 * MARGIN  # content width
+
+    # ------------------------------------------------------------------
+    # Bushfire: the live NSW RFS BFPL result governs (D3). The ingested
+    # PostGIS copy can be stale or missing for an LGA — reconcile before any
+    # rendering so the cover tile, risk row, Section 5 note and consultant
+    # table all agree with the live answer.
+    # ------------------------------------------------------------------
+    _bf_live_prone = (bushfire_live or {}).get("is_bushfire_prone")
+    _bf_postgis_hit = next((o for o in unique_overlays if o["layer_type"] == "bushfire"), None)
+    if _bf_live_prone is True and _bf_postgis_hit is None:
+        _live_bf_overlay = {
+            "layer_type": "bushfire",
+            "value": (bushfire_live or {}).get("designation_category") or "Bushfire Prone Land",
+            "instrument": "RFS_BFPL_LIVE",
+            "lga": None,
+        }
+        unique_overlays = list(unique_overlays) + [_live_bf_overlay]
+    elif _bf_live_prone is False and _bf_postgis_hit is not None:
+        logger.warning(
+            "Live RFS BFPL says not prone but ingested PostGIS has a bushfire hit (%s) — live wins",
+            _bf_postgis_hit.get("value"),
+        )
+        unique_overlays = [o for o in unique_overlays if o["layer_type"] != "bushfire"]
+
+    # ------------------------------------------------------------------
+    # ANEF: a resolved contour value (curated anef_zones / live ePlanning)
+    # governs over the ingest, same as bushfire above — synthesize the overlay
+    # when the ingest missed it so the cover tile, delta callout, risk row,
+    # Section 5 note and consultant table all state the contour. A lookup that
+    # found nothing never REMOVES an ingested hit (the ingest polygon may
+    # still be right — the note wording stays the honest fallback).
+    # ------------------------------------------------------------------
+    if (anef_live or {}).get("status") == "found" and not any(
+        o["layer_type"] == "anef" for o in unique_overlays
+    ):
+        unique_overlays = list(unique_overlays) + [{
+            "layer_type": "anef",
+            "value": f"ANEF {_anef_value_display(anef_live)}",
+            "instrument": "ANEF_VALUE_LOOKUP",
+            "lga": None,
+        }]
 
     def hr():
         story.append(HRFlowable(width="100%", thickness=0.8, color=TEAL))
@@ -1897,6 +2424,10 @@ def generate_pdf(
     if controls.get("heritage_items"):
         _n_constraints += 1
     if controls.get("ass_class"):
+        _n_constraints += 1
+    # Sydney Drinking Water Catchment is a DA constraint (B&C SEPP 2021 Pt 6.2/6.5)
+    # — it must flip the cover tile, not vanish (Bowral regression).
+    if controls.get("sdwc"):
         _n_constraints += 1
     _constr_val = str(_n_constraints) if _n_constraints else "None"
     _constr_hex = "#B91C1C" if _n_constraints else "#166534"
@@ -2038,12 +2569,19 @@ def generate_pdf(
     _bushfire_note_dynamic: str | None = None
     if "bushfire" in unique_by_type:
         _bf_val = (unique_by_type["bushfire"].get("value") or "").strip()
-        # Normalise: "Category 1" → "1", "CAT 2" → "2", "Flame Zone" stays as-is
-        _bf_key = re.sub(r"(?i)^cat(?:egory)?\s*", "", _bf_val).strip()
+        # Normalise: "Category 1" / "Vegetation Category 1" → "1", "CAT 2" → "2",
+        # "Flame Zone" stays as-is. Live RFS d_Category uses the "Vegetation" prefix.
+        _bf_key = re.sub(r"(?i)^(?:vegetation\s+)?cat(?:egory)?\s*", "", _bf_val).strip()
         _bf_specific = BUSHFIRE_CATEGORIES.get(_bf_key) or BUSHFIRE_CATEGORIES.get(_bf_val)
         if _bf_specific:
             _bushfire_note_dynamic = _bf_specific
         # else fall back to BUSHFIRE_NOTE_DEFAULT (via static POSTGIS_NOTES entry)
+
+    # ANEF — note carries the resolved contour value (or the explicit lookup
+    # failure); None falls back to the static ANEF_NOTE.
+    _anef_note_dynamic: str | None = None
+    if "anef" in unique_by_type:
+        _anef_note_dynamic = build_anef_note(anef_live)
 
     DELTA_CHECKS = [
         ("Biodiversity Values Map (BDAR trigger)", "biodiversity"),
@@ -2053,6 +2591,7 @@ def generate_pdf(
         ("Flood Planning Area",      "flood"),
         ("Bushfire Prone Land",      "bushfire"),
         ("Aircraft Noise (ANEF)",    "anef"),
+        ("Sydney Drinking Water Catchment", "sdwc"),
         ("Key Site (LEP clause)",    "key_sites"),
         ("TOD Development Uplift",   "tod_accelerated"),  # catches accelerated first; tod_precinct/tod_deferred checked separately
         ("Additional Permitted Uses","additional_permitted_uses"),
@@ -2068,6 +2607,8 @@ def generate_pdf(
             return _tod_hit
         if lt == "additional_permitted_uses":
             return _apu_hit
+        if lt == "sdwc":              # portal layerintersect group, not a PostGIS layer
+            return bool(controls.get("sdwc"))
         return lt in unique_by_type
 
     flagged = [label for label, lt in DELTA_CHECKS if _delta_hit(lt)]
@@ -2079,9 +2620,14 @@ def generate_pdf(
             delta_lines.append(label)
     delta_body_text = "  ·  ".join(delta_lines)
 
+    # s10.7(2) claim (D4): bushfire-prone status and flood-related development
+    # controls ARE prescribed certificate matters (EP&A Reg 2021 Sch 2) — the
+    # header must not claim otherwise. source_ref: EP&A Regulation 2021, Sch 2.
     callout_header = Paragraph(
-        "The following are NOT disclosed in a standard s10.7(2) certificate or title search "
-        "— this report checks all of them:",
+        "Constraint screening — this report checks all of the following. Most are not itemised "
+        "in a standard s10.7(2) certificate or title search; for bushfire and flood, the "
+        "certificate states whether they apply and this report adds the mapped category and "
+        "extent detail:",
         S("ch", fontSize=9, textColor=WHITE, fontName="Helvetica-Bold", leading=13),
     )
     alert_suffix = (
@@ -2135,7 +2681,8 @@ def generate_pdf(
     ]
     not_included = [
         "Section 10.7 Planning Certificate (order from council)",
-        "Section 73 Sydney Water Certificate (allow 1–4 weeks; physical inspection possible if built over pressure main)",
+        "Utility (water/sewer) certificate — Sydney Water s73 in Sydney Water's area of operations; "
+        "certificate from the local water utility (council) elsewhere (allow 1–4 weeks)",
         "Title search (order via InfoTrack or equivalent)",
         "Land tax clearance certificate (order via Revenue NSW)",
         "Building certificate / OC gap check (order from council)",
@@ -2242,10 +2789,11 @@ def generate_pdf(
         if epi_key and controls.get(epi_key):
             hit_label = _HIT_LABELS.get(layer_type, "Present")
             return [label, Paragraph(hit_label, ss[present_style]), "NSW Planning Portal"]
-        # 3. EPI confirmed absence (layerintersect ran, nothing found)
-        if epi_key:
-            return [label, Paragraph("Clear", ss["ok"]), "NSW Planning Portal"]
-        # 4. PostGIS layer not mapped for this LGA — omit row entirely
+        # 3. Layer not in our ingested coverage for this LGA — omit the row; the
+        #    coverage footnote owns the gap. Absence of a portal layerintersect
+        #    group is NOT evidence of absence (the portal does not return these
+        #    layers for every LGA), so no "Clear — NSW Planning Portal" row is
+        #    asserted from it (D7 semantics alignment).
         if covered_layers is not None and layer_type not in covered_layers:
             return None
         # 5. Covered but not intersecting — show "Clear" with proximity note if close
@@ -2294,16 +2842,27 @@ def generate_pdf(
         else Paragraph("None identified", ss["ok"])
     )
 
+    # Bushfire row — live NSW RFS BFPL query governs, never our ingest coverage (D3)
+    _bf_text, _bf_style, _bf_source = build_bushfire_row(
+        bushfire_live, unique_by_type.get("bushfire"),
+    )
+
     risk_rows = [
         ["Constraint", "Finding", "Source"],
         # Portal-sourced planning designations
         ["Heritage Listing",                          heritage_flag,   "NSW Planning Portal"],
         ["Acid Sulfate Soils",                        ass_flag,        "NSW Planning Portal"],
+        # Sydney Drinking Water Catchment — statutory citation rendered verbatim
+        # from the portal Label (B&C SEPP 2021 Pt 6.2/6.5 + s171A EP&A Reg 2021)
+        *([["Sydney Drinking Water Catchment",
+            Paragraph(controls["sdwc"]["label"], ss["warn"]),
+            "NSW Planning Portal"]]
+          if controls.get("sdwc") else []),
         # Portal key site row suppressed when PostGIS already shows a hit (avoids duplicate rows)
         *([["LEP Key Site or Special Provision",      key_sites_flag,  "NSW Planning Portal"]]
           if not _postgis_key_site_hit else []),
         ["Additional Permitted Uses (LEP Sch. 1)",    apu_flag,        "PostGIS"],
-        # PostGIS-sourced environmental overlays (not in s10.7 or title search)
+        # PostGIS-sourced environmental overlays
         # flag() returns None when the layer is not mapped for this LGA — omit those rows
         flag("biodiversity", "Biodiversity Values Map (BDAR trigger)", "warn"),
         flag("riparian",     "Riparian Land",                          "warn"),
@@ -2313,10 +2872,20 @@ def generate_pdf(
         # PostGIS-sourced LEP constraints
         flag("key_sites",               "Key Site (site-specific LEP clause)", "warn"),
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
-        flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
-        flag("bushfire",                "Bushfire Prone Land (BAL assessment)", "alert"),
-        flag("anef",                    "Aircraft Noise Contour (ANEF)", "warn"),
+        flag("classified_road",         "Classified Road Frontage", "warn"),
+        ["Bushfire Prone Land (BAL assessment)", Paragraph(_bf_text, ss[_bf_style]), _bf_source],
     ]
+    # ANEF row — three-state builder: contour value when resolved, honest
+    # fallback when empty, explicit not-assessed on lookup failure. None when
+    # the lot has no ingested ANEF overlay (row omitted, Bowral regression).
+    _anef_row = build_anef_row(anef_live, unique_by_type.get("anef"))
+    if _anef_row is not None:
+        _an_text, _an_style, _an_source = _anef_row
+        risk_rows.append([
+            "Aircraft Noise Contour (ANEF)",
+            Paragraph(_an_text, ss[_an_style]),
+            _an_source,
+        ])
     # TOD — opportunity signal (green/ok style), not a risk
     tod_type = next((t for t in ("tod_accelerated", "tod_precinct", "tod_deferred")
                      if t in unique_by_type), None)
@@ -2330,68 +2899,23 @@ def generate_pdf(
         ])
     risk_rows = [r for r in risk_rows if r is not None]
 
-    # Shadow risk row — derived from shadow pipeline
-    if shadow_result is not None:
-        jun21 = [s for s in (shadow_result.get("scenarios") or [])
-                 if s["scenario"] in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
-        overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
-        height_m = shadow_result.get("height_m") or "?"
-        adg_ok = shadow_result.get("adg_compliant", True)
-        # Worst Jun 21 overlap fraction for context (noon is usually most readable)
-        jun21_fractions = [
-            round((s.get("shadow_overlap_fraction") or 0) * 100)
-            for s in jun21
-        ]
-        noon = next((s for s in jun21 if s["scenario"] == "jun21_12pm"), None)
-        noon_pct = round((noon.get("shadow_overlap_fraction") or 0) * 100) if noon else 0
-
-        _hob_note = f" (LEP maximum height of buildings: {height_m} m)"
-        if adg_ok and overlap_count == 0:
-            shadow_flag = Paragraph(
-                f"Clear — a {height_m} m building on the northern adjacent lot would not "
-                f"significantly shadow this property on any Jun 21 scenario.{_hob_note}",
-                ss["ok"])
-        elif adg_ok:
-            shadow_flag = Paragraph(
-                f"Low risk — a {height_m} m building on the northern adjacent lot would shadow "
-                f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.{_hob_note}",
-                ss["warn"])
-        else:
-            shadow_flag = Paragraph(
-                f"ADG concern — a {height_m} m building on the northern adjacent lot would shadow "
-                f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
-                f"2-hour ADG requirement.{_hob_note}",
-                ss["alert"])
-        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP · shadow model"])
-    else:
-        risk_rows.append([
-            "Northern Development Shadow Risk",
-            Paragraph("Not assessed", ss["note"]),
-            "NSW LEP · shadow model",
-        ])
+    # Shadow risk row — build_shadow_row threads height_source so an assumed
+    # 9 m envelope is never attributed to the LEP (D1)
+    _sh_text, _sh_style, _sh_source = build_shadow_row(shadow_result)
+    risk_rows.append([
+        "Northern Development Shadow Risk",
+        Paragraph(_sh_text, ss[_sh_style]),
+        _sh_source,
+    ])
 
     c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
     story.append(table(risk_rows, [c1, c2, c3]))
 
-    # Show "not mapped" note only when covered_layers is populated but missing key layers
-    _unmapped = [
-        lbl for lbl, lt in [
-            ("flood", "flood"), ("riparian", "riparian"),
-            ("wetlands", "wetlands"), ("landslide", "landslide"),
-            ("bushfire", "bushfire"), ("biodiversity", "biodiversity"),
-        ]
-        if covered_layers is not None and lt not in covered_layers
-    ]
-    if _unmapped:
+    # Coverage footnote — owns the gap as ours; bushfire excluded (live-checked)
+    _unmapped_note = build_unmapped_note(covered_layers)
+    if _unmapped_note:
         story.append(Spacer(1, 2 * mm))
-        story.append(Paragraph(
-            f"<i>Not mapped in NSW state layer for this LGA:</i> {', '.join(_unmapped)}. "
-            "These overlays are sourced from NSW Government ArcGIS services. Where a layer is absent, "
-            "the council may not have uploaded data to the state layer, or the hazard may genuinely not "
-            "apply to this LGA. Confirm with council or obtain a Section 10.7 planning certificate "
-            "for authoritative disclosure.",
-            ss["note"],
-        ))
+        story.append(Paragraph(_unmapped_note, ss["note"]))
 
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(
@@ -2408,11 +2932,18 @@ def generate_pdf(
         ss["note"]
     ))
     story.append(Spacer(1, 1 * mm))
+    # s10.7(2) claim (D4): only the layers genuinely absent from certificates are
+    # named; bushfire/flood are prescribed matters (EP&A Reg 2021 Sch 2).
     story.append(Paragraph(
-        "Sources: Heritage, ASS, Key Site, SEPP overlays — NSW Planning Portal layerintersect (live query). "
-        "Environmental and spatial overlays (biodiversity, riparian, wetlands, landslide, flood, bushfire, ANEF, TOD, APU) — "
-        "PostGIS spatial database ingested from NSW Government ArcGIS services. Coverage: 128 NSW councils. "
-        "None of these layers are disclosed in a standard s10.7(2) certificate or title search.",
+        "Sources: Heritage, ASS, Key Site, SEPP overlays, drinking water catchment — NSW Planning "
+        "Portal layerintersect (live query). Bushfire Prone Land — NSW RFS BFPL (live query at "
+        "report generation). Environmental and spatial overlays (biodiversity, riparian, wetlands, "
+        "landslide, flood, ANEF, TOD, APU) — PostGIS spatial database ingested from NSW Government "
+        "ArcGIS services. Coverage: 128 NSW councils. Biodiversity Values (BDAR trigger), ANEF "
+        "contours, TOD precinct status and APU spatial footprints are not itemised in a standard "
+        "s10.7(2) certificate or title search. Bushfire-prone status and flood-related development "
+        "controls are prescribed s10.7(2) certificate matters — the certificate states whether they "
+        "apply; this report adds the mapped category and extent detail.",
         ss["note"]
     ))
     if shadow_result is not None and not shadow_result.get("adg_compliant", True):
@@ -2420,9 +2951,11 @@ def generate_pdf(
         story.append(Paragraph(
             "<b>Northern Development Shadow Risk</b> — modelled using the NSW Apartment Design Guide (ADG) "
             "standard: 5 key dates/times including the three Jun 21 (winter solstice) snapshots that determine "
-            "ADG compliance. The model assumes a max-height building (per LEP) on the lot immediately to the "
-            "north, using the subject lot's own cadastral footprint as a symmetric proxy. "
-            "This risk is not disclosed in a standard s10.7 certificate, title search, or conveyancing "
+            "ADG compliance. The model assumes a building at the modelled height — the LEP height limit where "
+            "one is mapped for the lot, otherwise a standard two-storey (9 m) assumed envelope as labelled in "
+            "the row above — on the lot immediately to the north, using the subject lot's own cadastral "
+            "footprint as a symmetric proxy. "
+            "This modelled risk is not part of a standard s10.7 certificate, title search, or conveyancing "
             "inspection. A formal shadow impact assessment prepared by a qualified town planner is required "
             "for Development Application submission.",
             ss["note"]
@@ -2633,8 +3166,10 @@ def generate_pdf(
     zone_epi = controls.get("zone_epi") or ""
     legislation_url = controls.get("legislation_url") or ""
     if zone_full:
+        # zone_full is the portal's zone NAME (e.g. "Medium Density Residential"),
+        # not the LEP objectives text — label it as the zone (D7).
         story.append(Paragraph(
-            f"<b>Zone objectives ({zone_code}):</b> {zone_full}",
+            f"<b>Zone ({zone_code}):</b> {zone_full}",
             ss["body"]
         ))
         story.append(Spacer(1, 1 * mm))
@@ -2875,6 +3410,8 @@ def generate_pdf(
                 display_note = _flood_note_dynamic
             elif layer_type == "bushfire" and _bushfire_note_dynamic:
                 display_note = _bushfire_note_dynamic
+            elif layer_type == "anef" and _anef_note_dynamic:
+                display_note = _anef_note_dynamic
             else:
                 display_note = note_text
             story.append(Paragraph(display_note, ss["note"]))
@@ -2962,9 +3499,12 @@ def generate_pdf(
         for lt in POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "classified_road", "bushfire", "anef"}
     )
     if no_constraints:
+        # Bushfire is deliberately not claimed here — its status (including a
+        # failed live check) is reported in the Section 1 risk row.
         story.append(Paragraph(
-            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, flood, bushfire, "
-            "aircraft noise, coastal hazard, or fire history overlays identified at this location.",
+            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, flood, "
+            "aircraft noise, coastal hazard, or fire history overlays identified at this location. "
+            "Bushfire-prone status is reported in Section 1 (live NSW RFS check).",
             ss["body"]
         ))
 
@@ -3038,11 +3578,18 @@ def generate_pdf(
         for ov in controls["sepp_overlays"]:
             name = ov["name"] or ""
             type_ = ov.get("type") or ""
-            key = (name, type_)
+            class_ = ov.get("class") or ""
+            # Class is part of the dedupe key: two Climate Zones rows with
+            # different class values (e.g. BASIX Alterations 6 vs Buildings 24)
+            # are distinct standards, not duplicates.
+            key = (name, type_, class_)
             if key in seen:
                 continue
             seen.add(key)
-            plain = interpret_sepp(name, type_, ov.get("label") or "", "")
+            plain = interpret_sepp(
+                name, type_, ov.get("label") or "", "",
+                class_=class_, map_title=ov.get("map_title") or "",
+            )
             if plain is None:
                 continue  # dedicated report section covers this overlay type
             sepp_rows.append([
@@ -3052,6 +3599,31 @@ def generate_pdf(
         story.append(table(sepp_rows, [85 * mm, CW - 85 * mm]))
     else:
         story.append(Paragraph("No SEPP special provisions identified at this location.", ss["body"]))
+
+    # Other planning instruments — fail-open capture from parse_controls (D2).
+    # Titles are rendered verbatim from the portal response; no interpretation.
+    _sdwc = controls.get("sdwc")
+    _other_instruments = controls.get("other_instruments") or []
+    if _sdwc or _other_instruments:
+        story.append(Spacer(1, 3 * mm))
+        story.append(Paragraph(
+            "<b>Other planning instruments mapped at this location</b> — returned by the NSW "
+            "Planning Portal for this property:",
+            ss["body"]
+        ))
+        story.append(Spacer(1, 1 * mm))
+        if _sdwc:
+            story.append(Paragraph(
+                f"• <b>{_sdwc['layer']}:</b> {_sdwc['label']}",
+                ss["note"]
+            ))
+        for oi in _other_instruments:
+            _titles = "; ".join(oi.get("titles") or []) or "mapped at this location"
+            story.append(Paragraph(
+                f"• <b>{oi['layer']}:</b> {_titles}",
+                ss["note"]
+            ))
+        story.append(Spacer(1, 2 * mm))
 
     if controls["housing_sepp"]:
         story.append(Spacer(1, 2 * mm))
@@ -3123,28 +3695,44 @@ def generate_pdf(
             "exceeding $50,000. Must demonstrate energy, water and thermal comfort targets.",
         ],
         [
+            # source_ref: SEPP (Housing) 2021 s53 — non-discretionary development
+            # standards for secondary dwellings (450 m² site area).
             "SEPP (Housing) 2021",
             "Residential zones — dual occ, secondary dwellings, complying dev",
-            "Enables secondary dwellings (450 m² lot min), dual occupancy, and "
-            "low-rise medium density housing as complying development in eligible zones. "
-            "Sets minimum site standards that override some LEP controls.",
+            "Enables secondary dwellings (450 m² non-discretionary site-area standard, s53), "
+            "dual occupancy, and low-rise medium density housing pathways in eligible zones. "
+            "Sets non-discretionary standards a consent authority cannot use as refusal grounds "
+            "when met.",
         ],
         [
+            # source_ref: SEPP (Transport and Infrastructure) 2021 s2.120
+            # (frontage to classified roads — consent authority considerations),
+            # Division 17 (rail corridors — noise/vibration). The former 9 m
+            # setback claim was a Codes SEPP Housing Code CDC standard wrongly
+            # attributed to this instrument (D5) — do not reintroduce it here.
             "SEPP (Transport and Infrastructure) 2021",
             "Land adjoining classified roads and rail corridors",
             (
-                "9 m minimum setback from classified road boundary for new dwellings. "
-                "Noise and vibration assessment required for development near rail. "
+                "Development with frontage to a classified road requires the consent authority "
+                "to be satisfied on access arrangements and road safety (s2.120). Residential "
+                "development near rail corridors may require noise and vibration assessment. "
                 + ("Classified road frontage identified at this property — applies." if has_classified_road
                    else "No classified road frontage identified at this property.")
             ),
         ],
         [
+            # source_ref: SEPP (Resilience and Hazards) 2021 Ch 4 (remediation of
+            # land, s4.6 consent authority considerations), Ch 2 (coastal
+            # management — mapped areas only). Flood planning is an LEP control
+            # (Standard Instrument cl 5.21), not this SEPP — former text wrongly
+            # claimed statewide flood provisions here.
             "SEPP (Resilience and Hazards) 2021",
-            "All land — flood, coastal hazard, contaminated land",
-            "Overrides local controls for land affected by natural hazards. "
-            "Flood provisions apply statewide — council must have regard to flood planning levels. "
-            "Contaminated land requires remediation before sensitive uses.",
+            "Contaminated land (all land); coastal management (mapped areas)",
+            "The consent authority must consider whether land is contaminated and, if so, "
+            "whether remediation is required before the land can be used for the proposed "
+            "purpose (Ch 4). Coastal management provisions apply only within mapped coastal "
+            "areas — see the spatial overlays in this report. Flood planning controls sit in "
+            "the LEP (cl 5.21), not this SEPP.",
         ],
     ])
 
@@ -3312,10 +3900,18 @@ def generate_pdf(
             "Review descriptions above for potential amenity, overshadowing or construction impacts.",
             ss["note"]
         ))
+    elif das is None:
+        # DA search failed or was not run — say so; an empty-looking section
+        # must never read as "no DAs" when the records were not checked.
+        story.append(Paragraph(
+            "Not assessed — DA records could not be retrieved at report generation. "
+            "Check the NSW Planning Portal DA tracker for applications near this property.",
+            ss["note"]
+        ))
     else:
         story.append(Paragraph(
-            "No development applications lodged within 200m in the past 12 months. "
-            "Low immediate construction disruption risk from neighbouring properties.",
+            "No development applications lodged within 200m in the past 12 months "
+            "(NSW ePlanning DA records at report date).",
             ss["ok"]
         ))
 
@@ -3331,20 +3927,27 @@ def generate_pdf(
          "<b>authoritative statutory disclosure document</b> for conveyancing. This report <b>supplements — "
          "it does not replace</b> — that certificate."),
         ("Environmental and spatial overlays",
-         "<b>Biodiversity, riparian, wetlands, landslide, flood, bushfire prone land (BFPL), aircraft noise "
+         # s10.7(2) claim (D4): bushfire and flood are prescribed certificate
+         # matters (EP&A Reg 2021 Sch 2) — only the genuinely absent layers are
+         # named below.
+         "<b>Biodiversity, riparian, wetlands, landslide, flood, aircraft noise "
          "(ANEF), TOD precinct status,</b> and Additional Permitted Uses data are sourced from PostGIS spatial "
-         "overlays ingested from NSW Government ArcGIS services (128 NSW councils). "
-         "<b>None of these layers appear in a standard s10.7(2) certificate or title search.</b> "
-         "Data reflects the last ingestion date — accuracy is subject to NSW Government mapping precision. "
+         "overlays ingested from NSW Government ArcGIS services (128 NSW councils). <b>Bushfire prone land "
+         "(BFPL)</b> is queried live from the NSW RFS BFPL service at report generation. "
+         "<b>Biodiversity Values (BDAR trigger), ANEF contours, TOD precinct status and APU spatial footprints "
+         "are not itemised in a standard s10.7(2) certificate or title search.</b> Bushfire-prone status and "
+         "flood-related development controls are prescribed s10.7(2) certificate matters — the certificate "
+         "states whether they apply; this report adds the mapped category and extent detail. "
+         "Ingested data reflects the last ingestion date — accuracy is subject to NSW Government mapping precision. "
          "Verify with council for site-specific confirmation."),
         ("Title classification",
          "<b>Strata and community title</b> identification sourced from NSW Planning Portal cadastral data. "
          "<b>Company title</b> properties return as Torrens in the land register and <b>may not be automatically "
          "identified</b> — confirm via title search for older inner Sydney apartment buildings."),
         ("DCP provisions",
-         f"DCP setback controls are currently available for: <b>Inner West LGA</b> (Marrickville, Leichhardt, "
-         f"Ashfield precincts). For all other councils, Section 4 of this report is not populated — "
-         f"obtain DCP controls directly from council or via a town planning consultant."),
+         "DCP setback controls are shown where extracted for the property's LGA — Section 4 names "
+         "the applicable DCP when populated. Where Section 4 is not populated for this property, "
+         "obtain DCP controls directly from council or via a town planning consultant."),
         ("Permitted and prohibited uses",
          "Zone permitted and prohibited uses are derived from the <b>NSW Planning Portal LEP Land Use</b> "
          "field, which follows the standard instrument LEP format across all NSW councils. "
@@ -3358,10 +3961,13 @@ def generate_pdf(
          "No representation is made as to the completeness or accuracy of any data source."),
         ("Shadow risk methodology",
          "Northern development shadow risk is modelled using the <b>maximum permissible building height "
-         "(Height of Buildings, HOB)</b> from the applicable Local Environmental Plan. HOB is the LEP "
-         "control that sets the tallest structure a neighbour could legally build — <b>it is not the "
-         "height of any existing building.</b> The model tests whether a worst-case neighbour build at "
-         "the HOB limit would shadow this property on the <b>NSW Apartment Design Guide (ADG)</b> test dates "
+         "(Height of Buildings, HOB)</b> from the applicable Local Environmental Plan where one is mapped "
+         "for the lot. HOB is the LEP control that sets the tallest structure a neighbour could legally "
+         "build — <b>it is not the height of any existing building.</b> <b>Where no LEP height limit is "
+         "mapped for the lot, the model uses a standard two-storey (9 m) assumed envelope instead — the "
+         "Risk Summary row is labelled accordingly, and a taller merit-assessed build is possible.</b> "
+         "The model tests whether a worst-case neighbour build at the modelled height would shadow this "
+         "property on the <b>NSW Apartment Design Guide (ADG)</b> test dates "
          "(21 June winter solstice, 9 am / 12 pm / 3 pm). ADG compliance requires <b>at least 2 hours "
          "of direct sunlight between 9 am and 3 pm on 21 June</b> for living areas and private open space. "
          "This is a <b>conservative envelope model</b> — not a site-specific shadow study. A formal shadow "
@@ -3533,7 +4139,15 @@ def main():
         print(f"  Torrens title — but strata scheme exists on this parcel ({strata_info.get('plan_label')})")
     else:
         print(f"  Torrens title — {strata_info.get('plan_label', 'plan unknown')}")
-    feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata)
+    # DB-loaded regulatory configs (SEPP standards + land tax thresholds) —
+    # same loader the API path uses; a None tax_config renders "Not assessed".
+    _sepp_standards, _tax_config = load_regulatory_configs(os.getenv("DATABASE_URL"))
+    if _tax_config is None:
+        print("  [warn] land tax config unavailable — land tax section renders 'Not assessed'")
+    feasibility = calc_feasibility(
+        controls, valuation, unique_overlays, is_strata=strata,
+        sepp_standards=_sepp_standards, tax_config=_tax_config,
+    )
 
     raw_council = args.council or _council_from_zone_epi(controls.get("zone_epi", ""))
     council_name = _normalise_council(raw_council) if args.council else raw_council
@@ -3543,11 +4157,11 @@ def main():
             das = get_nearby_das(lat, lng, council_name=council_name)
         except Exception as e:
             print(f"  [warn] DA search failed: {e}")
-            das = []
+            das = None  # failed fetch renders as "Not assessed", never "No DAs"
     else:
         print("\nSkipping DA search — council could not be derived from LEP")
-        das = []
-    print(f"  {len(das)} DAs within 200m")
+        das = None
+    print(f"  {len(das)} DAs within 200m" if das is not None else "  DA search not run")
 
     # Detect Inner West former council for DCP setback lookup
     zone_epi = controls.get("zone_epi", "") if controls else ""
@@ -3620,9 +4234,26 @@ def main():
         shadow_result = get_shadow_risk(args.address, prop_id, lat, lng, height_m=lep_height)
         if shadow_result:
             adg = "ADG concern" if not shadow_result.get("adg_compliant") else "ADG compliant"
-            print(f"  {adg}  height: {shadow_result.get('height_m')} m")
+            print(f"  {adg}  height: {shadow_result.get('height_m')} m ({shadow_result.get('height_source')})")
         else:
             print("  Shadow model unavailable — section omitted from PDF")
+
+    print("\nQuerying NSW RFS BFPL (live) ...")
+    bushfire_live = get_bushfire_live(lat, lng)
+    if bushfire_live is None or bushfire_live.get("is_bushfire_prone") is None:
+        print("  RFS BFPL unavailable — bushfire row will show 'Not assessed'")
+    else:
+        print(f"  Bushfire prone: {bushfire_live.get('is_bushfire_prone')} "
+              f"{bushfire_live.get('designation_category') or ''}")
+
+    print("\nResolving ANEF contour value ...")
+    anef_live = get_anef_live(lat, lng)
+    if anef_live.get("status") == "found":
+        print(f"  ANEF value: {_anef_value_display(anef_live)} ({_anef_source_label(anef_live)})")
+    elif anef_live.get("status") == "failed":
+        print("  ANEF value lookup failed — row will state 'not assessed' if an ANEF overlay applies")
+    else:
+        print("  No ANEF contour value at this point")
 
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
@@ -3636,6 +4267,8 @@ def main():
             lep_clauses=lep_clauses,
             dcp_setbacks_db=dcp_setbacks_db,
             proximity_m=proximity_m,
+            bushfire_live=bushfire_live,
+            anef_live=anef_live,
         )
 
 

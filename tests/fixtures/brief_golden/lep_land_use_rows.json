@@ -1,0 +1,377 @@
+{
+  "service": "lep_land_use_rows",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "zone": "R3",
+    "limit": 60
+  },
+  "output": {
+    "permissibility_vocab": [
+      "exempt",
+      "permitted",
+      "prohibited"
+    ],
+    "rows": [
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "home_based_child_care",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Burwood",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Burwood",
+        "zone": "R3",
+        "development_type": "roads",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Camden",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Canada Bay",
+        "zone": "R3",
+        "development_type": "environmental_protection_works",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Canterbury-Bankstown",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Cumberland",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Fairfield",
+        "zone": "R3",
+        "development_type": "environmental_protection_works",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Fairfield",
+        "zone": "R3",
+        "development_type": "home_based_child_care",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Fairfield",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Georges River",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Hornsby",
+        "zone": "R3",
+        "development_type": "environmental_protection_works",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Inner West",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Ku-Ring-Gai",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Liverpool",
+        "zone": "R3",
+        "development_type": "home_based_child_care",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Liverpool",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Northern Beaches",
+        "zone": "R3",
+        "development_type": "home_based_child_care",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Northern Beaches",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Parramatta",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Penrith",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Randwick",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Randwick",
+        "zone": "R3",
+        "development_type": "recreation_areas",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Ryde",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Strathfield",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Sutherland Shire",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "The Hills Shire",
+        "zone": "R3",
+        "development_type": "home_businesses",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "The Hills Shire",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Waverley",
+        "zone": "R3",
+        "development_type": "home_occupations",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Woollahra",
+        "zone": "R3",
+        "development_type": "roads",
+        "permissibility": "exempt"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "attached_dwellings",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "bed_and_breakfast_accommodation",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "boarding_houses",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "building_identification_signs",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "business_identification_signs",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "centre_based_child_care_facilities",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "community_facilities",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "dual_occupancies",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "dwelling_houses",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "educational_establishments",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "environmental_protection_works",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "exhibition_homes",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "flood_mitigation_works",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "group_homes",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "health_services_facilities",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "home_businesses",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "home_industries",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "hostels",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "multi_dwelling_housing",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "neighbourhood_shops",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "oyster_aquaculture",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "places_of_public_worship",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "recreation_areas",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "respite_day_care_centres",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "roads",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "secondary_dwellings",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "semi_detached_dwellings",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "seniors_housing",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "shop_top_housing",
+        "permissibility": "permitted"
+      },
+      {
+        "lga": "Bayside",
+        "zone": "R3",
+        "development_type": "tank_based_aquaculture",
+        "permissibility": "permitted"
+      }
+    ]
+  }
+}

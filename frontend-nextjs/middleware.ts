@@ -155,6 +155,21 @@ export async function middleware(request: NextRequest) {
   if (isCanibuilditDomain && pathname === '/') {
     return NextResponse.rewrite(new URL('/reports', request.url));
   }
+  // Option B: canibuildit is consumer instant-checks ONLY. The two pro report
+  // pages exist in this build (all domains share it), so send them to their
+  // own subdomains instead of serving them under the consumer brand.
+  // 307 (temporary) on purpose — cached 308s made an earlier domain move
+  // painful to undo (see memory: domain-architecture).
+  if (isCanibuilditDomain && pathname === '/reports/intelligence-brief') {
+    return NextResponse.redirect(
+      new URL(request.nextUrl.search, 'https://brief.plotdetect.com.au'), 307,
+    );
+  }
+  if (isCanibuilditDomain && pathname === '/reports/conveyancing') {
+    return NextResponse.redirect(
+      new URL(request.nextUrl.search, 'https://conveyance.plotdetect.com.au'), 307,
+    );
+  }
 
   // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {

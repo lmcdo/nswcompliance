@@ -1,0 +1,90 @@
+{
+  "service": "climate_risk",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "address": "14 Stanley Street, Concord",
+    "prop_id": 1456609,
+    "lat": -33.86382,
+    "lng": 151.10586,
+    "zone": "R3"
+  },
+  "output": {
+    "score": 1,
+    "band": "Low",
+    "lat": -33.86382,
+    "lng": 151.10586,
+    "hazards": [
+      {
+        "hazard": "flood",
+        "raw_score": 0.0,
+        "weight": 0.167,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "Flood planning layer: No",
+        "confidence": "high",
+        "data_source": "NSW Planning Portal EPI Flood layers via spatial_overlays",
+        "available": true
+      },
+      {
+        "hazard": "bushfire",
+        "raw_score": 0.0,
+        "weight": 0.167,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "Bushfire Prone Land: No",
+        "confidence": "high",
+        "data_source": "NSW RFS Bushfire Prone Land Map via spatial_overlays",
+        "available": true
+      },
+      {
+        "hazard": "coastal",
+        "raw_score": 0.0,
+        "weight": 0.167,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "Coastal hazard layers: None",
+        "confidence": "high",
+        "data_source": "SEPP (Resilience and Hazards) 2021 via spatial_overlays",
+        "available": true
+      },
+      {
+        "hazard": "landslide",
+        "raw_score": 0.0,
+        "weight": 0.165,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "Landslide risk area: No",
+        "confidence": "high",
+        "data_source": "NSW Planning Portal EPI Landslide Risk via spatial_overlays",
+        "available": true
+      },
+      {
+        "hazard": "fire_history",
+        "raw_score": 0.0,
+        "weight": 0.167,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "Historical fire events at location: 0",
+        "confidence": "high",
+        "data_source": "NPWS Fire History via spatial_overlays",
+        "available": true
+      },
+      {
+        "hazard": "heat",
+        "raw_score": 0.0,
+        "weight": 0.167,
+        "weighted_score": 0.0,
+        "present": false,
+        "detail": "NARCliM data not available for this location",
+        "confidence": "low",
+        "data_source": "NARCliM 2.0 (AdaptNSW) \u2014 unavailable",
+        "available": false
+      }
+    ],
+    "interaction_bonus": 0.0,
+    "methodology_version": "1.1",
+    "data_date": "2026-05-18",
+    "disclaimer": "Climate Risk Awareness Score v1.0. Based on government-authoritative spatial data and NARCliM 2.0 climate projections. This is not financial, insurance, or property advice. Does not account for property-specific construction, mitigation works, or individual vulnerability. Not a guarantee of future conditions.",
+    "narclim": null
+  }
+}

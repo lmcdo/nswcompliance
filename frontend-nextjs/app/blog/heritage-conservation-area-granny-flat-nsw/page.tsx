@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -636,13 +637,15 @@ export default function HeritageConservationAreaGrannyFlatPage() {
               for your property before engaging consultants.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
                 href="/check"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+                page="heritage-conservation-area-granny-flat-nsw"
+                cta="check_address"
               >
                 Check your address
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </TrackedLink>
               <Link
                 href="/reports/granny-flat"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-teal-700 text-sm font-medium rounded-xl border border-teal-200 hover:bg-teal-50 transition-colors"

@@ -84,6 +84,10 @@ def _make_planning_controls(**overrides):
         housing_sepp=_auth(False),
         tod_area=_auth(False),
         lot_dimensions=_auth(LotDimensions(area_m2=467.0)),
+        # Slice-1 land-use lists — populated on the fully-available fixture so
+        # gap-collection tests keep meaning "this brief has zero gaps".
+        permitted_uses=_auth(["dwelling_house", "dual_occupancy"]),
+        prohibited_uses=_auth(["heavy_industry"]),
     )
     defaults.update(overrides)
     return PlanningControls(**defaults)
@@ -104,6 +108,12 @@ def _make_env_constraints(**overrides):
         wetlands=_auth(False),
         anef=_auth(None),
         coastal_hazards=_auth(None),
+        # Slice-2 detail fields — populated on the fully-available fixture so
+        # gap-collection tests keep meaning "this brief has zero gaps".
+        anef_level=_auth(None),
+        nearest_features=_auth({"flood": 830}),
+        contaminated_detail=_auth(None),
+        mine_subsidence_district=_auth(None),
     )
     defaults.update(overrides)
     return EnvironmentalConstraints(**defaults)
@@ -125,6 +135,10 @@ def _make_neighbourhood(**overrides):
         nearby_das=_auth([]),
         da_count=_auth(0),
         shadow=DataField(value=None, confidence=ConfidenceLevel.DERIVED, source="shadow_detector"),
+        # DA outcomes wiring — populated on the fully-available fixture so
+        # gap-collection tests keep meaning "this brief has zero gaps".
+        da_outcomes=_auth({"outcomes": [], "radius_m": 200, "years_back": 8}),
+        da_refusal_stats=_auth(None),
     )
     defaults.update(overrides)
     return Neighbourhood(**defaults)
