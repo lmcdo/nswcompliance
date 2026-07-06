@@ -1,122 +1,25 @@
 {
-  "tier": "standard",
-  "commit_hash": "a563c93b",
-  "justification": "Slice 1 of the brief enrichment plan: wire the already-built VG comparables and sales into a new market_context card, surface the LEP land-use permitted/prohibited lists on the planning controls card, and per-form Housing SEPP eligibility with clause citations reusing the single engine run. Verified by live A/B smoke on the four demo addresses: only the intended additions changed, no pre-existing card state moved.",
+  "tier": "minor",
+  "justification": "Test-only change after merging main: adds a golden regression guard for the capacity engine (23 scenario tests pinning verified outputs). The branch's qa_gate hook-env fix was superseded by an equivalent fix already on main during the merge, so no production code differs from main.",
+  "commit_hash": "c6e7b488",
   "files": [
-    "services/intelligence_brief.py",
-    "services/vg_comparables.py",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_brief_slice1_wiring.py",
-    "tests/test_brief_slice0_failclosed.py",
-    "tests/test_vg_comparables.py",
-    "tests/test_intelligence_brief_orchestrator.py",
-    "tests/test_intelligence_brief_schema.py",
-    "scripts/brief_field_coverage_baseline.json"
-  ],
-  "pre_impl": {
-    "existing_data": "All three cards wire EXISTING data: services/vg_comparables.py (117 comps / 97 sales at Concord in the Slice-0 golden capture), lep_land_use_table (the same table _permitted_engine_forms reads, columns confirmed live in Slice 0), and evaluate_eligibility (already invoked for the capacity ceiling). No new analysis or source was built.",
-    "assumption_mismatch": "Adversarial review found arcgis_get_with_retry returns an empty dict on ANY failure, so a failed VG query was indistinguishable from zero comparables (the da_outcome silent-zero class) — fixed at source by raising when the features key is absent. Also the real Concord capture has ALL seven SEPP forms ineligible, which corrected a wrong test expectation.",
-    "new_vs_existing": "market_context is a NEW SSE section rather than a re-emit into economics because the frontend renders every section event (a re-emit would duplicate the card) and comparables need zone + lot area, which resolve after economics streams. The land-use fetch and eligibility extraction extend existing functions in intelligence_brief.py; development_permissions_db.py was checked and reads the older regulatory_provisions table, not lep_land_use_table."
-  },
-  "functions": [
-    {
-      "name": "_fetch_market_context",
-      "file_line": "services/intelligence_brief.py:1858",
-      "input": "coordinates, zone code, lot area and the subject propid for the comparable and sales queries",
-      "output": "dict with comparables analysis, sales list and a per-half failure reason; raises only when both halves fail",
-      "if_none": "a missing zone or lot area sets the comparables reason and still fetches sales, so one resolution gap never blanks the whole card"
-    },
-    {
-      "name": "_build_market_context",
-      "file_line": "services/intelligence_brief.py:1900",
-      "input": "the raw fetch dict from _fetch_market_context or None when the whole fetch failed",
-      "output": "MarketContext with per-half DataFields — comparables DERIVED, sales AUTHORITATIVE, failures NOT_AVAILABLE with the reason",
-      "if_none": "returns None so the section renders an honest unavailable card, never a fabricated zero-comparables answer"
-    },
-    {
-      "name": "_fetch_land_use_lists",
-      "file_line": "services/intelligence_brief.py:1931",
-      "input": "zone code and the LGA name, matched via the same _norm_lga normalisation the engine uses",
-      "output": "permitted and prohibited development-type lists plus the matched row count, rows validated through LepLandUseRow",
-      "if_none": "zero matched rows means the council is not in the structured dataset — the builder renders a distinct not-extracted state, while a DB error raises and surfaces as a retryable failure"
-    },
-    {
-      "name": "_sepp_eligibility_results",
-      "file_line": "services/intelligence_brief.py:1423",
-      "input": "zone, coordinates, lot area, lot width and the heritage flag for the eligibility engine",
-      "output": "the per-form FormEligibility list, an empty list when no forms apply, or None when the engine errored",
-      "if_none": "None surfaces as a NOT_AVAILABLE eligibility field on the SEPP card, never a silent no-forms-apply"
-    },
-    {
-      "name": "_build_sepp_eligibility_field",
-      "file_line": "services/intelligence_brief.py:1449",
-      "input": "the eligibility results list or None from the single engine run",
-      "output": "DataField of HousingSeppFormOutput rows carrying clause citations for the card",
-      "if_none": "a typed-contract violation in the rows is caught and returned as NOT_AVAILABLE with a reason instead of killing the stream"
-    }
-  ],
-  "values": [
-    {
-      "value": "lot_area_m2 and lot_width_m siblings on the sepp_housing SSE event",
-      "read_at": "services/intelligence_brief.py sepp_housing yield, from the valuation and the cadastral lot dimensions",
-      "if_missing": "the frontend lot-versus-minimum line degrades to showing only the standard's minimum, never a wrong comparison"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "permitted/prohibited development types for the resolved zone, LGA-matched in Python via _norm_lga",
-      "file_line": "services/intelligence_brief.py:1840",
-      "where_clause": "WHERE zone = %s AND permissibility IN ('permitted', 'prohibited') — parameterised, read-only"
-    }
+    "tests/golden/__init__.py",
+    "tests/golden/capacity_scenarios.py",
+    "tests/test_capacity_golden.py"
   ],
   "break_it": [
     {
-      "scenario": "The VG ArcGIS endpoint rate-limits or its circuit opens, so arcgis_get_with_retry returns an empty dict",
-      "what_happens": "Before the fix the card would confidently render zero comparable lots nearby; now get_comparable_values raises, the half is NOT_AVAILABLE with the reason, and the card says it couldn't retrieve",
+      "scenario": "A future capacity-engine change silently alters a verified scenario output",
+      "what_happens": "Without the guard the regression ships unnoticed; with it the pinned golden scenario fails the suite",
       "mitigated": true,
-      "how": "features-key check raises in services/vg_comparables.py; test_vg_transport_failure_raises_instead_of_zero_comparables plus the genuine-empty twin test",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k transport -q"
-    },
-    {
-      "scenario": "The comparables half fails while the sales query succeeds",
-      "what_happens": "The sales table still renders with its genuine data; only the comparables block shows the retry message — one VG layer down never blanks the other",
-      "mitigated": true,
-      "how": "per-half isolation in _fetch_market_context; test_comparables_failure_does_not_blank_sales",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k blank -q"
-    },
-    {
-      "scenario": "Another council's land-use rows share the queried zone (Bayside rows when the lot is in Burwood)",
-      "what_happens": "The permitted/prohibited development types query matches by zone across all councils by design; the _norm_lga filter excludes the foreign rows, the row count is zero and the card shows the not-extracted state — a neighbouring council's permitted uses are never presented as this lot's",
-      "mitigated": true,
-      "how": "the WHERE zone query at services/intelligence_brief.py:1840 returns all-LGA rows by design; the _norm_lga filter excludes non-matching councils, exercised with real captured Bayside rows; test_other_council_rows_do_not_leak_into_this_lga",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k leak -q"
-    },
-    {
-      "scenario": "Wingecarribee (Bowral) is not in the 25-LGA structured land-use dataset and its LEP maps no height or FSR layer for the lot",
-      "what_happens": "The land-use fields render the not-extracted state distinct from a DB failure, and height/FSR render as no-control-mapped-in-this-LEP rather than a retrieval failure — confirmed on the live Bowral smoke run",
-      "mitigated": true,
-      "how": "three-state tests for the land-use field plus the UNMAPPED_LEP_CONTROLS frontend branch; live smoke output shows height None at authoritative on Bowral",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k state -q"
-    },
-    {
-      "scenario": "The eligibility engine errors mid-run",
-      "what_happens": "The SEPP card notes the per-form assessment couldn't run while the standards table still renders; the capacity ceiling independently retries once — never a silent no-forms-apply on either surface",
-      "mitigated": true,
-      "how": "_sepp_eligibility_results returns None which _build_sepp_eligibility_field wraps as NOT_AVAILABLE; test_eligibility_engine_error_is_not_available_never_empty",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k engine_error -q"
-    },
-    {
-      "scenario": "A refactor re-invokes evaluate_eligibility for the capacity ceiling",
-      "what_happens": "The precomputed results from the SEPP card are passed into _lmr_uplift_form; the guard test patches the engine to explode so any second invocation fails the suite",
-      "mitigated": true,
-      "how": "results parameter on _lmr_uplift_form; test_lmr_uplift_reuses_precomputed_results_never_reinvokes",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k reinvoke -q"
+      "how": "23 golden scenarios pin floor/ceiling outputs for the verified demo addresses",
+      "repro": "python -m pytest tests/test_capacity_golden.py -v"
     }
   ],
   "post_merge": {
-    "db_reset": "none — the land-use query is read-only and parameterised",
-    "secrets": "none touched",
-    "other_repo": "none — new SSE section and sibling keys pass through the Trigger.dev relay transparently (verified pattern from prior section additions); backend goes live via Railway from main on merge",
-    "manual_verify": "live A/B smoke already run on Concord, Belmore, Hurstville, Bowral: only the intended additions differ from baseline; after Railway deploys, open /reports/intelligence-brief for Concord and confirm the Market Context card and per-form SEPP citations render"
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — golden tests ran green in this branch (2675 passed)"
   }
 }
