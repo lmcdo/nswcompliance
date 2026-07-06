@@ -20,7 +20,10 @@ interface ConstraintStep {
   note: string;
 }
 
+interface SeppOverrideRow { dev_type?: string; control?: string; lep_value?: number; sepp_value?: number; source_clause?: string | null; }
+
 export interface ConstraintArithmeticResult {
+  sepp_overrides_applied?: SeppOverrideRow[];
   lot_area_m2: number;
   dev_type: string;
   lep_height_m: number | null;
@@ -87,6 +90,32 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   low: 'bg-red-100 text-red-800',
 };
 
+// The backend tier is a ratio of available calculation inputs (height, FSR,
+// three setbacks, lot dimensions, SEPP overrides — constraint_arithmetic.py).
+// "low confidence" read as doubt about the arithmetic; instead state the actual
+// measure: how many planning controls went into this calculation, and which.
+// The tier key still drives the colour.
+const YIELD_INPUTS: Array<{ label: string; has: (r: ConstraintArithmeticResult) => boolean }> = [
+  { label: 'height of buildings', has: (r) => r.lep_height_m != null },
+  { label: 'floor space ratio', has: (r) => r.lep_fsr != null },
+  { label: 'front setback', has: (r) => r.setback_front_m != null },
+  { label: 'rear setback', has: (r) => r.setback_rear_m != null },
+  { label: 'side setback', has: (r) => r.setback_side_m != null },
+  { label: 'SEPP standards', has: (r) => (r.sepp_overrides_applied?.length ?? 0) > 0 },
+];
+
+function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; title: string } {
+  const used = YIELD_INPUTS.filter((i) => i.has(result));
+  const missing = YIELD_INPUTS.filter((i) => !i.has(result));
+  return {
+    text: `Calculated from ${used.length} of ${YIELD_INPUTS.length} planning controls`,
+    title: [
+      used.length ? `In this calculation: ${used.map((i) => i.label).join(', ')}` : '',
+      missing.length ? `Not mapped for this lot: ${missing.map((i) => i.label).join(', ')}` : '',
+    ].filter(Boolean).join(' · '),
+  };
+}
+
 /** Engine dev_type slug → readable built-form label (e.g. "multi-dwelling housing"). */
 function humanizeForm(form?: string | null): string {
   if (!form) return 'dwelling';
@@ -100,6 +129,25 @@ function humanizeForm(form?: string | null): string {
 // Component
 // ---------------------------------------------------------------------------
 
+/** One row of the inputs ledger: what went into the arithmetic, its value, and
+ * where that value came from (source + currency date). */
+export interface InputLedgerRow {
+  label: string;
+  value: string;
+  source: string;
+  asAt?: string | null;
+}
+
+/** Why the LEP envelope could not be computed: which principal development
+ * standards are missing, from which instrument, and whether the council's DCP
+ * (the document that then sets the built form) is in our dataset. */
+export interface EnvelopeGap {
+  missing: string[]; // e.g. ['floor space ratio', 'height of buildings']
+  instrument?: string | null; // e.g. 'Wingecarribee Local Environmental Plan 2010'
+  dcpOnboarded?: boolean;
+  dcpName?: string | null;
+}
+
 interface ConstraintArithmeticCardProps {
   lotArea: number;
   devType: string;
@@ -112,6 +160,11 @@ interface ConstraintArithmeticCardProps {
   depth?: number | null;
   /** Pre-computed result from intelligence brief — skips independent fetch when provided. */
   briefData?: ConstraintArithmeticResult | null;
+  /** Inputs ledger (value + source per input) — composed by the brief page from
+   * the sections' provenance; absent in the assessment UI. */
+  inputProvenance?: InputLedgerRow[] | null;
+  /** Named-missing-control context, shown when the envelope could not compute. */
+  envelopeGap?: EnvelopeGap | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -125,6 +178,8 @@ export function ConstraintArithmeticCard({
   frontage,
   depth,
   briefData,
+  inputProvenance,
+  envelopeGap,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -225,6 +280,7 @@ export function ConstraintArithmeticCard({
   // is prohibited), so suppress those and show only the LEP envelope + a note.
   const zoneModelled = !zone || /^(R[1-5]|RU5)\b/i.test(zone.trim());
   const hasYield = floorDwellings > 0 && zoneModelled;
+  const inputsBadge = yieldInputsBadge(result);
 
   return (
     <Card className="border-blue-200 bg-blue-50/30">
@@ -236,12 +292,55 @@ export function ConstraintArithmeticCard({
               Development Yield Estimate
             </CardTitle>
           </div>
-          <Badge className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}>
-            {result.confidence} confidence
+          <Badge
+            className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}
+            title={inputsBadge.title}
+          >
+            {inputsBadge.text}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* The envelope could not be computed — name the exact missing control
+            and where the buildable form is set instead, rather than showing an
+            empty card. Rendered only when the caller supplies the context. */}
+        {result.realistic_gfa_m2 == null && envelopeGap && envelopeGap.missing.length > 0 && (
+          <div className="bg-white border border-amber-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
+            <div className="text-xs font-medium text-amber-700 mb-1">Why there is no computed envelope</div>
+            No {envelopeGap.missing.join(' or ')} control is mapped in{' '}
+            {envelopeGap.instrument || 'the LEP'} for this lot, so a maximum GFA
+            envelope cannot be computed from the LEP. The built form here is set
+            by the council&rsquo;s development control plan
+            {envelopeGap.dcpOnboarded
+              ? envelopeGap.dcpName
+                ? <> — see the DCP Controls card ({envelopeGap.dcpName}).</>
+                : <> — see the DCP Controls card.</>
+              : <>, which is not in our structured dataset for this council yet — check the DCP on the council&rsquo;s website.</>}
+          </div>
+        )}
+
+        {/* Inputs ledger — each input, its value, and its source. */}
+        {inputProvenance && inputProvenance.length > 0 && (
+          <div className="bg-white border border-blue-100 rounded-lg overflow-hidden">
+            <div className="bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
+              Inputs used by this calculation
+            </div>
+            <table className="w-full text-xs">
+              <tbody className="divide-y divide-blue-50">
+                {inputProvenance.map((row) => (
+                  <tr key={row.label} className="hover:bg-blue-50/50">
+                    <td className="px-3 py-1.5 text-gray-500">{row.label}</td>
+                    <td className="px-3 py-1.5 font-medium text-gray-900">{row.value}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-400">
+                      {row.source}{row.asAt ? ` · as at ${row.asAt}` : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Key metrics row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {/* Maximum GFA — the clean LEP envelope (headline) */}
@@ -362,12 +461,20 @@ export function ConstraintArithmeticCard({
          result.effective_height_m > result.lep_height_m && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
             SEPP override: height increased from {result.lep_height_m}m to {result.effective_height_m}m
+            {(() => {
+              const ov = (result.sepp_overrides_applied ?? []).find((o) => o.control === 'height' && o.source_clause);
+              return ov ? <> — cl {ov.source_clause}, SEPP (Housing) 2021</> : null;
+            })()}
           </div>
         )}
         {result.effective_fsr != null && result.lep_fsr != null &&
          result.effective_fsr > result.lep_fsr && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-800">
             SEPP override: FSR increased from {result.lep_fsr}:1 to {result.effective_fsr}:1
+            {(() => {
+              const ov = (result.sepp_overrides_applied ?? []).find((o) => o.control === 'fsr' && o.source_clause);
+              return ov ? <> — cl {ov.source_clause}, SEPP (Housing) 2021</> : null;
+            })()}
           </div>
         )}
 

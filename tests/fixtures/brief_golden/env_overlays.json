@@ -1,0 +1,50 @@
+{
+  "service": "env_overlays",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "address": "14 Stanley Street, Concord",
+    "prop_id": 1456609,
+    "lat": -33.86382,
+    "lng": 151.10586,
+    "zone": "R3"
+  },
+  "output": {
+    "overlays": [
+      {
+        "layer_type": "acid_sulfate",
+        "value": "Class 5",
+        "instrument": "Canada Bay Local Environmental Plan 2013",
+        "lga": "CANADA BAY"
+      },
+      {
+        "layer_type": "lot_size",
+        "value": "450",
+        "instrument": "Canada Bay Local Environmental Plan 2013",
+        "lga": "CANADA BAY"
+      }
+    ],
+    "covered_layers": [
+      "acid_sulfate",
+      "active_street_frontages",
+      "additional_permitted_uses",
+      "anef",
+      "bushfire",
+      "classified_road",
+      "coastal_environment_area",
+      "coastal_land_application",
+      "coastal_use_area",
+      "coastal_wetlands",
+      "fire_history",
+      "foreshore_building_line",
+      "fsr",
+      "height",
+      "heritage",
+      "key_sites",
+      "land_reservation",
+      "littoral_rainforest",
+      "lot_size",
+      "zone"
+    ],
+    "proximity_m": {}
+  }
+}

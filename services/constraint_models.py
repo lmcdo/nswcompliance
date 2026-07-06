@@ -25,6 +25,10 @@ class LotDimensions(BaseModel):
     frontage_m: Optional[float] = None
     depth_m: Optional[float] = None
     is_corner: Optional[bool] = None
+    # True when the polygon is too irregular for frontage/depth to be measured
+    # (fills <60% of its oriented bounding box) — so a null frontage renders as
+    # "can't be measured", not as a broken lookup. None = shape not assessed.
+    irregular: Optional[bool] = None
 
 
 class DCPControl(BaseModel):
@@ -60,6 +64,11 @@ class SEPPStandard(BaseModel):
     max_total_floor_area_m2: Optional[float] = None
     # All raw standards for dev types with non-standard fields
     additional_standards: Optional[dict[str, float]] = None
+    # Citations of the rows granting the height/FSR standards — carried so a
+    # SEPP-over-LEP override can cite the clause it rests on (no citation, no claim).
+    height_source_clause: Optional[str] = None
+    fsr_source_clause: Optional[str] = None
+    source_document: Optional[str] = None
 
 
 class SeppLepOverride(BaseModel):

@@ -31,6 +31,10 @@ COPY services/ ./services/
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
 COPY scripts/generate_conveyancing_report.py ./scripts/generate_conveyancing_report.py
 COPY scripts/conveyancing_db.py ./scripts/conveyancing_db.py
+# brief drift-check cron (railway.brief-drift.toml runs this image)
+COPY scripts/run_brief_drift_check.py ./scripts/run_brief_drift_check.py
+COPY scripts/brief_contract_drift.py ./scripts/brief_contract_drift.py
+COPY scripts/run_monitors.py ./scripts/run_monitors.py
 
 # compliance_api_server.py imports enhanced_compliance_api without 'services.' prefix
 # (it runs locally from services/), so add services/ to PYTHONPATH as well

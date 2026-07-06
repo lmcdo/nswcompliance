@@ -315,22 +315,32 @@ def interpret_sepp(
     type_: str,
     label: str,
     legislation_url: str,
+    class_: str = "",
+    map_title: str = "",
 ) -> Optional[str]:
     """Return display text for a SEPP overlay hit, or None to suppress.
 
     None   → this overlay type has a dedicated report section; suppress from SEPP table.
     str    → display this text in the Practical Implication column.
 
-    Primary source: portal Type + Label fields (already specific).
+    Primary source: portal Type + Class + title fields (already specific).
+    Class carries the actual standard value (e.g. Water Use "40%", Climate Zone
+    "6"); without it the row degrades to a bare postcode/LGA Label. map_title
+    names the specific SEPP map, distinguishing e.g. the BASIX Alterations and
+    BASIX Buildings climate zone maps.
     No hardcoded descriptions. No fallback keyword dict.
     """
     if type_ and any(t in type_.lower() for t in _SUPPRESS_TYPES):
         return None
 
     parts: list[str] = []
-    if type_:
+    if type_ and class_ and class_.lower() != type_.lower():
+        parts.append(f"{type_}: {class_}")
+    elif type_:
         parts.append(type_)
-    if label and (not type_ or label.lower() != type_.lower()):
+    if map_title and (not type_ or map_title.lower() != type_.lower()):
+        parts.append(map_title)
+    elif label and (not type_ or label.lower() != type_.lower()):
         parts.append(label)
 
     detail = " — ".join(parts) if parts else (epi_name or "SEPP overlay")
@@ -588,6 +598,47 @@ def fetch_tax_thresholds(
         "premium_rate": float(row[5]) if row[5] else None,
         "source_url": row[6],
     }
+
+
+# prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs
+# (not a fork — that module now imports this) so the CLI report path can inject
+# the same DB-loaded configs instead of silently rendering without them.
+def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Optional[dict]]:
+    """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
+
+    Returns (sepp_standards, tax_config) — both None if DB unavailable.
+    A None tax_config renders fail-visible as "Not assessed" downstream.
+    """
+    if not db_url:
+        logger.warning("Regulatory configs: DATABASE_URL not set — SEPP fallback, land tax 'Not assessed'")
+        return None, None
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        # SEPP secondary dwelling standards
+        sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
+        sepp_standards = None
+        if sd_rows:
+            sd_by_type = {r["standard_type"]: r for r in sd_rows}
+            min_lot_row = sd_by_type.get("min_lot_size")
+            sepp_standards = {
+                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
+                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
+            }
+        else:
+            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
+        # Tax thresholds — no fallback; None renders "Not assessed"
+        tax_config = fetch_tax_thresholds(conn)
+        if tax_config is None:
+            logger.warning("Regulatory configs: no tax_thresholds row for current year — land tax renders 'Not assessed'")
+        return sepp_standards, tax_config
+    except Exception as e:
+        logger.warning(f"Failed to load regulatory configs from DB: {e}")
+        return None, None
+    finally:
+        if conn:
+            conn.close()
 
 
 def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:

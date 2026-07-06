@@ -87,6 +87,11 @@ def _run_generator(monkeypatch, strata_fetch):
         monkeypatch.setattr(ib, fetch, _boom)
     monkeypatch.setattr(ib, "fetch_lot_geometry", _boom)
     monkeypatch.setattr(ib, "_fetch_strata", strata_fetch)
+    # ANEF's live fallbacks are called INSIDE the environmental builder (not a
+    # pooled fetch) — fail them explicitly so the run is deterministic.
+    monkeypatch.setattr(ib, "fetch_anef_zone", _boom)
+    import services.portal_constraints as pc
+    monkeypatch.setattr(pc, "fetch_anef", _boom)
     # DB-dependent helpers inside the generator (not fetches) — deterministic no-ops.
     monkeypatch.setattr(ib, "_sepp_eligibility_results", lambda *a, **k: None)
     monkeypatch.setattr(ib, "detect_former_council", lambda addr, epi: None)

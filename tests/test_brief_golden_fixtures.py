@@ -102,7 +102,7 @@ def test_climate_contract_violation_becomes_failed_source_not_garbage():
     good = _load("climate_risk")
     ok_profile = _build_climate_disclosure(good, uhi_raw={"uhi_intensity": 1.5},
                                            arr_raw=None, firms_raw=None)
-    assert ok_profile.manifest.sources_queried == 4  # distinct from the violation case
+    assert ok_profile.manifest.sources_queried == 5  # distinct from the violation case (incl. NARCLIM slot)
 
 
 def test_climate_queried_empty_distinct_from_failed():
@@ -137,6 +137,23 @@ def test_real_eligibility_output_parses_with_citations():
     assert all(p.development_type for p in parsed)
     # the product's point: sourced claims — at least one row carries a citation
     assert any(p.source_clause for p in parsed)
+
+
+def test_bowral_width_gaps_are_unconfirmed_not_failed_standards():
+    # Regional worst-case capture: irregular lot → width unmeasurable. Every
+    # row that failed on a MISSING input must carry unconfirmed=True (the UI
+    # renders "Unconfirmed"), while staying conservatively ineligible.
+    rows = _load("housing_sepp_eligibility_bowral")
+    parsed = [HousingSeppFormOutput.model_validate(r) for r in rows]
+    gap_rows = [p for p in parsed if p.reason and "unconfirmed" in p.reason.lower()]
+    assert gap_rows, "capture must include width-unconfirmed rows (frontage unmeasurable)"
+    for p in gap_rows:
+        assert p.eligible is False   # the conservative outcome stands
+        assert p.unconfirmed is True  # but it is labelled a data gap
+    # rows that failed a MEASURED standard or a gate are never mislabelled
+    for p in parsed:
+        if p.eligible is False and not (p.reason and ("unconfirmed" in p.reason.lower() or "dataset" in p.reason.lower())):
+            assert p.unconfirmed is not True
 
 
 # ── LEP land-use rows ────────────────────────────────────────────────────────

@@ -1,122 +1,77 @@
 {
   "tier": "standard",
-  "commit_hash": "c816b83b",
-  "justification": "Slice 1 of the brief enrichment plan: wire the already-built VG comparables and sales into a new market_context card, surface the LEP land-use permitted/prohibited lists on the planning controls card, and per-form Housing SEPP eligibility with clause citations reusing the single engine run. Verified by live A/B smoke on the four demo addresses: only the intended additions changed, no pre-existing card state moved.",
+  "justification": "User-facing brief truth fix: the ANEF field sourced parcel-level values from the coarse anef_zones digitisations (13-vertex polygons, ANEF-20 ~789 km2) which stamped false contour values on fringe lots. Value path narrowed to the live LEP/SEPP-mapped government layer. No DB writes, no new sources, no frontend type changes.",
+  "commit_hash": "84053024",
   "files": [
     "services/intelligence_brief.py",
-    "services/vg_comparables.py",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_brief_slice1_wiring.py",
-    "tests/test_brief_slice0_failclosed.py",
-    "tests/test_vg_comparables.py",
-    "tests/test_intelligence_brief_orchestrator.py",
-    "tests/test_intelligence_brief_schema.py",
-    "scripts/brief_field_coverage_baseline.json"
+    "tests/test_overlay_live_fallback.py",
+    "tests/test_brief_slice2_distances.py"
   ],
   "pre_impl": {
-    "existing_data": "All three cards wire EXISTING data: services/vg_comparables.py (117 comps / 97 sales at Concord in the Slice-0 golden capture), lep_land_use_table (the same table _permitted_engine_forms reads, columns confirmed live in Slice 0), and evaluate_eligibility (already invoked for the capacity ceiling). No new analysis or source was built.",
-    "assumption_mismatch": "Adversarial review found arcgis_get_with_retry returns an empty dict on ANY failure, so a failed VG query was indistinguishable from zero comparables (the da_outcome silent-zero class) \u2014 fixed at source by raising when the features key is absent. Also the real Concord capture has ALL seven SEPP forms ineligible, which corrected a wrong test expectation.",
-    "new_vs_existing": "market_context is a NEW SSE section rather than a re-emit into economics because the frontend renders every section event (a re-emit would duplicate the card) and comparables need zone + lot area, which resolve after economics streams. The land-use fetch and eligibility extraction extend existing functions in intelligence_brief.py; development_permissions_db.py was checked and reads the older regulatory_provisions table, not lep_land_use_table."
+    "existing_data": "anef_zones measured 2026-07-06: 10-13 vertices per contour, ANEF-20 polygon ~789 km2 (published ANEF 2039 contour is a fraction); live ePlanning Protection ANEF layer holds 29 LEP/SEPP-mapped features (Liverpool, Upper Hunter, WSA precincts; no Sydney KSA). Conveyancing PDF already quarantined in PR #681 with the same evidence.",
+    "assumption_mismatch": "If anef_zones is later re-digitised properly, re-enabling it is a one-line resolver change plus removing the quarantine guard tests; until then Sydney lots render the honest scoped claim 'No ANEF contour in the mapped planning layers' instead of a fabricated value.",
+    "new_vs_existing": "No new sources: the field builder now uses ONLY the existing portal_constraints.fetch_anef live query; fetch_anef_zone stays as the documented quarantined accessor (verify-app parity) with its contract unchanged so existing harness stubs keep working."
   },
   "functions": [
     {
-      "name": "_fetch_market_context",
-      "file_line": "services/intelligence_brief.py:1746",
-      "input": "coordinates, zone code, lot area and the subject propid for the comparable and sales queries",
-      "output": "dict with comparables analysis, sales list and a per-half failure reason; raises only when both halves fail",
-      "if_none": "a missing zone or lot area sets the comparables reason and still fetches sales, so one resolution gap never blanks the whole card"
+      "name": "_anef_fields",
+      "file_line": "services/intelligence_brief.py:2883",
+      "input": "covered layers, overlay anef value, lat/lng from the geocoded brief address",
+      "output": "display DataField plus numeric anef_level DataField from one live-layer lookup",
+      "if_none": "live lookup failure returns NOT_AVAILABLE with reason, never a checked-none claim; genuine none renders the scoped 'mapped planning layers' wording"
     },
     {
-      "name": "_build_market_context",
-      "file_line": "services/intelligence_brief.py:1788",
-      "input": "the raw fetch dict from _fetch_market_context or None when the whole fetch failed",
-      "output": "MarketContext with per-half DataFields \u2014 comparables DERIVED, sales AUTHORITATIVE, failures NOT_AVAILABLE with the reason",
-      "if_none": "returns None so the section renders an honest unavailable card, never a fabricated zero-comparables answer"
-    },
-    {
-      "name": "_fetch_land_use_lists",
-      "file_line": "services/intelligence_brief.py:1819",
-      "input": "zone code and the LGA name, matched via the same _norm_lga normalisation the engine uses",
-      "output": "permitted and prohibited development-type lists plus the matched row count, rows validated through LepLandUseRow",
-      "if_none": "zero matched rows means the council is not in the structured dataset \u2014 the builder renders a distinct not-extracted state, while a DB error raises and surfaces as a retryable failure"
-    },
-    {
-      "name": "_sepp_eligibility_results",
-      "file_line": "services/intelligence_brief.py:1362",
-      "input": "zone, coordinates, lot area, lot width and the heritage flag for the eligibility engine",
-      "output": "the per-form FormEligibility list, an empty list when no forms apply, or None when the engine errored",
-      "if_none": "None surfaces as a NOT_AVAILABLE eligibility field on the SEPP card, never a silent no-forms-apply"
-    },
-    {
-      "name": "_build_sepp_eligibility_field",
-      "file_line": "services/intelligence_brief.py:1388",
-      "input": "the eligibility results list or None from the single engine run",
-      "output": "DataField of HousingSeppFormOutput rows carrying clause citations for the card",
-      "if_none": "a typed-contract violation in the rows is caught and returned as NOT_AVAILABLE with a reason instead of killing the stream"
+      "name": "fetch_anef_zone",
+      "file_line": "services/intelligence_brief.py:1970",
+      "input": "latitude and longitude for the curated anef_zones table",
+      "output": "level, airport and version dict or None — QUARANTINED, no brief or PDF surface calls it",
+      "if_none": "returns None on failure (fail-open contract preserved for the verify-app parity and future re-digitised data)"
     }
   ],
   "values": [
     {
-      "value": "lot_area_m2 and lot_width_m siblings on the sepp_housing SSE event",
-      "read_at": "services/intelligence_brief.py sepp_housing yield, from the valuation and the cadastral lot dimensions",
-      "if_missing": "the frontend lot-versus-minimum line degrades to showing only the standard's minimum, never a wrong comparison"
+      "value": "regional.anef_code / anef_level from the live Protection layer",
+      "read_at": "services/intelligence_brief.py:2917",
+      "nullable": "yes — band code may be absent, level may be unparseable",
+      "guard_at": "services/intelligence_brief.py:2873 (_parse_anef_number returns None on non-numeric, never a guess)",
+      "if_missing": "display falls back to whichever field exists; numeric field stays None at authoritative confidence"
     }
   ],
-  "queries": [
-    {
-      "purpose": "permitted/prohibited development types for the resolved zone, LGA-matched in Python via _norm_lga",
-      "file_line": "services/intelligence_brief.py:1840",
-      "where_clause": "WHERE zone = %s AND permissibility IN ('permitted', 'prohibited') \u2014 parameterised, read-only"
-    }
-  ],
+  "queries": "N/A — no SQL changed; the quarantined anef_zones query is untouched and uncalled by this surface",
   "break_it": [
     {
-      "scenario": "The VG ArcGIS endpoint rate-limits or its circuit opens, so arcgis_get_with_retry returns an empty dict",
-      "what_happens": "Before the fix the card would confidently render zero comparable lots nearby; now get_comparable_values raises, the half is NOT_AVAILABLE with the reason, and the card says it couldn't retrieve",
+      "scenario": "Someone re-adds the anef_zones step to the brief's ANEF field",
+      "what_happens": "Coarse 13-vertex polygons would again stamp false contour values on fringe lots (Pymble rendered ANEF 20 pre-quarantine)",
       "mitigated": true,
-      "how": "features-key check raises in services/vg_comparables.py; test_vg_transport_failure_raises_instead_of_zero_comparables plus the genuine-empty twin test",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k transport -q"
+      "how": "guard tests monkeypatch fetch_anef_zone to raise AssertionError if consulted (both test files)",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k never_consulted; python -m pytest tests/test_brief_slice2_distances.py -k quarantined"
     },
     {
-      "scenario": "The comparables half fails while the sales query succeeds",
-      "what_happens": "The sales table still renders with its genuine data; only the comparables block shows the retry message \u2014 one VG layer down never blanks the other",
+      "scenario": "Live layer lookup fails and the field claims no contour applies",
+      "what_happens": "A checked-none claim off a failed check — the WO-2 silent-false-negative class",
       "mitigated": true,
-      "how": "per-half isolation in _fetch_market_context; test_comparables_failure_does_not_blank_sales",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k blank -q"
+      "how": "failure branch returns NOT_AVAILABLE with 'did not complete' reason; existing test_anef_lookup_failures_are_not_available_not_no_contour still passes",
+      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k lookup_failures"
     },
     {
-      "scenario": "Another council's land-use rows share the queried zone (Bayside rows when the lot is in Burwood)",
-      "what_happens": "The permitted/prohibited development types query matches by zone across all councils by design; the _norm_lga filter excludes the foreign rows, the row count is zero and the card shows the not-extracted state \u2014 a neighbouring council's permitted uses are never presented as this lot's",
+      "scenario": "The honest-empty wording overclaims coverage (says 'no published contour' when Sydney KSA contours exist but are not machine-readable)",
+      "what_happens": "A Mascot brief would falsely assert no published contour exists at a genuinely noise-affected lot",
       "mitigated": true,
-      "how": "the WHERE zone query at services/intelligence_brief.py:1840 returns all-LGA rows by design; the _norm_lga filter excludes non-matching councils, exercised with real captured Bayside rows; test_other_council_rows_do_not_leak_into_this_lga",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k leak -q"
+      "how": "wording changed to 'No ANEF contour in the mapped planning layers at this property' — scoped to exactly what was checked",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k no_mapped_contour"
     },
     {
-      "scenario": "Wingecarribee (Bowral) is not in the 25-LGA structured land-use dataset and its LEP maps no height or FSR layer for the lot",
-      "what_happens": "The land-use fields render the not-extracted state distinct from a DB failure, and height/FSR render as no-control-mapped-in-this-LEP rather than a retrieval failure \u2014 confirmed on the live Bowral smoke run",
+      "scenario": "Covered-but-empty ingested overlay short-circuits to a blank instead of checking the live layer",
+      "what_happens": "Lots in covered LGAs would silently lose their live-layer contour value",
       "mitigated": true,
-      "how": "three-state tests for the land-use field plus the UNMAPPED_LEP_CONTROLS frontend branch; live smoke output shows height None at authoritative on Bowral",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k state -q"
-    },
-    {
-      "scenario": "The eligibility engine errors mid-run",
-      "what_happens": "The SEPP card notes the per-form assessment couldn't run while the standards table still renders; the capacity ceiling independently retries once \u2014 never a silent no-forms-apply on either surface",
-      "mitigated": true,
-      "how": "_sepp_eligibility_results returns None which _build_sepp_eligibility_field wraps as NOT_AVAILABLE; test_eligibility_engine_error_is_not_available_never_empty",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k engine_error -q"
-    },
-    {
-      "scenario": "A refactor re-invokes evaluate_eligibility for the capacity ceiling",
-      "what_happens": "The precomputed results from the SEPP card are passed into _lmr_uplift_form; the guard test patches the engine to explode so any second invocation fails the suite",
-      "mitigated": true,
-      "how": "results parameter on _lmr_uplift_form; test_lmr_uplift_reuses_precomputed_results_never_reinvokes",
-      "repro": "python -m pytest tests/test_brief_slice1_wiring.py -k reinvoke -q"
+      "how": "fall-through order preserved: overlay-with-value wins, else live layer, else honest empty/failure",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k falls_through_to_live"
     }
   ],
   "post_merge": {
-    "db_reset": "none \u2014 the land-use query is read-only and parameterised",
-    "secrets": "none touched",
-    "other_repo": "none \u2014 new SSE section and sibling keys pass through the Trigger.dev relay transparently (verified pattern from prior section additions); backend goes live via Railway from main on merge",
-    "manual_verify": "live A/B smoke already run on Concord, Belmore, Hurstville, Bowral: only the intended additions differ from baseline; after Railway deploys, open /reports/intelligence-brief for Concord and confirm the Market Context card and per-form SEPP citations render"
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — behaviour pinned by guard + wording tests; the verify app's /api/environmental/anef route still reads anef_zones (orphan endpoint, no in-repo consumers) — tracked in issue #686"
   }
 }

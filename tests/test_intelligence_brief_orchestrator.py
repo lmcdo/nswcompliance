@@ -708,6 +708,12 @@ def _make_brief_with_n_available(n_ok: int, n_fail: int) -> DevelopmentBrief:
             overlay_coverage=DataField(value=[], confidence=_conf(), source="test", as_at=today),
             bushfire_designation=DataField(value=None, confidence=_conf(), source="test", as_at=today),
             heritage_postgis=DataField(value=None, confidence=_conf(), source="test", as_at=today),
+            # Slice-2 detail fields — inside the controlled ok/fail spread so
+            # the viability-ratio tests stay exact.
+            anef_level=DataField(value=None, confidence=_conf(), source="test", as_at=today),
+            nearest_features=DataField(value={"flood": 830}, confidence=_conf(), source="test", as_at=today),
+            contaminated_detail=DataField(value=None, confidence=_conf(), source="test", as_at=today),
+            mine_subsidence_district=DataField(value=None, confidence=_conf(), source="test", as_at=today),
         ),
         neighbourhood=Neighbourhood(
             nearby_das=DataField(value=[], confidence=_conf(), source="test", as_at=today),

@@ -53,7 +53,7 @@ SAMPLE_BUSHFIRE_RAW = {
         "designation_guideline": "10/50 Vegetation Clearing",
         "fire_signal": "elevated",
         "compliance": {
-            "cross_overlays": {"flood": False, "heritage_hca": True, "zone": "R2"},
+            "cross_overlays": [{"type": "heritage", "value": "HCA"}],
         },
     },
     "confidence": "high",
@@ -275,10 +275,11 @@ class TestAssessmentManifest:
         uhi = {"uhi_intensity": 4.2, "lga": "Test", "data_year": 2016}
         arr = {"ifd_1pct_60min_mm": 85.0, "durations_min": [60], "aep_pct": ["1.0"], "depths_mm": [[85.0]]}
         firms = {"hotspot_count": 0, "detections": [], "search_days": 10, "search_radius_km": 0.5}
-        sat = _build_satellite_data(None, None, SAMPLE_CLIMATE_RAW, None, None, uhi_raw=uhi, arr_raw=arr, firms_raw=firms)
+        climate_with_narclim = {**SAMPLE_CLIMATE_RAW, "narclim": {"hot_days_delta_2050": 4.3}}
+        sat = _build_satellite_data(None, None, climate_with_narclim, None, None, uhi_raw=uhi, arr_raw=arr, firms_raw=firms)
         m = sat.climate_disclosure.value.manifest
-        assert m.sources_queried == 4  # UHI + ARR + FIRMS + legacy climate
-        assert m.sources_successful == 4
+        assert m.sources_queried == 5  # UHI + ARR + FIRMS + legacy climate + NARCLIM
+        assert m.sources_successful == 5
         assert m.coverage_pct == 100.0
         assert len(m.sources_unavailable) == 0
 
