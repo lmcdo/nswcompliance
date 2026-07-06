@@ -1,25 +1,87 @@
 {
-  "tier": "minor",
-  "justification": "Test-only change after merging main: adds a golden regression guard for the capacity engine (23 scenario tests pinning verified outputs). The branch's qa_gate hook-env fix was superseded by an equivalent fix already on main during the merge, so no production code differs from main.",
-  "commit_hash": "c6e7b488",
+  "tier": "standard",
+  "justification": "Internal (staff-only) review page + write API for flagged DCP setback values: PATCH-style actions update the live dcp_setback_controls table (confirm / soft-retire / supersede-with-citation). Not public-user-facing, but it writes production regulatory rows, so Standard tier with break-it coverage of the write paths.",
+  "commit_hash": "38163d60",
   "files": [
-    "tests/golden/__init__.py",
-    "tests/golden/capacity_scenarios.py",
-    "tests/test_capacity_golden.py"
+    "frontend-nextjs/app/api/internal/setback-review/route.ts",
+    "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts",
+    "frontend-nextjs/app/internal/setback-review/page.tsx",
+    "frontend-nextjs/app/internal/setback-review/SetbackReviewQueue.tsx",
+    "frontend-nextjs/__tests__/api/internal/setback-review.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls rows flagged needs_review=TRUE by the trust sweep (13 pending rulings in Downloads/setback_decisions.csv); the /api/dcp-review verdict pattern (named reviewer + audit trail) already existed and is mirrored here.",
+    "assumption_mismatch": "Every action is single-row and reversible: confirm clears the flag, remove soft-retires (is_current=FALSE), fix supersedes in one transaction preserving the old row — nothing is hard-deleted, so a wrong ruling is recoverable from history.",
+    "new_vs_existing": "prior-art audited 2026-07-02: no extracted-value review WRITE API existed; this mirrors the dcp_review_queue verdict pattern but targets the versioned dcp_setback_controls rows; reviewer identity recorded in review_reason (no reviewed_by column on this table)."
+  },
+  "functions": [
+    {
+      "name": "POST /api/internal/setback-review/[id]",
+      "file_line": "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts:41",
+      "input": "row id plus action confirm/remove/fix with optional note and corrected values",
+      "output": "single-row UPDATE (confirm/remove) or transactional retire+INSERT supersede (fix) with named reviewer stamped",
+      "if_none": "unknown id or already-resolved row returns 404; invalid action/value/citation returns 400; DB error returns 500 with ROLLBACK — never a partial supersede"
+    },
+    {
+      "name": "GET /api/internal/setback-review",
+      "file_line": "frontend-nextjs/app/api/internal/setback-review/route.ts:10",
+      "input": "no parameters — lists rows where needs_review is TRUE and is_current is TRUE",
+      "output": "the pending review queue rows for the internal page",
+      "if_none": "empty queue returns an empty list (legit-empty), DB failure surfaces as a 500 error banner, never an empty queue"
+    }
+  ],
+  "values": [
+    {
+      "value": "body.value_min / value_max / section_ref on the fix action",
+      "read_at": "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts:104",
+      "nullable": "yes — optionalNumber treats empty string, null and undefined as absent, not zero",
+      "guard_at": "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts:108 (400 unless at least one numeric bound AND a section_ref citation)",
+      "if_missing": "the fix is rejected — no regulatory value enters the table without a source citation"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "supersede transaction: lock the current row, retire it, insert the corrected cited row",
+      "file_line": "frontend-nextjs/app/api/internal/setback-review/[id]/route.ts:122",
+      "where_clause": "id = $1 AND is_current = TRUE ... FOR UPDATE (single-row scope, current-row guard)",
+      "if_zero": "ROLLBACK and 404 — a stale/duplicate submission cannot retire an already-superseded row",
+      "if_wrong": "any error in the transaction ROLLBACKs both statements — history is never left retired without a replacement"
+    }
   ],
   "break_it": [
     {
-      "scenario": "A future capacity-engine change silently alters a verified scenario output",
-      "what_happens": "Without the guard the regression ships unnoticed; with it the pinned golden scenario fails the suite",
+      "scenario": "Two reviewers rule on the same row concurrently (double-submit)",
+      "what_happens": "The second write matches zero rows (is_current/needs_review guards + FOR UPDATE) and gets a 404, not a duplicate supersede",
       "mitigated": true,
-      "how": "23 golden scenarios pin floor/ceiling outputs for the verified demo addresses",
-      "repro": "python -m pytest tests/test_capacity_golden.py -v"
+      "how": "WHERE id AND is_current=TRUE AND needs_review=TRUE guards on every action; fix locks the row FOR UPDATE inside a transaction",
+      "repro": "npx jest --testPathPattern=setback-review -t 'already resolved'"
+    },
+    {
+      "scenario": "A corrected value is submitted without a source citation",
+      "what_happens": "400 rejection — the no-value-without-citation invariant holds at the API, not just the UI",
+      "mitigated": true,
+      "how": "route returns 400 unless section_ref is non-empty and at least one numeric bound parses",
+      "repro": "npx jest --testPathPattern=setback-review -t 'citation'"
+    },
+    {
+      "scenario": "The INSERT half of a fix fails after the old row was retired",
+      "what_happens": "Without the transaction the value would vanish from the live table; with it the ROLLBACK restores the old row",
+      "mitigated": true,
+      "how": "BEGIN/COMMIT wraps retire+insert; catch does ROLLBACK and returns 500",
+      "repro": "npx jest --testPathPattern=setback-review -t 'rollback'"
+    },
+    {
+      "scenario": "value_min submitted as empty string coerces to 0 m setback",
+      "what_happens": "A fabricated zero would enter a regulatory table; optionalNumber maps '' to null instead",
+      "mitigated": true,
+      "how": "optionalNumber treats ''/null/undefined as absent and non-finite as invalid",
+      "repro": "npx jest --testPathPattern=setback-review -t 'empty string'"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — golden tests ran green in this branch (2675 passed)"
+    "manual_verify": "Yes — open /internal/setback-review and work through the 13 pending rulings (Downloads/setback_decisions.csv); each action writes the live table one row at a time and is reversible"
   }
 }
