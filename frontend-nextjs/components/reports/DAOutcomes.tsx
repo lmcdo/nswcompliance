@@ -33,10 +33,10 @@ const MONTH_NAMES = [
 
 /** "2023-04-29" → "April 2023". Returns null for anything not YYYY-MM-DD. */
 export function formatMonthYear(iso: string | null | undefined): string | null {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const month = Number(iso.slice(5, 7));
+  if (!iso || typeof iso !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const month = Number(iso?.slice(5, 7));
   if (month < 1 || month > 12) return null;
-  return `${MONTH_NAMES[month - 1]} ${iso.slice(0, 4)}`;
+  return `${MONTH_NAMES[month - 1]} ${iso?.slice(0, 4)}`;
 }
 
 /** " lodged between March 2019 and February 2023" — or '' when either end is

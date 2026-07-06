@@ -1,89 +1,136 @@
 {
- "tier": "standard",
- "commit_hash": "09d4a133",
- "justification": "Adds a named early-access grant mechanism so the payment-gated conveyancing report can be sent to founding members and tested internally before Stripe billing exists: an ?access=<code> link validated server-side against CONVEYANCING_ACCESS_CODES unlocks the existing full-PDF download CTA.",
- "files": [
-  "frontend-nextjs/lib/access-codes.ts",
-  "frontend-nextjs/app/api/reports/conveyancing/access/route.ts",
-  "frontend-nextjs/components/tools/ConveyancingTool.tsx",
-  "frontend-nextjs/__tests__/api/reports/conveyancing-access.test.ts",
-  "docs/CONFIGURATION.md"
- ],
- "pre_impl": {
-  "existing_data": "Explore audit confirmed no entitlement or access-code infrastructure exists anywhere: lib/report-token.ts is an HMAC anti-injection guard not an entitlement, the satellite routes use an ADMIN_SECRET header per-route, and Stripe promo codes only matter once checkout is wired (it is not — the live UI shows a waitlist button). The free conveyancing check already mints a report_id and the paid download CTA component already exists and works when given one.",
-  "assumption_mismatch": "Assumed the conveyancing report was actively payment-gated; in reality the checkout route is dormant and the frontend gate trusts a ?payment=success query param with no server verification, and the PDF generate route is unauthenticated. The grant mechanism therefore adds the first server-checked access decision this product has; hardening the generate route itself is flagged as follow-up, not silently bundled.",
-  "new_vs_existing": "Reuses the existing ConveyancingPaidDownloadCTA, the existing free-check report_id, and the existing PDF generate path unchanged. New code is only the pure validator, one small validate route, and the unlock wiring — no new tables, no new entitlement framework, matching the outreach RULE 4 decision that comps stay a spreadsheet plus codes until billing lands."
- },
- "functions": [
-  {
-   "name": "isValidAccessCode",
-   "file_line": "frontend-nextjs/lib/access-codes.ts:20",
-   "input": "a candidate code string and the comma-separated env list, both possibly null or undefined or non-string",
-   "output": "true only when the trimmed code exactly matches one trimmed non-empty entry in the list",
-   "if_none": "any missing, non-string, empty or whitespace input returns false, so an unset env var fails closed and no code is ever valid by default"
+  "tier": "standard",
+  "justification": "User-facing truth defect (brief served 8-year refusal stats from a source frozen at 2023-04 as if current) but additive-only payload changes, fail-closed guards, no DB writes, no conveyancing PDF surface touched. Critical not needed: no new external source wired; Minor too low: changed user-visible statistical claims.",
+  "commit_hash": "401fc60e",
+  "files": [
+    "services/da_outcome.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/reports/DAOutcomes.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_da_outcome.py",
+    "tests/test_brief_da_outcomes.py",
+    "frontend-nextjs/__tests__/components/reports/DAOutcomes.test.tsx",
+    "tests/fixtures/brief_golden/da_outcomes.json",
+    "tests/fixtures/brief_golden/da_refusal_stats.json"
+  ],
+  "pre_impl": {
+    "existing_data": "DA tracking MapServer (frozen extract, newest lodgement 2023-04-29 verified live 2026-07-06); brief payloads da_outcomes/da_refusal_stats; golden fixtures captured 2026-07-04",
+    "assumption_mismatch": "If the layer is refreshed or replaced, sentences stay correct automatically: the window is derived from the data (currency probe + row min/max), never hardcoded. If the layer disappears, the currency probe raises and the field renders NOT_AVAILABLE.",
+    "new_vs_existing": "Payload fields are additive (radius_m/years_back kept); old payloads without window fields hit the frontend suppression path — temporal claim omitted, never defaulted.",
+    "external_source_error": "ArcGIS returns HTTP 200 + error body; arcgis_get_with_retry maps that to {} and da_outcome.py raises on missing 'features'/'count' — never a silent zero.",
+    "frontend_type": "DAOutcomesPayload/RefusalStatsRow extended with optional data_currency/window_start/window_end in components/reports/DAOutcomes.tsx (moved from page.tsx).",
+    "user_failure_mode": "Currency probe failure -> field NOT_AVAILABLE with reason (visible gap row), not undated stats. Missing window fields -> 'Determination counts are not shown — the data window ... could not be established'."
   },
-  {
-   "name": "POST /api/reports/conveyancing/access",
-   "file_line": "frontend-nextjs/app/api/reports/conveyancing/access/route.ts:23",
-   "input": "JSON body with a code field of unknown type from an untrusted client",
-   "output": "200 with valid true or false only, never the configured code list; 400 on bad JSON, missing code or codes over 100 chars",
-   "if_none": "invalid JSON or a non-string code returns 400 before any env comparison, and a valid hit logs the named code for the usage trail"
-  },
-  {
-   "name": "ConveyancingTool grant unlock effect",
-   "file_line": "frontend-nextjs/components/tools/ConveyancingTool.tsx:167",
-   "input": "the access query param or a previously stored sessionStorage code from an earlier page load",
-   "output": "accessGranted state set true only after the server validates the code; invalid codes are removed from sessionStorage",
-   "if_none": "no param and no stored code returns early with no fetch; a network failure leaves the page in the normal free state with the waitlist button"
+  "functions": [
+    {
+      "name": "get_data_currency",
+      "file_line": "services/da_outcome.py:161",
+      "input": "none (queries tracking layer, cached per process)",
+      "output": "YYYY-MM-DD newest lodgement -> RefusalStats.data_currency and brief payload",
+      "if_none": "raises RuntimeError on transport failure, zero rows, or unparseable value; failures are not cached"
+    },
+    {
+      "name": "get_refusal_rate",
+      "file_line": "services/da_outcome.py:276",
+      "input": "lga name and years window from brief config (CONFIG.da_outcomes_years_back)",
+      "output": "RefusalStats + window_start + data_currency",
+      "if_none": "currency probe failure raises before counts — stats without a stated window are never produced"
+    },
+    {
+      "name": "_fetch_da_outcomes",
+      "file_line": "services/intelligence_brief.py:1761",
+      "input": "lng/lat floats from the geocoded brief address",
+      "output": "payload dict with outcomes + data_currency + window_start/window_end (row-derived)",
+      "if_none": "raise -> _safe_call stamps NOT_AVAILABLE; empty rows -> window None + data_currency present"
+    },
+    {
+      "name": "formatMonthYear / lodgedWindowPhrase",
+      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:35",
+      "input": "ISO date strings from payload",
+      "output": "'April 2023' phrases in sentences",
+      "if_none": "returns null/'' -> temporal phrase suppressed, never a fabricated date"
+    },
+    {
+      "name": "RefusalStatsSentence",
+      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:125",
+      "input": "RefusalStatsRow payload object from the brief SSE stream",
+      "output": "windowed sentence or explicit suppression message",
+      "if_none": "missing window fields -> counts suppressed with stated reason (line 134)"
+    }
+  ],
+  "values": [
+    {
+      "value": "data_currency",
+      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:127",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:35 (formatMonthYear null on non-ISO)",
+      "if_missing": "extent note omitted; refusal sentence replaced by suppression message"
+    },
+    {
+      "value": "window_start/window_end",
+      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:44",
+      "nullable": "yes",
+      "guard_at": "lodgedWindowPhrase returns '' unless both ends parse",
+      "if_missing": "no 'lodged between' phrase; counts still shown for the outcomes list (factual, no time claim)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "newest LODGEMENT_DATE on the tracking layer (currency probe)",
+      "file_line": "services/da_outcome.py:175",
+      "where_clause": "LODGEMENT_DATE IS NOT NULL ORDER BY LODGEMENT_DATE DESC LIMIT 1",
+      "if_zero": "raises RuntimeError ('no rows — cannot state a data window')",
+      "if_wrong": "unparseable value raises; lexicographic DESC on the layer's fixed-width string dates is order-correct (verified live)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Source goes stale AGAIN after a future re-wire (or stays frozen while users assume currency)",
+      "what_happens": "Without the guard, stats render as current; with it, every sentence carries the data-derived window ('lodged between January 2018 and April 2023 (the extent of the published tracking data)')",
+      "mitigated": true,
+      "how": "services/da_outcome.py:161 currency probe + tests/test_brief_da_outcomes.py window assertions + jest golden tests pin the phrasing",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k window; npx jest --testPathPattern=DAOutcomes"
+    },
+    {
+      "scenario": "Currency probe fails while the counts succeed",
+      "what_happens": "Stats without a window would render undated (the original defect)",
+      "mitigated": true,
+      "how": "services/da_outcome.py:307 probe runs before counts and raises; test_currency_failure_fails_the_stats_closed",
+      "repro": "python -m pytest tests/test_da_outcome.py -k currency_failure"
+    },
+    {
+      "scenario": "Fractional-seconds lodgement dates ('20230429151817.89') pass through unparsed",
+      "what_happens": "Window derivation drops rows / currency probe raises spuriously; 3 rows in the pre-fix golden fixture prove this happened in production captures",
+      "mitigated": true,
+      "how": "services/da_outcome.py:72 _DATE_14_RE optional fractional suffix; test_fractional_seconds_format",
+      "repro": "python -m pytest tests/test_da_outcome.py -k fractional"
+    },
+    {
+      "scenario": "A payload without window fields reaches the frontend (stale cache, old generator)",
+      "what_happens": "The undated implied-current framing would silently return to the brief",
+      "mitigated": true,
+      "how": "DAOutcomes.tsx suppression paths; jest 'without window fields (defensive)' and 'without a data window' tests",
+      "repro": "npx jest --testPathPattern=DAOutcomes -t suppress"
+    },
+    {
+      "scenario": "Someone reintroduces 'last N years' arithmetic in the brief UI",
+      "what_happens": "Undated recency claim ships again",
+      "mitigated": true,
+      "how": "static-claims guard in DAOutcomes.test.tsx greps component + page source and fails the suite",
+      "repro": "npx jest --testPathPattern=DAOutcomes -t 'static claims'"
+    },
+    {
+      "scenario": "Refusal stats for an LGA whose window excludes all data (e.g. years_back shrunk below the frozen extent)",
+      "what_happens": "total_determined is zero and a 0/0 rate would be fabricated",
+      "mitigated": true,
+      "how": "get_refusal_rate returns None (queried-empty) -> brief renders AUTHORITATIVE None, HIDE_WHEN_NULL keeps the row out",
+      "repro": "python -m pytest tests/test_da_outcome.py -k empty_results"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — sentences are pinned by golden jest tests; live layer currency re-verified 2026-07-06"
   }
- ],
- "values": [
-  {
-   "value": "json.valid from the access validation response",
-   "read_at": "grant unlock effect in frontend-nextjs/components/tools/ConveyancingTool.tsx",
-   "if_missing": "optional-chained json?.valid treats a malformed response as invalid, so the page stays in the free tier rather than unlocking"
-  },
-  {
-   "value": "result.report_id from the free instant check response",
-   "read_at": "unlockedReportId derivation in ConveyancingTool render",
-   "if_missing": "result?.report_id ?? null keeps unlockedReportId null so the download CTA simply does not render — no crash and no CTA with a broken id"
-  }
- ],
- "queries": "N/A — no database queries in this change; validation is a pure env-var string comparison",
- "break_it": [
-  {
-   "scenario": "Someone brute-forces or guesses grant codes against the public validate route",
-   "what_happens": "Codes are random-hex-suffixed and capped at 100 chars; a wrong code returns valid false with no hint and the response never echoes the configured list, so guessing yields nothing enumerable",
-   "mitigated": true,
-   "how": "random suffixes, exact-match-only comparison, no code list in any response, and a jest test asserts the list is never echoed",
-   "repro": "curl -X POST /api/reports/conveyancing/access -H 'Content-Type: application/json' -d '{\"code\":\"guess-01\"}' and observe valid false"
-  },
-  {
-   "scenario": "CONVEYANCING_ACCESS_CODES is unset in an environment, for example a preview deploy before the var was added",
-   "what_happens": "isValidAccessCode returns false for every code so the page silently behaves as the normal free tier with the waitlist button; the founder link appears dead rather than granting access",
-   "mitigated": true,
-   "how": "fail-closed is the intended direction (never accidental free access); the jest test for the unset env var pins it, and docs/CONFIGURATION.md documents the preview-env requirement",
-   "repro": "npx jest --testPathPattern=conveyancing-access -t 'env var is unset' or unset the var locally and load /reports/conveyancing?access=any-code"
-  },
-  {
-   "scenario": "A grant is revoked while the grantee still has the code cached in sessionStorage from an earlier visit",
-   "what_happens": "The next page load re-validates against the server, gets valid false, removes the stored code and renders the ordinary free tier, so revocation takes effect on next load rather than persisting client-side forever",
-   "mitigated": true,
-   "how": "every page load re-validates server-side; the invalid branch explicitly deletes the sessionStorage entry",
-   "repro": "load the page with a valid ?access code, remove that code from the env var, redeploy, reload the page and confirm the waitlist button is back"
-  },
-  {
-   "scenario": "The free check response arrives without a report_id while a grant is active",
-   "what_happens": "unlockedReportId stays null because the derivation optional-chains result report_id, so the download CTA is not rendered and the user sees results plus waitlist copy instead of a CTA that would post an undefined id",
-   "mitigated": true,
-   "how": "null-safe derivation keeps the CTA unrendered rather than generating with a missing id",
-   "repro": "mock /api/satellite/conveyancing to omit report_id in a jest DOM test or devtools override, run a check with a granted session and observe no download panel"
-  }
- ],
- "post_merge": {
-  "db_reset": "none — this change touches no database anywhere",
-  "secrets": "set CONVEYANCING_ACCESS_CODES in Vercel for Preview and Production before testing; the named comp list itself stays in the private spreadsheet per outreach RULE 4, never in git",
-  "other_repo": "none",
-  "manual_verify": "on the PR preview open /reports/conveyancing?access=<internal code>, run an address, confirm the early-access download panel renders and the PDF generates via Railway; then confirm ?access=wrong-code shows the plain free tier"
- }
 }
