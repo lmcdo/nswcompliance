@@ -1969,40 +1969,25 @@ def _fetch_land_use_lists(zone_code: str, lga_name: str) -> dict:
 
 def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
     """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
-    verify app's /api/environmental/anef route uses. Exact point-in-polygon via
-    PostGIS ST_Contains over the stored GeoJSON (bbox pre-filter for speed).
+    verify app's /api/environmental/anef route uses.
 
     prior-art-checked: reuses the existing anef_zones table (no new source); the
-    regional half is the existing portal_constraints.fetch_anef. Returns
-    ``{"anef_level": int, "airport": str}`` or None; None on any failure.
+    query implementation was LIFTED to portal_constraints.fetch_anef_zone_exact
+    (now shared with the conveyancing PDF) — this wrapper preserves the brief's
+    fail-open contract. Returns ``{"anef_level": int, "airport": str,
+    "anef_version": str}`` or None; None on any failure.
     """
     if lat is None or lng is None:
         return None
-    conn = None
     try:
-        conn = _get_db_conn()
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT anef_level, airport_name FROM anef_zones "
-            "WHERE bbox_min_lon <= %s AND bbox_max_lon >= %s "
-            "AND bbox_min_lat <= %s AND bbox_max_lat >= %s "
-            "AND ST_Contains("
-            "  ST_SetSRID(ST_GeomFromGeoJSON(geometry_json::text), 4326), "
-            "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
-            "ORDER BY anef_level DESC LIMIT 1",
-            (lng, lng, lat, lat, lng, lat),
-        )
-        row = cur.fetchone()
+        from portal_constraints import fetch_anef_zone_exact
+    except ImportError:
+        from services.portal_constraints import fetch_anef_zone_exact
+    try:
+        return fetch_anef_zone_exact(lat, lng)
     except Exception:
         logger.warning("anef_zones point query failed")
         return None
-    finally:
-        if conn:
-            conn.close()
-    if not row:
-        return None
-    level, airport = row
-    return {"anef_level": level, "airport": airport}
 
 
 # ---------------------------------------------------------------------------

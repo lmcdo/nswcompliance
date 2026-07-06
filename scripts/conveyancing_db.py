@@ -600,6 +600,47 @@ def fetch_tax_thresholds(
     }
 
 
+# prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs
+# (not a fork — that module now imports this) so the CLI report path can inject
+# the same DB-loaded configs instead of silently rendering without them.
+def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Optional[dict]]:
+    """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
+
+    Returns (sepp_standards, tax_config) — both None if DB unavailable.
+    A None tax_config renders fail-visible as "Not assessed" downstream.
+    """
+    if not db_url:
+        logger.warning("Regulatory configs: DATABASE_URL not set — SEPP fallback, land tax 'Not assessed'")
+        return None, None
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        # SEPP secondary dwelling standards
+        sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
+        sepp_standards = None
+        if sd_rows:
+            sd_by_type = {r["standard_type"]: r for r in sd_rows}
+            min_lot_row = sd_by_type.get("min_lot_size")
+            sepp_standards = {
+                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
+                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
+            }
+        else:
+            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
+        # Tax thresholds — no fallback; None renders "Not assessed"
+        tax_config = fetch_tax_thresholds(conn)
+        if tax_config is None:
+            logger.warning("Regulatory configs: no tax_thresholds row for current year — land tax renders 'Not assessed'")
+        return sepp_standards, tax_config
+    except Exception as e:
+        logger.warning(f"Failed to load regulatory configs from DB: {e}")
+        return None, None
+    finally:
+        if conn:
+            conn.close()
+
+
 def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     """Haversine distance in metres between two lat/lng points."""
     R = 6_371_000

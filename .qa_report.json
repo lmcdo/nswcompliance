@@ -1,136 +1,155 @@
 {
-  "tier": "standard",
-  "justification": "User-facing truth defect (brief served 8-year refusal stats from a source frozen at 2023-04 as if current) but additive-only payload changes, fail-closed guards, no DB writes, no conveyancing PDF surface touched. Critical not needed: no new external source wired; Minor too low: changed user-visible statistical claims.",
-  "commit_hash": "5515f4e7",
+  "tier": "critical",
+  "justification": "User-facing legal due-diligence PDF: land-tax figures previously rendered from a hardcoded 2025 fallback on EVERY production report (tax_thresholds table verified ABSENT from production 2026-07-06 — migration 046 never applied), and the ANEF contour value the platform already resolves was never surfaced. Both slices change sentences a buyer relies on before exchange, so Critical tier applies.",
+  "commit_hash": "ea35e6cc",
   "files": [
-    "services/da_outcome.py",
+    "scripts/generate_conveyancing_report.py",
+    "scripts/conveyancing_db.py",
+    "services/conveyancing.py",
+    "services/portal_constraints.py",
     "services/intelligence_brief.py",
-    "frontend-nextjs/components/reports/DAOutcomes.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_da_outcome.py",
-    "tests/test_brief_da_outcomes.py",
-    "frontend-nextjs/__tests__/components/reports/DAOutcomes.test.tsx",
-    "tests/fixtures/brief_golden/da_outcomes.json",
-    "tests/fixtures/brief_golden/da_refusal_stats.json"
+    "tests/test_conveyancing_truth.py",
+    "tests/fixtures/mascot_anef_resolved.json"
   ],
   "pre_impl": {
-    "existing_data": "DA tracking MapServer (frozen extract, newest lodgement 2023-04-29 verified live 2026-07-06); brief payloads da_outcomes/da_refusal_stats; golden fixtures captured 2026-07-04",
-    "assumption_mismatch": "If the layer is refreshed or replaced, sentences stay correct automatically: the window is derived from the data (currency probe + row min/max), never hardcoded. If the layer disappears, the currency probe raises and the field renders NOT_AVAILABLE.",
-    "new_vs_existing": "Payload fields are additive (radius_m/years_back kept); old payloads without window fields hit the frontend suppression path — temporal claim omitted, never defaulted.",
-    "external_source_error": "ArcGIS returns HTTP 200 + error body; arcgis_get_with_retry maps that to {} and da_outcome.py raises on missing 'features'/'count' — never a silent zero.",
-    "frontend_type": "DAOutcomesPayload/RefusalStatsRow extended with optional data_currency/window_start/window_end in components/reports/DAOutcomes.tsx (moved from page.tsx).",
-    "user_failure_mode": "Currency probe failure -> field NOT_AVAILABLE with reason (visible gap row), not undated stats. Missing window fields -> 'Determination counts are not shown — the data window ... could not be established'."
+    "existing_data": "tax_thresholds table (migration 046) verified ABSENT from production DB via read-only probe 2026-07-06 — the hardcoded 2025 fallback fired on every PDF ever generated; anef_zones holds 5 Sydney zones (YSSY, version 'ANEF 2039', levels 20-40, updated 2026-01-17); Mascot probe (1 Coward St, -33.92718/151.20598 from property_reports) returns level 35 — recorded as tests/fixtures/mascot_anef_resolved.json.",
+    "assumption_mismatch": "If tax_thresholds is later created and seeded, sentences pick up the DB row's own tax_year automatically; if a stale-year row is served the year renders verbatim beside every figure plus a WARNING log. If anef_zones vintage changes, anef_version rides with the value into the sentence — no wording change needed.",
+    "new_vs_existing": "No new data sources: fetch_anef_zone_exact is LIFTED from intelligence_brief.fetch_anef_zone (which now delegates, contract preserved — brief tests monkeypatch the wrapper and still pass); regional fallback reuses existing portal_constraints.fetch_anef; load_regulatory_configs MOVED from services/conveyancing.py so the CLI path injects the same configs the API path uses.",
+    "external_source_error": "resolve_anef_value is three-state: anef_zones DB error or live ArcGIS exception returns status 'failed' (rendered as explicit 'not assessed' wording), never conflated with 'empty' (no contour at the point); query_arcgis_point raises on HTTP failure so a transport error cannot masquerade as a clean miss.",
+    "frontend_type": "No TypeScript touched — the PDF renderer and FastAPI service are Python-only surfaces; the free-tier JSON contract gains no new fields (confidence string semantics unchanged, feasibility rows keep question/answer/flag/basis shape).",
+    "user_failure_mode": "Land tax with no DB config renders 'Not assessed — configuration unavailable for the {year} land tax year' with zero dollar figures and confidence capped at medium — never a silently stale threshold; a failed ANEF value lookup on a lot inside a mapped contour states the value is not assessed, never drops the row or invents a value."
   },
   "functions": [
     {
-      "name": "get_data_currency",
-      "file_line": "services/da_outcome.py:161",
-      "input": "none (queries tracking layer, cached per process)",
-      "output": "YYYY-MM-DD newest lodgement -> RefusalStats.data_currency and brief payload",
-      "if_none": "raises RuntimeError on transport failure, zero rows, or unparseable value; failures are not cached"
+      "name": "build_land_tax_rows",
+      "file_line": "scripts/generate_conveyancing_report.py:810",
+      "input": "integer land value plus the tax_thresholds config dict or None",
+      "output": "one feasibility row whose question and basis carry the DB row's tax_year verbatim",
+      "if_none": "config None returns the 'Not assessed' row naming the expected year — no dollar figures are ever computed from constants"
     },
     {
-      "name": "get_refusal_rate",
-      "file_line": "services/da_outcome.py:276",
-      "input": "lga name and years window from brief config (CONFIG.da_outcomes_years_back)",
-      "output": "RefusalStats + window_start + data_currency",
-      "if_none": "currency probe failure raises before counts — stats without a stated window are never produced"
+      "name": "build_anef_row",
+      "file_line": "scripts/generate_conveyancing_report.py:2079",
+      "input": "three-state anef_live dict plus the ingested PostGIS anef overlay hit or None",
+      "output": "risk-summary row tuple of text, style and source label, or None when nothing supports a contour claim",
+      "if_none": "no ingest hit and no resolved value returns None so the row is omitted; a failed lookup with an ingest hit renders explicit not-assessed wording"
     },
     {
-      "name": "_fetch_da_outcomes",
-      "file_line": "services/intelligence_brief.py:1761",
-      "input": "lng/lat floats from the geocoded brief address",
-      "output": "payload dict with outcomes + data_currency + window_start/window_end (row-derived)",
-      "if_none": "raise -> _safe_call stamps NOT_AVAILABLE; empty rows -> window None + data_currency present"
+      "name": "build_anef_note",
+      "file_line": "scripts/generate_conveyancing_report.py:2138",
+      "input": "the three-state anef_live dict from the shared resolver",
+      "output": "Section 5 note override carrying the resolved value and its vintage, or None to keep the static fallback note",
+      "if_none": "empty or not-run states return None so the liability-audited ANEF_NOTE fallback wording renders unchanged"
     },
     {
-      "name": "formatMonthYear / lodgedWindowPhrase",
-      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:35",
-      "input": "ISO date strings from payload",
-      "output": "'April 2023' phrases in sentences",
-      "if_none": "returns null/'' -> temporal phrase suppressed, never a fabricated date"
+      "name": "resolve_anef_value",
+      "file_line": "services/portal_constraints.py:274",
+      "input": "latitude and longitude of the resolved parcel point",
+      "output": "status dict: found with level, verbatim code, airport, anef_version and source; or empty; or failed",
+      "if_none": "any lookup exception returns status failed — the unknown value is never re-stamped as an authoritative empty result"
     },
     {
-      "name": "RefusalStatsSentence",
-      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:125",
-      "input": "RefusalStatsRow payload object from the brief SSE stream",
-      "output": "windowed sentence or explicit suppression message",
-      "if_none": "missing window fields -> counts suppressed with stated reason (line 134)"
+      "name": "fetch_anef_zone_exact",
+      "file_line": "services/portal_constraints.py:238",
+      "input": "latitude and longitude, queried against the curated anef_zones table",
+      "output": "dict with anef_level, airport and anef_version for the highest contour containing the point, or None",
+      "if_none": "returns None only for a genuine no-contour point; DB unavailability RAISES so callers decide fail-open versus fail-closed"
+    },
+    {
+      "name": "load_regulatory_configs",
+      "file_line": "scripts/conveyancing_db.py:606",
+      "input": "the DATABASE_URL string or None when the environment lacks one",
+      "output": "tuple of sepp_standards dict and tax_config dict, either None when unavailable",
+      "if_none": "returns (None, None) on any DB failure — tax None renders fail-visible downstream instead of hardcoded figures"
+    },
+    {
+      "name": "_compute_confidence",
+      "file_line": "services/conveyancing.py:666",
+      "input": "controls, overlays, valuation plus integrity flags including the new tax_config_missing boolean",
+      "output": "low, medium or high rating capped by every integrity gap present",
+      "if_none": "tax_config_missing caps the rating at medium so a report whose land-tax section says Not assessed cannot claim high confidence"
     }
   ],
   "values": [
     {
-      "value": "data_currency",
-      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:127",
-      "nullable": "yes",
-      "guard_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:35 (formatMonthYear null on non-ISO)",
-      "if_missing": "extent note omitted; refusal sentence replaced by suppression message"
+      "value": "tax_config.tax_year / threshold_dollars / rate / base_amount_dollars",
+      "read_at": "scripts/generate_conveyancing_report.py:829",
+      "nullable": "yes — whole config is None when the table is missing (current production state)",
+      "guard_at": "scripts/generate_conveyancing_report.py:816 (None branch returns the Not-assessed row before any key access)",
+      "if_missing": "Not-assessed row with the expected year named; no KeyError path because keys are only read after the None gate"
     },
     {
-      "value": "window_start/window_end",
-      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:44",
-      "nullable": "yes",
-      "guard_at": "lodgedWindowPhrase returns '' unless both ends parse",
-      "if_missing": "no 'lodged between' phrase; counts still shown for the outcomes list (factual, no time claim)"
+      "value": "anef_live.anef_code / anef_level / anef_version / airport",
+      "read_at": "scripts/generate_conveyancing_report.py:2058",
+      "nullable": "yes — regional hits have no airport or version; code is None for Sydney table hits",
+      "guard_at": "scripts/generate_conveyancing_report.py:2058 (_anef_value_display prefers verbatim code, falls back to level; _anef_source_label omits absent version)",
+      "if_missing": "sentence renders the fields the data actually carries — a missing vintage is omitted, never invented"
     }
   ],
   "queries": [
     {
-      "purpose": "newest LODGEMENT_DATE on the tracking layer (currency probe)",
-      "file_line": "services/da_outcome.py:175",
-      "where_clause": "LODGEMENT_DATE IS NOT NULL ORDER BY LODGEMENT_DATE DESC LIMIT 1",
-      "if_zero": "raises RuntimeError ('no rows — cannot state a data window')",
-      "if_wrong": "unparseable value raises; lexicographic DESC on the layer's fixed-width string dates is order-correct (verified live)"
+      "purpose": "highest ANEF contour containing the parcel point from the curated anef_zones table",
+      "file_line": "services/portal_constraints.py:255",
+      "where_clause": "bbox pre-filter on min/max lon/lat AND ST_Contains(geometry, point) ORDER BY anef_level DESC LIMIT 1",
+      "if_zero": "returns None — resolver proceeds to the live regional layer before concluding 'empty'",
+      "if_wrong": "5s statement timeout raises; the raise surfaces as status failed, rendered as not-assessed wording"
     }
   ],
   "break_it": [
     {
-      "scenario": "Source goes stale AGAIN after a future re-wire (or stays frozen while users assume currency)",
-      "what_happens": "Without the guard, stats render as current; with it, every sentence carries the data-derived window ('lodged between January 2018 and April 2023 (the extent of the published tracking data)')",
+      "scenario": "Land-tax threshold changes next financial year and nobody updates the tax_thresholds table",
+      "what_happens": "The stale row renders WITH its own tax_year visible beside every figure ('Land tax (investment, 2025 thresholds)') plus a WARNING log — honest but loud, never an undated figure implied current",
       "mitigated": true,
-      "how": "services/da_outcome.py:161 currency probe + tests/test_brief_da_outcomes.py window assertions + jest golden tests pin the phrasing",
-      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k window; npx jest --testPathPattern=DAOutcomes"
+      "how": "build_land_tax_rows interpolates tax_year from the DB row into question and basis; stale-year test asserts the year and the warning",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k stale_year"
     },
     {
-      "scenario": "Currency probe fails while the counts succeed",
-      "what_happens": "Stats without a window would render undated (the original defect)",
+      "scenario": "Someone restores a hardcoded threshold fallback so absent config silently renders 2025 figures again",
+      "what_happens": "Without the guard the exact production defect returns (table is missing TODAY, so the fallback fired on every real PDF)",
       "mitigated": true,
-      "how": "services/da_outcome.py:307 probe runs before counts and raises; test_currency_failure_fails_the_stats_closed",
-      "repro": "python -m pytest tests/test_da_outcome.py -k currency_failure"
+      "how": "static-claims guard forbids _LT_FALLBACK/1075000 literals in the generator source; mutation test asserts absent config yields zero dollar figures",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k config_absent"
     },
     {
-      "scenario": "Fractional-seconds lodgement dates ('20230429151817.89') pass through unparsed",
-      "what_happens": "Window derivation drops rows / currency probe raises spuriously; 3 rows in the pre-fix golden fixture prove this happened in production captures",
+      "scenario": "anef_zones is re-digitised with a new forecast version and our sentence keeps citing the old vintage",
+      "what_happens": "The vintage is read from the row's anef_version column at query time, so the sentence updates with the data; no code carries 'ANEF 2039' as a constant",
       "mitigated": true,
-      "how": "services/da_outcome.py:72 _DATE_14_RE optional fractional suffix; test_fractional_seconds_format",
-      "repro": "python -m pytest tests/test_da_outcome.py -k fractional"
+      "how": "fetch_anef_zone_exact selects anef_version and _anef_source_label renders it verbatim; golden fixture pins the current vintage so a silent schema change breaks the test",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k value_found_renders"
     },
     {
-      "scenario": "A payload without window fields reaches the frontend (stale cache, old generator)",
-      "what_happens": "The undated implied-current framing would silently return to the brief",
+      "scenario": "ANEF value lookup throws (DB down, ArcGIS timeout) while the lot IS inside a mapped contour",
+      "what_happens": "The row still states the contour applies and says the value is 'not assessed — value lookup unavailable'; swallowing the exception into an empty result would render the misleading 'obtain from airport authority' wording as if the check ran",
       "mitigated": true,
-      "how": "DAOutcomes.tsx suppression paths; jest 'without window fields (defensive)' and 'without a data window' tests",
-      "repro": "npx jest --testPathPattern=DAOutcomes -t suppress"
+      "how": "resolve_anef_value returns status failed on exception (mutation: deleting the raise in fetch_anef_zone_exact fails test_db_failure_is_failed_not_empty); build_anef_row renders failed explicitly",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k failed"
     },
     {
-      "scenario": "Someone reintroduces 'last N years' arithmetic in the brief UI",
-      "what_happens": "Undated recency claim ships again",
+      "scenario": "The spatial_overlays ingest lacks the anef polygon while the curated table resolves a real contour (live Mascot state, verified 2026-07-06)",
+      "what_happens": "Pre-change the PDF showed NO aircraft-noise row at 1 Coward St Mascot despite ANEF 35 — a silent false negative in a legal document; post-change the resolved value synthesizes the overlay so the cover count, delta callout, risk row, note and consultant table all state it",
       "mitigated": true,
-      "how": "static-claims guard in DAOutcomes.test.tsx greps component + page source and fails the suite",
-      "repro": "npx jest --testPathPattern=DAOutcomes -t 'static claims'"
+      "how": "generate_pdf reconciliation block mirrors the bushfire live-wins precedent; build_anef_row renders a found value even with no ingest hit",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k without_ingest; regenerate the Mascot PDF and read the Risk Summary"
     },
     {
-      "scenario": "Refusal stats for an LGA whose window excludes all data (e.g. years_back shrunk below the frozen extent)",
-      "what_happens": "total_determined is zero and a 0/0 rate would be fabricated",
+      "scenario": "The synthesized ANEF row gets attributed to PostGIS even though the ingest never saw the contour",
+      "what_happens": "A source label would claim provenance the data does not trace to (the PR #674 shadow-height defect class)",
       "mitigated": true,
-      "how": "get_refusal_rate returns None (queried-empty) -> brief renders AUTHORITATIVE None, HIDE_WHEN_NULL keeps the row out",
-      "repro": "python -m pytest tests/test_da_outcome.py -k empty_results"
+      "how": "the synthetic overlay carries instrument ANEF_VALUE_LOOKUP and build_anef_row swaps the source label off PostGIS for it",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k synthetic_hit"
+    },
+    {
+      "scenario": "A regional ePlanning band code like '25-30' is parsed to its lower bound and presented as an exact contour value",
+      "what_happens": "The buyer would read ANEF 25 as a point value when the source only states a band",
+      "mitigated": true,
+      "how": "_anef_value_display prefers the verbatim anef_code over the parsed integer so the band renders as published",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k regional_code"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No — sentences are pinned by golden jest tests; live layer currency re-verified 2026-07-06"
+    "manual_verify": "Yes — production tax_thresholds table does not exist: until migration 046 plus a 2026 row (Revenue NSW: threshold $1,075,000, rate 1.6% + $100 base, premium $6,571,000 at 2%, thresholds frozen from 1 Jan 2025) are applied WITH USER CONFIRMATION, every PDF renders land tax 'Not assessed' (honest, but a visible product gap). SQL prepared; do not apply without explicit user approval."
   }
 }
