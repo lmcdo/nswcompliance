@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -363,13 +364,15 @@ export default function CDCvDAPage() {
             Enter your address to see whether the CDC pathway is available for your property —
             heritage, flood, bushfire, and zone checks in one step.
           </p>
-          <Link
+          <TrackedLink
             href="/check"
             className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 text-white text-sm font-medium rounded-xl hover:bg-violet-500 transition-colors"
+            page="cdc-vs-da-which-approval-pathway"
+            cta="check_address"
           >
             Pre-DA Check — free
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </TrackedLink>
         </div>
       </section>
 

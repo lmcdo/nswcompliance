@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -521,13 +522,15 @@ export default function NatHERSHistoricalWeatherPage() {
               temperature changes and hazard exposure for any NSW address,
               using NARCliM 2.0 climate projections.
             </p>
-            <Link
+            <TrackedLink
               href="/climate-risk"
+              page="nathers-ratings-historical-weather-accuracy"
+              cta="climate_check"
               className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
             >
               Check climate risk
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

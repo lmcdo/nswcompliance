@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -677,13 +678,15 @@ export default function CCNHSEPPPage() {
               heat, and subsidence &mdash; for any NSW address. See what the
               CC&NH SEPP framework will assess.
             </p>
-            <Link
+            <TrackedLink
               href="/climate-risk"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
+              page="ccnh-sepp-nsw-development-changes"
+              cta="climate_check"
             >
               Check climate risk
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { query } from '@/lib/database/pool-manager';
 import { DatasetJsonLd } from '@/lib/json-ld';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
@@ -355,12 +356,14 @@ export default async function PlanningStandardsPage() {
           Enter an address to check zoning, lot size, overlays, and which SEPP
           Housing development types are eligible for your site.
         </p>
-        <Link
+        <TrackedLink
           href="/assessment"
+          page="planning-standards"
+          cta="run_compliance_check"
           className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
         >
           Run compliance check
-        </Link>
+        </TrackedLink>
       </div>
 
       {/* Related links */}

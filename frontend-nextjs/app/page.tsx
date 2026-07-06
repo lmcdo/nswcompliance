@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 
 /* ------------------------------------------------------------------ */
 /*  Tool card data                                                     */
@@ -197,14 +198,16 @@ export default function HomePage() {
           </p>
 
           {/* Search-bar CTA */}
-          <Link
+          <TrackedLink
             href="/reports"
+            page="home"
+            cta="hero_search"
             className="group flex items-center gap-3 w-full max-w-lg mx-auto bg-slate-900/80 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 transition-all mb-10"
           >
             <Search className="w-5 h-5 text-slate-500 group-hover:text-teal-400 transition-colors" />
             <span className="text-slate-500 text-left">Enter any NSW address...</span>
             <ArrowRight className="w-4 h-4 text-slate-600 ml-auto group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
-          </Link>
+          </TrackedLink>
 
           {/* Tool pills */}
           <div className="flex flex-wrap justify-center gap-2">
@@ -353,13 +356,15 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
                 href="/assessment"
+                page="home"
+                cta="verify_section_try_free"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
               >
                 Try Verify — free
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </TrackedLink>
               <Link
                 href="/how-it-works"
                 className="inline-flex items-center gap-2 px-6 py-3 text-slate-600 text-sm font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
@@ -407,13 +412,15 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 mt-8">
-            <Link
+            <TrackedLink
               href="/climate-risk"
+              page="home"
+              cta="climate_section_check"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
             >
               Free climate risk check
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
             <Link
               href="/blog/uninsurable-property-climate-risk"
               className="text-sm text-slate-400 hover:text-teal-400 transition-colors"

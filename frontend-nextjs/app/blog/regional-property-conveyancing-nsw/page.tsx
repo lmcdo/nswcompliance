@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -599,13 +600,15 @@ export default function RegionalPropertyConveyancingPage() {
               and DCP controls for any NSW address. Run a free check to see what
               planning constraints apply to a regional property.
             </p>
-            <Link
+            <TrackedLink
               href="/check"
               className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+              page="regional-property-conveyancing-nsw"
+              cta="check_address"
             >
               Check a property
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 
