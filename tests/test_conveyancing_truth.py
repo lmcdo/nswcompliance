@@ -39,7 +39,7 @@ from generate_conveyancing_report import (  # noqa: E402
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "bowral_layerintersect.json"
-ANEF_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "mascot_anef_resolved.json"
+ANEF_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "wsa_anef_live.json"
 GENERATOR_PATH = _ROOT / "scripts" / "generate_conveyancing_report.py"
 
 
@@ -407,7 +407,7 @@ class TestLandTaxTruth:
 # 10. ANEF row + note (Slice B) — three-state, value data-derived
 # ---------------------------------------------------------------------------
 
-def _mascot_resolved() -> dict:
+def _wsa_resolved() -> dict:
     with open(ANEF_FIXTURE_PATH, encoding="utf-8") as fh:
         return json.load(fh)["resolved"]
 
@@ -416,22 +416,22 @@ _ANEF_HIT = {"layer_type": "anef", "value": "", "instrument": None, "lga": None}
 
 
 class TestAnefRowSemantics:
-    def test_value_found_renders_level_source_and_vintage(self):
-        """Mascot golden fixture: value, airport and ANEF vintage all render."""
-        text, style, source = build_anef_row(_mascot_resolved(), _ANEF_HIT)
-        assert "ANEF 35" in text
-        assert "Sydney Airport ANEF 2039" in text
+    def test_value_found_renders_code_and_provenance(self):
+        """WSA golden fixture: the verbatim band code and the mapping EPI both
+        render — never a parsed lower bound presented as exact."""
+        text, style, source = build_anef_row(_wsa_resolved(), _ANEF_HIT)
+        assert "ANEF 25 - 30" in text
+        assert "Western Parkland City" in text
+        assert "live query" in text
         assert style == "warn"
         assert "ANEF value lookup" in source
 
-    def test_regional_code_renders_verbatim(self):
-        """Live ePlanning band codes (e.g. '25-30') render verbatim, not a
-        parsed lower bound presented as exact."""
-        regional = {"status": "found", "anef_level": 25, "anef_code": "25-30",
-                    "airport": None, "anef_version": None,
-                    "source": "eplanning_protection_live"}
-        text, style, source = build_anef_row(regional, _ANEF_HIT)
-        assert "ANEF 25-30" in text
+    def test_level_only_hit_renders_numeric_level(self):
+        """A hit with no band code falls back to the numeric level."""
+        levelled = {"status": "found", "anef_level": 25, "anef_code": None,
+                    "epi_name": None, "source": "eplanning_protection_live"}
+        text, style, source = build_anef_row(levelled, _ANEF_HIT)
+        assert "ANEF 25" in text
         assert "live query" in text
 
     def test_empty_keeps_todays_wording(self):
@@ -459,31 +459,31 @@ class TestAnefRowSemantics:
         assert build_anef_row({"status": "failed"}, None) is None
 
     def test_value_without_ingest_hit_still_renders(self):
-        """Mascot gap (verified 2026-07-06): anef_zones resolves 35 but the
-        ingest has no anef polygon — the resolved contour must NOT vanish.
-        Mutation check: restoring `return None` for this state fails here."""
-        row = build_anef_row(_mascot_resolved(), None)
+        """A live-mapped contour with no ingested polygon must NOT vanish
+        (silent-false-negative class). Mutation check: restoring
+        `return None` for this state fails here."""
+        row = build_anef_row(_wsa_resolved(), None)
         assert row is not None
         text, style, source = row
-        assert "ANEF 35" in text
+        assert "ANEF 25 - 30" in text
         assert source == "ANEF value lookup"
         assert "PostGIS" not in source
 
     def test_synthetic_hit_not_attributed_to_postgis(self):
         """Provenance: a synthesized overlay (instrument ANEF_VALUE_LOOKUP)
         must not carry a PostGIS source label."""
-        synthetic = {"layer_type": "anef", "value": "ANEF 35",
+        synthetic = {"layer_type": "anef", "value": "ANEF 25 - 30",
                      "instrument": "ANEF_VALUE_LOOKUP", "lga": None}
-        text, style, source = build_anef_row(_mascot_resolved(), synthetic)
+        text, style, source = build_anef_row(_wsa_resolved(), synthetic)
         assert source == "ANEF value lookup"
         assert "PostGIS" not in source
 
 
 class TestAnefNote:
     def test_found_note_states_value_and_drops_obtain_instruction(self):
-        note = build_anef_note(_mascot_resolved())
-        assert "ANEF contour value at this location: 35" in note
-        assert "Sydney Airport ANEF 2039" in note
+        note = build_anef_note(_wsa_resolved())
+        assert "ANEF contour value at this location: 25 - 30" in note
+        assert "Western Parkland City" in note
         # the "obtain the value externally" instruction is the NO-value fallback
         assert "obtain the ANEF value from the relevant airport authority" not in note
         # the liability-audited AS 2021 / TI-SEPP wording is preserved verbatim
@@ -507,53 +507,44 @@ class TestAnefNote:
 
 class TestResolveAnefValueThreeState:
     """The shared resolver must distinguish empty from failed (mutation check:
-    swallowing the DB exception into a None/'empty' result fails these)."""
+    swallowing the transport exception into an 'empty' result fails these)."""
 
     def _resolver(self):
         import portal_constraints
         return portal_constraints
 
-    def test_db_failure_is_failed_not_empty(self, monkeypatch):
+    def test_lookup_failure_is_failed_not_empty(self, monkeypatch):
         pc = self._resolver()
-        def _boom(lat, lng):
-            raise RuntimeError("db down")
-        monkeypatch.setattr(pc, "fetch_anef_zone_exact", _boom)
-        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "failed"
-
-    def test_sydney_hit_is_found(self, monkeypatch):
-        pc = self._resolver()
-        monkeypatch.setattr(
-            pc, "fetch_anef_zone_exact",
-            lambda lat, lng: {"anef_level": 35, "airport": "Sydney", "anef_version": "ANEF 2039"},
-        )
-        out = pc.resolve_anef_value(-33.9, 151.2)
-        assert out["status"] == "found"
-        assert out["anef_level"] == 35
-        assert out["source"] == "anef_zones"
-        assert out["anef_version"] == "ANEF 2039"
-
-    def test_no_hit_anywhere_is_empty(self, monkeypatch):
-        pc = self._resolver()
-        monkeypatch.setattr(pc, "fetch_anef_zone_exact", lambda lat, lng: None)
-        monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
-        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "empty"
-
-    def test_regional_failure_is_failed(self, monkeypatch):
-        pc = self._resolver()
-        monkeypatch.setattr(pc, "fetch_anef_zone_exact", lambda lat, lng: None)
         def _boom(lat, lng):
             raise RuntimeError("arcgis timeout")
         monkeypatch.setattr(pc, "fetch_anef", _boom)
         assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "failed"
 
-    def test_regional_hit_is_found_with_code(self, monkeypatch):
+    def test_no_mapped_contour_is_empty(self, monkeypatch):
         pc = self._resolver()
-        monkeypatch.setattr(pc, "fetch_anef_zone_exact", lambda lat, lng: None)
+        monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
+        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "empty"
+
+    def test_live_hit_is_found_with_code_and_epi(self, monkeypatch):
+        pc = self._resolver()
         monkeypatch.setattr(
             pc, "fetch_anef",
-            lambda lat, lng: {"in_anef_zone": True, "anef_level": 25, "anef_code": "25-30"},
+            lambda lat, lng: {"in_anef_zone": True, "anef_level": 25,
+                              "anef_code": "25 - 30", "epi_name": "Liverpool Local Environmental Plan 2008"},
         )
         out = pc.resolve_anef_value(-33.9, 151.2)
         assert out["status"] == "found"
-        assert out["anef_code"] == "25-30"
+        assert out["anef_code"] == "25 - 30"
+        assert out["epi_name"] == "Liverpool Local Environmental Plan 2008"
         assert out["source"] == "eplanning_protection_live"
+
+    def test_curated_anef_zones_never_consulted(self, monkeypatch):
+        """Data-quality quarantine: the coarse anef_zones digitisations must not
+        feed parcel-level values into the PDF. Mutation check: re-adding the
+        anef_zones step to resolve_anef_value fails this."""
+        pc = self._resolver()
+        def _forbidden(lat, lng):
+            raise AssertionError("anef_zones consulted by resolve_anef_value")
+        monkeypatch.setattr(pc, "fetch_anef_zone_exact", _forbidden)
+        monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
+        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "empty"

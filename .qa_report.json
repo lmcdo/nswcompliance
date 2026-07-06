@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "User-facing legal due-diligence PDF: land-tax figures previously rendered from a hardcoded 2025 fallback on EVERY production report (tax_thresholds table verified ABSENT from production 2026-07-06 — migration 046 never applied), and the ANEF contour value the platform already resolves was never surfaced. Both slices change sentences a buyer relies on before exchange, so Critical tier applies.",
-  "commit_hash": "708999fe",
+  "commit_hash": "d7738106",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "scripts/conveyancing_db.py",
@@ -9,11 +9,11 @@
     "services/portal_constraints.py",
     "services/intelligence_brief.py",
     "tests/test_conveyancing_truth.py",
-    "tests/fixtures/mascot_anef_resolved.json"
+    "tests/fixtures/wsa_anef_live.json"
   ],
   "pre_impl": {
-    "existing_data": "tax_thresholds table (migration 046) verified ABSENT from production DB via read-only probe 2026-07-06 — the hardcoded 2025 fallback fired on every PDF ever generated; anef_zones holds 5 Sydney zones (YSSY, version 'ANEF 2039', levels 20-40, updated 2026-01-17); Mascot probe (1 Coward St, -33.92718/151.20598 from property_reports) returns level 35 — recorded as tests/fixtures/mascot_anef_resolved.json.",
-    "assumption_mismatch": "If tax_thresholds is later created and seeded, sentences pick up the DB row's own tax_year automatically; if a stale-year row is served the year renders verbatim beside every figure plus a WARNING log. If anef_zones vintage changes, anef_version rides with the value into the sentence — no wording change needed.",
+    "existing_data": "tax_thresholds table (migration 046) verified ABSENT from production DB via read-only probe 2026-07-06 — the hardcoded 2025 fallback fired on every PDF ever generated. ANEF: the live ePlanning Protection layer (MapServer/2) holds 29 LEP/SEPP-mapped contour features (Liverpool, Upper Hunter, Western Sydney Airport precincts; NO Sydney KSA coverage); the curated anef_zones table was measured at 10-13 vertices per contour with the ANEF-20 polygon covering ~789 km2 — too coarse for parcel-level claims, so it is quarantined from the PDF value path. Positive golden recorded live at Badgerys Creek (tests/fixtures/wsa_anef_live.json).",
+    "assumption_mismatch": "If tax_thresholds is later created and seeded, sentences pick up the DB row's own tax_year automatically; a stale-year row renders its year verbatim plus a WARNING log. ANEF provenance names the mapping instrument (EPI_NAME) returned by the live layer and states 'live query at report generation' — if the government layer gains or loses features the sentence tracks it query-by-query, nothing is cached or hardcoded.",
     "new_vs_existing": "No new data sources: fetch_anef_zone_exact is LIFTED from intelligence_brief.fetch_anef_zone (which now delegates, contract preserved — brief tests monkeypatch the wrapper and still pass); regional fallback reuses existing portal_constraints.fetch_anef; load_regulatory_configs MOVED from services/conveyancing.py so the CLI path injects the same configs the API path uses.",
     "external_source_error": "resolve_anef_value is three-state: anef_zones DB error or live ArcGIS exception returns status 'failed' (rendered as explicit 'not assessed' wording), never conflated with 'empty' (no contour at the point); query_arcgis_point raises on HTTP failure so a transport error cannot masquerade as a clean miss.",
     "frontend_type": "No TypeScript touched — the PDF renderer and FastAPI service are Python-only surfaces; the free-tier JSON contract gains no new fields (confidence string semantics unchanged, feasibility rows keep question/answer/flag/basis shape).",
@@ -45,15 +45,15 @@
       "name": "resolve_anef_value",
       "file_line": "services/portal_constraints.py:274",
       "input": "latitude and longitude of the resolved parcel point",
-      "output": "status dict: found with level, verbatim code, airport, anef_version and source; or empty; or failed",
-      "if_none": "any lookup exception returns status failed — the unknown value is never re-stamped as an authoritative empty result"
+      "output": "status dict: found with level, verbatim band code, EPI name and source; or empty; or failed",
+      "if_none": "lookup exception returns status failed — never re-stamped as empty; the coarse anef_zones table is never consulted (guard test)"
     },
     {
       "name": "fetch_anef_zone_exact",
       "file_line": "services/portal_constraints.py:238",
       "input": "latitude and longitude, queried against the curated anef_zones table",
       "output": "dict with anef_level, airport and anef_version for the highest contour containing the point, or None",
-      "if_none": "returns None only for a genuine no-contour point; DB unavailability RAISES so callers decide fail-open versus fail-closed"
+      "if_none": "returns None only for a genuine no-contour point; RAISES on DB failure; serves the brief only — quarantined from the PDF value path for geometry-quality reasons"
     },
     {
       "name": "load_regulatory_configs",
@@ -79,11 +79,11 @@
       "if_missing": "Not-assessed row with the expected year named; no KeyError path because keys are only read after the None gate"
     },
     {
-      "value": "anef_live.anef_code / anef_level / anef_version / airport",
+      "value": "anef_live.anef_code / anef_level / epi_name",
       "read_at": "scripts/generate_conveyancing_report.py:2058",
-      "nullable": "yes — regional hits have no airport or version; code is None for Sydney table hits",
-      "guard_at": "scripts/generate_conveyancing_report.py:2058 (_anef_value_display prefers verbatim code, falls back to level; _anef_source_label omits absent version)",
-      "if_missing": "sentence renders the fields the data actually carries — a missing vintage is omitted, never invented"
+      "nullable": "yes — code or EPI may be absent on a live hit; level may be unparseable from the band code",
+      "guard_at": "scripts/generate_conveyancing_report.py:2058 (_anef_value_display prefers verbatim code, falls back to level; _anef_source_label omits an absent EPI)",
+      "if_missing": "sentence renders the fields the data actually carries — an absent instrument name is omitted, never invented"
     }
   ],
   "queries": [
@@ -91,7 +91,7 @@
       "purpose": "highest ANEF contour containing the parcel point from the curated anef_zones table",
       "file_line": "services/portal_constraints.py:255",
       "where_clause": "bbox pre-filter on min/max lon/lat AND ST_Contains(geometry, point) ORDER BY anef_level DESC LIMIT 1",
-      "if_zero": "returns None — resolver proceeds to the live regional layer before concluding 'empty'",
+      "if_zero": "returns None (brief-only path; the PDF resolver uses the live ePlanning layer exclusively)",
       "if_wrong": "5s statement timeout raises; the raise surfaces as status failed, rendered as not-assessed wording"
     }
   ],
@@ -111,11 +111,11 @@
       "repro": "python -m pytest tests/test_conveyancing_truth.py -k config_absent"
     },
     {
-      "scenario": "anef_zones is re-digitised with a new forecast version and our sentence keeps citing the old vintage",
-      "what_happens": "The vintage is read from the row's anef_version column at query time, so the sentence updates with the data; no code carries 'ANEF 2039' as a constant",
+      "scenario": "Someone re-adds the curated anef_zones table as a PDF value source despite its coarse geometry",
+      "what_happens": "12-vertex approximations (ANEF-20 polygon ~789 km2) would stamp false contour values on fringe lots — Pymble rendered 'ANEF 20' and Concord 'ANEF 25' during pre-quarantine verification",
       "mitigated": true,
-      "how": "fetch_anef_zone_exact selects anef_version and _anef_source_label renders it verbatim; golden fixture pins the current vintage so a silent schema change breaks the test",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k value_found_renders"
+      "how": "resolve_anef_value queries only the live ePlanning layer; test_curated_anef_zones_never_consulted monkeypatches fetch_anef_zone_exact to raise AssertionError if touched",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k never_consulted"
     },
     {
       "scenario": "ANEF value lookup throws (DB down, ArcGIS timeout) while the lot IS inside a mapped contour",
@@ -125,11 +125,11 @@
       "repro": "python -m pytest tests/test_conveyancing_truth.py -k failed"
     },
     {
-      "scenario": "The spatial_overlays ingest lacks the anef polygon while the curated table resolves a real contour (live Mascot state, verified 2026-07-06)",
-      "what_happens": "Pre-change the PDF showed NO aircraft-noise row at 1 Coward St Mascot despite ANEF 35 — a silent false negative in a legal document; post-change the resolved value synthesizes the overlay so the cover count, delta callout, risk row, note and consultant table all state it",
+      "scenario": "A live-mapped contour exists where the spatial_overlays ingest has no anef polygon",
+      "what_happens": "Pre-change the PDF silently omitted the aircraft-noise row for such lots; post-change the resolved value synthesizes the overlay so the cover count, delta callout, risk row, note and consultant table all state it",
       "mitigated": true,
       "how": "generate_pdf reconciliation block mirrors the bushfire live-wins precedent; build_anef_row renders a found value even with no ingest hit",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k without_ingest; regenerate the Mascot PDF and read the Risk Summary"
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k without_ingest"
     },
     {
       "scenario": "The synthesized ANEF row gets attributed to PostGIS even though the ingest never saw the contour",

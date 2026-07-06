@@ -271,46 +271,39 @@ def fetch_anef_zone_exact(lat: float, lng: float) -> Optional[dict]:
     return {"anef_level": level, "airport": airport, "anef_version": version}
 
 
+# prior-art-checked: no new source — this narrows resolve_anef_value to the
+# EXISTING fetch_anef (same module, above) after measuring that the curated
+# anef_zones geometries are too coarse for parcel-level value claims.
 def resolve_anef_value(lat: float, lng: float) -> dict:
     """Resolve the ANEF contour value at a point — three-state, never silent.
 
-    Tries the curated ``anef_zones`` table (Sydney) first, then the live
-    ePlanning Protection ANEF layer (regional airports). Returns:
+    Queries the live ePlanning Protection ANEF layer ONLY (LEP/SEPP-mapped
+    airport-noise contours: Bankstown/Liverpool, Upper Hunter, Western Sydney
+    Airport precincts — 29 features, verified 2026-07-06). The curated
+    ``anef_zones`` table (Sydney KSA) is deliberately NOT consulted here: its
+    contours are 10-13-vertex digitisations whose ANEF-20 polygon covers
+    ~789 km² (far beyond the published ANEF 2039 20-contour), so it cannot
+    support parcel-level value claims in a legal document. Returns:
 
-      {"status": "found", "anef_level": int, "anef_code": str | None,
-       "airport": str | None, "anef_version": str | None, "source": str}
-      {"status": "empty"}   -- both lookups ran; no contour value at this point
-      {"status": "failed"}  -- a lookup errored; the value is unknown, not absent
+      {"status": "found", "anef_level": int | None, "anef_code": str | None,
+       "epi_name": str | None, "source": "eplanning_protection_live"}
+      {"status": "empty"}   -- the lookup ran; no mapped contour at this point
+      {"status": "failed"}  -- the lookup errored; the value is unknown, not absent
 
     Callers must render "failed" as not-assessed wording, never as a clear/empty
     result (PR #674 bushfire-row precedent).
     """
     try:
-        sydney = fetch_anef_zone_exact(lat, lng)
-    except Exception:
-        logger.warning("resolve_anef_value: anef_zones lookup failed")
-        return {"status": "failed"}
-    if sydney and sydney.get("anef_level") is not None:
-        return {
-            "status": "found",
-            "anef_level": sydney.get("anef_level"),
-            "anef_code": None,
-            "airport": sydney.get("airport"),
-            "anef_version": sydney.get("anef_version"),
-            "source": "anef_zones",
-        }
-    try:
-        regional = fetch_anef(lat, lng)
+        live = fetch_anef(lat, lng)
     except Exception:
         logger.warning("resolve_anef_value: live ePlanning ANEF query failed")
         return {"status": "failed"}
-    if regional and (regional.get("anef_level") is not None or regional.get("anef_code")):
+    if live and (live.get("anef_level") is not None or live.get("anef_code")):
         return {
             "status": "found",
-            "anef_level": regional.get("anef_level"),
-            "anef_code": regional.get("anef_code") or None,
-            "airport": None,
-            "anef_version": None,
+            "anef_level": live.get("anef_level"),
+            "anef_code": live.get("anef_code") or None,
+            "epi_name": live.get("epi_name") or None,
             "source": "eplanning_protection_live",
         }
     return {"status": "empty"}

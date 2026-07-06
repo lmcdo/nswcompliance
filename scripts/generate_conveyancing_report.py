@@ -2065,15 +2065,12 @@ def _anef_value_display(anef_live: dict) -> str:
 
 
 def _anef_source_label(anef_live: dict) -> str:
-    """Human-readable provenance for a resolved ANEF value — names the layer
-    and carries the data's own vintage (anef_version), never an implied
-    'current' (PR #678 precedent)."""
-    if anef_live.get("source") == "anef_zones":
-        airport = anef_live.get("airport") or "airport"
-        version = anef_live.get("anef_version")
-        version_str = f" {version}" if version else ""
-        return f"{airport} Airport{version_str} contours, curated anef_zones layer"
-    return "NSW ePlanning Protection ANEF mapping, live query at report generation"
+    """Human-readable provenance for a resolved ANEF value — names the mapping
+    instrument the government layer attributes the contour to (EPI_NAME),
+    never an implied 'current' (PR #678 precedent)."""
+    epi = anef_live.get("epi_name")
+    epi_str = f"{epi} airport-noise mapping, " if epi else ""
+    return f"{epi_str}NSW ePlanning Protection ANEF layer, live query at report generation"
 
 
 def build_anef_row(
