@@ -1,6 +1,6 @@
 {
  "tier": "critical",
- "commit_hash": "7b64a610",
+ "commit_hash": "383625df",
  "justification": "Fixes five live-verified truth defects in the conveyancing PDF (a legal due-diligence document): a fabricated LEP height attribution in the shadow row, silent dropping of unrecognised Planning Portal layer groups (missed the Sydney Drinking Water Catchment constraint at Bowral), a false claim that the NSW state layer lacks data for an LGA when the gap is in our own ingest, blanket false s10.7(2) non-disclosure claims, and a Codes SEPP setback wrongly attributed to TI SEPP s2.120 — plus golden-sentence tests and a fail-soft lint extension so the defect class cannot silently return.",
  "files": [
   "scripts/generate_conveyancing_report.py",
