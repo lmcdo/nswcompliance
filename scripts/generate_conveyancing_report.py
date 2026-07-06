@@ -1823,6 +1823,81 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
     return nearby[:10]
 
 
+# prior-art-checked: these wire the EXISTING services/da_outcome.py client
+# (already consumed by the Intelligence Brief) into the conveyancing PDF —
+# no new endpoint client is built here. The two pure helpers exist so the
+# exact user-visible outcome wording is testable without reportlab.
+def get_da_outcomes_live(lat: float, lng: float, radius_m: int = 200) -> Optional[dict]:
+    """Live PAN → determination-result map from the DA tracking layer.
+
+    Reuses services/da_outcome.query_da_outcomes_near (the client the brief
+    uses). Result values are the portal's ASSESMENT_RESULT strings verbatim.
+    Returns None when the query fails or the client cannot be imported —
+    callers then render the plain application status and make no result claim.
+    """
+    try:
+        try:
+            from services.da_outcome import query_da_outcomes_near
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from services.da_outcome import query_da_outcomes_near
+        rows = query_da_outcomes_near(lng, lat, radius_m=radius_m, years_back=2)
+        return {
+            r.planning_portal_number: r.outcome
+            for r in rows
+            if r.planning_portal_number and r.outcome
+        }
+    except Exception as e:
+        print(f"  [warn] DA outcome lookup unavailable: {e}")
+        return None
+
+
+def enrich_das_with_outcomes(das: Optional[list], outcome_by_pan: Optional[dict]) -> Optional[list]:
+    """Attach the portal's determination result to each nearby-DA row.
+
+    Sets ``outcome`` on every row: the tracking layer's value verbatim when the
+    PAN matches, else None (renderer shows the plain status, no result claim).
+    A None map (failed lookup) marks every row None — indistinguishable from
+    no-match by design: neither may produce a result claim.
+    """
+    if das is None:
+        return None
+    lookup = outcome_by_pan or {}
+    for da in das:
+        da["outcome"] = lookup.get((da.get("number") or "").strip()) or None
+    return das
+
+
+def build_da_outcome_summary(das: Optional[list]) -> Optional[str]:
+    """Factual tally of portal-recorded determination results, or None.
+
+    Counts only results recorded by the DA tracking layer (values verbatim,
+    lower-cased for prose); rows without one are reported as not having a
+    recorded result. No recorded results at all → None, so a failed lookup
+    yields no sentence rather than a wrong one.
+    """
+    das = das or []
+    counted: dict[str, int] = {}
+    for da in das:
+        oc = (da.get("outcome") or "").strip()
+        if oc:
+            counted[oc] = counted.get(oc, 0) + 1
+    if not counted:
+        return None
+    no_result = len(das) - sum(counted.values())
+    parts = ", ".join(f"{n} {oc.lower()}" for oc, n in sorted(counted.items()))
+    tail = (
+        f"; {no_result} with no recorded result (pending or not yet published)"
+        if no_result else ""
+    )
+    return (
+        f"Determination results recorded by the NSW Planning Portal application tracker "
+        f"for the {len(das)} application(s) shown: {parts}{tail}."
+    )
+
+
 # ---------------------------------------------------------------------------
 # PDF generation
 # ---------------------------------------------------------------------------
@@ -3692,11 +3767,18 @@ def generate_pdf(
     if das:
         da_rows = [["DA Number", "Dist.", "Lodged", "Status", "Description"]]
         for da in das:
+            # Determination result (DA tracking layer, verbatim) rides in the
+            # status cell — OnlineDA's "Determined" alone hides the result.
+            _status_text = da["status"] or ""
+            if da.get("outcome"):
+                _status_text = (
+                    f"{_status_text} — {da['outcome']}" if _status_text else da["outcome"]
+                )
             da_rows.append([
                 da["number"],
                 f"{da['distance_m']}m",
                 da["lodged"],
-                da["status"],
+                Paragraph(_status_text, ss["body"]),
                 Paragraph(da["description"], ss["body"]),
             ])
         story.append(table(da_rows, [38 * mm, 16 * mm, 22 * mm, 28 * mm, CW - 104 * mm]))
@@ -3706,6 +3788,10 @@ def generate_pdf(
             "Review descriptions above for potential amenity, overshadowing or construction impacts.",
             ss["note"]
         ))
+        _da_outcome_summary = build_da_outcome_summary(das)
+        if _da_outcome_summary:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph(_da_outcome_summary, ss["note"]))
     elif das is None:
         # DA search failed or was not run — say so; an empty-looking section
         # must never read as "no DAs" when the records were not checked.
@@ -3960,6 +4046,10 @@ def main():
         print("\nSkipping DA search — council could not be derived from LEP")
         das = None
     print(f"  {len(das)} DAs within 200m" if das is not None else "  DA search not run")
+    if das:
+        das = enrich_das_with_outcomes(das, get_da_outcomes_live(lat, lng))
+        _n_outcomes = sum(1 for d in das if d.get("outcome"))
+        print(f"  Determination results from DA tracking layer: {_n_outcomes}/{len(das)}")
 
     # Detect Inner West former council for DCP setback lookup
     zone_epi = controls.get("zone_epi", "") if controls else ""

@@ -78,6 +78,8 @@ from generate_conveyancing_report import (  # noqa: E402
     calc_development_headroom,
     detect_strata,
     detect_former_council,
+    enrich_das_with_outcomes,
+    get_da_outcomes_live,
     get_shadow_risk,
     _council_from_zone_epi,
 )
@@ -491,6 +493,10 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         finally:
             if conn:
                 conn.close()
+        if _das:
+            # Determination results (DA tracking layer) — a failed lookup
+            # returns None and the rows simply carry no result claim.
+            _das = enrich_das_with_outcomes(_das, get_da_outcomes_live(req.lat, req.lng))
         return _das, _lep, _dcp, _heritage
 
     def _fetch_shadow():
