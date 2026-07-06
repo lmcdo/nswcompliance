@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp  # noqa: E402
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -153,11 +153,17 @@ BUSHFIRE_NOTE_DEFAULT = (
     "restricted. Source: NSW Rural Fire Service BFPL mapping."
 )
 
-ANEF_NOTE = (
+# Split so the value-known variant (build_anef_note) reuses the liability-audited
+# AS 2021 / TI-SEPP wording verbatim; ANEF_NOTE itself is byte-identical to the
+# pre-split constant (golden fallback for when no contour value resolves).
+_ANEF_NOTE_BASE = (
     "Aircraft Noise Contour — this property falls within an Australian Noise Exposure "
     "Forecast (ANEF) contour. Under SEPP (Transport and Infrastructure) 2021 and AS 2021, "
     "residential development within ANEF contours may require acoustic attenuation design "
-    "and an acoustic report from an accredited acoustic consultant. The specific restrictions "
+    "and an acoustic report from an accredited acoustic consultant. "
+)
+ANEF_NOTE = _ANEF_NOTE_BASE + (
+    "The specific restrictions "
     "depend on the contour value — obtain the ANEF value from the relevant airport authority "
     "and confirm development requirements with council or a qualified acoustic consultant. "
     "Source: NSW Government ArcGIS spatial overlay (ANEF mapping)."
@@ -215,14 +221,10 @@ CLASSIFIED_ROAD_NOTE = (
     "certifier or town planner."
 )
 
-# Land tax fallbacks — used only when DB is unreachable.
-# Authoritative source: tax_thresholds table (migration 046).
-_LT_FALLBACK = {
-    "tax_year": 2025,
-    "threshold_dollars": 1_075_000,
-    "rate": 0.016,
-    "base_amount_dollars": 100,
-}
+# Land tax: NO hardcoded fallback. The only source is the tax_thresholds table
+# (migration 046) — a fallback constant IS a hardcoded regulatory value, and it
+# rendered silently-stale figures in a legal document (PR #674 D1/D3 defect
+# class). When no config is injected the section renders "Not assessed".
 
 # Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
 # Authoritative source: housing_sepp_standards table (migration 045).
@@ -610,10 +612,12 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
 
     sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
-        sd_min_lot (float), sd_zones (set[str]).
+        sd_min_lot (float), sd_zones (set[str]). Falls back to hardcoded
+        values if not provided or if DB was unreachable.
     tax_config: pre-loaded from tax_thresholds table. Keys:
         tax_year, threshold_dollars, rate, base_amount_dollars.
-    Both fall back to hardcoded values if not provided or if DB was unreachable.
+        NO fallback: when absent the land-tax section renders "Not assessed"
+        — a stale or hardcoded regulatory figure never renders silently.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
@@ -792,45 +796,77 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         })
 
     # 5. Land tax (investment property)
-    # Source: tax_thresholds table (migration 046), fallback to hardcoded.
+    # Source: tax_thresholds table (migration 046) ONLY — no hardcoded fallback
+    # (invariant: a legal document never renders a regulatory figure the DB did
+    # not supply). Absent config renders fail-visible as "Not assessed".
     # Suppress for strata: VG returns whole-lot land value (building site), not unit value
-    _lt = tax_config or _LT_FALLBACK
-    if not tax_config:
-        print("  [warn] calc_feasibility: using land tax fallback values (no DB config injected)")
-    lt_year = _lt["tax_year"]
-    lt_threshold = _lt["threshold_dollars"]
-    lt_rate = _lt["rate"]
-    lt_base = _lt["base_amount_dollars"]
-
     lv = valuation.get("land_value")
     if lv and not is_strata:
-        lv_int = int(lv)
-        if lv_int > lt_threshold:
-            annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
-            results.append({
-                "question": f"Land tax (investment, {lt_year} thresholds)",
-                "answer": f"${round(annual_lt):,}/year",
-                "flag": "warn",
-                "basis": (
-                    f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
-                    f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
-                    f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
-                    f"Verify current thresholds at revenue.nsw.gov.au."
-                )
-            })
-        else:
-            results.append({
-                "question": f"Land tax (investment, {lt_year} thresholds)",
-                "answer": "Below threshold — nil",
-                "flag": "ok",
-                "basis": (
-                    f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
-                    "No land tax payable on investment property. PPOR always exempt. "
-                    "Verify current thresholds at revenue.nsw.gov.au."
-                )
-            })
+        results.extend(build_land_tax_rows(int(lv), tax_config))
 
     return results
+
+
+def build_land_tax_rows(lv_int: int, tax_config: Optional[dict]) -> list[dict]:
+    """Land-tax feasibility rows — pure sentence builder, golden-tested.
+
+    tax_config absent → "Not assessed" with the expected year named; figures are
+    NEVER computed from constants (fail-visible, invariant 7). A stale-year row
+    renders with its own tax_year visible plus a WARNING log.
+    """
+    if tax_config is None:
+        _expected_year = date.today().year
+        logger.warning(
+            "calc_feasibility: land tax config unavailable for the %s year — "
+            "rendering 'Not assessed' (no figures computed)", _expected_year,
+        )
+        return [{
+            "question": "Land tax (investment property)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                f"Land tax configuration unavailable for the {_expected_year} land tax "
+                f"year — no threshold or liability figures were computed for this report. "
+                f"Current thresholds and rates: revenue.nsw.gov.au."
+            )
+        }]
+
+    lt_year = tax_config["tax_year"]
+    lt_threshold = tax_config["threshold_dollars"]
+    lt_rate = tax_config["rate"]
+    lt_base = tax_config["base_amount_dollars"]
+    if lt_year < date.today().year:
+        # Stale-year config renders anyway — the sentence carries its own year
+        # verbatim, which keeps it honest — but loudly.
+        logger.warning(
+            "calc_feasibility: tax_thresholds row is for %s but the current land tax "
+            "year is %s — rendering the %s figures with their year visible",
+            lt_year, date.today().year, lt_year,
+        )
+
+    if lv_int > lt_threshold:
+        annual_lt = lt_base + (lv_int - lt_threshold) * lt_rate
+        return [{
+            "question": f"Land tax (investment, {lt_year} thresholds)",
+            "answer": f"${round(annual_lt):,}/year",
+            "flag": "warn",
+            "basis": (
+                f"Land value ${lv_int:,} exceeds {lt_year} threshold ${lt_threshold:,}. "
+                f"${lt_base} + {lt_rate * 100:.1f}% × ${lv_int - lt_threshold:,} = ${round(annual_lt):,}/year. "
+                f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
+                f"Verify current thresholds at revenue.nsw.gov.au."
+            )
+        }]
+    return [{
+        "question": f"Land tax (investment, {lt_year} thresholds)",
+        "answer": "Below threshold — nil",
+        "flag": "ok",
+        "basis": (
+            f"Land value ${lv_int:,} is below {lt_year} threshold ${lt_threshold:,}. "
+            "No land tax payable on investment property. PPOR always exempt. "
+            "Verify current thresholds at revenue.nsw.gov.au."
+        )
+    }]
 
 
 def calc_development_headroom(controls: dict, valuation: dict) -> dict:
@@ -2015,6 +2051,127 @@ def build_bushfire_row(
     )
 
 
+# prior-art-checked: mirrors build_bushfire_row above (same file) — a pure,
+# golden-tested row builder; the value RESOLUTION reuses the existing
+# portal_constraints.resolve_anef_value (lifted anef_zones query + existing
+# fetch_anef), nothing reimplemented.
+def _anef_value_display(anef_live: dict) -> str:
+    """Verbatim contour value for display: the source's code (e.g. "25-30")
+    when present, else the numeric level."""
+    code = anef_live.get("anef_code")
+    if code:
+        return str(code)
+    return str(anef_live.get("anef_level"))
+
+
+def _anef_source_label(anef_live: dict) -> str:
+    """Human-readable provenance for a resolved ANEF value — names the mapping
+    instrument the government layer attributes the contour to (EPI_NAME),
+    never an implied 'current' (PR #678 precedent)."""
+    epi = anef_live.get("epi_name")
+    epi_str = f"{epi} airport-noise mapping, " if epi else ""
+    return f"{epi_str}NSW ePlanning Protection ANEF layer, live query at report generation"
+
+
+def build_anef_row(
+    anef_live: Optional[dict],
+    postgis_hit: Optional[dict],
+) -> Optional[tuple[str, str, str]]:
+    """Build the Risk Summary ANEF row: (text, style_key, source_label) or None.
+
+    Semantics (three-state, bushfire-row precedent):
+      no ingested ANEF overlay        → None (row omitted — Bowral regression)
+      overlay + value resolved        → row states the contour value + provenance
+      overlay + lookup ran, no value  → today's wording (honest fallback)
+      overlay + lookup FAILED         → value explicitly "not assessed",
+                                        never a silent omission
+    """
+    status = (anef_live or {}).get("status")
+    if postgis_hit is None:
+        if status == "found":
+            # The curated/live value source governs over the ingest (bushfire
+            # D3 precedent) — a resolved contour is a TRUE constraint and must
+            # not vanish because our ingest lacks the polygon (Mascot gap,
+            # verified 2026-07-06: anef_zones=35, spatial_overlays=no hit).
+            logger.warning(
+                "ANEF value resolved (%s) but no ingested anef overlay hit — "
+                "rendering from the value lookup; check spatial_overlays anef ingest",
+                _anef_value_display(anef_live),
+            )
+            return (
+                f"Aircraft noise contour — ANEF {_anef_value_display(anef_live)} "
+                f"({_anef_source_label(anef_live)})",
+                "warn",
+                "ANEF value lookup",
+            )
+        # No ingest hit and no resolved value → no contour claim (row omitted);
+        # a failed lookup on a lot with no mapped contour is a non-event.
+        return None
+    if status == "found":
+        # A synthesized hit (ingest missed the contour; overlay added from the
+        # value lookup) must not be attributed to PostGIS.
+        _synthetic = (postgis_hit or {}).get("instrument") == "ANEF_VALUE_LOOKUP"
+        return (
+            f"Aircraft noise contour — ANEF {_anef_value_display(anef_live)} "
+            f"({_anef_source_label(anef_live)})",
+            "warn",
+            "ANEF value lookup" if _synthetic else "PostGIS + ANEF value lookup",
+        )
+    if status == "failed":
+        return (
+            "Aircraft noise contour — ANEF applies. Contour value not assessed — "
+            "value lookup unavailable at report generation.",
+            "warn",
+            "PostGIS",
+        )
+    # status "empty", or the lookup was not run: today's exact wording
+    return (
+        "Aircraft noise contour — ANEF applies",
+        "warn",
+        "PostGIS",
+    )
+
+
+def build_anef_note(anef_live: Optional[dict]) -> Optional[str]:
+    """Section 5 note override when the contour value is known or the lookup
+    failed; None keeps the static ANEF_NOTE (the honest no-value fallback)."""
+    status = (anef_live or {}).get("status")
+    if status == "found":
+        return _ANEF_NOTE_BASE + (
+            f"ANEF contour value at this location: {_anef_value_display(anef_live)} "
+            f"(source: {_anef_source_label(anef_live)}). The specific restrictions "
+            f"depend on the contour value — confirm development requirements with "
+            f"council or a qualified acoustic consultant."
+        )
+    if status == "failed":
+        return ANEF_NOTE + (
+            " The contour value lookup was unavailable when this report was "
+            "generated — the contour value is not assessed in this report."
+        )
+    return None
+
+
+def get_anef_live(lat: float, lng: float) -> dict:
+    """ANEF contour value lookup for the CLI report path — three-state.
+
+    Wraps services.portal_constraints.resolve_anef_value (the shared resolver).
+    Import or runtime failure returns {"status": "failed"} — build_anef_row
+    renders that as not-assessed wording, never silence.
+    """
+    try:
+        try:
+            from portal_constraints import resolve_anef_value
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import resolve_anef_value
+        return resolve_anef_value(lat, lng)
+    except Exception as e:
+        print(f"  [warn] ANEF value lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -2078,6 +2235,7 @@ def generate_pdf(
     dcp_setbacks_db: Optional[dict] = None,
     proximity_m: Optional[dict] = None,
     bushfire_live: Optional[dict] = None,
+    anef_live: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -2156,6 +2314,24 @@ def generate_pdf(
             _bf_postgis_hit.get("value"),
         )
         unique_overlays = [o for o in unique_overlays if o["layer_type"] != "bushfire"]
+
+    # ------------------------------------------------------------------
+    # ANEF: a resolved contour value (curated anef_zones / live ePlanning)
+    # governs over the ingest, same as bushfire above — synthesize the overlay
+    # when the ingest missed it so the cover tile, delta callout, risk row,
+    # Section 5 note and consultant table all state the contour. A lookup that
+    # found nothing never REMOVES an ingested hit (the ingest polygon may
+    # still be right — the note wording stays the honest fallback).
+    # ------------------------------------------------------------------
+    if (anef_live or {}).get("status") == "found" and not any(
+        o["layer_type"] == "anef" for o in unique_overlays
+    ):
+        unique_overlays = list(unique_overlays) + [{
+            "layer_type": "anef",
+            "value": f"ANEF {_anef_value_display(anef_live)}",
+            "instrument": "ANEF_VALUE_LOOKUP",
+            "lga": None,
+        }]
 
     def hr():
         story.append(HRFlowable(width="100%", thickness=0.8, color=TEAL))
@@ -2400,6 +2576,12 @@ def generate_pdf(
         if _bf_specific:
             _bushfire_note_dynamic = _bf_specific
         # else fall back to BUSHFIRE_NOTE_DEFAULT (via static POSTGIS_NOTES entry)
+
+    # ANEF — note carries the resolved contour value (or the explicit lookup
+    # failure); None falls back to the static ANEF_NOTE.
+    _anef_note_dynamic: str | None = None
+    if "anef" in unique_by_type:
+        _anef_note_dynamic = build_anef_note(anef_live)
 
     DELTA_CHECKS = [
         ("Biodiversity Values Map (BDAR trigger)", "biodiversity"),
@@ -2692,8 +2874,18 @@ def generate_pdf(
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage", "warn"),
         ["Bushfire Prone Land (BAL assessment)", Paragraph(_bf_text, ss[_bf_style]), _bf_source],
-        flag("anef",                    "Aircraft Noise Contour (ANEF)", "warn"),
     ]
+    # ANEF row — three-state builder: contour value when resolved, honest
+    # fallback when empty, explicit not-assessed on lookup failure. None when
+    # the lot has no ingested ANEF overlay (row omitted, Bowral regression).
+    _anef_row = build_anef_row(anef_live, unique_by_type.get("anef"))
+    if _anef_row is not None:
+        _an_text, _an_style, _an_source = _anef_row
+        risk_rows.append([
+            "Aircraft Noise Contour (ANEF)",
+            Paragraph(_an_text, ss[_an_style]),
+            _an_source,
+        ])
     # TOD — opportunity signal (green/ok style), not a risk
     tod_type = next((t for t in ("tod_accelerated", "tod_precinct", "tod_deferred")
                      if t in unique_by_type), None)
@@ -3218,6 +3410,8 @@ def generate_pdf(
                 display_note = _flood_note_dynamic
             elif layer_type == "bushfire" and _bushfire_note_dynamic:
                 display_note = _bushfire_note_dynamic
+            elif layer_type == "anef" and _anef_note_dynamic:
+                display_note = _anef_note_dynamic
             else:
                 display_note = note_text
             story.append(Paragraph(display_note, ss["note"]))
@@ -3945,7 +4139,15 @@ def main():
         print(f"  Torrens title — but strata scheme exists on this parcel ({strata_info.get('plan_label')})")
     else:
         print(f"  Torrens title — {strata_info.get('plan_label', 'plan unknown')}")
-    feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata)
+    # DB-loaded regulatory configs (SEPP standards + land tax thresholds) —
+    # same loader the API path uses; a None tax_config renders "Not assessed".
+    _sepp_standards, _tax_config = load_regulatory_configs(os.getenv("DATABASE_URL"))
+    if _tax_config is None:
+        print("  [warn] land tax config unavailable — land tax section renders 'Not assessed'")
+    feasibility = calc_feasibility(
+        controls, valuation, unique_overlays, is_strata=strata,
+        sepp_standards=_sepp_standards, tax_config=_tax_config,
+    )
 
     raw_council = args.council or _council_from_zone_epi(controls.get("zone_epi", ""))
     council_name = _normalise_council(raw_council) if args.council else raw_council
@@ -4044,6 +4246,15 @@ def main():
         print(f"  Bushfire prone: {bushfire_live.get('is_bushfire_prone')} "
               f"{bushfire_live.get('designation_category') or ''}")
 
+    print("\nResolving ANEF contour value ...")
+    anef_live = get_anef_live(lat, lng)
+    if anef_live.get("status") == "found":
+        print(f"  ANEF value: {_anef_value_display(anef_live)} ({_anef_source_label(anef_live)})")
+    elif anef_live.get("status") == "failed":
+        print("  ANEF value lookup failed — row will state 'not assessed' if an ANEF overlay applies")
+    else:
+        print("  No ANEF contour value at this point")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -4057,6 +4268,7 @@ def main():
             dcp_setbacks_db=dcp_setbacks_db,
             proximity_m=proximity_m,
             bushfire_live=bushfire_live,
+            anef_live=anef_live,
         )
 
 

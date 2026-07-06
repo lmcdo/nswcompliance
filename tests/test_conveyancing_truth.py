@@ -28,13 +28,18 @@ sys.path.insert(0, str(_ROOT / "services"))
 sys.path.insert(0, str(_ROOT))
 
 from generate_conveyancing_report import (  # noqa: E402
+    ANEF_NOTE,
+    build_anef_note,
+    build_anef_row,
     build_bushfire_row,
+    build_land_tax_rows,
     build_shadow_row,
     build_unmapped_note,
     parse_controls,
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "bowral_layerintersect.json"
+ANEF_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "wsa_anef_live.json"
 GENERATOR_PATH = _ROOT / "scripts" / "generate_conveyancing_report.py"
 
 
@@ -243,6 +248,13 @@ class TestStaticClaimsGuard:
         "Not mapped in NSW state layer for this LGA",
         # D1: fixed "NSW LEP" source label on the shadow row regardless of source
         'risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP',
+        # Land tax: hardcoded threshold constants must never return to the
+        # generator — a fallback constant IS a hardcoded regulatory value and
+        # rendered silently-stale figures in a legal document.
+        "_LT_FALLBACK",
+        "1_075_000",
+        "1075000",
+        "1,075,000",
     ]
 
     def test_generator_contains_no_forbidden_claims(self):
@@ -297,3 +309,242 @@ class TestConfidenceIntegrity:
         full = {"flood", "riparian", "wetlands", "landslide", "biodiversity"}
         rating = self._compute(covered_layers=full, shadow_height_source="spatial_overlays")
         assert rating == "high"
+
+    def test_missing_tax_config_caps_at_medium(self):
+        """A report whose land-tax section rendered 'Not assessed' must not claim 'high'."""
+        full = {"flood", "riparian", "wetlands", "landslide", "biodiversity"}
+        rating = self._compute(covered_layers=full, tax_config_missing=True)
+        assert rating == "medium"
+
+
+# ---------------------------------------------------------------------------
+# 9. Land tax truth (Slice A) — date-stamped figures, fail-visible absence
+# ---------------------------------------------------------------------------
+
+def _tax_config_2026() -> dict:
+    """Recorded Revenue NSW figures (thresholds-and-rates page, fetched
+    2026-07-06; general/premium thresholds frozen from 1 Jan 2025)."""
+    return {
+        "tax_year": 2026,
+        "threshold_dollars": 1_075_000,
+        "rate": 0.016,
+        "base_amount_dollars": 100,
+        "premium_threshold_dollars": 6_571_000,
+        "premium_rate": 0.02,
+    }
+
+
+class TestLandTaxTruth:
+    def test_config_present_sentence_carries_tax_year(self):
+        """Every rendered threshold figure carries the DB row's own tax_year."""
+        rows = build_land_tax_rows(1_500_000, _tax_config_2026())
+        assert len(rows) == 1
+        row = rows[0]
+        assert "2026" in row["question"]
+        assert "2026 threshold $1,075,000" in row["basis"]
+        assert row["flag"] == "warn"
+
+    def test_below_threshold_sentence_carries_tax_year(self):
+        rows = build_land_tax_rows(900_000, _tax_config_2026())
+        row = rows[0]
+        assert row["answer"] == "Below threshold — nil"
+        assert "2026 threshold $1,075,000" in row["basis"]
+
+    def test_config_absent_renders_not_assessed_no_figures(self):
+        """Mutation check: restoring any hardcoded fallback figures fails this —
+        an absent config must never produce a dollar amount."""
+        import re as _re
+        rows = build_land_tax_rows(1_500_000, None)
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["answer"] == "Not assessed"
+        assert row["flag"] == "warn"
+        assert not _re.search(r"\$\s*\d", row["answer"] + " " + row["basis"])
+        assert "unavailable" in row["basis"]
+        # the expected year is named so the reader knows WHICH year is missing
+        from datetime import date as _date
+        assert str(_date.today().year) in row["basis"]
+
+    def test_config_absent_logs_warning(self, caplog):
+        import logging
+        with caplog.at_level(logging.WARNING):
+            build_land_tax_rows(1_500_000, None)
+        assert any("land tax config unavailable" in r.message for r in caplog.records)
+
+    def test_stale_year_renders_with_own_year_and_warns(self, caplog):
+        """A stale row renders — its visible year keeps it honest — but loudly."""
+        import logging
+        stale = dict(_tax_config_2026(), tax_year=2025)
+        with caplog.at_level(logging.WARNING):
+            rows = build_land_tax_rows(1_500_000, stale)
+        row = rows[0]
+        assert "2025" in row["question"]
+        assert "2025 threshold" in row["basis"]
+        assert any("2025" in r.message and "current land tax year" in r.message
+                   for r in caplog.records)
+
+    def test_strata_has_no_land_tax_row(self):
+        """calc_feasibility: strata suppresses land tax even with config absent."""
+        from generate_conveyancing_report import calc_feasibility
+        results = calc_feasibility(
+            {"zone": "R2"}, {"lot_area_m2": 500, "land_value": 1_500_000}, [],
+            is_strata=True, tax_config=None,
+        )
+        assert not [r for r in results if "land tax" in r["question"].lower()]
+
+    def test_calc_feasibility_config_absent_end_to_end(self):
+        from generate_conveyancing_report import calc_feasibility
+        results = calc_feasibility(
+            {"zone": "R2"}, {"lot_area_m2": 500, "land_value": 1_500_000}, [],
+            tax_config=None,
+        )
+        lt = [r for r in results if "land tax" in r["question"].lower()]
+        assert len(lt) == 1
+        assert lt[0]["answer"] == "Not assessed"
+
+
+# ---------------------------------------------------------------------------
+# 10. ANEF row + note (Slice B) — three-state, value data-derived
+# ---------------------------------------------------------------------------
+
+def _wsa_resolved() -> dict:
+    with open(ANEF_FIXTURE_PATH, encoding="utf-8") as fh:
+        return json.load(fh)["resolved"]
+
+
+_ANEF_HIT = {"layer_type": "anef", "value": "", "instrument": None, "lga": None}
+
+
+class TestAnefRowSemantics:
+    def test_value_found_renders_code_and_provenance(self):
+        """WSA golden fixture: the verbatim band code and the mapping EPI both
+        render — never a parsed lower bound presented as exact."""
+        text, style, source = build_anef_row(_wsa_resolved(), _ANEF_HIT)
+        assert "ANEF 25 - 30" in text
+        assert "Western Parkland City" in text
+        assert "live query" in text
+        assert style == "warn"
+        assert "ANEF value lookup" in source
+
+    def test_level_only_hit_renders_numeric_level(self):
+        """A hit with no band code falls back to the numeric level."""
+        levelled = {"status": "found", "anef_level": 25, "anef_code": None,
+                    "epi_name": None, "source": "eplanning_protection_live"}
+        text, style, source = build_anef_row(levelled, _ANEF_HIT)
+        assert "ANEF 25" in text
+        assert "live query" in text
+
+    def test_empty_keeps_todays_wording(self):
+        text, style, source = build_anef_row({"status": "empty"}, _ANEF_HIT)
+        assert text == "Aircraft noise contour — ANEF applies"
+        assert source == "PostGIS"
+
+    def test_lookup_not_run_keeps_todays_wording(self):
+        text, style, source = build_anef_row(None, _ANEF_HIT)
+        assert text == "Aircraft noise contour — ANEF applies"
+
+    def test_failed_is_explicit_never_silent(self):
+        """A failed value lookup states 'not assessed' — the overlay hit itself
+        still renders (the ingest said the contour applies)."""
+        text, style, source = build_anef_row({"status": "failed"}, _ANEF_HIT)
+        assert "ANEF applies" in text
+        assert "not assessed" in text
+        assert "unavailable" in text
+
+    def test_no_hit_no_value_omits_row(self):
+        """Bowral regression: no ingested overlay and no resolved value → no
+        row; a failed lookup on a lot with no mapped contour is a non-event."""
+        assert build_anef_row(None, None) is None
+        assert build_anef_row({"status": "empty"}, None) is None
+        assert build_anef_row({"status": "failed"}, None) is None
+
+    def test_value_without_ingest_hit_still_renders(self):
+        """A live-mapped contour with no ingested polygon must NOT vanish
+        (silent-false-negative class). Mutation check: restoring
+        `return None` for this state fails here."""
+        row = build_anef_row(_wsa_resolved(), None)
+        assert row is not None
+        text, style, source = row
+        assert "ANEF 25 - 30" in text
+        assert source == "ANEF value lookup"
+        assert "PostGIS" not in source
+
+    def test_synthetic_hit_not_attributed_to_postgis(self):
+        """Provenance: a synthesized overlay (instrument ANEF_VALUE_LOOKUP)
+        must not carry a PostGIS source label."""
+        synthetic = {"layer_type": "anef", "value": "ANEF 25 - 30",
+                     "instrument": "ANEF_VALUE_LOOKUP", "lga": None}
+        text, style, source = build_anef_row(_wsa_resolved(), synthetic)
+        assert source == "ANEF value lookup"
+        assert "PostGIS" not in source
+
+
+class TestAnefNote:
+    def test_found_note_states_value_and_drops_obtain_instruction(self):
+        note = build_anef_note(_wsa_resolved())
+        assert "ANEF contour value at this location: 25 - 30" in note
+        assert "Western Parkland City" in note
+        # the "obtain the value externally" instruction is the NO-value fallback
+        assert "obtain the ANEF value from the relevant airport authority" not in note
+        # the liability-audited AS 2021 / TI-SEPP wording is preserved verbatim
+        assert "Under SEPP (Transport and Infrastructure) 2021 and AS 2021" in note
+
+    def test_empty_and_not_run_fall_back_to_static_note(self):
+        assert build_anef_note({"status": "empty"}) is None
+        assert build_anef_note(None) is None
+
+    def test_failed_note_appends_explicit_not_assessed(self):
+        note = build_anef_note({"status": "failed"})
+        assert note.startswith(ANEF_NOTE)
+        assert "not assessed" in note
+
+    def test_static_anef_note_fallback_wording_preserved(self):
+        """Golden: the honest no-value fallback wording survives the split."""
+        assert "obtain the ANEF value from the relevant airport authority" in ANEF_NOTE
+        assert ANEF_NOTE.startswith("Aircraft Noise Contour — this property falls within")
+        assert ANEF_NOTE.endswith("Source: NSW Government ArcGIS spatial overlay (ANEF mapping).")
+
+
+class TestResolveAnefValueThreeState:
+    """The shared resolver must distinguish empty from failed (mutation check:
+    swallowing the transport exception into an 'empty' result fails these)."""
+
+    def _resolver(self):
+        import portal_constraints
+        return portal_constraints
+
+    def test_lookup_failure_is_failed_not_empty(self, monkeypatch):
+        pc = self._resolver()
+        def _boom(lat, lng):
+            raise RuntimeError("arcgis timeout")
+        monkeypatch.setattr(pc, "fetch_anef", _boom)
+        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "failed"
+
+    def test_no_mapped_contour_is_empty(self, monkeypatch):
+        pc = self._resolver()
+        monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
+        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "empty"
+
+    def test_live_hit_is_found_with_code_and_epi(self, monkeypatch):
+        pc = self._resolver()
+        monkeypatch.setattr(
+            pc, "fetch_anef",
+            lambda lat, lng: {"in_anef_zone": True, "anef_level": 25,
+                              "anef_code": "25 - 30", "epi_name": "Liverpool Local Environmental Plan 2008"},
+        )
+        out = pc.resolve_anef_value(-33.9, 151.2)
+        assert out["status"] == "found"
+        assert out["anef_code"] == "25 - 30"
+        assert out["epi_name"] == "Liverpool Local Environmental Plan 2008"
+        assert out["source"] == "eplanning_protection_live"
+
+    def test_curated_anef_zones_never_consulted(self, monkeypatch):
+        """Data-quality quarantine: the coarse anef_zones digitisations must not
+        feed parcel-level values into the PDF. Mutation check: re-adding the
+        anef_zones step to resolve_anef_value fails this."""
+        pc = self._resolver()
+        def _forbidden(lat, lng):
+            raise AssertionError("anef_zones consulted by resolve_anef_value")
+        monkeypatch.setattr(pc, "fetch_anef_zone_exact", _forbidden)
+        monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
+        assert pc.resolve_anef_value(-33.9, 151.2)["status"] == "empty"
