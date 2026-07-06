@@ -61,14 +61,26 @@ class RefusalStats(BaseModel):
     refusal_rate: float = Field(
         ..., ge=0.0, le=1.0, description="refused / total_determined"
     )
+    # Data-derived window — the tracking layer is a point-in-time extract
+    # (frozen at 2023-04 as of 2026-07), so "last N years" arithmetic from
+    # period_years overstates coverage. Renderers must state this window.
+    window_start: Optional[str] = Field(
+        None, description="Lodgement-date floor actually applied (YYYY-MM-DD)"
+    )
+    data_currency: Optional[str] = Field(
+        None, description="Newest lodgement date present on the layer (YYYY-MM-DD)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Field parsing helpers
 # ---------------------------------------------------------------------------
 
-_DATE_14_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})\d{6}$")  # "20210730000000"
+# Live values carry fractional seconds ("20230429151817.89") — without the
+# optional suffix those rows passed through unparsed as raw strings.
+_DATE_14_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})\d{6}(?:\.\d+)?$")  # "20210730000000"
 _DATE_8_RE = re.compile(r"^(\d{4})(\d{2})(\d{2})$")          # "20211215"
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _parse_date_str(raw: Optional[str]) -> Optional[str]:
@@ -111,7 +123,7 @@ def _parse_feature(attrs: dict) -> DAOutcome:
         status=attrs.get("STATUS") or "Unknown",
         outcome=attrs.get("ASSESMENT_RESULT"),  # Their typo, not ours
         determining_authority=attrs.get("DETERMINING_AUTHORITY"),
-        dev_type=attrs.get("DEVELOPMENT_TYPE"),
+        dev_type=attrs.get("TYPE_OF_DEVELOPMENT"),
         dwellings_constructed=_safe_int(attrs.get("DWELLINGS_TO_BE_CONSTRUCTED")),
         cost=str(attrs.get("COST_OF_DEVELOPMENT")) if attrs.get("COST_OF_DEVELOPMENT") is not None else None,
         address=attrs.get("PRIMARY_ADDRESS") or "",
@@ -127,13 +139,62 @@ def _parse_feature(attrs: dict) -> DAOutcome:
 # Public API
 # ---------------------------------------------------------------------------
 
+# Field names verified against the LIVE layer metadata (2026-07-04): the layer
+# calls the development-type column TYPE_OF_DEVELOPMENT; requesting the old
+# DEVELOPMENT_TYPE name made ArcGIS return "Failed to execute query" -> {} ->
+# a silent zero for every consumer (LODGEMENT_DATE is a string field; the
+# lexicographic date filter was never the problem).
 _OUT_FIELDS = (
     "OBJECTID,PLANNING_PORTAL_APP_NUMBER,DA_NUMBER,STATUS,"
-    "ASSESMENT_RESULT,DETERMINING_AUTHORITY,DEVELOPMENT_TYPE,"
+    "ASSESMENT_RESULT,DETERMINING_AUTHORITY,TYPE_OF_DEVELOPMENT,"
     "DWELLINGS_TO_BE_CONSTRUCTED,COST_OF_DEVELOPMENT,"
     "PRIMARY_ADDRESS,SUBURBNAME,X,Y,"
     "LODGEMENT_DATE,DETERMINED_DATE"
 )
+
+
+# Per-process cache: the layer is a static extract, so one lookup per worker
+# lifetime is enough; a stale cache can only ever understate currency.
+_currency_cache: dict[str, str] = {}
+
+
+def get_data_currency() -> str:
+    """Newest LODGEMENT_DATE present on the tracking layer, as YYYY-MM-DD.
+
+    prior-art-checked: no existing currency probe for this layer — this module
+    owns all DA-tracking MapServer access; InstrumentCurrency.tsx is a
+    legislation-instrument UI badge, unrelated to this ArcGIS layer.
+
+    Cheap (one row, no geometry), cached per process. Raises on any failure —
+    a data-window claim must never be fabricated or silently defaulted, per
+    the module's no-silent-zero convention.
+    """
+    cached = _currency_cache.get("newest_lodgement")
+    if cached:
+        return cached
+
+    params = {
+        "where": "LODGEMENT_DATE IS NOT NULL",
+        "outFields": "LODGEMENT_DATE",
+        "orderByFields": "LODGEMENT_DATE DESC",
+        "resultRecordCount": 1,
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    data = arcgis_get_with_retry(DA_TRACKING_URL, params)
+    if "features" not in data:
+        raise RuntimeError("DA tracking currency query failed (transport or ArcGIS error)")
+    features = data.get("features") or []
+    if not features:
+        raise RuntimeError("DA tracking currency query returned no rows — cannot state a data window")
+    raw = (features[0].get("attributes") or {}).get("LODGEMENT_DATE")
+    parsed = _parse_date_str(raw)
+    if not parsed or not _ISO_DATE_RE.match(parsed):
+        raise RuntimeError(
+            f"DA tracking currency value unparseable ({raw!r}) — cannot state a data window"
+        )
+    _currency_cache["newest_lodgement"] = parsed
+    return parsed
 
 
 def query_da_outcomes_near(
@@ -171,6 +232,8 @@ def query_da_outcomes_near(
     data = arcgis_get_with_retry(DA_TRACKING_URL, params)
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
+    if "features" not in data:
+        raise RuntimeError("DA tracking query failed (transport or ArcGIS error)")
     features = data.get("features") or []
     results = []
     for f in features:
@@ -202,6 +265,8 @@ def query_da_by_pan(pan: str) -> Optional[DAOutcome]:
         "f": "json",
     }
     data = arcgis_get_with_retry(DA_TRACKING_URL, params)
+    if "features" not in data:
+        raise RuntimeError("DA tracking PAN lookup failed (transport or ArcGIS error)")
     features = data.get("features") or []
     if not features:
         return None
@@ -223,36 +288,40 @@ def get_refusal_rate(
     date_cutoff = f"{cutoff_year}0101"
 
     where_parts = [
-        f"LGA_NAME LIKE '%{lga}%'",
+        # LGA_NAME is stored uppercase ('CANADA BAY') — normalise both sides so
+        # a mixed-case council name can't silently match nothing.
+        f"UPPER(LGA_NAME) LIKE '%{lga.upper()}%'",
         f"LODGEMENT_DATE >= '{date_cutoff}'",
         "ASSESMENT_RESULT IS NOT NULL",
     ]
     if zone:
-        where_parts.append(f"ZONE_DESC LIKE '%{zone}%'")
+        # Verified live: the layer has NO zone column — a ZONE_DESC filter made
+        # ArcGIS error and the stats silently vanish. Refuse loudly instead.
+        raise ValueError("zone filtering is not supported: the DA tracking layer has no zone field")
     if dev_type:
-        where_parts.append(f"DEVELOPMENT_TYPE='{dev_type}'")
+        where_parts.append(f"TYPE_OF_DEVELOPMENT='{dev_type}'")
 
-    params = {
-        "where": " AND ".join(where_parts),
-        "groupByFieldsForStatistics": "ASSESMENT_RESULT",
-        "outStatistics": json.dumps([{
-            "statisticType": "count",
-            "onStatisticField": "OBJECTID",
-            "outStatisticFieldName": "count",
-        }]),
-        "f": "json",
-    }
+    # Resolve the layer's data window BEFORE counting: stats without a window
+    # would render as if current. Raises on failure (fail closed).
+    data_currency = get_data_currency()
 
-    data = arcgis_get_with_retry(DA_TRACKING_URL, params)
-    features = data.get("features") or []
-    if not features:
-        return None
-
+    # The layer advertises supportsStatistics but the outStatistics query
+    # returns "Unable to complete operation" (verified live 2026-07-04).
+    # returnCountOnly per outcome value works reliably — three cheap counts.
+    base_where = " AND ".join(where_parts)
     counts: dict[str, int] = {}
-    for f in features:
-        attrs = f.get("attributes") or {}
-        result = attrs.get("ASSESMENT_RESULT") or "Unknown"
-        counts[result] = attrs.get("count", 0)
+    for outcome in ("Approved", "Refused", "Deferred Commencement Consent"):
+        params = {
+            "where": f"{base_where} AND ASSESMENT_RESULT = '{outcome}'",
+            "returnCountOnly": "true",
+            "f": "json",
+        }
+        data = arcgis_get_with_retry(DA_TRACKING_URL, params)
+        if "count" not in data:
+            # {} from the client = a FAILED query — a refusal rate must never be
+            # built on a silently-zero count.
+            raise RuntimeError("DA refusal-rate count query failed (transport or ArcGIS error)")
+        counts[outcome] = int(data.get("count") or 0)
 
     approved = counts.get("Approved") or 0
     refused = counts.get("Refused") or 0
@@ -272,6 +341,8 @@ def get_refusal_rate(
         refused=refused,
         deferred_commencement=deferred,
         refusal_rate=round(refused / total, 4),
+        window_start=f"{cutoff_year}-01-01",
+        data_currency=data_currency,
     )
 
 

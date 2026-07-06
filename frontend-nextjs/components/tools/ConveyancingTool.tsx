@@ -96,6 +96,24 @@ const FLAG_META: Record<string, { icon: string; bg: string; text: string }> = {
   alert: { icon: '\u2717', bg: 'bg-red-50',    text: 'text-red-700' },
 };
 
+// The API returns one row per portal map sheet, so the same SEPP repeats with
+// different labels ("2576", "WINGECARRIBEE"). Collapse to one row per SEPP,
+// keeping the distinct labels. Mirrors the (name, type) dedup in the PDF report.
+function dedupeSeppOverlays(
+  rows: { name: string; type: string; label?: string }[],
+): { name: string; labels: string[] }[] {
+  const byName = new Map<string, { name: string; labels: string[] }>();
+  for (const row of rows) {
+    const name = row.name || row.type;
+    if (!name) continue;
+    const entry = byName.get(name) ?? { name, labels: [] };
+    const label = (row.label || '').trim();
+    if (label && !entry.labels.includes(label)) entry.labels.push(label);
+    byName.set(name, entry);
+  }
+  return [...byName.values()];
+}
+
 export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [address, setAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
@@ -103,6 +121,9 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   const [errorMsg, setErrorMsg] = useState('');
 
   const [paidReportId, setPaidReportId] = useState<string | null>(null);
+  // Named early-access grant (?access=<code>) — validated server-side against
+  // CONVEYANCING_ACCESS_CODES; unlocks the full-PDF CTA without checkout.
+  const [accessGranted, setAccessGranted] = useState(false);
 
   const runCheck = useCallback(async (addr: string) => {
     if (!addr.trim()) return;
@@ -163,6 +184,38 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
       }
       window.history.replaceState({}, '', window.location.pathname);
     }
+
+    const accessParam = params.get('access')?.trim();
+    if (accessParam) {
+      sessionStorage.setItem('conveyancing_access_code', accessParam);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    const grantCode = accessParam || sessionStorage.getItem('conveyancing_access_code');
+    if (!grantCode) return;
+
+    let ignore = false;
+    fetch('/api/reports/conveyancing/access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: grantCode }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (ignore) return;
+        if (json?.valid) {
+          setAccessGranted(true);
+          posthog.capture('conveyancing_access_grant', { code: grantCode });
+        } else {
+          // Invalid or revoked code: drop it so the page behaves as normal free tier.
+          sessionStorage.removeItem('conveyancing_access_code');
+        }
+      })
+      .catch(() => {
+        // Network failure leaves the page in the normal free state.
+      });
+    return () => {
+      ignore = true;
+    };
   }, [runCheck]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -177,6 +230,18 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
     setErrorMsg('');
     window.dispatchEvent(new CustomEvent('landing-reset'));
   };
+
+  // lot_size is fetched as a data fallback for the Min Lot Size field — it is a
+  // planning control, not a hazard, so keep it out of the hazard overlay section.
+  const hazardOverlays = (result?.outputs.unique_overlays ?? []).filter(
+    (ov) => ov.layer_type !== 'lot_size',
+  );
+  const seppOverlays = dedupeSeppOverlays(result?.outputs.sepp_overlays ?? []);
+
+  // A report is unlocked either by Stripe redirect (paidReportId) or by a
+  // validated named grant plus the free check's own report_id.
+  const unlockedReportId =
+    paidReportId ?? (accessGranted ? result?.report_id ?? null : null);
 
   return (
     <div className="mb-8">
@@ -233,14 +298,15 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </button>
           </div>
 
-          {/* Paid download CTA — shown after Stripe redirect */}
-          {paidReportId && result && (
+          {/* Full-report download CTA — Stripe redirect or named early-access grant */}
+          {unlockedReportId && result && (
             <ConveyancingPaidDownloadCTA
-              reportId={paidReportId}
+              reportId={unlockedReportId}
               address={result.address}
               lat={result.lat}
               lng={result.lng}
               propId={result.prop_id ? String(result.prop_id) : undefined}
+              grant={!paidReportId}
             />
           )}
 
@@ -310,10 +376,10 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           )}
 
           {/* Environmental overlays */}
-          {result.outputs.unique_overlays.length > 0 && (
+          {hazardOverlays.length > 0 && (
             <Section title="Environmental and Hazard Overlays">
               <div className="space-y-2">
-                {result.outputs.unique_overlays.map((ov, i) => (
+                {hazardOverlays.map((ov, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                     <span className="shrink-0 w-2 h-2 mt-1.5 rounded-full bg-amber-500" />
                     <div>
@@ -330,13 +396,15 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           )}
 
           {/* SEPP overlays */}
-          {result.outputs.sepp_overlays.length > 0 && (
+          {seppOverlays.length > 0 && (
             <Section title="SEPP Overlays">
               <div className="space-y-1">
-                {result.outputs.sepp_overlays.map((sepp, i) => (
-                  <div key={i} className="text-sm text-gray-700 p-2 bg-gray-50 rounded">
-                    <span className="font-medium">{sepp.name || sepp.type}</span>
-                    {sepp.label && <span className="text-gray-500"> &mdash; {sepp.label}</span>}
+                {seppOverlays.map((sepp) => (
+                  <div key={sepp.name} className="text-sm text-gray-700 p-2 bg-gray-50 rounded">
+                    <span className="font-medium">{sepp.name}</span>
+                    {sepp.labels.length > 0 && (
+                      <span className="text-gray-500"> &mdash; {sepp.labels.join(', ')}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -439,7 +507,13 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             />
 
             <div className="mt-5">
-              <WaitlistButton interestType="conveyancing" address={result.address} />
+              {unlockedReportId ? (
+                <p className="text-xs text-teal-700">
+                  Early access — the full PDF report is unlocked in the panel above.
+                </p>
+              ) : (
+                <WaitlistButton interestType="conveyancing" address={result.address} />
+              )}
             </div>
           </div>
 
@@ -495,6 +569,7 @@ function Flag({ type, text }: { type: 'ok' | 'warn' | 'alert'; text: string }) {
 
 // ---------------------------------------------------------------------------
 // ConveyancingPaidDownloadCTA — shown after Stripe payment=success redirect
+// or when a named early-access grant code (?access=) validated
 // ---------------------------------------------------------------------------
 
 function ConveyancingPaidDownloadCTA({
@@ -503,12 +578,15 @@ function ConveyancingPaidDownloadCTA({
   lat,
   lng,
   propId,
+  grant,
 }: {
   reportId: string;
   address: string;
   lat: number;
   lng: number;
   propId?: string;
+  /** true when unlocked by a named early-access grant rather than payment */
+  grant?: boolean;
 }) {
   const [generating, setGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -537,7 +615,9 @@ function ConveyancingPaidDownloadCTA({
 
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
-      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-sm font-semibold text-teal-900 mb-1">
+        {grant ? 'Early access — your report is ready.' : 'Payment received — your report is ready.'}
+      </p>
       <p className="text-xs text-teal-700 mb-3">Click below to generate and download the full PDF report.</p>
       {pdfUrl ? (
         <a

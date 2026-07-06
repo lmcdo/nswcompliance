@@ -14,8 +14,9 @@ import services.portal_constraints as pc
 
 @pytest.fixture(autouse=True)
 def _stub_anef(monkeypatch):
-    # Keep the ANEF combined source (anef_zones DB + Protection ArcGIS) offline by
-    # default so the overlay tests don't do live I/O. ANEF tests override these.
+    # Keep the live ANEF layer (Protection ArcGIS) offline by default so the
+    # overlay tests don't do live I/O. ANEF tests override this. anef_zones is
+    # quarantined (#686) — stubbed too so any regression is loud, not live.
     monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: None)
     monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
 
@@ -91,56 +92,60 @@ def test_all_three_protection_layers_use_the_fallback(monkeypatch):
     assert sorted(seen) == [7, 10, 11]
 
 
-# --- ANEF combined source: anef_zones (Sydney) + fetch_anef (regional) ---
+# --- ANEF: live LEP/SEPP-mapped layer only (anef_zones quarantined, #686) ---
 
-def test_anef_sydney_zone_from_anef_zones(monkeypatch):
-    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: {"anef_level": 30, "airport": "Sydney"})
+def test_anef_zones_never_consulted(monkeypatch):
+    # Data-quality quarantine (#686): the coarse anef_zones digitisations must
+    # never feed the brief's ANEF field. Mutation check: re-adding the
+    # fetch_anef_zone step to _anef_fields fails this.
+    def _boom(lat, lng):
+        raise AssertionError("anef_zones consulted by the brief's ANEF field")
+    monkeypatch.setattr(ib, "fetch_anef_zone", _boom)
+    monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: None)
     env = _env({"overlays": [], "covered_layers": []})
-    assert env.anef.value == "ANEF 30 (Sydney)"
-    assert env.anef.source == "anef_zones"
+    assert env.anef.source != "anef_zones"
 
 
-def test_anef_regional_fallback_when_no_sydney_zone(monkeypatch):
-    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: None)
+def test_anef_live_layer_value_renders(monkeypatch):
     monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: {"anef_code": "20 - 25"})
     env = _env({"overlays": [], "covered_layers": []})
     assert "20 - 25" in (env.anef.value or "")
     assert env.anef.source == "planning_portal_protection"
 
 
-def test_anef_no_published_contour_is_honest():
-    # autouse stub: both sources None -> honest "no published contour", not "no noise"
+def test_anef_no_mapped_contour_is_honest():
+    # autouse stub: live layer None -> honest "no contour in the mapped layers",
+    # scoped to what was actually checked — never "no noise".
     env = _env({"overlays": [], "covered_layers": []})
-    assert env.anef.value == "No published ANEF contour at this property"
+    assert env.anef.value == "No ANEF contour in the mapped planning layers at this property"
     assert env.anef.confidence == ib.ConfidenceLevel.AUTHORITATIVE
 
 
 def test_anef_missing_coords_is_not_available(monkeypatch):
     called = {"n": 0}
-    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: called.__setitem__("n", called["n"] + 1))
+    monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: called.__setitem__("n", called["n"] + 1))
     env = _env({"overlays": [], "covered_layers": []}, lat=None, lng=None)
     assert env.anef.confidence == ib.ConfidenceLevel.NOT_AVAILABLE
     assert called["n"] == 0
 
 
-def test_anef_covered_but_empty_falls_through_to_zone(monkeypatch):
+def test_anef_covered_but_empty_falls_through_to_live(monkeypatch):
     # 'anef' is "covered" for the LGA but carries no value at this lot (the sparse
     # ingested-overlay case). This must NOT short-circuit to a blank — it falls
-    # through to the live anef_zones contour. (Regression: Mascot/Marrickville
-    # were reporting null ANEF from postgis_overlays despite anef_zones = 30/35.)
-    monkeypatch.setattr(ib, "fetch_anef_zone", lambda lat, lng: {"anef_level": 35, "airport": "Sydney"})
+    # through to the live LEP/SEPP-mapped layer.
+    monkeypatch.setattr(pc, "fetch_anef", lambda lat, lng: {"anef_code": "25 - 30"})
     env = _env({"overlays": [], "covered_layers": ["anef"]})
-    assert env.anef.value == "ANEF 35 (Sydney)"
-    assert env.anef.source == "anef_zones"
+    assert "25 - 30" in (env.anef.value or "")
+    assert env.anef.source == "planning_portal_protection"
 
 
 def test_anef_covered_with_value_still_uses_overlay(monkeypatch):
-    # When the ingested overlay actually has a value, it wins — anef_zones is not
-    # consulted (unchanged behaviour, guards against over-correcting the fix).
+    # When the ingested overlay actually has a value, it wins — the live layer
+    # is not consulted (guards against over-correcting the fix).
     def _boom(lat, lng):
-        raise AssertionError("anef_zones must not be queried when the overlay has a value")
+        raise AssertionError("live ANEF layer must not be queried when the overlay has a value")
 
-    monkeypatch.setattr(ib, "fetch_anef_zone", _boom)
+    monkeypatch.setattr(pc, "fetch_anef", _boom)
     env = _env({"overlays": [{"layer_type": "anef", "value": "ANEF 25-30"}],
                 "covered_layers": ["anef"]})
     assert env.anef.value == "ANEF 25-30"

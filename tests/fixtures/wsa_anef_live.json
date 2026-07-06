@@ -1,0 +1,20 @@
+{
+  "_provenance": {
+    "recorded": "2026-07-06",
+    "method": "live portal_constraints.fetch_anef point query against the NSW ePlanning Protection ANEF layer (MapServer/2, 29 features)",
+    "point": {"lat": -33.882, "lng": 150.744, "note": "Badgerys Creek — Western Sydney Airport precinct"},
+    "raw_attributes": {
+      "ANEF_CODE": "25 - 30",
+      "EPI_NAME": "State Environmental Planning Policy (Precincts—Western Parkland City) 2021",
+      "LGA_NAME": ""
+    },
+    "note": "The curated anef_zones table (Sydney KSA) is deliberately excluded from the conveyancing value path: its ANEF-20 polygon is a 13-vertex digitisation covering ~789 km2 — measured 2026-07-06, unfit for parcel-level value claims."
+  },
+  "resolved": {
+    "status": "found",
+    "anef_level": 25,
+    "anef_code": "25 - 30",
+    "epi_name": "State Environmental Planning Policy (Precincts—Western Parkland City) 2021",
+    "source": "eplanning_protection_live"
+  }
+}

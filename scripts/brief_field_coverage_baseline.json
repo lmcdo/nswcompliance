@@ -1,0 +1,527 @@
+{
+  "ActionItem": [
+    "category",
+    "description",
+    "recommended_source",
+    "verify_url"
+  ],
+  "AssessmentManifest": [
+    "categories_assessed",
+    "coverage_pct",
+    "data_quality_notes",
+    "sources_queried",
+    "sources_successful",
+    "sources_unavailable"
+  ],
+  "BushfireDetail": [
+    "bal_estimate",
+    "category",
+    "cdc_pathway_available",
+    "confidence",
+    "cross_overlays",
+    "fire_signal",
+    "is_bushfire_prone",
+    "rfs_referral_required",
+    "rfs_referral_triggers",
+    "vegetation_type"
+  ],
+  "BushfireServiceOutput": [
+    "compliance",
+    "designation_category",
+    "designation_guideline",
+    "estimated_bal_band",
+    "fire_signal",
+    "is_bushfire_prone"
+  ],
+  "ClimateDisclosureProfile": [
+    "action_register",
+    "assessment_date",
+    "empirical_findings",
+    "gap_alert_count",
+    "gap_alerts",
+    "manifest",
+    "methodology_version",
+    "per_hazard_detail",
+    "projected_findings",
+    "scope_limitations",
+    "statutory_count",
+    "statutory_findings"
+  ],
+  "ClimateHazardOutput": [
+    "available",
+    "confidence",
+    "data_source",
+    "detail",
+    "hazard",
+    "present",
+    "raw_score",
+    "weight",
+    "weighted_score"
+  ],
+  "ClimateRiskServiceOutput": [
+    "band",
+    "data_date",
+    "disclaimer",
+    "hazards",
+    "interaction_bonus",
+    "methodology_version",
+    "narclim",
+    "score"
+  ],
+  "ComparableAnalysis": [
+    "assessment_signal",
+    "comparable_count",
+    "comparables",
+    "mean_value",
+    "median_value",
+    "percentile_rank",
+    "subject_area_m2",
+    "subject_value"
+  ],
+  "ComparableProperty": [
+    "address",
+    "area_m2",
+    "land_value",
+    "propid",
+    "valuation_date",
+    "zone"
+  ],
+  "CompoundConstraint": [
+    "caveat",
+    "data_sources_used",
+    "description",
+    "id",
+    "severity"
+  ],
+  "ConfidenceSummary": [
+    "authoritative",
+    "derived",
+    "estimated",
+    "extracted",
+    "not_available",
+    "stale",
+    "total"
+  ],
+  "ConstraintArithmeticResult": [
+    "as_of_right_dwellings",
+    "as_of_right_form",
+    "binding_constraint",
+    "binding_constraint_label",
+    "buildable_footprint_m2",
+    "ceiling_from_lmr",
+    "confidence",
+    "dcp_adjusted_gfa_m2",
+    "dev_type",
+    "disclaimer",
+    "effective_fsr",
+    "effective_height_m",
+    "gaps",
+    "landscaping_reduction_m2",
+    "lep_envelope_gfa_m2",
+    "lep_fsr",
+    "lep_height_m",
+    "lep_max_gfa_from_fsr_m2",
+    "lep_max_gfa_from_height_m2",
+    "lep_max_storeys",
+    "lmr_effective_date",
+    "lmr_legislation_url",
+    "lmr_source_clause",
+    "lmr_source_document",
+    "lot_area_m2",
+    "max_permitted_dwellings",
+    "max_permitted_form",
+    "parking_gfa_consumed_m2",
+    "parking_spaces_required",
+    "realistic_dwellings",
+    "realistic_gfa_m2",
+    "sepp_overrides_applied",
+    "setback_front_m",
+    "setback_rear_m",
+    "setback_side_m",
+    "shadow_storey_reduction",
+    "site_coverage_cap_m2",
+    "steps"
+  ],
+  "ConstraintStep": [
+    "constraint",
+    "footprint_m2",
+    "input_gfa_m2",
+    "label",
+    "note",
+    "output_gfa_m2",
+    "phase",
+    "reduction_m2"
+  ],
+  "ContributionPlan": [
+    "plan_name",
+    "plan_url"
+  ],
+  "ContributionsResult": [
+    "hpc",
+    "lga_name",
+    "plans"
+  ],
+  "DCPControl": [
+    "condition",
+    "control_type",
+    "dev_type",
+    "source_ref",
+    "unit",
+    "value_max",
+    "value_min"
+  ],
+  "DCPControls": [
+    "controls",
+    "dcp_name",
+    "dcp_url",
+    "section_ref"
+  ],
+  "DataField": [
+    "as_at",
+    "confidence",
+    "reason",
+    "source",
+    "value"
+  ],
+  "DevelopmentBrief": [
+    "address",
+    "brief_type",
+    "compound_constraints",
+    "confidence_summary",
+    "constraint_arithmetic",
+    "contributions",
+    "data_currency_warnings",
+    "dcp_controls",
+    "disclaimer",
+    "economics",
+    "environmental_constraints",
+    "gaps",
+    "lat",
+    "lng",
+    "market_context",
+    "narrative",
+    "neighbourhood",
+    "planning_controls",
+    "prop_id",
+    "run_date",
+    "satellite",
+    "scope_limitations",
+    "sepp_eligibility",
+    "sepp_housing",
+    "sepp_lep_overrides",
+    "strata"
+  ],
+  "Economics": [
+    "land_value",
+    "lot_area_m2",
+    "val_base_date",
+    "val_history"
+  ],
+  "EmpiricalFinding": [
+    "confidence",
+    "data_date",
+    "false_positive_likelihood",
+    "hazard",
+    "source",
+    "unit",
+    "value"
+  ],
+  "EnvironmentalConstraints": [
+    "anef",
+    "anef_level",
+    "bushfire_designation",
+    "coastal_hazards",
+    "contaminated_detail",
+    "contaminated_land",
+    "drinking_water_catchment",
+    "flood_epi",
+    "heritage_postgis",
+    "mine_subsidence",
+    "mine_subsidence_district",
+    "nearest_features",
+    "overlay_coverage",
+    "overlays",
+    "riparian_land",
+    "terrestrial_biodiversity",
+    "wetlands"
+  ],
+  "EnvironmentalOverlay": [
+    "instrument",
+    "layer_type",
+    "lga",
+    "value"
+  ],
+  "FloodDetail": [
+    "bom_gauge_distance_km",
+    "confidence",
+    "epi_flood",
+    "epi_flood_label",
+    "flood_studies",
+    "jrc_occurrence_pct",
+    "wofs_frequency_pct"
+  ],
+  "FloodServiceOutput": [
+    "bom_gauge_distance_km",
+    "dea_wofs_frequency_pct",
+    "epi_flood_class",
+    "epi_flood_label",
+    "flood_studies",
+    "jrc_water_occurrence_pct"
+  ],
+  "GapEntry": [
+    "field",
+    "reason",
+    "verify_url"
+  ],
+  "GrannyFlatDetection": [
+    "confirmation_required",
+    "lot_area_m2",
+    "sepp_eligible",
+    "sepp_ineligible_reason",
+    "structure_count"
+  ],
+  "HousingProductivityContribution": [
+    "commenced_date",
+    "component",
+    "ministerial_order_url",
+    "name"
+  ],
+  "HousingSeppFormOutput": [
+    "applicable_zones",
+    "development_type",
+    "effective_date",
+    "eligible",
+    "legislation_url",
+    "min_lot_size_m2",
+    "min_lot_width_m",
+    "reason",
+    "requires_lmr_area",
+    "source_clause",
+    "source_document"
+  ],
+  "LepLandUseRow": [
+    "development_type",
+    "lga",
+    "permissibility",
+    "zone"
+  ],
+  "LotDimensions": [
+    "area_m2",
+    "depth_m",
+    "frontage_m",
+    "is_corner"
+  ],
+  "MarketContext": [
+    "comparables",
+    "radius_m",
+    "recent_sales",
+    "sales_years_back"
+  ],
+  "NearbyDA": [
+    "address",
+    "cost",
+    "dev_type",
+    "distance_m",
+    "lodgement_date",
+    "number",
+    "status"
+  ],
+  "Neighbourhood": [
+    "da_count",
+    "da_outcomes",
+    "da_refusal_stats",
+    "nearby_das",
+    "shadow"
+  ],
+  "PlanningControls": [
+    "acid_sulfate_class",
+    "fsr",
+    "height",
+    "height_units",
+    "heritage_hca",
+    "heritage_items",
+    "housing_sepp",
+    "legislation_url",
+    "lot_dimensions",
+    "lot_size",
+    "lot_size_units",
+    "permitted_uses",
+    "prohibited_uses",
+    "sepp_overlays",
+    "tod_area",
+    "zone",
+    "zone_epi",
+    "zone_full"
+  ],
+  "PreDAHistoryDetail": [
+    "council",
+    "data_quality_note",
+    "heritage_flag",
+    "timeline"
+  ],
+  "ProjectedFinding": [
+    "confidence",
+    "hazard",
+    "model",
+    "scenario",
+    "timeframe",
+    "value"
+  ],
+  "PropertySale": [
+    "address",
+    "area_m2",
+    "is_strata",
+    "price",
+    "price_per_m2",
+    "propid",
+    "sale_date"
+  ],
+  "RenovationBrief": [
+    "address",
+    "brief_type",
+    "compound_constraints",
+    "confidence_summary",
+    "data_currency_warnings",
+    "disclaimer",
+    "economics",
+    "environmental_constraints",
+    "gaps",
+    "lat",
+    "lng",
+    "planning_controls",
+    "prop_id",
+    "run_date",
+    "satellite",
+    "scope_limitations",
+    "strata"
+  ],
+  "SEPPStandard": [
+    "additional_standards",
+    "dev_type",
+    "eligible",
+    "fsr_source_clause",
+    "height_source_clause",
+    "max_fsr",
+    "max_gfa_m2",
+    "max_height_m",
+    "max_site_coverage_pct",
+    "max_total_floor_area_m2",
+    "min_lot_area_m2",
+    "min_lot_width_m",
+    "min_private_open_space_m2",
+    "parking_spaces",
+    "reason_ineligible",
+    "setback_front_m",
+    "setback_rear_m",
+    "setback_side_m",
+    "source_document"
+  ],
+  "SatelliteData": [
+    "bushfire",
+    "climate_disclosure",
+    "flood",
+    "granny_flat",
+    "pre_da_history",
+    "terrain"
+  ],
+  "SeppLepOverride": [
+    "control",
+    "dev_type",
+    "lep_value",
+    "note",
+    "sepp_value",
+    "source_clause"
+  ],
+  "ShadowResult": [
+    "adg_compliant",
+    "height_m",
+    "height_source",
+    "scenarios",
+    "temporal_caveat",
+    "worst_case_scenario"
+  ],
+  "ShadowScenario": [
+    "date_label",
+    "overlap_pct",
+    "overlaps_subject_lot",
+    "shadow_direction_deg",
+    "shadow_length_m",
+    "time_label"
+  ],
+  "ShadowScenarioOutput": [
+    "label",
+    "overlaps_subject_lot",
+    "shadow_direction_deg",
+    "shadow_length_m",
+    "shadow_overlap_fraction",
+    "time_local"
+  ],
+  "ShadowServiceOutput": [
+    "adg_compliant",
+    "height_m",
+    "height_source",
+    "scenarios",
+    "worst_case_scenario"
+  ],
+  "StatutoryFinding": [
+    "as_at",
+    "confidence",
+    "designation",
+    "geometry_relationship",
+    "hazard",
+    "legislation_ref",
+    "source",
+    "statutory_data_age_days"
+  ],
+  "StrataInfo": [
+    "dwelling_type",
+    "is_strata",
+    "lot_area_m2",
+    "lot_total",
+    "plan_label",
+    "registration_date",
+    "source",
+    "strata_plan",
+    "strata_type"
+  ],
+  "StrataServiceOutput": [
+    "dwelling_type",
+    "is_strata",
+    "lot_total",
+    "parent_has_strata",
+    "plan_label",
+    "plan_type",
+    "registration_date",
+    "source",
+    "strata_plan"
+  ],
+  "TerrainAnalysisDetail": [
+    "aspect_direction",
+    "aspect_dominant_deg",
+    "daylight_fraction",
+    "drainage_direction",
+    "elevation_max_m",
+    "elevation_min_m",
+    "elevation_range_m",
+    "hillshade_png_b64",
+    "landform_class",
+    "landform_type",
+    "slope_max_deg",
+    "slope_mean_deg",
+    "terrain_ruggedness"
+  ],
+  "UnavailableSource": [
+    "reason",
+    "source"
+  ],
+  "ValuationHistory": [
+    "value",
+    "year"
+  ],
+  "_BushfireCompliance": [
+    "cdc_pathway_available",
+    "cross_overlays",
+    "rfs_referral_required",
+    "rfs_referral_triggers"
+  ]
+}

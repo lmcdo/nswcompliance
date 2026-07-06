@@ -18,7 +18,9 @@ def _load_enqueue():
     start = src.index("def enqueue_review_changes(")
     nxt = re.search(r"\n(?:def |class |# ── )", src[start + 10:])
     end = start + 10 + nxt.start() if nxt else len(src)
-    ns: dict = {}
+    # enqueue_review_changes calls the module-level suspect_reason(); provide a stub
+    # since we exec only this function's source in isolation.
+    ns: dict = {"suspect_reason": lambda ch: ch.get("suspect_reason")}
     exec(src[start:end], ns)
     return ns["enqueue_review_changes"]
 

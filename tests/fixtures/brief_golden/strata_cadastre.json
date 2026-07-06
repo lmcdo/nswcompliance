@@ -1,0 +1,18 @@
+{
+  "service": "strata_cadastre",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "address": "5/1 Treacy Street, Hurstville",
+    "prop_id": 4241915,
+    "lat": -33.96809904015061,
+    "lng": 151.1087870996075
+  },
+  "output": {
+    "is_strata": true,
+    "strata_plan": "SP91614",
+    "plan_type": "strata",
+    "source": "cadastre",
+    "parent_has_strata": true,
+    "plan_label": "SP91614"
+  }
+}

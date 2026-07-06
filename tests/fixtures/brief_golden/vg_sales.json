@@ -1,0 +1,886 @@
+{
+  "service": "vg_sales",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "address": "14 Stanley Street, Concord",
+    "prop_id": 1456609,
+    "lat": -33.86382,
+    "lng": 151.10586,
+    "zone": "R3"
+  },
+  "output": [
+    {
+      "propid": 1447681,
+      "address": "26 ADDISON AVENUE CONCORD",
+      "price": 4950000,
+      "area_m2": 696.77,
+      "sale_date": "2024-05-23",
+      "price_per_m2": 7104.21,
+      "is_strata": false
+    },
+    {
+      "propid": 1447689,
+      "address": "42 ADDISON AVENUE CONCORD",
+      "price": 3000000,
+      "area_m2": 524.8,
+      "sale_date": "2024-07-31",
+      "price_per_m2": 5716.46,
+      "is_strata": false
+    },
+    {
+      "propid": 1447719,
+      "address": "2 ALEXANDRA STREET CONCORD",
+      "price": 3850000,
+      "area_m2": 423.7,
+      "sale_date": "2025-06-28",
+      "price_per_m2": 9086.62,
+      "is_strata": false
+    },
+    {
+      "propid": 1448061,
+      "address": "9 BEACONSFIELD AVENUE CONCORD",
+      "price": 2900000,
+      "area_m2": 408.73,
+      "sale_date": "2025-11-29",
+      "price_per_m2": 7095.15,
+      "is_strata": false
+    },
+    {
+      "propid": 1448076,
+      "address": "10 BEACONSFIELD AVENUE CONCORD",
+      "price": 2615000,
+      "area_m2": 408.37,
+      "sale_date": "2023-04-27",
+      "price_per_m2": 6403.51,
+      "is_strata": false
+    },
+    {
+      "propid": 1448463,
+      "address": "24 BROUGHTON STREET CONCORD",
+      "price": 2520000,
+      "area_m2": 408.73,
+      "sale_date": "2024-06-04",
+      "price_per_m2": 6165.44,
+      "is_strata": false
+    },
+    {
+      "propid": 1448501,
+      "address": "79 BROUGHTON STREET CONCORD",
+      "price": 2402000,
+      "area_m2": 414.0,
+      "sale_date": "2023-07-17",
+      "price_per_m2": 5801.93,
+      "is_strata": false
+    },
+    {
+      "propid": 1448503,
+      "address": "75 BROUGHTON STREET CONCORD",
+      "price": 4508888,
+      "area_m2": 406.4,
+      "sale_date": "2024-05-03",
+      "price_per_m2": 11094.7,
+      "is_strata": false
+    },
+    {
+      "propid": 1448511,
+      "address": "59 BROUGHTON STREET CONCORD",
+      "price": 4950000,
+      "area_m2": 512.2,
+      "sale_date": "2024-07-19",
+      "price_per_m2": 9664.19,
+      "is_strata": false
+    },
+    {
+      "propid": 1448512,
+      "address": "57 BROUGHTON STREET CONCORD",
+      "price": 3030000,
+      "area_m2": 518.5,
+      "sale_date": "2025-11-08",
+      "price_per_m2": 5843.78,
+      "is_strata": false
+    },
+    {
+      "propid": 1448518,
+      "address": "45 BROUGHTON STREET CONCORD",
+      "price": 1960000,
+      "area_m2": 461.6,
+      "sale_date": "2023-03-11",
+      "price_per_m2": 4246.1,
+      "is_strata": false
+    },
+    {
+      "propid": 1448525,
+      "address": "7/35 BROUGHTON STREET CONCORD",
+      "price": 1303000,
+      "area_m2": 0.0,
+      "sale_date": "2023-12-16",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1448676,
+      "address": "8/15 BURTON STREET CONCORD",
+      "price": 600000,
+      "area_m2": 0.0,
+      "sale_date": "2025-09-08",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1448742,
+      "address": "2/47 BURTON STREET CONCORD",
+      "price": 1175000,
+      "area_m2": 0.0,
+      "sale_date": "2024-02-03",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1448763,
+      "address": "23 BURWOOD ROAD CONCORD",
+      "price": 2335000,
+      "area_m2": 349.59,
+      "sale_date": "2023-10-21",
+      "price_per_m2": 6679.25,
+      "is_strata": false
+    },
+    {
+      "propid": 1448770,
+      "address": "37 BURWOOD ROAD CONCORD",
+      "price": 1700000,
+      "area_m2": 316.1,
+      "sale_date": "2023-02-11",
+      "price_per_m2": 5378.04,
+      "is_strata": false
+    },
+    {
+      "propid": 1448771,
+      "address": "39 BURWOOD ROAD CONCORD",
+      "price": 3550000,
+      "area_m2": 632.3,
+      "sale_date": "2025-06-13",
+      "price_per_m2": 5614.42,
+      "is_strata": false
+    },
+    {
+      "propid": 1448776,
+      "address": "2/51C BURWOOD ROAD CONCORD",
+      "price": 720000,
+      "area_m2": 0.0,
+      "sale_date": "2025-05-29",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1448785,
+      "address": "2/51B BURWOOD ROAD CONCORD",
+      "price": 787000,
+      "area_m2": 0.0,
+      "sale_date": "2024-11-01",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1448797,
+      "address": "61 BURWOOD ROAD CONCORD",
+      "price": 3550000,
+      "area_m2": 929.5,
+      "sale_date": "2026-01-16",
+      "price_per_m2": 3819.26,
+      "is_strata": false
+    },
+    {
+      "propid": 1448824,
+      "address": "127 BURWOOD ROAD CONCORD",
+      "price": 2450000,
+      "area_m2": 366.0,
+      "sale_date": "2026-03-12",
+      "price_per_m2": 6693.99,
+      "is_strata": false
+    },
+    {
+      "propid": 1448836,
+      "address": "151 BURWOOD ROAD CONCORD",
+      "price": 5900000,
+      "area_m2": 626.0,
+      "sale_date": "2023-11-30",
+      "price_per_m2": 9424.92,
+      "is_strata": false
+    },
+    {
+      "propid": 1449325,
+      "address": "108 BURWOOD ROAD CONCORD",
+      "price": 3700000,
+      "area_m2": 822.0,
+      "sale_date": "2023-08-07",
+      "price_per_m2": 4501.22,
+      "is_strata": false
+    },
+    {
+      "propid": 1449346,
+      "address": "74 BURWOOD ROAD CONCORD",
+      "price": 2250000,
+      "area_m2": 385.7,
+      "sale_date": "2023-11-23",
+      "price_per_m2": 5833.55,
+      "is_strata": false
+    },
+    {
+      "propid": 1449360,
+      "address": "48 BURWOOD ROAD CONCORD",
+      "price": 1385000,
+      "area_m2": 325.15,
+      "sale_date": "2023-06-19",
+      "price_per_m2": 4259.57,
+      "is_strata": false
+    },
+    {
+      "propid": 1449366,
+      "address": "40 BURWOOD ROAD CONCORD",
+      "price": 2100000,
+      "area_m2": 499.5,
+      "sale_date": "2023-06-17",
+      "price_per_m2": 4204.2,
+      "is_strata": false
+    },
+    {
+      "propid": 1450874,
+      "address": "15 CORBY AVENUE CONCORD",
+      "price": 3850000,
+      "area_m2": 929.5,
+      "sale_date": "2025-08-15",
+      "price_per_m2": 4142.01,
+      "is_strata": false
+    },
+    {
+      "propid": 1450926,
+      "address": "14/2 CORBY AVENUE CONCORD",
+      "price": 800000,
+      "area_m2": 0.0,
+      "sale_date": "2025-08-29",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1450946,
+      "address": "10 CORBY AVENUE CONCORD",
+      "price": 3050000,
+      "area_m2": 790.4,
+      "sale_date": "2024-09-21",
+      "price_per_m2": 3858.81,
+      "is_strata": false
+    },
+    {
+      "propid": 1450947,
+      "address": "12 CORBY AVENUE CONCORD",
+      "price": 3500000,
+      "area_m2": 809.4,
+      "sale_date": "2025-03-13",
+      "price_per_m2": 4324.19,
+      "is_strata": false
+    },
+    {
+      "propid": 1451006,
+      "address": "16 CORMISTON AVENUE CONCORD",
+      "price": 3250000,
+      "area_m2": 606.77,
+      "sale_date": "2024-04-08",
+      "price_per_m2": 5356.23,
+      "is_strata": false
+    },
+    {
+      "propid": 1451011,
+      "address": "6 CORMISTON AVENUE CONCORD",
+      "price": 3210000,
+      "area_m2": 458.37,
+      "sale_date": "2025-02-22",
+      "price_per_m2": 7003.08,
+      "is_strata": false
+    },
+    {
+      "propid": 1451012,
+      "address": "4 CORMISTON AVENUE CONCORD",
+      "price": 2880000,
+      "area_m2": 458.37,
+      "sale_date": "2024-08-16",
+      "price_per_m2": 6283.13,
+      "is_strata": false
+    },
+    {
+      "propid": 1451141,
+      "address": "42 CRANE STREET CONCORD",
+      "price": 1100000,
+      "area_m2": 132.8,
+      "sale_date": "2024-06-03",
+      "price_per_m2": 8283.13,
+      "is_strata": false
+    },
+    {
+      "propid": 1451142,
+      "address": "42A CRANE STREET CONCORD",
+      "price": 2070000,
+      "area_m2": 132.8,
+      "sale_date": "2025-12-23",
+      "price_per_m2": 15587.35,
+      "is_strata": false
+    },
+    {
+      "propid": 1451143,
+      "address": "40A CRANE STREET CONCORD",
+      "price": 2070000,
+      "area_m2": 151.8,
+      "sale_date": "2025-12-23",
+      "price_per_m2": 13636.36,
+      "is_strata": false
+    },
+    {
+      "propid": 1451146,
+      "address": "36 CRANE STREET CONCORD",
+      "price": 2400000,
+      "area_m2": 550.1,
+      "sale_date": "2023-08-08",
+      "price_per_m2": 4362.84,
+      "is_strata": false
+    },
+    {
+      "propid": 1451149,
+      "address": "28 CRANE STREET CONCORD",
+      "price": 2700000,
+      "area_m2": 379.4,
+      "sale_date": "2025-02-01",
+      "price_per_m2": 7116.5,
+      "is_strata": false
+    },
+    {
+      "propid": 1451152,
+      "address": "4/22 CRANE STREET CONCORD",
+      "price": 990500,
+      "area_m2": 0.0,
+      "sale_date": "2025-02-15",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1451373,
+      "address": "10 DAVID STREET CONCORD",
+      "price": 2550000,
+      "area_m2": 423.7,
+      "sale_date": "2023-08-30",
+      "price_per_m2": 6018.41,
+      "is_strata": false
+    },
+    {
+      "propid": 1451691,
+      "address": "20 EDITH AVENUE CONCORD",
+      "price": 3255000,
+      "area_m2": 531.1,
+      "sale_date": "2024-06-19",
+      "price_per_m2": 6128.79,
+      "is_strata": false
+    },
+    {
+      "propid": 1451862,
+      "address": "14 EVELYN AVENUE CONCORD",
+      "price": 2800000,
+      "area_m2": 442.88,
+      "sale_date": "2023-08-19",
+      "price_per_m2": 6322.25,
+      "is_strata": false
+    },
+    {
+      "propid": 1451868,
+      "address": "12/2 EVELYN AVENUE CONCORD",
+      "price": 740000,
+      "area_m2": 0.0,
+      "sale_date": "2025-02-01",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1451897,
+      "address": "15/1 EVELYN AVENUE CONCORD",
+      "price": 789000,
+      "area_m2": 0.0,
+      "sale_date": "2024-10-26",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1451917,
+      "address": "11 EVELYN AVENUE CONCORD",
+      "price": 5400000,
+      "area_m2": 448.9,
+      "sale_date": "2025-11-29",
+      "price_per_m2": 12029.41,
+      "is_strata": false
+    },
+    {
+      "propid": 1451943,
+      "address": "21 EXCELSIOR STREET CONCORD",
+      "price": 2468000,
+      "area_m2": 417.3,
+      "sale_date": "2024-04-12",
+      "price_per_m2": 5914.21,
+      "is_strata": false
+    },
+    {
+      "propid": 1451945,
+      "address": "24 EXCELSIOR STREET CONCORD",
+      "price": 1951000,
+      "area_m2": 356.7,
+      "sale_date": "2023-10-26",
+      "price_per_m2": 5469.58,
+      "is_strata": false
+    },
+    {
+      "propid": 1451972,
+      "address": "22 FINCH AVENUE CONCORD",
+      "price": 2275000,
+      "area_m2": 430.0,
+      "sale_date": "2024-01-16",
+      "price_per_m2": 5290.7,
+      "is_strata": false
+    },
+    {
+      "propid": 1451982,
+      "address": "5/2 FINCH AVENUE CONCORD",
+      "price": 695000,
+      "area_m2": 0.0,
+      "sale_date": "2025-12-13",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1452854,
+      "address": "5/16 GIPPS STREET CONCORD",
+      "price": 1535000,
+      "area_m2": 0.0,
+      "sale_date": "2025-07-05",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1452860,
+      "address": "1/18 GIPPS STREET CONCORD",
+      "price": 1210000,
+      "area_m2": 0.0,
+      "sale_date": "2025-08-09",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1452879,
+      "address": "34 GIPPS STREET CONCORD",
+      "price": 1855000,
+      "area_m2": 460.3,
+      "sale_date": "2023-12-16",
+      "price_per_m2": 4029.98,
+      "is_strata": false
+    },
+    {
+      "propid": 1452880,
+      "address": "36A GIPPS STREET CONCORD",
+      "price": 1750000,
+      "area_m2": 379.4,
+      "sale_date": "2024-10-28",
+      "price_per_m2": 4612.55,
+      "is_strata": false
+    },
+    {
+      "propid": 1452881,
+      "address": "36 GIPPS STREET CONCORD",
+      "price": 3380000,
+      "area_m2": 632.3,
+      "sale_date": "2026-03-24",
+      "price_per_m2": 5345.56,
+      "is_strata": false
+    },
+    {
+      "propid": 1452981,
+      "address": "11 GIPPS STREET CONCORD",
+      "price": 1700000,
+      "area_m2": 297.2,
+      "sale_date": "2024-12-07",
+      "price_per_m2": 5720.05,
+      "is_strata": false
+    },
+    {
+      "propid": 1452993,
+      "address": "8 GLADSTONE STREET CONCORD",
+      "price": 2825000,
+      "area_m2": 406.4,
+      "sale_date": "2024-02-03",
+      "price_per_m2": 6951.28,
+      "is_strata": false
+    },
+    {
+      "propid": 1452998,
+      "address": "18 GLADSTONE STREET CONCORD",
+      "price": 2710000,
+      "area_m2": 442.6,
+      "sale_date": "2024-11-22",
+      "price_per_m2": 6122.91,
+      "is_strata": false
+    },
+    {
+      "propid": 1453722,
+      "address": "1 LA MASCOTTE AVENUE CONCORD",
+      "price": 3850000,
+      "area_m2": 569.1,
+      "sale_date": "2025-03-07",
+      "price_per_m2": 6765.07,
+      "is_strata": false
+    },
+    {
+      "propid": 1453746,
+      "address": "14 LA MASCOTTE AVENUE CONCORD",
+      "price": 2820000,
+      "area_m2": 546.18,
+      "sale_date": "2024-11-23",
+      "price_per_m2": 5163.13,
+      "is_strata": false
+    },
+    {
+      "propid": 1453787,
+      "address": "7 LANSDOWNE STREET CONCORD",
+      "price": 4450000,
+      "area_m2": 766.42,
+      "sale_date": "2024-11-29",
+      "price_per_m2": 5806.22,
+      "is_strata": false
+    },
+    {
+      "propid": 1453802,
+      "address": "2A LANSDOWNE STREET CONCORD",
+      "price": 4025000,
+      "area_m2": 511.76,
+      "sale_date": "2025-10-10",
+      "price_per_m2": 7865.01,
+      "is_strata": false
+    },
+    {
+      "propid": 1454199,
+      "address": "8 LOFTUS STREET CONCORD",
+      "price": 8347000,
+      "area_m2": 834.7,
+      "sale_date": "2025-03-28",
+      "price_per_m2": 10000.0,
+      "is_strata": false
+    },
+    {
+      "propid": 1454200,
+      "address": "7 LOFTUS STREET CONCORD",
+      "price": 8000000,
+      "area_m2": 777.8,
+      "sale_date": "2025-03-28",
+      "price_per_m2": 10285.42,
+      "is_strata": false
+    },
+    {
+      "propid": 1454201,
+      "address": "6 LOFTUS STREET CONCORD",
+      "price": 8250000,
+      "area_m2": 727.2,
+      "sale_date": "2025-03-28",
+      "price_per_m2": 11344.88,
+      "is_strata": false
+    },
+    {
+      "propid": 1454204,
+      "address": "3B LOFTUS STREET CONCORD",
+      "price": 2600000,
+      "area_m2": 328.8,
+      "sale_date": "2023-10-26",
+      "price_per_m2": 7907.54,
+      "is_strata": false
+    },
+    {
+      "propid": 1454810,
+      "address": "1/13 MELBOURNE STREET CONCORD",
+      "price": 1680000,
+      "area_m2": 0.0,
+      "sale_date": "2024-12-11",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 1454812,
+      "address": "17 MELBOURNE STREET CONCORD",
+      "price": 2420000,
+      "area_m2": 514.94,
+      "sale_date": "2023-05-27",
+      "price_per_m2": 4699.58,
+      "is_strata": false
+    },
+    {
+      "propid": 1454813,
+      "address": "19 MELBOURNE STREET CONCORD",
+      "price": 3580000,
+      "area_m2": 505.9,
+      "sale_date": "2025-04-09",
+      "price_per_m2": 7076.5,
+      "is_strata": false
+    },
+    {
+      "propid": 1455258,
+      "address": "7 NICHOLAS AVENUE CONCORD",
+      "price": 3875000,
+      "area_m2": 379.4,
+      "sale_date": "2025-11-11",
+      "price_per_m2": 10213.49,
+      "is_strata": false
+    },
+    {
+      "propid": 1455260,
+      "address": "11 NICHOLAS AVENUE CONCORD",
+      "price": 3050000,
+      "area_m2": 379.4,
+      "sale_date": "2025-11-05",
+      "price_per_m2": 8039.01,
+      "is_strata": false
+    },
+    {
+      "propid": 1455264,
+      "address": "19 NICHOLAS AVENUE CONCORD",
+      "price": 3202500,
+      "area_m2": 448.9,
+      "sale_date": "2025-11-08",
+      "price_per_m2": 7134.11,
+      "is_strata": false
+    },
+    {
+      "propid": 1455266,
+      "address": "23 NICHOLAS AVENUE CONCORD",
+      "price": 2797000,
+      "area_m2": 477.66,
+      "sale_date": "2025-05-03",
+      "price_per_m2": 5855.63,
+      "is_strata": false
+    },
+    {
+      "propid": 1455267,
+      "address": "25 NICHOLAS AVENUE CONCORD",
+      "price": 2360000,
+      "area_m2": 404.7,
+      "sale_date": "2024-05-17",
+      "price_per_m2": 5831.48,
+      "is_strata": false
+    },
+    {
+      "propid": 1455650,
+      "address": "31 PATTERSON STREET CONCORD",
+      "price": 5001000,
+      "area_m2": 486.9,
+      "sale_date": "2024-04-20",
+      "price_per_m2": 10271.1,
+      "is_strata": false
+    },
+    {
+      "propid": 1455663,
+      "address": "3 PATTERSON STREET CONCORD",
+      "price": 3100000,
+      "area_m2": 618.7,
+      "sale_date": "2025-08-21",
+      "price_per_m2": 5010.51,
+      "is_strata": false
+    },
+    {
+      "propid": 1456195,
+      "address": "1 RICHARDS PLACE CONCORD",
+      "price": 3250000,
+      "area_m2": 600.7,
+      "sale_date": "2023-05-20",
+      "price_per_m2": 5410.35,
+      "is_strata": false
+    },
+    {
+      "propid": 1456258,
+      "address": "2 ROSE AVENUE CONCORD",
+      "price": 3130000,
+      "area_m2": 474.2,
+      "sale_date": "2023-12-06",
+      "price_per_m2": 6600.59,
+      "is_strata": false
+    },
+    {
+      "propid": 1456467,
+      "address": "6 SHACKEL AVENUE CONCORD",
+      "price": 3200000,
+      "area_m2": 564.88,
+      "sale_date": "2023-05-24",
+      "price_per_m2": 5664.92,
+      "is_strata": false
+    },
+    {
+      "propid": 1456475,
+      "address": "22 SHACKEL AVENUE CONCORD",
+      "price": 3420000,
+      "area_m2": 578.43,
+      "sale_date": "2024-11-16",
+      "price_per_m2": 5912.56,
+      "is_strata": false
+    },
+    {
+      "propid": 1456587,
+      "address": "31 STANLEY STREET CONCORD",
+      "price": 2510000,
+      "area_m2": 408.2,
+      "sale_date": "2024-12-05",
+      "price_per_m2": 6148.95,
+      "is_strata": false
+    },
+    {
+      "propid": 1456597,
+      "address": "11 STANLEY STREET CONCORD",
+      "price": 1100000,
+      "area_m2": 426.8,
+      "sale_date": "2024-10-10",
+      "price_per_m2": 2577.32,
+      "is_strata": false
+    },
+    {
+      "propid": 1456610,
+      "address": "16 STANLEY STREET CONCORD",
+      "price": 2800000,
+      "area_m2": 490.4,
+      "sale_date": "2025-07-23",
+      "price_per_m2": 5709.62,
+      "is_strata": false
+    },
+    {
+      "propid": 1457399,
+      "address": "2 WALLACE STREET CONCORD",
+      "price": 3525000,
+      "area_m2": 397.0,
+      "sale_date": "2025-10-29",
+      "price_per_m2": 8879.09,
+      "is_strata": false
+    },
+    {
+      "propid": 1457400,
+      "address": "4 WALLACE STREET CONCORD",
+      "price": 3550000,
+      "area_m2": 398.0,
+      "sale_date": "2025-04-14",
+      "price_per_m2": 8919.6,
+      "is_strata": false
+    },
+    {
+      "propid": 1457416,
+      "address": "9 WALLACE STREET CONCORD",
+      "price": 2630000,
+      "area_m2": 404.7,
+      "sale_date": "2024-10-19",
+      "price_per_m2": 6498.64,
+      "is_strata": false
+    },
+    {
+      "propid": 1457418,
+      "address": "5 WALLACE STREET CONCORD",
+      "price": 2620000,
+      "area_m2": 404.7,
+      "sale_date": "2026-02-20",
+      "price_per_m2": 6473.93,
+      "is_strata": false
+    },
+    {
+      "propid": 1457950,
+      "address": "11 WORDSWORTH AVENUE CONCORD",
+      "price": 3400000,
+      "area_m2": 696.77,
+      "sale_date": "2024-10-28",
+      "price_per_m2": 4879.66,
+      "is_strata": false
+    },
+    {
+      "propid": 1457956,
+      "address": "2 WORDSWORTH AVENUE CONCORD",
+      "price": 2950000,
+      "area_m2": 575.4,
+      "sale_date": "2025-09-10",
+      "price_per_m2": 5126.87,
+      "is_strata": false
+    },
+    {
+      "propid": 2924518,
+      "address": "1/67 BURWOOD ROAD CONCORD",
+      "price": 525000,
+      "area_m2": 0.0,
+      "sale_date": "2023-09-22",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 3128685,
+      "address": "7/10 CRANE STREET CONCORD",
+      "price": 1620000,
+      "area_m2": 0.0,
+      "sale_date": "2023-12-14",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 3193789,
+      "address": "1/91 BURWOOD ROAD CONCORD",
+      "price": 945000,
+      "area_m2": 0.0,
+      "sale_date": "2025-08-25",
+      "price_per_m2": null,
+      "is_strata": true
+    },
+    {
+      "propid": 3533295,
+      "address": "137 BURWOOD ROAD CONCORD",
+      "price": 2000000,
+      "area_m2": 334.4,
+      "sale_date": "2025-07-18",
+      "price_per_m2": 5980.86,
+      "is_strata": false
+    },
+    {
+      "propid": 4111539,
+      "address": "157A BURWOOD ROAD CONCORD",
+      "price": 2625000,
+      "area_m2": 221.3,
+      "sale_date": "2025-04-17",
+      "price_per_m2": 11861.73,
+      "is_strata": false
+    },
+    {
+      "propid": 4476236,
+      "address": "43 BROUGHTON STREET CONCORD",
+      "price": 2450000,
+      "area_m2": 470.1,
+      "sale_date": "2023-08-04",
+      "price_per_m2": 5211.66,
+      "is_strata": false
+    },
+    {
+      "propid": 4567156,
+      "address": "8 JOHN STREET CONCORD",
+      "price": 2975000,
+      "area_m2": 290.7,
+      "sale_date": "2024-08-08",
+      "price_per_m2": 10233.92,
+      "is_strata": false
+    },
+    {
+      "propid": 4567157,
+      "address": "10 JOHN STREET CONCORD",
+      "price": 2780000,
+      "area_m2": 226.3,
+      "sale_date": "2024-10-17",
+      "price_per_m2": 12284.58,
+      "is_strata": false
+    },
+    {
+      "propid": 4567158,
+      "address": "10A JOHN STREET CONCORD",
+      "price": 2828000,
+      "area_m2": 276.9,
+      "sale_date": "2024-07-11",
+      "price_per_m2": 10213.07,
+      "is_strata": false
+    }
+  ]
+}

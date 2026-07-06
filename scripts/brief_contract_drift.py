@@ -57,11 +57,21 @@ def _registry():
         FloodServiceOutput,
         BushfireServiceOutput,
         ShadowServiceOutput,
+        StrataCoreOutput,
+        ClimateRiskServiceOutput,
+        TerrainAnalysisDetail,  # via the brief's rasterio-tolerant import shim
     )
+
     return {
         "flood": (FloodServiceOutput, "outputs"),
         "bushfire": (BushfireServiceOutput, "outputs"),
         "shadow": (ShadowServiceOutput, None),  # shadow has no 'outputs' wrapper
+        # Slice-0 additions — no 'outputs' wrapper on any of these:
+        # strata drift checks the always-emitted core keys only (StrataHub
+        # enrichment keys are conditionally present by design).
+        "strata": (StrataCoreOutput, None),
+        "terrain": (TerrainAnalysisDetail, None),
+        "climate": (ClimateRiskServiceOutput, None),
     }
 
 

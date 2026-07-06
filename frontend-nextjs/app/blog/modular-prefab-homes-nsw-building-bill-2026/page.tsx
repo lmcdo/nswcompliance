@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -657,13 +658,15 @@ export default function ModularPrefabBuildingBillPage() {
               zoning, overlays, and DCP controls apply.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link
+              <TrackedLink
                 href="/check"
+                page="modular-prefab-homes-nsw-building-bill-2026"
+                cta="check_address"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
               >
                 Check your address
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </TrackedLink>
               <Link
                 href="/reports/granny-flat"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-teal-700 text-sm font-medium rounded-xl border border-teal-200 hover:bg-teal-50 transition-colors"

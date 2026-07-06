@@ -1,0 +1,19 @@
+{
+  "service": "strata_hub",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "lat": -33.96809904015061,
+    "lng": 151.1087870996075
+  },
+  "output": {
+    "plan_number": 91614,
+    "plan_label": "SP91614",
+    "address": "1 TREACY STREET HURSTVILLE",
+    "suburb": "HURSTVILLE",
+    "lga": "GEORGES RIVER",
+    "lot_total": 77,
+    "registration_date": "2019-09-25",
+    "area_m2": 2278.2852735937327,
+    "dwelling_type": "apartment"
+  }
+}

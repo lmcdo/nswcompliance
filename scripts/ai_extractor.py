@@ -237,7 +237,9 @@ def _call_mistral(pdf_bytes: bytes, prompt: str = PROMPT) -> str:
         "https://api.mistral.ai/v1/chat/completions",
         data=json.dumps(body).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=180) as r:
+    # 300s: large image-heavy chapter PDFs (20 MB+) can push a single chunk past the
+    # old 180s. Read timeouts are also made retryable in _is_retryable.
+    with urllib.request.urlopen(req, timeout=300) as r:
         return json.load(r)["choices"][0]["message"]["content"]
 
 
@@ -247,9 +249,14 @@ _PROVIDERS = {"haiku": _call_haiku, "mistral": _call_mistral}
 def _is_retryable(exc: Exception) -> bool:
     if isinstance(exc, urllib.error.HTTPError):
         return exc.code in (429, 500, 502, 503, 529)
+    # Read/connect timeouts and transient network errors (urllib URLError wraps
+    # socket.timeout; socket.timeout is TimeoutError on 3.10+) — retry them.
+    if isinstance(exc, (TimeoutError, urllib.error.URLError)):
+        return True
     name = type(exc).__name__
     status = getattr(exc, "status_code", None)
-    return name in ("RateLimitError", "OverloadedError", "APIStatusError") or status in (429, 500, 502, 503, 529)
+    return name in ("RateLimitError", "OverloadedError", "APIStatusError", "APITimeoutError") \
+        or status in (429, 500, 502, 503, 529)
 
 
 def _call_with_retry(model: str, pdf_bytes: bytes, prompt: str = PROMPT) -> str:

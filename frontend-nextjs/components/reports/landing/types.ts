@@ -46,11 +46,11 @@ export interface ProductLandingConfig {
   featuresSubtitle: string
   features: FeatureItem[]
 
-  // Pricing
-  pricingTitle: string
-  pricingSubtitle: string
-  price: string
-  comparison: ComparisonRow[]
+  // Pricing (optional — free products render the methodology block alone)
+  pricingTitle?: string
+  pricingSubtitle?: string
+  price?: string
+  comparison?: ComparisonRow[]
   methodology: string
 
   // Coverage (optional)

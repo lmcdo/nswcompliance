@@ -1326,7 +1326,8 @@ def resolve_document_id(cur, council: str, chapter_key: str, dcp_name: str) -> s
 # fetch_pending_chapters/diff_provisions detector (the only DCP provision-diff in the
 # repo); the guard's matches (shadow_detector, transport_proximity_detector) are
 # unrelated satellite products sharing only generic words.
-def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False) -> tuple[str, list]:
+def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False,
+                          chapter_filter: str | None = None) -> tuple[str, list]:
     """Build the chapter-selection query (pure, testable).
 
     all_chapters=False (default): the legacy reactive trigger — only chapters the
@@ -1357,6 +1358,12 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     if council_filter:
         conds.append("council = %s")
         params.append(council_filter)
+    # prior-art-checked: reuse not viable because this is this module's own DCP chapter
+    # registry query builder; the flagged matches are unrelated frontend provision-display
+    # components. Adding a single-chapter filter to enable a targeted re-extraction.
+    if chapter_filter:
+        conds.append("chapter_key = %s")
+        params.append(chapter_filter)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
         "r2_current_path, r2_version_label, dcp_name, content_hash "
@@ -1366,8 +1373,9 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     return query, params
 
 
-def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool = False) -> list[dict]:
-    query, params = _pending_chapters_sql(council_filter, all_chapters)
+def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool = False,
+                           chapter_filter: str | None = None) -> list[dict]:
+    query, params = _pending_chapters_sql(council_filter, all_chapters, chapter_filter)
     cur.execute(query, params)
     cols = [d[0] for d in cur.description]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -1784,7 +1792,12 @@ def extract_chapter(
         if page_ranges is None:
             page_ranges = COUNCIL_PAGE_RANGES.get(council)
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
-        if page_ranges:
+        # When AI extraction is on it reads any layout, so bypass the per-council
+        # page-range/regex config entirely and use extract() (which dispatches to the
+        # LLM at DCPExtractor.extract). Otherwise a council WITH a page-range config
+        # (e.g. ashfield) would silently run the old regex despite AI_EXTRACTION=1.
+        ai_on = os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes")
+        if page_ranges and not ai_on:
             try:
                 sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
             except Exception as exc:
@@ -1803,7 +1816,9 @@ def extract_chapter(
 
             # Apply subsection patterns to the default extraction path too.
             # (extract_by_page_ranges handles this internally; the default path does not.)
-            if subsection_patterns and sections:
+            # Skip when AI is on — the LLM already returns split provisions; re-splitting
+            # its output with the regex patterns would mangle it.
+            if subsection_patterns and sections and not ai_on:
                 expanded: list[dict] = []
                 for sec in sections:
                     sub_secs = split_content_at_subsections(
@@ -2299,6 +2314,17 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         if not rows:
             continue
 
+        # Guard verdict for the whole chapter (count_drop / schema_fail / coverage_fail /
+        # truncation_fail), stored on every row so the review UI can flag the chapter.
+        reason = suspect_reason(ch)
+
+        # Full re-extraction vs targeted amendment — drives whether the commit worker
+        # blanket-replaces the chapter or updates only the changed refs. A restructure or
+        # an empty baseline (total_old == 0) is a full replace; anything else is targeted.
+        is_full_replace = (
+            diff.get("status") == "restructure" or int(diff.get("total_old") or 0) == 0
+        )
+
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
         # Only 'pending' rows are cleared — approved/rejected history is preserved.
         cur.execute(
@@ -2312,11 +2338,11 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
                 INSERT INTO dcp_review_queue
                     (council, chapter_key, document_id, ref_number, change_type,
                      old_text, new_text, old_page, new_page, has_numeric_change,
-                     source_content_hash, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                     source_content_hash, suspect_reason, is_full_replace, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
                 """,
                 (council, chapter_key, document_id, ref, change_type,
-                 old_t, new_t, old_p, new_p, has_num, content_hash),
+                 old_t, new_t, old_p, new_p, has_num, content_hash, reason, is_full_replace),
             )
             total += 1
 
@@ -2547,6 +2573,7 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="DCP chapter extraction pipeline")
     parser.add_argument("--council", help="Filter to specific council")
+    parser.add_argument("--chapter", help="Filter to a single chapter_key (for a targeted re-extraction/retry)")
     parser.add_argument("--dry-run", action="store_true", help="Extract but no DB writes")
     parser.add_argument(
         "--review",
@@ -2588,7 +2615,8 @@ def main() -> None:
 
     try:
         cur = conn.cursor()
-        chapters = fetch_pending_chapters(cur, args.council, all_chapters=args.all)
+        chapters = fetch_pending_chapters(cur, args.council, all_chapters=args.all,
+                                          chapter_filter=args.chapter)
         cur.close()
     except Exception as exc:
         print(f"[ERROR] Could not query dcp_chapter_registry: {exc}")
@@ -2629,6 +2657,38 @@ def main() -> None:
         print(f"{'='*60}")
         print(f"\n  {review_path}")
         print(f"  Enqueued {queued} change(s) to dcp_review_queue for human review.")
+
+        # prior-art-checked: reuse not viable as-is — this CALLS the existing grader
+        # (dcp_fidelity_gate.gate_chapter) rather than reimplementing it; the flagged
+        # sepp_full_text_extraction scripts are a different pipeline. Only the wiring is new.
+        # Auto-grade the freshly enqueued rows against their source PDFs (fidelity gate), so
+        # the reviewer sees only flagged rows with a source quote instead of the whole batch.
+        # Lazy import dodges the circular import (dcp_fidelity_gate imports this module).
+        # Advisory: a grading failure never fails the extract — the rows are still queued.
+        if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
+            try:
+                import dcp_fidelity_gate as _gate
+                pairs = sorted({(ch.get("council"), ch.get("chapter_key")) for ch in review_chapters})
+                gcur = conn.cursor()
+                g_tot = f_tot = 0
+                for g_council, g_chapter in pairs:
+                    gcur.execute(
+                        "SELECT r2_current_path FROM dcp_chapter_registry "
+                        "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL",
+                        (g_council, g_chapter),
+                    )
+                    r2row = gcur.fetchone()
+                    if not r2row:
+                        continue
+                    g, f = _gate.gate_chapter(gcur, s3, g_council, g_chapter, r2row[0])
+                    conn.commit()
+                    g_tot += g
+                    f_tot += f
+                gcur.close()
+                print(f"  Fidelity gate: {g_tot} grounded, {f_tot} flagged for human review.")
+            except Exception as exc:  # noqa: BLE001 — grading is advisory; keep the queued rows
+                print(f"  [warn] fidelity gate skipped ({exc}); rows queued but ungraded.")
+
         print(f"\n  Open this file and inspect section lists + sample provision texts.")
         print(f"  When satisfied, commit with:")
         print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")

@@ -1,0 +1,20 @@
+{
+  "service": "da_refusal_stats",
+  "captured_at": "2026-07-04",
+  "inputs": {
+    "lga": "CANADA BAY"
+  },
+  "output": {
+    "lga": "CANADA BAY",
+    "zone": null,
+    "dev_type": null,
+    "period_years": 8,
+    "total_determined": 992,
+    "approved": 918,
+    "refused": 45,
+    "deferred_commencement": 29,
+    "refusal_rate": 0.0454,
+    "window_start": "2018-01-01",
+    "data_currency": "2023-04-29"
+  }
+}

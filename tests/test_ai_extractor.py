@@ -211,3 +211,20 @@ class TestRetry:
         assert _is_retryable(err429) is True
         assert _is_retryable(err400) is False
         assert _is_retryable(ValueError("x")) is False
+
+
+class TestRetryableTimeouts:
+    def test_read_timeout_is_retryable(self):
+        import urllib.error
+        from ai_extractor import _is_retryable
+        # the chapter-d failure mode: a socket read timeout
+        assert _is_retryable(TimeoutError("read timed out")) is True
+        assert _is_retryable(urllib.error.URLError("timed out")) is True
+
+    def test_http_500_retryable_400_not(self):
+        import urllib.error
+        from ai_extractor import _is_retryable
+        e500 = urllib.error.HTTPError("u", 503, "x", {}, None)
+        e400 = urllib.error.HTTPError("u", 400, "x", {}, None)
+        assert _is_retryable(e500) is True
+        assert _is_retryable(e400) is False

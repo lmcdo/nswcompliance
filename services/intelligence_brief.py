@@ -31,7 +31,22 @@ from typing import Any, Generator, Generic, Literal, NamedTuple, Optional, TypeV
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+
+try:
+    from vg_comparables import (  # noqa: E402 — Railway runs from services/
+        ComparableAnalysis,
+        PropertySale,
+        get_comparable_values,
+        get_recent_sales,
+    )
+except ImportError:
+    from services.vg_comparables import (  # noqa: E402
+        ComparableAnalysis,
+        PropertySale,
+        get_comparable_values,
+        get_recent_sales,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +80,22 @@ class BriefConfig:
     # Search parameters
     da_radius_m: int = 500  # neighbourhood scope — 200m was too tight to be useful
     da_lookback_days: int = 365
+    # Market context (VG comparables + sales). Same 500m scope as the DA radius —
+    # the bounding box + zone + lot-area filters keep a neighbour's different
+    # market segment from leaking into "comparable" statistics.
+    market_radius_m: int = 500
+    market_sales_years_back: int = 3
+    timeout_market: float = 15.0  # two VG ArcGIS queries (~0.3s each live); headroom for a slow VG day
+    timeout_land_use: float = 10.0  # one indexed lep_land_use_table query (~0.3s live)
+    # DA outcomes (determined applications with results) — tighter radius than
+    # the recent-DA feed: outcomes describe THIS street's determinations.
+    da_outcomes_radius_m: int = 200
+    # The tracking layer's outcome field is only backfilled up to ~2022
+    # lodgements (verified live 2026-07-04) — a 3-year window held 4 records
+    # for a whole LGA. 8 years gives a meaningful cohort; the period is always
+    # displayed with the counts.
+    da_outcomes_years_back: int = 8
+    timeout_da_outcomes: float = 15.0
 
     # Concurrency — single pool runs all sources; dependents submitted after
     # their prerequisite completes, so effective parallelism is ~15-20.
@@ -156,6 +187,28 @@ class DataField(BaseModel, Generic[T]):
     reason: Optional[str] = None  # populated when value is None due to error
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @model_validator(mode="after")
+    def _fail_closed_on_errored_authoritative(self) -> "DataField":
+        """S1 fail-closed invariant, enforced at every construction site.
+
+        A DataField with no value that carries an error ``reason`` is a FAILED
+        fetch (per the field contract above) — it must never present
+        AUTHORITATIVE confidence, or a failed lookup renders as a confident
+        answer (the strata/overlay false-negative class). Coerce, don't raise:
+        the brief must degrade to an honest NOT_AVAILABLE card, not 500.
+
+        ``value=None, reason=None`` is deliberately untouched — that is the
+        documented queried-and-legitimately-empty state (e.g. a zone with no
+        height control), which must keep its AUTHORITATIVE badge.
+        """
+        if (
+            self.confidence == ConfidenceLevel.AUTHORITATIVE
+            and self.value is None
+            and self.reason
+        ):
+            self.confidence = ConfidenceLevel.NOT_AVAILABLE
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +311,32 @@ class PlanningControls(BaseModel):
     housing_sepp: DataField[bool]
     tod_area: DataField[bool]
     lot_dimensions: DataField[Optional[LotDimensions]]
+    # LEP Land Use Table lists for this zone + LGA (lep_land_use_table, the
+    # structured 25-LGA dataset). value=None + reason = not extracted for this
+    # council yet / fetch failed \u2014 never a silent empty list.
+    permitted_uses: DataField[Optional[list[str]]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="lep_land_use_table", reason="Land-use lists not queried",
+    )
+    prohibited_uses: DataField[Optional[list[str]]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="lep_land_use_table", reason="Land-use lists not queried",
+    )
+
+
+class MarketContext(BaseModel):
+    """VG comparables + recent sales around the subject lot.
+
+    Wording contract (liability): percentile_rank / assessment_signal are the
+    subject's FACTUAL position within the comparable set \u2014 rendered as
+    "sits at the Nth percentile of comparable lots within X m", never as an
+    over/under-valuation opinion.
+    """
+
+    comparables: DataField[Optional[ComparableAnalysis]]
+    recent_sales: DataField[Optional[list[PropertySale]]]
+    radius_m: int = CONFIG.market_radius_m
+    sales_years_back: int = CONFIG.market_sales_years_back
 
 
 class DCPControls(BaseModel):
@@ -302,6 +381,11 @@ class StrataInfo(BaseModel):
     plan_label: Optional[str] = None
     source: Optional[str] = None
     lot_area_m2: Optional[float] = None
+    # StrataHub supplementary detail (display only — never drives the
+    # development/renovation brief-type routing, which classify_strata owns).
+    lot_total: Optional[int] = None
+    dwelling_type: Optional[str] = None
+    registration_date: Optional[str] = None
 
 
 class NearbyDA(BaseModel):
@@ -364,9 +448,32 @@ class EnvironmentalConstraints(BaseModel):
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="postgis_overlays", reason="Not yet extracted from overlays",
     )
+    # Numeric ANEF contour value (when one applies) — the display string above
+    # stays for the card; this carries the number for downstream consumers.
+    anef_level: DataField[Optional[float]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="planning_portal_protection", reason="Not yet extracted from overlays",
+    )
     coastal_hazards: DataField[Optional[dict]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="sepp_resilience_hazards", reason="Not yet extracted from overlays",
+    )
+    # Nearest-feature distances (metres) for mapped layers that are covered for
+    # this LGA but do NOT intersect this lot — measured by PostGIS ST_Distance
+    # in get_unique_overlays, never estimated. Decorates the "No" rows
+    # ("Flood: No — nearest mapped flood polygon 830 m away").
+    nearest_features: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="postgis_overlays", reason="Not yet extracted from overlays",
+    )
+    # Detail behind the booleans above — already returned by their services.
+    contaminated_detail: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="epa_contaminated_sites", reason="Not yet wired in orchestrator",
+    )
+    mine_subsidence_district: DataField[Optional[str]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="nsw_spatial_services", reason="Not yet wired in orchestrator",
     )
 
 
@@ -376,6 +483,17 @@ class Neighbourhood(BaseModel):
     nearby_das: DataField[list[NearbyDA]]
     da_count: DataField[Optional[int]]
     shadow: DataField[Optional[ShadowResult]]
+    # Determined applications with OUTCOMES (DA tracking layer) + the LGA-wide
+    # determination counts. value carries radius/period so the UI states them
+    # from data. Defaults = not queried (legacy constructors).
+    da_outcomes: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="da_tracking_mapserver", reason="DA outcomes not queried",
+    )
+    da_refusal_stats: DataField[Optional[dict]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="da_tracking_mapserver", reason="Refusal counts not queried",
+    )
 
 
 class Economics(BaseModel):
@@ -400,13 +518,21 @@ class BushfireDetail(BaseModel):
     bal_estimate: Optional[str] = None
     vegetation_type: Optional[str] = None  # RFS designation guideline
     fire_signal: Optional[str] = None  # none/low/moderate/elevated/unavailable
-    cross_overlays: Optional[dict] = None  # flood, heritage, zone intersections
+    cross_overlays: Optional[list[dict]] = None  # flood, heritage, zone intersections
+    rfs_referral_required: Optional[bool] = None
+    rfs_referral_triggers: Optional[list[str]] = None
+    cdc_pathway_available: Optional[bool] = None
     confidence: Optional[str] = None
 
 
 class _BushfireCompliance(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    cross_overlays: Optional[dict] = None
+    # The service emits a LIST of {type, ...} overlay dicts (or null) — typing
+    # this as dict crashed validation on every bushfire-prone lot with overlays.
+    cross_overlays: Optional[list[dict]] = None
+    rfs_referral_required: Optional[bool] = None
+    rfs_referral_triggers: Optional[list[str]] = None
+    cdc_pathway_available: Optional[bool] = None
 
 
 class BushfireServiceOutput(BaseModel):
@@ -482,6 +608,115 @@ class ShadowServiceOutput(BaseModel):
     adg_compliant: Optional[bool] = None
     worst_case_scenario: Optional[str] = None
     scenarios: list[ShadowScenarioOutput] = []
+
+
+class StrataCoreOutput(BaseModel):
+    """Keys ``detect_strata`` (cadastre) emits on EVERY return path.
+
+    The runtime drift tripwire checks against this class only — the StrataHub
+    enrichment keys below are conditionally present by design, so their absence
+    is not drift.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    is_strata: bool = False
+    strata_plan: Optional[str] = None
+    plan_type: Optional[str] = None
+    source: Optional[str] = None
+    parent_has_strata: bool = False
+    plan_label: Optional[str] = None
+
+
+class StrataServiceOutput(StrataCoreOutput):
+    """S2 typed contract for the cadastre strata dict (``detect_strata``,
+    optionally enriched with StrataHub ``lot_total``/``dwelling_type`` by
+    ``_fetch_strata``).
+
+    Single source of truth for the strata key names the brief consumes
+    (``classify_strata`` + the strata card); a renamed service key is a
+    drift-warning + test failure, not a silent "not strata" routing.
+    """
+
+    # StrataHub enrichment — present only when the parcel is strata and the
+    # StrataHub lookup succeeded (best-effort, see _fetch_strata).
+    lot_total: Optional[int] = None
+    dwelling_type: Optional[str] = None
+    registration_date: Optional[str] = None
+
+
+class ClimateHazardOutput(BaseModel):
+    """S2 typed contract for one hazard entry in the climate risk output.
+
+    Mirrors ``climate_risk_score.HazardScore.to_dict()`` — these dicts pass
+    through to ``ClimateDisclosureProfile.per_hazard_detail`` and the UI reads
+    them by key, so the key set is locked here and in the golden-fixture test.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    hazard: Optional[str] = None
+    raw_score: Optional[float] = None
+    weight: Optional[float] = None
+    weighted_score: Optional[float] = None
+    present: Optional[bool] = None
+    detail: Optional[str] = None
+    confidence: Optional[str] = None
+    data_source: Optional[str] = None
+    available: Optional[bool] = None
+
+
+class ClimateRiskServiceOutput(BaseModel):
+    """S2 typed contract for ``climate_risk_score(...).to_dict()`` at the brief seam."""
+
+    model_config = ConfigDict(extra="ignore")
+    score: Optional[int] = None
+    band: Optional[str] = None
+    hazards: list[ClimateHazardOutput] = []
+    interaction_bonus: Optional[float] = None
+    methodology_version: Optional[str] = None
+    data_date: Optional[str] = None
+    disclaimer: Optional[str] = None
+    # NARCliM 2.0 projection summary attached by _fetch_climate_risk:
+    # {} = queried, no grid coverage here; None/absent = lookup failed/not run.
+    narclim: Optional[dict] = None
+
+
+class HousingSeppFormOutput(BaseModel):
+    """S2 typed contract mirroring ``housing_sepp_eligibility.FormEligibility``.
+
+    ``evaluate_eligibility`` returns dataclasses (attribute access is already
+    fail-loud), so this mirror exists to (a) lock the field names the brief's
+    per-form wire-in (Phase 2) will consume — the lock test fails if the
+    dataclass renames a field — and (b) give that wire-in a serialisable model.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    development_type: Optional[str] = None
+    eligible: Optional[bool] = None
+    reason: Optional[str] = None
+    requires_lmr_area: Optional[bool] = None
+    unconfirmed: Optional[bool] = None
+    applicable_zones: list = []
+    min_lot_size_m2: Optional[float] = None
+    min_lot_width_m: Optional[float] = None
+    source_clause: Optional[str] = None
+    source_document: Optional[str] = None
+    legislation_url: Optional[str] = None
+    effective_date: Optional[str] = None
+
+
+class LepLandUseRow(BaseModel):
+    """S2 typed contract for one ``lep_land_use_table`` row at the brief seam.
+
+    Locks the column names the brief consumes (``_permitted_engine_forms`` now;
+    the permitted/prohibited-uses wire-in in Phase 2). A renamed column is a
+    fixture/test failure, not a silently empty permitted-forms set.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    lga: Optional[str] = None
+    zone: Optional[str] = None
+    development_type: Optional[str] = None
+    permissibility: Optional[str] = None
 
 
 class GeometryRelationship(str, Enum):
@@ -693,9 +928,14 @@ class DevelopmentBrief(BaseModel):
     dcp_controls: DCPControls
     sepp_housing: DataField[list[SEPPStandard]]
     sepp_lep_overrides: list[SeppLepOverride] = []
+    # Per-form Housing-SEPP eligibility with clause citations, from the SAME
+    # evaluate_eligibility run the capacity ceiling uses (computed once).
+    # value=None = engine errored; [] = ran, no applicable forms for this zone.
+    sepp_eligibility: Optional[DataField[Optional[list[HousingSeppFormOutput]]]] = None
     environmental_constraints: EnvironmentalConstraints
     neighbourhood: Neighbourhood
     economics: Economics
+    market_context: Optional[DataField[Optional[MarketContext]]] = None
     contributions: Optional[DataField[ContributionsResult]] = None
     satellite: Optional[SatelliteData] = None
     constraint_arithmetic: Optional[DataField[ConstraintArithmeticResult]] = None
@@ -1180,9 +1420,69 @@ _SEPP_FORM_TO_ENGINE = {
 }
 
 
+def _sepp_eligibility_results(
+    zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
+    lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+) -> Optional[list]:
+    """Run the Housing-SEPP eligibility engine ONCE per brief, fail-safe.
+
+    prior-art-checked: this is the extraction of the existing evaluate_eligibility
+    call out of _lmr_uplift_form (below) so the SEPP card and the capacity ceiling
+    SHARE one engine run — reuse of services/housing_sepp_eligibility.py, not a
+    new eligibility implementation.
+
+    Three states: a populated list = per-form outcomes with citations;
+    [] = the engine ran and no forms apply (non-residential zone / no standards);
+    None = the engine errored (callers surface NOT_AVAILABLE, never a silent
+    "nothing applies").
+    """
+    try:
+        from services.housing_sepp_eligibility import evaluate_eligibility
+        return evaluate_eligibility(
+            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+        )
+    except Exception as e:  # fail-safe — never block the brief on the eligibility engine
+        logger.warning("SEPP eligibility evaluation failed: %s", e)
+        return None
+
+
+def _build_sepp_eligibility_field(results: Optional[list]) -> "DataField":
+    """Wrap per-form eligibility outcomes for the SEPP card (S2-typed rows).
+
+    Serialises each FormEligibility dataclass through the HousingSeppFormOutput
+    contract so a renamed engine field is a validation error here, not a silent
+    null in the card.
+    """
+    today = date.today().isoformat()
+    if results is None:
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="housing_sepp_standards", as_at=today,
+            reason="Eligibility assessment did not complete",
+        )
+    from dataclasses import asdict
+
+    try:
+        forms = [HousingSeppFormOutput.model_validate(asdict(r)) for r in results]
+    except ValidationError as e:
+        # A contract violation is a FAILED assessment, never a stream-killing
+        # exception or silently-wrong rows.
+        logger.warning("SEPP eligibility rows failed the S2 contract: %s", e)
+        return DataField(
+            value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+            source="housing_sepp_standards", as_at=today,
+            reason="Eligibility rows failed the typed contract",
+        )
+    return DataField(
+        value=forms, confidence=ConfidenceLevel.AUTHORITATIVE,
+        source="housing_sepp_standards", as_at=today,
+    )
+
+
 def _lmr_uplift_form(
     zone_code: Optional[str], lat: Optional[float], lng: Optional[float],
     lot_area_m2: Optional[float], lot_width_m: Optional[float], heritage: bool,
+    results: Optional[list] = None,
 ) -> tuple[Optional[str], Optional[dict]]:
     """Densest engine form ELIGIBLE under the Housing-SEPP / LMR engine (the catchment/area
     uplift, subject to a DA), plus the CITATION of the standard that grants it, or (None, None).
@@ -1190,14 +1490,16 @@ def _lmr_uplift_form(
     Delegates to the single-source-of-truth eligibility engine, which carries the clause /
     document / legislation URL / effective date from housing_sepp_standards — so any LMR claim
     the card makes is sourced. Fail-safe: any error -> (None, None) (no uplift; base tier stands).
+
+    ``results``: a precomputed ``evaluate_eligibility`` list (from
+    ``_sepp_eligibility_results``) — pass it when the brief already ran the
+    engine for the SEPP card so it is never invoked twice per brief.
     """
-    try:
-        from services.housing_sepp_eligibility import evaluate_eligibility
-        results = evaluate_eligibility(
-            zone_code, lot_area_m2, lot_width_m, lat, lng, heritage=heritage
+    if results is None:
+        results = _sepp_eligibility_results(
+            zone_code, lat, lng, lot_area_m2, lot_width_m, heritage,
         )
-    except Exception as e:  # fail-safe — never block the brief on the uplift engine
-        logger.warning("LMR eligibility uplift failed: %s", e)
+    if results is None:  # engine errored — no uplift; base tier stands
         return None, None
     # Map each eligible SEPP form to its engine form, keeping the FormEligibility so the
     # winning form's citation can be attached.
@@ -1426,6 +1728,7 @@ def _fetch_strata(address: str, lat: float, lng: float) -> dict:
             if sh is not None and sh.lot_total:
                 result["lot_total"] = sh.lot_total
                 result["dwelling_type"] = sh.dwelling_type
+                result["registration_date"] = sh.registration_date
         except Exception as e:  # best-effort enrichment only
             logger.warning("StrataHub lot-count enrichment failed: %s", e)
     return result
@@ -1453,6 +1756,56 @@ def _fetch_nearby_das(
     finally:
         if conn:
             conn.close()
+
+
+def _fetch_da_outcomes(lng: float, lat: float) -> dict:
+    """Determined DAs with outcomes near the lot (DA tracking MapServer).
+
+    prior-art-checked: wires the existing services/da_outcome.py (fixed in this
+    PR — the TYPE_OF_DEVELOPMENT field rename made every query silently zero).
+    Raises on a failed query so _safe_call stamps NOT_AVAILABLE; [] = genuinely
+    no determined applications within the radius/window.
+    """
+    from services.da_outcome import get_data_currency, query_da_outcomes_near
+
+    rows = query_da_outcomes_near(
+        lng, lat,
+        radius_m=CONFIG.da_outcomes_radius_m,
+        years_back=CONFIG.da_outcomes_years_back,
+    )
+    # The tracking layer is a point-in-time extract (frozen at 2023-04 as of
+    # 2026-07): the renderer must state the window the data actually covers,
+    # never "last N years" arithmetic from years_back. Window ends come from
+    # the rows themselves; data_currency is the layer-wide newest lodgement.
+    # If the currency probe fails the whole field fails (raise -> _safe_call
+    # stamps NOT_AVAILABLE) — a windowless outcome list would render as if
+    # current, which is the defect this fixes.
+    data_currency = get_data_currency()
+    lodgements = sorted(
+        r.lodgement_date for r in rows
+        if r.lodgement_date and len(r.lodgement_date) == 10
+    )
+    return {
+        "outcomes": [r.model_dump() for r in rows],
+        "radius_m": CONFIG.da_outcomes_radius_m,
+        "years_back": CONFIG.da_outcomes_years_back,
+        "data_currency": data_currency,
+        "window_start": lodgements[0] if lodgements else None,
+        "window_end": lodgements[-1] if lodgements else None,
+    }
+
+
+def _fetch_refusal_stats(lga_name: str) -> Optional[dict]:
+    """LGA-wide determination counts + refusal rate (DA tracking MapServer).
+
+    Counts and rate only; the period rides along for display. None = the layer
+    holds no determined applications for this LGA in the window (queried-empty);
+    a failed count query raises (visible failure, never a silent zero).
+    """
+    from services.da_outcome import get_refusal_rate
+
+    stats = get_refusal_rate(lga_name, years=CONFIG.da_outcomes_years_back)
+    return stats.model_dump() if stats is not None else None
 
 
 def _fetch_shadow(
@@ -1502,42 +1855,145 @@ def _fetch_sepp_housing(zone_code: Optional[str]) -> list[dict]:
             conn.close()
 
 
-def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
-    """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
-    verify app's /api/environmental/anef route uses. Exact point-in-polygon via
-    PostGIS ST_Contains over the stored GeoJSON (bbox pre-filter for speed).
+def _fetch_market_context(
+    lng: float, lat: float, zone_code: Optional[str],
+    lot_area_m2: Optional[float], subject_propid: Optional[int],
+) -> dict:
+    """VG comparables + recent sales around the subject lot.
 
-    prior-art-checked: reuses the existing anef_zones table (no new source); the
-    regional half is the existing portal_constraints.fetch_anef. Returns
-    ``{"anef_level": int, "airport": str}`` or None; None on any failure.
+    prior-art-checked: this WIRES the existing services/vg_comparables.py
+    (get_comparable_values / get_recent_sales) into the brief — the Tier-1
+    wire-in the enrichment plan specifies; no new comparables implementation.
+
+    The two halves are isolated: comparables need zone + lot area (same-zone,
+    similar-size matching — the scope that keeps a neighbour's different market
+    segment out), sales only need coordinates. One half failing must not blank
+    the other; only if BOTH fail does this raise so _safe_call stamps the whole
+    fetch NOT_AVAILABLE.
     """
-    if lat is None or lng is None:
+    out: dict = {"comparables": None, "comparables_reason": None,
+                 "sales": None, "sales_reason": None}
+    if zone_code and lot_area_m2:
+        try:
+            out["comparables"] = get_comparable_values(
+                lng, lat, zone_code, lot_area_m2=lot_area_m2,
+                radius_m=CONFIG.market_radius_m, subject_propid=subject_propid,
+            )
+        except Exception as e:
+            out["comparables_reason"] = f"{type(e).__name__}: {str(e)[:160]}"
+            logger.warning("VG comparables query failed: %s", e)
+    else:
+        out["comparables_reason"] = "No zone or lot area resolved for comparable matching"
+    try:
+        out["sales"] = get_recent_sales(
+            lng, lat, radius_m=CONFIG.market_radius_m,
+            years_back=CONFIG.market_sales_years_back,
+        )
+    except Exception as e:
+        out["sales_reason"] = f"{type(e).__name__}: {str(e)[:160]}"
+        logger.warning("VG sales query failed: %s", e)
+    if out["comparables"] is None and out["sales"] is None:  # noqa: bracket-access — local dict, keys set above
+        raise RuntimeError(out["sales_reason"] or out["comparables_reason"] or "VG queries failed")  # noqa: bracket-access
+    return out
+
+
+def _build_market_context(market_raw: Optional[dict]) -> Optional[MarketContext]:
+    """Assemble MarketContext with per-half three-state fields.
+
+    comparables: DERIVED (median/percentile are statistics computed from
+    authoritative VG valuations). recent_sales: AUTHORITATIVE records; an empty
+    list is a genuine "no sales within the radius/window", kept distinct from a
+    failed query (None + reason).
+    """
+    if not market_raw:
         return None
+    today = date.today().isoformat()
+    comps = market_raw.get("comparables")
+    sales = market_raw.get("sales")
+    return MarketContext(
+        comparables=DataField(
+            value=comps,
+            confidence=ConfidenceLevel.DERIVED if comps is not None else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuer_general",
+            as_at=today,
+            reason=None if comps is not None else (market_raw.get("comparables_reason") or "Comparables query did not complete"),
+        ),
+        recent_sales=DataField(
+            value=[s for s in sales] if sales is not None else None,
+            confidence=ConfidenceLevel.AUTHORITATIVE if sales is not None else ConfidenceLevel.NOT_AVAILABLE,
+            source="nsw_valuer_general_sales",
+            as_at=today,
+            reason=None if sales is not None else (market_raw.get("sales_reason") or "Sales query did not complete"),
+        ),
+    )
+
+
+def _fetch_land_use_lists(zone_code: str, lga_name: str) -> dict:
+    """Permitted/prohibited development types for this zone + LGA from the
+    structured ``lep_land_use_table``.
+
+    prior-art-checked: reads the SAME table `_permitted_engine_forms` already
+    consumes (rows validated through the S2 ``LepLandUseRow`` contract) — this
+    surfaces the full lists the plan's Tier-1 item specifies, not a new source.
+
+    Returns {"permitted": [...], "prohibited": [...], "row_count": N}. Zero rows
+    = this council/zone is not in the structured dataset (queried-empty — the
+    caller renders "not extracted yet", distinct from a DB failure, which raises
+    so _safe_call stamps NOT_AVAILABLE with the error).
+    """
+    target = _norm_lga(lga_name)
     conn = None
     try:
         conn = _get_db_conn()
         cur = conn.cursor()
         cur.execute(
-            "SELECT anef_level, airport_name FROM anef_zones "
-            "WHERE bbox_min_lon <= %s AND bbox_max_lon >= %s "
-            "AND bbox_min_lat <= %s AND bbox_max_lat >= %s "
-            "AND ST_Contains("
-            "  ST_SetSRID(ST_GeomFromGeoJSON(geometry_json::text), 4326), "
-            "  ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
-            "ORDER BY anef_level DESC LIMIT 1",
-            (lng, lng, lat, lat, lng, lat),
+            "SELECT lga, zone, development_type, permissibility "
+            "FROM lep_land_use_table "
+            "WHERE zone = %s AND permissibility IN ('permitted', 'prohibited')",
+            (zone_code,),
         )
-        row = cur.fetchone()
-    except Exception:
-        logger.warning("anef_zones point query failed")
-        return None
+        rows = [
+            LepLandUseRow.model_validate(
+                {"lga": r[0], "zone": r[1], "development_type": r[2], "permissibility": r[3]}
+            )
+            for r in cur.fetchall()
+        ]
     finally:
         if conn:
             conn.close()
-    if not row:
+    matched = [r for r in rows if _norm_lga(r.lga) == target]
+    permitted = sorted({r.development_type for r in matched if r.permissibility == "permitted" and r.development_type})
+    prohibited = sorted({r.development_type for r in matched if r.permissibility == "prohibited" and r.development_type})
+    return {"permitted": permitted, "prohibited": prohibited, "row_count": len(matched)}
+
+
+def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
+    """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
+    verify app's /api/environmental/anef route uses.
+
+    QUARANTINED from the brief's ANEF field since 2026-07-07: the table's
+    contours are 10-13-vertex digitisations (ANEF-20 polygon ~789 km²) that
+    stamped false values on fringe lots — issue #686. Kept as the documented
+    accessor for the verify-app parity and for a future properly re-digitised
+    table; no brief or PDF surface calls it.
+
+    prior-art-checked: reuses the existing anef_zones table (no new source); the
+    query implementation lives in portal_constraints.fetch_anef_zone_exact —
+    this wrapper preserves the fail-open contract. Returns
+    ``{"anef_level": int, "airport": str, "anef_version": str}`` or None;
+    None on any failure.
+    """
+    if lat is None or lng is None:
         return None
-    level, airport = row
-    return {"anef_level": level, "airport": airport}
+    try:
+        from portal_constraints import fetch_anef_zone_exact
+    except ImportError:
+        from services.portal_constraints import fetch_anef_zone_exact
+    try:
+        return fetch_anef_zone_exact(lat, lng)
+    except Exception:
+        logger.warning("anef_zones point query failed")
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -1600,9 +2056,31 @@ def _fetch_flood(
 
 
 def _fetch_climate_risk(lat: float, lng: float) -> dict:
-    """Per-hazard climate scores (shim feeds into ClimateDisclosureProfile)."""
+    """Per-hazard climate scores (shim feeds into ClimateDisclosureProfile).
+
+    Also attaches the NARCliM 2.0 projection summary for projected_findings:
+    a dict of {prefix}_delta_2050/2090 changes ({} = queried, no grid coverage;
+    None = the projection lookup failed — the card shows an honest gap, never
+    fabricated projections).
+    """
     result = _climate_risk_score_fn(lat, lng)
-    return result.to_dict()
+    out = result.to_dict()
+    try:
+        from services.climate_risk_raster import query_narclim_summary
+        out["narclim"] = query_narclim_summary(lat, lng)
+    except Exception as e:  # projection data missing must not blank the hazard card
+        logger.warning("NARCLIM summary lookup failed: %s", e)
+        out["narclim"] = None
+    return out
+
+
+def _fetch_solar_marker() -> dict:
+    """Solar — DECOUPLED like granny flat. The brief never calls the paid Google
+    Solar API inline; the frontend SolarBriefCard fires the existing rate-limited
+    /api/satellite/solar-yield route (the same pipeline the standalone tool uses),
+    so gating/billing stay in one place. This marker only reserves the card slot.
+    """
+    return {"decoupled": True}
 
 
 def _fetch_granny_flat_detect(
@@ -1663,6 +2141,9 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
         vegetation_type=out.designation_guideline,
         fire_signal=out.fire_signal,
         cross_overlays=(out.compliance.cross_overlays if out.compliance else None),
+        rfs_referral_required=(out.compliance.rfs_referral_required if out.compliance else None),
+        rfs_referral_triggers=(out.compliance.rfs_referral_triggers if out.compliance else None),
+        cdc_pathway_available=(out.compliance.cdc_pathway_available if out.compliance else None),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -1735,6 +2216,19 @@ def _build_climate_disclosure(
     if not (climate_raw or uhi_raw or arr_raw or firms_raw):
         return None
 
+    # S2 boundary: tripwire-validate the climate output against the typed
+    # contract. The hazard dicts pass through to per_hazard_detail RAW (no
+    # re-shaping — a new service key must not be silently dropped here); the
+    # contract catches type-level violations, which are treated as a FAILED
+    # climate source rather than silently-wrong hazard rows.
+    if climate_raw:
+        _warn_on_drift(ClimateRiskServiceOutput, climate_raw, "climate")
+        try:
+            ClimateRiskServiceOutput.model_validate(climate_raw)
+        except ValidationError as e:
+            logger.warning("climate output failed the S2 contract — treating as unavailable: %s", e)
+            climate_raw = None
+
     hazards_raw = (climate_raw.get("hazards") or []) if climate_raw else []
     empirical = []
     sources_queried = 0
@@ -1795,6 +2289,43 @@ def _build_climate_disclosure(
         sources_queried += 1
         sources_successful += 1
 
+    # NARCliM 2.0 projections -> Layer-3 projected findings. Three states:
+    # populated dict = grid coverage with deltas; {} = queried, no coverage at
+    # this location; None = the lookup failed. Values are model outputs — the
+    # scenario/timeframe ride along so a number is never presented bare.
+    projected: list[ProjectedFinding] = []
+    narclim = climate_raw.get("narclim") if climate_raw else None
+    _NARCLIM_HAZARDS = {
+        "hot_days": ("extreme_heat_days", "additional days ≥35°C per year"),
+        "temp": ("mean_temperature", "°C change in mean temperature"),
+        "precip": ("daily_precipitation", "mm/day change in mean precipitation"),
+    }
+    if climate_raw is not None:
+        sources_queried += 1
+        if narclim is None:
+            unavailable.append(UnavailableSource(
+                source="narclim_projections",
+                reason="NARCliM projection lookup failed or data not deployed",
+            ))
+        elif not narclim:
+            unavailable.append(UnavailableSource(
+                source="narclim_projections",
+                reason="No NARCliM grid coverage at this location",
+            ))
+        else:
+            sources_successful += 1
+            for prefix, (hazard, _unit_note) in _NARCLIM_HAZARDS.items():
+                for horizon in ("2050", "2090"):
+                    val = narclim.get(f"{prefix}_delta_{horizon}")
+                    if isinstance(val, (int, float)):
+                        projected.append(ProjectedFinding(
+                            hazard=hazard,
+                            value=float(val),  # qa-ignore: guarded by the isinstance numeric check above
+                            model="NARCliM 2.0 (AdaptNSW)",
+                            scenario="worst available scenario vs 2015–2024 baseline",
+                            timeframe=horizon,
+                        ))
+
     coverage = (sources_successful / sources_queried * 100) if sources_queried > 0 else 0.0
 
     return ClimateDisclosureProfile(
@@ -1809,6 +2340,7 @@ def _build_climate_disclosure(
         ),
         per_hazard_detail=hazards_raw,
         empirical_findings=empirical,
+        projected_findings=projected,
     )
 
 
@@ -1843,10 +2375,17 @@ def _fetch_terrain(lat: float, lng: float) -> dict:
 
 
 def _build_terrain_detail(terrain_raw: Optional[dict]) -> Optional[TerrainAnalysisDetail]:
-    """Extract TerrainAnalysisDetail from raw terrain output."""
+    """Extract TerrainAnalysisDetail from raw terrain output via the S2 contract.
+
+    The contract IS the service's own ``TerrainAnalysisDetail`` (shared class —
+    the strongest coupling: a service-side rename renames the brief side too).
+    ``_run_terrain_chain`` emits every field on every run (values may be None),
+    so a missing key in real output is genuine drift, not noise.
+    """
     if not terrain_raw:
         return None
     terrain_fields = terrain_raw.get("terrain") or terrain_raw
+    _warn_on_drift(TerrainAnalysisDetail, terrain_fields, "terrain")
     return TerrainAnalysisDetail(**{
         k: v for k, v in terrain_fields.items()
         if k in TerrainAnalysisDetail.model_fields
@@ -1931,16 +2470,52 @@ def _build_planning_controls(
     lot_geometry: Optional[dict] = None,
     lot_area_m2: Optional[float] = None,
     controls_failed: bool = False,
+    land_use_df: Optional["DataField"] = None,
 ) -> PlanningControls:
     """Map conveyancing parse_controls output to PlanningControls schema.
+
+    prior-art-checked: extends THIS module's existing builder with the land-use
+    lists from _fetch_land_use_lists (same lep_land_use_table the engine already
+    reads) — no new source or parallel builder.
 
     Fail-closed: when the portal controls fetch FAILED (``controls_failed``), the
     portal-derived fields are emitted NOT_AVAILABLE — never blank@AUTHORITATIVE,
     which would read as a confident "no zone / no height control".
+
+    ``land_use_df``: the _fetch_land_use_lists result (a DataField from
+    _safe_call/_timed_result). Three states surface distinctly: rows →
+    AUTHORITATIVE lists; zero rows → NOT_AVAILABLE "not extracted for this
+    council yet"; fetch failure → NOT_AVAILABLE with the error reason.
     """
     today = date.today().isoformat()
     # A FAILED controls fetch must not produce confident blanks.
     auth = ConfidenceLevel.NOT_AVAILABLE if controls_failed else ConfidenceLevel.AUTHORITATIVE
+
+    def _use_list_field(kind: str) -> DataField:
+        if land_use_df is None:
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason="No zone resolved for a land-use lookup",
+            )
+        if land_use_df.confidence == ConfidenceLevel.NOT_AVAILABLE or land_use_df.value is None:
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason=land_use_df.reason or "Land-use table query did not complete",
+            )
+        lists = land_use_df.value
+        if not lists.get("row_count"):
+            return DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="lep_land_use_table", as_at=today,
+                reason="Land-use table not yet extracted for this council",
+            )
+        return DataField(
+            value=lists.get(kind) or [],
+            confidence=ConfidenceLevel.AUTHORITATIVE,
+            source="lep_land_use_table", as_at=today,
+        )
 
     overlay_list = overlays_data.get("overlays", []) if overlays_data else []
 
@@ -1989,6 +2564,8 @@ def _build_planning_controls(
             source="planning_portal",
             as_at=today,
         ),
+        permitted_uses=_use_list_field("permitted"),
+        prohibited_uses=_use_list_field("prohibited"),
     )
 
 
@@ -2000,7 +2577,17 @@ def _build_dcp_controls(
     today = date.today().isoformat()
 
     if dcp_data is None:
-        reason = f"DCP controls not yet extracted for '{lga_slug}'" if lga_slug else "Former council could not be determined"
+        # No slug means the council is not in the DCP-onboarded set (the common
+        # case — e.g. Wingecarribee), NOT that the address failed to resolve.
+        # The wording matters: the frontend routes "not onboarded" to an honest
+        # "Not assessed" card, while "could not ..." used to render as
+        # "Address not matched — check the address", blaming the user's input
+        # for our coverage gap.
+        reason = (
+            f"DCP controls not yet extracted for '{lga_slug}'"
+            if lga_slug
+            else "This council's DCP is not onboarded in our dataset yet"
+        )
         return DCPControls(
             controls=DataField(value=[], confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
             dcp_name=DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE, source="plotdetect_dcp", reason=reason, as_at=today),
@@ -2090,14 +2677,19 @@ def _build_sepp_housing(
     if not standards_raw:
         return []
 
-    # Group by development_type
+    # Group by development_type — values AND the citation each standard row
+    # carries (source_clause/source_document), so an override can cite it.
     by_dev_type: dict[str, dict[str, Any]] = {}
+    citations: dict[str, dict[str, tuple]] = {}
     for s in standards_raw:
         dt = s["development_type"]
         st = s["standard_type"]
         if dt not in by_dev_type:
             by_dev_type[dt] = {}
+            citations[dt] = {}
         by_dev_type[dt][st] = s["numeric_value"]
+        if s.get("source_clause"):
+            citations[dt][st] = (s.get("source_clause"), s.get("source_document"))
 
     results = []
     for dt, vals in by_dev_type.items():
@@ -2129,9 +2721,14 @@ def _build_sepp_housing(
             if k not in known_keys and not any(k.startswith(p) for p in banded_prefixes)
         }
 
+        height_cit = citations.get(dt, {}).get("max_height")
+        fsr_cit = citations.get(dt, {}).get("max_fsr")
         results.append(SEPPStandard(
             dev_type=dt,
             eligible=eligible,
+            height_source_clause=height_cit[0] if height_cit else None,
+            fsr_source_clause=fsr_cit[0] if fsr_cit else None,
+            source_document=(height_cit or fsr_cit)[1] if (height_cit or fsr_cit) else None,
             min_lot_area_m2=min_lot,
             max_gfa_m2=max_gfa,
             max_fsr=max_fsr,
@@ -2193,6 +2790,7 @@ def _detect_sepp_lep_overrides(
                 control="height",
                 lep_value=lep_height_m,
                 sepp_value=std.max_height_m,
+                source_clause=std.height_source_clause,
             ))
         if std.max_fsr and lep_fsr and std.max_fsr > lep_fsr:
             overrides.append(SeppLepOverride(
@@ -2200,6 +2798,7 @@ def _detect_sepp_lep_overrides(
                 control="fsr",
                 lep_value=lep_fsr,
                 sepp_value=std.max_fsr,
+                source_clause=std.fsr_source_clause,
             ))
     return overrides
 
@@ -2215,6 +2814,9 @@ def _build_environmental(
     lng: Optional[float] = None,
     overlays_failed: bool = False,
     controls_failed: bool = False,
+    mine_failed: bool = False,
+    contam_failed: bool = False,
+    drinking_failed: bool = False,
 ) -> EnvironmentalConstraints:
     """Map overlays + heritage to EnvironmentalConstraints.
 
@@ -2222,8 +2824,12 @@ def _build_environmental(
     overlay-derived fields (the overlay list + coverage) are emitted NOT_AVAILABLE.
     flood_epi and bushfire_designation combine overlays WITH the portal controls,
     so they are only downgraded when BOTH sources failed — otherwise a single
-    surviving source still gives a real answer. mine/contaminated/drinking/heritage
-    come from separate fetches and are unaffected.
+    surviving source still gives a real answer.
+
+    mine/contaminated/drinking return None BOTH when the lot is genuinely outside
+    the layer AND when the fetch failed — the ``*_failed`` flags (from the fetch
+    DataField) are the only way to keep those apart, so a failed fetch renders
+    NOT_AVAILABLE, never a confident False (the WO-2 class).
     """
     today = date.today().isoformat()
     auth = ConfidenceLevel.AUTHORITATIVE
@@ -2264,40 +2870,68 @@ def _build_environmental(
             reason="Layer not ingested for this LGA",
         )
 
-    def _anef_field() -> DataField:
-        # prior-art-checked: ANEF reuses anef_zones (Sydney, via fetch_anef_zone)
-        # + the existing portal_constraints.fetch_anef (regional). Not a new source.
-        # Only trust the ingested overlay when it actually carries a value. The
-        # anef overlay is "covered" for many LGAs but empty at most lots, while
-        # anef_zones holds the real Sydney contour — so a null overlay must fall
-        # through to the live query, not short-circuit to a blank.
+    def _parse_anef_number(raw) -> Optional[float]:
+        """Leading numeric part of an ANEF value ('25', 25, '20-25') — None when
+        no clean number leads the value (never a guess)."""
+        if raw is None:
+            return None
+        if isinstance(raw, (int, float)):
+            return float(raw)
+        m = re.match(r"\s*(\d+(?:\.\d+)?)", str(raw))
+        return float(m.group(1)) if m else None
+
+    def _anef_fields() -> tuple[DataField, DataField]:
+        # prior-art-checked: reuses the existing portal_constraints.fetch_anef
+        # (live LEP/SEPP-mapped contours). The curated anef_zones table (Sydney
+        # KSA) is QUARANTINED from this field: its contours are 10-13-vertex
+        # digitisations whose ANEF-20 polygon covers ~789 km² — far beyond the
+        # published ANEF 2039 contour — so it stamped false values on fringe
+        # lots (issue #686; same quarantine as the conveyancing PDF, #681).
+        # Only trust the ingested overlay when it actually carries a value —
+        # a null overlay must fall through to the live query, not
+        # short-circuit to a blank.
+        # Returns (display string field, numeric level field) from ONE lookup.
+        def _level(num: Optional[float], src: str) -> DataField:
+            if num is None:
+                # Checked; no numeric contour applies (or the value isn't numeric).
+                return DataField(value=None, confidence=auth, source=src, as_at=today)
+            return DataField(value=num, confidence=auth, source=src, as_at=today)
+
         if "anef" in covered and anef_value is not None:
-            return DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today)
-        if lat is None or lng is None:
-            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-                             source="anef_zones", as_at=today, reason="Layer not ingested for this LGA")
-        try:
-            zone = fetch_anef_zone(lat, lng)
-        except Exception:
-            zone = None
-        if zone:
-            return DataField(
-                value=f"ANEF {zone.get('anef_level')} ({zone.get('airport')})",
-                confidence=auth, source="anef_zones", as_at=today,
+            return (
+                DataField(value=anef_value, confidence=auth, source="postgis_overlays", as_at=today),
+                _level(_parse_anef_number(anef_value), "postgis_overlays"),
             )
-        regional = None
+        if lat is None or lng is None:
+            na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                                 source="planning_portal_protection", as_at=today,
+                                 reason="Layer not ingested for this LGA")
+            return na_field, na_field.model_copy()
+        regional, regional_failed = None, False
         try:
             from services.portal_constraints import fetch_anef
             regional = fetch_anef(lat, lng)
         except Exception:
-            regional = None
+            regional_failed = True
         if regional:
             code = regional.get("anef_code") or regional.get("anef_level")
-            return DataField(value=f"ANEF contour {code}".strip(),
-                             confidence=auth, source="planning_portal_protection", as_at=today)
-        # Checked both published ANEF sources — none. Honest (NOT "no aircraft noise").
-        return DataField(value="No published ANEF contour at this property",
-                         confidence=auth, source="anef_zones", as_at=today)
+            return (
+                DataField(value=f"ANEF contour {code}".strip(),
+                          confidence=auth, source="planning_portal_protection", as_at=today),
+                _level(_parse_anef_number(code), "planning_portal_protection"),
+            )
+        if regional_failed:
+            # The lookup FAILED — "no contour" cannot be claimed off a failed check.
+            na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                                 source="planning_portal_protection", as_at=today,
+                                 reason="ANEF contour lookup did not complete")
+            return na_field, na_field.model_copy()
+        # The mapped government layer was genuinely checked — no contour here.
+        return (
+            DataField(value="No ANEF contour in the mapped planning layers at this property",
+                      confidence=auth, source="planning_portal_protection", as_at=today),
+            _level(None, "planning_portal_protection"),
+        )
 
     flood_epi = any(
         o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
@@ -2338,6 +2972,19 @@ def _build_environmental(
         if o.get("layer_type", "").startswith("coastal_") or o.get("layer_type") == "littoral_rainforest"
     }
 
+    # Measured nearest-feature distances (metres) from get_unique_overlays —
+    # only for covered layers with no intersection at this lot. Keys are layer
+    # types (flood, biodiversity, riparian, wetlands, landslide). Values must be
+    # numeric; anything else is dropped rather than rendered as a distance.
+    proximity_raw = (overlays_data.get("proximity_m") or {}) if overlays_data else {}
+    proximity = {
+        k: round(float(v))
+        for k, v in proximity_raw.items()
+        if isinstance(v, (int, float))
+    }
+
+    anef_display_field, anef_level_field = _anef_fields()
+
     return EnvironmentalConstraints(
         flood_epi=DataField(
             value=None if both_failed else flood_epi,
@@ -2363,7 +3010,20 @@ def _build_environmental(
         terrestrial_biodiversity=_overlay_field("biodiversity", has_biodiversity, 10),
         riparian_land=_overlay_field("riparian", has_riparian, 7),
         wetlands=_overlay_field("wetlands", has_wetlands, 11),
-        anef=_anef_field(),
+        anef=anef_display_field,
+        anef_level=anef_level_field,
+        nearest_features=DataField(
+            # Measured metres to the nearest mapped feature for covered layers
+            # that do NOT intersect this lot. Legit-empty = value None with NO
+            # reason (per the DataField contract, a reason on a null value means
+            # the fetch FAILED and the S1 validator coerces to NOT_AVAILABLE);
+            # the overlay failure case carries its reason via overlay_auth.
+            value=proximity or None,
+            confidence=overlay_auth,
+            source="postgis_overlays",
+            as_at=today,
+            reason="Overlay query did not complete" if overlays_failed else None,
+        ),
         coastal_hazards=DataField(
             value=coastal_layers if coastal_layers else None,
             confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
@@ -2372,22 +3032,49 @@ def _build_environmental(
             reason=None if coastal_layers else "No coastal hazard overlays at this location",
         ),
         mine_subsidence=DataField(
-            value=mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False,
-            confidence=auth,
+            value=None if mine_failed else (mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False),
+            confidence=na if mine_failed else auth,
             source="nsw_spatial_services",
             as_at=today,
+            reason="Mine subsidence lookup did not complete" if mine_failed else None,
+        ),
+        mine_subsidence_district=DataField(
+            value=(mine_subsidence_raw or {}).get("district_name"),
+            confidence=na if mine_failed else auth,
+            source="nsw_spatial_services",
+            as_at=today,
+            reason="Mine subsidence lookup did not complete" if mine_failed else None,
         ),
         contaminated_land=DataField(
-            value=contaminated_land_raw.get("has_notified_sites", False) if contaminated_land_raw else False,
-            confidence=auth,
+            value=None if contam_failed else (contaminated_land_raw.get("has_notified_sites", False) if contaminated_land_raw else False),
+            confidence=na if contam_failed else auth,
             source="epa_contaminated_sites",
             as_at=today,
+            reason="Contaminated land register lookup did not complete" if contam_failed else None,
+        ),
+        contaminated_detail=DataField(
+            value=(
+                {
+                    "site_count": contaminated_land_raw.get("site_count"),
+                    "nearest_site": contaminated_land_raw.get("nearest_site"),
+                }
+                if contaminated_land_raw and not contam_failed
+                else None
+            ),
+            confidence=na if contam_failed else auth,
+            source="epa_contaminated_sites",
+            as_at=today,
+            # Genuinely no sites = value None with NO reason (legit-empty per the
+            # DataField contract — a reason would mark it failed and coerce to
+            # NOT_AVAILABLE, surfacing a false gap). The boolean row answers.
+            reason="Contaminated land register lookup did not complete" if contam_failed else None,
         ),
         drinking_water_catchment=DataField(
-            value=drinking_water_raw.get("in_catchment", False) if drinking_water_raw else False,
-            confidence=auth,
+            value=None if drinking_failed else (drinking_water_raw.get("in_catchment", False) if drinking_water_raw else False),
+            confidence=na if drinking_failed else auth,
             source="sepp_resilience_hazards",
             as_at=today,
+            reason="Drinking water catchment lookup did not complete" if drinking_failed else None,
         ),
     )
 
@@ -2395,6 +3082,8 @@ def _build_environmental(
 def _build_neighbourhood(
     das_df: "DataField",
     shadow_result: Optional[dict],
+    da_outcomes_df: Optional["DataField"] = None,
+    refusal_df: Optional["DataField"] = None,
 ) -> Neighbourhood:
     """Map DA list + shadow to Neighbourhood schema.
 
@@ -2429,9 +3118,25 @@ def _build_neighbourhood(
         nearby_field = DataField(value=nearby, confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
         count_field = DataField(value=len(nearby), confidence=ConfidenceLevel.AUTHORITATIVE, source="eplanning_da_api", as_at=today)
 
+    def _outcome_field(df: Optional["DataField"], label: str) -> DataField:
+        """Three states: populated payload / queried-empty (None value from a
+        successful run) / failed or not queried (NOT_AVAILABLE + reason)."""
+        if df is None:
+            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                             source="da_tracking_mapserver", as_at=today,
+                             reason=f"{label} not queried for this brief")
+        if df.confidence == ConfidenceLevel.NOT_AVAILABLE:
+            return DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                             source="da_tracking_mapserver", as_at=today,
+                             reason=df.reason or f"{label} lookup did not complete")
+        return DataField(value=df.value, confidence=ConfidenceLevel.AUTHORITATIVE,
+                         source="da_tracking_mapserver", as_at=today)
+
     return Neighbourhood(
         nearby_das=nearby_field,
         da_count=count_field,
+        da_outcomes=_outcome_field(da_outcomes_df, "Determination outcomes"),
+        da_refusal_stats=_outcome_field(refusal_df, "Determination counts"),
         shadow=DataField(
             value=shadow_schema,
             confidence=ConfidenceLevel.DERIVED if shadow_schema else ConfidenceLevel.NOT_AVAILABLE,
@@ -2680,8 +3385,8 @@ def _generate_brief_sse(
     # Count expected sections for progress tracking
     base_sections = 5  # economics, strata, environmental, planning_controls, brief_type
     dependent_sections = 0  # dcp, sepp, neighbourhood — only for development briefs (unknown until strata)
-    satellite_sections = 6 if req.include_satellite else 0
-    total_sections = base_sections + satellite_sections + 4  # +4 for dependent (max estimate)
+    satellite_sections = 7 if req.include_satellite else 0  # incl. the solar marker slot
+    total_sections = base_sections + satellite_sections + 5  # +5 for dependent (max estimate)
 
     import uuid
     report_id = str(uuid.uuid4())
@@ -2824,6 +3529,18 @@ def _generate_brief_sse(
         # ── Yield strata (depends on cadastre + lot_area_m2) ─────────────
         strata_df = _timed_result(f_strata, 10, "cadastre_strata", timings)
         strata_raw, strata_failed = _unwrap_or_default(strata_df, {"is_strata": False})  # failsoft-ok: strata_failed branch below restamps NOT_AVAILABLE + AMBIGUOUS routing
+        if not strata_failed:
+            # S2 boundary: tripwire-validate the cadastre dict against the typed
+            # contract (drift check against the always-emitted core keys only —
+            # StrataHub enrichment keys are conditionally present by design).
+            # A type-level contract violation is a FAILED lookup: it takes the
+            # fail-closed AMBIGUOUS route below, never a silent "not strata".
+            _warn_on_drift(StrataCoreOutput, strata_raw, "strata")
+            try:
+                StrataServiceOutput.model_validate(strata_raw or {})
+            except ValidationError as e:
+                logger.warning("strata output failed the S2 contract — routing fail-closed: %s", e)
+                strata_raw, strata_failed = {"is_strata": False}, True
         # Fail-closed: a FAILED strata lookup must NOT be served as a confident
         # "not strata" — that would silently route a possible apartment into a full
         # DevelopmentBrief (capacity claims it can't support). Treat unknown strata
@@ -2836,6 +3553,9 @@ def _generate_brief_sse(
             plan_label=strata_raw.get("plan_label"),
             source=strata_raw.get("source"),
             lot_area_m2=lot_area_m2,
+            lot_total=strata_raw.get("lot_total"),
+            dwelling_type=strata_raw.get("dwelling_type"),
+            registration_date=strata_raw.get("registration_date"),
         )
         is_apartment = strata_type == StrataType.APARTMENT or strata_type == StrataType.AMBIGUOUS
 
@@ -2843,7 +3563,7 @@ def _generate_brief_sse(
         if is_apartment:
             total_sections = base_sections + satellite_sections  # no dcp/sepp/neighbourhood
         else:
-            total_sections = base_sections + 4 + satellite_sections  # +dcp, sepp, neighbourhood, constraint_arithmetic
+            total_sections = base_sections + 5 + satellite_sections  # +dcp, sepp, neighbourhood, constraint_arithmetic, market_context
 
         sections_yielded += 1
         yield _sse_event("section", {
@@ -2900,6 +3620,39 @@ def _generate_brief_sse(
             lambda: _fetch_sepp_housing(zone_code),
             "housing_sepp_standards", ConfidenceLevel.AUTHORITATIVE,
         )
+        # Land-use lists need the zone; without one there is nothing to query
+        # (the builder emits an honest "no zone resolved" state instead).
+        land_use_lga = _bare_lga_from_epi(zone_epi) or council_name
+        f_land_use = None
+        if zone_code and land_use_lga:
+            f_land_use = pool.submit(
+                _safe_call,
+                lambda: _fetch_land_use_lists(zone_code, land_use_lga),
+                "lep_land_use_table", ConfidenceLevel.AUTHORITATIVE,
+            )
+        # DA outcomes need the LGA for the refusal counts; development path only
+        # (a strata unit's street-level determination history reads as noise).
+        f_da_outcomes = f_refusal = None
+        if not is_apartment:
+            f_da_outcomes = pool.submit(
+                _safe_call, lambda: _fetch_da_outcomes(lng, lat),
+                "da_tracking_mapserver", ConfidenceLevel.AUTHORITATIVE,
+            )
+            if land_use_lga:
+                f_refusal = pool.submit(
+                    _safe_call, lambda: _fetch_refusal_stats(land_use_lga),
+                    "da_tracking_mapserver", ConfidenceLevel.AUTHORITATIVE,
+                )
+        # Market context is development-lot analysis (same-zone, similar-size
+        # comparables) — meaningless for an individual strata lot, so it is
+        # only fetched on the development path.
+        f_market = None
+        if not is_apartment:
+            f_market = pool.submit(
+                _safe_call,
+                lambda: _fetch_market_context(lng, lat, zone_code, lot_area_m2, resolved_prop_id),
+                "nsw_valuer_general", ConfidenceLevel.DERIVED,
+            )
 
         # ── Yield environmental (overlays + heritage + env sources) ──────
         overlays_df = _timed_result(f_overlays, 10, "postgis_overlays", timings)
@@ -2910,9 +3663,12 @@ def _generate_brief_sse(
 
         overlays_data, overlays_failed = _unwrap_or_default(overlays_df, {"overlays": [], "covered_layers": [], "proximity_m": {}})  # WO-2: overlays_failed -> _build_environmental stamps overlay-derived fields NOT_AVAILABLE instead of False@AUTHORITATIVE
         heritage_postgis = heritage_df.value
-        mine_subsidence_raw = mine_sub_df.value
-        contaminated_land_raw = contam_df.value
-        drinking_water_raw = drinking_df.value
+        # These services return None BOTH for "genuinely outside the layer" and
+        # (via _safe_call) for a failed fetch — the confidence flag is the only
+        # way to keep the two apart downstream (WO-2 class).
+        mine_subsidence_raw, mine_failed = _unwrap_or_default(mine_sub_df, None)
+        contaminated_land_raw, contam_failed = _unwrap_or_default(contam_df, None)
+        drinking_water_raw, drinking_failed = _unwrap_or_default(drinking_df, None)
         # lot_geometry already awaited + reconciled before economics (above).
         contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
             value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -2926,6 +3682,8 @@ def _generate_brief_sse(
             drinking_water_raw=drinking_water_raw,
             lat=lat, lng=lng,
             overlays_failed=overlays_failed, controls_failed=controls_failed,
+            mine_failed=mine_failed, contam_failed=contam_failed,
+            drinking_failed=drinking_failed,
         )
         sections_yielded += 1
         yield _sse_event("section", {
@@ -2942,7 +3700,8 @@ def _generate_brief_sse(
         if not controls.get("lot_size") and "lot_size" in ov_by_type:
             controls["lot_size"] = ov_by_type["lot_size"].get("value")
 
-        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2, controls_failed=controls_failed)
+        land_use_df = _timed_result(f_land_use, CONFIG.timeout_land_use, "lep_land_use_table", timings) if f_land_use else None
+        planning_controls = _build_planning_controls(controls, overlays_data, lot_geometry_raw, lot_area_m2=lot_area_m2, controls_failed=controls_failed, land_use_df=land_use_df)
         sections_yielded += 1
         yield _sse_event("section", {
             "section": "planning_controls",
@@ -2981,10 +3740,20 @@ def _generate_brief_sse(
                     sse_lep_fsr = float(str(fsr_str_sse).replace(":1", "").strip())
                 except (ValueError, TypeError):
                     pass
+            _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
             sepp_lep_overrides = _detect_sepp_lep_overrides(
                 sepp_housing, height_m, sse_lep_fsr,
-                is_heritage=_is_heritage_land(controls, heritage_postgis),
+                is_heritage=_heritage_lmr,
             )
+
+            # Per-form eligibility with citations — the ONE engine run this
+            # brief makes; the capacity ceiling below reuses the same results.
+            lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
+            _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
+            eligibility_results = _sepp_eligibility_results(
+                zone_code, lat, lng, lot_area_m2, _lot_width, _heritage_lmr,
+            )
+            sepp_eligibility_field = _build_sepp_eligibility_field(eligibility_results)
 
             sections_yielded += 1
             yield _sse_event("section", {
@@ -2994,6 +3763,9 @@ def _generate_brief_sse(
                     source="housing_sepp_standards", as_at=today,
                 ).model_dump(),
                 "sepp_lep_overrides": [o.model_dump() for o in sepp_lep_overrides],
+                "eligibility_forms": sepp_eligibility_field.model_dump(),
+                "lot_area_m2": lot_area_m2,
+                "lot_width_m": _lot_width,
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -3004,11 +3776,13 @@ def _generate_brief_sse(
                 try:
                     from services.constraint_arithmetic import compute_constraint_arithmetic
 
-                    lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
-                    _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
-                    _heritage_lmr = _is_heritage_land(controls, heritage_postgis)
                     _excluded_forms = _eligibility_excluded_forms(lat, lng)
-                    _uplift_form, _uplift_citation = _lmr_uplift_form(controls.get("zone"), lat, lng, lot_area_m2, _lot_width, _heritage_lmr)
+                    # Reuse the eligibility run from the SEPP card above — the
+                    # engine is never invoked twice per brief.
+                    _uplift_form, _uplift_citation = _lmr_uplift_form(
+                        controls.get("zone"), lat, lng, lot_area_m2, _lot_width,
+                        _heritage_lmr, results=eligibility_results,
+                    )
                     _floor_form, _ceiling_form, _ceiling_from_lmr = _realistic_forms(
                         controls.get("zone"), _bare_lga_from_epi(zone_epi) or council_name,
                         excluded_forms=_excluded_forms, uplift_form=_uplift_form, return_source=True,
@@ -3041,11 +3815,32 @@ def _generate_brief_sse(
                 except Exception as e:
                     logger.warning("Constraint arithmetic (SSE) failed: %s", e)
 
-            neighbourhood = _build_neighbourhood(das_df, shadow_raw)
+            da_outcomes_df = _timed_result(f_da_outcomes, CONFIG.timeout_da_outcomes, "da_tracking_mapserver", timings) if f_da_outcomes else None
+            refusal_df = _timed_result(f_refusal, CONFIG.timeout_da_outcomes, "da_tracking_refusal", timings) if f_refusal else None
+            neighbourhood = _build_neighbourhood(das_df, shadow_raw, da_outcomes_df=da_outcomes_df, refusal_df=refusal_df)
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "neighbourhood",
                 "data": neighbourhood.model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
+            # ── Market context: VG comparables + recent sales (dev path only) ──
+            market_df = _timed_result(f_market, CONFIG.timeout_market, "nsw_valuer_general", timings) if f_market else DataField(
+                value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+                source="nsw_valuer_general", reason="Market context not fetched",
+            )
+            market_context = _build_market_context(market_df.value)
+            market_field = DataField(
+                value=market_context,
+                confidence=ConfidenceLevel.DERIVED if market_context else ConfidenceLevel.NOT_AVAILABLE,
+                source="nsw_valuer_general", as_at=today,
+                reason=None if market_context else (market_df.reason or "Valuer-General queries did not complete"),
+            )
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "market_context",
+                "data": market_field.model_dump(),
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -3116,6 +3911,17 @@ def _generate_brief_sse(
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
+            # Solar — marker slot only; the card fires the gated route client-side.
+            sections_yielded += 1
+            yield _sse_event("section", {
+                "section": "satellite.solar",
+                "data": DataField(
+                    value=_fetch_solar_marker(), confidence=ConfidenceLevel.ESTIMATED,
+                    source="google_solar_api", as_at=today,
+                ).model_dump(),
+                "progress": int(sections_yielded / total_sections * 100),
+            })
+
             pre_da_requested = f_pre_da is not None
             pre_da_df = _timed_result(f_pre_da, CONFIG.timeout_premium, "pre_da_history", timings) if f_pre_da else DataField(
                 value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -3157,6 +3963,9 @@ def _generate_brief_sse(
                 terrain_reason = terrain_df.reason or "Terrain analysis did not complete"
             else:
                 terrain_reason = "Terrain analysis not requested"
+            # Structured interpretation (findings with narratives) computed by
+            # the terrain service itself — passthrough, only when it is a dict.
+            terrain_interp = terrain_raw.get("interpretation") if isinstance(terrain_raw, dict) else None
             sections_yielded += 1
             yield _sse_event("section", {
                 "section": "satellite.terrain",
@@ -3166,6 +3975,7 @@ def _generate_brief_sse(
                     source="terrain_analysis", as_at=today,
                     reason=terrain_reason,
                 ).model_dump(),
+                "interpretation": terrain_interp if isinstance(terrain_interp, dict) else None,
                 "progress": int(sections_yielded / total_sections * 100),
             })
 
@@ -3209,9 +4019,11 @@ def _generate_brief_sse(
             dcp_controls=dcp_controls,
             sepp_housing=DataField(value=sepp_housing, confidence=ConfidenceLevel.AUTHORITATIVE, source="housing_sepp_standards", as_at=today),
             sepp_lep_overrides=sepp_lep_overrides if not is_apartment else [],
+            sepp_eligibility=sepp_eligibility_field,
             environmental_constraints=environmental,
             neighbourhood=neighbourhood,
             economics=economics,
+            market_context=market_field,
             contributions=contributions_field,
             constraint_arithmetic=constraint_field,
             satellite=satellite_data,

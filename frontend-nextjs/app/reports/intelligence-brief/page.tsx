@@ -3,9 +3,11 @@
 import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { ConstraintArithmeticCard, type ConstraintArithmeticResult } from '@/components/compliance/ConstraintArithmeticCard';
+import { ConstraintArithmeticCard, type ConstraintArithmeticResult, type EnvelopeGap, type InputLedgerRow } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
+import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
+import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -54,50 +56,57 @@ type BriefEvent =
 type PageState = 'idle' | 'triggering' | 'streaming' | 'complete' | 'error';
 
 // Section display metadata
+// Titles say what the reader GETS, not the instrument's acronym — the acronym
+// rides in the description for the planners who want it.
 const SECTION_LABELS: Record<string, { label: string; description: string }> = {
-  economics: { label: 'Economics', description: 'Land value, lot area, valuation history' },
-  strata: { label: 'Strata & Cadastre', description: 'Lot type, strata plan, ownership structure' },
-  environmental_constraints: { label: 'Environmental Constraints', description: 'Overlays, heritage, contamination, mine subsidence' },
-  planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR, lot size, heritage items' },
-  dcp_controls: { label: 'DCP Controls', description: 'Development control plan provisions' },
+  economics: { label: 'Land Value & Economics', description: 'The Valuer General’s land value, lot area and five-year valuation history' },
+  market_context: { label: 'Market Context', description: 'Comparable land valuations and recent sales nearby (NSW Valuer General)' },
+  strata: { label: 'Title & Ownership', description: 'Lot type, plan number, strata structure from the NSW cadastre' },
+  environmental_constraints: { label: 'Environmental Constraints', description: 'Flood, bushfire, heritage, contamination and other mapped overlays' },
+  planning_controls: { label: 'Planning Controls', description: 'Zoning, height, FSR and lot-size standards from the LEP' },
+  dcp_controls: { label: 'Council Development Controls', description: 'Setbacks, landscaping and built-form provisions from the DCP' },
   sepp_housing: { label: 'SEPP Housing', description: 'State policy housing standards' },
-  neighbourhood: { label: 'Neighbourhood', description: 'Nearby DAs, shadow analysis' },
+  neighbourhood: { label: 'Neighbourhood Activity', description: 'Development applications nearby, outcomes, and shadow analysis' },
   constraint_arithmetic: { label: 'Development Capacity', description: 'Indicative yield and the binding planning constraint' },
   'satellite.bushfire': { label: 'Bushfire Risk', description: 'Bushfire attack level, vegetation category' },
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
-  'satellite.climate_disclosure': { label: 'Climate Disclosure', description: 'Heat island, rainfall intensity, fire hotspots' },
+  'satellite.climate_disclosure': { label: 'Climate Hazards & Projections', description: 'Hazard screening, heat and rainfall calculations, climate-model projections' },
   'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
   'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
+  'satellite.solar': { label: 'Solar Potential', description: 'Roof capacity and yield from aerial imagery (Google Solar)' },
 };
 
-// Bento spans — the headline (development capacity) and the field-heavy sections
-// get two columns; everything else is a single tile. Driving the layout off the
-// section key keeps it stable as cards stream in at uneven heights.
-const WIDE_SECTIONS = new Set(['constraint_arithmetic', 'planning_controls', 'environmental_constraints']);
-// DCP controls carries a long PDF URL — give it the full row so it reads cleanly.
-const FULL_ROW_SECTIONS = new Set(['dcp_controls']);
-function spanFor(section: string): string {
-  if (FULL_ROW_SECTIONS.has(section)) return 'col-span-1 md:col-span-2 xl:col-span-3';
-  return WIDE_SECTIONS.has(section) ? 'md:col-span-2' : 'col-span-1';
+// Cards stack full-width, one per row — field-heavy sections were unreadable as
+// narrow grid tiles (a <400px container forces every label/value pair into a
+// tall tower; at full width the key-value grid inside each card spreads to 3-4
+// columns instead). The anchor id lets the sticky section bar jump here.
+function sectionAnchorId(section: string): string {
+  return `brief-${section.replace(/\./g, '-')}`;
 }
 
 // Confidence level styling
+// Ring-pill badge with a status dot. Display labels only — the enum values are
+// unchanged. 'estimated' renders as "Calculated": these figures are exact
+// calculations on satellite/statistical/model data, and "Estimated" read as
+// guesswork; the legend spells out the distinction from on-site measurement.
+const CONFIDENCE_BADGE_STYLES: Record<string, { label: string; pill: string; dot: string }> = {
+  authoritative: { label: 'Authoritative', pill: 'bg-emerald-50 text-emerald-800 ring-emerald-600/20', dot: 'bg-emerald-500' },
+  estimated: { label: 'Calculated', pill: 'bg-amber-50 text-amber-800 ring-amber-600/25', dot: 'bg-amber-500' },
+  derived: { label: 'Derived', pill: 'bg-blue-50 text-blue-800 ring-blue-600/20', dot: 'bg-blue-500' },
+  extracted: { label: 'Extracted', pill: 'bg-purple-50 text-purple-800 ring-purple-600/20', dot: 'bg-purple-500' },
+  not_available: { label: 'Not Available', pill: 'bg-red-50 text-red-800 ring-red-600/20', dot: 'bg-red-500' },
+};
+
 function confidenceBadge(confidence: string) {
-  switch (confidence) {
-    case 'authoritative':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800">Authoritative</span>;
-    case 'estimated':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>;
-    case 'derived':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">Derived</span>;
-    case 'extracted':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">Extracted</span>;
-    case 'not_available':
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800">Not Available</span>;
-    default:
-      return <span className="px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-600">{confidence}</span>;
-  }
+  const s = CONFIDENCE_BADGE_STYLES[confidence]
+    ?? { label: confidence, pill: 'bg-slate-100 text-slate-600 ring-slate-400/20', dot: 'bg-slate-400' };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${s.pill}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} aria-hidden="true" />
+      {s.label}
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -117,7 +126,7 @@ type UnavailableTone = 'clear' | 'optional' | 'pending' | 'error' | 'neutral';
 // path is to tick it and re-run. (Verified against include_satellite gating.)
 const SATELLITE_SECTIONS = new Set([
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain',
+  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
 ]);
 
 interface Unavailable { label: string; detail: string; tone: UnavailableTone; }
@@ -181,7 +190,11 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
     };
   }
   if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
-  if (r.includes('prop_id') || r.includes('could not') || r.includes('couldn')) {
+  // Only a genuine resolution failure ("No prop_id resolved") is the user's
+  // address problem. A bare "could not ..." from any backend layer used to land
+  // here too, so a council we simply haven't onboarded (e.g. Wingecarribee DCP)
+  // rendered as "Address not matched — check the address".
+  if (r.includes('prop_id') || r.includes('address not')) {
     return {
       label: 'Address not matched',
       detail: 'We could not match this address to a property in the NSW register — check the address.',
@@ -205,7 +218,7 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.includes('not requested')) {
     return { label: 'Not run', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
   }
-  if (r.includes('fail') || r.includes('unavailable') || r.includes('error')) {
+  if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
     return {
       label: 'Unavailable',
       detail: `The source for ${what || 'this layer'} did not respond — run the brief again to retry.`,
@@ -269,10 +282,10 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
     : null;
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{meta.label}</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">{meta.label}</h3>
           <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -334,15 +347,22 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
     const u = isDataField(v) ? v.value : v;
     if (typeof u === 'string' && u) unitFor[k.slice(0, -6)] = u;
   }
+  // Measured nearest-feature distances (decorate the "No" rows below; the map
+  // itself is not a row).
+  const nearestRaw = (data.nearest_features as { value?: Record<string, number> | null } | undefined)?.value ?? null;
+
   // Hide: internal QA fields; standalone units rows (merged above); the duplicate
-  // lot area (kept in Economics); and empty "...reason" rows (e.g. an ineligible
-  // reason when the lot is actually eligible).
+  // lot area (kept in Economics); empty "...reason" rows (e.g. an ineligible
+  // reason when the lot is actually eligible); the nearest_features map
+  // (rendered as decorations); and null detail rows whose host boolean already
+  // answers (contaminated_detail etc.).
   const entries = Object.entries(data).filter(
     ([key, val]) =>
-      !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage'].includes(key) &&
+      !['confidence', 'source', 'as_at', 'reason', 'overlay_coverage', 'nearest_features'].includes(key) &&
       !key.endsWith('_units') &&
       !(key === 'lot_area_m2' && section !== 'economics') &&
-      !(/reason/i.test(key) && (val === null || val === undefined || val === '')),
+      !(/reason/i.test(key) && (val === null || val === undefined || val === '')) &&
+      !(HIDE_WHEN_NULL_KEYS.has(key) && (isDataField(val) ? val.value == null : val == null)),
   );
 
   if (entries.length === 0) {
@@ -350,7 +370,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
   }
 
   return (
-    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+    <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-3.5">
       {entries.map(([key, val]) => {
         // Unwrap DataField: extract .value and show confidence badge
         if (isDataField(val)) {
@@ -367,8 +387,8 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // Heritage dict -> one plain sentence, not a raw object dump.
           if (key === 'heritage_postgis' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
-                <dt className="text-xs font-medium text-slate-500">Heritage</dt>
+              <div key={key} className="flex flex-col col-span-full">
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Heritage</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{humanizeHeritage(df.value as Record<string, unknown>)}</dd>
               </div>
             );
@@ -377,7 +397,7 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // not "6 fields".
           if (key === 'shadow' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><ShadowDisplay data={df.value as ShadowData} /></dd>
               </div>
@@ -388,9 +408,75 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // not a comma run-on.
           if ((key === 'heritage_items' || key === 'heritage_hca') && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="mt-0.5"><HeritageList items={df.value as string[]} /></dd>
+              </div>
+            );
+          }
+          // Determined DA outcomes — rows with recorded results, radius and
+          // data window stated from the payload itself (never years_back arithmetic).
+          if (key === 'da_outcomes' && df.value && typeof df.value === 'object') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><DAOutcomesDisplay data={df.value as DAOutcomesPayload} formatLabel={formatKey} /></dd>
+              </div>
+            );
+          }
+          // LGA determination counts — counts and rate with the data-derived
+          // window, nothing else.
+          if (key === 'da_refusal_stats' && df.value && typeof df.value === 'object') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  <RefusalStatsSentence stats={df.value as RefusalStatsRow} formatLabel={formatKey} />
+                </dd>
+              </div>
+            );
+          }
+          // Bushfire cross-overlays — a list of {type,...} dicts; name the layers
+          // rather than dumping objects.
+          if (key === 'cross_overlays' && Array.isArray(df.value) && df.value.length > 0) {
+            const names = (df.value as Array<{ type?: string }>)
+              .flatMap((o) => (o?.type ? [formatKey(String(o.type))] : []));
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  Also intersects: {names.join(', ')}
+                </dd>
+              </div>
+            );
+          }
+          // Nearby DAs — application rows with cost of development, not "5 items".
+          if (key === 'nearby_das' && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><NearbyDAList rows={df.value as NearbyDARow[]} /></dd>
+              </div>
+            );
+          }
+          // Valuation history — a year/value series, rendered as a trend with
+          // per-year change, not "5 items".
+          if (key === 'val_history' && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5"><ValuationTrend history={df.value as ValuationYear[]} /></dd>
+              </div>
+            );
+          }
+          // LEP Land Use Table lists — collapsible so 600+ uses don't swamp the card.
+          if ((key === 'permitted_uses' || key === 'prohibited_uses') && Array.isArray(df.value)) {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5">
+                  <UseList kind={key === 'permitted_uses' ? 'permitted' : 'prohibited'} uses={df.value as string[]} />
+                </dd>
               </div>
             );
           }
@@ -398,8 +484,8 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           // a readable list with units, not "2 items".
           if (key === 'overlays' && Array.isArray(df.value)) {
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
-                <dt className="text-xs font-medium text-slate-500">{formatKey(key)}</dt>
+              <div key={key} className="flex flex-col col-span-full">
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{formatKey(key)}</dt>
                 <dd className="mt-0.5"><OverlayList overlays={df.value as OverlayItem[]} /></dd>
               </div>
             );
@@ -410,12 +496,66 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           if (key === 'coastal_hazards' && df.value && typeof df.value === 'object' && !Array.isArray(df.value)) {
             const within = Object.keys(df.value as Record<string, unknown>).length > 0;
             return (
-              <div key={key} className="flex flex-col sm:col-span-2">
+              <div key={key} className="flex flex-col col-span-full">
                 <FieldLabel fieldKey={key} />
                 <dd className="text-sm text-slate-900 mt-0.5">
                   {within
                     ? 'Within the Coastal Management SEPP land-application area (jurisdictional — not a coastal-hazard finding).'
                     : 'Not in a coastal management area.'}
+                </dd>
+              </div>
+            );
+          }
+          // A "No" row with a measured distance to the nearest mapped feature —
+          // "No — nearest mapped flood polygon 830 m away" says far more than a
+          // bare "No". Distance shown only when PostGIS measured one.
+          if (
+            section === 'environmental_constraints' && key in NEAREST_FEATURE_ROWS &&
+            df.value === false
+          ) {
+            const { layer, label } = NEAREST_FEATURE_ROWS[key];
+            const dist = nearestRaw?.[layer];
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  No{typeof dist === 'number' ? (
+                    <span className="text-slate-500"> — nearest {label} {formatDistance(dist)} away</span>
+                  ) : null}
+                </dd>
+              </div>
+            );
+          }
+          // Contaminated-land detail — the notified sites behind the "Yes",
+          // straight from the EPA register (name, class, measured distance).
+          if (key === 'contaminated_detail' && df.value && typeof df.value === 'object') {
+            const d = df.value as { site_count?: number; nearest_site?: { name?: string; street?: string; suburb?: string; management_class?: string; distance_m?: number } };
+            const site = d.nearest_site ?? {};
+            const bits = [site.name, [site.street, site.suburb].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {d.site_count ?? 1} notified site{(d.site_count ?? 1) === 1 ? '' : 's'} on the EPA register within 500 m
+                  {bits ? <> — nearest: {bits}</> : null}
+                  {site.management_class ? <span className="text-slate-500"> ({site.management_class})</span> : null}
+                  {typeof site.distance_m === 'number' ? <span className="text-slate-500">, {formatDistance(site.distance_m)} away</span> : null}
+                </dd>
+              </div>
+            );
+          }
+          // An LEP principal development standard the Portal genuinely returns
+          // no layer for is "not mapped in this LEP for this lot" — a checked
+          // answer, worded distinctly from a fetch failure ("not available").
+          if (
+            section === 'planning_controls' && UNMAPPED_LEP_CONTROLS.has(key) &&
+            df.value == null && df.confidence === 'authoritative'
+          ) {
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-500 mt-0.5">
+                  No {UNMAPPED_LEP_CONTROLS.get(key)} mapped in this LEP for this lot.
                 </dd>
               </div>
             );
@@ -460,7 +600,12 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
 function stripDimArea(key: string, value: unknown): unknown {
   if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
   const obj = value as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2'));
+  // Irregular polygon (fills <60% of its bounding box): frontage/depth are null
+  // BY MEASUREMENT, not by failure — "Frontage: —, Depth: —" reads as broken.
+  if (obj.irregular === true && obj.frontage_m == null && obj.depth_m == null) {
+    return 'Irregular lot shape — frontage and depth can’t be measured from the cadastral polygon';
+  }
+  return Object.fromEntries(Object.entries(obj).filter(([k]) => k !== 'area_m2' && k !== 'lot_area_m2' && k !== 'irregular'));
 }
 
 // Format a field value (dimensions-area stripped) and append its unit — "7 m",
@@ -517,13 +662,40 @@ const FIELD_HINTS: Record<string, string> = {
   nearby_das:
     'Development applications lodged on nearby properties (within 500 m) in the last 12 months.',
   da_count: 'Number of development applications within 500 m in the last 12 months.',
+  val_history:
+    'The lot’s land value over the last five valuing years (NSW Valuer General). Land only — it excludes buildings.',
+  land_value: 'The NSW Valuer General’s most recent land value for this lot. Land only — it excludes buildings.',
+  permitted_uses:
+    'Development types the LEP Land Use Table lists as permitted in this zone for this council.',
+  prohibited_uses:
+    'Development types the LEP Land Use Table lists as prohibited in this zone for this council.',
+  anef_level:
+    'Aircraft-noise exposure contour value (ANEF) published for this location.',
+  contaminated_detail:
+    'Sites on the EPA contaminated-land register within 500 m, with the nearest site’s details and measured distance.',
+  mine_subsidence_district:
+    'The proclaimed mine subsidence district this lot falls within.',
+  lot_total: 'Number of lots in the strata scheme (NSW Strata Hub).',
+  dwelling_type: 'Building form classified from the strata scheme’s lot count (NSW Strata Hub).',
+  registration_date: 'Date the strata plan was registered (NSW Strata Hub).',
+  bal_estimate: 'Indicative Bushfire Attack Level band from the RFS mapping category — a formal BAL assessment is a separate report.',
+  rfs_referral_required: 'Whether a development application here triggers a referral to the NSW Rural Fire Service.',
+  rfs_referral_triggers: 'Which conditions trigger the RFS referral.',
+  cdc_pathway_available: 'Whether the complying-development (CDC) pathway remains open under the bushfire provisions.',
+  cross_overlays: 'Other mapped constraint layers that intersect this lot alongside the bushfire mapping.',
+  cost: 'Estimated cost of development stated on the application.',
+  nearby_das_cost: 'Estimated cost of development stated on the application.',
+  da_outcomes:
+    'Applications near this lot that reached a determination, with their recorded results (NSW planning application tracking).',
+  da_refusal_stats:
+    'Counts of determined applications across the council area and the share refused, for the data window stated in the sentence.',
 };
 
 // Field label + an optional one-line description underneath.
 function FieldLabel({ fieldKey }: { fieldKey: string }) {
   const hint = FIELD_HINTS[fieldKey];
   return (
-    <dt className="text-xs font-medium text-slate-500">
+    <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
       {formatKey(fieldKey)}
       {hint && (
         <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">{hint}</span>
@@ -531,6 +703,43 @@ function FieldLabel({ fieldKey }: { fieldKey: string }) {
     </dt>
   );
 }
+
+// Environmental "No" rows that carry a measured nearest-feature distance
+// (PostGIS ST_Distance over the mapped polygons — measured, never estimated).
+// key = the brief field; layer = the key inside nearest_features; label = the
+// factual noun for the sentence ("nearest mapped flood polygon 830 m away").
+const NEAREST_FEATURE_ROWS: Record<string, { layer: string; label: string }> = {
+  flood_epi: { layer: 'flood', label: 'mapped flood polygon' },
+  terrestrial_biodiversity: { layer: 'biodiversity', label: 'mapped biodiversity area' },
+  riparian_land: { layer: 'riparian', label: 'mapped riparian land' },
+  wetlands: { layer: 'wetlands', label: 'mapped wetland' },
+};
+
+function formatDistance(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km` : `${Math.round(m)} m`;
+}
+
+// Detail fields that only carry information when their host boolean is Yes —
+// a null here is covered by the boolean row, so render nothing instead of a
+// noise "None" row.
+const HIDE_WHEN_NULL_KEYS = new Set([
+  'contaminated_detail', 'mine_subsidence_district', 'anef_level',
+  // StrataHub supplementary detail — only meaningful on strata lots.
+  'lot_total', 'dwelling_type', 'registration_date',
+  // Bushfire pathway detail — only meaningful on bushfire-prone lots.
+  'rfs_referral_required', 'rfs_referral_triggers', 'cdc_pathway_available', 'cross_overlays',
+  // LGA determination stats — null means the layer holds none for this council.
+  'da_refusal_stats',
+]);
+
+// LEP principal development standards that legitimately have no mapped layer on
+// some lots (e.g. Wingecarribee maps no FSR for parts of Bowral). A checked
+// null here means "no control mapped", NOT a retrieval failure.
+const UNMAPPED_LEP_CONTROLS = new Map<string, string>([
+  ['height', 'height of buildings control'],
+  ['fsr', 'floor space ratio control'],
+  ['lot_size', 'minimum lot size control'],
+]);
 
 // Units to append to a planning-overlay value when it's a bare number/string.
 const OVERLAY_UNIT: Record<string, string> = {
@@ -609,7 +818,18 @@ function ShadowDisplay({ data }: { data: ShadowData }) {
   return (
     <div className="text-sm text-slate-900 space-y-1.5">
       {data.height_m != null && (
-        <div>Modelled building height: <span className="font-medium">{data.height_m} m</span>{data.height_source ? ` (${data.height_source})` : ''}</div>
+        <div>
+          Building height used: <span className="font-medium">{data.height_m} m</span>
+          <span className="text-slate-500">
+            {data.height_source === 'default'
+              // The 9 m fallback (shadow_detector DEFAULT_HEIGHT_M) — say WHY it
+              // was used, not the internal slug.
+              ? ' — no LEP height limit is mapped for this lot, so the analysis uses a standard two-storey height'
+              : data.height_source
+                ? ' — the LEP height limit mapped for this lot'
+                : ''}
+          </span>
+        </div>
       )}
       {data.adg_compliant != null && (
         <div>
@@ -662,11 +882,346 @@ function OverlayList({ overlays }: { overlays: OverlayItem[] }) {
   );
 }
 
-interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; }
+// ---------------------------------------------------------------------------
+// Nearby DAs — application rows (type, status, distance, stated cost), not a
+// bare "5 items". Cost is the applicant's stated cost of development.
+// ---------------------------------------------------------------------------
+
+interface NearbyDARow {
+  number?: string; address?: string | null; distance_m?: number | null;
+  status?: string | null; dev_type?: string | null; lodgement_date?: string | null;
+  cost?: number | null;
+}
+
+const NEARBY_DA_PREVIEW_COUNT = 6;
+
+function nearbyDARow(d: NearbyDARow, i: number) {
+  return (
+    <tr key={d.number ?? i} className="border-t border-slate-100 align-top">
+      <td className="py-1 pr-3 text-slate-700">
+        {d.dev_type ? formatKey(String(d.dev_type)) : (d.number ?? '—')}
+        {d.address ? <span className="block text-[11px] text-slate-400">{d.address}</span> : null}
+      </td>
+      <td className="py-1 pr-3 text-slate-500">{d.status ?? '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-500">{d.distance_m != null ? `${Math.round(d.distance_m)} m` : '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-700">{d.cost != null ? `$${Math.round(d.cost).toLocaleString()}` : '—'}</td>
+      <td className="py-1 tabular-nums text-slate-500">{d.lodgement_date ?? '—'}</td>
+    </tr>
+  );
+}
+
+function NearbyDAList({ rows }: { rows: NearbyDARow[] }) {
+  if (!rows || rows.length === 0) {
+    return <span className="text-sm text-slate-500">No development applications within 500 m in the last 12 months.</span>;
+  }
+  const sorted = [...rows].sort((a, b) => String(b.lodgement_date ?? '').localeCompare(String(a.lodgement_date ?? '')));
+  const preview = sorted.slice(0, NEARBY_DA_PREVIEW_COUNT);
+  const rest = sorted.slice(NEARBY_DA_PREVIEW_COUNT);
+  return (
+    <div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-xs text-slate-500 text-left">
+            <th className="font-medium pb-1 pr-3">Application</th>
+            <th className="font-medium pb-1 pr-3">Status</th>
+            <th className="font-medium pb-1 pr-3">Distance</th>
+            <th className="font-medium pb-1 pr-3">Stated cost</th>
+            <th className="font-medium pb-1">Lodged</th>
+          </tr>
+        </thead>
+        <tbody>{preview.map(nearbyDARow)}</tbody>
+      </table>
+      {rest.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-slate-500">Show {rest.length} more applications</summary>
+          <table className="w-full text-[13px] mt-1"><tbody>{rest.map(nearbyDARow)}</tbody></table>
+        </details>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Valuation history — render the 5-year series as a readable trend (year,
+// value, change on the prior year), not "5 items". Factual figures only.
+// ---------------------------------------------------------------------------
+
+interface ValuationYear { year?: string | number; value?: number | null; }
+
+function ValuationTrend({ history }: { history: ValuationYear[] }) {
+  const rows = (history || [])
+    .filter((h) => h && h.value != null)
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+  if (rows.length === 0) {
+    return <span className="text-sm text-slate-400">No valuation history recorded.</span>;
+  }
+  return (
+    <ul className="text-sm text-slate-900 space-y-0.5 tabular-nums">
+      {rows.map((h, i) => {
+        const prev = i > 0 ? rows[i - 1].value : null;
+        const pct = prev && h.value ? ((h.value - prev) / prev) * 100 : null;
+        return (
+          <li key={String(h.year)} className="flex items-baseline gap-2">
+            <span className="text-slate-500 w-12 shrink-0">{h.year}</span>
+            <span>${h.value!.toLocaleString()}</span>
+            {pct != null && Math.abs(pct) >= 0.05 && (
+              <span className={`text-[11px] ${pct > 0 ? 'text-slate-500' : 'text-amber-700'}`}>
+                {pct > 0 ? '+' : ''}{pct.toFixed(1)}% on prior year
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LEP land-use lists — collapsible, so 600+ uses don't swamp the card. The
+// counts are always visible; the full lists expand on demand.
+// ---------------------------------------------------------------------------
+
+function UseList({ kind, uses }: { kind: 'permitted' | 'prohibited'; uses: string[] }) {
+  const label = kind === 'permitted' ? 'Permitted in the zone' : 'Prohibited in the zone';
+  if (!uses || uses.length === 0) {
+    return (
+      <span className="text-sm text-slate-500">
+        No {kind} uses listed for this zone in the LEP Land Use Table extract.
+      </span>
+    );
+  }
+  return (
+    <details className="text-sm">
+      <summary className="cursor-pointer select-none text-slate-900">
+        <span className="font-medium">{uses.length}</span> {kind} land uses
+        <span className="text-slate-400 text-xs ml-1.5">(click to expand the LEP Land Use Table list)</span>
+      </summary>
+      <ul className="mt-2 columns-1 sm:columns-2 gap-x-6 text-slate-700 text-[13px] leading-relaxed" aria-label={label}>
+        {uses.map((u) => (
+          <li key={u} className="break-inside-avoid">{formatKey(u)}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Market context — VG comparables + recent sales. Wording contract: the
+// percentile/band lines state the lot's factual position within the comparable
+// set — never an over/under-valuation opinion or advice.
+// ---------------------------------------------------------------------------
+
+interface ComparableRow { propid?: number; address?: string; zone?: string; area_m2?: number; land_value?: number | null; valuation_date?: string | null; }
+interface ComparablesData {
+  subject_value?: number | null; subject_area_m2?: number; comparable_count?: number;
+  median_value?: number | null; mean_value?: number | null; percentile_rank?: number | null;
+  comparables?: ComparableRow[]; assessment_signal?: string | null;
+}
+interface SaleRow { propid?: number; address?: string; price?: number; area_m2?: number; sale_date?: string | null; price_per_m2?: number | null; is_strata?: boolean; }
+interface MarketContextData {
+  comparables?: { value?: ComparablesData | null; confidence?: string; reason?: string | null; as_at?: string | null };
+  recent_sales?: { value?: SaleRow[] | null; confidence?: string; reason?: string | null; as_at?: string | null };
+  radius_m?: number;
+  sales_years_back?: number;
+}
+
+// assessment_signal -> a factual position within the comparable set.
+const SIGNAL_POSITION: Record<string, string> = {
+  potentially_over: 'in the upper band of',
+  in_range: 'within the middle band of',
+  potentially_under: 'in the lower band of',
+};
+
+function MarketContextCard({ data, satelliteRan }: { data: Record<string, unknown>; satelliteRan: boolean }) {
+  const df = data as { value?: MarketContextData | null; confidence?: string; reason?: string | null; source?: string; as_at?: string | null };
+  const mc = df.value ?? null;
+  const radius = mc?.radius_m ?? 500;
+  const yearsBack = mc?.sales_years_back ?? 3;
+
+  const header = (
+    <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
+      <div>
+        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Market Context</h3>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Comparable land valuations and recent sales within {radius} m (NSW Valuer General{df.as_at ? `, as at ${df.as_at}` : ''})
+        </p>
+      </div>
+      {df.confidence === 'not_available'
+        ? <span className={`px-2 py-0.5 text-xs font-medium rounded ${UNAVAILABLE_TONE_STYLES.error}`}>Unavailable</span>
+        : confidenceBadge(df.confidence ?? 'derived')}
+    </div>
+  );
+
+  if (!mc) {
+    const u = describeUnavailable(df.reason, 'market_context', satelliteRan);
+    return (
+      <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+        {header}
+        <div className={`px-5 py-4 text-sm ${UNAVAILABLE_TEXT_STYLES[u.tone]}`}>{u.detail}</div>
+      </div>
+    );
+  }
+
+  const comps = mc.comparables?.value ?? null;
+  const compsReason = mc.comparables?.reason;
+  const sales = mc.recent_sales?.value ?? null;
+  const salesReason = mc.recent_sales?.reason;
+  const position = comps?.assessment_signal ? SIGNAL_POSITION[comps.assessment_signal] : null;
+
+  return (
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      {header}
+      <div className="px-5 py-4 space-y-4">
+        {/* Comparable valuations */}
+        <div>
+          <h4 className="text-xs font-medium text-slate-500 mb-1.5">Comparable land valuations
+            <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+              Lots in the same zone with a similar lot size within {radius} m. Land value only — it excludes buildings.
+            </span>
+          </h4>
+          {comps ? (
+            <div className="text-sm text-slate-900 space-y-1">
+              <div className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
+                <span><span className="text-slate-500">Comparables:</span> {comps.comparable_count ?? 0}</span>
+                {comps.median_value != null && <span><span className="text-slate-500">Median:</span> ${comps.median_value.toLocaleString()}</span>}
+                {comps.mean_value != null && <span><span className="text-slate-500">Mean:</span> ${comps.mean_value.toLocaleString()}</span>}
+                {comps.subject_value != null && <span><span className="text-slate-500">This lot:</span> ${comps.subject_value.toLocaleString()}</span>}
+              </div>
+              {comps.percentile_rank != null && (
+                <p className="text-slate-700">
+                  This lot&apos;s land value sits at the {ordinal(Math.round(comps.percentile_rank))} percentile of{' '}
+                  {comps.comparable_count} comparable valuations{position ? ` — ${position} the comparable set` : ''}.
+                </p>
+              )}
+              {(comps.comparables?.length ?? 0) > 0 && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer select-none text-xs text-slate-500">
+                    Show the {comps.comparables!.length} comparable lots
+                  </summary>
+                  <table className="w-full text-[13px] mt-2">
+                    <thead>
+                      <tr className="text-xs text-slate-500 text-left">
+                        <th className="font-medium pb-1 pr-3">Address</th>
+                        <th className="font-medium pb-1 pr-3">Lot</th>
+                        <th className="font-medium pb-1">Land value</th>
+                      </tr>
+                    </thead>
+                    <tbody className="tabular-nums">
+                      {comps.comparables!.map((c, i) => (
+                        <tr key={c.propid ?? `${c.address}-${i}`} className="border-t border-slate-100">
+                          <td className="py-1 pr-3 text-slate-700">{c.address ?? '—'}</td>
+                          <td className="py-1 pr-3 text-slate-500">{c.area_m2 != null ? `${Math.round(c.area_m2)} m²` : '—'}</td>
+                          <td className="py-1 text-slate-700">{c.land_value != null ? `$${c.land_value.toLocaleString()}` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
+          ) : /resolved/i.test(compsReason ?? '') ? (
+            <p className="text-sm text-slate-500">
+              Comparable matching needs the lot&apos;s zone and area, which didn&apos;t resolve for this address.
+            </p>
+          ) : (
+            <p className="text-sm text-amber-700">
+              Couldn&apos;t retrieve comparable valuations — run the brief again to retry.
+            </p>
+          )}
+        </div>
+
+        {/* Recent sales */}
+        <div>
+          <h4 className="text-xs font-medium text-slate-500 mb-1.5">Recent sales
+            <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+              Sales recorded by the NSW Valuer General within {radius} m in the last {yearsBack} years. Sale prices include buildings.
+            </span>
+          </h4>
+          {sales ? (
+            sales.length === 0 ? (
+              <p className="text-sm text-slate-500">No sales recorded within {radius} m in the last {yearsBack} years.</p>
+            ) : (
+              <SalesTable sales={sales} />
+            )
+          ) : (
+            <p className="text-sm text-amber-700">Couldn&apos;t retrieve recent sales{salesReason ? '' : ''} — run the brief again to retry.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SALES_PREVIEW_COUNT = 6;
+
+// Module scope: pure row renderer (no component state) — rebuilt-per-render
+// closures waste work and break memoized children.
+function saleRow(s: SaleRow, i: number) {
+  return (
+    <tr key={`${s.propid ?? s.address}-${s.sale_date ?? i}`} className="border-t border-slate-100">
+      <td className="py-1 pr-3 text-slate-700">{s.address ?? '—'}{s.is_strata ? <span className="text-[10px] text-slate-400 ml-1">strata</span> : null}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-700">{s.price != null ? `$${s.price.toLocaleString()}` : '—'}</td>
+      <td className="py-1 pr-3 tabular-nums text-slate-500">{s.price_per_m2 != null ? `$${Math.round(s.price_per_m2).toLocaleString()}/m²` : '—'}</td>
+      <td className="py-1 tabular-nums text-slate-500">{s.sale_date ?? '—'}</td>
+    </tr>
+  );
+}
+
+function SalesTable({ sales }: { sales: SaleRow[] }) {
+  const sorted = [...sales].sort((a, b) => String(b.sale_date ?? '').localeCompare(String(a.sale_date ?? '')));
+  const preview = sorted.slice(0, SALES_PREVIEW_COUNT);
+  const rest = sorted.slice(SALES_PREVIEW_COUNT);
+  return (
+    <div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-xs text-slate-500 text-left">
+            <th className="font-medium pb-1 pr-3">Address</th>
+            <th className="font-medium pb-1 pr-3">Price</th>
+            <th className="font-medium pb-1 pr-3">$/m² of land</th>
+            <th className="font-medium pb-1">Date</th>
+          </tr>
+        </thead>
+        <tbody>{preview.map(saleRow)}</tbody>
+      </table>
+      {rest.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-slate-500">Show {rest.length} more sales</summary>
+          <table className="w-full text-[13px] mt-1"><tbody>{rest.map(saleRow)}</tbody></table>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const rem10 = n % 10, rem100 = n % 100;
+  if (rem10 === 1 && rem100 !== 11) return `${n}st`;
+  if (rem10 === 2 && rem100 !== 12) return `${n}nd`;
+  if (rem10 === 3 && rem100 !== 13) return `${n}rd`;
+  return `${n}th`;
+}
+
+interface ClimateFinding { hazard?: string; value?: number; unit?: string; data_date?: string; confidence?: string; source?: string; }
+interface ClimateHazardRow { hazard?: string; present?: boolean; detail?: string; data_source?: string; available?: boolean; }
+interface ClimateUnavailable { source?: string; reason?: string; }
+interface ClimateManifest {
+  sources_queried?: number; sources_successful?: number;
+  sources_unavailable?: ClimateUnavailable[]; data_quality_notes?: string[];
+}
+
+// Internal source slugs -> what was actually checked, so a gap names the dataset
+// rather than vanishing. Keep external-safe: no key/config talk in the label.
+const CLIMATE_SOURCE_LABELS: Record<string, string> = {
+  nsw_uhgc: 'Urban heat island (NSW urban heat meshblock dataset, 2016)',
+  arr_data_hub: 'Design rainfall intensity (Bureau of Meteorology IFD via ARR Data Hub)',
+  nasa_firms: 'Fire hotspot detections (NASA FIRMS satellite)',
+  narclim_projections: 'Climate projections (NARCliM 2.0, AdaptNSW)',
+};
 
 // Turn a raw climate empirical finding into one plain-English line, e.g.
 // "Urban heat: +7.3 °C above surrounding areas (2016 data — most recent available)".
-function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: string } | null {
+function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: string; source?: string } | null {
   if (!f || f.value == null) return null;
   const yr = f.data_date ? f.data_date.slice(0, 4) : '';
   const stale = f.confidence === 'stale';
@@ -674,47 +1229,143 @@ function humanizeClimateFinding(f: ClimateFinding): { label: string; detail: str
     return {
       label: 'Urban heat',
       detail: `+${f.value.toFixed(1)} °C above surrounding areas${yr ? ` (${yr} data${stale ? ' — most recent available' : ''})` : ''}`,
+      source: f.source,
     };
   }
   if (f.hazard === 'extreme_rainfall') {
     return {
       label: 'Extreme rainfall',
       detail: `${f.value.toFixed(1)} mm in 60 min (1% annual chance)${yr ? ` (${yr})` : ''}`,
+      source: f.source,
     };
   }
   // Fallback: humanise the hazard name + value, drop the snake_case unit jargon.
   return {
     label: formatKey(f.hazard ?? 'Hazard'),
     detail: `${f.value}${f.unit ? ` ${f.unit.replace(/_/g, ' ')}` : ''}${yr ? ` (${yr})` : ''}`,
+    source: f.source,
   };
 }
 
 function ClimateCard({ data }: { data: Record<string, unknown> }) {
   const empirical = (data.empirical_findings as ClimateFinding[] | undefined) ?? [];
-  const lines = empirical.map(humanizeClimateFinding).filter(Boolean) as { label: string; detail: string }[];
+  const lines = empirical.flatMap((f) => {
+    const line = humanizeClimateFinding(f);
+    return line ? [line] : [];
+  });
+  // The six per-hazard screening rows (flood/bushfire/coastal/landslide/fire
+  // history/heat) — previously computed by the backend and silently dropped here.
+  const hazards = ((data.per_hazard_detail as ClimateHazardRow[] | undefined) ?? [])
+    .filter((h) => h && h.available !== false);
+  const manifest = (data.manifest as ClimateManifest | undefined) ?? {};
+  const unavailable = manifest.sources_unavailable ?? [];
+  const notes = manifest.data_quality_notes ?? [];
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Climate Disclosure</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Heat island, rainfall intensity</p>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Climate Hazards &amp; Projections</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Hazard screening, heat and rainfall calculations, climate-model projections — each with its dataset</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Calculated</span>
       </div>
-      <div className="px-5 py-4">
-        {lines.length === 0 ? (
-          <div className="text-sm text-slate-400">No climate hazards recorded at this property.</div>
-        ) : (
-          <dl className="space-y-2">
+      <div className="px-5 py-4 space-y-4">
+        {lines.length > 0 && (
+          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-col">
-                <dt className="text-xs font-medium text-slate-500">{l.label}</dt>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{l.label}</dt>
                 <dd className="text-sm text-slate-900 mt-0.5">{l.detail}</dd>
+                {l.source && <dd className="text-[11px] text-slate-400 mt-0.5">{l.source}</dd>}
               </div>
             ))}
           </dl>
         )}
+        {hazards.length > 0 && (
+          <div className={lines.length > 0 ? 'border-t border-slate-100 pt-3' : ''}>
+            <h4 className="text-xs font-medium text-slate-500 mb-2">Hazard screening
+              <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+                Each hazard checked against its government dataset — a &ldquo;not detected&rdquo; is a checked result, not missing data.
+              </span>
+            </h4>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
+              {hazards.map((h, i) => (
+                <div key={h.hazard ?? i} className="flex flex-col">
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{formatKey(h.hazard ?? 'hazard')}</dt>
+                  <dd className="text-sm text-slate-900 mt-0.5">
+                    {h.detail || (h.present === false ? 'Not detected at this property' : h.present === true ? 'Detected' : '—')}
+                  </dd>
+                  {h.data_source && <dd className="text-[11px] text-slate-400 mt-0.5">{h.data_source}</dd>}
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+        {lines.length === 0 && hazards.length === 0 && (
+          <div className="text-sm text-slate-400">No climate hazard indicators could be calculated for this property on this run.</div>
+        )}
+        <ProjectedFindings rows={(data.projected_findings as ProjectedRow[] | undefined) ?? []} />
+        {unavailable.length > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <h4 className="text-xs font-medium text-slate-500 mb-1.5">Checked, not available for this location on this run</h4>
+            <ul className="space-y-1">
+              {unavailable.map((u, i) => (
+                <li key={u.source ?? i} className="text-xs text-slate-500" title={u.reason ?? undefined}>
+                  {CLIMATE_SOURCE_LABELS[u.source ?? ''] ?? formatKey(u.source ?? 'source')}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {notes.length > 0 && (
+          <p className="text-[11px] text-slate-400">{notes.join(' · ')}</p>
+        )}
       </div>
+    </div>
+  );
+}
+
+// NARCliM 2.0 projections — model outputs, always shown with their model,
+// scenario and timeframe. Factual changes only, no advice.
+interface ProjectedRow { hazard?: string; value?: number | null; model?: string | null; scenario?: string | null; timeframe?: string | null; }
+
+const PROJECTED_LABELS: Record<string, { label: string; unit: string }> = {
+  extreme_heat_days: { label: 'Days ≥35°C per year', unit: 'days' },
+  mean_temperature: { label: 'Mean temperature', unit: '°C' },
+  daily_precipitation: { label: 'Mean daily rainfall', unit: 'mm/day' },
+};
+
+function ProjectedFindings({ rows }: { rows: ProjectedRow[] }) {
+  const usable = (rows || []).filter((r) => r && r.value != null && r.hazard);
+  if (usable.length === 0) return null;
+  const byHazard = new Map<string, ProjectedRow[]>();
+  for (const r of usable) {
+    const k = String(r.hazard);
+    byHazard.set(k, [...(byHazard.get(k) ?? []), r]);
+  }
+  const model = usable[0].model ?? 'NARCliM 2.0';
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="text-xs font-medium text-slate-500 mb-1.5">
+        Projected change ({model})
+        <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+          Climate-model projections against the 2015–2024 baseline — modelled scenarios, not observations.
+        </span>
+      </div>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1.5 text-sm">
+        {[...byHazard.entries()].map(([hazard, hz]) => {
+          const meta = PROJECTED_LABELS[hazard] ?? { label: formatKey(hazard), unit: '' };
+          const parts = hz
+            .sort((a, b) => String(a.timeframe).localeCompare(String(b.timeframe)))
+            .map((r) => `${r.value! > 0 ? '+' : ''}${r.value!.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${meta.unit} by ${r.timeframe}`);
+          return (
+            <div key={hazard} className="flex flex-col">
+              <dt className="text-xs text-slate-500">{meta.label}</dt>
+              <dd className="text-slate-900 tabular-nums">{parts.join(' · ')}</dd>
+            </div>
+          );
+        })}
+      </dl>
     </div>
   );
 }
@@ -805,6 +1456,109 @@ function isResidentialZone(zone?: string): boolean {
   return /^(R1|R2|R3|R4|R5|RU5)\b/.test((zone || '').trim());
 }
 
+// ---------------------------------------------------------------------------
+// Yield-card ledger context — each arithmetic input with its value and source,
+// plus the named-missing-control explanation when the envelope can't compute.
+// Composed entirely from data the stream already carries (no new fetches).
+// ---------------------------------------------------------------------------
+
+type SectionEvt = { data: { section: string; data: unknown } };
+
+function _sectionValue(sections: SectionEvt[], name: string): Record<string, unknown> | null {
+  const s = sections.find((e) => e.data.section === name);
+  const d = s?.data.data as Record<string, unknown> | null | undefined;
+  if (!d) return null;
+  return (isDataField(d) ? (d.value as Record<string, unknown> | null) : d) ?? null;
+}
+
+function _df(obj: Record<string, unknown> | null, key: string): { value?: unknown; source?: string; as_at?: string | null; confidence?: string } | null {
+  const v = obj?.[key];
+  return v && isDataField(v) ? v : null;
+}
+
+function buildYieldLedgerContext(
+  sections: SectionEvt[],
+  ca: ConstraintArithmeticResult,
+): { inputProvenance: InputLedgerRow[]; envelopeGap: EnvelopeGap | null } {
+  const pc = _sectionValue(sections, 'planning_controls');
+  const eco = _sectionValue(sections, 'economics');
+  const dcpSection = _sectionValue(sections, 'dcp_controls');
+
+  const src = (df: ReturnType<typeof _df>) => (df?.source ?? '').replace(/_/g, ' ');
+  const rows: InputLedgerRow[] = [];
+
+  const lotDf = _df(eco, 'lot_area_m2');
+  if (ca.lot_area_m2 > 0) {
+    rows.push({
+      label: 'Lot area',
+      value: `${Math.round(ca.lot_area_m2).toLocaleString()} m²`,
+      source: src(lotDf) || 'nsw valuation service',
+      asAt: lotDf?.as_at ?? null,
+    });
+  }
+  const fsrDf = _df(pc, 'fsr');
+  rows.push({
+    label: 'Floor space ratio (LEP)',
+    value: ca.lep_fsr != null ? `${ca.lep_fsr}:1` : 'no control mapped',
+    source: src(fsrDf) || 'planning portal',
+    asAt: fsrDf?.as_at ?? null,
+  });
+  const heightDf = _df(pc, 'height');
+  rows.push({
+    label: 'Height of buildings (LEP)',
+    value: ca.lep_height_m != null ? `${ca.lep_height_m} m` : 'no control mapped',
+    source: src(heightDf) || 'planning portal',
+    asAt: heightDf?.as_at ?? null,
+  });
+  const dims = _df(pc, 'lot_dimensions')?.value as { frontage_m?: number | null; depth_m?: number | null } | null | undefined;
+  if (dims?.frontage_m != null && dims?.depth_m != null) {
+    rows.push({
+      label: 'Lot dimensions',
+      value: `${dims.frontage_m} m × ${dims.depth_m} m`,
+      source: 'cadastral lot polygon',
+    });
+  }
+  if (ca.dev_type) {
+    rows.push({
+      label: 'Development form basis',
+      value: formatKey(ca.dev_type),
+      source: 'zone tier + LEP land use table',
+    });
+  }
+  const setbacks = [
+    ca.setback_front_m != null ? `F ${ca.setback_front_m} m` : null,
+    ca.setback_side_m != null ? `S ${ca.setback_side_m} m` : null,
+    ca.setback_rear_m != null ? `R ${ca.setback_rear_m} m` : null,
+  ].filter(Boolean);
+  if (setbacks.length > 0) {
+    const dcpName = _df(dcpSection, 'dcp_name')?.value as string | null | undefined;
+    rows.push({
+      label: 'DCP setbacks',
+      value: setbacks.join(' · '),
+      source: dcpName || 'extracted DCP controls',
+      asAt: _df(dcpSection, 'controls')?.as_at ?? null,
+    });
+  }
+
+  let envelopeGap: EnvelopeGap | null = null;
+  if (ca.realistic_gfa_m2 == null) {
+    const missing: string[] = [];
+    if (ca.lep_fsr == null) missing.push('floor space ratio');
+    if (ca.lep_height_m == null) missing.push('height of buildings');
+    if (missing.length > 0) {
+      const instrument = (_df(pc, 'zone_epi')?.value as string | null | undefined) ?? null;
+      const dcpControls = _df(dcpSection, 'controls');
+      envelopeGap = {
+        missing,
+        instrument,
+        dcpOnboarded: dcpControls != null && dcpControls.confidence !== 'not_available',
+        dcpName: (_df(dcpSection, 'dcp_name')?.value as string | null | undefined) ?? null,
+      };
+    }
+  }
+  return { inputProvenance: rows, envelopeGap };
+}
+
 function formatValue(val: unknown): string {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
@@ -858,22 +1612,105 @@ interface SeppStandard {
   reason_ineligible?: string | null;
 }
 
-function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
+// Per-form eligibility from the Housing-SEPP engine (the same run that drives
+// the capacity ceiling), with the clause citation each outcome rests on.
+interface EligibilityForm {
+  development_type?: string; eligible?: boolean; reason?: string;
+  // True when eligible=false only because the input to test the standard is
+  // missing (lot width/area unmeasured, or the standard absent from the
+  // dataset) — render as "Unconfirmed", never as a failed standard.
+  unconfirmed?: boolean;
+  requires_lmr_area?: boolean; min_lot_size_m2?: number | null; min_lot_width_m?: number | null;
+  source_clause?: string | null; source_document?: string | null;
+  legislation_url?: string | null; effective_date?: string | null;
+}
+interface EligibilityField { value?: EligibilityForm[] | null; confidence?: string; reason?: string | null; }
+
+// "4,096 m² ≥ 600 m² min" / "310 m² < 600 m² min" — the lot's actual number
+// against the standard's minimum, stated as the comparison it is.
+function lotVsMin(actual: number | null | undefined, min: number | null | undefined, unit: string): string | null {
+  if (min == null) return null;
+  if (actual == null) return `${min.toLocaleString()} ${unit} min`;
+  const cmp = actual >= min ? '≥' : '<';
+  return `${Math.round(actual).toLocaleString()} ${unit} ${cmp} ${min.toLocaleString()} ${unit} min`;
+}
+
+function EligibilityRows({ forms, lotAreaM2, lotWidthM }: {
+  forms: EligibilityForm[]; lotAreaM2?: number | null; lotWidthM?: number | null;
+}) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="border-t border-slate-100 pt-3 mt-1">
+      <h4 className="text-xs font-medium text-slate-500 mb-2">
+        Per-form eligibility for this lot
+        <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">
+          Each outcome cites the SEPP clause it rests on; the figures compare this lot&apos;s numbers to the standard&apos;s minimums.
+        </span>
+      </h4>
+      <ul className="space-y-2 text-sm">
+        {forms.map((f, i) => {
+          const area = lotVsMin(lotAreaM2, f.min_lot_size_m2, 'm²');
+          const width = lotVsMin(lotWidthM, f.min_lot_width_m, 'm');
+          return (
+            <li key={f.development_type ?? i} className="flex flex-col gap-0.5">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-slate-900">{formatKey(f.development_type ?? '')}</span>
+                {f.eligible
+                  ? <span className="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">Eligible</span>
+                  : f.unconfirmed
+                    ? <span className="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">Unconfirmed</span>
+                    : <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200">Not eligible</span>}
+                {(area || width) && (
+                  <span className="text-xs text-slate-500 tabular-nums">
+                    {[area, width].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+              {!f.eligible && f.reason && (
+                <span className="text-xs text-slate-500">{f.reason}</span>
+              )}
+              {f.source_clause && (
+                <span className="text-[11px] text-slate-400">
+                  {f.legislation_url
+                    ? <a href={f.legislation_url} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline">{f.source_clause}</a>
+                    : f.source_clause}
+                  {f.source_document ? `, ${f.source_document}` : ''}
+                  {f.effective_date ? ` (as at ${f.effective_date})` : ''}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
+  standards: SeppStandard[];
+  eligibility?: EligibilityField | null;
+  lotAreaM2?: number | null;
+  lotWidthM?: number | null;
+}) {
+  const forms = eligibility?.value ?? null;
+  return (
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
           <p className="text-xs text-slate-500 mt-0.5">Denser forms the policy permits, and whether this lot qualifies</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-800">Authoritative</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20">Authoritative</span>
       </div>
       <div className="px-5 py-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs text-slate-500 text-left">
               <th className="font-medium pb-2 pr-3">Form</th>
-              <th className="font-medium pb-2 pr-3">Eligible</th>
+              {/* This column tests ONLY lot area against the form's minimum —
+                  the full per-form verdict (width, TOD, LMR, heritage gates)
+                  is in the rows below. Labelling it "Eligible" contradicted
+                  them on lots that pass area but fail another gate. */}
+              <th className="font-medium pb-2 pr-3">Lot area test</th>
               <th className="font-medium pb-2 pr-3">Min lot</th>
               <th className="font-medium pb-2 pr-3">Min width</th>
               <th className="font-medium pb-2">Max FSR / height</th>
@@ -884,9 +1721,13 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
               <tr key={i} className="border-t border-slate-100 align-top">
                 <td className="py-1.5 pr-3 text-slate-900">{formatKey(s.dev_type)}</td>
                 <td className="py-1.5 pr-3">
-                  {s.eligible
-                    ? <span className="text-emerald-700">Yes</span>
-                    : <span className="text-slate-400" title={s.reason_ineligible ?? undefined}>No</span>}
+                  {/* No minimum in the dataset, or no measured lot area →
+                      nothing was tested; a green "Passes" here would be false. */}
+                  {s.min_lot_area_m2 == null || lotAreaM2 == null
+                    ? <span className="text-slate-400" title="No lot-size minimum to test for this form">—</span>
+                    : s.eligible
+                      ? <span className="text-emerald-700">Passes</span>
+                      : <span className="text-slate-400" title={s.reason_ineligible ?? undefined}>Below minimum</span>}
                 </td>
                 <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_area_m2 ? `${s.min_lot_area_m2} m²` : '—'}</td>
                 <td className="py-1.5 pr-3 text-slate-600">{s.min_lot_width_m ? `${s.min_lot_width_m} m` : '—'}</td>
@@ -897,6 +1738,14 @@ function SeppHousingCard({ standards }: { standards: SeppStandard[] }) {
             ))}
           </tbody>
         </table>
+        {forms && forms.length > 0 && (
+          <EligibilityRows forms={forms} lotAreaM2={lotAreaM2} lotWidthM={lotWidthM} />
+        )}
+        {eligibility && eligibility.value == null && eligibility.confidence === 'not_available' && (
+          <p className="text-xs text-slate-400 mt-3 border-t border-slate-100 pt-3">
+            Per-form eligibility couldn&apos;t be assessed on this run — the standards above still apply; run the brief again to retry.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -912,9 +1761,9 @@ function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
   const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
   const residential = isResidentialZone(ctx.zone);
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
       <div className="px-5 py-4 border-b border-slate-100">
-        <h3 className="text-sm font-semibold text-slate-900">Housing SEPP — Low &amp; Mid-Rise</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
         <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
       </div>
       <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
@@ -960,7 +1809,7 @@ function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
 type GfState =
   | { kind: 'loading' }
   | { kind: 'ineligible'; reason: string; evidence?: string }
-  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number }
+  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number; structures?: DetectedStructureRow[] }
   | { kind: 'error'; message: string };
 
 function GrannyFlatCard({ address, active }: { address?: string; active: boolean }) {
@@ -985,6 +1834,9 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
               seppEligible: !!o.sepp_eligible,
               ineligibleReason: (o.sepp_ineligible_reason as string) || undefined,
               lotAreaM2: (o.lot_area_m2 as number) || undefined,
+              structures: Array.isArray(o.detected_structures)
+                ? (o.detected_structures as DetectedStructureRow[])
+                : undefined,
             });
             return;
           }
@@ -1011,13 +1863,13 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   }, [active, address]);
 
   const Shell = ({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) => (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Secondary Dwelling</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Secondary Dwelling</h3>
           <p className="text-xs text-slate-500 mt-0.5">Granny-flat feasibility — buildings on the lot + eligibility</p>
         </div>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${badgeClass}`}>{badge}</span>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-slate-900/10 ${badgeClass}`}>{badge}</span>
       </div>
       <div className="px-5 py-4 text-sm leading-relaxed">{children}</div>
     </div>
@@ -1033,7 +1885,7 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   );
   if (state.kind === 'error') return <Shell badge="Couldn’t complete" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500">{state.message}</span></Shell>;
   return (
-    <Shell badge="Estimated" badgeClass="bg-amber-100 text-amber-800">
+    <Shell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
       <p className="text-slate-900">
         {state.count != null
           ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
@@ -1044,8 +1896,129 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
           ? <>This lot <span className="font-medium">meets</span> the SEPP (Housing) 2021 secondary-dwelling lot standard{state.lotAreaM2 ? ` (lot ${Math.round(state.lotAreaM2)} m²)` : ''} — a granny flat is a permissible form, subject to the detailed controls.</>
           : (state.ineligibleReason || 'This lot does not meet the SEPP secondary-dwelling lot standard.')}
       </p>
+      {/* Detected structures — display only what the detection service
+          returned (AI-classified building type + measured footprint area). */}
+      {state.structures && state.structures.length > 0 && (
+        <ul className="mt-2 text-xs text-slate-500 space-y-0.5">
+          {state.structures.map((st, i) => (
+            <li key={`${st.matched_prompt ?? 'structure'}-${i}`} className="tabular-nums">
+              {formatKey(String(st.matched_prompt ?? 'structure'))}
+              {st.is_main_dwelling ? ' (main dwelling)' : ''}
+              {st.area_m2 != null ? ` — ~${Math.round(st.area_m2)} m² footprint` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="mt-2 text-xs text-slate-400">Confirm the detected building count in the Granny Flat tool before relying on the figure.</p>
     </Shell>
+  );
+}
+
+// Detected structure row from the granny-flat detection service.
+interface DetectedStructureRow { matched_prompt?: string; area_m2?: number | null; is_main_dwelling?: boolean; }
+
+// ---------------------------------------------------------------------------
+// Solar — fires the SAME rate-limited route the standalone solar tool uses
+// (Google Solar API on Railway), once per satellite run. Figures are imagery-
+// derived estimates; every number carries its imagery date.
+// ---------------------------------------------------------------------------
+
+interface SolarOutputs {
+  max_panels?: number; max_panel_area_m2?: number; annual_kwh_estimate?: number;
+  sunshine_hours_per_year?: number; roof_area_m2?: number; is_heritage?: boolean;
+  imagery_date?: string; coverage_available?: boolean;
+}
+// null = not fetched yet (renders the loading shell while active)
+type SolarState =
+  | { kind: 'result'; o: SolarOutputs }
+  | { kind: 'no_coverage' }
+  | { kind: 'error'; message: string };
+
+// Module scope (not nested) so React never remounts it mid-stream.
+function SolarShell({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) {
+  return (
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Solar Potential</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Roof capacity and yield from aerial imagery (Google Solar)</p>
+        </div>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-slate-900/10 ${badgeClass}`}>{badge}</span>
+      </div>
+      <div className="px-5 py-4 text-sm">{children}</div>
+    </div>
+  );
+}
+
+function SolarBriefCard({ address, active }: { address?: string; active: boolean }) {
+  const [state, setState] = useState<SolarState | null>(null);
+  useEffect(() => {
+    if (!active || !address) return;  // inactive is derived at render, not stored
+    let cancelled = false;
+    fetch('/api/satellite/solar-yield', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    })
+      .then(async (r) => {
+        if (cancelled) return;
+        const d = await r.json().catch(() => null);
+        if (!r.ok || !d) {
+          setState({ kind: 'error', message: d?.error || `Solar analysis did not complete (HTTP ${r.status}) — try again.` });
+          return;
+        }
+        const o = (d.data?.outputs ?? {}) as SolarOutputs;
+        if (o.coverage_available === false) { setState({ kind: 'no_coverage' }); return; }
+        setState({ kind: 'result', o });
+      })
+      .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Solar analysis did not complete — try again.' }); });
+    return () => { cancelled = true; };
+  }, [address, active]);
+
+  if (!active || !address) return (
+    <SolarShell badge="Not run" badgeClass="bg-teal-50 text-teal-700">
+      <span className="text-slate-500">Tick “Include satellite analysis” above and re-run to add the solar assessment.</span>
+    </SolarShell>
+  );
+  if (!state) return (
+    <SolarShell badge="Analysing…" badgeClass="bg-slate-100 text-slate-500">
+      <span className="text-slate-500 animate-pulse">Reading the roof from aerial imagery… (up to ~50s)</span>
+    </SolarShell>
+  );
+  if (state.kind === 'no_coverage') return (
+    <SolarShell badge="No imagery here" badgeClass="bg-slate-100 text-slate-500">
+      <span className="text-slate-500">Google Solar has no aerial coverage at this address — no solar figures are available from this source.</span>
+    </SolarShell>
+  );
+  if (state.kind === 'error') return (
+    <SolarShell badge="Couldn’t complete" badgeClass="bg-amber-50 text-amber-700">
+      <span className="text-amber-700">{state.message}</span>
+    </SolarShell>
+  );
+  const o = state.o;
+  return (
+    <SolarShell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
+        {o.max_panels != null && (
+          <div><dt className="text-xs text-slate-500">Panel capacity</dt><dd className="text-slate-900 tabular-nums">{o.max_panels.toLocaleString()} panels{o.max_panel_area_m2 != null ? ` (~${Math.round(o.max_panel_area_m2)} m²)` : ''}</dd></div>
+        )}
+        {o.annual_kwh_estimate != null && (
+          <div><dt className="text-xs text-slate-500">Calculated yield</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.annual_kwh_estimate).toLocaleString()} kWh/year</dd></div>
+        )}
+        {o.sunshine_hours_per_year != null && (
+          <div><dt className="text-xs text-slate-500">Sunshine</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.sunshine_hours_per_year).toLocaleString()} hours/year</dd></div>
+        )}
+        {o.roof_area_m2 != null && (
+          <div><dt className="text-xs text-slate-500">Roof area (clipped to lot)</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.roof_area_m2).toLocaleString()} m²</dd></div>
+        )}
+      </dl>
+      {o.is_heritage && (
+        <p className="mt-2 text-xs text-amber-700">A heritage listing applies at this property — panel placement can be restricted; check with the council.</p>
+      )}
+      <p className="mt-2 text-xs text-slate-400">
+        Imagery-derived estimate{o.imagery_date ? ` (imagery ${o.imagery_date})` : ''} — panel counts and yield are modelled from the roof geometry, not a system design.
+      </p>
+    </SolarShell>
   );
 }
 
@@ -1093,7 +2066,16 @@ function AspectCompass({ deg }: { deg?: number | null }) {
   );
 }
 
-function TerrainCard({ data }: { data: TerrainData }) {
+interface TerrainFindingRow { title?: string; narrative?: string; severity?: string; classification?: string; }
+interface TerrainInterpretationData { findings?: TerrainFindingRow[]; disclaimer?: string; }
+
+const TERRAIN_SEVERITY_STYLES: Record<string, string> = {
+  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+  red: 'bg-red-50 text-red-700 ring-red-200',
+};
+
+function TerrainCard({ data, interpretation }: { data: TerrainData; interpretation?: TerrainInterpretationData | null }) {
   const parts: string[] = [];
   if (data.slope_mean_deg != null) {
     const w = slopeWord(data.slope_mean_deg).toLowerCase();
@@ -1106,13 +2088,13 @@ function TerrainCard({ data }: { data: TerrainData }) {
   const summary = joined ? joined.charAt(0).toUpperCase() + joined.slice(1) + '.' : 'Terrain measured for this lot.';
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Terrain</h3>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Terrain</h3>
           <p className="text-xs text-slate-500 mt-0.5">Slope, aspect and drainage from elevation</p>
         </div>
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800">Estimated</span>
+        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-600/25">Calculated</span>
       </div>
       {data.hillshade_png_b64 && (
         <div className="px-5 pt-4">
@@ -1135,7 +2117,7 @@ function TerrainCard({ data }: { data: TerrainData }) {
         </div>
         <div className="min-w-0">
           <p className="text-sm text-slate-900">{summary}</p>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-3 text-xs">
+          <dl className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-1.5 mt-3 text-xs">
             <div><dt className="text-slate-400">Slope</dt><dd className="text-slate-700">{data.slope_mean_deg != null ? `${data.slope_mean_deg.toFixed(1)}° avg${data.slope_max_deg != null ? ` · ${Math.round(data.slope_max_deg)}° max` : ''}` : '—'}</dd></div>
             <div><dt className="text-slate-400">Fall</dt><dd className="text-slate-700">{data.elevation_range_m != null ? `${data.elevation_range_m.toFixed(1)} m` : '—'}</dd></div>
             <div><dt className="text-slate-400">Drains to</dt><dd className="text-slate-700">{data.drainage_direction ?? '—'}</dd></div>
@@ -1143,6 +2125,28 @@ function TerrainCard({ data }: { data: TerrainData }) {
           </dl>
         </div>
       </div>
+      {/* Structured findings computed by the terrain service (gradient,
+          landform, solar access) — each a factual reading with severity. */}
+      {interpretation?.findings && interpretation.findings.length > 0 && (
+        <div className="px-5 pb-4">
+          <div className="text-xs font-medium text-slate-500 mb-1.5">What the terrain readings mean</div>
+          <ul className="space-y-1.5">
+            {interpretation.findings.map((f, i) => (
+              <li key={f.title ?? i} className="text-sm text-slate-700 leading-snug">
+                {f.severity && (
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 mr-1.5 text-[10px] font-medium ring-1 align-middle ${TERRAIN_SEVERITY_STYLES[f.severity] ?? 'bg-slate-100 text-slate-500 ring-slate-200'}`}>
+                    {f.title ?? f.severity}
+                  </span>
+                )}
+                {f.narrative}
+              </li>
+            ))}
+          </ul>
+          {interpretation.disclaimer && (
+            <p className="text-[11px] text-slate-400 mt-2 leading-snug">{interpretation.disclaimer}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1187,12 +2191,68 @@ function formatElapsed(seconds: number): string {
 const EXPECTED_SECTIONS_BASE = [
   'economics', 'strata', 'environmental_constraints', 'planning_controls',
 ];
-const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood'];
+const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood', 'market_context'];
 const EXPECTED_SECTIONS_SAT = [
   'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain',
+  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
   // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
+
+// Sticky section jump bar — cards stack one per row, so a finished brief is a
+// long page; the bar lists the sections that have streamed in, in order, and
+// jumps to them. Hidden until there is something to jump between.
+function SectionJumpBar({ sections }: { sections: string[] }) {
+  const seen = new Set<string>();
+  const ordered = sections.filter((s) => (seen.has(s) ? false : (seen.add(s), true)));
+  if (ordered.length < 2) return null;
+  return (
+    <nav aria-label="Brief sections" className="sticky top-2 z-20">
+      <div className="flex gap-1 overflow-x-auto rounded-full border border-slate-200 bg-white/85 backdrop-blur-md px-2 py-1.5 shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {ordered.map((s) => (
+          <a
+            key={s}
+            href={`#${sectionAnchorId(s)}`}
+            className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-teal-50 hover:text-teal-800"
+          >
+            {SECTION_LABELS[s]?.label ?? formatKey(s.replace(/^satellite\./, ''))}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+// When satellite analysis wasn't requested, the backend emits NO events for the
+// six opt-in layers — without this card the finished brief carries zero trace
+// they exist (a silent absence, not an honest "not run").
+function SatelliteLayersNotRunCard() {
+  return (
+    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Satellite analysis</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Six further layers were not part of this run</p>
+        </div>
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-teal-50 text-teal-700">Not run</span>
+      </div>
+      <div className="px-5 py-4">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+          {EXPECTED_SECTIONS_SAT.map((s) => (
+            <li key={s} className="flex flex-col">
+              <span className="text-slate-900">{SECTION_LABELS[s]?.label ?? formatKey(s.replace(/^satellite\./, ''))}</span>
+              {SECTION_LABELS[s]?.description && (
+                <span className="text-xs text-slate-500">{SECTION_LABELS[s].description}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-slate-500 mt-3 border-t border-slate-100 pt-3">
+          Tick &ldquo;Include satellite analysis&rdquo; above and run the brief again to add these layers.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function LiveStatusPanel({
   elapsed,
@@ -1302,7 +2362,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           <div><span className="text-slate-500">Total fields:</span> <span className="font-medium">{cs.total}</span></div>
           <div><span className="text-emerald-600">Authoritative:</span> <span className="font-medium">{cs.authoritative}</span></div>
-          <div><span className="text-amber-600">Estimated:</span> <span className="font-medium">{cs.estimated}</span></div>
+          <div><span className="text-amber-600">Calculated:</span> <span className="font-medium">{cs.estimated}</span></div>
           <div><span className="text-blue-600">Derived:</span> <span className="font-medium">{cs.derived}</span></div>
           <div><span className="text-purple-600">Extracted:</span> <span className="font-medium">{cs.extracted}</span></div>
           <div><span className="text-slate-500">Not available:</span> <span className="font-medium">{cs.not_available}</span></div>
@@ -1378,7 +2438,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
   { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
-  { label: 'Estimated', color: 'text-amber-600', meaning: 'A modelled or screening figure from satellite/statistical data — a guide to investigate, not a measured value.' },
+  { label: 'Calculated', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. Calculated from data, not measured on site.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
 ];
@@ -1666,8 +2726,8 @@ function IntelligenceBriefInner() {
     return () => { ac.abort(); };
   }, [runId, publicAccessToken]);
 
-  const handleGenerate = useCallback(async () => {
-    if (!selectedAddress.trim()) return;
+  const startBrief = useCallback(async (address: string, lat: number | null, lng: number | null) => {
+    if (!address.trim()) return;
 
     setState('triggering');
     setErrorMsg('');
@@ -1684,9 +2744,9 @@ function IntelligenceBriefInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: selectedAddress,
-          lat: selectedLat,
-          lng: selectedLng,
+          address,
+          lat,
+          lng,
           include_satellite: includeSatellite,
           // Pre-DA site history soft-dropped (heavy ML dep can't run in the web
           // container); keep premium off until it's decoupled to a worker.
@@ -1707,7 +2767,28 @@ function IntelligenceBriefInner() {
       setState('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to start intelligence brief');
     }
-  }, [selectedAddress, selectedLat, selectedLng, includeSatellite]);
+  }, [includeSatellite]);
+
+  const handleGenerate = useCallback(() => {
+    startBrief(selectedAddress, selectedLat, selectedLng);
+  }, [startBrief, selectedAddress, selectedLat, selectedLng]);
+
+  // The landing hero (ProductLandingV2) dispatches a window 'landing-search'
+  // CustomEvent carrying the typed address — the same contract the other report
+  // landings use. Start a brief from it; lat/lng resolve server-side.
+  useEffect(() => {
+    const onLandingSearch = (e: Event) => {
+      const address = (e as CustomEvent<{ address?: string }>).detail?.address?.trim();
+      if (!address || stateRef.current !== 'idle') return;
+      setInputAddress(address);
+      setSelectedAddress(address);
+      setSelectedLat(null);
+      setSelectedLng(null);
+      startBrief(address, null, null);
+    };
+    window.addEventListener('landing-search', onLandingSearch);
+    return () => window.removeEventListener('landing-search', onLandingSearch);
+  }, [startBrief]);
 
   const handleReset = useCallback(() => {
     if (abortRef.current) {
@@ -1729,20 +2810,51 @@ function IntelligenceBriefInner() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Intelligence Brief</h1>
-        <p className="text-sm text-slate-500 mt-1 max-w-3xl">
-          For a single NSW property: what the rules allow, what physically constrains the site,
-          what environmental risk applies, what it&apos;s worth, and what&apos;s happening
-          next door — fifteen-plus government, satellite and computed layers fused into one brief,
-          every figure traced to its source.
-        </p>
-      </div>
-
-      {/* Address input */}
+      {/* Landing — hero (with its own search), data sources, coverage and method.
+          Idle only; the hero carries the page title, so the compact header below
+          renders only once a brief is running. Mirrors /reports/conveyancing.
+          The satellite toggle rides under the hero search: briefs started from
+          the hero use it, so the option is visible where the run actually starts
+          (not only in the secondary input card further down). */}
       {state === 'idle' && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4 max-w-2xl">
+        <ProductLandingV2
+          product="intelligence-brief"
+          searchExtras={
+            <div className="mt-4 flex justify-center">
+              <label className="inline-flex items-center gap-2.5 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-md ring-1 ring-border/50 cursor-pointer hover:ring-primary/50 transition-all">
+                <input
+                  type="checkbox"
+                  checked={includeSatellite}
+                  onChange={(e) => setIncludeSatellite(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                Include satellite analysis
+                <span className="font-normal text-muted-foreground">bushfire · flood · climate · granny flat detection</span>
+              </label>
+            </div>
+          }
+        />
+      )}
+
+      {/* Header */}
+      {state !== 'idle' && (
+        <div className="mb-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 mb-1.5">PlotDetect · Property Dossier</div>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Intelligence Brief</h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed">
+            For a single NSW property: what the rules allow, what physically constrains the site,
+            what environmental risk applies, what it&apos;s worth, and what&apos;s happening
+            next door — fifteen-plus government, satellite and computed layers fused into one brief,
+            every figure traced to its source.
+          </p>
+        </div>
+      )}
+
+      {/* Address input — the functional entry point (carries the satellite toggle
+          the landing hero doesn't have). Sits below the landing, like the tool
+          input on the conveyancing page. */}
+      {state === 'idle' && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 space-y-4 max-w-2xl mx-auto">
           <AddressAutocomplete
             value={inputAddress}
             onChange={setInputAddress}
@@ -1816,7 +2928,7 @@ function IntelligenceBriefInner() {
 
           {/* Aerial — NSW SIX Maps 10cm imagery for the lot (reuses AerialTile). */}
           {(metadataEvent?.data.lat ?? selectedLat) != null && (metadataEvent?.data.lng ?? selectedLng) != null && (
-            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+            <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
               <AerialTile
                 lat={(metadataEvent?.data.lat ?? selectedLat) as number}
                 lng={(metadataEvent?.data.lng ?? selectedLng) as number}
@@ -1839,16 +2951,23 @@ function IntelligenceBriefInner() {
             state={state}
           />
 
-          {/* Section cards — bento grid; appear as they arrive. The headline and
-              field-heavy sections span two columns; the rest are single tiles, and
-              grid-auto-flow:dense packs gaps as cards stream in at uneven heights. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 [grid-auto-flow:dense] items-start">
+          {/* Sticky jump bar — one card per row makes the page long; this tracks
+              the sections that have streamed in and jumps to them. */}
+          <SectionJumpBar sections={sectionEvents.map((e) => e.data.section)} />
+
+          {/* Section cards — stacked full-width, one per row, in stream order.
+              Wide cards let each card's internal key-value grid run 3-4 columns;
+              the old 3-column bento starved field-heavy sections into towers. */}
+          <div className="flex flex-col gap-4">
             {sectionEvents.map((event, i) => {
               const section = event.data.section;
               // Development Capacity renders via the dedicated card (carries its
               // own binding-constraint breakdown + disclaimer). Falls back to the
               // generic SectionCard when the value is absent (not computed).
               let card: ReactNode = null;
+              if (section === 'satellite.solar') {
+                card = <SolarBriefCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} />;
+              }
               if (section === 'satellite.granny_flat') {
                 // Decoupled: the card fires the gated async route itself (gate +
                 // real Modal scan), rather than the brief's timed-out inline run.
@@ -1857,23 +2976,41 @@ function IntelligenceBriefInner() {
               if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;
                 if (ca) {
+                  const ledger = buildYieldLedgerContext(sectionEvents, ca);
                   card = (
                     <ConstraintArithmeticCard
                       briefData={ca}
                       lotArea={ca.lot_area_m2}
                       devType={ca.dev_type}
                       zone={planningCtx.zone}
+                      inputProvenance={ledger.inputProvenance}
+                      envelopeGap={ledger.envelopeGap}
                     />
                   );
                 }
               }
               if (section === 'sepp_housing') {
                 const standards = (event.data.data?.value ?? null) as SeppStandard[] | null;
+                const evData = event.data as unknown as {
+                  eligibility_forms?: EligibilityField | null;
+                  lot_area_m2?: number | null;
+                  lot_width_m?: number | null;
+                };
                 if (standards && standards.length) {
-                  card = <SeppHousingCard standards={standards} />;
+                  card = (
+                    <SeppHousingCard
+                      standards={standards}
+                      eligibility={evData.eligibility_forms}
+                      lotAreaM2={evData.lot_area_m2}
+                      lotWidthM={evData.lot_width_m}
+                    />
+                  );
                 } else {
                   card = <SeppContextCard ctx={planningCtx} />;
                 }
+              }
+              if (section === 'market_context') {
+                card = <MarketContextCard data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
               if (section === 'satellite.terrain') {
                 // Terrain may arrive as a plain dict or a DataField wrapping it in .value.
@@ -1882,7 +3019,8 @@ function IntelligenceBriefInner() {
                   ? ((raw.value as TerrainData) ?? (raw as unknown as TerrainData))
                   : null);
                 if (t && typeof t === 'object' && t.slope_mean_deg != null) {
-                  card = <TerrainCard data={t} />;
+                  const interp = (event.data as unknown as { interpretation?: TerrainInterpretationData | null }).interpretation ?? null;
+                  card = <TerrainCard data={t} interpretation={interp} />;
                 }
               }
               if (section === 'satellite.climate_disclosure') {
@@ -1911,11 +3049,18 @@ function IntelligenceBriefInner() {
                 card = <SectionCard section={section} data={event.data.data} satelliteRan={ranWithSatellite} />;
               }
               return (
-                <div key={`${section}-${i}`} className={cn('min-w-0', spanFor(section))}>
+                <div key={`${section}-${i}`} id={sectionAnchorId(section)} className="min-w-0 scroll-mt-20">
                   {card}
                 </div>
               );
             })}
+            {/* Satellite off → the stream carried no satellite events at all;
+                name the absent layers rather than leave a silent gap. */}
+            {state === 'complete' && !ranWithSatellite && sectionEvents.length > 0 && (
+              <div className="min-w-0">
+                <SatelliteLayersNotRunCard />
+              </div>
+            )}
           </div>
 
           {/* Complete summary */}

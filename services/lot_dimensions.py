@@ -91,6 +91,9 @@ def calculate_lot_dimensions(geometry: Optional[dict]) -> Optional[LotDimensions
         frontage_m=round(frontage, 1) if frontage else None,
         depth_m=round(depth, 1) if depth else None,
         is_corner=False,
+        # _frontage_depth_obb returns (None, None) only when the shape defeats
+        # the rectangle model — carry that so the UI can say WHY dims are null.
+        irregular=frontage is None,
     )
 
 

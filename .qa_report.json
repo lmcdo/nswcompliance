@@ -1,54 +1,25 @@
 {
-  "tier": "standard",
-  "commit_hash": "f3296fed",
-  "justification": "Option B domain split: the three pro products (Verify, Intelligence Brief, Conveyancer report) are plotdetect subdomains; canibuildit is consumer-only. This wires brief.plotdetect.com.au -> /reports/intelligence-brief and conveyance.plotdetect.com.au -> /reports/conveyancing in middleware (mirroring the existing verify -> /assessment rule), and removes the Intelligence Brief + Conveyancing tiles from the consumer /reports grid (they now live on their own subdomains). plotdetect.com.au (info site) is a different project and untouched.",
+  "tier": "minor",
+  "justification": "Test-only change after merging main: adds a golden regression guard for the capacity engine (23 scenario tests pinning verified outputs). The branch's qa_gate hook-env fix was superseded by an equivalent fix already on main during the merge, so no production code differs from main.",
+  "commit_hash": "c6e7b488",
   "files": [
-    "frontend-nextjs/middleware.ts",
-    "frontend-nextjs/app/reports/page.tsx"
+    "tests/golden/__init__.py",
+    "tests/golden/capacity_scenarios.py",
+    "tests/test_capacity_golden.py"
   ],
-  "pre_impl": {
-    "existing_data": "middleware already does hostname routing (verify.plotdetect.com.au and canibuildit at '/' rewrite to /assessment and /reports), reading host via x-forwarded-host first. The /reports grid is a static TOOLS array (9 tiles incl intelligence-brief + conveyancing). The pages /reports/intelligence-brief and /reports/conveyancing already exist.",
-    "assumption_mismatch": "Under Option B the brief + conveyancer are pro products on their own subdomains, not consumer tiles. Previously they had no subdomain route and appeared in the canibuildit consumer grid.",
-    "new_vs_existing": "No new mechanism: adds isBriefDomain/isConveyanceDomain rewrites mirroring isVerifyDomain, and deletes two well-formed objects from the existing TOOLS array. The report pages themselves are unchanged."
-  },
-  "functions": [
-    {
-      "name": "middleware",
-      "file_line": "frontend-nextjs/middleware.ts:91",
-      "input": "the incoming NextRequest; host read via x-forwarded-host then host then nextUrl.hostname",
-      "output": "brief.plotdetect.com.au at '/' rewrites to /reports/intelligence-brief; conveyance.plotdetect.com.au at '/' to /reports/conveyancing; verify and canibuildit unchanged; all other hosts/paths fall through",
-      "if_none": "host not one of the mapped subdomains, or path not '/' -> no rewrite; plotdetect.com.au (other Vercel project) is unaffected"
-    }
-  ],
-  "values": "N/A - no regulatory values; host-based request routing + a static tile list.",
-  "queries": "N/A - no database queries.",
   "break_it": [
     {
-      "scenario": "host is misread behind Cloudflare so the brief/conveyance rewrite does not fire",
-      "what_happens": "the subdomain root would show the consumer reports grid instead of its specific report",
-      "repro": "hit brief.plotdetect.com.au/ with a mangled host header",
+      "scenario": "A future capacity-engine change silently alters a verified scenario output",
+      "what_happens": "Without the guard the regression ships unnoticed; with it the pinned golden scenario fails the suite",
       "mitigated": true,
-      "how": "host is read via x-forwarded-host first (the same source the working verify rule uses) and matched by exact equality; worst case is the grid, not a 404, because /reports still resolves"
-    },
-    {
-      "scenario": "removing the two tiles leaves a malformed TOOLS array (dangling comma / type error)",
-      "what_happens": "the /reports page would fail to compile",
-      "repro": "build the frontend",
-      "mitigated": true,
-      "how": "two complete, well-formed objects were removed; seven valid tiles remain and the array literal is intact; tsc + the Vercel build type-check on deploy"
-    },
-    {
-      "scenario": "the Intelligence Brief / Conveyancing pages become unreachable after losing their tiles",
-      "what_happens": "users could not find those two products",
-      "repro": "visit /reports and look for the tiles",
-      "mitigated": true,
-      "how": "the pages still exist and are reached via their own subdomains (brief./conveyance.plotdetect.com.au) and direct /reports/intelligence-brief and /reports/conveyancing URLs; this is the intended Option B placement"
+      "how": "23 golden scenarios pin floor/ceiling outputs for the verified demo addresses",
+      "repro": "python -m pytest tests/test_capacity_golden.py -v"
     }
   ],
   "post_merge": {
-    "db_reset": "N/A - no database change.",
-    "secrets": "None - no secrets or env vars.",
-    "other_repo": "N/A - frontend auto-deploys on Vercel from GitHub on merge. Requires the brief./conveyance. DNS + Vercel domains (added by the user) to resolve.",
-    "manual_verify": "After deploy + DNS: brief.plotdetect.com.au/ shows the Intelligence Brief; conveyance.plotdetect.com.au/ shows the Conveyancer report; canibuildit.com.au/ shows the 7-tile consumer grid with NO brief or conveyancing tile; verify.plotdetect.com.au/ unchanged."
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — golden tests ran green in this branch (2675 passed)"
   }
 }

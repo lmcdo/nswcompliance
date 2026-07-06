@@ -106,7 +106,7 @@ export default function PlannersPage() {
             cta="hero_try_free"
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
-            Try it now — free <ArrowRight className="w-4 h-4" />
+            Try it now — early access <ArrowRight className="w-4 h-4" />
           </TrackedLink>
           <TrackedLink
             href="/pricing"
@@ -201,10 +201,10 @@ export default function PlannersPage() {
         <h2 className="text-xl font-bold text-gray-900 mb-4">Data coverage</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { stat: '128', label: 'NSW councils', sub: 'Zone + LEP controls' },
-            { stat: '29', label: 'LGAs', sub: 'DCP numeric controls' },
-            { stat: '47,818', label: 'Provisions', sub: 'Extracted & classified' },
-            { stat: '71', label: 'LGAs', sub: 'Flood depth data' },
+            { stat: 'NSW-wide', label: 'Any address', sub: 'Zone, LEP + SEPP, live from the Planning Portal' },
+            { stat: '24', label: 'Sydney councils', sub: 'Structured numeric DCP controls' },
+            { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
+            { stat: 'Inner West', label: 'Deepest coverage', sub: 'Full DCP browser, expanding' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
               <p className="text-2xl font-bold text-gray-900">{stat}</p>
@@ -220,28 +220,30 @@ export default function PlannersPage() {
         <div className="max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Pricing</h2>
           <p className="text-gray-500 text-sm mb-6">
-            Free to start. Upgrade when you need unlimited lookups.
+            Verify is in early access — open to use now while it&apos;s built out with the
+            planners who use it.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-2xl font-bold text-gray-900">Free</p>
-              <p className="text-sm text-gray-500 mt-1">3 lookups per day</p>
+            <div className="bg-white rounded-xl border-2 border-teal-500 p-5">
+              <p className="text-2xl font-bold text-gray-900">Early access</p>
+              <p className="text-sm text-gray-500 mt-1">Open now — no account required</p>
               <p className="text-xs text-gray-400 mt-2">
-                Full zone, LEP, DCP, SEPP, and spatial overlay data. No account required.
+                Full zone, LEP, DCP, SEPP, and spatial overlay data. Early users whose
+                feedback shapes the tool keep free access when paid plans land.
               </p>
             </div>
-            <div className="bg-white rounded-xl border-2 border-teal-500 p-5">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-2xl font-bold text-gray-900">$49<span className="text-sm font-normal text-gray-400">/mo</span></p>
-              <p className="text-sm text-gray-500 mt-1">Verify Pro — unlimited</p>
+              <p className="text-sm text-gray-500 mt-1">Verify Pro — planned</p>
               <p className="text-xs text-gray-400 mt-2">
-                Unlimited lookups, DA Mode, annotation, SEE export.
-                Cancel any time.
+                Unlimited lookups, DA Mode, annotation, SEE export — the paid plan
+                early-access pricing will be measured against.
               </p>
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-4">
-            At 3 sites/week, Verify Pro costs ~$4 per site. One saved hour of manual lookup
-            pays for the entire month.
+            At 3 sites/week, Verify Pro works out to ~$4 per site. One saved hour of manual
+            lookup covers the month.
           </p>
         </div>
       </section>
