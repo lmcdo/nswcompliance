@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-07-03T11:00:00+10:00",
-  "reason": "removing dead duplicate env-scrub block in qa_gate._git left by merging origin/main (both branches carried the same fix); no logic or query change"
+  "status": "passed",
+  "timestamp": "2026-07-06T17:00:19.261174+10:00",
+  "target": "Conveyancing PDF integrity remediation - continued (import-path fix for get_bushfire_live)",
+  "findings_summary": "Same investigation as prior marker; verification run revealed services/ modules import siblings top-level, so CLI needs services dir on sys.path."
 }

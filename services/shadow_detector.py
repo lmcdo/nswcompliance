@@ -463,10 +463,18 @@ def run_shadow(request: ShadowRequest):
         logger.error(f"Shadow report DB write failed: {e}")
         raise HTTPException(status_code=503, detail="Failed to save report — please retry")
 
-    # Audit trail (non-blocking — won't prevent report delivery on failure)
+    # Audit trail (non-blocking — won't prevent report delivery on failure).
+    # Every height_source has its own provenance label — a default must never
+    # be logged as a regulatory_provisions lookup (D1 audit-trail fix).
+    _HEIGHT_SOURCE_URLS = {
+        "spatial_overlays": "local:spatial_overlays",
+        "regulatory_provisions": "local:regulatory_provisions",
+        "planning_portal": "portal:layerintersect_height",
+        "default": "default:DEFAULT_HEIGHT_M",
+    }
     ds_height = DataSourceQuery(
         "LEP height limit lookup",
-        "local:spatial_overlays" if height_source == "spatial_overlays" else "local:regulatory_provisions",
+        _HEIGHT_SOURCE_URLS.get(height_source, f"unknown:{height_source}"),
         {"lat": request.lat, "lng": request.lng},
     )
     ds_height.record_response({"height_m": height_m, "source": height_source}, features_returned=1)
