@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "User-facing truth defect (brief served 8-year refusal stats from a source frozen at 2023-04 as if current) but additive-only payload changes, fail-closed guards, no DB writes, no conveyancing PDF surface touched. Critical not needed: no new external source wired; Minor too low: changed user-visible statistical claims.",
-  "commit_hash": "401fc60e",
+  "commit_hash": "5515f4e7",
   "files": [
     "services/da_outcome.py",
     "services/intelligence_brief.py",
