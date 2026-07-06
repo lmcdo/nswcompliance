@@ -203,7 +203,7 @@ export default function PlannersPage() {
           {[
             { stat: 'NSW-wide', label: 'Any address', sub: 'Zone, LEP + SEPP, live from the Planning Portal' },
             { stat: '24', label: 'Sydney councils', sub: 'Structured numeric DCP controls' },
-            { stat: '26,000+', label: 'Provisions', sub: 'Actionable, extracted & cited' },
+            { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
             { stat: 'Inner West', label: 'Deepest coverage', sub: 'Full DCP browser, expanding' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
