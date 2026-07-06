@@ -1766,17 +1766,32 @@ def _fetch_da_outcomes(lng: float, lat: float) -> dict:
     Raises on a failed query so _safe_call stamps NOT_AVAILABLE; [] = genuinely
     no determined applications within the radius/window.
     """
-    from services.da_outcome import query_da_outcomes_near
+    from services.da_outcome import get_data_currency, query_da_outcomes_near
 
     rows = query_da_outcomes_near(
         lng, lat,
         radius_m=CONFIG.da_outcomes_radius_m,
         years_back=CONFIG.da_outcomes_years_back,
     )
+    # The tracking layer is a point-in-time extract (frozen at 2023-04 as of
+    # 2026-07): the renderer must state the window the data actually covers,
+    # never "last N years" arithmetic from years_back. Window ends come from
+    # the rows themselves; data_currency is the layer-wide newest lodgement.
+    # If the currency probe fails the whole field fails (raise -> _safe_call
+    # stamps NOT_AVAILABLE) — a windowless outcome list would render as if
+    # current, which is the defect this fixes.
+    data_currency = get_data_currency()
+    lodgements = sorted(
+        r.lodgement_date for r in rows
+        if r.lodgement_date and len(r.lodgement_date) == 10
+    )
     return {
         "outcomes": [r.model_dump() for r in rows],
         "radius_m": CONFIG.da_outcomes_radius_m,
         "years_back": CONFIG.da_outcomes_years_back,
+        "data_currency": data_currency,
+        "window_start": lodgements[0] if lodgements else None,
+        "window_end": lodgements[-1] if lodgements else None,
     }
 
 

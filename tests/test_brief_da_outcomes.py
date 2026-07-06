@@ -18,6 +18,7 @@ from unittest.mock import patch
 
 import pytest
 
+import services.da_outcome as da_outcome_mod
 import services.intelligence_brief as ib
 from services.intelligence_brief import ConfidenceLevel, DataField, _build_neighbourhood
 from services.da_outcome import get_refusal_rate, query_da_outcomes_near
@@ -25,6 +26,18 @@ from services.da_outcome import get_refusal_rate, query_da_outcomes_near
 GOLDEN = Path(__file__).parent / "fixtures" / "brief_golden"
 NA = ConfidenceLevel.NOT_AVAILABLE
 AUTH = ConfidenceLevel.AUTHORITATIVE
+
+# Valid currency-probe response — the first ArcGIS call get_refusal_rate makes.
+_CURRENCY_RESPONSE = {
+    "features": [{"attributes": {"LODGEMENT_DATE": "20230429151817.89"}}],
+}
+
+
+@pytest.fixture(autouse=True)
+def _clear_currency_cache():
+    da_outcome_mod._currency_cache.clear()
+    yield
+    da_outcome_mod._currency_cache.clear()
 
 
 def _golden(name: str):
@@ -45,9 +58,18 @@ def test_genuinely_no_determinations_is_empty_not_error(mock_get):
     assert query_da_outcomes_near(151.1, -33.86, radius_m=200) == []
 
 
-@patch("services.da_outcome.arcgis_get_with_retry", return_value={})
+@patch("services.da_outcome.arcgis_get_with_retry")
 def test_failed_count_query_raises_never_a_fabricated_rate(mock_get):
+    mock_get.side_effect = [_CURRENCY_RESPONSE, {}]
     with pytest.raises(RuntimeError, match="count query failed"):
+        get_refusal_rate("CANADA BAY", years=8)
+
+
+@patch("services.da_outcome.arcgis_get_with_retry", return_value={})
+def test_failed_currency_probe_fails_the_stats_closed(mock_get):
+    # Counts without a stated data window would render as if current — the
+    # frozen-extract defect this PR fixes.
+    with pytest.raises(RuntimeError, match="currency query failed"):
         get_refusal_rate("CANADA BAY", years=8)
 
 
@@ -69,9 +91,10 @@ def test_out_fields_use_the_layers_real_column_names(mock_get):
 
 @patch("services.da_outcome.arcgis_get_with_retry")
 def test_lga_match_is_case_insensitive(mock_get):
-    mock_get.return_value = {"count": 0}
+    mock_get.side_effect = [_CURRENCY_RESPONSE, {"count": 0}, {"count": 0}, {"count": 0}]
     get_refusal_rate("Canada Bay", years=8)
-    where = mock_get.call_args_list[0][0][1]["where"]
+    # call 0 is the currency probe; call 1 is the first outcome count
+    where = mock_get.call_args_list[1][0][1]["where"]
     assert "UPPER(LGA_NAME) LIKE '%CANADA BAY%'" in where
 
 
@@ -86,11 +109,67 @@ def test_real_outcomes_capture_has_recorded_results():
     assert all("dev_type" in r for r in rows)
 
 
+def test_real_outcomes_capture_carries_the_data_window():
+    # The tracking layer is a frozen extract (newest lodgement 2023-04-29,
+    # verified live 2026-07-06); the payload must state the window so the
+    # renderer never implies currency.
+    payload = _golden("da_outcomes")
+    assert payload["data_currency"] == "2023-04-29"
+    assert payload["window_start"] <= payload["window_end"]
+    assert payload["window_end"] <= payload["data_currency"]
+
+
 def test_real_refusal_capture_carries_counts_and_period():
     r = _golden("da_refusal_stats")
     assert r["total_determined"] == r["approved"] + r["refused"] + r["deferred_commencement"]
     assert r["period_years"] == 8
     assert 0.0 <= r["refusal_rate"] <= 1.0
+    assert r["data_currency"] == "2023-04-29"
+    assert r["window_start"] < r["data_currency"]
+
+
+# ── _fetch_da_outcomes derives the window from the data, not years_back ─────
+
+def _da_row(pan: str, lodgement: str):
+    from services.da_outcome import DAOutcome
+    return DAOutcome(
+        planning_portal_number=pan, status="Determined", outcome="Approved",
+        address="1 Test St", suburb="TESTVILLE", lodgement_date=lodgement,
+    )
+
+
+@patch("services.da_outcome.get_data_currency", return_value="2023-04-29")
+@patch("services.da_outcome.query_da_outcomes_near")
+def test_fetch_da_outcomes_window_is_data_derived(mock_query, mock_currency):
+    mock_query.return_value = [
+        _da_row("PAN-1", "2021-03-15"), _da_row("PAN-2", "2019-08-02"),
+        _da_row("PAN-3", "2022-11-30"),
+    ]
+    payload = ib._fetch_da_outcomes(151.1, -33.86)
+    assert payload["window_start"] == "2019-08-02"
+    assert payload["window_end"] == "2022-11-30"
+    assert payload["data_currency"] == "2023-04-29"
+    # existing keys stay — additive change only
+    assert payload["radius_m"] == ib.CONFIG.da_outcomes_radius_m
+    assert payload["years_back"] == ib.CONFIG.da_outcomes_years_back
+
+
+@patch("services.da_outcome.get_data_currency", return_value="2023-04-29")
+@patch("services.da_outcome.query_da_outcomes_near", return_value=[])
+def test_fetch_da_outcomes_empty_still_states_layer_currency(mock_query, mock_currency):
+    payload = ib._fetch_da_outcomes(151.1, -33.86)
+    assert payload["outcomes"] == []
+    assert payload["window_start"] is None and payload["window_end"] is None
+    assert payload["data_currency"] == "2023-04-29"
+
+
+@patch("services.da_outcome.get_data_currency",
+       side_effect=RuntimeError("DA tracking currency query failed"))
+@patch("services.da_outcome.query_da_outcomes_near", return_value=[])
+def test_fetch_da_outcomes_fails_closed_without_a_window(mock_query, mock_currency):
+    # A windowless outcome list would render as if current — fail the field.
+    with pytest.raises(RuntimeError, match="currency query failed"):
+        ib._fetch_da_outcomes(151.1, -33.86)
 
 
 # ── wiring three states ──────────────────────────────────────────────────────

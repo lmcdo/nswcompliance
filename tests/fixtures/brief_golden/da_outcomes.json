@@ -71,7 +71,7 @@
         "suburb": "CONCORD",
         "x": 151.106121284,
         "y": -33.864966623,
-        "lodgement_date": "20220202085830.803",
+        "lodgement_date": "2022-02-02",
         "determined_date": "2022-02-16"
       },
       {
@@ -119,7 +119,7 @@
         "suburb": "CONCORD",
         "x": 151.105124242,
         "y": -33.863466586,
-        "lodgement_date": "20220831085016.25",
+        "lodgement_date": "2022-08-31",
         "determined_date": "2022-08-25"
       },
       {
@@ -167,11 +167,14 @@
         "suburb": "CONCORD",
         "x": 151.105803352,
         "y": -33.862545936,
-        "lodgement_date": "20230208145650.313",
+        "lodgement_date": "2023-02-08",
         "determined_date": null
       }
     ],
     "radius_m": 200,
-    "years_back": 8
+    "years_back": 8,
+    "data_currency": "2023-04-29",
+    "window_start": "2020-08-20",
+    "window_end": "2023-02-10"
   }
 }

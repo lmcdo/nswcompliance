@@ -6,6 +6,7 @@ Tests: parsing, date normalisation, refusal stats, edge cases.
 import pytest
 from unittest.mock import patch
 
+import services.da_outcome as da_outcome_mod
 from services.da_outcome import (
     DAOutcome,
     RefusalStats,
@@ -14,10 +15,26 @@ from services.da_outcome import (
     _safe_float,
     _safe_int,
     _haversine_m,
+    get_data_currency,
     query_da_outcomes_near,
     query_da_by_pan,
     get_refusal_rate,
 )
+
+
+# get_data_currency caches per process; every test must start uncached so
+# mock side_effect sequences line up deterministically.
+@pytest.fixture(autouse=True)
+def _clear_currency_cache():
+    da_outcome_mod._currency_cache.clear()
+    yield
+    da_outcome_mod._currency_cache.clear()
+
+
+# A valid currency-probe response (the first ArcGIS call get_refusal_rate makes).
+_CURRENCY_RESPONSE = {
+    "features": [{"attributes": {"LODGEMENT_DATE": "20230429151817.89"}}],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +60,12 @@ class TestParseDateStr:
     def test_unrecognised_format(self):
         # Passes through unrecognised formats as-is
         assert _parse_date_str("2021/12/15") == "2021/12/15"
+
+    def test_fractional_seconds_format(self):
+        # Live values carry fractional seconds — these passed through raw
+        # before the currency work exposed it.
+        assert _parse_date_str("20230429151817.89") == "2023-04-29"
+        assert _parse_date_str("20220831085016.25") == "2022-08-31"
 
 
 # ---------------------------------------------------------------------------
@@ -260,17 +283,61 @@ class TestQueryDAByPan:
 
 
 # ---------------------------------------------------------------------------
+# get_data_currency (mocked)
+# ---------------------------------------------------------------------------
+
+class TestGetDataCurrency:
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_parses_fractional_seconds_lodgement(self, mock_get):
+        mock_get.return_value = _CURRENCY_RESPONSE
+        assert get_data_currency() == "2023-04-29"
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_cached_per_process(self, mock_get):
+        mock_get.return_value = _CURRENCY_RESPONSE
+        get_data_currency()
+        get_data_currency()
+        assert mock_get.call_count == 1
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_transport_failure_raises(self, mock_get):
+        # {} = a FAILED query — a data-window claim must never be fabricated.
+        mock_get.return_value = {}
+        with pytest.raises(RuntimeError, match="currency query failed"):
+            get_data_currency()
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_no_rows_raises(self, mock_get):
+        mock_get.return_value = {"features": []}
+        with pytest.raises(RuntimeError, match="no rows"):
+            get_data_currency()
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_unparseable_value_raises(self, mock_get):
+        mock_get.return_value = {"features": [{"attributes": {"LODGEMENT_DATE": "29/04/2023"}}]}
+        with pytest.raises(RuntimeError, match="unparseable"):
+            get_data_currency()
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_failure_is_not_cached(self, mock_get):
+        mock_get.side_effect = [{}, _CURRENCY_RESPONSE]
+        with pytest.raises(RuntimeError):
+            get_data_currency()
+        assert get_data_currency() == "2023-04-29"
+
+
+# ---------------------------------------------------------------------------
 # get_refusal_rate (mocked)
 # ---------------------------------------------------------------------------
 
 class TestGetRefusalRate:
     # NB: the old tests mocked a groupBy-statistics response shape the LIVE
     # server actually rejects ("Unable to complete operation") — self-confirming
-    # mocks. The implementation now issues one returnCountOnly query per outcome
-    # value ({"count": N} responses, verified live).
+    # mocks. The implementation now issues one currency probe, then one
+    # returnCountOnly query per outcome value ({"count": N}, verified live).
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_calculates_rate(self, mock_get):
-        mock_get.side_effect = [{"count": 2491}, {"count": 177}, {"count": 75}]
+        mock_get.side_effect = [_CURRENCY_RESPONSE, {"count": 2491}, {"count": 177}, {"count": 75}]
         stats = get_refusal_rate("Inner West")
         assert stats is not None
         assert stats.approved == 2491
@@ -280,19 +347,37 @@ class TestGetRefusalRate:
         assert stats.refusal_rate == pytest.approx(177 / (2491 + 177 + 75), abs=0.001)
 
     @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_carries_data_window(self, mock_get):
+        mock_get.side_effect = [_CURRENCY_RESPONSE, {"count": 10}, {"count": 2}, {"count": 0}]
+        stats = get_refusal_rate("Inner West", years=8)
+        assert stats is not None
+        assert stats.data_currency == "2023-04-29"
+        # window_start is the lodgement floor the counts actually applied
+        assert stats.window_start is not None
+        assert stats.window_start.endswith("-01-01")
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
     def test_empty_results(self, mock_get):
-        mock_get.side_effect = [{"count": 0}, {"count": 0}, {"count": 0}]
+        mock_get.side_effect = [_CURRENCY_RESPONSE, {"count": 0}, {"count": 0}, {"count": 0}]
         assert get_refusal_rate("Nonexistent LGA") is None
 
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_all_approved(self, mock_get):
-        mock_get.side_effect = [{"count": 100}, {"count": 0}, {"count": 0}]
+        mock_get.side_effect = [_CURRENCY_RESPONSE, {"count": 100}, {"count": 0}, {"count": 0}]
         stats = get_refusal_rate("Test LGA")
         assert stats is not None
         assert stats.refusal_rate == 0.0
 
     @patch("services.da_outcome.arcgis_get_with_retry")
     def test_api_failure_raises_never_a_fabricated_rate(self, mock_get):
-        mock_get.return_value = {}
+        # Currency probe succeeds; the count query fails.
+        mock_get.side_effect = [_CURRENCY_RESPONSE, {}]
         with pytest.raises(RuntimeError, match="count query failed"):
+            get_refusal_rate("Inner West")
+
+    @patch("services.da_outcome.arcgis_get_with_retry")
+    def test_currency_failure_fails_the_stats_closed(self, mock_get):
+        # Stats without a stated data window would render as if current.
+        mock_get.return_value = {}
+        with pytest.raises(RuntimeError, match="currency query failed"):
             get_refusal_rate("Inner West")
