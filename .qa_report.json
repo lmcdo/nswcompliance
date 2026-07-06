@@ -1,155 +1,77 @@
 {
-  "tier": "critical",
-  "justification": "User-facing legal due-diligence PDF: land-tax figures previously rendered from a hardcoded 2025 fallback on EVERY production report (tax_thresholds table verified ABSENT from production 2026-07-06 — migration 046 never applied), and the ANEF contour value the platform already resolves was never surfaced. Both slices change sentences a buyer relies on before exchange, so Critical tier applies.",
-  "commit_hash": "d7738106",
+  "tier": "standard",
+  "justification": "User-facing brief truth fix: the ANEF field sourced parcel-level values from the coarse anef_zones digitisations (13-vertex polygons, ANEF-20 ~789 km2) which stamped false contour values on fringe lots. Value path narrowed to the live LEP/SEPP-mapped government layer. No DB writes, no new sources, no frontend type changes.",
+  "commit_hash": "84053024",
   "files": [
-    "scripts/generate_conveyancing_report.py",
-    "scripts/conveyancing_db.py",
-    "services/conveyancing.py",
-    "services/portal_constraints.py",
     "services/intelligence_brief.py",
-    "tests/test_conveyancing_truth.py",
-    "tests/fixtures/wsa_anef_live.json"
+    "tests/test_overlay_live_fallback.py",
+    "tests/test_brief_slice2_distances.py"
   ],
   "pre_impl": {
-    "existing_data": "tax_thresholds table (migration 046) verified ABSENT from production DB via read-only probe 2026-07-06 — the hardcoded 2025 fallback fired on every PDF ever generated. ANEF: the live ePlanning Protection layer (MapServer/2) holds 29 LEP/SEPP-mapped contour features (Liverpool, Upper Hunter, Western Sydney Airport precincts; NO Sydney KSA coverage); the curated anef_zones table was measured at 10-13 vertices per contour with the ANEF-20 polygon covering ~789 km2 — too coarse for parcel-level claims, so it is quarantined from the PDF value path. Positive golden recorded live at Badgerys Creek (tests/fixtures/wsa_anef_live.json).",
-    "assumption_mismatch": "If tax_thresholds is later created and seeded, sentences pick up the DB row's own tax_year automatically; a stale-year row renders its year verbatim plus a WARNING log. ANEF provenance names the mapping instrument (EPI_NAME) returned by the live layer and states 'live query at report generation' — if the government layer gains or loses features the sentence tracks it query-by-query, nothing is cached or hardcoded.",
-    "new_vs_existing": "No new data sources: fetch_anef_zone_exact is LIFTED from intelligence_brief.fetch_anef_zone (which now delegates, contract preserved — brief tests monkeypatch the wrapper and still pass); regional fallback reuses existing portal_constraints.fetch_anef; load_regulatory_configs MOVED from services/conveyancing.py so the CLI path injects the same configs the API path uses.",
-    "external_source_error": "resolve_anef_value is three-state: anef_zones DB error or live ArcGIS exception returns status 'failed' (rendered as explicit 'not assessed' wording), never conflated with 'empty' (no contour at the point); query_arcgis_point raises on HTTP failure so a transport error cannot masquerade as a clean miss.",
-    "frontend_type": "No TypeScript touched — the PDF renderer and FastAPI service are Python-only surfaces; the free-tier JSON contract gains no new fields (confidence string semantics unchanged, feasibility rows keep question/answer/flag/basis shape).",
-    "user_failure_mode": "Land tax with no DB config renders 'Not assessed — configuration unavailable for the {year} land tax year' with zero dollar figures and confidence capped at medium — never a silently stale threshold; a failed ANEF value lookup on a lot inside a mapped contour states the value is not assessed, never drops the row or invents a value."
+    "existing_data": "anef_zones measured 2026-07-06: 10-13 vertices per contour, ANEF-20 polygon ~789 km2 (published ANEF 2039 contour is a fraction); live ePlanning Protection ANEF layer holds 29 LEP/SEPP-mapped features (Liverpool, Upper Hunter, WSA precincts; no Sydney KSA). Conveyancing PDF already quarantined in PR #681 with the same evidence.",
+    "assumption_mismatch": "If anef_zones is later re-digitised properly, re-enabling it is a one-line resolver change plus removing the quarantine guard tests; until then Sydney lots render the honest scoped claim 'No ANEF contour in the mapped planning layers' instead of a fabricated value.",
+    "new_vs_existing": "No new sources: the field builder now uses ONLY the existing portal_constraints.fetch_anef live query; fetch_anef_zone stays as the documented quarantined accessor (verify-app parity) with its contract unchanged so existing harness stubs keep working."
   },
   "functions": [
     {
-      "name": "build_land_tax_rows",
-      "file_line": "scripts/generate_conveyancing_report.py:810",
-      "input": "integer land value plus the tax_thresholds config dict or None",
-      "output": "one feasibility row whose question and basis carry the DB row's tax_year verbatim",
-      "if_none": "config None returns the 'Not assessed' row naming the expected year — no dollar figures are ever computed from constants"
+      "name": "_anef_fields",
+      "file_line": "services/intelligence_brief.py:2883",
+      "input": "covered layers, overlay anef value, lat/lng from the geocoded brief address",
+      "output": "display DataField plus numeric anef_level DataField from one live-layer lookup",
+      "if_none": "live lookup failure returns NOT_AVAILABLE with reason, never a checked-none claim; genuine none renders the scoped 'mapped planning layers' wording"
     },
     {
-      "name": "build_anef_row",
-      "file_line": "scripts/generate_conveyancing_report.py:2079",
-      "input": "three-state anef_live dict plus the ingested PostGIS anef overlay hit or None",
-      "output": "risk-summary row tuple of text, style and source label, or None when nothing supports a contour claim",
-      "if_none": "no ingest hit and no resolved value returns None so the row is omitted; a failed lookup with an ingest hit renders explicit not-assessed wording"
-    },
-    {
-      "name": "build_anef_note",
-      "file_line": "scripts/generate_conveyancing_report.py:2138",
-      "input": "the three-state anef_live dict from the shared resolver",
-      "output": "Section 5 note override carrying the resolved value and its vintage, or None to keep the static fallback note",
-      "if_none": "empty or not-run states return None so the liability-audited ANEF_NOTE fallback wording renders unchanged"
-    },
-    {
-      "name": "resolve_anef_value",
-      "file_line": "services/portal_constraints.py:274",
-      "input": "latitude and longitude of the resolved parcel point",
-      "output": "status dict: found with level, verbatim band code, EPI name and source; or empty; or failed",
-      "if_none": "lookup exception returns status failed — never re-stamped as empty; the coarse anef_zones table is never consulted (guard test)"
-    },
-    {
-      "name": "fetch_anef_zone_exact",
-      "file_line": "services/portal_constraints.py:238",
-      "input": "latitude and longitude, queried against the curated anef_zones table",
-      "output": "dict with anef_level, airport and anef_version for the highest contour containing the point, or None",
-      "if_none": "returns None only for a genuine no-contour point; RAISES on DB failure; serves the brief only — quarantined from the PDF value path for geometry-quality reasons"
-    },
-    {
-      "name": "load_regulatory_configs",
-      "file_line": "scripts/conveyancing_db.py:606",
-      "input": "the DATABASE_URL string or None when the environment lacks one",
-      "output": "tuple of sepp_standards dict and tax_config dict, either None when unavailable",
-      "if_none": "returns (None, None) on any DB failure — tax None renders fail-visible downstream instead of hardcoded figures"
-    },
-    {
-      "name": "_compute_confidence",
-      "file_line": "services/conveyancing.py:666",
-      "input": "controls, overlays, valuation plus integrity flags including the new tax_config_missing boolean",
-      "output": "low, medium or high rating capped by every integrity gap present",
-      "if_none": "tax_config_missing caps the rating at medium so a report whose land-tax section says Not assessed cannot claim high confidence"
+      "name": "fetch_anef_zone",
+      "file_line": "services/intelligence_brief.py:1970",
+      "input": "latitude and longitude for the curated anef_zones table",
+      "output": "level, airport and version dict or None — QUARANTINED, no brief or PDF surface calls it",
+      "if_none": "returns None on failure (fail-open contract preserved for the verify-app parity and future re-digitised data)"
     }
   ],
   "values": [
     {
-      "value": "tax_config.tax_year / threshold_dollars / rate / base_amount_dollars",
-      "read_at": "scripts/generate_conveyancing_report.py:829",
-      "nullable": "yes — whole config is None when the table is missing (current production state)",
-      "guard_at": "scripts/generate_conveyancing_report.py:816 (None branch returns the Not-assessed row before any key access)",
-      "if_missing": "Not-assessed row with the expected year named; no KeyError path because keys are only read after the None gate"
-    },
-    {
-      "value": "anef_live.anef_code / anef_level / epi_name",
-      "read_at": "scripts/generate_conveyancing_report.py:2058",
-      "nullable": "yes — code or EPI may be absent on a live hit; level may be unparseable from the band code",
-      "guard_at": "scripts/generate_conveyancing_report.py:2058 (_anef_value_display prefers verbatim code, falls back to level; _anef_source_label omits an absent EPI)",
-      "if_missing": "sentence renders the fields the data actually carries — an absent instrument name is omitted, never invented"
+      "value": "regional.anef_code / anef_level from the live Protection layer",
+      "read_at": "services/intelligence_brief.py:2917",
+      "nullable": "yes — band code may be absent, level may be unparseable",
+      "guard_at": "services/intelligence_brief.py:2873 (_parse_anef_number returns None on non-numeric, never a guess)",
+      "if_missing": "display falls back to whichever field exists; numeric field stays None at authoritative confidence"
     }
   ],
-  "queries": [
-    {
-      "purpose": "highest ANEF contour containing the parcel point from the curated anef_zones table",
-      "file_line": "services/portal_constraints.py:255",
-      "where_clause": "bbox pre-filter on min/max lon/lat AND ST_Contains(geometry, point) ORDER BY anef_level DESC LIMIT 1",
-      "if_zero": "returns None (brief-only path; the PDF resolver uses the live ePlanning layer exclusively)",
-      "if_wrong": "5s statement timeout raises; the raise surfaces as status failed, rendered as not-assessed wording"
-    }
-  ],
+  "queries": "N/A — no SQL changed; the quarantined anef_zones query is untouched and uncalled by this surface",
   "break_it": [
     {
-      "scenario": "Land-tax threshold changes next financial year and nobody updates the tax_thresholds table",
-      "what_happens": "The stale row renders WITH its own tax_year visible beside every figure ('Land tax (investment, 2025 thresholds)') plus a WARNING log — honest but loud, never an undated figure implied current",
+      "scenario": "Someone re-adds the anef_zones step to the brief's ANEF field",
+      "what_happens": "Coarse 13-vertex polygons would again stamp false contour values on fringe lots (Pymble rendered ANEF 20 pre-quarantine)",
       "mitigated": true,
-      "how": "build_land_tax_rows interpolates tax_year from the DB row into question and basis; stale-year test asserts the year and the warning",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k stale_year"
+      "how": "guard tests monkeypatch fetch_anef_zone to raise AssertionError if consulted (both test files)",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k never_consulted; python -m pytest tests/test_brief_slice2_distances.py -k quarantined"
     },
     {
-      "scenario": "Someone restores a hardcoded threshold fallback so absent config silently renders 2025 figures again",
-      "what_happens": "Without the guard the exact production defect returns (table is missing TODAY, so the fallback fired on every real PDF)",
+      "scenario": "Live layer lookup fails and the field claims no contour applies",
+      "what_happens": "A checked-none claim off a failed check — the WO-2 silent-false-negative class",
       "mitigated": true,
-      "how": "static-claims guard forbids _LT_FALLBACK/1075000 literals in the generator source; mutation test asserts absent config yields zero dollar figures",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k config_absent"
+      "how": "failure branch returns NOT_AVAILABLE with 'did not complete' reason; existing test_anef_lookup_failures_are_not_available_not_no_contour still passes",
+      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k lookup_failures"
     },
     {
-      "scenario": "Someone re-adds the curated anef_zones table as a PDF value source despite its coarse geometry",
-      "what_happens": "12-vertex approximations (ANEF-20 polygon ~789 km2) would stamp false contour values on fringe lots — Pymble rendered 'ANEF 20' and Concord 'ANEF 25' during pre-quarantine verification",
+      "scenario": "The honest-empty wording overclaims coverage (says 'no published contour' when Sydney KSA contours exist but are not machine-readable)",
+      "what_happens": "A Mascot brief would falsely assert no published contour exists at a genuinely noise-affected lot",
       "mitigated": true,
-      "how": "resolve_anef_value queries only the live ePlanning layer; test_curated_anef_zones_never_consulted monkeypatches fetch_anef_zone_exact to raise AssertionError if touched",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k never_consulted"
+      "how": "wording changed to 'No ANEF contour in the mapped planning layers at this property' — scoped to exactly what was checked",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k no_mapped_contour"
     },
     {
-      "scenario": "ANEF value lookup throws (DB down, ArcGIS timeout) while the lot IS inside a mapped contour",
-      "what_happens": "The row still states the contour applies and says the value is 'not assessed — value lookup unavailable'; swallowing the exception into an empty result would render the misleading 'obtain from airport authority' wording as if the check ran",
+      "scenario": "Covered-but-empty ingested overlay short-circuits to a blank instead of checking the live layer",
+      "what_happens": "Lots in covered LGAs would silently lose their live-layer contour value",
       "mitigated": true,
-      "how": "resolve_anef_value returns status failed on exception (mutation: deleting the raise in fetch_anef_zone_exact fails test_db_failure_is_failed_not_empty); build_anef_row renders failed explicitly",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k failed"
-    },
-    {
-      "scenario": "A live-mapped contour exists where the spatial_overlays ingest has no anef polygon",
-      "what_happens": "Pre-change the PDF silently omitted the aircraft-noise row for such lots; post-change the resolved value synthesizes the overlay so the cover count, delta callout, risk row, note and consultant table all state it",
-      "mitigated": true,
-      "how": "generate_pdf reconciliation block mirrors the bushfire live-wins precedent; build_anef_row renders a found value even with no ingest hit",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k without_ingest"
-    },
-    {
-      "scenario": "The synthesized ANEF row gets attributed to PostGIS even though the ingest never saw the contour",
-      "what_happens": "A source label would claim provenance the data does not trace to (the PR #674 shadow-height defect class)",
-      "mitigated": true,
-      "how": "the synthetic overlay carries instrument ANEF_VALUE_LOOKUP and build_anef_row swaps the source label off PostGIS for it",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k synthetic_hit"
-    },
-    {
-      "scenario": "A regional ePlanning band code like '25-30' is parsed to its lower bound and presented as an exact contour value",
-      "what_happens": "The buyer would read ANEF 25 as a point value when the source only states a band",
-      "mitigated": true,
-      "how": "_anef_value_display prefers the verbatim anef_code over the parsed integer so the band renders as published",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k regional_code"
+      "how": "fall-through order preserved: overlay-with-value wins, else live layer, else honest empty/failure",
+      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k falls_through_to_live"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — production tax_thresholds table does not exist: until migration 046 plus a 2026 row (Revenue NSW: threshold $1,075,000, rate 1.6% + $100 base, premium $6,571,000 at 2%, thresholds frozen from 1 Jan 2025) are applied WITH USER CONFIRMATION, every PDF renders land tax 'Not assessed' (honest, but a visible product gap). SQL prepared; do not apply without explicit user approval."
+    "manual_verify": "No — behaviour pinned by guard + wording tests; the verify app's /api/environmental/anef route still reads anef_zones (orphan endpoint, no in-repo consumers) — tracked in issue #686"
   }
 }

@@ -3,8 +3,10 @@
 Break-it scenarios covered (silent wrong results, not crashes):
   1. Mine/contaminated/drinking fetch FAILURE previously rendered a confident
      "No" (False@AUTHORITATIVE) — the WO-2 class. Failure must be NOT_AVAILABLE.
-  2. "No published ANEF contour" was claimed even when BOTH lookups errored —
-     a checked-none claim off a failed check. Must be NOT_AVAILABLE.
+  2. A checked-none ANEF claim was made even when the lookup errored — a
+     "no contour" claim off a failed check. Must be NOT_AVAILABLE. (Since
+     2026-07-07 the only value source is the live LEP/SEPP-mapped layer;
+     anef_zones is quarantined, #686.)
   3. A junk (non-numeric) proximity value must be dropped, never rendered as a
      distance.
   4. contaminated raw = None means genuinely no sites within 500 m — kept
@@ -147,25 +149,26 @@ def test_anef_lookup_failures_are_not_available_not_no_contour():
 
 
 def test_anef_genuinely_checked_none_stays_authoritative():
-    def none_zone(lat, lng):
-        return None
     import services.portal_constraints as pc
-    with patch.object(ib, "fetch_anef_zone", none_zone):
-        with patch.object(pc, "fetch_anef", lambda lat, lng: None):
-            env = _build_environmental(_CONTROLS, _overlays(), None, lat=-33.86, lng=151.10)
+    with patch.object(pc, "fetch_anef", lambda lat, lng: None):
+        env = _build_environmental(_CONTROLS, _overlays(), None, lat=-33.86, lng=151.10)
     assert env.anef.confidence == AUTH
-    assert "No published ANEF contour" in env.anef.value
+    assert "No ANEF contour in the mapped planning layers" in env.anef.value
     assert env.anef_level.value is None
     assert env.anef_level.confidence == AUTH
 
 
-def test_anef_numeric_level_from_sydney_contour():
+def test_anef_zones_quarantined_from_brief_field():
+    # Data-quality quarantine (#686): the coarse anef_zones digitisations must
+    # never feed the brief's ANEF field. Mutation check: re-adding the
+    # fetch_anef_zone step to _anef_fields fails this.
     import services.portal_constraints as pc
-    with patch.object(ib, "fetch_anef_zone", lambda lat, lng: {"anef_level": 25, "airport": "Sydney (Kingsford Smith)"}):
+    def _boom(lat, lng):
+        raise AssertionError("anef_zones consulted by the brief's ANEF field")
+    with patch.object(ib, "fetch_anef_zone", _boom):
         with patch.object(pc, "fetch_anef", lambda lat, lng: None):
             env = _build_environmental(_CONTROLS, _overlays(), None, lat=-33.94, lng=151.17)
-    assert env.anef.value == "ANEF 25 (Sydney (Kingsford Smith))"
-    assert env.anef_level.value == 25.0
+    assert env.anef.source != "anef_zones"
 
 
 def test_anef_range_string_parses_leading_number_only():

@@ -452,7 +452,7 @@ class EnvironmentalConstraints(BaseModel):
     # stays for the card; this carries the number for downstream consumers.
     anef_level: DataField[Optional[float]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-        source="anef_zones", reason="Not yet extracted from overlays",
+        source="planning_portal_protection", reason="Not yet extracted from overlays",
     )
     coastal_hazards: DataField[Optional[dict]] = DataField(
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -1971,11 +1971,17 @@ def fetch_anef_zone(lat: float, lng: float) -> Optional[dict]:
     """Sydney ANEF from the curated ``anef_zones`` table — the SAME source the
     verify app's /api/environmental/anef route uses.
 
+    QUARANTINED from the brief's ANEF field since 2026-07-07: the table's
+    contours are 10-13-vertex digitisations (ANEF-20 polygon ~789 km²) that
+    stamped false values on fringe lots — issue #686. Kept as the documented
+    accessor for the verify-app parity and for a future properly re-digitised
+    table; no brief or PDF surface calls it.
+
     prior-art-checked: reuses the existing anef_zones table (no new source); the
-    query implementation was LIFTED to portal_constraints.fetch_anef_zone_exact
-    (now shared with the conveyancing PDF) — this wrapper preserves the brief's
-    fail-open contract. Returns ``{"anef_level": int, "airport": str,
-    "anef_version": str}`` or None; None on any failure.
+    query implementation lives in portal_constraints.fetch_anef_zone_exact —
+    this wrapper preserves the fail-open contract. Returns
+    ``{"anef_level": int, "airport": str, "anef_version": str}`` or None;
+    None on any failure.
     """
     if lat is None or lng is None:
         return None
@@ -2875,12 +2881,15 @@ def _build_environmental(
         return float(m.group(1)) if m else None
 
     def _anef_fields() -> tuple[DataField, DataField]:
-        # prior-art-checked: ANEF reuses anef_zones (Sydney, via fetch_anef_zone)
-        # + the existing portal_constraints.fetch_anef (regional). Not a new source.
-        # Only trust the ingested overlay when it actually carries a value. The
-        # anef overlay is "covered" for many LGAs but empty at most lots, while
-        # anef_zones holds the real Sydney contour — so a null overlay must fall
-        # through to the live query, not short-circuit to a blank.
+        # prior-art-checked: reuses the existing portal_constraints.fetch_anef
+        # (live LEP/SEPP-mapped contours). The curated anef_zones table (Sydney
+        # KSA) is QUARANTINED from this field: its contours are 10-13-vertex
+        # digitisations whose ANEF-20 polygon covers ~789 km² — far beyond the
+        # published ANEF 2039 contour — so it stamped false values on fringe
+        # lots (issue #686; same quarantine as the conveyancing PDF, #681).
+        # Only trust the ingested overlay when it actually carries a value —
+        # a null overlay must fall through to the live query, not
+        # short-circuit to a blank.
         # Returns (display string field, numeric level field) from ONE lookup.
         def _level(num: Optional[float], src: str) -> DataField:
             if num is None:
@@ -2895,21 +2904,9 @@ def _build_environmental(
             )
         if lat is None or lng is None:
             na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-                                 source="anef_zones", as_at=today, reason="Layer not ingested for this LGA")
+                                 source="planning_portal_protection", as_at=today,
+                                 reason="Layer not ingested for this LGA")
             return na_field, na_field.model_copy()
-        zone, zone_failed = None, False
-        try:
-            zone = fetch_anef_zone(lat, lng)
-        except Exception:
-            zone_failed = True
-        if zone:
-            return (
-                DataField(
-                    value=f"ANEF {zone.get('anef_level')} ({zone.get('airport')})",
-                    confidence=auth, source="anef_zones", as_at=today,
-                ),
-                _level(_parse_anef_number(zone.get("anef_level")), "anef_zones"),
-            )
         regional, regional_failed = None, False
         try:
             from services.portal_constraints import fetch_anef
@@ -2923,17 +2920,17 @@ def _build_environmental(
                           confidence=auth, source="planning_portal_protection", as_at=today),
                 _level(_parse_anef_number(code), "planning_portal_protection"),
             )
-        if zone_failed or regional_failed:
-            # A lookup FAILED — "no contour" cannot be claimed off a failed check.
+        if regional_failed:
+            # The lookup FAILED — "no contour" cannot be claimed off a failed check.
             na_field = DataField(value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
-                                 source="anef_zones", as_at=today,
+                                 source="planning_portal_protection", as_at=today,
                                  reason="ANEF contour lookup did not complete")
             return na_field, na_field.model_copy()
-        # Both published ANEF sources genuinely checked — none applies here.
+        # The mapped government layer was genuinely checked — no contour here.
         return (
-            DataField(value="No published ANEF contour at this property",
-                      confidence=auth, source="anef_zones", as_at=today),
-            _level(None, "anef_zones"),
+            DataField(value="No ANEF contour in the mapped planning layers at this property",
+                      confidence=auth, source="planning_portal_protection", as_at=today),
+            _level(None, "planning_portal_protection"),
         )
 
     flood_epi = any(
