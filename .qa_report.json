@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Two new sections in the conveyancing PDF, a user-facing legal due-diligence document: (A) development-contributions plans named verbatim from the NSW Planning Portal /cp lookup, (B) corridors and land-reservation-acquisition check from the LRA layer 24, SydneyTrain ISEPP layers and the portal /warn endpoint. An LRA hit flips the cover CONSTRAINTS tile. Wrong or silently-missing output here misleads a purchaser before exchange.",
-  "commit_hash": "5a1c5ea0",
+  "commit_hash": "5c57efff",
   "files": [
     "services/portal_constraints.py",
     "services/conveyancing.py",

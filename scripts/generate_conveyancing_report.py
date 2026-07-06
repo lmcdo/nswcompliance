@@ -2266,12 +2266,17 @@ def build_contributions_lines(contributions: Optional[dict]) -> dict:
 
     if status == "found":
         out["state"] = "found"
-        out["intro"] = _CONTRIB_INTRO
         out["plan_lines"] = [
             {"name": p.get("plan_name") or "(unnamed plan in portal response)",
              "url": p.get("plan_url")}
             for p in (contributions.get("plans") or [])
         ]
+        if out["plan_lines"]:
+            out["intro"] = _CONTRIB_INTRO
+        else:
+            # HPC-only response: don't announce a plan list that isn't there —
+            # state the queried-empty plans fact, then the HPC line renders.
+            out["status_line"] = _CONTRIB_EMPTY
         hpc = contributions.get("hpc")
         if hpc:
             line = "Housing and Productivity Contribution: " + (
@@ -4168,7 +4173,12 @@ def generate_pdf(
 
     _contrib_lines = build_contributions_lines(contributions)
     if _contrib_lines["state"] == "found":
-        story.append(Paragraph(_contrib_lines["intro"], ss["body"]))
+        # intro when plans were returned; the queried-empty plans sentence
+        # when the portal returned only the HPC block (status_line).
+        if _contrib_lines["intro"]:
+            story.append(Paragraph(_contrib_lines["intro"], ss["body"]))
+        elif _contrib_lines["status_line"]:
+            story.append(Paragraph(_contrib_lines["status_line"], ss["body"]))
         story.append(Spacer(1, 1 * mm))
         for pl in _contrib_lines["plan_lines"]:
             _name = _xml_escape(pl["name"])

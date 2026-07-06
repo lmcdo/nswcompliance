@@ -330,6 +330,21 @@ class TestContributionsLines:
         )
         assert out["plan_lines"] == []
 
+    def test_hpc_only_response_does_not_announce_a_plan_list(self):
+        """An icdp-only /cp result (HPC, zero plans) must not render the
+        'following contributions plans apply' intro over an empty list — it
+        states the queried-empty plans fact and still renders the HPC line."""
+        res = _concord_result()
+        res["plans"] = []
+        out = build_contributions_lines(res)
+        assert out["state"] == "found"
+        assert out["intro"] is None
+        assert out["plan_lines"] == []
+        assert out["status_line"] == (
+            "No contributions plans returned for this location by the NSW Planning Portal."
+        )
+        assert out["hpc_line"].startswith("Housing and Productivity Contribution: ")
+
     def test_failed_is_not_assessed_never_no_plans(self):
         for failed in ({"status": "failed"}, None, {}):
             out = build_contributions_lines(failed)
