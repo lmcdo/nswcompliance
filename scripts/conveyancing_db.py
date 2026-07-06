@@ -315,22 +315,32 @@ def interpret_sepp(
     type_: str,
     label: str,
     legislation_url: str,
+    class_: str = "",
+    map_title: str = "",
 ) -> Optional[str]:
     """Return display text for a SEPP overlay hit, or None to suppress.
 
     None   → this overlay type has a dedicated report section; suppress from SEPP table.
     str    → display this text in the Practical Implication column.
 
-    Primary source: portal Type + Label fields (already specific).
+    Primary source: portal Type + Class + title fields (already specific).
+    Class carries the actual standard value (e.g. Water Use "40%", Climate Zone
+    "6"); without it the row degrades to a bare postcode/LGA Label. map_title
+    names the specific SEPP map, distinguishing e.g. the BASIX Alterations and
+    BASIX Buildings climate zone maps.
     No hardcoded descriptions. No fallback keyword dict.
     """
     if type_ and any(t in type_.lower() for t in _SUPPRESS_TYPES):
         return None
 
     parts: list[str] = []
-    if type_:
+    if type_ and class_ and class_.lower() != type_.lower():
+        parts.append(f"{type_}: {class_}")
+    elif type_:
         parts.append(type_)
-    if label and (not type_ or label.lower() != type_.lower()):
+    if map_title and (not type_ or map_title.lower() != type_.lower()):
+        parts.append(map_title)
+    elif label and (not type_ or label.lower() != type_.lower()):
         parts.append(label)
 
     detail = " — ".join(parts) if parts else (epi_name or "SEPP overlay")

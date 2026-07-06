@@ -1,89 +1,134 @@
 {
- "tier": "standard",
- "commit_hash": "09d4a133",
- "justification": "Adds a named early-access grant mechanism so the payment-gated conveyancing report can be sent to founding members and tested internally before Stripe billing exists: an ?access=<code> link validated server-side against CONVEYANCING_ACCESS_CODES unlocks the existing full-PDF download CTA.",
+ "tier": "critical",
+ "commit_hash": "7b64a610",
+ "justification": "Fixes five live-verified truth defects in the conveyancing PDF (a legal due-diligence document): a fabricated LEP height attribution in the shadow row, silent dropping of unrecognised Planning Portal layer groups (missed the Sydney Drinking Water Catchment constraint at Bowral), a false claim that the NSW state layer lacks data for an LGA when the gap is in our own ingest, blanket false s10.7(2) non-disclosure claims, and a Codes SEPP setback wrongly attributed to TI SEPP s2.120 — plus golden-sentence tests and a fail-soft lint extension so the defect class cannot silently return.",
  "files": [
-  "frontend-nextjs/lib/access-codes.ts",
-  "frontend-nextjs/app/api/reports/conveyancing/access/route.ts",
-  "frontend-nextjs/components/tools/ConveyancingTool.tsx",
-  "frontend-nextjs/__tests__/api/reports/conveyancing-access.test.ts",
-  "docs/CONFIGURATION.md"
+  "scripts/generate_conveyancing_report.py",
+  "scripts/conveyancing_db.py",
+  "scripts/lint_brief_failsoft.py",
+  "services/conveyancing.py",
+  "services/shadow_detector.py",
+  "tests/test_conveyancing_truth.py",
+  "tests/fixtures/bowral_layerintersect.json"
  ],
  "pre_impl": {
-  "existing_data": "Explore audit confirmed no entitlement or access-code infrastructure exists anywhere: lib/report-token.ts is an HMAC anti-injection guard not an entitlement, the satellite routes use an ADMIN_SECRET header per-route, and Stripe promo codes only matter once checkout is wired (it is not — the live UI shows a waitlist button). The free conveyancing check already mints a report_id and the paid download CTA component already exists and works when given one.",
-  "assumption_mismatch": "Assumed the conveyancing report was actively payment-gated; in reality the checkout route is dormant and the frontend gate trusts a ?payment=success query param with no server verification, and the PDF generate route is unauthenticated. The grant mechanism therefore adds the first server-checked access decision this product has; hardening the generate route itself is flagged as follow-up, not silently bundled.",
-  "new_vs_existing": "Reuses the existing ConveyancingPaidDownloadCTA, the existing free-check report_id, and the existing PDF generate path unchanged. New code is only the pure validator, one small validate route, and the unlock wiring — no new tables, no new entitlement framework, matching the outreach RULE 4 decision that comps stay a spreadsheet plus codes until billing lands."
+  "existing_data": "Investigation was completed beforehand in the remediation plan (ce-conveyancing-integrity-remediation-2026-07): every claim in the Bowral PDF was verified against live NSW sources on 2026-07-06, including portal layerintersect for propId 1119594, the state HOB layer returning zero features, RFS BFPL returning zero features at the lot but one feature elsewhere in the LGA, and Valuer General values. Honest shadow-provenance wording already existed in the Intelligence Brief frontend and ShadowTool but was never ported to the PDF renderer.",
+  "assumption_mismatch": "The PDF assumed every shadow height was an LEP control when three of four height_source values are not; it assumed absence of a layerintersect group meant absence of the constraint when the portal simply is not exhaustive per LGA; and it assumed our spatial_overlays coverage table spoke for the NSW state layer. The prod ops check also disproved the suspected missing bushfire ingest: the statewide ALL coverage row exists with 223,847 features, so the Bowral footnote fired because LGA derivation returned nothing at that point, which the live RFS query now bypasses entirely.",
+  "new_vs_existing": "No new data sources were built: the live bushfire check reuses the existing production client _query_rfs_bfpl from services/bushfire_prescreen.py as a third parallel future, the honest shadow wording mirrors the existing Intelligence Brief copy, and the lint extension adds targets and one rule to the existing lint_brief_failsoft.py rather than forking a new linter. New code is confined to pure sentence-builder functions extracted so the exact user-visible wording is testable without reportlab.",
+  "external_source_error": "If the RFS BFPL ArcGIS service times out, errors, or returns an error body, _query_rfs_bfpl returns is_bushfire_prone None and build_bushfire_row renders 'Not assessed — RFS service unavailable', falling back to the ingested PostGIS hit only when one exists — a failed live query can never render as 'Clear'. If the shadow pipeline is unreachable the row stays 'Not assessed', and if the portal layerintersect returns unrecognised groups they are captured verbatim and logged at WARNING instead of being dropped.",
+  "frontend_type": "The free-tier JSON contract gains optional keys only (sdwc, other_instruments, and class/map_title inside sepp_overlays entries), so the existing ConveyancingTool display and cached conveyancing_cache blobs from older code read cleanly with .get() defaults; confidence remains one of the same three string values, now computed with integrity caps. No TypeScript changes were needed and jest was not touched.",
+  "user_failure_mode": "Before this change a conveyancer reading the Bowral PDF saw a fabricated '9 m LEP maximum height' claim, a missing drinking-water-catchment constraint with a cover tile saying CONSTRAINTS: None, a false statement that bushfire was not mapped for the LGA, and 'Confidence: high' — all silently wrong in a document meant for legal due diligence. Failure now surfaces visibly: assumed heights are labelled as assumptions, failed queries render 'Not assessed', unknown portal layers print under Other planning instruments, and confidence caps at medium when coverage or provenance is degraded."
  },
  "functions": [
   {
-   "name": "isValidAccessCode",
-   "file_line": "frontend-nextjs/lib/access-codes.ts:20",
-   "input": "a candidate code string and the comma-separated env list, both possibly null or undefined or non-string",
-   "output": "true only when the trimmed code exactly matches one trimmed non-empty entry in the list",
-   "if_none": "any missing, non-string, empty or whitespace input returns false, so an unset env var fails closed and no code is ever valid by default"
+   "name": "build_shadow_row",
+   "file_line": "scripts/generate_conveyancing_report.py:1907",
+   "input": "the shadow pipeline outputs dict with height_m, height_source, adg_compliant and Jun 21 scenarios, or None when the pipeline was unreachable",
+   "output": "a (text, style_key, source_label) tuple where LEP attribution and the 'NSW LEP' source label appear only for height_source values that trace to an LEP control",
+   "if_none": "None renders 'Not assessed'; height_source 'default' renders the assumed-envelope wording and never asserts Clear; a missing or unrecognised height_source fails closed to the assumed-envelope label rather than claiming the LEP"
   },
   {
-   "name": "POST /api/reports/conveyancing/access",
-   "file_line": "frontend-nextjs/app/api/reports/conveyancing/access/route.ts:23",
-   "input": "JSON body with a code field of unknown type from an untrusted client",
-   "output": "200 with valid true or false only, never the configured code list; 400 on bad JSON, missing code or codes over 100 chars",
-   "if_none": "invalid JSON or a non-string code returns 400 before any env comparison, and a valid hit logs the named code for the usage trail"
+   "name": "build_bushfire_row",
+   "file_line": "scripts/generate_conveyancing_report.py:1972",
+   "input": "the live RFS BFPL result dict (or None on failure) plus the ingested PostGIS bushfire hit dict when one exists",
+   "output": "a (text, style_key, source_label) tuple: alert with the RFS category when prone, Clear citing the live query when not prone, alert from ingested data or Not-assessed when the live query failed",
+   "if_none": "both inputs missing yields 'Not assessed — RFS service unavailable' with the note style, so a network failure can never be rendered as a Clear verdict"
   },
   {
-   "name": "ConveyancingTool grant unlock effect",
-   "file_line": "frontend-nextjs/components/tools/ConveyancingTool.tsx:167",
-   "input": "the access query param or a previously stored sessionStorage code from an earlier page load",
-   "output": "accessGranted state set true only after the server validates the code; invalid codes are removed from sessionStorage",
-   "if_none": "no param and no stored code returns early with no fetch; a network failure leaves the page in the normal free state with the waitlist button"
+   "name": "build_unmapped_note",
+   "file_line": "scripts/generate_conveyancing_report.py:2027",
+   "input": "the covered_layers set (or list from cache, or None when coverage could not be determined)",
+   "output": "the coverage footnote owning the gap as PlotDetect's ingested data, or None when everything is covered; bushfire is deliberately excluded because it is live-checked",
+   "if_none": "None coverage returns no footnote at all rather than fabricating a claim about which layers are or are not mapped"
+  },
+  {
+   "name": "parse_controls",
+   "file_line": "scripts/generate_conveyancing_report.py:1117",
+   "input": "the raw layerintersect response list from the NSW Planning Portal for a property",
+   "output": "the controls dict, now including a verbatim sdwc entry for the drinking water catchment and an other_instruments list capturing every unrecognised layer group with its titles",
+   "if_none": "an unrecognised group is appended to other_instruments and logged at WARNING instead of silently discarded; empty results blocks are still skipped so no phantom entries appear"
+  },
+  {
+   "name": "_compute_confidence",
+   "file_line": "services/conveyancing.py:675",
+   "input": "controls, overlays and valuation as before, plus optional covered_layers, shadow_height_source and live_query_failures integrity signals",
+   "output": "high, medium or low where field completeness builds the base score and integrity gaps cap it — unmapped coverage layers or a defaulted shadow height cap at medium, two or more live failures cap at low",
+   "if_none": "callers that pass no integrity signals get the old completeness behaviour unchanged, so the free-tier endpoint keeps working while gaining the coverage cap it now passes"
   }
  ],
  "values": [
   {
-   "value": "json.valid from the access validation response",
-   "read_at": "grant unlock effect in frontend-nextjs/components/tools/ConveyancingTool.tsx",
-   "if_missing": "optional-chained json?.valid treats a malformed response as invalid, so the page stays in the free tier rather than unlocking"
+   "value": "DEFAULT_HEIGHT_M = 9.0 (services/shadow_detector.py:75)",
+   "read_at": "shadow_detector._get_height_limit fallback; surfaces in the PDF only through build_shadow_row's assumed-envelope wording, never as an LEP claim",
+   "if_missing": "if height_source is absent from the outputs dict the row fails closed to the assumed-envelope label — provenance is never inferred"
   },
   {
-   "value": "result.report_id from the free instant check response",
-   "read_at": "unlockedReportId derivation in ConveyancingTool render",
-   "if_missing": "result?.report_id ?? null keeps unlockedReportId null so the download CTA simply does not render — no crash and no CTA with a broken id"
+   "value": "_LEP_HEIGHT_SOURCES = {spatial_overlays, regulatory_provisions, planning_portal}",
+   "read_at": "build_shadow_row when deciding whether LEP attribution is permitted for the shadow row",
+   "if_missing": "any value outside the set (including default, None, or a future unrecognised source) renders assumed-envelope wording, so new sources must opt in explicitly"
+  },
+  {
+   "value": "CONVEYANCING_TARGETS in scripts/lint_brief_failsoft.py",
+   "read_at": "pre-commit hook runs the lint with default targets, which now include generate_conveyancing_report.py and services/conveyancing.py",
+   "if_missing": "removing a file from the target list silently drops its except-block coverage — the lint's scope is visible in its pre-commit output on every run"
   }
  ],
- "queries": "N/A — no database queries in this change; validation is a pure env-var string comparison",
+ "queries": "N/A — no DB queries were added or modified; the only database interaction in this change was a read-only pre-implementation ops check of spatial_overlays_coverage (bushfire ALL row present, 223,847 features), and the existing get_unique_overlays SQL is untouched.",
  "break_it": [
   {
-   "scenario": "Someone brute-forces or guesses grant codes against the public validate route",
-   "what_happens": "Codes are random-hex-suffixed and capped at 100 chars; a wrong code returns valid false with no hint and the response never echoes the configured list, so guessing yields nothing enumerable",
-   "mitigated": true,
-   "how": "random suffixes, exact-match-only comparison, no code list in any response, and a jest test asserts the list is never echoed",
-   "repro": "curl -X POST /api/reports/conveyancing/access -H 'Content-Type: application/json' -d '{\"code\":\"guess-01\"}' and observe valid false"
+   "scenario": "A cached conveyancing_cache blob written by the previous deploy lacks the new sdwc and other_instruments keys when the PDF endpoint unpacks it",
+   "what_happens": "generate_pdf reads both via controls.get() with None/empty defaults, so the report renders without the SDWC row exactly as the old parser would have produced",
+   "mitigated": "yes — every new controls key is read defensively so stale cache blobs render cleanly",
+   "how": "all new keys are read with .get() and or-[] guards; no code path indexes controls['sdwc'] without a truthiness check first",
+   "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); from generate_conveyancing_report import parse_controls; c=parse_controls([]); c.pop('sdwc'); c.pop('other_instruments'); print(c.get('sdwc'), c.get('other_instruments') or [])\""
   },
   {
-   "scenario": "CONVEYANCING_ACCESS_CODES is unset in an environment, for example a preview deploy before the var was added",
-   "what_happens": "isValidAccessCode returns false for every code so the page silently behaves as the normal free tier with the waitlist button; the founder link appears dead rather than granting access",
-   "mitigated": true,
-   "how": "fail-closed is the intended direction (never accidental free access); the jest test for the unset env var pins it, and docs/CONFIGURATION.md documents the preview-env requirement",
-   "repro": "npx jest --testPathPattern=conveyancing-access -t 'env var is unset' or unset the var locally and load /reports/conveyancing?access=any-code"
+   "scenario": "The RFS BFPL service is down while the property genuinely is bushfire prone and our PostGIS ingest has the polygon",
+   "what_happens": "the live query returns None, build_bushfire_row falls back to the ingested hit and renders an alert row labelled as ingested data with the live check noted unavailable — the buyer still sees the constraint",
+   "mitigated": "yes — three-state row semantics keep the ingested alert visible whenever the live check fails",
+   "how": "explicit three-state semantics in build_bushfire_row: live result governs, ingested hit is the failure fallback, and 'Clear' is only reachable from a successful live query",
+   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestBushfireRowSemantics::test_live_failure_falls_back_to_postgis_hit -q"
   },
   {
-   "scenario": "A grant is revoked while the grantee still has the code cached in sessionStorage from an earlier visit",
-   "what_happens": "The next page load re-validates against the server, gets valid false, removes the stored code and renders the ordinary free tier, so revocation takes effect on next load rather than persisting client-side forever",
-   "mitigated": true,
-   "how": "every page load re-validates server-side; the invalid branch explicitly deletes the sessionStorage entry",
-   "repro": "load the page with a valid ?access code, remove that code from the env var, redeploy, reload the page and confirm the waitlist button is back"
+   "scenario": "The live RFS query says not prone but the stale PostGIS ingest still contains a bushfire polygon for the lot",
+   "what_happens": "the reconciliation block at the top of generate_pdf strips the stale overlay and logs a warning, so the cover tile, risk row, Section 5 note and consultant table all agree with the live answer instead of contradicting each other",
+   "mitigated": "yes — pre-render reconciliation makes every PDF section agree with the live RFS answer",
+   "how": "bushfire reconciliation runs before any rendering; the risk row is built from build_bushfire_row rather than the coverage-based flag() helper",
+   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestBushfireRowSemantics::test_live_clear_cites_live_rfs -q then inspect generate_pdf's _bf_live_prone branch"
   },
   {
-   "scenario": "The free check response arrives without a report_id while a grant is active",
-   "what_happens": "unlockedReportId stays null because the derivation optional-chains result report_id, so the download CTA is not rendered and the user sees results plus waitlist copy instead of a CTA that would post an undefined id",
-   "mitigated": true,
-   "how": "null-safe derivation keeps the CTA unrendered rather than generating with a missing id",
-   "repro": "mock /api/satellite/conveyancing to omit report_id in a jest DOM test or devtools override, run a check with a granted session and observe no download panel"
+   "scenario": "A future Planning Portal release adds a brand-new layerintersect group name this parser has never seen",
+   "what_happens": "the group is captured verbatim into other_instruments, logged at WARNING so it surfaces in Railway logs, and rendered under Other planning instruments — deleting the else branch makes the zombie-layer test fail",
+   "mitigated": "yes — the fail-open else branch plus a mutation test guarantee unknown groups surface",
+   "how": "fail-open else branch in parse_controls plus the golden mutation test asserting the captured layer and titles",
+   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestParseControlsFailOpen::test_unknown_layer_group_is_captured_not_dropped -q"
+  },
+  {
+   "scenario": "A Wingecarribee-profile report (unmapped coverage layers, defaulted shadow height) is served from the free-tier endpoint that previously claimed Confidence: high",
+   "what_happens": "_compute_confidence caps the rating at medium from the covered_layers gap alone, and would cap at low if two live queries had also failed",
+   "mitigated": "yes — integrity caps override the completeness score whenever coverage or provenance is degraded",
+   "how": "integrity caps applied after the completeness score, exercised by five confidence tests including a clean-metro regression guard that must stay high",
+   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestConfidenceIntegrity -q"
+  },
+  {
+   "scenario": "Someone reintroduces the blanket s10.7(2) claim or the TI SEPP 9 m setback wording in a future copy edit",
+   "what_happens": "the static-claims guard scans the generator source for the forbidden phrases and fails the suite, and the reworded rows carry source_ref comments naming the actual instruments",
+   "mitigated": "yes — a source-scanning guard test fails the suite if any forbidden claim returns",
+   "how": "TestStaticClaimsGuard forbids six phrases including the fixed shadow source label, the state-layer blame sentence, and both false regulatory claims",
+   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestStaticClaimsGuard -q after re-adding any forbidden phrase to scripts/generate_conveyancing_report.py"
+  },
+  {
+   "scenario": "The nearby-DA fetch throws (DB down or ePlanning outage) during CLI or service PDF generation",
+   "what_happens": "das becomes None instead of an empty list, and the DA section renders 'Not assessed — DA records could not be retrieved' instead of the previous confident 'No development applications lodged' claim",
+   "mitigated": "yes — the extended lint blocks benign except-block fallbacks and das is now three-state",
+   "how": "the new except-block lint rule flagged this exact fallback during development; das now uses three-state semantics (list, empty list, None) through both entry points",
+   "repro": "python scripts/lint_brief_failsoft.py after reverting the das = None change — the lint fails on the benign except-block fallback"
   }
  ],
  "post_merge": {
-  "db_reset": "none — this change touches no database anywhere",
-  "secrets": "set CONVEYANCING_ACCESS_CODES in Vercel for Preview and Production before testing; the named comp list itself stays in the private spreadsheet per outreach RULE 4, never in git",
-  "other_repo": "none",
-  "manual_verify": "on the PR preview open /reports/conveyancing?access=<internal code>, run an address, confirm the early-access download panel renders and the PDF generates via Railway; then confirm ?access=wrong-code shows the plain free tier"
+  "db_reset": "no — no schema or data changes; the bushfire statewide ingest was verified present so no ingest run is needed",
+  "secrets": "no — no new environment variables; the RFS BFPL endpoint is public and unauthenticated",
+  "other_repo": "no — all changes are in this repository; Railway redeploy picks up services/ and scripts/ together from the same image",
+  "manual_verify": "yes — after deploy, regenerate the Bowral grant-link PDF (conveyance.plotdetect.com.au/?access=<code>) and confirm the shadow row shows the assumed-envelope wording and the bushfire row cites the live RFS query; both were verified locally against production APIs before merge (Bowral + 14 Stanley St Concord regression)"
  }
 }
