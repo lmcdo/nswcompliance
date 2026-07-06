@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "User-facing legal due-diligence PDF: land-tax figures previously rendered from a hardcoded 2025 fallback on EVERY production report (tax_thresholds table verified ABSENT from production 2026-07-06 — migration 046 never applied), and the ANEF contour value the platform already resolves was never surfaced. Both slices change sentences a buyer relies on before exchange, so Critical tier applies.",
-  "commit_hash": "ea35e6cc",
+  "commit_hash": "708999fe",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "scripts/conveyancing_db.py",
