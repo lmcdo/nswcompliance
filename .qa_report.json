@@ -1,134 +1,136 @@
 {
- "tier": "critical",
- "commit_hash": "c10b1065",
- "justification": "Fixes five live-verified truth defects in the conveyancing PDF (a legal due-diligence document): a fabricated LEP height attribution in the shadow row, silent dropping of unrecognised Planning Portal layer groups (missed the Sydney Drinking Water Catchment constraint at Bowral), a false claim that the NSW state layer lacks data for an LGA when the gap is in our own ingest, blanket false s10.7(2) non-disclosure claims, and a Codes SEPP setback wrongly attributed to TI SEPP s2.120 — plus golden-sentence tests and a fail-soft lint extension so the defect class cannot silently return.",
- "files": [
-  "scripts/generate_conveyancing_report.py",
-  "scripts/conveyancing_db.py",
-  "scripts/lint_brief_failsoft.py",
-  "services/conveyancing.py",
-  "services/shadow_detector.py",
-  "tests/test_conveyancing_truth.py",
-  "tests/fixtures/bowral_layerintersect.json"
- ],
- "pre_impl": {
-  "existing_data": "Investigation was completed beforehand in the remediation plan (ce-conveyancing-integrity-remediation-2026-07): every claim in the Bowral PDF was verified against live NSW sources on 2026-07-06, including portal layerintersect for propId 1119594, the state HOB layer returning zero features, RFS BFPL returning zero features at the lot but one feature elsewhere in the LGA, and Valuer General values. Honest shadow-provenance wording already existed in the Intelligence Brief frontend and ShadowTool but was never ported to the PDF renderer.",
-  "assumption_mismatch": "The PDF assumed every shadow height was an LEP control when three of four height_source values are not; it assumed absence of a layerintersect group meant absence of the constraint when the portal simply is not exhaustive per LGA; and it assumed our spatial_overlays coverage table spoke for the NSW state layer. The prod ops check also disproved the suspected missing bushfire ingest: the statewide ALL coverage row exists with 223,847 features, so the Bowral footnote fired because LGA derivation returned nothing at that point, which the live RFS query now bypasses entirely.",
-  "new_vs_existing": "No new data sources were built: the live bushfire check reuses the existing production client _query_rfs_bfpl from services/bushfire_prescreen.py as a third parallel future, the honest shadow wording mirrors the existing Intelligence Brief copy, and the lint extension adds targets and one rule to the existing lint_brief_failsoft.py rather than forking a new linter. New code is confined to pure sentence-builder functions extracted so the exact user-visible wording is testable without reportlab.",
-  "external_source_error": "If the RFS BFPL ArcGIS service times out, errors, or returns an error body, _query_rfs_bfpl returns is_bushfire_prone None and build_bushfire_row renders 'Not assessed — RFS service unavailable', falling back to the ingested PostGIS hit only when one exists — a failed live query can never render as 'Clear'. If the shadow pipeline is unreachable the row stays 'Not assessed', and if the portal layerintersect returns unrecognised groups they are captured verbatim and logged at WARNING instead of being dropped.",
-  "frontend_type": "The free-tier JSON contract gains optional keys only (sdwc, other_instruments, and class/map_title inside sepp_overlays entries), so the existing ConveyancingTool display and cached conveyancing_cache blobs from older code read cleanly with .get() defaults; confidence remains one of the same three string values, now computed with integrity caps. No TypeScript changes were needed and jest was not touched.",
-  "user_failure_mode": "Before this change a conveyancer reading the Bowral PDF saw a fabricated '9 m LEP maximum height' claim, a missing drinking-water-catchment constraint with a cover tile saying CONSTRAINTS: None, a false statement that bushfire was not mapped for the LGA, and 'Confidence: high' — all silently wrong in a document meant for legal due diligence. Failure now surfaces visibly: assumed heights are labelled as assumptions, failed queries render 'Not assessed', unknown portal layers print under Other planning instruments, and confidence caps at medium when coverage or provenance is degraded."
- },
- "functions": [
-  {
-   "name": "build_shadow_row",
-   "file_line": "scripts/generate_conveyancing_report.py:1907",
-   "input": "the shadow pipeline outputs dict with height_m, height_source, adg_compliant and Jun 21 scenarios, or None when the pipeline was unreachable",
-   "output": "a (text, style_key, source_label) tuple where LEP attribution and the 'NSW LEP' source label appear only for height_source values that trace to an LEP control",
-   "if_none": "None renders 'Not assessed'; height_source 'default' renders the assumed-envelope wording and never asserts Clear; a missing or unrecognised height_source fails closed to the assumed-envelope label rather than claiming the LEP"
+  "tier": "standard",
+  "justification": "User-facing truth defect (brief served 8-year refusal stats from a source frozen at 2023-04 as if current) but additive-only payload changes, fail-closed guards, no DB writes, no conveyancing PDF surface touched. Critical not needed: no new external source wired; Minor too low: changed user-visible statistical claims.",
+  "commit_hash": "5515f4e7",
+  "files": [
+    "services/da_outcome.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/components/reports/DAOutcomes.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_da_outcome.py",
+    "tests/test_brief_da_outcomes.py",
+    "frontend-nextjs/__tests__/components/reports/DAOutcomes.test.tsx",
+    "tests/fixtures/brief_golden/da_outcomes.json",
+    "tests/fixtures/brief_golden/da_refusal_stats.json"
+  ],
+  "pre_impl": {
+    "existing_data": "DA tracking MapServer (frozen extract, newest lodgement 2023-04-29 verified live 2026-07-06); brief payloads da_outcomes/da_refusal_stats; golden fixtures captured 2026-07-04",
+    "assumption_mismatch": "If the layer is refreshed or replaced, sentences stay correct automatically: the window is derived from the data (currency probe + row min/max), never hardcoded. If the layer disappears, the currency probe raises and the field renders NOT_AVAILABLE.",
+    "new_vs_existing": "Payload fields are additive (radius_m/years_back kept); old payloads without window fields hit the frontend suppression path — temporal claim omitted, never defaulted.",
+    "external_source_error": "ArcGIS returns HTTP 200 + error body; arcgis_get_with_retry maps that to {} and da_outcome.py raises on missing 'features'/'count' — never a silent zero.",
+    "frontend_type": "DAOutcomesPayload/RefusalStatsRow extended with optional data_currency/window_start/window_end in components/reports/DAOutcomes.tsx (moved from page.tsx).",
+    "user_failure_mode": "Currency probe failure -> field NOT_AVAILABLE with reason (visible gap row), not undated stats. Missing window fields -> 'Determination counts are not shown — the data window ... could not be established'."
   },
-  {
-   "name": "build_bushfire_row",
-   "file_line": "scripts/generate_conveyancing_report.py:1972",
-   "input": "the live RFS BFPL result dict (or None on failure) plus the ingested PostGIS bushfire hit dict when one exists",
-   "output": "a (text, style_key, source_label) tuple: alert with the RFS category when prone, Clear citing the live query when not prone, alert from ingested data or Not-assessed when the live query failed",
-   "if_none": "both inputs missing yields 'Not assessed — RFS service unavailable' with the note style, so a network failure can never be rendered as a Clear verdict"
-  },
-  {
-   "name": "build_unmapped_note",
-   "file_line": "scripts/generate_conveyancing_report.py:2027",
-   "input": "the covered_layers set (or list from cache, or None when coverage could not be determined)",
-   "output": "the coverage footnote owning the gap as PlotDetect's ingested data, or None when everything is covered; bushfire is deliberately excluded because it is live-checked",
-   "if_none": "None coverage returns no footnote at all rather than fabricating a claim about which layers are or are not mapped"
-  },
-  {
-   "name": "parse_controls",
-   "file_line": "scripts/generate_conveyancing_report.py:1117",
-   "input": "the raw layerintersect response list from the NSW Planning Portal for a property",
-   "output": "the controls dict, now including a verbatim sdwc entry for the drinking water catchment and an other_instruments list capturing every unrecognised layer group with its titles",
-   "if_none": "an unrecognised group is appended to other_instruments and logged at WARNING instead of silently discarded; empty results blocks are still skipped so no phantom entries appear"
-  },
-  {
-   "name": "_compute_confidence",
-   "file_line": "services/conveyancing.py:675",
-   "input": "controls, overlays and valuation as before, plus optional covered_layers, shadow_height_source and live_query_failures integrity signals",
-   "output": "high, medium or low where field completeness builds the base score and integrity gaps cap it — unmapped coverage layers or a defaulted shadow height cap at medium, two or more live failures cap at low",
-   "if_none": "callers that pass no integrity signals get the old completeness behaviour unchanged, so the free-tier endpoint keeps working while gaining the coverage cap it now passes"
+  "functions": [
+    {
+      "name": "get_data_currency",
+      "file_line": "services/da_outcome.py:161",
+      "input": "none (queries tracking layer, cached per process)",
+      "output": "YYYY-MM-DD newest lodgement -> RefusalStats.data_currency and brief payload",
+      "if_none": "raises RuntimeError on transport failure, zero rows, or unparseable value; failures are not cached"
+    },
+    {
+      "name": "get_refusal_rate",
+      "file_line": "services/da_outcome.py:276",
+      "input": "lga name and years window from brief config (CONFIG.da_outcomes_years_back)",
+      "output": "RefusalStats + window_start + data_currency",
+      "if_none": "currency probe failure raises before counts — stats without a stated window are never produced"
+    },
+    {
+      "name": "_fetch_da_outcomes",
+      "file_line": "services/intelligence_brief.py:1761",
+      "input": "lng/lat floats from the geocoded brief address",
+      "output": "payload dict with outcomes + data_currency + window_start/window_end (row-derived)",
+      "if_none": "raise -> _safe_call stamps NOT_AVAILABLE; empty rows -> window None + data_currency present"
+    },
+    {
+      "name": "formatMonthYear / lodgedWindowPhrase",
+      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:35",
+      "input": "ISO date strings from payload",
+      "output": "'April 2023' phrases in sentences",
+      "if_none": "returns null/'' -> temporal phrase suppressed, never a fabricated date"
+    },
+    {
+      "name": "RefusalStatsSentence",
+      "file_line": "frontend-nextjs/components/reports/DAOutcomes.tsx:125",
+      "input": "RefusalStatsRow payload object from the brief SSE stream",
+      "output": "windowed sentence or explicit suppression message",
+      "if_none": "missing window fields -> counts suppressed with stated reason (line 134)"
+    }
+  ],
+  "values": [
+    {
+      "value": "data_currency",
+      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:127",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:35 (formatMonthYear null on non-ISO)",
+      "if_missing": "extent note omitted; refusal sentence replaced by suppression message"
+    },
+    {
+      "value": "window_start/window_end",
+      "read_at": "frontend-nextjs/components/reports/DAOutcomes.tsx:44",
+      "nullable": "yes",
+      "guard_at": "lodgedWindowPhrase returns '' unless both ends parse",
+      "if_missing": "no 'lodged between' phrase; counts still shown for the outcomes list (factual, no time claim)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "newest LODGEMENT_DATE on the tracking layer (currency probe)",
+      "file_line": "services/da_outcome.py:175",
+      "where_clause": "LODGEMENT_DATE IS NOT NULL ORDER BY LODGEMENT_DATE DESC LIMIT 1",
+      "if_zero": "raises RuntimeError ('no rows — cannot state a data window')",
+      "if_wrong": "unparseable value raises; lexicographic DESC on the layer's fixed-width string dates is order-correct (verified live)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Source goes stale AGAIN after a future re-wire (or stays frozen while users assume currency)",
+      "what_happens": "Without the guard, stats render as current; with it, every sentence carries the data-derived window ('lodged between January 2018 and April 2023 (the extent of the published tracking data)')",
+      "mitigated": true,
+      "how": "services/da_outcome.py:161 currency probe + tests/test_brief_da_outcomes.py window assertions + jest golden tests pin the phrasing",
+      "repro": "python -m pytest tests/test_brief_da_outcomes.py -k window; npx jest --testPathPattern=DAOutcomes"
+    },
+    {
+      "scenario": "Currency probe fails while the counts succeed",
+      "what_happens": "Stats without a window would render undated (the original defect)",
+      "mitigated": true,
+      "how": "services/da_outcome.py:307 probe runs before counts and raises; test_currency_failure_fails_the_stats_closed",
+      "repro": "python -m pytest tests/test_da_outcome.py -k currency_failure"
+    },
+    {
+      "scenario": "Fractional-seconds lodgement dates ('20230429151817.89') pass through unparsed",
+      "what_happens": "Window derivation drops rows / currency probe raises spuriously; 3 rows in the pre-fix golden fixture prove this happened in production captures",
+      "mitigated": true,
+      "how": "services/da_outcome.py:72 _DATE_14_RE optional fractional suffix; test_fractional_seconds_format",
+      "repro": "python -m pytest tests/test_da_outcome.py -k fractional"
+    },
+    {
+      "scenario": "A payload without window fields reaches the frontend (stale cache, old generator)",
+      "what_happens": "The undated implied-current framing would silently return to the brief",
+      "mitigated": true,
+      "how": "DAOutcomes.tsx suppression paths; jest 'without window fields (defensive)' and 'without a data window' tests",
+      "repro": "npx jest --testPathPattern=DAOutcomes -t suppress"
+    },
+    {
+      "scenario": "Someone reintroduces 'last N years' arithmetic in the brief UI",
+      "what_happens": "Undated recency claim ships again",
+      "mitigated": true,
+      "how": "static-claims guard in DAOutcomes.test.tsx greps component + page source and fails the suite",
+      "repro": "npx jest --testPathPattern=DAOutcomes -t 'static claims'"
+    },
+    {
+      "scenario": "Refusal stats for an LGA whose window excludes all data (e.g. years_back shrunk below the frozen extent)",
+      "what_happens": "total_determined is zero and a 0/0 rate would be fabricated",
+      "mitigated": true,
+      "how": "get_refusal_rate returns None (queried-empty) -> brief renders AUTHORITATIVE None, HIDE_WHEN_NULL keeps the row out",
+      "repro": "python -m pytest tests/test_da_outcome.py -k empty_results"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No — sentences are pinned by golden jest tests; live layer currency re-verified 2026-07-06"
   }
- ],
- "values": [
-  {
-   "value": "DEFAULT_HEIGHT_M = 9.0 (services/shadow_detector.py:75)",
-   "read_at": "shadow_detector._get_height_limit fallback; surfaces in the PDF only through build_shadow_row's assumed-envelope wording, never as an LEP claim",
-   "if_missing": "if height_source is absent from the outputs dict the row fails closed to the assumed-envelope label — provenance is never inferred"
-  },
-  {
-   "value": "_LEP_HEIGHT_SOURCES = {spatial_overlays, regulatory_provisions, planning_portal}",
-   "read_at": "build_shadow_row when deciding whether LEP attribution is permitted for the shadow row",
-   "if_missing": "any value outside the set (including default, None, or a future unrecognised source) renders assumed-envelope wording, so new sources must opt in explicitly"
-  },
-  {
-   "value": "CONVEYANCING_TARGETS in scripts/lint_brief_failsoft.py",
-   "read_at": "pre-commit hook runs the lint with default targets, which now include generate_conveyancing_report.py and services/conveyancing.py",
-   "if_missing": "removing a file from the target list silently drops its except-block coverage — the lint's scope is visible in its pre-commit output on every run"
-  }
- ],
- "queries": "N/A — no DB queries were added or modified; the only database interaction in this change was a read-only pre-implementation ops check of spatial_overlays_coverage (bushfire ALL row present, 223,847 features), and the existing get_unique_overlays SQL is untouched.",
- "break_it": [
-  {
-   "scenario": "A cached conveyancing_cache blob written by the previous deploy lacks the new sdwc and other_instruments keys when the PDF endpoint unpacks it",
-   "what_happens": "generate_pdf reads both via controls.get() with None/empty defaults, so the report renders without the SDWC row exactly as the old parser would have produced",
-   "mitigated": "yes — every new controls key is read defensively so stale cache blobs render cleanly",
-   "how": "all new keys are read with .get() and or-[] guards; no code path indexes controls['sdwc'] without a truthiness check first",
-   "repro": "python -c \"import sys; sys.path.insert(0,'scripts'); from generate_conveyancing_report import parse_controls; c=parse_controls([]); c.pop('sdwc'); c.pop('other_instruments'); print(c.get('sdwc'), c.get('other_instruments') or [])\""
-  },
-  {
-   "scenario": "The RFS BFPL service is down while the property genuinely is bushfire prone and our PostGIS ingest has the polygon",
-   "what_happens": "the live query returns None, build_bushfire_row falls back to the ingested hit and renders an alert row labelled as ingested data with the live check noted unavailable — the buyer still sees the constraint",
-   "mitigated": "yes — three-state row semantics keep the ingested alert visible whenever the live check fails",
-   "how": "explicit three-state semantics in build_bushfire_row: live result governs, ingested hit is the failure fallback, and 'Clear' is only reachable from a successful live query",
-   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestBushfireRowSemantics::test_live_failure_falls_back_to_postgis_hit -q"
-  },
-  {
-   "scenario": "The live RFS query says not prone but the stale PostGIS ingest still contains a bushfire polygon for the lot",
-   "what_happens": "the reconciliation block at the top of generate_pdf strips the stale overlay and logs a warning, so the cover tile, risk row, Section 5 note and consultant table all agree with the live answer instead of contradicting each other",
-   "mitigated": "yes — pre-render reconciliation makes every PDF section agree with the live RFS answer",
-   "how": "bushfire reconciliation runs before any rendering; the risk row is built from build_bushfire_row rather than the coverage-based flag() helper",
-   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestBushfireRowSemantics::test_live_clear_cites_live_rfs -q then inspect generate_pdf's _bf_live_prone branch"
-  },
-  {
-   "scenario": "A future Planning Portal release adds a brand-new layerintersect group name this parser has never seen",
-   "what_happens": "the group is captured verbatim into other_instruments, logged at WARNING so it surfaces in Railway logs, and rendered under Other planning instruments — deleting the else branch makes the zombie-layer test fail",
-   "mitigated": "yes — the fail-open else branch plus a mutation test guarantee unknown groups surface",
-   "how": "fail-open else branch in parse_controls plus the golden mutation test asserting the captured layer and titles",
-   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestParseControlsFailOpen::test_unknown_layer_group_is_captured_not_dropped -q"
-  },
-  {
-   "scenario": "A Wingecarribee-profile report (unmapped coverage layers, defaulted shadow height) is served from the free-tier endpoint that previously claimed Confidence: high",
-   "what_happens": "_compute_confidence caps the rating at medium from the covered_layers gap alone, and would cap at low if two live queries had also failed",
-   "mitigated": "yes — integrity caps override the completeness score whenever coverage or provenance is degraded",
-   "how": "integrity caps applied after the completeness score, exercised by five confidence tests including a clean-metro regression guard that must stay high",
-   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestConfidenceIntegrity -q"
-  },
-  {
-   "scenario": "Someone reintroduces the blanket s10.7(2) claim or the TI SEPP 9 m setback wording in a future copy edit",
-   "what_happens": "the static-claims guard scans the generator source for the forbidden phrases and fails the suite, and the reworded rows carry source_ref comments naming the actual instruments",
-   "mitigated": "yes — a source-scanning guard test fails the suite if any forbidden claim returns",
-   "how": "TestStaticClaimsGuard forbids six phrases including the fixed shadow source label, the state-layer blame sentence, and both false regulatory claims",
-   "repro": "python -m pytest tests/test_conveyancing_truth.py::TestStaticClaimsGuard -q after re-adding any forbidden phrase to scripts/generate_conveyancing_report.py"
-  },
-  {
-   "scenario": "The nearby-DA fetch throws (DB down or ePlanning outage) during CLI or service PDF generation",
-   "what_happens": "das becomes None instead of an empty list, and the DA section renders 'Not assessed — DA records could not be retrieved' instead of the previous confident 'No development applications lodged' claim",
-   "mitigated": "yes — the extended lint blocks benign except-block fallbacks and das is now three-state",
-   "how": "the new except-block lint rule flagged this exact fallback during development; das now uses three-state semantics (list, empty list, None) through both entry points",
-   "repro": "python scripts/lint_brief_failsoft.py after reverting the das = None change — the lint fails on the benign except-block fallback"
-  }
- ],
- "post_merge": {
-  "db_reset": "no — no schema or data changes; the bushfire statewide ingest was verified present so no ingest run is needed",
-  "secrets": "no — no new environment variables; the RFS BFPL endpoint is public and unauthenticated",
-  "other_repo": "no — all changes are in this repository; Railway redeploy picks up services/ and scripts/ together from the same image",
-  "manual_verify": "yes — after deploy, regenerate the Bowral grant-link PDF (conveyance.plotdetect.com.au/?access=<code>) and confirm the shadow row shows the assumed-envelope wording and the bushfire row cites the live RFS query; both were verified locally against production APIs before merge (Bowral + 14 Stanley St Concord regression)"
- }
 }
