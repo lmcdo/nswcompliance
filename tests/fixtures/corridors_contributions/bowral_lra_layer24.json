@@ -1,0 +1,71 @@
+{
+  "displayFieldName": "EPI_NAME",
+  "fieldAliases": {
+    "EPI_NAME": "EPI Name",
+    "LGA_NAME": "LGA Name",
+    "LRA_TYPE": "Type",
+    "LAY_CLASS": "Class",
+    "LABEL": "LABEL",
+    "AUTHORITY": "Authority",
+    "CURRENCY_DATE": "Currency Date",
+    "COMMENCED_DATE": "Commenced Date",
+    "AMENDMENT": "Amendment"
+  },
+  "fields": [
+    {
+      "name": "EPI_NAME",
+      "type": "esriFieldTypeString",
+      "alias": "EPI Name",
+      "length": 150
+    },
+    {
+      "name": "LGA_NAME",
+      "type": "esriFieldTypeString",
+      "alias": "LGA Name",
+      "length": 50
+    },
+    {
+      "name": "LRA_TYPE",
+      "type": "esriFieldTypeString",
+      "alias": "Type",
+      "length": 50
+    },
+    {
+      "name": "LAY_CLASS",
+      "type": "esriFieldTypeString",
+      "alias": "Class",
+      "length": 100
+    },
+    {
+      "name": "LABEL",
+      "type": "esriFieldTypeString",
+      "alias": "LABEL",
+      "length": 150
+    },
+    {
+      "name": "AUTHORITY",
+      "type": "esriFieldTypeString",
+      "alias": "Authority",
+      "length": 50
+    },
+    {
+      "name": "CURRENCY_DATE",
+      "type": "esriFieldTypeDate",
+      "alias": "Currency Date",
+      "length": 8
+    },
+    {
+      "name": "COMMENCED_DATE",
+      "type": "esriFieldTypeDate",
+      "alias": "Commenced Date",
+      "length": 8
+    },
+    {
+      "name": "AMENDMENT",
+      "type": "esriFieldTypeString",
+      "alias": "Amendment",
+      "length": 150
+    }
+  ],
+  "features": []
+}

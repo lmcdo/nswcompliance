@@ -1,77 +1,138 @@
 {
-  "tier": "standard",
-  "justification": "User-facing brief truth fix: the ANEF field sourced parcel-level values from the coarse anef_zones digitisations (13-vertex polygons, ANEF-20 ~789 km2) which stamped false contour values on fringe lots. Value path narrowed to the live LEP/SEPP-mapped government layer. No DB writes, no new sources, no frontend type changes.",
-  "commit_hash": "84053024",
+  "tier": "critical",
+  "justification": "Two new sections in the conveyancing PDF, a user-facing legal due-diligence document: (A) development-contributions plans named verbatim from the NSW Planning Portal /cp lookup, (B) corridors and land-reservation-acquisition check from the LRA layer 24, SydneyTrain ISEPP layers and the portal /warn endpoint. An LRA hit flips the cover CONSTRAINTS tile. Wrong or silently-missing output here misleads a purchaser before exchange.",
+  "commit_hash": "5a1c5ea0",
   "files": [
-    "services/intelligence_brief.py",
-    "tests/test_overlay_live_fallback.py",
-    "tests/test_brief_slice2_distances.py"
+    "services/portal_constraints.py",
+    "services/conveyancing.py",
+    "scripts/generate_conveyancing_report.py",
+    "tests/test_conveyancing_corridors.py",
+    "tests/test_conveyancing_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "anef_zones measured 2026-07-06: 10-13 vertices per contour, ANEF-20 polygon ~789 km2 (published ANEF 2039 contour is a fraction); live ePlanning Protection ANEF layer holds 29 LEP/SEPP-mapped features (Liverpool, Upper Hunter, WSA precincts; no Sydney KSA). Conveyancing PDF already quarantined in PR #681 with the same evidence.",
-    "assumption_mismatch": "If anef_zones is later re-digitised properly, re-enabling it is a one-line resolver change plus removing the quarantine guard tests; until then Sydney lots render the honest scoped claim 'No ANEF contour in the mapped planning layers' instead of a fabricated value.",
-    "new_vs_existing": "No new sources: the field builder now uses ONLY the existing portal_constraints.fetch_anef live query; fetch_anef_zone stays as the documented quarantined accessor (verify-app parity) with its contract unchanged so existing harness stubs keep working."
+    "existing_data": "Phase-0 validated 2026-07-07 and re-verified live this session: /cp at Concord 1456609 returns two plan names plus the HPC block, Bowral 1119594 returns nine Wingecarribee plans; LRA layer 24 holds 5,419 polygons with AUTHORITY and CURRENCY_DATE fields; SydneyTrain_ISEPP layers 1/2 hold 825/800 polygons with agency and defining_legislation; /warn is positive at Goulburn 448547 and empty at Bowral and Concord. Repo grep found no existing reference to the LRA layer, ISEPP layers or /warn endpoint.",
+    "assumption_mismatch": "If the portal renames response keys or the ArcGIS layers move, the fetchers fail loudly: a /cp body missing both cp and icdp blocks raises and renders Not assessed; an ArcGIS error body returns {} from arcgis_get_with_retry and the missing-features raise keeps the sub-check failed, never checked-clean. Fixtures are recorded live responses, so a drift shows up as a test-vs-live divergence at regeneration, not a silent wrong sentence.",
+    "new_vs_existing": "Reused: arcgis_get_with_retry (retry plus circuit breaker), the missing-features raise pattern from da_outcome.py, the get_*_live wrapper pattern from get_anef_live/get_bushfire_live, and the /cp parse shape from intelligence_brief._fetch_contributions (PR #460). New: a three-state re-wrap of the /cp parse (the brief fetcher collapses queried-empty and transport failure into one None), the corridor layer fetchers, and the two pure sentence builders. The brief itself is untouched.",
+    "external_source_error": "Every external call has an explicit failure surface: /cp transport error or malformed body renders 'Not assessed — contributions lookup unavailable'; each corridor sub-check (LRA, rail, /warn) fails independently so one outage never suppresses the others' results; an HTTP-200 ArcGIS error body cannot masquerade as zero features because the client's {} triggers the raise. The checked-clean sentence is only composed from sub-checks that actually ran and returned empty.",
+    "frontend_type": "No frontend or API-contract change: both sections are PDF-render additions behind generate_pdf keyword arguments defaulting to None, so the free-tier JSON response shape, the pipeline cache payload and the Next.js components are untouched; jest and tsc surfaces see no new types.",
+    "user_failure_mode": "Worst case for the reader: a lot genuinely inside an LEP acquisition corridor rendering as clear, or a failed lookup implying no contributions plans exist. Both are pinned by mutation-style tests: removing either raise flips a recorded-failure fixture test; the all-clear corridors sentence requires all three sub-checks to have run and returned empty; LRA wording states map presence, authority and instrument only — the static-claims guard now forbids acquisition-intent phrasing."
   },
   "functions": [
     {
-      "name": "_anef_fields",
-      "file_line": "services/intelligence_brief.py:2883",
-      "input": "covered layers, overlay anef value, lat/lng from the geocoded brief address",
-      "output": "display DataField plus numeric anef_level DataField from one live-layer lookup",
-      "if_none": "live lookup failure returns NOT_AVAILABLE with reason, never a checked-none claim; genuine none renders the scoped 'mapped planning layers' wording"
+      "name": "fetch_corridors_reservations",
+      "file_line": "services/portal_constraints.py:856",
+      "input": "lat and lng of the lot, optional EPSG:4326 lot polygon WKT, optional Planning Portal propId for the /warn lookup",
+      "output": "payload with query_basis (lot_polygon or centroid_30m), data_currency from the max LRA CURRENCY_DATE, and three per-sub-check dicts each carrying status found/empty/failed plus verbatim items",
+      "if_none": "never returns None itself; each sub-check that raises is caught and recorded as status failed so the renderer states Not assessed for that check while the others still render"
     },
     {
-      "name": "fetch_anef_zone",
-      "file_line": "services/intelligence_brief.py:1970",
-      "input": "latitude and longitude for the curated anef_zones table",
-      "output": "level, airport and version dict or None — QUARANTINED, no brief or PDF surface calls it",
-      "if_none": "returns None on failure (fail-open contract preserved for the verify-app parity and future re-digitised data)"
+      "name": "fetch_contributions_plans",
+      "file_line": "services/portal_constraints.py:951",
+      "input": "Planning Portal propId as integer, queried against the viewer /cp endpoint with the portal Origin and Referer headers",
+      "output": "three-state dict: found with verbatim plan names, plan URLs, HPC block and lgaName; empty when the cp and icdp blocks are present but hold no results; failed on any transport or malformed-body error",
+      "if_none": "a bare {} or a body missing both cp and icdp blocks raises inside _fetch_cp_payload and returns status failed — a degraded response can never render as no plans exist"
+    },
+    {
+      "name": "_query_corridor_layer",
+      "file_line": "services/portal_constraints.py:779",
+      "input": "ArcGIS layer query URL, prepared geometry params (lot polygon rings or centroid plus 30 m buffer), and the outFields string",
+      "output": "list of verbatim feature attribute dicts from the layer; an empty list only when the layer genuinely returned a features array with nothing in it",
+      "if_none": "arcgis_get_with_retry returns {} on transport failure or an HTTP-200 ArcGIS error body; the missing-features check raises RuntimeError so the caller records the sub-check as failed, never as empty"
+    },
+    {
+      "name": "build_corridors_lines",
+      "file_line": "scripts/generate_conveyancing_report.py:2337",
+      "input": "the corridors payload from fetch_corridors_reservations, or None when the module itself could not be imported or run",
+      "output": "pure render plan: tile_flip flag (LRA hits only), alert rows with authority, instrument and map-currency date, note rows for rail and warnings, Not-assessed rows per failed sub-check, and the checked-clean sentence",
+      "if_none": "a None payload renders all three sub-checks as Not assessed with tile_flip False and no clean sentence — an import failure can never read as a checked-clear result"
+    },
+    {
+      "name": "build_contributions_lines",
+      "file_line": "scripts/generate_conveyancing_report.py:2254",
+      "input": "the three-state contributions dict from fetch_contributions_plans, or None when the lookup never ran for this report",
+      "output": "pure render plan: intro sentence, verbatim plan name lines with document links, the HPC line carrying the data-derived commencement date, or the single queried-empty or Not-assessed status line",
+      "if_none": "None and any non-found non-empty status render the Not assessed sentence directing the reader to the portal or council — never the queried-empty wording"
     }
   ],
   "values": [
     {
-      "value": "regional.anef_code / anef_level from the live Protection layer",
-      "read_at": "services/intelligence_brief.py:2917",
-      "nullable": "yes — band code may be absent, level may be unparseable",
-      "guard_at": "services/intelligence_brief.py:2873 (_parse_anef_number returns None on non-numeric, never a guess)",
-      "if_missing": "display falls back to whichever field exists; numeric field stays None at authoritative confidence"
+      "value": "LRA feature LABEL, AUTHORITY, EPI_NAME and CURRENCY_DATE rendered into the Section 11 alert sentence",
+      "read_at": "scripts/generate_conveyancing_report.py:2318",
+      "nullable": "yes — any attribute can be null in the layer",
+      "guard_at": "scripts/generate_conveyancing_report.py:2322 (each field falls back to a stated 'not stated in the mapping layer', never invented)",
+      "if_missing": "the sentence states the field is not stated in the mapping layer; the currency clause is omitted when CURRENCY_DATE is absent rather than fabricating a date"
+    },
+    {
+      "value": "HPC Commenced Date and Ministerial Order URL from the /cp icdp block",
+      "read_at": "services/portal_constraints.py:975",
+      "nullable": "yes — the icdp block may be absent or partial",
+      "guard_at": "scripts/generate_conveyancing_report.py:2278 (each HPC fragment only appended when present)",
+      "if_missing": "the HPC line renders only the fields the portal returned; no commencement date or order link is invented"
+    },
+    {
+      "value": "/warn item title and layerRef rendered as note rows",
+      "read_at": "services/portal_constraints.py:840",
+      "nullable": "yes — items may lack title",
+      "guard_at": "services/portal_constraints.py:843 (title falls back to layerRef with a WARNING log; unknown layerRef values are captured, never dropped)",
+      "if_missing": "a titleless item renders its layerRef verbatim so nothing the portal warns about vanishes from the report"
     }
   ],
-  "queries": "N/A — no SQL changed; the quarantined anef_zones query is untouched and uncalled by this surface",
+  "queries": "N/A — no SQL changed; all new data comes from live NSW Planning Portal and ArcGIS HTTP endpoints",
   "break_it": [
     {
-      "scenario": "Someone re-adds the anef_zones step to the brief's ANEF field",
-      "what_happens": "Coarse 13-vertex polygons would again stamp false contour values on fringe lots (Pymble rendered ANEF 20 pre-quarantine)",
+      "scenario": "ArcGIS answers HTTP 200 with an error body for the LRA layer while the lot genuinely sits in an acquisition corridor",
+      "what_happens": "arcgis_get_with_retry returns {}; without the missing-features raise the sub-check would record empty and the section would print the checked-clean sentence over a real acquisition corridor",
       "mitigated": true,
-      "how": "guard tests monkeypatch fetch_anef_zone to raise AssertionError if consulted (both test files)",
-      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k never_consulted; python -m pytest tests/test_brief_slice2_distances.py -k quarantined"
+      "how": "_query_corridor_layer raises on a body without a features key; the sub-check records failed and renders Not assessed; the clean sentence is only composed from sub-checks that ran",
+      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k arcgis_error_body_is_failed_not_empty"
     },
     {
-      "scenario": "Live layer lookup fails and the field claims no contour applies",
-      "what_happens": "A checked-none claim off a failed check — the WO-2 silent-false-negative class",
+      "scenario": "The /cp endpoint degrades to a bare {} response during a portal outage",
+      "what_happens": "Without the missing-blocks raise the parse would find zero plans and the PDF would state no contributions plans were returned — an implied checked-absence built on a failed lookup",
       "mitigated": true,
-      "how": "failure branch returns NOT_AVAILABLE with 'did not complete' reason; existing test_anef_lookup_failures_are_not_available_not_no_contour still passes",
-      "repro": "python -m pytest tests/test_brief_slice2_distances.py -k lookup_failures"
+      "how": "_fetch_cp_payload raises when both cp and icdp blocks are absent; fetch_contributions_plans returns status failed and the section renders Not assessed",
+      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k bare_dict_is_failed_not_empty"
     },
     {
-      "scenario": "The honest-empty wording overclaims coverage (says 'no published contour' when Sydney KSA contours exist but are not machine-readable)",
-      "what_happens": "A Mascot brief would falsely assert no published contour exists at a genuinely noise-affected lot",
+      "scenario": "Only the rail corridor layer times out while LRA and /warn succeed (observed live on the Concord verification run)",
+      "what_happens": "A naive all-or-nothing fetch would either drop the whole section or hide the successful LRA and warnings results behind one failure",
       "mitigated": true,
-      "how": "wording changed to 'No ANEF contour in the mapped planning layers at this property' — scoped to exactly what was checked",
-      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k no_mapped_contour"
+      "how": "each sub-check catches its own exception; the failed one renders its own Not-assessed row and the partial clean sentence names only the sub-checks that ran empty",
+      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k rail_failure_isolated_from_lra; live-observed in reports/conveyancing/verify_concord_cc.pdf"
     },
     {
-      "scenario": "Covered-but-empty ingested overlay short-circuits to a blank instead of checking the live layer",
-      "what_happens": "Lots in covered LGAs would silently lose their live-layer contour value",
+      "scenario": "The portal introduces a new /warn layerRef category our code has never seen",
+      "what_happens": "A category filter would silently drop the new warning class and the report would omit something the portal explicitly warns purchasers about",
       "mitigated": true,
-      "how": "fall-through order preserved: overlay-with-value wins, else live layer, else honest empty/failure",
-      "repro": "python -m pytest tests/test_overlay_live_fallback.py -k falls_through_to_live"
+      "how": "fetch_portal_warnings captures every item verbatim (title plus layerRef, WARNING log when titleless) and the renderer prints all items — there is no allowlist to fall behind",
+      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k unknown_warn_layerref_captured_verbatim"
+    },
+    {
+      "scenario": "The lot polygon WKT is missing or unparseable for an address whose parcel sits partly inside an LRA corridor",
+      "what_happens": "A polygon-only implementation would either crash or silently skip the spatial checks, and a point-only check phrased as a lot statement would overclaim what was tested",
+      "mitigated": true,
+      "how": "the fetcher falls back to a centroid plus 30 m buffer and records query_basis; the sentence prefix switches to the within-30-m wording and a basis caveat renders",
+      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k centroid_basis"
+    },
+    {
+      "scenario": "Wording drift reintroduces acquisition-intent claims such as a compulsory-acquisition prediction into the LRA sentence",
+      "what_happens": "The report would assert an intention the mapping layer does not state — the LRA layer records map presence, type, authority and instrument only",
+      "mitigated": true,
+      "how": "static-claims guard in tests/test_conveyancing_truth.py now forbids the phrases 'will be acquired' and 'compulsory acquisition is proposed' anywhere in the generator source",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k forbidden_claims"
+    },
+    {
+      "scenario": "PR #674's fail-open other_instruments capture surfaces the same LRA group that Section 11 now reports, double-rendering the constraint",
+      "what_happens": "The same acquisition mapping would appear twice with different wording, and suppressing the fail-open copy unconditionally would lose it whenever the named check fails",
+      "mitigated": true,
+      "how": "the Section 7 list drops land-reservation-acquisition entries only when the Section 11 LRA sub-check itself found the hit; on a failed or empty named check the fail-open capture still renders",
+      "repro": "grep tile_flip scripts/generate_conveyancing_report.py shows the suppression is conditional on the found state; covered by test_failed_subcheck_never_reads_clean plus the fail-open tests in tests/test_conveyancing_truth.py"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "No — behaviour pinned by guard + wording tests; the verify app's /api/environmental/anef route still reads anef_zones (orphan endpoint, no in-repo consumers) — tracked in issue #686"
+    "db_reset": "No — no database schema or data changes anywhere in this branch",
+    "secrets": "No — all endpoints are public NSW government services requiring no keys",
+    "other_repo": "No — self-contained in services and scripts plus their tests",
+    "manual_verify": "Yes — regenerate one production PDF through the deployed Railway pipeline after merge (Burwood LRA-positive address 70 Fitzroy St) and read Sections 10-11, matching the local verification PDFs generated this session"
   }
 }

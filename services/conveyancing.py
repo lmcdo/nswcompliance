@@ -511,15 +511,55 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("ANEF value lookup failed: %s", e)
             return {"status": "failed"}
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    def _fetch_contributions():
+        """Development contributions plans (/cp) — three-state.
+
+        prior-art-checked: wraps portal_constraints.fetch_contributions_plans
+        (which mirrors intelligence_brief._fetch_contributions, PR #460, with
+        three-state semantics). A {"status": "failed"} result renders
+        "Not assessed", never an implied absence of plans.
+        """
+        if not resolved_prop_id:
+            return {"status": "failed"}
+        try:
+            try:
+                from portal_constraints import fetch_contributions_plans
+            except ImportError:
+                from services.portal_constraints import fetch_contributions_plans
+            return fetch_contributions_plans(resolved_prop_id)
+        except Exception as e:
+            logger.warning("contributions lookup failed: %s", e)
+            return {"status": "failed"}
+
+    def _fetch_corridors():
+        """Corridors / land-reservation-acquisition / portal warnings —
+        three-state per sub-check. None renders every sub-check "Not assessed".
+        """
+        try:
+            try:
+                from portal_constraints import fetch_corridors_reservations
+            except ImportError:
+                from services.portal_constraints import fetch_corridors_reservations
+            return fetch_corridors_reservations(
+                req.lat, req.lng, lot_wkt=lot_wkt, prop_id=resolved_prop_id,
+            )
+        except Exception as e:
+            logger.warning("corridors/reservations check failed: %s", e)
+            return None
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
         anef_future = executor.submit(_fetch_anef)
+        contributions_future = executor.submit(_fetch_contributions)
+        corridors_future = executor.submit(_fetch_corridors)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
         anef_live = anef_future.result()
+        contributions_result = contributions_future.result()
+        corridors_result = corridors_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -549,6 +589,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         proximity_m=proximity_m,
         bushfire_live=bushfire_live,
         anef_live=anef_live,
+        contributions=contributions_result,
+        corridors=corridors_result,
     )
 
     # Upload to R2
