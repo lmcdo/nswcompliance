@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-07-07T03:40:00+10:00",
-  "reason": "import-path fix only: change sys.path.insert(0) to append + import via services.threat_radar package form to stop pytest-session dual-import of PropertySale. No new queries, no logic change, no DB writes."
+  "status": "passed",
+  "timestamp": "2026-07-07T10:20:00+10:00",
+  "target": "enrich property-alerts email with richer ePlanning fields (DevelopmentType, CostOfDevelopment, NumberOfNewDwellings, CouncilApplicationNumber, exhibition end date)",
+  "findings_summary": "Live fill-rate check on Inner West (n=40): DevelopmentType 39/40 (nested list of {DevelopmentType:...}), CostOfDevelopment 40/40 (float), NumberOfNewDwellings 16/40, CouncilApplicationNumber 20/40 (e.g. DA/2026/0548), AssessmentExhibitionEndDate 4/40 (ISO w/ T00:00:00 — set only during objection window, the actionable field). DeterminationAuthority often 'Unknown' -> skip. No new queries; presentation-only change to build_alert_email; all values verbatim/null-guarded."
 }
