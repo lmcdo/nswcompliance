@@ -1,5 +1,5 @@
 {
  "status": "trivial",
- "timestamp": "2026-07-07T09:55:06.800541",
- "reason": "pre-PR review fix: builder wording branch for an HPC-only /cp response (no plans) \u2014 pure-function change, no DB, no new queries; the wider feature already passed the QA-gate Critical tier this session"
+ "timestamp": "2026-07-07T17:46:53.576789",
+ "reason": "robust fix for council-name->ePlanning-API mismatch: fix wrong canonical map entry (canada bay) + replace hardcoded resolver with API-vocabulary probe validation; no new DB queries, pure fix on already-QA-gated feature"
 }

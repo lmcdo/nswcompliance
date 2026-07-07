@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "New Section 'Structures & Records' in the conveyancing PDF (Stage 1 of 2) — the product's highest-liability text. It lists the subject lot's DA/CDC application records and, where structure detection runs (Stage 2), raises a structure with no matching record as a FACTUAL QUESTION, never an allegation. The defining constraint: no rendered string on any branch may state or imply a structure is unapproved/illegal/unauthorised/non-compliant/a breach/without consent. Wrong output here is a defamation or negligent-misstatement claim, so the no-verdict-word guard, three-state failure handling, fail-closed council resolution and adversarial wording review are the core of this change.",
-  "commit_hash": "555ba613",
+  "commit_hash": "dcce2035",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",

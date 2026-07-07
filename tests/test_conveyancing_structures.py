@@ -201,42 +201,60 @@ class TestGapSentenceHedges:
 # ---------------------------------------------------------------------------
 
 class TestGetStructuresRecordsLive:
+    """The council name OnlineDA accepts is API-specific and hardcoded maps drift,
+    so get_structures_records_live validates against the API's OWN vocabulary
+    (_fetch_eplanning_page probe) before trusting a result. These tests drive
+    that seam so no live HTTP is made."""
+
+    def _patch(self, monkeypatch, probe_rows, da=None, cc=None, exc=None):
+        import pre_da_history as pdh
+
+        def _probe(endpoint, filters, page):
+            return probe_rows
+
+        monkeypatch.setattr(pdh, "_fetch_eplanning_page", _probe)
+        if exc:
+            monkeypatch.setattr(pdh, "get_da_events", lambda c, f: (_ for _ in ()).throw(exc))
+        else:
+            monkeypatch.setattr(pdh, "get_da_events", lambda c, f: da or [])
+            monkeypatch.setattr(pdh, "get_pcc_events", lambda c, f: cc or [])
+
     def test_no_council_is_failed_not_empty(self):
         recs, status = get_structures_records_live(None, "1 Test St, Suburb NSW")
         assert recs is None
         assert status == "failed"
 
-    def test_unresolvable_council_fails_closed_not_empty(self):
-        """The silent-wrong-result guard: a council name that does not map to an
-        ePlanning-accepted string returns zero rows from the API, which would
-        print a FALSE 'no records'. It must fail closed to 'Not assessed'."""
-        recs, status = get_structures_records_live("Nonexistent Shire Council", "addr")
+    def test_council_unrecognised_by_api_fails_closed(self, monkeypatch):
+        """The silent-wrong-result guard: a council name the API does not
+        recognise returns zero rows (empty probe), which would print a FALSE
+        'no records'. It must fail closed to 'Not assessed'."""
+        self._patch(monkeypatch, probe_rows=[])  # API returns nothing for this name
+        recs, status = get_structures_records_live("Wrong Council Name", "addr")
         assert recs is None
         assert status == "failed"
 
-    def test_resolves_lep_name_to_eplanning_name(self):
-        """Canada Bay: the LEP-derived 'Canada Bay Council' must resolve to the
-        ePlanning-accepted 'City of Canada Bay Council' (the exact mismatch that
-        silently returned zero records before the fix)."""
-        from generate_conveyancing_report import _resolve_eplanning_council
-        assert _resolve_eplanning_council("Canada Bay Council") == "City of Canada Bay Council"
-        assert _resolve_eplanning_council("Inner West Council") == "Inner West Council"
-        assert _resolve_eplanning_council("Nonexistent Shire Council") is None
-
-    def test_reuses_pre_da_fetchers(self, monkeypatch):
-        import pre_da_history as pdh
-        monkeypatch.setattr(pdh, "get_da_events", lambda c, f: [{"pan": "PAN-1", "app_type": "Development Application"}])
-        monkeypatch.setattr(pdh, "get_pcc_events", lambda c, f: [{"pan": "CC-1", "app_type": "Construction Certificate"}])
-        # "Inner West Council" is a confirmed ePlanning name → resolver passes it through.
-        recs, status = get_structures_records_live("Inner West Council", "14 Stanley Street, Concord NSW 2137")
+    def test_recognised_council_returns_records(self, monkeypatch):
+        self._patch(
+            monkeypatch,
+            probe_rows=[{"PlanningPortalApplicationNumber": "PAN-x"}],  # API knows this council
+            da=[{"pan": "PAN-1", "app_type": "Development Application"}],
+            cc=[{"pan": "CC-1", "app_type": "Construction Certificate"}],
+        )
+        recs, status = get_structures_records_live("City of Canada Bay Council",
+                                                   "14 Stanley Street, Concord NSW 2137")
         assert status == "ok"
         assert {r["pan"] for r in recs} == {"PAN-1", "CC-1"}
 
+    def test_recognised_council_genuine_empty_is_ok_not_failed(self, monkeypatch):
+        """A recognised council with no application matching the address is a
+        GENUINE empty (status ok, [] records) — distinct from a name mismatch."""
+        self._patch(monkeypatch, probe_rows=[{"x": 1}], da=[], cc=[])
+        recs, status = get_structures_records_live("Inner West Council", "addr")
+        assert status == "ok"
+        assert recs == []
+
     def test_fetch_exception_is_failed(self, monkeypatch):
-        import pre_da_history as pdh
-        def _boom(c, f):
-            raise RuntimeError(" eplanning down ")
-        monkeypatch.setattr(pdh, "get_da_events", _boom)
+        self._patch(monkeypatch, probe_rows=[{"x": 1}], exc=RuntimeError(" eplanning down "))
         recs, status = get_structures_records_live("Inner West Council", "addr")
         assert recs is None
         assert status == "failed"

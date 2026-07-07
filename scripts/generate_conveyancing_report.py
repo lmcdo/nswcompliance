@@ -1630,7 +1630,7 @@ def _normalise_council(lga_name: str) -> Optional[str]:
         "mosman": "Mosman Municipal Council",
         "hunters hill": "Hunters Hill Council",
         "ryde": "City of Ryde Council",
-        "canada bay": "Canada Bay Council",
+        "canada bay": "City of Canada Bay Council",
         "strathfield": "Strathfield Municipal Council",
         "burwood": "Burwood Council",
         "cumberland": "Cumberland Council",
@@ -2297,83 +2297,65 @@ def get_tod_uplift_live(
         return tod, None
 
 
-# Confirmed-live ePlanning council names for LGAs missing from pre_da_history's
-# shared _LGA_TO_COUNCIL map (verified live 2026-07-07). Kept local so the shared
-# map / threat_radar copy need not be edited in this PR; migrate upstream later.
-_EPLANNING_COUNCIL_SUPPLEMENT = {
-    "canada bay": "City of Canada Bay Council",
-}
+def _council_recognised_by_eplanning(council: str) -> bool:
+    """Validate a council name against the ePlanning API's OWN vocabulary.
 
-
-def _resolve_eplanning_council(council_name: Optional[str]) -> Optional[str]:
-    """Map a derived council name to the EXACT string OnlineDA/OnlineCDC accepts.
-
-    The ePlanning CouncilName filter requires an exact match — the LEP-derived
-    name (e.g. "Canada Bay Council") does not match the API's "City of Canada Bay
-    Council", so an unmapped name silently returns zero rows. Returns the
-    accepted ePlanning name, or None when it cannot be resolved — the caller
-    then FAILS CLOSED ("Not assessed") rather than reporting a false "no records".
+    The council-name string OnlineDA/OnlineCDC accepts is API-SPECIFIC (e.g. it
+    wants "City of Canada Bay Council" where the LEP/spatial layers say "Canada
+    Bay"), and hardcoded maps drift. Rather than trust a map, probe the API: a
+    recognised CouncilName returns rows for the whole council; an unrecognised
+    string returns zero. A True here means a later zero-at-this-address result is
+    a GENUINE absence, not a name mismatch — the difference between an honest
+    "no applications" and a false one.
     """
-    if not council_name:
-        return None
+    from pre_da_history import _fetch_eplanning_page
     try:
-        from pre_da_history import _LGA_TO_COUNCIL
-    except ImportError:
-        _services_dir = str(project_root / "services")
-        if _services_dir not in sys.path:
-            sys.path.insert(0, _services_dir)
-        from pre_da_history import _LGA_TO_COUNCIL
-
-    name = council_name.strip()
-    accepted = set(_LGA_TO_COUNCIL.values())
-    if name in accepted:
-        return name  # already an exact ePlanning name
-    key = name.lower()
-    for source in (_LGA_TO_COUNCIL, _EPLANNING_COUNCIL_SUPPLEMENT):
-        if key in source:
-            return source[key]
-    # Strip common LGA suffixes and retry (e.g. "Canada Bay Council" -> "canada bay").
-    stripped = key
-    for suf in (" municipal council", " shire council", " city council",
-                " council", " city", " shire", " municipal"):
-        if stripped.endswith(suf):
-            stripped = stripped[: -len(suf)].strip()
-            break
-    for source in (_LGA_TO_COUNCIL, _EPLANNING_COUNCIL_SUPPLEMENT):
-        if stripped in source:
-            return source[stripped]
-    return None
+        page = _fetch_eplanning_page(
+            "OnlineDA", {"CouncilName": [council], "ApplicationType": "Development Application"}, 1,
+        )
+        return bool(page)
+    except Exception:
+        return False
 
 
 def get_structures_records_live(council_name: Optional[str], address: str):
     """Subject-lot DA + CDC application records for the Stage-1 reconciliation.
 
-    prior-art-checked: REUSES services.pre_da_history.get_da_events +
-    get_pcc_events + _LGA_TO_COUNCIL (the live OnlineDA/OnlineCDC fetchers +
-    council-name map) — no new fetcher. Stage 1 runs NO imagery/detection call.
+    prior-art-checked: REUSES services.pre_da_history.get_da_events /
+    get_pcc_events / _fetch_eplanning_page (live OnlineDA/OnlineCDC fetchers) and
+    the generator's own _normalise_council (the fullest ePlanning-name map, used
+    by get_nearby_das) — no new fetcher, no new council map. Stage 1 runs NO
+    imagery/detection call.
+
+    ROBUSTNESS (council names are API-specific and maps drift): the council name
+    is validated against the API's OWN vocabulary before any result is trusted.
+    An unrecognised council returns (None, "failed") -> "Not assessed", so a
+    name mismatch can never print a FALSE "no applications on record".
 
     Returns ``(records, status)``:
-      - (list, "ok"): DA+CDC records for the lot (possibly empty when none found).
-      - (None, "failed"): the lookup could not run OR the council could not be
-        resolved to an ePlanning-accepted name — the section renders "Not
-        assessed", never an implied absence of applications. Failing closed on an
-        unresolved council is deliberate: an unmapped name returns zero rows,
-        which would otherwise print a FALSE "no applications on record".
+      - (list, "ok"): DA+CDC records for the lot (possibly empty when the council
+        is recognised but no application matches the address — a GENUINE absence).
+      - (None, "failed"): missing / unrecognised council, or a fetch error — the
+        section renders "Not assessed", never an implied absence of applications.
     """
-    council = _resolve_eplanning_council(council_name)
+    council = (council_name or "").strip()
     if not council:
-        print(f"  [warn] structures/records: council {council_name!r} not resolvable "
-              f"to an ePlanning name — rendering 'Not assessed' (fail-closed)")
+        print("  [warn] structures/records skipped — no council derived (fail-closed)")
         return None, "failed"
     try:
         try:
-            from pre_da_history import get_da_events, get_pcc_events
+            from pre_da_history import get_da_events, get_pcc_events  # noqa: F401
         except ImportError:
             _services_dir = str(project_root / "services")
             if _services_dir not in sys.path:
                 sys.path.insert(0, _services_dir)
-            from pre_da_history import get_da_events, get_pcc_events
-        # Fuzzy-match on the street-address fragment (drop the state/postcode tail).
+            from pre_da_history import get_da_events, get_pcc_events  # noqa: F401
+        # Validate against the API's vocabulary — an unrecognised name would
+        # return zero and read as a false "no records".
+        if not _council_recognised_by_eplanning(council):
+            print(f"  [warn] structures/records: council {council!r} not recognised by "
+                  f"the ePlanning API — rendering 'Not assessed' (fail-closed)")
+            return None, "failed"
         frag = address.split(",")[0].strip() if address else address
         records = list(get_da_events(council, frag)) + list(get_pcc_events(council, frag))
         return records, "ok"
