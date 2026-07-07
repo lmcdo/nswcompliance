@@ -1,105 +1,65 @@
 {
   "tier": "standard",
-  "justification": "Property-alerts delivery layer: a scheduled dispatcher emails subscribers about new development applications near their address, plus a token unsubscribe endpoint and a STOP-and-ask migration. No compliance/legal claims; email copy is factual listings verbatim from the NSW Planning Portal feeds. Standard tier because the dispatcher advances persisted dedup state and sends external email — the risk is silent-drop (marking items seen without a delivered email), covered by break-it tests.",
-  "commit_hash": "8e53fef2",
+  "justification": "Infra: deploy the NARCliM climate-projection rasters to the Python API/PDF runtime via an R2 startup-download, mirroring the existing Hawkesbury pattern. Changes the deployed image (Dockerfile.python) and makes climate_risk_raster.DATA_DIR env-configurable. Standard tier — no DB writes, no user-facing copy; the risk is the API failing to start or the reader looking in the wrong dir, both guarded (download exits 0 always, DATA_DIR default unchanged when NARCLIM_DIR unset).",
+  "commit_hash": "578cb2be",
   "files": [
-    "scripts/run_alerts_dispatch.py",
-    "scripts/run_monitors.py",
-    "services/threat_radar.py",
-    "migrations/add_property_alerts_columns.sql",
-    "railway.alerts.toml",
-    "Dockerfile.monitors",
-    "scripts/requirements-monitor.txt",
-    "frontend-nextjs/components/reports/PropertyAlertsOptIn.tsx",
-    "tests/test_alerts_dispatch.py",
-    "tests/test_threat_radar.py",
-    "tests/fixtures/threat_radar_new_apps.json"
+    "scripts/download_narclim_rasters.py",
+    "services/climate_risk_raster.py",
+    "Dockerfile.python",
+    ".gitignore",
+    "tests/test_narclim_raster_deploy.py"
   ],
   "pre_impl": {
-    "existing_data": "threat_radar_subscriptions (10 columns, 2 active rows live-introspected 2026-07-07) plus the subscribe/check helpers in services/threat_radar.py (_fetch_das, _filter_nearby, _get_conn) — reused, not duplicated. No email-dispatch or unsubscribe capability existed anywhere (the resend npm dep has zero usages).",
-    "assumption_mismatch": "The table already has last_checked (not last_checked_at); the dispatcher uses the existing column. It was MISSING unsubscribe_token / consented_at / last_notified_at — added by the STOP-and-ask migration (not yet run). ePlanning payload shape captured from a live call (PlanningPortalApplicationNumber, ApplicationType, ApplicationStatus, LodgementDate, Location[0].FullAddress).",
-    "new_vs_existing": "prior-art audited 2026-07-07: dispatcher reuses threat_radar helpers plus run_monitors conventions; unsubscribe extends the same router module; opt-in component mirrors PostResultEmailStrip and posts to the existing /api/satellite/threat-radar route."
+    "existing_data": "6 NARCliM 2.0 NetCDFs (~1.8 GB) found in Downloads and validated via query_narclim_summary (real Sydney projection: extreme-heat days 15.5 baseline -> 34.8 late-century high). R2 access confirmed (bucket nsw-planning-pdfs); narclim/ prefix was empty and is now populated by the upload. Hawkesbury rasters already deploy via the same R2 startup-download pattern.",
+    "assumption_mismatch": "climate_risk_raster.DATA_DIR was a FIXED repo path (data/narclim), not writable/relocatable on Railway. Made it read NARCLIM_DIR (default unchanged for local dev). The Python API + conveyancing PDF share Dockerfile.python, whose CMD chains raster downloads before uvicorn — so one startup-download line unblocks both the climate product and the (future) PDF section.",
+    "new_vs_existing": "prior-art audited 2026-07-07: download_narclim_rasters.py mirrors download_hawkesbury_rasters.py (same R2 client, head-then-skip, exit-0 contract); no new hazard logic. climate_risk_raster reader reused unchanged except the env-aware DATA_DIR."
   },
   "functions": [
     {
-      "name": "build_alert_email",
-      "file_line": "scripts/run_alerts_dispatch.py:129",
-      "input": "subscription row plus a list of new application dicts and the unsubscribe URL",
-      "output": "dict of subject, html and text — every application value rendered verbatim, missing values shown as an em dash, never fabricated",
-      "if_none": "an empty items list is never passed here (dispatch skips send when there are no new items); a golden fixture test pins the rendered output"
-    },
-    {
-      "name": "dispatch",
-      "file_line": "scripts/run_alerts_dispatch.py:280",
-      "input": "dry_run flag plus env (DATABASE_URL, RESEND_API_KEY); reads active subscriptions and the live ePlanning feeds",
-      "output": "exit 0 clean, exit 2 per-subscription failures (Telegram alerted), exit 1 run-level failure (no key, missing migration columns)",
-      "if_none": "no active subscriptions yields a clean exit 0 with a zero-count summary line"
-    },
-    {
-      "name": "unsubscribe",
-      "file_line": "services/threat_radar.py:425",
-      "input": "unsubscribe_token query parameter (token only, no email — enumeration guard)",
-      "output": "sets active=false and returns a confirmation; idempotent on repeat clicks",
-      "if_none": "unknown token returns 404; empty or over-100-char token returns 422 before any DB call"
+      "name": "main",
+      "file_line": "scripts/download_narclim_rasters.py:45",
+      "input": "R2 env vars (account/key/secret/bucket) and NARCLIM_DIR; no arguments",
+      "output": "downloads the 6 NARCliM .nc files from r2://<bucket>/narclim/ to NARCLIM_DIR, skipping files already present at the correct size",
+      "if_none": "missing R2 env vars or boto3 -> logs a warning and returns (exit 0); a per-file download failure is logged, the partial file removed, and the run continues — never crashes the container startup"
     }
   ],
   "values": [
     {
-      "value": "application field values rendered into the email (number, type, status, lodgement date, distance, site address)",
-      "read_at": "scripts/run_alerts_dispatch.py:129 (build_alert_email via _val)",
-      "nullable": "yes — _val returns an em dash for None or empty string, so a missing API field never becomes a blank or an invented value",
-      "if_missing": "an absent or empty API field renders as an em dash (—), never a blank cell or a fabricated default; a test asserts this when Type/Status/Lodged are missing",
-      "guard_at": "scripts/run_alerts_dispatch.py:85 (_val) plus a test asserting the em dash appears when Type/Status/Lodged are absent"
+      "value": "the raster directory (NARCLIM_DIR) that both the download destination and the reader resolve to",
+      "read_at": "scripts/download_narclim_rasters.py:31 (DEST_DIR) and services/climate_risk_raster.py:25 (DATA_DIR)",
+      "nullable": "yes — env var may be unset",
+      "if_missing": "reader defaults to repo/data/narclim (unchanged local-dev behaviour); download script defaults to /tmp/narclim (writable on Railway). Dockerfile.python sets NARCLIM_DIR=/tmp/narclim so both agree in the deployed image",
+      "guard_at": "tests assert both honour NARCLIM_DIR and the download default is a /tmp path (never a possibly-read-only repo path)"
     }
   ],
-  "queries": [
-    {
-      "purpose": "advance dedup state only after a confirmed 2xx send (the silent-drop guard)",
-      "file_line": "scripts/run_alerts_dispatch.py:267 (mark_notified), called at :341 only inside the send_resend success branch",
-      "where_clause": "WHERE id=%s — single subscription; seen_application_numbers merged via jsonb_build_object",
-      "if_zero": "a failed send skips mark_notified entirely, so the applications stay unseen and re-send on the next run rather than vanishing"
-    },
-    {
-      "purpose": "unsubscribe by token",
-      "file_line": "services/threat_radar.py:439",
-      "where_clause": "WHERE unsubscribe_token=%s RETURNING id — token-only, no email; UPDATE matches regardless of current active value so repeat clicks are idempotent",
-      "if_zero": "no row means an unknown token, returned as 404 (a known-but-already-unsubscribed token still matches and returns a row)"
-    }
-  ],
+  "queries": "N/A — no database access; this is deploy wiring plus an object-store fetch.",
   "break_it": [
     {
-      "scenario": "Resend outage mid-run (send returns non-2xx or raises)",
-      "what_happens": "mark_notified is not called, so dedup state is not advanced; the items re-send next run and the run exits 2 with a Telegram summary",
+      "scenario": "R2 is unreachable or creds missing at container startup",
+      "what_happens": "the download script logs a warning and exits 0; uvicorn still starts; climate_risk_score/query_narclim catch FileNotFoundError and drop the projection component — the API serves, the projections show their existing honest gap",
       "mitigated": true,
-      "how": "send only advances state inside the truthy branch of send_resend; send_resend returns False on any non-2xx or exception",
-      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_failed_send_does_not_advance_dedup -q"
+      "how": "all([R2 env]) guard + try/except around boto3 and each download; CMD uses && but the script always exits 0",
+      "repro": "unset R2 env and run: python scripts/download_narclim_rasters.py (exits 0, warns)"
     },
     {
-      "scenario": "Both NSW ePlanning endpoints down (api_ok False)",
-      "what_happens": "no send attempt and no state update at all — last_checked is not stamped so the next run retries, identical to the existing check() semantics",
+      "scenario": "Someone adds a scenario to climate_risk_raster.NARCLIM_FILES but not to the download list",
+      "what_happens": "the new scenario would query a file the deploy never downloads -> a silent projection gap in prod",
       "mitigated": true,
-      "how": "the api_ok guard continues the loop before filtering or sending",
-      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_api_down_touches_no_state -q"
+      "how": "test_download_list_matches_raster_manifest asserts the two lists are identical set-equal",
+      "repro": "python -m pytest tests/test_narclim_raster_deploy.py::test_download_list_matches_raster_manifest -q"
     },
     {
-      "scenario": "OnlineDA field rename/format change makes a value missing",
-      "what_happens": "the affected cell renders an em dash rather than a fabricated value; per-subscription isolation contains any parse error to one subscriber",
+      "scenario": "NARCLIM_DIR points the reader somewhere the download script did not write",
+      "what_happens": "reader FileNotFoundError -> projection gap, not a crash; but the two would silently disagree",
       "mitigated": true,
-      "how": "_val treats None/empty as absent; the send loop wraps each subscription in try/except and counts failures without aborting the run",
-      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_missing_value_renders_em_dash tests/test_alerts_dispatch.py::test_one_failing_subscription_does_not_abort_the_run -q"
-    },
-    {
-      "scenario": "Subscriber clicks the unsubscribe link twice, or an attacker guesses tokens",
-      "what_happens": "the second click returns the same confirmation (idempotent); an unknown token is a 404 and the endpoint takes no email parameter so it cannot confirm whether an address is subscribed",
-      "mitigated": true,
-      "how": "token-only UPDATE ... RETURNING id; length guard rejects oversized tokens pre-DB",
-      "repro": "python -m pytest tests/test_threat_radar.py -k unsubscribe -q"
+      "how": "both DEST_DIR and DATA_DIR read the SAME NARCLIM_DIR var; tests assert each honours it; Dockerfile sets one value for both",
+      "repro": "python -m pytest tests/test_narclim_raster_deploy.py -k narclim_dir -q"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "Yes — RESEND_API_KEY must be added to the Railway property-alerts service (it lives in Vercel env for the frontend, not on the monitors service); the from: sending domain plotdetect.com.au must be verified in Resend",
+    "secrets": "No new secrets — the R2 creds (R2_ACCOUNT_ID/ACCESS_KEY_ID/SECRET_ACCESS_KEY/BUCKET_NAME) are already on the Python service for the Hawkesbury download. NARCLIM_DIR is baked into Dockerfile.python. Confirm the R2 creds are present on the service post-deploy.",
     "other_repo": "No",
-    "manual_verify": "Yes — apply migrations/add_property_alerts_columns.sql (STOP-and-ask, presented to user), then run scripts/run_alerts_dispatch.py --dry-run and read the output, then one real send to the founder address at a busy address (Marrickville), confirm the email renders and the unsubscribe link deactivates; verify the Railway service deploys and the cron fires once manually before trusting the schedule"
+    "manual_verify": "Yes — after Railway rebuilds Dockerfile.python, check the deploy logs for '[narclim-dl] 6/6 raster files ready in /tmp/narclim', then hit POST /pipeline/climate-risk (or run a conveyancing report) at a Sydney address and confirm the NARCliM heat/projection component is now populated rather than showing the honest gap."
   }
 }

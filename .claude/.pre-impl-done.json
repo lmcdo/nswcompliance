@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-07T10:20:00+10:00",
-  "target": "enrich property-alerts email with richer ePlanning fields (DevelopmentType, CostOfDevelopment, NumberOfNewDwellings, CouncilApplicationNumber, exhibition end date)",
-  "findings_summary": "Live fill-rate check on Inner West (n=40): DevelopmentType 39/40 (nested list of {DevelopmentType:...}), CostOfDevelopment 40/40 (float), NumberOfNewDwellings 16/40, CouncilApplicationNumber 20/40 (e.g. DA/2026/0548), AssessmentExhibitionEndDate 4/40 (ISO w/ T00:00:00 — set only during objection window, the actionable field). DeterminationAuthority often 'Unknown' -> skip. No new queries; presentation-only change to build_alert_email; all values verbatim/null-guarded."
+  "timestamp": "2026-07-07T11:00:00+10:00",
+  "target": "deploy NARCLIM rasters to the conveyancing/API Python runtime via R2 startup-download (mirror download_hawkesbury_rasters.py)",
+  "findings_summary": "6 NARCliM .nc files (~1.8GB: TXge35 33MBx2, tas ~400MBx2, prAdjust ~490MBx2) FOUND in Downloads, validated via query_narclim_summary (real projections: Sydney heat 15.5->34.8 late-century). R2 access works (bucket nsw-planning-pdfs), narclim/ prefix empty->uploading now. Dockerfile.python CMD runs download_hawkesbury_rasters.py && uvicorn; climate_risk_raster.DATA_DIR is fixed repo/data/narclim (not env-configurable) -> make env-aware (NARCLIM_DIR) so Railway can point at writable /tmp/narclim. Composite degrades gracefully if absent (except FileNotFoundError). No DB writes."
 }
