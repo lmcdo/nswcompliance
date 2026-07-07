@@ -19,5 +19,5 @@ dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
 startCommand = "python scripts/run_monitors.py"
-cronSchedule = "*/5 * * * *"  # TEMPORARY every-5-min for live verification — REVERT to "0 22 * * 0" (weekly Sun 22:00 UTC) once the test email lands
+cronSchedule = "0 22 * * 0"  # weekly: Sunday 22:00 UTC (Monday 08:00–09:00 AEST/AEDT)
 restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
