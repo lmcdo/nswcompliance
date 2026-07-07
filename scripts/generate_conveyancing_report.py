@@ -2172,6 +2172,235 @@ def get_anef_live(lat: float, lng: float) -> dict:
         return {"status": "failed"}
 
 
+# prior-art-checked: reuses services/portal_constraints.fetch_contributions_plans
+# / fetch_corridors_reservations (added alongside this change) via the same thin
+# get_*_live wrapper pattern as get_anef_live/get_bushfire_live above; the /cp
+# parse lives in portal_constraints and mirrors intelligence_brief.
+# _fetch_contributions (PR #460) re-wrapped with three-state semantics because
+# the brief fetcher collapses queried-empty and transport failure into one None.
+# The sentence builders below are new PDF wording (no existing renderer covers
+# contributions or LRA/corridor checks — grep-verified 2026-07-07).
+def get_contributions_live(prop_id: Optional[int]) -> dict:
+    """Development contributions (/cp) lookup — three-state.
+
+    Wraps services.portal_constraints.fetch_contributions_plans. Import or
+    runtime failure (and a missing propId) returns {"status": "failed"} —
+    build_contributions_lines renders that as "Not assessed", never silence.
+    """
+    if not prop_id:
+        print("  [warn] contributions lookup skipped — no propId resolved")
+        return {"status": "failed"}
+    try:
+        try:
+            from portal_constraints import fetch_contributions_plans
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import fetch_contributions_plans
+        return fetch_contributions_plans(int(prop_id))
+    except Exception as e:
+        print(f"  [warn] contributions lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
+def get_corridors_live(
+    lat: float, lng: float,
+    lot_wkt: Optional[str] = None,
+    prop_id: Optional[int] = None,
+) -> Optional[dict]:
+    """Corridors / land-reservation-acquisition / portal warnings — three-state
+    per sub-check (services.portal_constraints.fetch_corridors_reservations).
+
+    Returns None when the module itself cannot be imported/run —
+    build_corridors_lines renders None as every sub-check "Not assessed".
+    """
+    try:
+        try:
+            from portal_constraints import fetch_corridors_reservations
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import fetch_corridors_reservations
+        return fetch_corridors_reservations(lat, lng, lot_wkt=lot_wkt, prop_id=prop_id)
+    except Exception as e:
+        print(f"  [warn] corridors/reservations check unavailable: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Contributions + corridors sentence builders — pure functions (golden-sentence
+# tested in tests/test_conveyancing_corridors.py). Free of reportlab so the
+# exact user-visible wording is testable without rendering a PDF.
+# ---------------------------------------------------------------------------
+
+_CONTRIB_INTRO = (
+    "The following contributions plans apply to development in this location, as "
+    "returned by the NSW Planning Portal contributions lookup. Charge amounts are "
+    "set out in the plan documents linked — this report does not calculate "
+    "contribution amounts."
+)
+_CONTRIB_EMPTY = (
+    "No contributions plans returned for this location by the NSW Planning Portal."
+)
+_CONTRIB_FAILED = (
+    "Not assessed — contributions lookup unavailable at report generation. "
+    "Contributions plans for this council can be checked on the NSW Planning "
+    "Portal or with the council directly."
+)
+
+
+def build_contributions_lines(contributions: Optional[dict]) -> dict:
+    """Section 10 content from the three-state /cp result.
+
+    Returns {"state": "found"|"empty"|"failed", "intro": str|None,
+             "plan_lines": [{"name", "url"}], "hpc_line": str|None,
+             "hpc_url": str|None, "status_line": str|None}.
+    Plan and HPC names render verbatim; a failed (or never-run) lookup states
+    "Not assessed", never an implied absence of plans.
+    """
+    status = (contributions or {}).get("status")
+    out = {"state": "failed", "intro": None, "plan_lines": [],
+           "hpc_line": None, "hpc_url": None, "status_line": None}
+
+    if status == "found":
+        out["state"] = "found"
+        out["plan_lines"] = [
+            {"name": p.get("plan_name") or "(unnamed plan in portal response)",
+             "url": p.get("plan_url")}
+            for p in (contributions.get("plans") or [])
+        ]
+        if out["plan_lines"]:
+            out["intro"] = _CONTRIB_INTRO
+        else:
+            # HPC-only response: don't announce a plan list that isn't there —
+            # state the queried-empty plans fact, then the HPC line renders.
+            out["status_line"] = _CONTRIB_EMPTY
+        hpc = contributions.get("hpc")
+        if hpc:
+            line = "Housing and Productivity Contribution: " + (
+                hpc.get("name") or "mapped at this location"
+            )
+            if hpc.get("component"):
+                line += f" — component {hpc['component']}"
+            if hpc.get("commenced_date"):
+                line += f", commenced {hpc['commenced_date']}"
+            out["hpc_line"] = line + "."
+            out["hpc_url"] = hpc.get("ministerial_order_url")
+        return out
+
+    if status == "empty":
+        out["state"] = "empty"
+        out["status_line"] = _CONTRIB_EMPTY
+        return out
+
+    out["status_line"] = _CONTRIB_FAILED
+    return out
+
+
+_CORRIDORS_ALL_CLEAR = (
+    "No land-reservation-acquisition areas, mapped rail corridor zones, or portal "
+    "property warnings were returned for this lot."
+)
+# (sub-check key, phrase used in the clean sentence, phrase used in "Not assessed")
+_CORRIDOR_CHECKS = (
+    ("lra", "land-reservation-acquisition areas", "land-reservation-acquisition map"),
+    ("rail_corridors", "mapped rail corridor zones", "rail corridor mapping"),
+    ("warnings", "portal property warnings", "portal property warnings"),
+)
+_CORRIDORS_BASIS_NOTE = (
+    "Spatial checks in this section used a 30 m radius around the lot centroid — "
+    "the lot boundary geometry was unavailable at report generation."
+)
+_CORRIDORS_SOURCE_LINE = (
+    "Sources: NSW ePlanning Land Reservation Acquisition layer (LEP acquisition "
+    "mapping); Sydney Trains corridor protection mapping (SEPP Transport and "
+    "Infrastructure 2021); NSW Planning Portal property warnings."
+)
+
+
+def _lra_alert_text(item: dict, query_basis: str) -> str:
+    """One LRA alert sentence — LABEL/AUTHORITY/EPI_NAME verbatim, currency
+    date from the feature's own CURRENCY_DATE. States map presence only —
+    never acquisition intent."""
+    label = item.get("LABEL") or item.get("LRA_TYPE") or "type not stated in the mapping layer"
+    authority = item.get("AUTHORITY") or "not stated in the mapping layer"
+    epi = item.get("EPI_NAME") or "instrument not stated in the mapping layer"
+    currency = item.get("currency_date")
+    provenance = f"({epi}, map current to {currency})" if currency else f"({epi})"
+    if query_basis == "lot_polygon":
+        prefix = "Part of this lot is within a Land Reservation Acquisition area"
+    else:
+        prefix = "A Land Reservation Acquisition area is mapped within 30 m of the lot centroid"
+    return (
+        f"{prefix}: {label} — acquiring authority: {authority} {provenance}. "
+        "A s10.7 certificate and the LEP acquisition clause state the effect."
+    )
+
+
+def build_corridors_lines(corridors: Optional[dict]) -> dict:
+    """Section 11 content from the three-state corridors payload.
+
+    Returns {"tile_flip": bool, "alert_rows": [str], "note_rows": [str],
+             "not_assessed_rows": [str], "clean_line": str|None,
+             "basis_note": str|None, "source_line": str}.
+
+    Only an LRA hit flips the cover CONSTRAINTS tile. A failed sub-check
+    renders "Not assessed" while the others still render; the clean sentence
+    is only built from sub-checks that actually ran and returned empty.
+    """
+    co = corridors or {}
+    basis = co.get("query_basis")
+    out = {
+        "tile_flip": False, "alert_rows": [], "note_rows": [],
+        "not_assessed_rows": [], "clean_line": None,
+        "basis_note": _CORRIDORS_BASIS_NOTE if basis == "centroid_30m" else None,
+        "source_line": _CORRIDORS_SOURCE_LINE,
+    }
+
+    empty_phrases = []
+    for key, clean_phrase, na_phrase in _CORRIDOR_CHECKS:
+        sub = co.get(key) or {}
+        status = sub.get("status")
+        items = sub.get("items") or []
+        if status == "found" and items:
+            if key == "lra":
+                out["tile_flip"] = True
+                for it in items:
+                    out["alert_rows"].append(_lra_alert_text(it, basis))
+            elif key == "rail_corridors":
+                for it in items:
+                    zone = it.get("zone") or "Rail corridor zone"
+                    agency = it.get("agency") or "not stated in the mapping layer"
+                    leg = it.get("defining_legislation") or "not stated in the mapping layer"
+                    out["note_rows"].append(
+                        f"{zone} mapped at this location — agency: {agency}; "
+                        f"defining legislation: {leg} (Sydney Trains corridor mapping)."
+                    )
+            else:
+                for it in items:
+                    out["note_rows"].append(
+                        f"NSW Planning Portal property warning: {it.get('title')}."
+                    )
+        elif status == "empty" or (status == "found" and not items):
+            empty_phrases.append(clean_phrase)
+        else:
+            out["not_assessed_rows"].append(
+                f"Not assessed — {na_phrase} lookup unavailable at report generation."
+            )
+
+    if len(empty_phrases) == len(_CORRIDOR_CHECKS):
+        out["clean_line"] = _CORRIDORS_ALL_CLEAR
+    elif empty_phrases:
+        joined = empty_phrases[0] if len(empty_phrases) == 1 else (
+            " or ".join([", ".join(empty_phrases[:-1]), empty_phrases[-1]])
+        )
+        out["clean_line"] = f"No {joined} were returned for this lot."
+
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -2216,6 +2445,13 @@ def _flag_cell(text: str, style_name: str, styles_map: dict):
     return Paragraph(text, styles_map[style_name])
 
 
+def _xml_escape(text) -> str:
+    """Escape &, <, > for reportlab Paragraph markup — external values (plan
+    names, layer labels, warning titles) render verbatim, never as markup."""
+    from xml.sax.saxutils import escape
+    return escape(str(text))
+
+
 def generate_pdf(
     output_path: str,
     address: str,
@@ -2236,6 +2472,8 @@ def generate_pdf(
     proximity_m: Optional[dict] = None,
     bushfire_live: Optional[dict] = None,
     anef_live: Optional[dict] = None,
+    contributions: Optional[dict] = None,
+    corridors: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -2428,6 +2666,11 @@ def generate_pdf(
     # Sydney Drinking Water Catchment is a DA constraint (B&C SEPP 2021 Pt 6.2/6.5)
     # — it must flip the cover tile, not vanish (Bowral regression).
     if controls.get("sdwc"):
+        _n_constraints += 1
+    # Land Reservation Acquisition is a genuine planning constraint (SDWC
+    # precedent) — an LRA hit flips the tile; rail/warn notes do NOT.
+    _corridor_lines = build_corridors_lines(corridors)
+    if _corridor_lines["tile_flip"]:
         _n_constraints += 1
     _constr_val = str(_n_constraints) if _n_constraints else "None"
     _constr_hex = "#B91C1C" if _n_constraints else "#166534"
@@ -3604,6 +3847,14 @@ def generate_pdf(
     # Titles are rendered verbatim from the portal response; no interpretation.
     _sdwc = controls.get("sdwc")
     _other_instruments = controls.get("other_instruments") or []
+    # An LRA group captured here by the fail-open else is superseded by the
+    # named Section 11 check — suppress it ONLY when that check found the hit
+    # itself (a failed/empty Section 11 must not eat the fail-open capture).
+    if _corridor_lines["tile_flip"]:
+        _other_instruments = [
+            oi for oi in _other_instruments
+            if "land reservation acquisition" not in (oi.get("layer") or "").lower()
+        ]
     if _sdwc or _other_instruments:
         story.append(Spacer(1, 3 * mm))
         story.append(Paragraph(
@@ -3916,9 +4167,68 @@ def generate_pdf(
         ))
 
     # ------------------------------------------------------------------
-    # SECTION 8 — Disclosure Notes
+    # SECTION 10 — Development Contributions Plans (s7.11 / s7.12)
     # ------------------------------------------------------------------
-    h2("10. Disclosure Notes")
+    h2("10. Development Contributions Plans (s7.11 / s7.12)")
+
+    _contrib_lines = build_contributions_lines(contributions)
+    if _contrib_lines["state"] == "found":
+        # intro when plans were returned; the queried-empty plans sentence
+        # when the portal returned only the HPC block (status_line).
+        if _contrib_lines["intro"]:
+            story.append(Paragraph(_contrib_lines["intro"], ss["body"]))
+        elif _contrib_lines["status_line"]:
+            story.append(Paragraph(_contrib_lines["status_line"], ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+        for pl in _contrib_lines["plan_lines"]:
+            _name = _xml_escape(pl["name"])
+            if pl.get("url"):
+                _href = _xml_escape(str(pl["url"]).replace(" ", "%20"))
+                story.append(Paragraph(
+                    f"• <b>{_name}</b> — <link href=\"{_href}\" color=\"#1E5FAD\">plan document</link>",
+                    ss["note"],
+                ))
+            else:
+                story.append(Paragraph(f"• <b>{_name}</b>", ss["note"]))
+        if _contrib_lines["hpc_line"]:
+            story.append(Spacer(1, 1 * mm))
+            _hpc_text = _xml_escape(_contrib_lines["hpc_line"])
+            if _contrib_lines.get("hpc_url"):
+                _hpc_href = _xml_escape(str(_contrib_lines["hpc_url"]).replace(" ", "%20"))
+                _hpc_text += f" <link href=\"{_hpc_href}\" color=\"#1E5FAD\">Ministerial Order</link>"
+            story.append(Paragraph(_hpc_text, ss["body"]))
+    elif _contrib_lines["state"] == "empty":
+        story.append(Paragraph(_contrib_lines["status_line"], ss["body"]))
+    else:
+        story.append(Paragraph(_contrib_lines["status_line"], ss["note"]))
+
+    # ------------------------------------------------------------------
+    # SECTION 11 — Corridors, Reservations and Infrastructure Interests
+    # ------------------------------------------------------------------
+    h2("11. Corridors, Reservations and Infrastructure Interests")
+
+    for _txt in _corridor_lines["alert_rows"]:
+        story.append(Paragraph(_xml_escape(_txt), ss["alert"]))
+        story.append(Spacer(1, 1 * mm))
+    for _txt in _corridor_lines["note_rows"]:
+        story.append(Paragraph(_xml_escape(_txt), ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+    if _corridor_lines["clean_line"]:
+        _clean_style = "ok" if _corridor_lines["clean_line"] == _CORRIDORS_ALL_CLEAR else "body"
+        story.append(Paragraph(_xml_escape(_corridor_lines["clean_line"]), ss[_clean_style]))
+        story.append(Spacer(1, 1 * mm))
+    for _txt in _corridor_lines["not_assessed_rows"]:
+        story.append(Paragraph(_xml_escape(_txt), ss["note"]))
+        story.append(Spacer(1, 1 * mm))
+    if _corridor_lines["basis_note"]:
+        story.append(Paragraph(_xml_escape(_corridor_lines["basis_note"]), ss["caveat"]))
+        story.append(Spacer(1, 1 * mm))
+    story.append(Paragraph(_xml_escape(_corridor_lines["source_line"]), ss["caveat"]))
+
+    # ------------------------------------------------------------------
+    # SECTION 12 — Disclosure Notes
+    # ------------------------------------------------------------------
+    h2("12. Disclosure Notes")
 
     notes = [
         ("s10.7 Planning Certificate",
@@ -3976,8 +4286,9 @@ def generate_pdf(
          "This report <b>does not include infrastructure contribution liability estimates.</b> "
          "Development applications for new dwellings or subdivision require a <b>Section 7.11 or 7.12 "
          "Contributions Plan levy</b> — typically <b>$10,000–$50,000+ per dwelling</b> in Greater Sydney. "
-         "Contribution rates must be confirmed directly with the relevant council's contributions "
-         "plan before any development feasibility assessment can be relied upon."),
+         "Section 10 names the contributions plans the NSW Planning Portal returns for this location; "
+         "the charge rates are set out in the council's contributions plan documents and must be "
+         "checked directly before any development feasibility assessment is relied upon."),
         ("Easements and covenants on title",
          "This report <b>does not assess easements, covenants, restrictions on use,</b> or positive "
          "covenants registered on the title. A <b>stormwater easement, drainage reserve,</b> or "
@@ -4255,6 +4566,26 @@ def main():
     else:
         print("  No ANEF contour value at this point")
 
+    print("\nFetching development contributions plans (/cp) ...")
+    contributions = get_contributions_live(prop_id)
+    if contributions.get("status") == "found":
+        print(f"  {len(contributions.get('plans') or [])} plan(s)"
+              f"{' + HPC' if contributions.get('hpc') else ''}")
+    elif contributions.get("status") == "empty":
+        print("  No contributions plans returned")
+    else:
+        print("  Contributions lookup failed — section will state 'Not assessed'")
+
+    print("\nChecking corridors / land-reservation-acquisition / portal warnings ...")
+    corridors = get_corridors_live(lat, lng, lot_wkt=lot_wkt, prop_id=prop_id)
+    if corridors:
+        print(f"  basis: {corridors.get('query_basis')}")
+        for _k in ("lra", "rail_corridors", "warnings"):
+            _sub = corridors.get(_k) or {}
+            print(f"  {_k}: {_sub.get('status')} ({len(_sub.get('items') or [])})")
+    else:
+        print("  Corridors check unavailable — section will state 'Not assessed'")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -4269,6 +4600,8 @@ def main():
             proximity_m=proximity_m,
             bushfire_live=bushfire_live,
             anef_live=anef_live,
+            contributions=contributions,
+            corridors=corridors,
         )
 
 

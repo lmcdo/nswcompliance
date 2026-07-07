@@ -664,3 +664,332 @@ def fetch_firms_hotspots(
         "search_days": days,
         "search_radius_km": buffer_km,
     }
+
+
+# ---------------------------------------------------------------------------
+# Conveyancing PDF — development contributions (/cp) and corridors /
+# land-reservation-acquisition checks (LRA layer 24, SydneyTrain ISEPP, /warn).
+#
+# prior-art-checked: reuses services/arcgis_client.arcgis_get_with_retry
+# (retry + circuit breaker) and the missing-`features` raise pattern from
+# services/da_outcome.py (an ArcGIS error body returns {} from the client — a
+# corridor check must never build a "clear" answer on a silently-zero result).
+# The /cp response parse mirrors intelligence_brief._fetch_contributions
+# (PR #460) but is re-wrapped with three-state semantics (found/empty/failed)
+# because the brief fetcher collapses queried-empty and transport failure into
+# one None — unacceptable in the Critical-tier conveyancing document. No
+# existing module queries the LRA layer, the SydneyTrain_ISEPP layers, or the
+# portal /warn endpoint (grep-verified 2026-07-07).
+# ---------------------------------------------------------------------------
+
+VIEWER_API_BASE = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi"
+# The viewer API rejects requests without portal Origin/Referer headers.
+VIEWER_API_HEADERS = {
+    "Origin": "https://www.planningportal.nsw.gov.au",
+    "Referer": "https://www.planningportal.nsw.gov.au/",
+    "User-Agent": "Mozilla/5.0",
+}
+VIEWER_API_TIMEOUT = 15  # seconds
+
+LRA_QUERY_URL = (
+    f"{EPLANNING_BASE}/Planning_Portal_Principal_Planning/MapServer/24/query"
+)
+LRA_OUT_FIELDS = (
+    "EPI_NAME,LGA_NAME,LRA_TYPE,LAY_CLASS,LABEL,AUTHORITY,"
+    "CURRENCY_DATE,COMMENCED_DATE,AMENDMENT"
+)
+# Layer names verified live 2026-07-07 (825 / 800 polygons; fields agency,
+# defining_legislation). The zone label is the layer itself.
+RAIL_ISEPP_LAYERS = (
+    ("Corridor Protection Zone",
+     f"{EPLANNING_BASE}/SydneyTrain_ISEPP/MapServer/1/query"),
+    ("Infrastructure Protection Zone",
+     f"{EPLANNING_BASE}/SydneyTrain_ISEPP/MapServer/2/query"),
+)
+
+# Geometry-basis labels recorded in the corridors payload so renderers can
+# state HOW the check was run (lot polygon vs point fallback).
+CORRIDOR_BASIS_LOT = "lot_polygon"
+CORRIDOR_BASIS_CENTROID = "centroid_30m"
+_CORRIDOR_POINT_BUFFER_M = 30
+
+
+def _wkt_polygon_rings(lot_wkt: Optional[str]) -> Optional[list]:
+    """Parse an EPSG:4326 POLYGON WKT into esri-JSON rings.
+
+    Returns None when the WKT is absent or unparseable — callers fall back to
+    the centroid+buffer basis rather than guessing at geometry.
+    """
+    import re as _re
+
+    if not lot_wkt:
+        return None
+    m = _re.match(r"\s*POLYGON\s*\((.*)\)\s*$", lot_wkt, _re.IGNORECASE | _re.DOTALL)
+    if not m:
+        return None
+    rings = []
+    for ring_str in _re.findall(r"\(([^()]*)\)", m.group(1)):
+        pts = []
+        for pair in ring_str.split(","):
+            xy = pair.split()
+            if len(xy) < 2:
+                return None
+            try:
+                pts.append([float(xy[0]), float(xy[1])])
+            except ValueError:
+                return None
+        if len(pts) >= 4:
+            rings.append(pts)
+    return rings or None
+
+
+def _corridor_geometry_params(
+    lat: float, lng: float, lot_wkt: Optional[str],
+) -> tuple[dict, str]:
+    """Build the ArcGIS geometry params: lot polygon when available, else
+    centroid + 30 m buffer. Returns (params, basis)."""
+    import json as _json
+
+    rings = _wkt_polygon_rings(lot_wkt)
+    if rings:
+        return (
+            {
+                "geometry": _json.dumps(
+                    {"rings": rings, "spatialReference": {"wkid": 4326}}
+                ),
+                "geometryType": "esriGeometryPolygon",
+                "inSR": "4326",
+                "spatialRel": "esriSpatialRelIntersects",
+            },
+            CORRIDOR_BASIS_LOT,
+        )
+    return (
+        {
+            "geometry": f"{lng},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "distance": str(_CORRIDOR_POINT_BUFFER_M),
+            "units": "esriSRUnit_Meter",
+        },
+        CORRIDOR_BASIS_CENTROID,
+    )
+
+
+def _query_corridor_layer(
+    url: str, geometry_params: dict, out_fields: str,
+) -> list[dict]:
+    """Query one ArcGIS layer with the corridor geometry. RAISES on failure.
+
+    arcgis_get_with_retry returns {} on transport failure or an HTTP-200
+    ArcGIS error body — the missing-`features` raise below refuses to turn
+    that into a silent zero (services/da_outcome.py pattern).
+    """
+    try:
+        from services.arcgis_client import arcgis_get_with_retry
+    except ImportError:  # CLI context: services/ itself is on sys.path
+        from arcgis_client import arcgis_get_with_retry
+
+    params = dict(geometry_params)
+    params.update({
+        "outFields": out_fields,
+        "returnGeometry": "false",
+        "f": "json",
+    })
+    data = arcgis_get_with_retry(url, params)
+    if "features" not in data:
+        raise RuntimeError(
+            f"corridor layer query failed (transport or ArcGIS error): {url}"
+        )
+    return [(f.get("attributes") or {}) for f in (data.get("features") or [])]
+
+
+def _esri_ms_to_date(ms) -> Optional[str]:
+    """Esri epoch-milliseconds → ISO date string; None when absent/invalid."""
+    from datetime import datetime as _dt, timezone as _tz
+
+    if ms is None:
+        return None
+    try:
+        return _dt.fromtimestamp(float(ms) / 1000.0, tz=_tz.utc).date().isoformat()
+    except (ValueError, OverflowError, OSError, TypeError):
+        return None
+
+
+def fetch_portal_warnings(prop_id: int) -> list[dict]:
+    """NSW Planning Portal /warn property warnings. RAISES on failure.
+
+    Every returned item is captured verbatim (title + layerRef) — unknown
+    layerRef values are rendered, never dropped (fail-open, SDWC precedent).
+    """
+    resp = requests.get(
+        f"{VIEWER_API_BASE}/warn",
+        params={"id": prop_id, "type": "property"},
+        headers=VIEWER_API_HEADERS,
+        timeout=VIEWER_API_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if not isinstance(data, list):
+        raise RuntimeError(
+            "portal /warn response was not a list (transport or API error)"
+        )
+    items = []
+    for w in data:
+        if not isinstance(w, dict):
+            logger.warning("portal /warn returned a non-dict item %r — captured", w)
+            items.append({"title": str(w), "layerRef": None})
+            continue
+        title = w.get("title") or w.get("layerRef")
+        if not w.get("title"):
+            logger.warning(
+                "portal /warn item without title captured verbatim (layerRef=%r)",
+                w.get("layerRef"),
+            )
+        items.append({
+            "title": title or "Unnamed portal property warning",
+            "layerRef": w.get("layerRef"),
+        })
+    return items
+
+
+def fetch_corridors_reservations(
+    lat: float,
+    lng: float,
+    lot_wkt: Optional[str] = None,
+    prop_id: Optional[int] = None,
+) -> dict:
+    """Corridors & land-reservation-acquisition check — three-state per sub-check.
+
+    Returns::
+
+        {
+          "query_basis": "lot_polygon" | "centroid_30m",
+          "data_currency": str | None,          # max CURRENCY_DATE seen (ISO)
+          "lra":            {"status": "found"|"empty"|"failed", "items": [...]},
+          "rail_corridors": {"status": ..., "items": [...]},
+          "warnings":       {"status": ..., "items": [...]},
+        }
+
+    A failed sub-check never reads as clear: its status is "failed" and the
+    renderer states "Not assessed". Never raises.
+    """
+    geometry_params, basis = _corridor_geometry_params(lat, lng, lot_wkt)
+    out: dict = {
+        "query_basis": basis,
+        "data_currency": None,
+        "lra": {"status": "failed", "items": []},
+        "rail_corridors": {"status": "failed", "items": []},
+        "warnings": {"status": "failed", "items": []},
+    }
+
+    try:
+        lra_items = _query_corridor_layer(LRA_QUERY_URL, geometry_params, LRA_OUT_FIELDS)
+        for it in lra_items:
+            it["currency_date"] = _esri_ms_to_date(it.get("CURRENCY_DATE"))
+            it["commenced_date"] = _esri_ms_to_date(it.get("COMMENCED_DATE"))
+        currency_dates = [it.get("currency_date") for it in lra_items if it.get("currency_date")]
+        if currency_dates:
+            out["data_currency"] = max(currency_dates)
+        out["lra"] = {"status": "found" if lra_items else "empty", "items": lra_items}
+    except Exception as e:
+        logger.warning("LRA layer query failed: %s", e)
+
+    try:
+        rail_items = []
+        for zone_name, url in RAIL_ISEPP_LAYERS:
+            for attrs in _query_corridor_layer(url, geometry_params, "agency,defining_legislation"):
+                rail_items.append({
+                    "zone": zone_name,
+                    "agency": attrs.get("agency"),
+                    "defining_legislation": attrs.get("defining_legislation"),
+                })
+        out["rail_corridors"] = {
+            "status": "found" if rail_items else "empty", "items": rail_items,
+        }
+    except Exception as e:
+        logger.warning("rail corridor layer query failed: %s", e)
+
+    if prop_id:
+        try:
+            warn_items = fetch_portal_warnings(int(prop_id))
+            out["warnings"] = {
+                "status": "found" if warn_items else "empty", "items": warn_items,
+            }
+        except Exception as e:
+            logger.warning("portal /warn query failed: %s", e)
+    else:
+        # No propId — the warnings check cannot run; "failed" keeps the
+        # renderer on "Not assessed" rather than an implied clear.
+        logger.warning("portal /warn skipped — no propId resolved for this lot")
+
+    return out
+
+
+def _fetch_cp_payload(prop_id: int) -> dict:
+    """GET the /cp contributions payload. RAISES on transport/malformed response.
+
+    A bare {} (or any response missing both the cp and icdp blocks) is treated
+    as a FAILURE, not as "no plans" — the queried-empty state requires the
+    blocks to be present with empty results.
+    """
+    resp = requests.get(
+        f"{VIEWER_API_BASE}/cp",
+        params={"id": prop_id, "type": "property"},
+        headers=VIEWER_API_HEADERS,
+        timeout=VIEWER_API_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if not isinstance(data, dict) or ("cp" not in data and "icdp" not in data):
+        raise RuntimeError(
+            "contributions /cp response missing cp/icdp blocks (transport or API error)"
+        )
+    return data
+
+
+def fetch_contributions_plans(prop_id: int) -> dict:
+    """Development contributions plans (/cp) — three-state, never raises.
+
+    Returns::
+
+        {"status": "found", "plans": [{"plan_name","plan_url"}], "hpc": {...}|None,
+         "lga_name": str|None}
+        {"status": "empty", "plans": [], "hpc": None, "lga_name": str|None}
+        {"status": "failed"}
+
+    Plan names and URLs are carried verbatim from the portal response.
+    """
+    try:
+        data = _fetch_cp_payload(int(prop_id))
+    except Exception as e:
+        logger.warning("contributions /cp lookup failed for propId %s: %s", prop_id, e)
+        return {"status": "failed"}
+
+    plans: list[dict] = []
+    lga_name: Optional[str] = None
+    for entry in ((data.get("cp") or {}).get("results") or []):
+        if not lga_name:
+            lga_name = entry.get("lgaName")
+        for cp in (entry.get("cpResults") or []):
+            plans.append({
+                "plan_name": cp.get("planName") or "",
+                "plan_url": cp.get("planURL"),
+            })
+
+    hpc: Optional[dict] = None
+    for entry in ((data.get("icdp") or {}).get("results") or []):
+        for res in (entry.get("results") or []):
+            hpc = {
+                "name": res.get("Name"),
+                "component": res.get("Component"),
+                "commenced_date": res.get("Commenced Date"),
+                "ministerial_order_url": res.get("Ministerial Order"),
+            }
+            break
+        if hpc:
+            break
+
+    if not plans and not hpc:
+        return {"status": "empty", "plans": [], "hpc": None, "lga_name": lga_name}
+    return {"status": "found", "plans": plans, "hpc": hpc, "lga_name": lga_name}

@@ -1,0 +1,36 @@
+{
+  "cp": {
+    "results": [
+      {
+        "geomId": 1456609,
+        "lgaName": "CANADA BAY",
+        "cpResults": [
+          {
+            "planName": "City of Canada Bay Local Infrastructure Contributions Plan - Contributions Rates Dec 2024",
+            "planURL": "https://apps.planningportal.nsw.gov.au/prweb/PRRestService/DocMgmt/v1/PublicDocuments/DATA-WORKATTACH-FILE PEC-DPE-EP-WORK PEH-2558!20250415T000945.886 GMT"
+          },
+          {
+            "planName": "City of Canada Bay Local Infrastructure Contributions Plan",
+            "planURL": "https://apps.planningportal.nsw.gov.au/prweb/PRRestService/DocMgmt/v1/PublicDocuments/DATA-WORKATTACH-FILE PEC-DPE-EP-WORK PEH-2558!20250415T001225.597 GMT"
+          }
+        ]
+      }
+    ]
+  },
+  "icdp": {
+    "results": [
+      {
+        "id": "492",
+        "layerName": "Housing and Productivity Contribution",
+        "results": [
+          {
+            "Commenced Date": "1-7-2026",
+            "Component": "BHPC",
+            "Ministerial Order": "https://www.planningportal.nsw.gov.au/Orders",
+            "Name": "Housing and Productivity Contribution Regions Map Greater Sydney Region"
+          }
+        ]
+      }
+    ]
+  }
+}

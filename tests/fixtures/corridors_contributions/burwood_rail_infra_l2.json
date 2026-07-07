@@ -1,0 +1,22 @@
+{
+  "displayFieldName": "defining_legislation",
+  "fieldAliases": {
+    "agency": "Agency",
+    "defining_legislation": "Defining Legislation"
+  },
+  "fields": [
+    {
+      "name": "agency",
+      "type": "esriFieldTypeString",
+      "alias": "Agency",
+      "length": 28
+    },
+    {
+      "name": "defining_legislation",
+      "type": "esriFieldTypeString",
+      "alias": "Defining Legislation",
+      "length": 19
+    }
+  ],
+  "features": []
+}

@@ -255,6 +255,10 @@ class TestStaticClaimsGuard:
         "1_075_000",
         "1075000",
         "1,075,000",
+        # Corridors (Section 11): we state LRA map presence, authority and
+        # instrument — never acquisition intent or likelihood.
+        "will be acquired",
+        "compulsory acquisition is proposed",
     ]
 
     def test_generator_contains_no_forbidden_claims(self):

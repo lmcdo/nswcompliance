@@ -1,0 +1,51 @@
+{
+  "cp": {
+    "results": [
+      {
+        "geomId": 1119594,
+        "lgaName": "WINGECARRIBEE",
+        "cpResults": [
+          {
+            "planName": "Wingecarribee CP 2013 - Moss Vale Enterprise Zone",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202013%20-%20Moss%20Vale%20Enterprise%20Zone.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2012 - Roads and Traffic Facilities",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202012%20-%20Roads%20and%20Traffic%20Facilities.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2010 - as amended 26 Aug 2015",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202010%20-%20as%20amended%2026%20Aug%202015.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2011 - Administration",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202011%20-%20Administration.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2014 - Open Space, Recreation, Community and Cultural Facilities",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202014%20-%20Open%20Space,%20Recreation,%20Community%20and%20Cultural%20Facilities.pdf"
+          },
+          {
+            "planName": "Wingecarribee Developer Contributions Rates Schedule from 1 Aug 2016 to 31 Oct 2016",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20Developer%20Contributions%20Rates%20Schedule%20from%201%20Aug%202016%20to%2031%20Oct%202016.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2004 - Bundanoon - as amended 15 Aug 2012",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202004%20-%20Bundanoon%20-%20as%20amended%2015%20Aug%202012.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 2009 - Resource Recovery Centre",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%202009%20-%20Resource%20Recovery%20Centre.pdf"
+          },
+          {
+            "planName": "Wingecarribee CP 1997 - Central Library Facility - as amended 14 Jul 2008",
+            "planURL": "https://s3-ap-southeast-2.amazonaws.com/shared-drupal-s3fs/master-test/fapub_pdf/_R15/Wingecarribee%20CP%201997%20-%20Central%20Library%20Facility%20-%20as%20amended%2014%20Jul%202008.pdf"
+          }
+        ]
+      }
+    ]
+  },
+  "icdp": {
+    "results": []
+  }
+}
