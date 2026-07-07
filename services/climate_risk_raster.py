@@ -19,7 +19,14 @@ import numpy as np
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "narclim"
+# Raster location. Local dev defaults to repo/data/narclim (gitignored, ~1.8 GB).
+# On Railway the rasters are downloaded from R2 to a writable dir at startup by
+# scripts/download_narclim_rasters.py — point both at it via NARCLIM_DIR.
+DATA_DIR = (
+    Path(os.environ["NARCLIM_DIR"])  # noqa: bracket-access (guarded by the .get() below)
+    if os.environ.get("NARCLIM_DIR")
+    else Path(__file__).resolve().parent.parent / "data" / "narclim"
+)
 
 # Each entry: variable code → {scenario → file path}
 # Files follow NARCliM naming: {var}_{scenario}_{gcm}_{rcm}_{domain}.nc
