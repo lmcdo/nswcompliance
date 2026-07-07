@@ -95,38 +95,93 @@ def _item_address(item: dict) -> str:
     return str(loc.get("FullAddress") or "—")
 
 
+def _fmt_date(v) -> str:
+    """ISO datetime -> date only; verbatim otherwise; em dash if absent."""
+    if v is None or v == "":
+        return "—"
+    s = str(v)
+    return s[:10] if len(s) >= 10 and s[4] == "-" and s[7] == "-" else s
+
+
+def _dev_type(item: dict) -> str:
+    """DevelopmentType arrives as a list of {"DevelopmentType": "..."} — join the
+    labels verbatim. String or absent are handled without inventing a value."""
+    dt = item.get("DevelopmentType")
+    if isinstance(dt, list):
+        labels = [d.get("DevelopmentType") for d in dt if isinstance(d, dict) and d.get("DevelopmentType")]
+        return ", ".join(labels) if labels else "—"
+    if dt:
+        return str(dt)
+    return "—"
+
+
+def _cost(item: dict) -> str:
+    """CostOfDevelopment (a number) formatted as whole dollars; em dash if absent."""
+    v = item.get("CostOfDevelopment")
+    if v is None or v == "":
+        return "—"
+    try:
+        return f"${int(round(float(v))):,}"
+    except (TypeError, ValueError):
+        return str(v)
+
+
 def build_alert_email(subscription: dict, items: list[dict], unsubscribe_url: str) -> dict:
     """Pure builder: subscription row + new applications -> {subject, html, text}.
 
     Factual listings only — every value verbatim from the NSW Planning Portal
-    application feeds. No commentary, no assessment.
+    application feeds (cost formatted as whole dollars, dates trimmed to the day).
+    No commentary, no assessment.
     """
     address = subscription["address"]
     n = len(items)
     plural = "" if n == 1 else "s"
     subject = f"{n} new development application{plural} near {address}"
 
-    rows_html = []
-    rows_text = []
+    cards_html = []
+    blocks_text = []
     for item in items:
         num = _val(item, "PlanningPortalApplicationNumber")
         if num == "—":
             num = _val(item, "ApplicationNumber")
         app_type = _val(item, "ApplicationType")
         status = _val(item, "ApplicationStatus")
-        lodged = _val(item, "LodgementDate")
+        dev = _dev_type(item)
+        cost = _cost(item)
+        dwellings = item.get("NumberOfNewDwellings")
+        council_ref = _val(item, "CouncilApplicationNumber")
+        exhib_end = item.get("AssessmentExhibitionEndDate")
+        lodged = _fmt_date(item.get("LodgementDate"))
         dist = _val(item, "_distance_m")
         site = _item_address(item)
-        cells = [num, app_type, status, lodged, f"{dist} m", site]
-        rows_html.append(
-            "<tr>"
-            + "".join(
-                f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{html.escape(c)}</td>"
-                for c in cells
-            )
-            + "</tr>"
+
+        # Detail lines shown only when the source has a value for them.
+        details = [("What", dev), ("Estimated cost", cost)]
+        if dwellings not in (None, "", 0):
+            details.append(("New dwellings", str(dwellings)))
+        details.append(("Lodged", f"{lodged} · {dist} m away"))
+        if council_ref != "—":
+            details.append(("Council reference", council_ref))
+        if exhib_end:
+            details.append(("Submissions open until", _fmt_date(exhib_end)))
+        details.append(("Site", site))
+
+        detail_rows_html = "".join(
+            f"<tr><td style='padding:2px 8px 2px 0;color:#6b7280;white-space:nowrap;vertical-align:top'>{html.escape(k)}</td>"
+            f"<td style='padding:2px 0'>{html.escape(v)}</td></tr>"
+            for k, v in details
         )
-        rows_text.append(f"- {num} | {app_type} | {status} | lodged {lodged} | {dist} m | {site}")
+        cards_html.append(
+            "<div style='border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin:0 0 12px'>"
+            f"<div style='font-weight:bold;font-size:14px'>{html.escape(num)}</div>"
+            f"<div style='font-size:12px;color:#6b7280;margin:2px 0 8px'>{html.escape(app_type)} · {html.escape(status)}</div>"
+            f"<table style='border-collapse:collapse;font-size:13px'>{detail_rows_html}</table>"
+            "</div>"
+        )
+        blocks_text.append(
+            f"{num}  ({app_type} · {status})\n"
+            + "\n".join(f"    {k}: {v}" for k, v in details)
+        )
 
     intro = (
         f"New development application{plural} lodged within {ALERT_RADIUS_M} m of "
@@ -136,18 +191,12 @@ def build_alert_email(subscription: dict, items: list[dict], unsubscribe_url: st
         f"{SOURCE_LINE} Data source: NSW Planning Portal application feeds "
         f"(OnlineDA / OnlineCDC). Radius: {ALERT_RADIUS_M} m."
     )
-    header_cells = "".join(
-        f"<th style='padding:6px 10px'>{h}</th>"
-        for h in ("Application", "Type", "Status", "Lodged", "Distance", "Site")
-    )
 
     html_body = (
         '<div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:680px">'
         f"<h2 style='font-size:18px'>{html.escape(subject)}</h2>"
         f"<p style='font-size:14px'>{html.escape(intro)}</p>"
-        '<table style="border-collapse:collapse;font-size:13px;width:100%">'
-        f"<thead><tr style='text-align:left;background:#f9fafb'>{header_cells}</tr></thead>"
-        f"<tbody>{''.join(rows_html)}</tbody></table>"
+        f"{''.join(cards_html)}"
         f"<p style='font-size:12px;color:#6b7280'>{html.escape(source_block)}</p>"
         "<hr style='border:none;border-top:1px solid #eee'>"
         f"<p style='font-size:12px;color:#6b7280'>{html.escape(FOOTER_IDENTITY)}<br>"
@@ -161,7 +210,7 @@ def build_alert_email(subscription: dict, items: list[dict], unsubscribe_url: st
             "",
             intro,
             "",
-            *rows_text,
+            "\n\n".join(blocks_text),
             "",
             source_block,
             "",

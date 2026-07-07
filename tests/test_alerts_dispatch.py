@@ -107,6 +107,48 @@ def test_missing_value_renders_em_dash(subscription):
     assert "—" in email["text"]
 
 
+def test_email_shows_development_type_joined(subscription, new_apps):
+    """The nested DevelopmentType list is joined into a readable 'What' line."""
+    email = dispatch.build_alert_email(subscription, new_apps, "https://x/unsub?token=t")
+    # fixture app 0 is a multi-type application (demolition/subdivision/new dwelling)
+    assert "Subdivision" in email["text"]
+    assert "What" in email["text"]
+
+
+def test_email_formats_cost_as_dollars(subscription, new_apps):
+    email = dispatch.build_alert_email(subscription, new_apps, "https://x/unsub?token=t")
+    assert "$1,144,000" in email["text"]  # from the fixture's CostOfDevelopment 1144000.0
+
+
+def test_email_shows_exhibition_deadline_when_present(subscription, new_apps):
+    email = dispatch.build_alert_email(subscription, new_apps, "https://x/unsub?token=t")
+    # fixture app 0 has AssessmentExhibitionEndDate 2026-07-21T00:00:00
+    assert "Submissions open until" in email["text"]
+    assert "2026-07-21" in email["text"]
+    assert "T00:00:00" not in email["text"]  # datetime trimmed to the day
+
+
+def test_email_omits_exhibition_when_absent(subscription):
+    item = {
+        "PlanningPortalApplicationNumber": "PAN-NOEXHIB",
+        "ApplicationType": "Development Application",
+        "_distance_m": 30,
+        "CostOfDevelopment": 100000,
+    }
+    email = dispatch.build_alert_email(subscription, [item], "https://x/unsub?token=t")
+    assert "Submissions open until" not in email["text"]
+
+
+def test_dev_type_and_cost_helpers_are_null_safe():
+    assert dispatch._dev_type({"DevelopmentType": [{"DevelopmentType": "Dwelling house"}]}) == "Dwelling house"
+    assert dispatch._dev_type({"DevelopmentType": "Pool"}) == "Pool"
+    assert dispatch._dev_type({}) == "—"
+    assert dispatch._cost({"CostOfDevelopment": 340000.0}) == "$340,000"
+    assert dispatch._cost({}) == "—"
+    assert dispatch._fmt_date("2026-07-21T00:00:00") == "2026-07-21"
+    assert dispatch._fmt_date(None) == "—"
+
+
 def test_val_returns_verbatim_or_dash():
     assert dispatch._val({"a": "X"}, "a") == "X"
     assert dispatch._val({"a": None}, "a") == "—"

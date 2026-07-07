@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Property-alerts delivery layer: a scheduled dispatcher emails subscribers about new development applications near their address, plus a token unsubscribe endpoint and a STOP-and-ask migration. No compliance/legal claims; email copy is factual listings verbatim from the NSW Planning Portal feeds. Standard tier because the dispatcher advances persisted dedup state and sends external email — the risk is silent-drop (marking items seen without a delivered email), covered by break-it tests.",
-  "commit_hash": "eab26125",
+  "commit_hash": "8e53fef2",
   "files": [
     "scripts/run_alerts_dispatch.py",
     "scripts/run_monitors.py",
@@ -23,14 +23,14 @@
   "functions": [
     {
       "name": "build_alert_email",
-      "file_line": "scripts/run_alerts_dispatch.py:98",
+      "file_line": "scripts/run_alerts_dispatch.py:129",
       "input": "subscription row plus a list of new application dicts and the unsubscribe URL",
       "output": "dict of subject, html and text — every application value rendered verbatim, missing values shown as an em dash, never fabricated",
       "if_none": "an empty items list is never passed here (dispatch skips send when there are no new items); a golden fixture test pins the rendered output"
     },
     {
       "name": "dispatch",
-      "file_line": "scripts/run_alerts_dispatch.py:231",
+      "file_line": "scripts/run_alerts_dispatch.py:280",
       "input": "dry_run flag plus env (DATABASE_URL, RESEND_API_KEY); reads active subscriptions and the live ePlanning feeds",
       "output": "exit 0 clean, exit 2 per-subscription failures (Telegram alerted), exit 1 run-level failure (no key, missing migration columns)",
       "if_none": "no active subscriptions yields a clean exit 0 with a zero-count summary line"
@@ -46,7 +46,7 @@
   "values": [
     {
       "value": "application field values rendered into the email (number, type, status, lodgement date, distance, site address)",
-      "read_at": "scripts/run_alerts_dispatch.py:98 (build_alert_email via _val)",
+      "read_at": "scripts/run_alerts_dispatch.py:129 (build_alert_email via _val)",
       "nullable": "yes — _val returns an em dash for None or empty string, so a missing API field never becomes a blank or an invented value",
       "if_missing": "an absent or empty API field renders as an em dash (—), never a blank cell or a fabricated default; a test asserts this when Type/Status/Lodged are missing",
       "guard_at": "scripts/run_alerts_dispatch.py:85 (_val) plus a test asserting the em dash appears when Type/Status/Lodged are absent"
@@ -55,7 +55,7 @@
   "queries": [
     {
       "purpose": "advance dedup state only after a confirmed 2xx send (the silent-drop guard)",
-      "file_line": "scripts/run_alerts_dispatch.py:218 (mark_notified), called at :292 only inside the send_resend success branch",
+      "file_line": "scripts/run_alerts_dispatch.py:267 (mark_notified), called at :341 only inside the send_resend success branch",
       "where_clause": "WHERE id=%s — single subscription; seen_application_numbers merged via jsonb_build_object",
       "if_zero": "a failed send skips mark_notified entirely, so the applications stay unseen and re-send on the next run rather than vanishing"
     },
