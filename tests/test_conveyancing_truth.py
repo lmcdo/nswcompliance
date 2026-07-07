@@ -259,6 +259,23 @@ class TestStaticClaimsGuard:
         # instrument — never acquisition intent or likelihood.
         "will be acquired",
         "compulsory acquisition is proposed",
+        # TOD uplift (Section 12) is FLOOR ONLY — the ceiling is held back.
+        # Reading either engine CEILING field into the generator would wire the
+        # held-back "up to N dwellings" number into a legal document. ("development
+        # potential" is NOT forbidden — it is legitimately used elsewhere, e.g. the
+        # existing-GFA disclosure note; the guard targets the ceiling specifically.)
+        "max_permitted_dwellings",
+        "max_permitted_form",
+        "ceiling_dwellings",
+        "ceiling_dev_type=_",   # engine call in this file must pass ceiling=None
+    ]
+
+    # Regex patterns (as opposed to literal substrings) forbidden in the
+    # generator source — a rendered dwelling-COUNT ceiling phrased as a yield.
+    FORBIDDEN_PATTERNS = [
+        r"yield of \d",
+        r"up to \d+ dwelling",
+        r'up to.*\{[^}]*dwelling',   # interpolated "up to {n} dwellings" sentence
     ]
 
     def test_generator_contains_no_forbidden_claims(self):
@@ -266,6 +283,14 @@ class TestStaticClaimsGuard:
         for phrase in self.FORBIDDEN:
             assert phrase not in src, (
                 f"Forbidden claim reintroduced into generate_conveyancing_report.py: {phrase!r}"
+            )
+
+    def test_generator_contains_no_forbidden_patterns(self):
+        import re as _re
+        src = GENERATOR_PATH.read_text(encoding="utf-8")
+        for pat in self.FORBIDDEN_PATTERNS:
+            assert not _re.search(pat, src), (
+                f"Forbidden pattern reintroduced into generate_conveyancing_report.py: {pat!r}"
             )
 
 

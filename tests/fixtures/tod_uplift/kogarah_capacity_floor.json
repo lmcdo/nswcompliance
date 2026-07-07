@@ -1,0 +1,63 @@
+{
+ "lot_area_m2": 904.2,
+ "dev_type": "dwelling_house",
+ "lep_height_m": 14.5,
+ "lep_fsr": 1.0,
+ "lep_max_gfa_from_fsr_m2": 904.2,
+ "lep_max_storeys": 4,
+ "lep_max_gfa_from_height_m2": 3616.8,
+ "lep_envelope_gfa_m2": 904.2,
+ "buildable_footprint_m2": 904.2,
+ "setback_front_m": null,
+ "setback_rear_m": null,
+ "setback_side_m": null,
+ "site_coverage_cap_m2": null,
+ "landscaping_reduction_m2": null,
+ "sepp_overrides_applied": [],
+ "effective_height_m": 14.5,
+ "effective_fsr": 1.0,
+ "shadow_storey_reduction": 0,
+ "parking_spaces_required": null,
+ "parking_gfa_consumed_m2": null,
+ "realistic_gfa_m2": 904.2,
+ "dcp_adjusted_gfa_m2": null,
+ "realistic_dwellings": 1,
+ "as_of_right_form": "dwelling_house",
+ "as_of_right_dwellings": 1,
+ "max_permitted_form": null,
+ "max_permitted_dwellings": null,
+ "ceiling_from_lmr": false,
+ "lmr_source_clause": null,
+ "lmr_source_document": null,
+ "lmr_legislation_url": null,
+ "lmr_effective_date": null,
+ "binding_constraint": "lep_fsr",
+ "binding_constraint_label": "FSR is the binding control on maximum GFA",
+ "steps": [
+  {
+   "constraint": "lep_fsr",
+   "label": "LEP FSR envelope",
+   "phase": "lep",
+   "input_gfa_m2": null,
+   "reduction_m2": null,
+   "output_gfa_m2": 904.2,
+   "footprint_m2": null,
+   "note": "FSR 1.0 x 904.2m2 lot = 904.2m2 max GFA"
+  },
+  {
+   "constraint": "lep_height",
+   "label": "LEP height envelope",
+   "phase": "lep",
+   "input_gfa_m2": null,
+   "reduction_m2": null,
+   "output_gfa_m2": 3616.8,
+   "footprint_m2": null,
+   "note": "14.5m \u00f7 3.0m/storey = 4 storeys x 904m2 lot = 3616.8m2 max GFA"
+  }
+ ],
+ "gaps": [
+  "No DCP setback controls available \u2014 footprint not reduced"
+ ],
+ "confidence": "low",
+ "disclaimer": "Constraint arithmetic is a preliminary computational estimate only. It does not account for merit-based assessment, clause variations, or council-specific interpretation. Engage a qualified town planner for site-specific assessment."
+}

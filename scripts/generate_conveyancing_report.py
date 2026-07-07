@@ -2229,6 +2229,74 @@ def get_corridors_live(
         return None
 
 
+def get_tod_uplift_live(
+    lat: float, lng: float, controls: dict, valuation: dict,
+    lot_dimensions=None, dcp_controls=None,
+):
+    """TOD catchment + FLOOR-ONLY capacity baseline for the PDF.
+
+    prior-art-checked: REUSES services.housing_sepp_eligibility.fetch_tod_catchment
+    (live SEPP layers 752/759) and services.constraint_arithmetic.compute_constraint_
+    arithmetic (the gated capacity engine) — no new catchment logic and no new
+    capacity math. The engine is called with ceiling_dev_type=None so it never
+    computes the held-back ceiling (floor-only scope decision).
+
+    Returns ``(tod_dict_or_None, capacity_result_or_None)``:
+      - tod_dict: fetch_tod_catchment result, or None if both layers failed.
+      - capacity: ConstraintArithmeticResult (floor), or None if not in a TOD
+        catchment (engine not run) or the engine call failed.
+    """
+    def _imp():
+        try:
+            from portal_constraints import fetch_tod_catchment
+            from constraint_arithmetic import compute_constraint_arithmetic
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import fetch_tod_catchment
+            from constraint_arithmetic import compute_constraint_arithmetic
+        return fetch_tod_catchment, compute_constraint_arithmetic
+
+    try:
+        fetch_tod_catchment, compute_constraint_arithmetic = _imp()
+    except Exception as e:
+        print(f"  [warn] TOD uplift check unavailable (import): {e}")
+        return None, None
+
+    try:
+        tod = fetch_tod_catchment(lat, lng)
+    except Exception as e:
+        print(f"  [warn] TOD catchment lookup failed: {e}")
+        return None, None
+
+    # Only run the capacity engine when the lot is actually in a catchment —
+    # the block does not render otherwise, so the compute would be wasted.
+    if not tod or not tod.get("in_tod"):
+        return tod, None
+
+    lot_area = valuation.get("lot_area_m2")
+    if not lot_area or lot_area <= 0:
+        # No lot area → the engine cannot compute an envelope; the disclosure
+        # still renders, the baseline states Not assessed (capacity None).
+        return tod, None
+
+    try:
+        capacity = compute_constraint_arithmetic(
+            lot_area_m2=lot_area,
+            dev_type="dwelling_house",   # conservative floor
+            ceiling_dev_type=None,       # FLOOR ONLY — never compute the ceiling
+            lep_height_str=controls.get("height"),
+            lep_fsr_str=controls.get("fsr"),
+            lot_dimensions=lot_dimensions,
+            dcp_controls=dcp_controls or [],
+        )
+        return tod, capacity
+    except Exception as e:
+        print(f"  [warn] capacity baseline computation failed: {e}")
+        return tod, None
+
+
 # ---------------------------------------------------------------------------
 # Contributions + corridors sentence builders — pure functions (golden-sentence
 # tested in tests/test_conveyancing_corridors.py). Free of reportlab so the
@@ -2401,6 +2469,160 @@ def build_corridors_lines(corridors: Optional[dict]) -> dict:
     return out
 
 
+# ---------------------------------------------------------------------------
+# TOD-catchment uplift disclosure (Section 12) — FLOOR ONLY.
+#
+# Deliberate scope decision (2026-07-07): the paid conveyancing PDF renders the
+# TOD catchment disclosure + instrument attribution + the conservative
+# as-of-right baseline from the capacity engine. It does NOT quantify the
+# uplift CEILING (the "up to N dwellings" figure) — that dwelling-count claim in
+# a legal document is held back pending a legal wording review. The block is
+# suppressed on strata lots (a single strata lot is not independently
+# redevelopable) and on non-TOD lots. All figures come from the engine result
+# object — no dwelling number is ever composed in this builder.
+# ---------------------------------------------------------------------------
+
+_TOD_SCOPE_LINE = (
+    "This is an arithmetic baseline computed from mapped planning controls — not "
+    "a development approval outcome. Development outcomes are determined by the "
+    "consent authority on the merits of a development application."
+)
+_TOD_UPLIFT_HELD = (
+    "A Transport Oriented Development catchment can enable higher-density "
+    "residential development above this baseline, subject to a development "
+    "application under State Environmental Planning Policy (Housing) 2021. This "
+    "report does not quantify that upper limit."
+)
+
+# Human-readable engine form labels (engine dev_type -> plain English).
+_TOD_FORM_LABELS = {
+    "dwelling_house": "detached dwelling",
+    "dual_occupancy": "dual occupancy",
+    "attached_dwelling": "attached dwellings (terraces)",
+    "manor_house": "manor house",
+    "multi_dwelling_housing": "multi-dwelling housing",
+    "residential_flat_building": "residential flat building",
+    "shop_top_housing": "shop-top housing",
+}
+
+
+def _tod_form_label(form: Optional[str]) -> str:
+    if not form:
+        return "the mapped residential form"
+    return _TOD_FORM_LABELS.get(form, form.replace("_", " "))
+
+
+def build_tod_uplift_lines(
+    tod: Optional[dict],
+    capacity,
+    is_strata: bool,
+    lot_area_source: Optional[str] = None,
+) -> dict:
+    """Section 12 content — floor-only TOD-catchment disclosure.
+
+    Args:
+        tod: fetch_tod_catchment result ({"in_tod", "epi_name", ...}) or None
+             when both catchment-layer queries failed.
+        capacity: ConstraintArithmeticResult from the capacity engine (floor
+             computed with ceiling_dev_type=None), or None when the engine call
+             failed / was not run.
+        is_strata: True suppresses the block (a single strata lot is not
+             independently redevelopable).
+        lot_area_source: provenance label for the lot area input (ledger).
+
+    Returns {"render": bool, "not_assessed": bool, "epi_name": str|None,
+             "disclosure": str|None, "baseline": str|None, "held_line": str|None,
+             "ledger": [str], "scope": str|None}.
+
+    Three-state:
+      - not in a TOD catchment, or the catchment lookup failed, or strata
+        → render False (silent by design; no false "not in TOD" claim).
+      - in a TOD catchment but the engine baseline failed
+        → render True + not_assessed (the catchment IS disclosed; the baseline
+          states "Not assessed", never a fabricated figure).
+      - in a TOD catchment with an engine result
+        → full floor-only block.
+    """
+    out = {"render": False, "not_assessed": False, "epi_name": None,
+           "disclosure": None, "baseline": None, "held_line": None,
+           "ledger": [], "scope": None}
+
+    # A None result from fetch_tod_catchment means both layer queries failed —
+    # we cannot claim the lot is in a catchment, and the block is an OPPORTUNITY
+    # disclosure (its absence is not a false safety claim), so stay silent.
+    if not tod or not tod.get("in_tod"):
+        return out
+    if is_strata:
+        return out
+
+    epi = tod.get("epi_name") or "State Environmental Planning Policy (Housing) 2021"
+    out["render"] = True
+    out["epi_name"] = epi
+    out["disclosure"] = (
+        f"This lot is within a Transport Oriented Development (TOD) catchment "
+        f"mapped under {epi}."
+    )
+    out["scope"] = _TOD_SCOPE_LINE
+    out["held_line"] = _TOD_UPLIFT_HELD
+
+    if capacity is None:
+        out["not_assessed"] = True
+        out["baseline"] = (
+            "Not assessed — the development-baseline computation was unavailable "
+            "at report generation."
+        )
+        return out
+
+    # Every figure below is READ from the engine result object — never composed.
+    form = getattr(capacity, "as_of_right_form", None) or getattr(capacity, "dev_type", None)
+    dwellings = getattr(capacity, "as_of_right_dwellings", None)
+    if dwellings is None:
+        dwellings = getattr(capacity, "realistic_dwellings", None)
+    gfa = getattr(capacity, "realistic_gfa_m2", None)
+    if gfa is None:
+        gfa = getattr(capacity, "lep_envelope_gfa_m2", None)
+    binding = getattr(capacity, "binding_constraint_label", None)
+
+    form_label = _tod_form_label(form)
+    if dwellings is not None:
+        _dw = f"{dwellings} dwelling" + ("s" if dwellings != 1 else "")
+        baseline = (
+            f"The as-of-right residential baseline from the mapped controls is "
+            f"{_dw} ({form_label}), subject to a development application."
+        )
+    else:
+        baseline = (
+            f"The as-of-right residential baseline from the mapped controls is a "
+            f"{form_label}, subject to a development application."
+        )
+    if gfa is not None:
+        baseline += (
+            f" The LEP building envelope from these controls is approximately "
+            f"{int(round(gfa)):,} m² gross floor area."
+        )
+        if binding:
+            baseline += f" {binding}."
+    out["baseline"] = baseline
+
+    # Input ledger — the figures that fed the baseline, and the engine's own
+    # named gaps (a baseline without its inputs named is the D1 defect class).
+    ledger = []
+    lot_area = getattr(capacity, "lot_area_m2", None)
+    if lot_area is not None:
+        _src = f" ({lot_area_source})" if lot_area_source else ""
+        ledger.append(f"Lot area: {int(round(lot_area)):,} m²{_src}")
+    lep_h = getattr(capacity, "lep_height_m", None)
+    ledger.append(f"LEP height limit: {lep_h} m" if lep_h is not None
+                  else "LEP height limit: not available")
+    lep_f = getattr(capacity, "lep_fsr", None)
+    ledger.append(f"LEP floor space ratio: {lep_f}" if lep_f is not None
+                  else "LEP floor space ratio: not available")
+    for gap in (getattr(capacity, "gaps", None) or []):
+        ledger.append(str(gap))
+    out["ledger"] = ledger
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -2474,6 +2696,8 @@ def generate_pdf(
     anef_live: Optional[dict] = None,
     contributions: Optional[dict] = None,
     corridors: Optional[dict] = None,
+    tod: Optional[dict] = None,
+    capacity=None,
 ):
     _check_reportlab()
 
@@ -4226,9 +4450,41 @@ def generate_pdf(
     story.append(Paragraph(_xml_escape(_corridor_lines["source_line"]), ss["caveat"]))
 
     # ------------------------------------------------------------------
-    # SECTION 12 — Disclosure Notes
+    # SECTION 12 — Transport Oriented Development (TOD) Catchment
+    # Floor-only disclosure: catchment + instrument + as-of-right baseline;
+    # the uplift ceiling is deliberately NOT quantified. Renders only for a
+    # non-strata lot inside a mapped TOD catchment.
     # ------------------------------------------------------------------
-    h2("12. Disclosure Notes")
+    _lot_area_source = "NSW Valuer General" if valuation.get("lot_area_m2") else None
+    _tod_lines = build_tod_uplift_lines(
+        tod, capacity, bool((strata_info or {}).get("is_strata")),
+        lot_area_source=_lot_area_source,
+    )
+    if _tod_lines["render"]:
+        h2("12. Transport Oriented Development (TOD) Catchment")
+        story.append(Paragraph(_xml_escape(_tod_lines["disclosure"]), ss["warn"]))
+        story.append(Spacer(1, 1 * mm))
+        if _tod_lines["not_assessed"]:
+            story.append(Paragraph(_xml_escape(_tod_lines["baseline"]), ss["note"]))
+        else:
+            story.append(Paragraph(_xml_escape(_tod_lines["baseline"]), ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(_xml_escape(_tod_lines["held_line"]), ss["body"]))
+        if _tod_lines["ledger"]:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph("<b>Inputs used for this baseline:</b>", ss["note"]))
+            for _row in _tod_lines["ledger"]:
+                story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(_xml_escape(_tod_lines["scope"]), ss["caveat"]))
+        _disclosure_section_no = 13
+    else:
+        _disclosure_section_no = 12
+
+    # ------------------------------------------------------------------
+    # SECTION 13 (or 12 when no TOD block) — Disclosure Notes
+    # ------------------------------------------------------------------
+    h2(f"{_disclosure_section_no}. Disclosure Notes")
 
     notes = [
         ("s10.7 Planning Certificate",
@@ -4586,6 +4842,21 @@ def main():
     else:
         print("  Corridors check unavailable — section will state 'Not assessed'")
 
+    print("\nChecking TOD catchment + floor-only capacity baseline ...")
+    _lot_dims_for_tod = None
+    tod, capacity = get_tod_uplift_live(
+        lat, lng, controls, valuation, lot_dimensions=_lot_dims_for_tod,
+        dcp_controls=None,
+    )
+    if tod and tod.get("in_tod"):
+        _strata_here = bool((strata_info or {}).get("is_strata"))
+        print(f"  in TOD catchment ({tod.get('epi_name')}); strata={_strata_here}; "
+              f"baseline={'computed' if capacity is not None else 'not assessed'}")
+    elif tod is None:
+        print("  TOD catchment lookup unavailable — section omitted")
+    else:
+        print("  Not in a TOD catchment — section omitted")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -4602,6 +4873,8 @@ def main():
             anef_live=anef_live,
             contributions=contributions,
             corridors=corridors,
+            tod=tod,
+            capacity=capacity,
         )
 
 

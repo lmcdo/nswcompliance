@@ -1,138 +1,123 @@
 {
   "tier": "critical",
-  "justification": "Two new sections in the conveyancing PDF, a user-facing legal due-diligence document: (A) development-contributions plans named verbatim from the NSW Planning Portal /cp lookup, (B) corridors and land-reservation-acquisition check from the LRA layer 24, SydneyTrain ISEPP layers and the portal /warn endpoint. An LRA hit flips the cover CONSTRAINTS tile. Wrong or silently-missing output here misleads a purchaser before exchange.",
-  "commit_hash": "5c57efff",
+  "justification": "New Section 12 in the conveyancing PDF, a user-facing legal due-diligence document: a Transport Oriented Development (TOD) catchment disclosure with the mapping instrument named and the capacity engine's conservative as-of-right baseline. Scope decision (2026-07-07): FLOOR ONLY — the uplift ceiling ('up to N dwellings') is deliberately held back from the paid document pending a legal wording review. A dwelling-count claim in a conveyancing report is the highest-liability figure the product renders, so the render gate, three-state failure handling and static guards are the core of this change.",
+  "commit_hash": "f99105ba",
   "files": [
-    "services/portal_constraints.py",
-    "services/conveyancing.py",
     "scripts/generate_conveyancing_report.py",
-    "tests/test_conveyancing_corridors.py",
+    "services/conveyancing.py",
+    "tests/test_conveyancing_tod.py",
     "tests/test_conveyancing_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "Phase-0 validated 2026-07-07 and re-verified live this session: /cp at Concord 1456609 returns two plan names plus the HPC block, Bowral 1119594 returns nine Wingecarribee plans; LRA layer 24 holds 5,419 polygons with AUTHORITY and CURRENCY_DATE fields; SydneyTrain_ISEPP layers 1/2 hold 825/800 polygons with agency and defining_legislation; /warn is positive at Goulburn 448547 and empty at Bowral and Concord. Repo grep found no existing reference to the LRA layer, ISEPP layers or /warn endpoint.",
-    "assumption_mismatch": "If the portal renames response keys or the ArcGIS layers move, the fetchers fail loudly: a /cp body missing both cp and icdp blocks raises and renders Not assessed; an ArcGIS error body returns {} from arcgis_get_with_retry and the missing-features raise keeps the sub-check failed, never checked-clean. Fixtures are recorded live responses, so a drift shows up as a test-vs-live divergence at regeneration, not a silent wrong sentence.",
-    "new_vs_existing": "Reused: arcgis_get_with_retry (retry plus circuit breaker), the missing-features raise pattern from da_outcome.py, the get_*_live wrapper pattern from get_anef_live/get_bushfire_live, and the /cp parse shape from intelligence_brief._fetch_contributions (PR #460). New: a three-state re-wrap of the /cp parse (the brief fetcher collapses queried-empty and transport failure into one None), the corridor layer fetchers, and the two pure sentence builders. The brief itself is untouched.",
-    "external_source_error": "Every external call has an explicit failure surface: /cp transport error or malformed body renders 'Not assessed — contributions lookup unavailable'; each corridor sub-check (LRA, rail, /warn) fails independently so one outage never suppresses the others' results; an HTTP-200 ArcGIS error body cannot masquerade as zero features because the client's {} triggers the raise. The checked-clean sentence is only composed from sub-checks that actually ran and returned empty.",
-    "frontend_type": "No frontend or API-contract change: both sections are PDF-render additions behind generate_pdf keyword arguments defaulting to None, so the free-tier JSON response shape, the pipeline cache payload and the Next.js components are untouched; jest and tsc surfaces see no new types.",
-    "user_failure_mode": "Worst case for the reader: a lot genuinely inside an LEP acquisition corridor rendering as clear, or a failed lookup implying no contributions plans exist. Both are pinned by mutation-style tests: removing either raise flips a recorded-failure fixture test; the all-clear corridors sentence requires all three sub-checks to have run and returned empty; LRA wording states map presence, authority and instrument only — the static-claims guard now forbids acquisition-intent phrasing."
+    "existing_data": "Re-verified live 2026-07-07: TOD Sites layer 752 (2,000+ features) and Accelerated Precincts layer 759 (8 precincts) are live and point-queryable via fetch_tod_catchment. Positive lot 67 Warialda St Kogarah (propId 1545912, R4, 904 m², 14.5 m, FSR 1.0) returns in_tod True under SEPP (Housing) 2021; the capacity engine returns floor dwelling_house / 1 dwelling / 904 m² GFA bound by FSR. Bowral and Concord return in_tod False (clean negatives). The plan's documented real-stock reality held up: TOD Sites are dominated by apartment blocks and infrastructure parcels — a non-strata TOD lot is genuinely scarce (67 Warialda is an un-subdivided R4 site being upzoned).",
+    "assumption_mismatch": "If the SEPP TOD layers move or rename, fetch_tod_catchment returns None (both layers failed) and the section is omitted — an opportunity disclosure whose absence is never a false safety claim, so silence is the safe failure. If the capacity engine raises on a known TOD lot, the catchment is still disclosed and the baseline states 'Not assessed', never a fabricated figure. Fixtures are recorded live responses, so an engine field rename shows up as a test-vs-live divergence at regeneration.",
+    "new_vs_existing": "Reused: services.housing_sepp_eligibility.fetch_tod_catchment (live 752/759) and services.constraint_arithmetic.compute_constraint_arithmetic (the gated, never-over-reports capacity engine), via the get_*_live wrapper pattern of get_anef_live/get_bushfire_live, and the parallel-future executor of PR #674/#689. New: a floor-only adapter (calls the engine with ceiling_dev_type=None so the ceiling is never computed) and a pure sentence-builder. NO new capacity or eligibility math; the frontend eligibility engine and its mock station data are untouched.",
+    "external_source_error": "fetch_tod_catchment None (both layers failed) -> section omitted (opportunity disclosure; absence is safe). Engine exception on a TOD lot -> catchment disclosed + baseline 'Not assessed'. Not in a catchment -> section omitted (a checked negative, asserted absent in tests). No lot area -> engine not run, baseline 'Not assessed'. The block never renders a figure that did not come from the engine result object.",
+    "frontend_type": "No frontend or API-contract change: the section is a PDF-render addition behind two generate_pdf keyword args (tod, capacity) defaulting to None. The free-tier JSON response, the pipeline cache payload and the Next.js components are untouched; jest and tsc see no new types.",
+    "user_failure_mode": "Worst cases for the reader: (a) the held-back ceiling ('up to N dwellings') leaking into the paid document, or (b) a fabricated baseline figure on a failed engine call, or (c) the block rendering for a strata lot a buyer cannot independently redevelop. Each is pinned: the static-claims guard forbids the ceiling engine fields and any 'up to N dwelling' / 'yield of N' pattern in the generator; the baseline figures are all read from the engine result (mutation test: overriding as_of_right_dwellings changes the sentence); the render gate suppresses on strata and on non-TOD; the engine-failure path asserts 'Not assessed' with no metre figure."
   },
   "functions": [
     {
-      "name": "fetch_corridors_reservations",
-      "file_line": "services/portal_constraints.py:856",
-      "input": "lat and lng of the lot, optional EPSG:4326 lot polygon WKT, optional Planning Portal propId for the /warn lookup",
-      "output": "payload with query_basis (lot_polygon or centroid_30m), data_currency from the max LRA CURRENCY_DATE, and three per-sub-check dicts each carrying status found/empty/failed plus verbatim items",
-      "if_none": "never returns None itself; each sub-check that raises is caught and recorded as status failed so the renderer states Not assessed for that check while the others still render"
+      "name": "build_tod_uplift_lines",
+      "file_line": "scripts/generate_conveyancing_report.py:2515",
+      "input": "the fetch_tod_catchment result (or None), the capacity-engine ConstraintArithmeticResult (or None), the lot's strata flag, and the lot-area provenance label",
+      "output": "a pure render plan: render flag, not_assessed flag, catchment disclosure naming the instrument, the as-of-right baseline read from the engine, the held-back line, the input ledger, and the scope line",
+      "if_none": "capacity None on a TOD lot returns render True with not_assessed True and a 'Not assessed' baseline; a None or non-TOD catchment, or a strata lot, returns render False (silent, no false not-in-TOD claim)"
     },
     {
-      "name": "fetch_contributions_plans",
-      "file_line": "services/portal_constraints.py:951",
-      "input": "Planning Portal propId as integer, queried against the viewer /cp endpoint with the portal Origin and Referer headers",
-      "output": "three-state dict: found with verbatim plan names, plan URLs, HPC block and lgaName; empty when the cp and icdp blocks are present but hold no results; failed on any transport or malformed-body error",
-      "if_none": "a bare {} or a body missing both cp and icdp blocks raises inside _fetch_cp_payload and returns status failed — a degraded response can never render as no plans exist"
+      "name": "get_tod_uplift_live",
+      "file_line": "scripts/generate_conveyancing_report.py:2232",
+      "input": "lat, lng, the pipeline controls dict (height, fsr), the valuation dict (lot area), and optional lot dimensions / DCP controls",
+      "output": "a tuple of the fetch_tod_catchment result and the FLOOR-ONLY capacity result (engine called with ceiling_dev_type None so the held-back ceiling is never computed)",
+      "if_none": "an import or catchment-lookup failure returns (None, None) so the section is omitted; not-in-catchment or missing lot area returns (tod, None) so the engine is not run and the baseline states Not assessed"
     },
     {
-      "name": "_query_corridor_layer",
-      "file_line": "services/portal_constraints.py:779",
-      "input": "ArcGIS layer query URL, prepared geometry params (lot polygon rings or centroid plus 30 m buffer), and the outFields string",
-      "output": "list of verbatim feature attribute dicts from the layer; an empty list only when the layer genuinely returned a features array with nothing in it",
-      "if_none": "arcgis_get_with_retry returns {} on transport failure or an HTTP-200 ArcGIS error body; the missing-features check raises RuntimeError so the caller records the sub-check as failed, never as empty"
-    },
-    {
-      "name": "build_corridors_lines",
-      "file_line": "scripts/generate_conveyancing_report.py:2337",
-      "input": "the corridors payload from fetch_corridors_reservations, or None when the module itself could not be imported or run",
-      "output": "pure render plan: tile_flip flag (LRA hits only), alert rows with authority, instrument and map-currency date, note rows for rail and warnings, Not-assessed rows per failed sub-check, and the checked-clean sentence",
-      "if_none": "a None payload renders all three sub-checks as Not assessed with tile_flip False and no clean sentence — an import failure can never read as a checked-clear result"
-    },
-    {
-      "name": "build_contributions_lines",
-      "file_line": "scripts/generate_conveyancing_report.py:2254",
-      "input": "the three-state contributions dict from fetch_contributions_plans, or None when the lookup never ran for this report",
-      "output": "pure render plan: intro sentence, verbatim plan name lines with document links, the HPC line carrying the data-derived commencement date, or the single queried-empty or Not-assessed status line",
-      "if_none": "None and any non-found non-empty status render the Not assessed sentence directing the reader to the portal or council — never the queried-empty wording"
+      "name": "_tod_form_label",
+      "file_line": "scripts/generate_conveyancing_report.py:2509",
+      "input": "the engine development-form string (e.g. dwelling_house, multi_dwelling_housing) or None",
+      "output": "a plain-English label for the form used in the baseline sentence, falling back to a de-underscored form name",
+      "if_none": "a None form returns the neutral phrase 'the mapped residential form' rather than an empty or invented label"
     }
   ],
   "values": [
     {
-      "value": "LRA feature LABEL, AUTHORITY, EPI_NAME and CURRENCY_DATE rendered into the Section 11 alert sentence",
-      "read_at": "scripts/generate_conveyancing_report.py:2318",
-      "nullable": "yes — any attribute can be null in the layer",
-      "guard_at": "scripts/generate_conveyancing_report.py:2322 (each field falls back to a stated 'not stated in the mapping layer', never invented)",
-      "if_missing": "the sentence states the field is not stated in the mapping layer; the currency clause is omitted when CURRENCY_DATE is absent rather than fabricating a date"
+      "value": "as_of_right_form / as_of_right_dwellings / realistic_gfa_m2 / binding_constraint_label read from the capacity ConstraintArithmeticResult into the baseline sentence",
+      "read_at": "scripts/generate_conveyancing_report.py:2515",
+      "nullable": "yes — any engine field can be None when inputs were incomplete",
+      "guard_at": "scripts/generate_conveyancing_report.py:2515 (getattr with fall-throughs: dwellings falls back to realistic_dwellings, gfa to lep_envelope_gfa_m2; a missing dwelling count drops the count clause rather than printing a bare number)",
+      "if_missing": "the sentence omits the missing clause; no figure is composed that the engine did not supply"
     },
     {
-      "value": "HPC Commenced Date and Ministerial Order URL from the /cp icdp block",
-      "read_at": "services/portal_constraints.py:975",
-      "nullable": "yes — the icdp block may be absent or partial",
-      "guard_at": "scripts/generate_conveyancing_report.py:2278 (each HPC fragment only appended when present)",
-      "if_missing": "the HPC line renders only the fields the portal returned; no commencement date or order link is invented"
+      "value": "lot_area_m2 / lep_height_m / lep_fsr and the engine gaps[] rendered into the input ledger",
+      "read_at": "scripts/generate_conveyancing_report.py:2515",
+      "nullable": "yes — LEP height/FSR are commonly absent",
+      "guard_at": "scripts/generate_conveyancing_report.py:2515 (each ledger row prints 'not available' when the value is None; engine gaps are carried verbatim)",
+      "if_missing": "the ledger names the input as 'not available' — a baseline without its inputs named is the D1 fabricated-figure defect class, so missing inputs are shown, never silently defaulted"
     },
     {
-      "value": "/warn item title and layerRef rendered as note rows",
-      "read_at": "services/portal_constraints.py:840",
-      "nullable": "yes — items may lack title",
-      "guard_at": "services/portal_constraints.py:843 (title falls back to layerRef with a WARNING log; unknown layerRef values are captured, never dropped)",
-      "if_missing": "a titleless item renders its layerRef verbatim so nothing the portal warns about vanishes from the report"
+      "value": "tod.epi_name (the mapping instrument) rendered into the catchment disclosure and held-back line",
+      "read_at": "scripts/generate_conveyancing_report.py:2515",
+      "nullable": "yes — epi_name can be empty in the layer response",
+      "guard_at": "scripts/generate_conveyancing_report.py:2515 (falls back to 'State Environmental Planning Policy (Housing) 2021', the governing instrument for these layers)",
+      "if_missing": "the disclosure still names the governing SEPP rather than leaving the instrument blank"
     }
   ],
-  "queries": "N/A — no SQL changed; all new data comes from live NSW Planning Portal and ArcGIS HTTP endpoints",
+  "queries": "N/A — no SQL changed; all new data comes from the live SEPP ArcGIS TOD layers and the in-process capacity engine",
   "break_it": [
     {
-      "scenario": "ArcGIS answers HTTP 200 with an error body for the LRA layer while the lot genuinely sits in an acquisition corridor",
-      "what_happens": "arcgis_get_with_retry returns {}; without the missing-features raise the sub-check would record empty and the section would print the checked-clean sentence over a real acquisition corridor",
+      "scenario": "A future change wires the engine's held-back ceiling (max_permitted_dwellings) into the floor-only section",
+      "what_happens": "The paid legal document would state an 'up to N dwellings' figure the scope decision deliberately holds back pending legal review",
       "mitigated": true,
-      "how": "_query_corridor_layer raises on a body without a features key; the sub-check records failed and renders Not assessed; the clean sentence is only composed from sub-checks that ran",
-      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k arcgis_error_body_is_failed_not_empty"
+      "how": "the static-claims guard forbids max_permitted_dwellings / max_permitted_form / ceiling_dwellings and any 'up to N dwelling' or 'yield of N' pattern in the generator source; get_tod_uplift_live calls the engine with ceiling_dev_type=None so the ceiling is never even computed",
+      "repro": "python -m pytest tests/test_conveyancing_truth.py -k forbidden"
     },
     {
-      "scenario": "The /cp endpoint degrades to a bare {} response during a portal outage",
-      "what_happens": "Without the missing-blocks raise the parse would find zero plans and the PDF would state no contributions plans were returned — an implied checked-absence built on a failed lookup",
+      "scenario": "The capacity engine raises on a lot the catchment lookup confirmed is in a TOD area",
+      "what_happens": "A naive path would omit the section and the buyer would never learn the lot is in an uplift catchment, or worse render a fabricated baseline",
       "mitigated": true,
-      "how": "_fetch_cp_payload raises when both cp and icdp blocks are absent; fetch_contributions_plans returns status failed and the section renders Not assessed",
-      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k bare_dict_is_failed_not_empty"
+      "how": "capacity None with in_tod True renders the catchment disclosure and a 'Not assessed' baseline with no metre figure; the mutation test asserts render stays True and no envelope number appears",
+      "repro": "python -m pytest tests/test_conveyancing_tod.py -k capacity_none_is_not_assessed"
     },
     {
-      "scenario": "Only the rail corridor layer times out while LRA and /warn succeed (observed live on the Concord verification run)",
-      "what_happens": "A naive all-or-nothing fetch would either drop the whole section or hide the successful LRA and warnings results behind one failure",
+      "scenario": "The lot is a single strata unit inside a TOD catchment",
+      "what_happens": "Rendering a detached-dwelling baseline for one apartment implies a redevelopment right the unit owner does not hold",
       "mitigated": true,
-      "how": "each sub-check catches its own exception; the failed one renders its own Not-assessed row and the partial clean sentence names only the sub-checks that ran empty",
-      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k rail_failure_isolated_from_lra; live-observed in reports/conveyancing/verify_concord_cc.pdf"
+      "how": "build_tod_uplift_lines returns render False when is_strata is True; the section is silently absent, consistent with the brief's strata gate",
+      "repro": "python -m pytest tests/test_conveyancing_tod.py -k strata_lot_suppresses"
     },
     {
-      "scenario": "The portal introduces a new /warn layerRef category our code has never seen",
-      "what_happens": "A category filter would silently drop the new warning class and the report would omit something the portal explicitly warns purchasers about",
+      "scenario": "Both SEPP TOD layers (752 and 759) are unavailable at report generation",
+      "what_happens": "fetch_tod_catchment returns None; a check phrased as 'not in a TOD catchment' would be a false negative",
       "mitigated": true,
-      "how": "fetch_portal_warnings captures every item verbatim (title plus layerRef, WARNING log when titleless) and the renderer prints all items — there is no allowlist to fall behind",
-      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k unknown_warn_layerref_captured_verbatim"
+      "how": "a None catchment result returns render False and the section is omitted — the block never claims 'not in TOD'; it only ever affirms a catchment it positively found",
+      "repro": "python -m pytest tests/test_conveyancing_tod.py -k catchment_lookup_failure_returns_none"
     },
     {
-      "scenario": "The lot polygon WKT is missing or unparseable for an address whose parcel sits partly inside an LRA corridor",
-      "what_happens": "A polygon-only implementation would either crash or silently skip the spatial checks, and a point-only check phrased as a lot statement would overclaim what was tested",
+      "scenario": "The engine reports missing LEP height or FSR for a TOD lot",
+      "what_happens": "A baseline that silently defaulted the missing control would overstate the envelope with no trace",
       "mitigated": true,
-      "how": "the fetcher falls back to a centroid plus 30 m buffer and records query_basis; the sentence prefix switches to the within-30-m wording and a basis caveat renders",
-      "repro": "python -m pytest tests/test_conveyancing_corridors.py -k centroid_basis"
+      "how": "the input ledger prints 'LEP height limit: not available' / 'LEP floor space ratio: not available' and carries the engine's own gaps[] verbatim, so every input that fed (or failed to feed) the baseline is named",
+      "repro": "python -m pytest tests/test_conveyancing_tod.py -k missing_inputs_named_not_defaulted"
     },
     {
-      "scenario": "Wording drift reintroduces acquisition-intent claims such as a compulsory-acquisition prediction into the LRA sentence",
-      "what_happens": "The report would assert an intention the mapping layer does not state — the LRA layer records map presence, type, authority and instrument only",
+      "scenario": "The as-of-right dwelling count is hard-coded in the builder instead of read from the engine",
+      "what_happens": "The baseline would print a fixed number regardless of the actual lot, decoupling the sentence from the computation",
       "mitigated": true,
-      "how": "static-claims guard in tests/test_conveyancing_truth.py now forbids the phrases 'will be acquired' and 'compulsory acquisition is proposed' anywhere in the generator source",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k forbidden_claims"
+      "how": "the mutation test feeds an engine result with as_of_right_dwellings=5 and asserts the sentence reads '5 dwellings' — a hard-coded 1 would fail",
+      "repro": "python -m pytest tests/test_conveyancing_tod.py -k dwelling_count_comes_from_engine"
     },
     {
-      "scenario": "PR #674's fail-open other_instruments capture surfaces the same LRA group that Section 11 now reports, double-rendering the constraint",
-      "what_happens": "The same acquisition mapping would appear twice with different wording, and suppressing the fail-open copy unconditionally would lose it whenever the named check fails",
+      "scenario": "A non-TOD lot (Bowral) regresses and picks up a spurious Section 12, shifting Disclosure Notes numbering",
+      "what_happens": "Section numbering would drift and a non-TOD lot would carry an irrelevant uplift block",
       "mitigated": true,
-      "how": "the Section 7 list drops land-reservation-acquisition entries only when the Section 11 LRA sub-check itself found the hit; on a failed or empty named check the fail-open capture still renders",
-      "repro": "grep tile_flip scripts/generate_conveyancing_report.py shows the suppression is conditional on the found state; covered by test_failed_subcheck_never_reads_clean plus the fail-open tests in tests/test_conveyancing_truth.py"
+      "how": "the render gate omits the block for in_tod False; the generated Bowral PDF was read and confirmed to have no Section 12 and Disclosure Notes correctly numbered 12, not 13",
+      "repro": "python scripts/generate_conveyancing_report.py --address '38 Park Road, Bowral NSW 2576' --output /tmp/b.pdf then read Section headings"
     }
   ],
   "post_merge": {
     "db_reset": "No — no database schema or data changes anywhere in this branch",
-    "secrets": "No — all endpoints are public NSW government services requiring no keys",
-    "other_repo": "No — self-contained in services and scripts plus their tests",
-    "manual_verify": "Yes — regenerate one production PDF through the deployed Railway pipeline after merge (Burwood LRA-positive address 70 Fitzroy St) and read Sections 10-11, matching the local verification PDFs generated this session"
+    "secrets": "No — the SEPP TOD layers are public NSW government ArcGIS services requiring no keys",
+    "other_repo": "No — self-contained in scripts and services plus their tests",
+    "manual_verify": "Yes — regenerate the Kogarah TOD-positive PDF (67 Warialda St) through the deployed Railway pipeline after merge and read Section 12 (catchment disclosure, floor baseline, no ceiling figure, ledger); confirm a strata lot suppresses the block once a live strata TOD lot is available"
   }
 }
