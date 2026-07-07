@@ -1,65 +1,47 @@
 {
   "tier": "standard",
-  "justification": "Infra: deploy the NARCliM climate-projection rasters to the Python API/PDF runtime via an R2 startup-download, mirroring the existing Hawkesbury pattern. Changes the deployed image (Dockerfile.python) and makes climate_risk_raster.DATA_DIR env-configurable. Standard tier — no DB writes, no user-facing copy; the risk is the API failing to start or the reader looking in the wrong dir, both guarded (download exits 0 always, DATA_DIR default unchanged when NARCLIM_DIR unset).",
-  "commit_hash": "578cb2be",
+  "justification": "Liability fix to the live public /climate-risk tool + card + marketing page. The result card and page presented a composite 1-100 climate 'risk score' with a verdict band and traffic-light (green->red) colour coding — both explicitly prohibited by the org's own climate-risk legal assessment (ce-climate-risk-score-legal-assessment lines 77, 81), and a smoke test showed the verdict is misleading cross-location (Byron Bay 'Very High' with 9 heat days vs Penrith 'Moderate' with 87). Standard tier: user-facing copy/UI only, no logic/data-flow/DB change, but legal-sensitive — the risk is a residual verdict/traffic-light cue slipping through, covered by the sweep + break-it below.",
+  "commit_hash": "d1c5eaac",
   "files": [
-    "scripts/download_narclim_rasters.py",
-    "services/climate_risk_raster.py",
-    "Dockerfile.python",
-    ".gitignore",
-    "tests/test_narclim_raster_deploy.py"
+    "frontend-nextjs/components/tools/ClimateRiskResultCard.tsx",
+    "frontend-nextjs/app/climate-risk/page.tsx",
+    "frontend-nextjs/components/tools/ClimateRiskTool.tsx"
   ],
   "pre_impl": {
-    "existing_data": "6 NARCliM 2.0 NetCDFs (~1.8 GB) found in Downloads and validated via query_narclim_summary (real Sydney projection: extreme-heat days 15.5 baseline -> 34.8 late-century high). R2 access confirmed (bucket nsw-planning-pdfs); narclim/ prefix was empty and is now populated by the upload. Hawkesbury rasters already deploy via the same R2 startup-download pattern.",
-    "assumption_mismatch": "climate_risk_raster.DATA_DIR was a FIXED repo path (data/narclim), not writable/relocatable on Railway. Made it read NARCLIM_DIR (default unchanged for local dev). The Python API + conveyancing PDF share Dockerfile.python, whose CMD chains raster downloads before uvicorn — so one startup-download line unblocks both the climate product and the (future) PDF section.",
-    "new_vs_existing": "prior-art audited 2026-07-07: download_narclim_rasters.py mirrors download_hawkesbury_rasters.py (same R2 client, head-then-skip, exit-0 contract); no new hazard logic. climate_risk_raster reader reused unchanged except the env-aware DATA_DIR."
+    "existing_data": "The card/page consumed the existing /pipeline/climate-risk response (score, band, hazards, narclim_summary). The brief already retired the composite score for a 'Climate Disclosure Profile' (intelligence_brief.py:807) — this brings the standalone tool in line. No API/response shape change; the API still returns score/band, the UI simply stops rendering them as a verdict.",
+    "assumption_mismatch": "The composite score/band is dominated by coastal/flood weighting, so it inverts on heat (coastal town out-scores a far hotter western suburb) — confirmed live across 6 NSW climate zones. So the fix removes the composite headline entirely rather than recolouring it, and leads with the factual per-hazard exposure + NARCliM projection metrics (which are sound and correctly differentiated).",
+    "new_vs_existing": "No new components; edits to the existing card/tool/page. Present/Not-present badge style reused from the rewritten card in the page's sample mockup for consistency."
   },
-  "functions": [
-    {
-      "name": "main",
-      "file_line": "scripts/download_narclim_rasters.py:45",
-      "input": "R2 env vars (account/key/secret/bucket) and NARCLIM_DIR; no arguments",
-      "output": "downloads the 6 NARCliM .nc files from r2://<bucket>/narclim/ to NARCLIM_DIR, skipping files already present at the correct size",
-      "if_none": "missing R2 env vars or boto3 -> logs a warning and returns (exit 0); a per-file download failure is logged, the partial file removed, and the run continues — never crashes the container startup"
-    }
-  ],
-  "values": [
-    {
-      "value": "the raster directory (NARCLIM_DIR) that both the download destination and the reader resolve to",
-      "read_at": "scripts/download_narclim_rasters.py:31 (DEST_DIR) and services/climate_risk_raster.py:25 (DATA_DIR)",
-      "nullable": "yes — env var may be unset",
-      "if_missing": "reader defaults to repo/data/narclim (unchanged local-dev behaviour); download script defaults to /tmp/narclim (writable on Railway). Dockerfile.python sets NARCLIM_DIR=/tmp/narclim so both agree in the deployed image",
-      "guard_at": "tests assert both honour NARCLIM_DIR and the download default is a /tmp path (never a possibly-read-only repo path)"
-    }
-  ],
-  "queries": "N/A — no database access; this is deploy wiring plus an object-store fetch.",
+  "functions": "N/A — frontend TSX copy/presentation change; no Python functions, no new logic.",
+  "values": "N/A — no data reads changed; the card renders the same API fields, minus the composite score/band verdict.",
+  "queries": "N/A — no database access; no API contract change.",
   "break_it": [
     {
-      "scenario": "R2 is unreachable or creds missing at container startup",
-      "what_happens": "the download script logs a warning and exits 0; uvicorn still starts; climate_risk_score/query_narclim catch FileNotFoundError and drop the projection component — the API serves, the projections show their existing honest gap",
+      "scenario": "A residual traffic-light (green/amber/red) cue implies a safety/danger verdict",
+      "what_happens": "would breach the legal posture (line 81). Swept: the composite score/band headline, the green->red band ladder, the per-hazard X/20 colour chips, and the red/amber projection numbers were all removed/neutralised to gray on both the card and the page's sample mockup",
       "mitigated": true,
-      "how": "all([R2 env]) guard + try/except around boto3 and each download; CMD uses && but the script always exits 0",
-      "repro": "unset R2 env and run: python scripts/download_narclim_rasters.py (exits 0, warns)"
+      "how": "grep confirms no user-facing '/100', 'Very High', 'risk score', 'composite score', or hazard-verdict green/red remains (hazard-TYPE and data-TYPE icon colours are not verdicts and are kept)",
+      "repro": "grep -inE 'risk score|composite score|/ 100|Very High|score out of' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx frontend-nextjs/app/climate-risk/page.tsx | grep -v '//'"
     },
     {
-      "scenario": "Someone adds a scenario to climate_risk_raster.NARCLIM_FILES but not to the download list",
-      "what_happens": "the new scenario would query a file the deploy never downloads -> a silent projection gap in prod",
+      "scenario": "Banned liability language (safe/suitable/insurable/at-risk) in the climate copy",
+      "what_happens": "would breach the language audit + legal posture; climate copy is the highest-risk text",
       "mitigated": true,
-      "how": "test_download_list_matches_raster_manifest asserts the two lists are identical set-equal",
-      "repro": "python -m pytest tests/test_narclim_raster_deploy.py::test_download_list_matches_raster_manifest -q"
+      "how": "'Suitable for insurance assessments' removed; explicit 'not a risk rating / prediction / statement about insurability, safety or value' framing added to the card header and disclaimer",
+      "repro": "grep -inoE '\\b(safe|suitable|guaranteed|insurab|uninsurab|at risk)\\b' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx frontend-nextjs/app/climate-risk/page.tsx"
     },
     {
-      "scenario": "NARCLIM_DIR points the reader somewhere the download script did not write",
-      "what_happens": "reader FileNotFoundError -> projection gap, not a crash; but the two would silently disagree",
+      "scenario": "The page's hardcoded sample mockup contradicts the real (rewritten) card",
+      "what_happens": "users would be shown an example output they will not actually receive",
       "mitigated": true,
-      "how": "both DEST_DIR and DATA_DIR read the SAME NARCLIM_DIR var; tests assert each honours it; Dockerfile sets one value for both",
-      "repro": "python -m pytest tests/test_narclim_raster_deploy.py -k narclim_dir -q"
+      "how": "the sample header and per-hazard chips were converted to the same neutral exposure-count + Present/Not-present style the live card now renders",
+      "repro": "visual: /climate-risk sample section matches ClimateRiskResultCard output"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No new secrets — the R2 creds (R2_ACCOUNT_ID/ACCESS_KEY_ID/SECRET_ACCESS_KEY/BUCKET_NAME) are already on the Python service for the Hawkesbury download. NARCLIM_DIR is baked into Dockerfile.python. Confirm the R2 creds are present on the service post-deploy.",
+    "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — after Railway rebuilds Dockerfile.python, check the deploy logs for '[narclim-dl] 6/6 raster files ready in /tmp/narclim', then hit POST /pipeline/climate-risk (or run a conveyancing report) at a Sydney address and confirm the NARCliM heat/projection component is now populated rather than showing the honest gap."
+    "manual_verify": "Yes — load /climate-risk, run a real address, confirm the result card leads with hazard exposure + NARCliM projection metrics (each sourced), shows NO composite score/band verdict and NO green/red risk colouring, and the disclaimer states it is not a risk rating or financial advice. Follow-up (not this PR): the page's hardcoded sample mockup could be regenerated from a live response for full fidelity."
   }
 }

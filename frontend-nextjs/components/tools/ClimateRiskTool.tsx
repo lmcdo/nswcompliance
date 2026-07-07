@@ -13,7 +13,7 @@ const CLIMATE_STEPS: TransparencyStep[] = [
   { label: 'Scanning coastal erosion hazard lines…',      ms: 3000 },
   { label: 'Loading NARCliM 2.0 climate projections…',    ms: 5000 },
   { label: 'Checking fire history (NPWS)…',               ms: 7000 },
-  { label: 'Computing composite risk score…',             ms: 9000 },
+  { label: 'Assembling hazard exposure summary…',         ms: 9000 },
 ];
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
