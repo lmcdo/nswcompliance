@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Property-alerts delivery layer: a scheduled dispatcher emails subscribers about new development applications near their address, plus a token unsubscribe endpoint and a STOP-and-ask migration. No compliance/legal claims; email copy is factual listings verbatim from the NSW Planning Portal feeds. Standard tier because the dispatcher advances persisted dedup state and sends external email — the risk is silent-drop (marking items seen without a delivered email), covered by break-it tests.",
-  "commit_hash": "1371df56",
+  "commit_hash": "eab26125",
   "files": [
     "scripts/run_alerts_dispatch.py",
     "scripts/run_monitors.py",
