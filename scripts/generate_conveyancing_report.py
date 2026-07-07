@@ -2297,6 +2297,91 @@ def get_tod_uplift_live(
         return tod, None
 
 
+# Confirmed-live ePlanning council names for LGAs missing from pre_da_history's
+# shared _LGA_TO_COUNCIL map (verified live 2026-07-07). Kept local so the shared
+# map / threat_radar copy need not be edited in this PR; migrate upstream later.
+_EPLANNING_COUNCIL_SUPPLEMENT = {
+    "canada bay": "City of Canada Bay Council",
+}
+
+
+def _resolve_eplanning_council(council_name: Optional[str]) -> Optional[str]:
+    """Map a derived council name to the EXACT string OnlineDA/OnlineCDC accepts.
+
+    The ePlanning CouncilName filter requires an exact match — the LEP-derived
+    name (e.g. "Canada Bay Council") does not match the API's "City of Canada Bay
+    Council", so an unmapped name silently returns zero rows. Returns the
+    accepted ePlanning name, or None when it cannot be resolved — the caller
+    then FAILS CLOSED ("Not assessed") rather than reporting a false "no records".
+    """
+    if not council_name:
+        return None
+    try:
+        from pre_da_history import _LGA_TO_COUNCIL
+    except ImportError:
+        _services_dir = str(project_root / "services")
+        if _services_dir not in sys.path:
+            sys.path.insert(0, _services_dir)
+        from pre_da_history import _LGA_TO_COUNCIL
+
+    name = council_name.strip()
+    accepted = set(_LGA_TO_COUNCIL.values())
+    if name in accepted:
+        return name  # already an exact ePlanning name
+    key = name.lower()
+    for source in (_LGA_TO_COUNCIL, _EPLANNING_COUNCIL_SUPPLEMENT):
+        if key in source:
+            return source[key]
+    # Strip common LGA suffixes and retry (e.g. "Canada Bay Council" -> "canada bay").
+    stripped = key
+    for suf in (" municipal council", " shire council", " city council",
+                " council", " city", " shire", " municipal"):
+        if stripped.endswith(suf):
+            stripped = stripped[: -len(suf)].strip()
+            break
+    for source in (_LGA_TO_COUNCIL, _EPLANNING_COUNCIL_SUPPLEMENT):
+        if stripped in source:
+            return source[stripped]
+    return None
+
+
+def get_structures_records_live(council_name: Optional[str], address: str):
+    """Subject-lot DA + CDC application records for the Stage-1 reconciliation.
+
+    prior-art-checked: REUSES services.pre_da_history.get_da_events +
+    get_pcc_events + _LGA_TO_COUNCIL (the live OnlineDA/OnlineCDC fetchers +
+    council-name map) — no new fetcher. Stage 1 runs NO imagery/detection call.
+
+    Returns ``(records, status)``:
+      - (list, "ok"): DA+CDC records for the lot (possibly empty when none found).
+      - (None, "failed"): the lookup could not run OR the council could not be
+        resolved to an ePlanning-accepted name — the section renders "Not
+        assessed", never an implied absence of applications. Failing closed on an
+        unresolved council is deliberate: an unmapped name returns zero rows,
+        which would otherwise print a FALSE "no applications on record".
+    """
+    council = _resolve_eplanning_council(council_name)
+    if not council:
+        print(f"  [warn] structures/records: council {council_name!r} not resolvable "
+              f"to an ePlanning name — rendering 'Not assessed' (fail-closed)")
+        return None, "failed"
+    try:
+        try:
+            from pre_da_history import get_da_events, get_pcc_events
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from pre_da_history import get_da_events, get_pcc_events
+        # Fuzzy-match on the street-address fragment (drop the state/postcode tail).
+        frag = address.split(",")[0].strip() if address else address
+        records = list(get_da_events(council, frag)) + list(get_pcc_events(council, frag))
+        return records, "ok"
+    except Exception as e:
+        print(f"  [warn] structures/records lookup failed: {e}")
+        return None, "failed"
+
+
 # ---------------------------------------------------------------------------
 # Contributions + corridors sentence builders — pure functions (golden-sentence
 # tested in tests/test_conveyancing_corridors.py). Free of reportlab so the
@@ -2623,6 +2708,160 @@ def build_tod_uplift_lines(
     return out
 
 
+# ---------------------------------------------------------------------------
+# Structures & records reconciliation (Section 13) — STAGE 1 (records-only).
+#
+# THE CORE LIABILITY RULE: this section NEVER states, implies, or lets a reader
+# infer that a structure is unapproved / illegal / unauthorised / non-compliant
+# / a breach / without consent. It states a FACTUAL reconciliation gap and turns
+# it into a QUESTION for the vendor. Every no-match sentence carries three
+# hedges — the ~2019 record window, the exempt-development possibility, and the
+# question-for-vendor + s10.7/council-records direction. The exhaustive
+# no-verdict-word test in tests/test_conveyancing_structures.py renders every
+# branch and fails if any forbidden framing appears on ANY path.
+#
+# Stage 1 uses ONLY the application records the pipeline can already fetch
+# (pre_da_history OnlineDA/OnlineCDC) — no imagery/detection call. Structure
+# detection is a Stage 2 capability; until it runs, the section says so plainly
+# rather than implying "no unauthorised structures".
+# ---------------------------------------------------------------------------
+
+# Minimum detection confidence before a structure may generate a reconciliation
+# gap line (risk #3: SAM can mis-segment shadow/roof/vegetation). Below this,
+# a detection is dropped, never rendered as a gap.
+_STRUCT_CONFIDENCE_FLOOR = 0.55
+
+_STRUCT_INTRO = (
+    "This section lists development and complying-development applications on "
+    "record for the property. Where structure detection from aerial imagery has "
+    "been performed, a structure that does not match a record is flagged for you "
+    "to check with the vendor and against council records. It does not draw a "
+    "conclusion about any structure — the records available to us begin around "
+    "2019, and many structures are exempt development that require no application."
+)
+_STRUCT_NO_RECORDS = (
+    "No development or complying-development applications for this property "
+    "appear in the NSW Planning Portal records available to us (which begin "
+    "around 2019). This is common for established properties: earlier approvals "
+    "are held by council, and a structure that is exempt development leaves no "
+    "record here. The absence of a record here is not, on its own, a finding "
+    "about any structure on the lot."
+)
+_STRUCT_MATCH_CAVEAT = (
+    "Records are matched to the property by address text (the NSW Planning "
+    "Portal does not key applications to a lot identifier), so this list may "
+    "include nearby properties on the same street — check each application "
+    "number against the property before relying on it."
+)
+_STRUCT_DETECTION_NOT_RUN = (
+    "Structure detection from aerial imagery was not performed for this report, "
+    "so a visible-structure reconciliation is not included here. The applications "
+    "on record above are the development history available to us for this property."
+)
+_STRUCT_RECORDS_FAILED = (
+    "Not assessed — the application-records lookup was unavailable at report "
+    "generation. Check the NSW Planning Portal and council records for the "
+    "development history of this property."
+)
+# The hedged no-match sentence — the CEILING of what may ever be said, and the
+# feature's highest-liability string. Restructured after an adversarial legal
+# red-team (2026-07-07): it LEADS with the data-window limitation (not the
+# "visible structure / no record" pairing that builds the imputation), states
+# the innocent causes as the EXPECTED result, carries an explicit non-imputation
+# line, and drops the "question for the vendor" framing (which presupposes a
+# problem). Every clause is load-bearing (the test asserts 2019 + exempt +
+# vendor + non-imputation + s10.7 tokens; deleting any fails). This string is
+# DORMANT in Stage 1 (no detections) — it needs legal sign-off before Stage 2
+# ever renders it to a reader.
+_STRUCT_GAP_SENTENCE = (
+    "The application records available to us begin around 2019 and do not "
+    "include a lodged application matching this structure. That is the expected "
+    "result for a structure that is exempt development and needs no application, "
+    "one predating the record window, or one held only in council's own records "
+    "rather than the Portal — none of which appear in this dataset. The absence "
+    "of a matching record here is not, on its own, a finding about the structure. "
+    "To see the full development history, ask the vendor and check a current "
+    "Section 10.7 planning certificate and council records."
+)
+
+
+def _struct_record_line(rec: dict) -> str:
+    """One application-record line — values rendered verbatim from the record."""
+    app_type = rec.get("app_type") or "Application"
+    detail = rec.get("dev_type") or rec.get("description") or "type not stated in the record"
+    date = rec.get("date") or rec.get("date_updated") or "date not stated"
+    status = rec.get("status") or "status not stated"
+    pan = rec.get("pan") or "PAN not stated"
+    return f"{app_type} — {detail} ({date}, {status}). {pan}."
+
+
+def _struct_detection_matches_record(detection: dict, records: list) -> bool:
+    """Conservative keyword match: a detected structure is 'matched' when a
+    record's development type / description references its label. Deliberately
+    simple — a false NON-match only produces a hedged question, never a claim."""
+    label = str(detection.get("label") or "").lower().strip()
+    if not label:
+        return False
+    for rec in records or []:
+        hay = f"{rec.get('dev_type') or ''} {rec.get('description') or ''}".lower()
+        if label and label in hay:
+            return True
+    return False
+
+
+def build_structures_records_lines(
+    records,
+    detections=None,
+    records_status: Optional[str] = None,
+) -> dict:
+    """Section 13 content — structure-vs-records reconciliation (Stage 1).
+
+    Args:
+        records: list of subject-lot DA/CDC record dicts (pan/app_type/dev_type/
+            date/status), [] when the lookup ran and found none, or None when it
+            was not run.
+        detections: list of visible-structure dicts (label/confidence/imagery_date)
+            or None when detection was not performed (Stage 1: always None live).
+        records_status: "failed" when the records lookup errored (renders
+            "Not assessed", never an implied absence of applications).
+
+    Returns {"render", "not_assessed", "intro", "record_lines" [str],
+             "status_line" str|None, "gap_lines" [str], "detection_note" str|None}.
+
+    NEVER emits a verdict word on any path — a no-match is always the hedged
+    question sentence, and detection-not-run is stated plainly.
+    """
+    out = {"render": True, "not_assessed": False, "intro": _STRUCT_INTRO,
+           "record_lines": [], "status_line": None, "gap_lines": [],
+           "detection_note": None}
+
+    # A failed lookup (or no list at all) is fail-visible "Not assessed" — never
+    # an implied "no applications exist". [] (ran, found none) is distinct.
+    if records_status == "failed" or records is None:
+        out["not_assessed"] = True
+        out["status_line"] = _STRUCT_RECORDS_FAILED
+        return out
+
+    if records:
+        out["record_lines"] = [_struct_record_line(r) for r in records]
+    else:
+        out["status_line"] = _STRUCT_NO_RECORDS
+
+    # Reconciliation against detections (Stage 1: detections is None -> not run).
+    if detections is None:
+        out["detection_note"] = _STRUCT_DETECTION_NOT_RUN
+        return out
+
+    usable = [d for d in detections
+              if (d.get("confidence") is None or d.get("confidence") >= _STRUCT_CONFIDENCE_FLOOR)]
+    for det in usable:
+        if not _struct_detection_matches_record(det, records):
+            out["gap_lines"].append(_STRUCT_GAP_SENTENCE)
+    if not usable:
+        out["detection_note"] = _STRUCT_DETECTION_NOT_RUN
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -2698,6 +2937,8 @@ def generate_pdf(
     corridors: Optional[dict] = None,
     tod: Optional[dict] = None,
     capacity=None,
+    structures_records=None,
+    structures_records_status: Optional[str] = None,
 ):
     _check_reportlab()
 
@@ -4460,8 +4701,12 @@ def generate_pdf(
         tod, capacity, bool((strata_info or {}).get("is_strata")),
         lot_area_source=_lot_area_source,
     )
+    # Running section counter — TOD is conditional, so tail sections number
+    # dynamically rather than with brittle hard-coded integers.
+    _sec_no = 12
     if _tod_lines["render"]:
-        h2("12. Transport Oriented Development (TOD) Catchment")
+        h2(f"{_sec_no}. Transport Oriented Development (TOD) Catchment")
+        _sec_no += 1
         story.append(Paragraph(_xml_escape(_tod_lines["disclosure"]), ss["warn"]))
         story.append(Spacer(1, 1 * mm))
         if _tod_lines["not_assessed"]:
@@ -4477,14 +4722,43 @@ def generate_pdf(
                 story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
         story.append(Spacer(1, 1 * mm))
         story.append(Paragraph(_xml_escape(_tod_lines["scope"]), ss["caveat"]))
-        _disclosure_section_no = 13
-    else:
-        _disclosure_section_no = 12
 
     # ------------------------------------------------------------------
-    # SECTION 13 (or 12 when no TOD block) — Disclosure Notes
+    # SECTION — Structures & records reconciliation (Stage 1, records-only).
+    # NEVER states a structure is unauthorised — factual records + hedged
+    # question only (see build_structures_records_lines' liability rule).
     # ------------------------------------------------------------------
-    h2(f"{_disclosure_section_no}. Disclosure Notes")
+    _struct_lines = build_structures_records_lines(
+        structures_records, detections=None, records_status=structures_records_status,
+    )
+    h2(f"{_sec_no}. Structures & Records")
+    _sec_no += 1
+    story.append(Paragraph(_xml_escape(_struct_lines["intro"]), ss["body"]))
+    story.append(Spacer(1, 1 * mm))
+    if _struct_lines["not_assessed"]:
+        story.append(Paragraph(_xml_escape(_struct_lines["status_line"]), ss["note"]))
+    else:
+        if _struct_lines["record_lines"]:
+            story.append(Paragraph(
+                "<b>Applications matched to this address</b> "
+                "(NSW Planning Portal, records available to us begin around 2019):",
+                ss["body"]))
+            for _row in _struct_lines["record_lines"]:
+                story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
+            story.append(Paragraph(_xml_escape(_STRUCT_MATCH_CAVEAT), ss["caveat"]))
+        elif _struct_lines["status_line"]:
+            story.append(Paragraph(_xml_escape(_struct_lines["status_line"]), ss["body"]))
+        for _gap in _struct_lines["gap_lines"]:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph(_xml_escape(_gap), ss["warn"]))
+        if _struct_lines["detection_note"]:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph(_xml_escape(_struct_lines["detection_note"]), ss["caveat"]))
+
+    # ------------------------------------------------------------------
+    # SECTION (final) — Disclosure Notes
+    # ------------------------------------------------------------------
+    h2(f"{_sec_no}. Disclosure Notes")
 
     notes = [
         ("s10.7 Planning Certificate",
@@ -4857,6 +5131,15 @@ def main():
     else:
         print("  Not in a TOD catchment — section omitted")
 
+    print("\nFetching subject-lot application records (structures & records, Stage 1) ...")
+    structures_records, structures_records_status = get_structures_records_live(
+        council_name, args.address,
+    )
+    if structures_records_status == "ok":
+        print(f"  {len(structures_records)} DA/CDC record(s) on file for this lot")
+    else:
+        print("  application-records lookup unavailable — section will state 'Not assessed'")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -4875,6 +5158,8 @@ def main():
             corridors=corridors,
             tod=tod,
             capacity=capacity,
+            structures_records=structures_records,
+            structures_records_status=structures_records_status,
         )
 
 

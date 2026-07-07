@@ -1,123 +1,123 @@
 {
   "tier": "critical",
-  "justification": "New Section 12 in the conveyancing PDF, a user-facing legal due-diligence document: a Transport Oriented Development (TOD) catchment disclosure with the mapping instrument named and the capacity engine's conservative as-of-right baseline. Scope decision (2026-07-07): FLOOR ONLY — the uplift ceiling ('up to N dwellings') is deliberately held back from the paid document pending a legal wording review. A dwelling-count claim in a conveyancing report is the highest-liability figure the product renders, so the render gate, three-state failure handling and static guards are the core of this change.",
-  "commit_hash": "f99105ba",
+  "justification": "New Section 'Structures & Records' in the conveyancing PDF (Stage 1 of 2) — the product's highest-liability text. It lists the subject lot's DA/CDC application records and, where structure detection runs (Stage 2), raises a structure with no matching record as a FACTUAL QUESTION, never an allegation. The defining constraint: no rendered string on any branch may state or imply a structure is unapproved/illegal/unauthorised/non-compliant/a breach/without consent. Wrong output here is a defamation or negligent-misstatement claim, so the no-verdict-word guard, three-state failure handling, fail-closed council resolution and adversarial wording review are the core of this change.",
+  "commit_hash": "555ba613",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",
-    "tests/test_conveyancing_tod.py",
+    "tests/test_conveyancing_structures.py",
     "tests/test_conveyancing_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "Re-verified live 2026-07-07: TOD Sites layer 752 (2,000+ features) and Accelerated Precincts layer 759 (8 precincts) are live and point-queryable via fetch_tod_catchment. Positive lot 67 Warialda St Kogarah (propId 1545912, R4, 904 m², 14.5 m, FSR 1.0) returns in_tod True under SEPP (Housing) 2021; the capacity engine returns floor dwelling_house / 1 dwelling / 904 m² GFA bound by FSR. Bowral and Concord return in_tod False (clean negatives). The plan's documented real-stock reality held up: TOD Sites are dominated by apartment blocks and infrastructure parcels — a non-strata TOD lot is genuinely scarce (67 Warialda is an un-subdivided R4 site being upzoned).",
-    "assumption_mismatch": "If the SEPP TOD layers move or rename, fetch_tod_catchment returns None (both layers failed) and the section is omitted — an opportunity disclosure whose absence is never a false safety claim, so silence is the safe failure. If the capacity engine raises on a known TOD lot, the catchment is still disclosed and the baseline states 'Not assessed', never a fabricated figure. Fixtures are recorded live responses, so an engine field rename shows up as a test-vs-live divergence at regeneration.",
-    "new_vs_existing": "Reused: services.housing_sepp_eligibility.fetch_tod_catchment (live 752/759) and services.constraint_arithmetic.compute_constraint_arithmetic (the gated, never-over-reports capacity engine), via the get_*_live wrapper pattern of get_anef_live/get_bushfire_live, and the parallel-future executor of PR #674/#689. New: a floor-only adapter (calls the engine with ceiling_dev_type=None so the ceiling is never computed) and a pure sentence-builder. NO new capacity or eligibility math; the frontend eligibility engine and its mock station data are untouched.",
-    "external_source_error": "fetch_tod_catchment None (both layers failed) -> section omitted (opportunity disclosure; absence is safe). Engine exception on a TOD lot -> catchment disclosed + baseline 'Not assessed'. Not in a catchment -> section omitted (a checked negative, asserted absent in tests). No lot area -> engine not run, baseline 'Not assessed'. The block never renders a figure that did not come from the engine result object.",
-    "frontend_type": "No frontend or API-contract change: the section is a PDF-render addition behind two generate_pdf keyword args (tod, capacity) defaulting to None. The free-tier JSON response, the pipeline cache payload and the Next.js components are untouched; jest and tsc see no new types.",
-    "user_failure_mode": "Worst cases for the reader: (a) the held-back ceiling ('up to N dwellings') leaking into the paid document, or (b) a fabricated baseline figure on a failed engine call, or (c) the block rendering for a strata lot a buyer cannot independently redevelop. Each is pinned: the static-claims guard forbids the ceiling engine fields and any 'up to N dwelling' / 'yield of N' pattern in the generator; the baseline figures are all read from the engine result (mutation test: overriding as_of_right_dwellings changes the sentence); the render gate suppresses on strata and on non-TOD; the engine-failure path asserts 'Not assessed' with no metre figure."
+    "existing_data": "Stage 1 uses ONLY application records, no imagery/detection call. Reuses pre_da_history.get_da_events + get_pcc_events (live OnlineDA/OnlineCDC, records begin ~2019) + _extract_da_fields shape + the _LGA_TO_COUNCIL ePlanning name map. Verified live 2026-07-07: 14 Stanley St Concord resolves 10+ DA/CDC records once the council is mapped to 'City of Canada Bay Council'. Bowral (Wingecarribee) is unmapped and fails closed to 'Not assessed'. The conveyancing pipeline holds NO structure detection today, so Stage 1 renders records + the honest 'detection not run' state; the gap machinery is built and tested but dormant until Stage 2.",
+    "assumption_mismatch": "A live code check caught a silent-wrong-result: the pipeline derives the LEP council name ('Canada Bay Council') but OnlineDA requires the exact 'City of Canada Bay Council' — an unmapped name returns zero rows, which would have printed a FALSE 'no applications on record'. Fixed by _resolve_eplanning_council + fail-closed: an unresolved council renders 'Not assessed', never a false negative. An adversarial legal red-team also found the original gap sentence built the 'unapproved' imputation by ordering (visible structure -> no record -> interrogate vendor); the sentence was restructured to lead with the data-window limitation and carry an explicit non-imputation line.",
+    "new_vs_existing": "Reused: pre_da_history fetchers + council map; the get_*_live wrapper pattern; the parallel-future executor of PR #674/#689/#691; the PDF section pattern of the shipped sibling sections. New: a floor-simple reconciliation builder, a fail-closed ePlanning-council resolver, and the no-verdict-word wording. NO new detection or fetcher code; NO imagery call in Stage 1; the brief and exempt_screening (deliberately unwired, #490) are untouched.",
+    "external_source_error": "Records lookup failed or council unresolved -> (None, 'failed') -> the section states 'Not assessed', never an implied absence of applications. Records ran and found none -> the hedged 'no applications appear ... this is common for established properties ... not, on its own, a finding' sentence. Address matching is fuzzy text (the Portal keys nothing to a lot id), so the heading is 'Applications matched to this address' with a caveat that nearby same-street records may appear — no overclaim of exclusivity.",
+    "frontend_type": "No frontend or API-contract change: the section is a PDF-render addition behind two generate_pdf keyword args (structures_records, structures_records_status) defaulting to None. The free-tier JSON, the pipeline cache and the Next.js components are untouched; jest and tsc see no new types.",
+    "user_failure_mode": "The catastrophic failure is a reader inferring a structure is unauthorised (defamation of the vendor) or reading a professional guarantee into the section (negligent misstatement / ACL s18). Pinned by: an exhaustive test that renders EVERY branch and fails if any verdict framing appears; the gap sentence restructured after an adversarial red-team to lead with the limitation + a non-imputation line; the fail-closed council resolver that prevents a false 'no records'; the confidence floor that drops low-confidence detections; and the gap string kept DORMANT in Stage 1 (no detections) so the highest-risk text reaches no reader until Stage 2, which is gated on review + legal sign-off."
   },
   "functions": [
     {
-      "name": "build_tod_uplift_lines",
-      "file_line": "scripts/generate_conveyancing_report.py:2515",
-      "input": "the fetch_tod_catchment result (or None), the capacity-engine ConstraintArithmeticResult (or None), the lot's strata flag, and the lot-area provenance label",
-      "output": "a pure render plan: render flag, not_assessed flag, catchment disclosure naming the instrument, the as-of-right baseline read from the engine, the held-back line, the input ledger, and the scope line",
-      "if_none": "capacity None on a TOD lot returns render True with not_assessed True and a 'Not assessed' baseline; a None or non-TOD catchment, or a strata lot, returns render False (silent, no false not-in-TOD claim)"
+      "name": "build_structures_records_lines",
+      "file_line": "scripts/generate_conveyancing_report.py:2812",
+      "input": "the subject-lot DA/CDC records list (or None / [] ), an optional detections list (None in Stage 1), and a records_status flag",
+      "output": "a render plan of only verdict-free strings: intro, verbatim record lines, a hedged no-records or Not-assessed status line, any hedged gap lines, and the detection-not-run note",
+      "if_none": "records None or status failed returns not_assessed with a 'Not assessed' status line; [] returns the hedged 'no applications appear' sentence — the two are kept distinct so a failed lookup never reads as a checked absence"
     },
     {
-      "name": "get_tod_uplift_live",
-      "file_line": "scripts/generate_conveyancing_report.py:2232",
-      "input": "lat, lng, the pipeline controls dict (height, fsr), the valuation dict (lot area), and optional lot dimensions / DCP controls",
-      "output": "a tuple of the fetch_tod_catchment result and the FLOOR-ONLY capacity result (engine called with ceiling_dev_type None so the held-back ceiling is never computed)",
-      "if_none": "an import or catchment-lookup failure returns (None, None) so the section is omitted; not-in-catchment or missing lot area returns (tod, None) so the engine is not run and the baseline states Not assessed"
+      "name": "get_structures_records_live",
+      "file_line": "scripts/generate_conveyancing_report.py:2348",
+      "input": "the pipeline-derived council name and the property address",
+      "output": "a tuple of the DA+CDC records list and an 'ok' status when the council resolves to an ePlanning-accepted name, else (None, 'failed')",
+      "if_none": "an unresolved council or a fetch exception returns (None, 'failed') so the section states 'Not assessed' — failing closed is deliberate because an unmapped council silently returns zero rows and would otherwise print a false 'no applications on record'"
     },
     {
-      "name": "_tod_form_label",
-      "file_line": "scripts/generate_conveyancing_report.py:2509",
-      "input": "the engine development-form string (e.g. dwelling_house, multi_dwelling_housing) or None",
-      "output": "a plain-English label for the form used in the baseline sentence, falling back to a de-underscored form name",
-      "if_none": "a None form returns the neutral phrase 'the mapped residential form' rather than an empty or invented label"
+      "name": "_resolve_eplanning_council",
+      "file_line": "scripts/generate_conveyancing_report.py:2308",
+      "input": "a derived council name in any of the LEP / DB / plain forms",
+      "output": "the exact OnlineDA/OnlineCDC-accepted council string via the shared _LGA_TO_COUNCIL map plus a local confirmed-live supplement, matching directly, by key, or after stripping LGA suffixes",
+      "if_none": "returns None when the name cannot be resolved to an accepted ePlanning string, so the caller fails closed rather than issuing a lookup that returns a misleading zero"
     }
   ],
   "values": [
     {
-      "value": "as_of_right_form / as_of_right_dwellings / realistic_gfa_m2 / binding_constraint_label read from the capacity ConstraintArithmeticResult into the baseline sentence",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — any engine field can be None when inputs were incomplete",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (getattr with fall-throughs: dwellings falls back to realistic_dwellings, gfa to lep_envelope_gfa_m2; a missing dwelling count drops the count clause rather than printing a bare number)",
-      "if_missing": "the sentence omits the missing clause; no figure is composed that the engine did not supply"
+      "value": "app_type / dev_type / date / status / pan rendered verbatim into each application-record line",
+      "read_at": "scripts/generate_conveyancing_report.py:2788",
+      "nullable": "yes — any record field can be absent from the ePlanning response",
+      "guard_at": "scripts/generate_conveyancing_report.py:2788 (each field falls back to a stated 'not stated in the record'; the raw status token, e.g. Determined/Refused, is rendered as-is and never rewritten to 'approved')",
+      "if_missing": "the line states the field is not stated in the record; no value is invented and the record status is never upgraded to an approval word"
     },
     {
-      "value": "lot_area_m2 / lep_height_m / lep_fsr and the engine gaps[] rendered into the input ledger",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — LEP height/FSR are commonly absent",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (each ledger row prints 'not available' when the value is None; engine gaps are carried verbatim)",
-      "if_missing": "the ledger names the input as 'not available' — a baseline without its inputs named is the D1 fabricated-figure defect class, so missing inputs are shown, never silently defaulted"
+      "value": "detection confidence gating whether a structure may generate a gap line",
+      "read_at": "scripts/generate_conveyancing_report.py:2812",
+      "nullable": "yes — a detection may carry no confidence",
+      "guard_at": "scripts/generate_conveyancing_report.py:2812 (_STRUCT_CONFIDENCE_FLOOR: a detection below the floor is dropped and never produces a gap line; None confidence is treated as usable only in tests)",
+      "if_missing": "a low-confidence detection (a shadow or vegetation mis-segmentation) is dropped, so it cannot manufacture a reconciliation gap"
     },
     {
-      "value": "tod.epi_name (the mapping instrument) rendered into the catchment disclosure and held-back line",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — epi_name can be empty in the layer response",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (falls back to 'State Environmental Planning Policy (Housing) 2021', the governing instrument for these layers)",
-      "if_missing": "the disclosure still names the governing SEPP rather than leaving the instrument blank"
+      "value": "the resolved ePlanning council name feeding the OnlineDA CouncilName filter",
+      "read_at": "scripts/generate_conveyancing_report.py:2348",
+      "nullable": "yes — an unmapped council resolves to None",
+      "guard_at": "scripts/generate_conveyancing_report.py:2308 (_resolve_eplanning_council returns None for anything not in the accepted set/map)",
+      "if_missing": "a None resolution fails the whole lookup closed to 'Not assessed' — the exact-match filter would otherwise return zero and read as a false absence"
     }
   ],
-  "queries": "N/A — no SQL changed; all new data comes from the live SEPP ArcGIS TOD layers and the in-process capacity engine",
+  "queries": "N/A — no SQL changed; the records come from the live NSW ePlanning OnlineDA/OnlineCDC endpoints via the reused pre_da_history fetchers",
   "break_it": [
     {
-      "scenario": "A future change wires the engine's held-back ceiling (max_permitted_dwellings) into the floor-only section",
-      "what_happens": "The paid legal document would state an 'up to N dwellings' figure the scope decision deliberately holds back pending legal review",
+      "scenario": "A structure approved in 2005 (pre-Portal) shows as a reconciliation gap",
+      "what_happens": "Without the data-window hedge the reader infers the structure is unauthorised; a 2005 approval simply predates the ~2019 Portal records",
       "mitigated": true,
-      "how": "the static-claims guard forbids max_permitted_dwellings / max_permitted_form / ceiling_dwellings and any 'up to N dwelling' or 'yield of N' pattern in the generator source; get_tod_uplift_live calls the engine with ceiling_dev_type=None so the ceiling is never even computed",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k forbidden"
+      "how": "the gap sentence leads with 'records available to us begin around 2019 and do not include ...' and names 'one predating the record window' as an expected cause, plus a 'not, on its own, a finding about the structure' non-imputation line",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k pre2019"
     },
     {
-      "scenario": "The capacity engine raises on a lot the catchment lookup confirmed is in a TOD area",
-      "what_happens": "A naive path would omit the section and the buyer would never learn the lot is in an uplift catchment, or worse render a fabricated baseline",
+      "scenario": "An exempt-development shed (no application required) shows as a gap",
+      "what_happens": "A reader infers the shed is unauthorised when it lawfully needs no application at all",
       "mitigated": true,
-      "how": "capacity None with in_tod True renders the catchment disclosure and a 'Not assessed' baseline with no metre figure; the mutation test asserts render stays True and no envelope number appears",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k capacity_none_is_not_assessed"
+      "how": "the sentence names 'a structure that is exempt development and needs no application' as the FIRST expected cause; the feature never attempts exemption determination (exempt_screening stays unwired)",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k hedged_sentence"
     },
     {
-      "scenario": "The lot is a single strata unit inside a TOD catchment",
-      "what_happens": "Rendering a detached-dwelling baseline for one apartment implies a redevelopment right the unit owner does not hold",
+      "scenario": "The pipeline derives a council name OnlineDA does not accept (e.g. Canada Bay, Wingecarribee)",
+      "what_happens": "The exact-match CouncilName filter returns zero rows and the section prints a FALSE 'no applications on record' for a property that has many",
       "mitigated": true,
-      "how": "build_tod_uplift_lines returns render False when is_strata is True; the section is silently absent, consistent with the brief's strata gate",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k strata_lot_suppresses"
+      "how": "_resolve_eplanning_council maps the name to the accepted ePlanning string or returns None; an unresolved council fails the lookup closed to 'Not assessed' — verified live: Concord now resolves records, Bowral (Wingecarribee unmapped) renders 'Not assessed'",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k 'unresolvable_council_fails_closed or resolves_lep_name'"
     },
     {
-      "scenario": "Both SEPP TOD layers (752 and 759) are unavailable at report generation",
-      "what_happens": "fetch_tod_catchment returns None; a check phrased as 'not in a TOD catchment' would be a false negative",
+      "scenario": "A SAM false positive (shadow or vegetation) is detected as a structure",
+      "what_happens": "A non-existent structure generates a gap line and an implied irregularity",
       "mitigated": true,
-      "how": "a None catchment result returns render False and the section is omitted — the block never claims 'not in TOD'; it only ever affirms a catchment it positively found",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k catchment_lookup_failure_returns_none"
+      "how": "detections below _STRUCT_CONFIDENCE_FLOOR are dropped before any gap line is built; the section never asserts a structure exists as fact (Stage 2 wording is 'visible in imagery' with a date)",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k low_confidence"
     },
     {
-      "scenario": "The engine reports missing LEP height or FSR for a TOD lot",
-      "what_happens": "A baseline that silently defaulted the missing control would overstate the envelope with no trace",
+      "scenario": "The application-records lookup errors part-way through report generation",
+      "what_happens": "An empty section reads as 'no applications', a false checked-clean on a failed lookup",
       "mitigated": true,
-      "how": "the input ledger prints 'LEP height limit: not available' / 'LEP floor space ratio: not available' and carries the engine's own gaps[] verbatim, so every input that fed (or failed to feed) the baseline is named",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k missing_inputs_named_not_defaulted"
+      "how": "a failed fetch returns (None, 'failed') and the section states 'Not assessed — the application-records lookup was unavailable', distinct from the successful-empty sentence",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k fetch_exception_is_failed"
     },
     {
-      "scenario": "The as-of-right dwelling count is hard-coded in the builder instead of read from the engine",
-      "what_happens": "The baseline would print a fixed number regardless of the actual lot, decoupling the sentence from the computation",
+      "scenario": "A future edit introduces a verdict word (unapproved/illegal/unauthorised/...) on any code path",
+      "what_happens": "The report defames the vendor by stating or implying a structure is unlawful",
       "mitigated": true,
-      "how": "the mutation test feeds an engine result with as_of_right_dwellings=5 and asserts the sentence reads '5 dwellings' — a hard-coded 1 would fail",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k dwelling_count_comes_from_engine"
+      "how": "an exhaustive test renders every builder branch and fails if any forbidden framing appears; a second central runtime guard in test_conveyancing_truth.py repeats the scan; the gap string is dormant in Stage 1 regardless",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k NoVerdictWord"
     },
     {
-      "scenario": "A non-TOD lot (Bowral) regresses and picks up a spurious Section 12, shifting Disclosure Notes numbering",
-      "what_happens": "Section numbering would drift and a non-TOD lot would carry an irrelevant uplift block",
+      "scenario": "The fuzzy address match lists a neighbouring same-street property's application as this property's",
+      "what_happens": "A record for 16 Stanley St is presented as the history of 14 Stanley St — a factual overclaim on a legal document",
       "mitigated": true,
-      "how": "the render gate omits the block for in_tod False; the generated Bowral PDF was read and confirmed to have no Section 12 and Disclosure Notes correctly numbered 12, not 13",
-      "repro": "python scripts/generate_conveyancing_report.py --address '38 Park Road, Bowral NSW 2576' --output /tmp/b.pdf then read Section headings"
+      "how": "the heading is 'Applications matched to this address' (not 'on record for this property') and a caveat states matching is by address text and may include nearby same-street properties — check the PAN before relying on it",
+      "repro": "read reports/conveyancing/verify_concord_structures.pdf Section 12 — heading + caveat present"
     }
   ],
   "post_merge": {
     "db_reset": "No — no database schema or data changes anywhere in this branch",
-    "secrets": "No — the SEPP TOD layers are public NSW government ArcGIS services requiring no keys",
+    "secrets": "No — the ePlanning OnlineDA/OnlineCDC endpoints are public NSW services requiring no keys",
     "other_repo": "No — self-contained in scripts and services plus their tests",
-    "manual_verify": "Yes — regenerate the Kogarah TOD-positive PDF (67 Warialda St) through the deployed Railway pipeline after merge and read Section 12 (catchment disclosure, floor baseline, no ceiling figure, ledger); confirm a strata lot suppresses the block once a live strata TOD lot is available"
+    "manual_verify": "Yes — this is the product's highest-liability text: a human (ideally a lawyer) must read every Section 12/13 sentence against the no-verdict rule before Stage 2 is built, since Stage 2 makes the dormant gap sentence user-visible. Also regenerate the Concord + Bowral PDFs through the deployed Railway pipeline (Concord resolves records, Bowral fails closed to 'Not assessed')."
   }
 }

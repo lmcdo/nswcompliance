@@ -293,6 +293,36 @@ class TestStaticClaimsGuard:
                 f"Forbidden pattern reintroduced into generate_conveyancing_report.py: {pat!r}"
             )
 
+    # Structures & Records (Section 13) — the defining constraint: the RENDERED
+    # output must never state or imply a structure is unauthorised. A runtime
+    # scan (not a source scan — the docstring legitimately names the rule) across
+    # every branch of the builder. Full coverage lives in
+    # tests/test_conveyancing_structures.py; this is the central belt-and-braces.
+    STRUCT_FORBIDDEN_FRAMINGS = [
+        "unapproved", "illegal", "unauthorised", "unauthorized",
+        "non-compliant", "noncompliant", "breach", "without consent", "no approval",
+    ]
+
+    def test_structures_section_emits_no_verdict_word_on_any_branch(self):
+        from generate_conveyancing_report import build_structures_records_lines
+        branches = [
+            build_structures_records_lines(None, records_status="failed"),
+            build_structures_records_lines(None),
+            build_structures_records_lines([]),
+            build_structures_records_lines([{"pan": "PAN-1", "app_type": "Development Application",
+                                             "dev_type": "Dwelling", "date": "2022-01-01",
+                                             "status": "Determined"}]),
+            build_structures_records_lines([], detections=[{"label": "cabin", "confidence": 0.9}]),
+            build_structures_records_lines([{"dev_type": "studio"}],
+                                           detections=[{"label": "studio", "confidence": 0.9}]),
+        ]
+        for out in branches:
+            strings = [out.get("intro"), out.get("status_line"), out.get("detection_note")]
+            strings += (out.get("record_lines") or []) + (out.get("gap_lines") or [])
+            blob = " ".join(s for s in strings if s).lower()
+            for word in self.STRUCT_FORBIDDEN_FRAMINGS:
+                assert word not in blob, f"verdict framing {word!r} in structures output: {blob!r}"
+
 
 # ---------------------------------------------------------------------------
 # 8. Integrity-aware confidence (D6 / QA-S7)

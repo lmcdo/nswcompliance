@@ -562,7 +562,22 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("TOD uplift check failed: %s", e)
             return None, None
 
-    with ThreadPoolExecutor(max_workers=7) as executor:
+    def _fetch_structures_records():
+        """Subject-lot DA+CDC application records (structures & records Stage 1).
+
+        prior-art-checked: reuses generate_conveyancing_report.get_structures_records_live
+        (which wraps pre_da_history.get_da_events/get_pcc_events) — no new fetcher,
+        no imagery/detection call. Returns (records, status); (None, "failed")
+        renders "Not assessed", never an implied absence of applications.
+        """
+        try:
+            from generate_conveyancing_report import get_structures_records_live
+            return get_structures_records_live(council_name, req.address)
+        except Exception as e:
+            logger.warning("structures/records lookup failed: %s", e)
+            return None, "failed"
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
@@ -570,6 +585,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         contributions_future = executor.submit(_fetch_contributions)
         corridors_future = executor.submit(_fetch_corridors)
         tod_future = executor.submit(_fetch_tod)
+        structures_future = executor.submit(_fetch_structures_records)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
@@ -577,6 +593,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         contributions_result = contributions_future.result()
         corridors_result = corridors_future.result()
         tod_result, capacity_result = tod_future.result()
+        structures_records_result, structures_records_status = structures_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -610,6 +627,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         corridors=corridors_result,
         tod=tod_result,
         capacity=capacity_result,
+        structures_records=structures_records_result,
+        structures_records_status=structures_records_status,
     )
 
     # Upload to R2
