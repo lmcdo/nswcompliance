@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "New Section 'Structures & Records' in the conveyancing PDF (Stage 1 of 2) — the product's highest-liability text. It lists the subject lot's DA/CDC application records and, where structure detection runs (Stage 2), raises a structure with no matching record as a FACTUAL QUESTION, never an allegation. The defining constraint: no rendered string on any branch may state or imply a structure is unapproved/illegal/unauthorised/non-compliant/a breach/without consent. Wrong output here is a defamation or negligent-misstatement claim, so the no-verdict-word guard, three-state failure handling, fail-closed council resolution and adversarial wording review are the core of this change.",
-  "commit_hash": "dcce2035",
+  "commit_hash": "b161d604",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",
@@ -19,47 +19,47 @@
   "functions": [
     {
       "name": "build_structures_records_lines",
-      "file_line": "scripts/generate_conveyancing_report.py:2812",
+      "file_line": "scripts/generate_conveyancing_report.py:2794",
       "input": "the subject-lot DA/CDC records list (or None / [] ), an optional detections list (None in Stage 1), and a records_status flag",
       "output": "a render plan of only verdict-free strings: intro, verbatim record lines, a hedged no-records or Not-assessed status line, any hedged gap lines, and the detection-not-run note",
       "if_none": "records None or status failed returns not_assessed with a 'Not assessed' status line; [] returns the hedged 'no applications appear' sentence — the two are kept distinct so a failed lookup never reads as a checked absence"
     },
     {
       "name": "get_structures_records_live",
-      "file_line": "scripts/generate_conveyancing_report.py:2348",
+      "file_line": "scripts/generate_conveyancing_report.py:2321",
       "input": "the pipeline-derived council name and the property address",
       "output": "a tuple of the DA+CDC records list and an 'ok' status when the council resolves to an ePlanning-accepted name, else (None, 'failed')",
       "if_none": "an unresolved council or a fetch exception returns (None, 'failed') so the section states 'Not assessed' — failing closed is deliberate because an unmapped council silently returns zero rows and would otherwise print a false 'no applications on record'"
     },
     {
-      "name": "_resolve_eplanning_council",
-      "file_line": "scripts/generate_conveyancing_report.py:2308",
-      "input": "a derived council name in any of the LEP / DB / plain forms",
-      "output": "the exact OnlineDA/OnlineCDC-accepted council string via the shared _LGA_TO_COUNCIL map plus a local confirmed-live supplement, matching directly, by key, or after stripping LGA suffixes",
-      "if_none": "returns None when the name cannot be resolved to an accepted ePlanning string, so the caller fails closed rather than issuing a lookup that returns a misleading zero"
+      "name": "_council_recognised_by_eplanning",
+      "file_line": "scripts/generate_conveyancing_report.py:2300",
+      "input": "a council name string to validate against the live ePlanning OnlineDA vocabulary",
+      "output": "True when the API returns rows for that CouncilName (a recognised name), False when it returns nothing or the probe errors",
+      "if_none": "a False result makes the caller fail closed to 'Not assessed', so an API-unrecognised council name can never read as a false 'no records'"
     }
   ],
   "values": [
     {
       "value": "app_type / dev_type / date / status / pan rendered verbatim into each application-record line",
-      "read_at": "scripts/generate_conveyancing_report.py:2788",
+      "read_at": "scripts/generate_conveyancing_report.py:2770",
       "nullable": "yes — any record field can be absent from the ePlanning response",
-      "guard_at": "scripts/generate_conveyancing_report.py:2788 (each field falls back to a stated 'not stated in the record'; the raw status token, e.g. Determined/Refused, is rendered as-is and never rewritten to 'approved')",
+      "guard_at": "scripts/generate_conveyancing_report.py:2770 (each field falls back to a stated 'not stated in the record'; the raw status token, e.g. Determined/Refused, is rendered as-is and never rewritten to 'approved')",
       "if_missing": "the line states the field is not stated in the record; no value is invented and the record status is never upgraded to an approval word"
     },
     {
       "value": "detection confidence gating whether a structure may generate a gap line",
-      "read_at": "scripts/generate_conveyancing_report.py:2812",
+      "read_at": "scripts/generate_conveyancing_report.py:2794",
       "nullable": "yes — a detection may carry no confidence",
-      "guard_at": "scripts/generate_conveyancing_report.py:2812 (_STRUCT_CONFIDENCE_FLOOR: a detection below the floor is dropped and never produces a gap line; None confidence is treated as usable only in tests)",
+      "guard_at": "scripts/generate_conveyancing_report.py:2794 (_STRUCT_CONFIDENCE_FLOOR: a detection below the floor is dropped and never produces a gap line; None confidence is treated as usable only in tests)",
       "if_missing": "a low-confidence detection (a shadow or vegetation mis-segmentation) is dropped, so it cannot manufacture a reconciliation gap"
     },
     {
-      "value": "the resolved ePlanning council name feeding the OnlineDA CouncilName filter",
-      "read_at": "scripts/generate_conveyancing_report.py:2348",
-      "nullable": "yes — an unmapped council resolves to None",
-      "guard_at": "scripts/generate_conveyancing_report.py:2308 (_resolve_eplanning_council returns None for anything not in the accepted set/map)",
-      "if_missing": "a None resolution fails the whole lookup closed to 'Not assessed' — the exact-match filter would otherwise return zero and read as a false absence"
+      "value": "the council name validated against the live ePlanning vocabulary before any record is trusted",
+      "read_at": "scripts/generate_conveyancing_report.py:2321",
+      "nullable": "yes — the derived council may be empty or unrecognised by the API",
+      "guard_at": "scripts/generate_conveyancing_report.py:2300 (_council_recognised_by_eplanning probes OnlineDA; an empty result means the name is not in the API's vocabulary)",
+      "if_missing": "an empty or unrecognised council fails the whole lookup closed to 'Not assessed' — a wrong name returns zero rows and would otherwise read as a false absence"
     }
   ],
   "queries": "N/A — no SQL changed; the records come from the live NSW ePlanning OnlineDA/OnlineCDC endpoints via the reused pre_da_history fetchers",
