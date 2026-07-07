@@ -1,123 +1,105 @@
 {
-  "tier": "critical",
-  "justification": "New Section 12 in the conveyancing PDF, a user-facing legal due-diligence document: a Transport Oriented Development (TOD) catchment disclosure with the mapping instrument named and the capacity engine's conservative as-of-right baseline. Scope decision (2026-07-07): FLOOR ONLY — the uplift ceiling ('up to N dwellings') is deliberately held back from the paid document pending a legal wording review. A dwelling-count claim in a conveyancing report is the highest-liability figure the product renders, so the render gate, three-state failure handling and static guards are the core of this change.",
-  "commit_hash": "f99105ba",
+  "tier": "standard",
+  "justification": "Property-alerts delivery layer: a scheduled dispatcher emails subscribers about new development applications near their address, plus a token unsubscribe endpoint and a STOP-and-ask migration. No compliance/legal claims; email copy is factual listings verbatim from the NSW Planning Portal feeds. Standard tier because the dispatcher advances persisted dedup state and sends external email — the risk is silent-drop (marking items seen without a delivered email), covered by break-it tests.",
+  "commit_hash": "1371df56",
   "files": [
-    "scripts/generate_conveyancing_report.py",
-    "services/conveyancing.py",
-    "tests/test_conveyancing_tod.py",
-    "tests/test_conveyancing_truth.py"
+    "scripts/run_alerts_dispatch.py",
+    "scripts/run_monitors.py",
+    "services/threat_radar.py",
+    "migrations/add_property_alerts_columns.sql",
+    "railway.alerts.toml",
+    "Dockerfile.monitors",
+    "scripts/requirements-monitor.txt",
+    "frontend-nextjs/components/reports/PropertyAlertsOptIn.tsx",
+    "tests/test_alerts_dispatch.py",
+    "tests/test_threat_radar.py",
+    "tests/fixtures/threat_radar_new_apps.json"
   ],
   "pre_impl": {
-    "existing_data": "Re-verified live 2026-07-07: TOD Sites layer 752 (2,000+ features) and Accelerated Precincts layer 759 (8 precincts) are live and point-queryable via fetch_tod_catchment. Positive lot 67 Warialda St Kogarah (propId 1545912, R4, 904 m², 14.5 m, FSR 1.0) returns in_tod True under SEPP (Housing) 2021; the capacity engine returns floor dwelling_house / 1 dwelling / 904 m² GFA bound by FSR. Bowral and Concord return in_tod False (clean negatives). The plan's documented real-stock reality held up: TOD Sites are dominated by apartment blocks and infrastructure parcels — a non-strata TOD lot is genuinely scarce (67 Warialda is an un-subdivided R4 site being upzoned).",
-    "assumption_mismatch": "If the SEPP TOD layers move or rename, fetch_tod_catchment returns None (both layers failed) and the section is omitted — an opportunity disclosure whose absence is never a false safety claim, so silence is the safe failure. If the capacity engine raises on a known TOD lot, the catchment is still disclosed and the baseline states 'Not assessed', never a fabricated figure. Fixtures are recorded live responses, so an engine field rename shows up as a test-vs-live divergence at regeneration.",
-    "new_vs_existing": "Reused: services.housing_sepp_eligibility.fetch_tod_catchment (live 752/759) and services.constraint_arithmetic.compute_constraint_arithmetic (the gated, never-over-reports capacity engine), via the get_*_live wrapper pattern of get_anef_live/get_bushfire_live, and the parallel-future executor of PR #674/#689. New: a floor-only adapter (calls the engine with ceiling_dev_type=None so the ceiling is never computed) and a pure sentence-builder. NO new capacity or eligibility math; the frontend eligibility engine and its mock station data are untouched.",
-    "external_source_error": "fetch_tod_catchment None (both layers failed) -> section omitted (opportunity disclosure; absence is safe). Engine exception on a TOD lot -> catchment disclosed + baseline 'Not assessed'. Not in a catchment -> section omitted (a checked negative, asserted absent in tests). No lot area -> engine not run, baseline 'Not assessed'. The block never renders a figure that did not come from the engine result object.",
-    "frontend_type": "No frontend or API-contract change: the section is a PDF-render addition behind two generate_pdf keyword args (tod, capacity) defaulting to None. The free-tier JSON response, the pipeline cache payload and the Next.js components are untouched; jest and tsc see no new types.",
-    "user_failure_mode": "Worst cases for the reader: (a) the held-back ceiling ('up to N dwellings') leaking into the paid document, or (b) a fabricated baseline figure on a failed engine call, or (c) the block rendering for a strata lot a buyer cannot independently redevelop. Each is pinned: the static-claims guard forbids the ceiling engine fields and any 'up to N dwelling' / 'yield of N' pattern in the generator; the baseline figures are all read from the engine result (mutation test: overriding as_of_right_dwellings changes the sentence); the render gate suppresses on strata and on non-TOD; the engine-failure path asserts 'Not assessed' with no metre figure."
+    "existing_data": "threat_radar_subscriptions (10 columns, 2 active rows live-introspected 2026-07-07) plus the subscribe/check helpers in services/threat_radar.py (_fetch_das, _filter_nearby, _get_conn) — reused, not duplicated. No email-dispatch or unsubscribe capability existed anywhere (the resend npm dep has zero usages).",
+    "assumption_mismatch": "The table already has last_checked (not last_checked_at); the dispatcher uses the existing column. It was MISSING unsubscribe_token / consented_at / last_notified_at — added by the STOP-and-ask migration (not yet run). ePlanning payload shape captured from a live call (PlanningPortalApplicationNumber, ApplicationType, ApplicationStatus, LodgementDate, Location[0].FullAddress).",
+    "new_vs_existing": "prior-art audited 2026-07-07: dispatcher reuses threat_radar helpers plus run_monitors conventions; unsubscribe extends the same router module; opt-in component mirrors PostResultEmailStrip and posts to the existing /api/satellite/threat-radar route."
   },
   "functions": [
     {
-      "name": "build_tod_uplift_lines",
-      "file_line": "scripts/generate_conveyancing_report.py:2515",
-      "input": "the fetch_tod_catchment result (or None), the capacity-engine ConstraintArithmeticResult (or None), the lot's strata flag, and the lot-area provenance label",
-      "output": "a pure render plan: render flag, not_assessed flag, catchment disclosure naming the instrument, the as-of-right baseline read from the engine, the held-back line, the input ledger, and the scope line",
-      "if_none": "capacity None on a TOD lot returns render True with not_assessed True and a 'Not assessed' baseline; a None or non-TOD catchment, or a strata lot, returns render False (silent, no false not-in-TOD claim)"
+      "name": "build_alert_email",
+      "file_line": "scripts/run_alerts_dispatch.py:98",
+      "input": "subscription row plus a list of new application dicts and the unsubscribe URL",
+      "output": "dict of subject, html and text — every application value rendered verbatim, missing values shown as an em dash, never fabricated",
+      "if_none": "an empty items list is never passed here (dispatch skips send when there are no new items); a golden fixture test pins the rendered output"
     },
     {
-      "name": "get_tod_uplift_live",
-      "file_line": "scripts/generate_conveyancing_report.py:2232",
-      "input": "lat, lng, the pipeline controls dict (height, fsr), the valuation dict (lot area), and optional lot dimensions / DCP controls",
-      "output": "a tuple of the fetch_tod_catchment result and the FLOOR-ONLY capacity result (engine called with ceiling_dev_type None so the held-back ceiling is never computed)",
-      "if_none": "an import or catchment-lookup failure returns (None, None) so the section is omitted; not-in-catchment or missing lot area returns (tod, None) so the engine is not run and the baseline states Not assessed"
+      "name": "dispatch",
+      "file_line": "scripts/run_alerts_dispatch.py:231",
+      "input": "dry_run flag plus env (DATABASE_URL, RESEND_API_KEY); reads active subscriptions and the live ePlanning feeds",
+      "output": "exit 0 clean, exit 2 per-subscription failures (Telegram alerted), exit 1 run-level failure (no key, missing migration columns)",
+      "if_none": "no active subscriptions yields a clean exit 0 with a zero-count summary line"
     },
     {
-      "name": "_tod_form_label",
-      "file_line": "scripts/generate_conveyancing_report.py:2509",
-      "input": "the engine development-form string (e.g. dwelling_house, multi_dwelling_housing) or None",
-      "output": "a plain-English label for the form used in the baseline sentence, falling back to a de-underscored form name",
-      "if_none": "a None form returns the neutral phrase 'the mapped residential form' rather than an empty or invented label"
+      "name": "unsubscribe",
+      "file_line": "services/threat_radar.py:425",
+      "input": "unsubscribe_token query parameter (token only, no email — enumeration guard)",
+      "output": "sets active=false and returns a confirmation; idempotent on repeat clicks",
+      "if_none": "unknown token returns 404; empty or over-100-char token returns 422 before any DB call"
     }
   ],
   "values": [
     {
-      "value": "as_of_right_form / as_of_right_dwellings / realistic_gfa_m2 / binding_constraint_label read from the capacity ConstraintArithmeticResult into the baseline sentence",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — any engine field can be None when inputs were incomplete",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (getattr with fall-throughs: dwellings falls back to realistic_dwellings, gfa to lep_envelope_gfa_m2; a missing dwelling count drops the count clause rather than printing a bare number)",
-      "if_missing": "the sentence omits the missing clause; no figure is composed that the engine did not supply"
-    },
-    {
-      "value": "lot_area_m2 / lep_height_m / lep_fsr and the engine gaps[] rendered into the input ledger",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — LEP height/FSR are commonly absent",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (each ledger row prints 'not available' when the value is None; engine gaps are carried verbatim)",
-      "if_missing": "the ledger names the input as 'not available' — a baseline without its inputs named is the D1 fabricated-figure defect class, so missing inputs are shown, never silently defaulted"
-    },
-    {
-      "value": "tod.epi_name (the mapping instrument) rendered into the catchment disclosure and held-back line",
-      "read_at": "scripts/generate_conveyancing_report.py:2515",
-      "nullable": "yes — epi_name can be empty in the layer response",
-      "guard_at": "scripts/generate_conveyancing_report.py:2515 (falls back to 'State Environmental Planning Policy (Housing) 2021', the governing instrument for these layers)",
-      "if_missing": "the disclosure still names the governing SEPP rather than leaving the instrument blank"
+      "value": "application field values rendered into the email (number, type, status, lodgement date, distance, site address)",
+      "read_at": "scripts/run_alerts_dispatch.py:98 (build_alert_email via _val)",
+      "nullable": "yes — _val returns an em dash for None or empty string, so a missing API field never becomes a blank or an invented value",
+      "if_missing": "an absent or empty API field renders as an em dash (—), never a blank cell or a fabricated default; a test asserts this when Type/Status/Lodged are missing",
+      "guard_at": "scripts/run_alerts_dispatch.py:85 (_val) plus a test asserting the em dash appears when Type/Status/Lodged are absent"
     }
   ],
-  "queries": "N/A — no SQL changed; all new data comes from the live SEPP ArcGIS TOD layers and the in-process capacity engine",
+  "queries": [
+    {
+      "purpose": "advance dedup state only after a confirmed 2xx send (the silent-drop guard)",
+      "file_line": "scripts/run_alerts_dispatch.py:218 (mark_notified), called at :292 only inside the send_resend success branch",
+      "where_clause": "WHERE id=%s — single subscription; seen_application_numbers merged via jsonb_build_object",
+      "if_zero": "a failed send skips mark_notified entirely, so the applications stay unseen and re-send on the next run rather than vanishing"
+    },
+    {
+      "purpose": "unsubscribe by token",
+      "file_line": "services/threat_radar.py:439",
+      "where_clause": "WHERE unsubscribe_token=%s RETURNING id — token-only, no email; UPDATE matches regardless of current active value so repeat clicks are idempotent",
+      "if_zero": "no row means an unknown token, returned as 404 (a known-but-already-unsubscribed token still matches and returns a row)"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A future change wires the engine's held-back ceiling (max_permitted_dwellings) into the floor-only section",
-      "what_happens": "The paid legal document would state an 'up to N dwellings' figure the scope decision deliberately holds back pending legal review",
+      "scenario": "Resend outage mid-run (send returns non-2xx or raises)",
+      "what_happens": "mark_notified is not called, so dedup state is not advanced; the items re-send next run and the run exits 2 with a Telegram summary",
       "mitigated": true,
-      "how": "the static-claims guard forbids max_permitted_dwellings / max_permitted_form / ceiling_dwellings and any 'up to N dwelling' or 'yield of N' pattern in the generator source; get_tod_uplift_live calls the engine with ceiling_dev_type=None so the ceiling is never even computed",
-      "repro": "python -m pytest tests/test_conveyancing_truth.py -k forbidden"
+      "how": "send only advances state inside the truthy branch of send_resend; send_resend returns False on any non-2xx or exception",
+      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_failed_send_does_not_advance_dedup -q"
     },
     {
-      "scenario": "The capacity engine raises on a lot the catchment lookup confirmed is in a TOD area",
-      "what_happens": "A naive path would omit the section and the buyer would never learn the lot is in an uplift catchment, or worse render a fabricated baseline",
+      "scenario": "Both NSW ePlanning endpoints down (api_ok False)",
+      "what_happens": "no send attempt and no state update at all — last_checked is not stamped so the next run retries, identical to the existing check() semantics",
       "mitigated": true,
-      "how": "capacity None with in_tod True renders the catchment disclosure and a 'Not assessed' baseline with no metre figure; the mutation test asserts render stays True and no envelope number appears",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k capacity_none_is_not_assessed"
+      "how": "the api_ok guard continues the loop before filtering or sending",
+      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_api_down_touches_no_state -q"
     },
     {
-      "scenario": "The lot is a single strata unit inside a TOD catchment",
-      "what_happens": "Rendering a detached-dwelling baseline for one apartment implies a redevelopment right the unit owner does not hold",
+      "scenario": "OnlineDA field rename/format change makes a value missing",
+      "what_happens": "the affected cell renders an em dash rather than a fabricated value; per-subscription isolation contains any parse error to one subscriber",
       "mitigated": true,
-      "how": "build_tod_uplift_lines returns render False when is_strata is True; the section is silently absent, consistent with the brief's strata gate",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k strata_lot_suppresses"
+      "how": "_val treats None/empty as absent; the send loop wraps each subscription in try/except and counts failures without aborting the run",
+      "repro": "python -m pytest tests/test_alerts_dispatch.py::test_missing_value_renders_em_dash tests/test_alerts_dispatch.py::test_one_failing_subscription_does_not_abort_the_run -q"
     },
     {
-      "scenario": "Both SEPP TOD layers (752 and 759) are unavailable at report generation",
-      "what_happens": "fetch_tod_catchment returns None; a check phrased as 'not in a TOD catchment' would be a false negative",
+      "scenario": "Subscriber clicks the unsubscribe link twice, or an attacker guesses tokens",
+      "what_happens": "the second click returns the same confirmation (idempotent); an unknown token is a 404 and the endpoint takes no email parameter so it cannot confirm whether an address is subscribed",
       "mitigated": true,
-      "how": "a None catchment result returns render False and the section is omitted — the block never claims 'not in TOD'; it only ever affirms a catchment it positively found",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k catchment_lookup_failure_returns_none"
-    },
-    {
-      "scenario": "The engine reports missing LEP height or FSR for a TOD lot",
-      "what_happens": "A baseline that silently defaulted the missing control would overstate the envelope with no trace",
-      "mitigated": true,
-      "how": "the input ledger prints 'LEP height limit: not available' / 'LEP floor space ratio: not available' and carries the engine's own gaps[] verbatim, so every input that fed (or failed to feed) the baseline is named",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k missing_inputs_named_not_defaulted"
-    },
-    {
-      "scenario": "The as-of-right dwelling count is hard-coded in the builder instead of read from the engine",
-      "what_happens": "The baseline would print a fixed number regardless of the actual lot, decoupling the sentence from the computation",
-      "mitigated": true,
-      "how": "the mutation test feeds an engine result with as_of_right_dwellings=5 and asserts the sentence reads '5 dwellings' — a hard-coded 1 would fail",
-      "repro": "python -m pytest tests/test_conveyancing_tod.py -k dwelling_count_comes_from_engine"
-    },
-    {
-      "scenario": "A non-TOD lot (Bowral) regresses and picks up a spurious Section 12, shifting Disclosure Notes numbering",
-      "what_happens": "Section numbering would drift and a non-TOD lot would carry an irrelevant uplift block",
-      "mitigated": true,
-      "how": "the render gate omits the block for in_tod False; the generated Bowral PDF was read and confirmed to have no Section 12 and Disclosure Notes correctly numbered 12, not 13",
-      "repro": "python scripts/generate_conveyancing_report.py --address '38 Park Road, Bowral NSW 2576' --output /tmp/b.pdf then read Section headings"
+      "how": "token-only UPDATE ... RETURNING id; length guard rejects oversized tokens pre-DB",
+      "repro": "python -m pytest tests/test_threat_radar.py -k unsubscribe -q"
     }
   ],
   "post_merge": {
-    "db_reset": "No — no database schema or data changes anywhere in this branch",
-    "secrets": "No — the SEPP TOD layers are public NSW government ArcGIS services requiring no keys",
-    "other_repo": "No — self-contained in scripts and services plus their tests",
-    "manual_verify": "Yes — regenerate the Kogarah TOD-positive PDF (67 Warialda St) through the deployed Railway pipeline after merge and read Section 12 (catchment disclosure, floor baseline, no ceiling figure, ledger); confirm a strata lot suppresses the block once a live strata TOD lot is available"
+    "db_reset": "No",
+    "secrets": "Yes — RESEND_API_KEY must be added to the Railway property-alerts service (it lives in Vercel env for the frontend, not on the monitors service); the from: sending domain plotdetect.com.au must be verified in Resend",
+    "other_repo": "No",
+    "manual_verify": "Yes — apply migrations/add_property_alerts_columns.sql (STOP-and-ask, presented to user), then run scripts/run_alerts_dispatch.py --dry-run and read the output, then one real send to the founder address at a busy address (Marrickville), confirm the email renders and the unsubscribe link deactivates; verify the Railway service deploys and the cron fires once manually before trusting the schedule"
   }
 }

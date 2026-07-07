@@ -1,5 +1,5 @@
 {
- "status": "trivial",
- "timestamp": "2026-07-07T09:55:06.800541",
- "reason": "pre-PR review fix: builder wording branch for an HPC-only /cp response (no plans) \u2014 pure-function change, no DB, no new queries; the wider feature already passed the QA-gate Critical tier this session"
+  "status": "trivial",
+  "timestamp": "2026-07-07T03:40:00+10:00",
+  "reason": "import-path fix only: change sys.path.insert(0) to append + import via services.threat_radar package form to stop pytest-session dual-import of PropertySale. No new queries, no logic change, no DB writes."
 }

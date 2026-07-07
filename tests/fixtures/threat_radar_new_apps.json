@@ -1,0 +1,106 @@
+[
+  {
+    "PlanningPortalApplicationNumber": "PAN-651211",
+    "DateLastUpdated": "2026-07-02T22:54:23.703",
+    "SubmissionDate": "2026-06-24",
+    "LodgementDate": "2026-06-30",
+    "AssessmentExhibitionEndDate": "2026-07-21T00:00:00",
+    "AssessmentExhibitionStartDate": "2026-07-07T00:00:00",
+    "CostOfDevelopment": 440000.0,
+    "NumberOfNewDwellings": 1,
+    "CouncilApplicationNumber": "DA/2026/0549",
+    "ApplicationStatus": "Additional Information Requested",
+    "ApplicationType": "Development Application",
+    "AccompaniedByVPAFlag": "N",
+    "DevelopmentSubjectToSICFlag": "N",
+    "EPIVariationProposedFlag": "N",
+    "DeterminationAuthority": "Unknown",
+    "Council": {
+      "CouncilName": "Inner West Council"
+    },
+    "DevelopmentType": [
+      {
+        "DevelopmentType": "Dwelling house"
+      },
+      {
+        "DevelopmentType": "Alterations or additions to an existing building or structure"
+      }
+    ],
+    "Location": [
+      {
+        "FullAddress": "9 AMY STREET MARRICKVILLE 2204",
+        "X": "151.159283883",
+        "Y": "-33.903011983",
+        "StreetNumber1": "9",
+        "StreetName": "AMY",
+        "StreetType": "STREET",
+        "Suburb": "MARRICKVILLE",
+        "Postcode": "2204",
+        "State": "New South Wales",
+        "Lot": [
+          {
+            "Lot": "B",
+            "PlanLabel": "DP371280"
+          }
+        ]
+      }
+    ],
+    "_distance_m": 42.5
+  },
+  {
+    "PlanningPortalApplicationNumber": "PAN-651706",
+    "DateLastUpdated": "2026-07-02T22:55:32.607",
+    "SubmissionDate": "2026-06-26",
+    "LodgementDate": "2026-06-29",
+    "AssessmentExhibitionEndDate": "2026-07-21T00:00:00",
+    "AssessmentExhibitionStartDate": "2026-07-07T00:00:00",
+    "CostOfDevelopment": 187000.0,
+    "CouncilApplicationNumber": "DA/2026/0546",
+    "ApplicationStatus": "Under Assessment",
+    "ApplicationType": "Development Application",
+    "AccompaniedByVPAFlag": "N",
+    "DevelopmentSubjectToSICFlag": "N",
+    "EPIVariationProposedFlag": "Y",
+    "DeterminationAuthority": "Unknown",
+    "Council": {
+      "CouncilName": "Inner West Council"
+    },
+    "DevelopmentType": [
+      {
+        "DevelopmentType": "Alterations or additions to an existing building or structure"
+      },
+      {
+        "DevelopmentType": "Balcony, deck, patio, terrace or verandah"
+      },
+      {
+        "DevelopmentType": "Earthworks, retaining walls and structural support"
+      },
+      {
+        "DevelopmentType": "Fences"
+      },
+      {
+        "DevelopmentType": "Swimming pool"
+      }
+    ],
+    "Location": [
+      {
+        "FullAddress": "8 BRADFORD STREET BALMAIN 2041",
+        "X": "151.183787857",
+        "Y": "-33.86027988",
+        "StreetNumber1": "8",
+        "StreetName": "BRADFORD",
+        "StreetType": "STREET",
+        "Suburb": "BALMAIN",
+        "Postcode": "2041",
+        "State": "New South Wales",
+        "Lot": [
+          {
+            "Lot": "B",
+            "PlanLabel": "DP390221"
+          }
+        ]
+      }
+    ],
+    "_distance_m": 42.5
+  }
+]

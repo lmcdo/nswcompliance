@@ -281,3 +281,93 @@ def test_lookup_property_context_no_db_returns_nulls():
     assert result["zone"] is None
     assert result["tod_precinct"] is None
     assert result["tod_type"] is None
+
+
+# ---------------------------------------------------------------------------
+# unsubscribe — token-only deactivation (enumeration guard + idempotency)
+# ---------------------------------------------------------------------------
+
+from fastapi import HTTPException  # noqa: E402
+from services import threat_radar as tr  # noqa: E402
+
+
+class _FakeCursor:
+    """Records the executed UPDATE and returns a row only for known tokens."""
+
+    def __init__(self, known_tokens):
+        self.known_tokens = known_tokens
+        self.last_sql = None
+        self.last_params = None
+
+    def execute(self, sql, params=None):
+        self.last_sql = sql
+        self.last_params = params
+
+    def fetchone(self):
+        token = (self.last_params or (None,))[0]
+        # UPDATE ... WHERE unsubscribe_token=%s RETURNING id matches regardless of
+        # the current active value, so a known token always returns a row.
+        return {"id": "sub-1"} if token in self.known_tokens else None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _FakeConn:
+    def __init__(self, known_tokens):
+        self._cur = _FakeCursor(known_tokens)
+        self.committed = False
+
+    def cursor(self, *a, **k):
+        return self._cur
+
+    def commit(self):
+        self.committed = True
+
+    def close(self):
+        pass
+
+
+def test_unsubscribe_known_token_deactivates(monkeypatch):
+    conn = _FakeConn(known_tokens={"tok_valid"})
+    monkeypatch.setattr(tr, "_get_conn", lambda: conn)
+    result = tr.unsubscribe("tok_valid")
+    assert result["status"] == "unsubscribed"
+    assert "SET active=false" in conn._cur.last_sql
+    assert conn._cur.last_params == ("tok_valid",)
+    assert conn.committed is True
+
+
+def test_unsubscribe_unknown_token_404(monkeypatch):
+    conn = _FakeConn(known_tokens={"tok_valid"})
+    monkeypatch.setattr(tr, "_get_conn", lambda: conn)
+    with pytest.raises(HTTPException) as exc:
+        tr.unsubscribe("tok_unknown")
+    assert exc.value.status_code == 404
+
+
+def test_unsubscribe_is_idempotent(monkeypatch):
+    """A second click on the same valid link returns the same confirmation."""
+    conn = _FakeConn(known_tokens={"tok_valid"})
+    monkeypatch.setattr(tr, "_get_conn", lambda: conn)
+    first = tr.unsubscribe("tok_valid")
+    second = tr.unsubscribe("tok_valid")
+    assert first == second
+    assert second["status"] == "unsubscribed"
+
+
+def test_unsubscribe_empty_token_422(monkeypatch):
+    monkeypatch.setattr(tr, "_get_conn", lambda: _FakeConn(known_tokens=set()))
+    with pytest.raises(HTTPException) as exc:
+        tr.unsubscribe("")
+    assert exc.value.status_code == 422
+
+
+def test_unsubscribe_oversized_token_422():
+    """A pathologically long token is rejected before any DB call."""
+    with pytest.raises(HTTPException) as exc:
+        tr.unsubscribe("x" * 101)
+    assert exc.value.status_code == 422

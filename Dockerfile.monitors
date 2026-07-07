@@ -39,4 +39,13 @@ COPY scripts/dcp_quality_report.py ./scripts/dcp_quality_report.py
 COPY scripts/ai_extractor.py ./scripts/ai_extractor.py
 COPY enrichment/ ./enrichment/
 
-ENV PYTHONPATH=/app:/app/scripts
+# Property-alerts dispatcher (MONITOR_NAME=property-alerts). It reuses the existing
+# threat_radar subscription/check helpers, which live in the FastAPI router module
+# services/threat_radar.py -> imports services/audit_trail.py. Both are copied here;
+# fastapi is added to requirements-monitor.txt because importing that module pulls in
+# APIRouter even in this non-web cron context.
+COPY scripts/run_alerts_dispatch.py ./scripts/run_alerts_dispatch.py
+COPY services/threat_radar.py ./services/threat_radar.py
+COPY services/audit_trail.py ./services/audit_trail.py
+
+ENV PYTHONPATH=/app:/app/scripts:/app/services

@@ -1,0 +1,23 @@
+# Railway config-as-code for the `property-alerts` cron service.
+# Point the service's "Config Path" (Settings > Config as code) at this file.
+# Still set per-service env in the dashboard:
+#   MONITOR_NAME=property-alerts, DATABASE_URL, RESEND_API_KEY,
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, (optional) HC_PING_URL,
+#   (optional) ALERTS_FROM_EMAIL, ALERTS_UNSUBSCRIBE_BASE.
+#
+# Runs run_alerts_dispatch.py via run_monitors: for each active
+# threat_radar subscription, checks the NSW ePlanning feeds for new development
+# applications near the address and emails the subscriber (Resend). Dedup state
+# advances only after a confirmed send. Weekly cadence matches the daily-updated
+# ePlanning feed without over-mailing subscribers.
+#
+# RESEND_API_KEY is NOT on the monitors service by default (it lives in Vercel
+# env for the frontend) — it MUST be added to this Railway service, and the
+# `from:` sending domain (plotdetect.com.au) must be verified in Resend.
+[build]
+dockerfilePath = "Dockerfile.monitors"
+
+[deploy]
+startCommand = "python scripts/run_monitors.py"
+cronSchedule = "0 22 * * 0"  # weekly: Sunday 22:00 UTC (Monday 08:00–09:00 AEST/AEDT)
+restartPolicyType = "NEVER"  # cron job: run to completion, do not restart

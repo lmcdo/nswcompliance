@@ -416,3 +416,40 @@ def list_subscriptions():
         if conn:
             conn.close()
     return {"subscriptions": [dict(r) for r in rows]}
+
+
+# prior-art-checked: this IS the extension of the existing subscription module in
+# this same file — no unsubscribe capability exists anywhere in the repo (the
+# subscribe/check endpoints above have no deactivation path; audit 2026-07-07).
+@router.get("/threat-radar/unsubscribe")
+def unsubscribe(token: str):
+    """Deactivate a subscription by its unsubscribe token.
+
+    Token-only lookup — no email parameter, so the endpoint cannot be used to
+    probe whether an address or email is subscribed (enumeration guard).
+    Idempotent: a second click on the same link returns the same confirmation.
+    """
+    if not token or len(token) > 100:
+        raise HTTPException(422, "Missing or invalid token")
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "UPDATE threat_radar_subscriptions SET active=false "
+                "WHERE unsubscribe_token=%s RETURNING id",
+                (token,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    finally:
+        if conn:
+            conn.close()
+    if row is None:
+        # UPDATE matches regardless of current active value, so an already-
+        # unsubscribed token still returns a row — no row means unknown token.
+        raise HTTPException(404, "Unknown unsubscribe link")
+    return {
+        "status": "unsubscribed",
+        "message": "You will no longer receive development application alerts for this address.",
+    }
