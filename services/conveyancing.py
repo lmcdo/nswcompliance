@@ -547,19 +547,36 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("corridors/reservations check failed: %s", e)
             return None
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    def _fetch_tod():
+        """TOD catchment + floor-only capacity baseline.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_tod_uplift_live
+        (which wraps portal_constraints.fetch_tod_catchment + constraint_arithmetic)
+        — no new catchment or capacity logic. Returns (tod, capacity); (None, None)
+        on failure renders the section as omitted, never a false "not in TOD".
+        """
+        try:
+            from generate_conveyancing_report import get_tod_uplift_live
+            return get_tod_uplift_live(req.lat, req.lng, controls, valuation)
+        except Exception as e:
+            logger.warning("TOD uplift check failed: %s", e)
+            return None, None
+
+    with ThreadPoolExecutor(max_workers=7) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
         anef_future = executor.submit(_fetch_anef)
         contributions_future = executor.submit(_fetch_contributions)
         corridors_future = executor.submit(_fetch_corridors)
+        tod_future = executor.submit(_fetch_tod)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
         anef_live = anef_future.result()
         contributions_result = contributions_future.result()
         corridors_result = corridors_future.result()
+        tod_result, capacity_result = tod_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -591,6 +608,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         anef_live=anef_live,
         contributions=contributions_result,
         corridors=corridors_result,
+        tod=tod_result,
+        capacity=capacity_result,
     )
 
     # Upload to R2
