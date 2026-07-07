@@ -6,7 +6,7 @@ import { ClimateRiskTool } from '@/components/tools/ClimateRiskTool';
 
 export const metadata: Metadata = {
   title: 'Climate Risk Intelligence — PlotDetect',
-  description: 'Composite climate risk scoring for any NSW address. Flood, bushfire, coastal erosion, fire history, and heat projections from NARCliM 2.0.',
+  description: 'Government-mapped hazard exposure for any NSW address — flood, bushfire, coastal, fire history — plus heat and rainfall projections from NARCliM 2.0. Factual data, cited to source; not a risk rating or prediction.',
 };
 
 export default function ClimateRiskPage() {
@@ -23,12 +23,12 @@ export default function ClimateRiskPage() {
           </span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-          Property risk is changing. We measure it.
+          Every hazard on the record for a NSW address, in one place.
         </h1>
         <p className="text-gray-500 text-lg max-w-xl">
-          The only NSW property platform combining statutory planning data with
-          climate projection modelling. Deterministic composite scoring — no AI interpretation,
-          no guesswork.
+          Government-mapped flood, bushfire, coastal and fire-history exposure, plus climate
+          projections from NSW modelling — each cited to its source. Deterministic and factual:
+          no AI interpretation, no guesswork, no risk rating.
         </p>
       </section>
 
@@ -42,8 +42,8 @@ export default function ClimateRiskPage() {
             <p className="text-sm text-slate-600 leading-relaxed">
               Checks whether your property falls within government-mapped hazard
               zones for flood, bushfire, coastal erosion, and fire history, and
-              shows projected temperature changes from NSW climate modelling
-              (NARCliM 2.0). Combines these into a single score out of 100.
+              shows projected temperature and rainfall changes from NSW climate
+              modelling (NARCliM 2.0), each cited to its government source and date.
             </p>
           </div>
           <div>
@@ -54,8 +54,8 @@ export default function ClimateRiskPage() {
               It does not predict whether your property will flood, burn, or be
               damaged. It does not assess your building&apos;s construction,
               resilience, or insurability. It is not an insurance assessment,
-              engineering report, or financial advice. The score measures
-              exposure to mapped hazards &mdash; not probability of loss.
+              engineering report, or financial advice. It reports exposure to
+              mapped hazards &mdash; not probability of loss.
             </p>
           </div>
           <div>
@@ -150,10 +150,10 @@ export default function ClimateRiskPage() {
             <Thermometer className="w-5 h-5 text-teal-600 mb-2" />
             <h3 className="font-semibold text-gray-900 mb-1">Compound Interactions</h3>
             <p className="text-sm text-gray-600 leading-relaxed mb-2">
-              Bushfire + extreme heat. Flood + coastal inundation. Hazards that overlap
-              create disproportionate risk — the composite score captures these interactions.
+              Bushfire + extreme heat. Flood + coastal inundation. Where mapped hazards overlap
+              at an address, the report names the overlapping pair and the recognised interaction.
             </p>
-            <p className="text-xs text-teal-700">Interaction bonus scoring model</p>
+            <p className="text-xs text-teal-700">Overlapping hazard categories, flagged factually</p>
           </div>
         </div>
       </section>
@@ -169,15 +169,17 @@ export default function ClimateRiskPage() {
           from a government dataset. Nothing is estimated or approximated.
         </p>
 
-        {/* Score header */}
+        {/* Sample header — neutral, factual, no verdict/traffic-light */}
         <div className="rounded-xl border border-gray-200 overflow-hidden mb-6">
-          <div className="bg-red-50 border-b border-red-100 px-6 py-5 flex items-center justify-between">
+          <div className="bg-gray-50 border-b border-gray-100 px-6 py-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-red-600 uppercase tracking-wide mb-1">
-                Composite Climate Risk Score
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                Climate &amp; hazard exposure
               </p>
-              <p className="text-4xl font-bold text-red-700">67 <span className="text-lg font-semibold text-red-500">/ 100</span></p>
-              <p className="text-sm text-red-600 mt-1 font-medium">Very High</p>
+              <p className="text-lg font-semibold text-gray-900">
+                4 of 5 mapped hazard categories present at this address
+              </p>
+              <p className="text-sm text-gray-500 mt-1">Exposure to published data — not a risk rating or prediction.</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Near Windsor, Hawkesbury LGA</p>
@@ -194,8 +196,8 @@ export default function ClimateRiskPage() {
                   <Droplets className="w-4 h-4 text-blue-600" />
                   <span className="text-sm font-medium text-gray-900">Flood</span>
                 </div>
-                <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
-                  20 / 20
+                <span className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-gray-100 text-gray-700">
+                  Present
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-6">
@@ -215,8 +217,8 @@ export default function ClimateRiskPage() {
                   <Flame className="w-4 h-4 text-orange-600" />
                   <span className="text-sm font-medium text-gray-900">Bushfire</span>
                 </div>
-                <span className="text-xs font-mono bg-orange-50 text-orange-700 px-2 py-0.5 rounded">
-                  20 / 20
+                <span className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-gray-100 text-gray-700">
+                  Present
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-6">
@@ -236,8 +238,8 @@ export default function ClimateRiskPage() {
                   <TreePine className="w-4 h-4 text-green-700" />
                   <span className="text-sm font-medium text-gray-900">Fire History</span>
                 </div>
-                <span className="text-xs font-mono bg-amber-50 text-amber-700 px-2 py-0.5 rounded">
-                  12 / 20
+                <span className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-gray-100 text-gray-700">
+                  Present
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-6">
@@ -257,8 +259,8 @@ export default function ClimateRiskPage() {
                   <Sun className="w-4 h-4 text-amber-600" />
                   <span className="text-sm font-medium text-gray-900">Heat Trajectory</span>
                 </div>
-                <span className="text-xs font-mono bg-red-50 text-red-700 px-2 py-0.5 rounded">
-                  18 / 20
+                <span className="text-xs px-2 py-0.5 rounded border border-gray-300 bg-gray-100 text-gray-700">
+                  Present
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-6">
@@ -273,15 +275,15 @@ export default function ClimateRiskPage() {
                 </div>
                 <div className="bg-gray-50 rounded-lg px-3 py-2">
                   <p className="text-xs text-gray-400">2050</p>
-                  <p className="text-sm font-semibold text-amber-700">28 days/yr</p>
+                  <p className="text-sm font-semibold text-gray-900">28 days/yr</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg px-3 py-2">
                   <p className="text-xs text-gray-400">2070</p>
-                  <p className="text-sm font-semibold text-orange-700">39 days/yr</p>
+                  <p className="text-sm font-semibold text-gray-900">39 days/yr</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg px-3 py-2">
                   <p className="text-xs text-gray-400">2090</p>
-                  <p className="text-sm font-semibold text-red-700">52 days/yr</p>
+                  <p className="text-sm font-semibold text-gray-900">52 days/yr</p>
                 </div>
               </div>
               <p className="text-xs text-gray-400 ml-6 mt-2">
@@ -296,8 +298,8 @@ export default function ClimateRiskPage() {
                   <Waves className="w-4 h-4 text-cyan-600" />
                   <span className="text-sm font-medium text-gray-900">Coastal</span>
                 </div>
-                <span className="text-xs font-mono bg-green-50 text-green-700 px-2 py-0.5 rounded">
-                  0 / 20
+                <span className="text-xs px-2 py-0.5 rounded border border-gray-200 bg-white text-gray-400">
+                  Not present
                 </span>
               </div>
               <p className="text-sm text-gray-500 ml-6">
@@ -311,30 +313,18 @@ export default function ClimateRiskPage() {
             </div>
           </div>
 
-          {/* Interaction bonuses */}
-          <div className="border-t border-gray-200 bg-amber-50 px-6 py-4">
-            <p className="text-xs font-medium text-amber-700 uppercase tracking-wide mb-2">
-              Compound hazard interactions detected
+          {/* Overlapping hazard categories — factual, no scoring */}
+          <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Overlapping hazard categories at this address
             </p>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Bushfire + Fire History — repeated burn = higher structural risk</span>
-                <span className="font-mono text-amber-700 text-xs">+5</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Bushfire + Heat — rising temperatures dry vegetation, increasing fire intensity</span>
-                <span className="font-mono text-amber-700 text-xs">+5</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Flood + Heat — extreme heat drives intense convective storms</span>
-                <span className="font-mono text-amber-700 text-xs">+3</span>
-              </div>
+              <p className="text-sm text-gray-700">Bushfire + Fire History — repeated burn history in a bushfire-prone area, accumulated fuel loads</p>
+              <p className="text-sm text-gray-700">Bushfire + Heat — rising temperatures dry vegetation and extend fire seasons</p>
+              <p className="text-sm text-gray-700">Flood + Heat — a warmer atmosphere holds more moisture, driving more intense convective storms</p>
             </div>
-            <p className="text-xs text-amber-600 mt-3">
-              Climate impacts are cascading and compounding across systems (IPCC AR6, high confidence).
-              Properties exposed to multiple hazards face disproportionate risk — a bushfire-prone
-              property in a heating region is not simply &ldquo;bushfire + heat&rdquo; but a fundamentally
-              different risk profile.
+            <p className="text-xs text-gray-500 mt-3">
+              Climate impacts can cascade and compound across systems (IPCC AR6 WGII, high confidence).
             </p>
           </div>
         </div>
@@ -342,9 +332,9 @@ export default function ClimateRiskPage() {
         {/* Additional climate projections */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="rounded-xl border border-gray-200 p-5">
-            <Thermometer className="w-4 h-4 text-red-500 mb-2" />
+            <Thermometer className="w-4 h-4 text-gray-500 mb-2" />
             <p className="text-sm font-medium text-gray-900 mb-1">Mean Temperature Change</p>
-            <p className="text-2xl font-bold text-red-600">+2.1°C</p>
+            <p className="text-2xl font-bold text-gray-900">+2.1°C</p>
             <p className="text-xs text-gray-500 mt-1">
               Projected increase in mean near-surface temperature by 2090 under SSP3-7.0.
               This shifts the entire distribution — what is currently a &ldquo;hot year&rdquo;
@@ -356,7 +346,7 @@ export default function ClimateRiskPage() {
           <div className="rounded-xl border border-gray-200 p-5">
             <Droplets className="w-4 h-4 text-blue-500 mb-2" />
             <p className="text-sm font-medium text-gray-900 mb-1">Precipitation Trend</p>
-            <p className="text-2xl font-bold text-amber-600">-0.3 mm/day</p>
+            <p className="text-2xl font-bold text-gray-900">-0.3 mm/day</p>
             <p className="text-xs text-gray-500 mt-1">
               A drying trend means less frequent rainfall — but when rain does come, it tends
               to be more intense. This paradox increases both drought and flash flood risk
@@ -366,42 +356,27 @@ export default function ClimateRiskPage() {
           </div>
         </div>
 
-        {/* How to read the score */}
+        {/* How to read this */}
         <div className="rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">How to read this score</h3>
-          <div className="grid grid-cols-5 gap-2 mb-4">
-            {[
-              { band: 'Low', range: '1–20', color: 'bg-green-100 text-green-800' },
-              { band: 'Moderate', range: '21–40', color: 'bg-yellow-100 text-yellow-800' },
-              { band: 'High', range: '41–60', color: 'bg-orange-100 text-orange-800' },
-              { band: 'Very High', range: '61–80', color: 'bg-red-100 text-red-800' },
-              { band: 'Extreme', range: '81–100', color: 'bg-red-200 text-red-900' },
-            ].map(({ band, range, color }) => (
-              <div key={band} className={`rounded-lg px-2 py-1.5 text-center ${color}`}>
-                <p className="text-xs font-semibold">{band}</p>
-                <p className="text-xs">{range}</p>
-              </div>
-            ))}
-          </div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">How to read this</h3>
           <div className="space-y-2 text-sm text-gray-600">
             <p>
-              <strong className="text-gray-900">Equal weighting (V1):</strong> each hazard contributes
-              up to 20 points. This is a deliberate simplifying assumption — we do not claim flood risk
-              is &ldquo;equal&rdquo; to heat risk. V2 will weight by projected loss severity using APRA
-              and ICA actuarial data.
+              <strong className="text-gray-900">Exposure, not a rating:</strong> the report lists which
+              government-mapped hazards apply to the address and the published climate projections for
+              the location. It is not scored, ranked, or colour-coded into a risk verdict — a coastal
+              town can face fewer heat days than a hot western suburb, so a single headline number would
+              mislead.
             </p>
             <p>
-              <strong className="text-gray-900">Deterministic:</strong> the same address always produces
-              the same score. There is no AI interpretation, no machine learning model, no probabilistic
-              element. The score is a direct function of which government spatial layers intersect the
-              property and the NARCliM projection at the nearest 4km grid cell.
+              <strong className="text-gray-900">Deterministic:</strong> the same address always returns
+              the same result. No AI interpretation, no machine-learning model, no probabilistic element
+              — a direct function of which government spatial layers intersect the property and the
+              NARCliM projection at the nearest 4km grid cell.
             </p>
             <p>
-              <strong className="text-gray-900">Not a prediction:</strong> the score measures hazard
-              <em> exposure</em>, not the probability of loss. A score of 67 means the property is
-              exposed to multiple overlapping climate hazards — not that there is a 67% chance of
-              damage. Property-specific factors (construction type, floor height, vegetation management)
-              are not included.
+              <strong className="text-gray-900">Not a prediction:</strong> it reports hazard
+              <em> exposure</em>, not the probability of loss. Property-specific factors (construction
+              type, floor height, vegetation management) are not included.
             </p>
           </div>
         </div>
@@ -471,7 +446,7 @@ export default function ClimateRiskPage() {
       {/* Why it matters */}
       <section className="bg-slate-900 text-white py-16 px-6">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6">Why climate risk scoring matters now</h2>
+          <h2 className="text-2xl font-bold mb-6">Why hazard exposure matters now</h2>
           <div className="space-y-6">
             {[
               {
@@ -505,12 +480,12 @@ export default function ClimateRiskPage() {
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 mb-3 inline-block">
               Live now
             </span>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Climate Risk Score</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Hazard exposure summary</h3>
             <p className="text-2xl font-bold text-teal-600 mb-2">Free</p>
             <p className="text-sm text-gray-500 leading-relaxed">
-              Composite score out of 100 for any NSW address. Five hazard categories with
-              compound interaction analysis. Deterministic — same address always produces
-              the same score.
+              Every government-mapped hazard for any NSW address — flood, bushfire, coastal, fire
+              history — plus NARCliM climate projections, each cited to source. Deterministic: the
+              same address always returns the same result.
             </p>
           </div>
 
@@ -521,8 +496,8 @@ export default function ClimateRiskPage() {
             <h3 className="text-lg font-bold text-gray-900 mb-2">Climate Risk Report</h3>
             <p className="text-2xl font-bold text-gray-900 mb-2">$99</p>
             <p className="text-sm text-gray-500 leading-relaxed mb-3">
-              Full NARCliM trajectories, compound hazard analysis, and professional PDF.
-              Suitable for insurance assessments and property due diligence.
+              Full NARCliM trajectories, overlapping-hazard detail, and a source-cited PDF
+              for pre-purchase and due-diligence research.
             </p>
             <p className="text-xs text-gray-400">
               Available after PlotDetect Pty Ltd incorporation and professional indemnity insurance.
@@ -578,9 +553,9 @@ export default function ClimateRiskPage() {
       <section className="border-t border-gray-100 bg-gray-50 py-8 px-6">
         <div className="max-w-3xl mx-auto">
           <p className="text-xs text-gray-400 leading-relaxed">
-            Climate risk scores are provided for informational purposes only and do not constitute
-            financial, insurance, legal, or property advice. Scores reflect publicly available
-            government spatial data and climate projection modelling — they are not a professional
+            This hazard-exposure summary is provided for informational purposes only and does not constitute
+            financial, insurance, legal, or property advice. It reflects publicly available
+            government spatial data and climate projection modelling — it is not a professional
             risk assessment and should not be relied upon as a substitute for independent expert
             advice. Always consult qualified professionals before making property, insurance, or
             investment decisions. PlotDetect does not provide financial product advice within the
