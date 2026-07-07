@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -714,13 +715,15 @@ export default function TinyHousesNswPage() {
               the factors that determine which approval pathway applies to your
               lot.
             </p>
-            <Link
+            <TrackedLink
               href="/check"
               className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
+              page="tiny-houses-nsw-planning-rules"
+              cta="check_address"
             >
               Check your address
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 

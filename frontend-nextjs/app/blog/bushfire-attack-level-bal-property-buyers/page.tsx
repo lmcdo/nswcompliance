@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
@@ -731,13 +732,15 @@ export default function BushfireBALPropertyBuyersPage() {
               indicative BAL risk band &mdash; before you pay $500+ for a formal
               assessment.
             </p>
-            <Link
+            <TrackedLink
               href="/reports/bushfire"
               className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white text-sm font-medium rounded-xl hover:bg-orange-500 transition-colors"
+              page="bushfire-attack-level-bal-property-buyers"
+              cta="check_bushfire"
             >
               Check bushfire risk
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </section>
 
