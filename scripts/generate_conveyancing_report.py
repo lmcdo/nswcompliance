@@ -2844,6 +2844,145 @@ def build_structures_records_lines(
     return out
 
 
+# ── Climate & hazard-exposure projection layer (Section 13 / 12) ────────────
+# NARCliM 2.0 regional downscaled projections. The dataset attribution mirrors
+# services/climate_risk_score.py so the PDF and the composite scorer cite the
+# projection source identically. Framing is factual-metrics-only per the legal
+# assessment: NO composite score, NO band/verdict, NO insurability/safety/value
+# claims — modelled projection numbers with scenario + epoch labels only.
+_NARCLIM_SOURCE_LINE = (
+    "Source: NARCliM 2.0 regional climate projections (NSW Government / AdaptNSW), "
+    "ACCESS-ESM1.5 global model downscaled to approximately 4 km. Epochs: baseline "
+    "2015–2024, mid-century 2050–2069, late-century 2080–2099. Emissions "
+    "scenarios: SSP2-4.5 and SSP3-7.0. Retrieved for this report on {date}."
+)
+_CLIMATE_FRAMING_LINE = (
+    "The figures below are modelled regional climate projections for this location "
+    "under two emissions scenarios. They describe modelled future climate variables "
+    "— not current hazard mapping, not a forecast of any individual event, and not "
+    "a statement about this property's value or its insurance cover. Current flood "
+    "and bushfire status for this property is set out in the Risk Summary (Section 1) "
+    "above; the projections here are a separate, forward-looking layer and do not "
+    "change that mapping."
+)
+_CLIMATE_UNAVAILABLE = (
+    "Climate projections are not included in this report — the NARCliM 2.0 "
+    "projection dataset was not available at report generation."
+)
+_CLIMATE_OUT_OF_DOMAIN = (
+    "This location is outside the NARCliM 2.0 regional projection domain "
+    "(south-east Australia), so modelled climate projections are not provided "
+    "for this address."
+)
+_CLIMATE_NO_COVERAGE = (
+    "No NARCliM 2.0 projection grid cell was returned for this location, so "
+    "modelled climate projections are not provided for this address."
+)
+
+
+def _climate_metric_rows(summary: dict) -> list[str]:
+    """One factual sentence per variable, every number READ from the summary
+    (never composed). A variable whose baseline or late-century values are
+    absent is skipped — a partial grid response names only what it returned.
+    Scenario (SSP2-4.5 / SSP3-7.0) and epoch labels ride with every number so a
+    late-century figure can never read as current (SPEC CORRECTIONS C5/C6)."""
+    rows: list[str] = []
+
+    def _fmt(prefix: str, label: str, unit: str, dp: int) -> Optional[str]:
+        base = summary.get(f"{prefix}_baseline")
+        mc_lo = summary.get(f"{prefix}_mid_century_mid")
+        mc_hi = summary.get(f"{prefix}_mid_century_high")
+        lc_lo = summary.get(f"{prefix}_late_century_mid")
+        lc_hi = summary.get(f"{prefix}_late_century_high")
+        if base is None or lc_lo is None or lc_hi is None:
+            return None
+        parts = [f"{label}: {base:.{dp}f}{unit} in the baseline period (2015–2024)"]
+        if mc_lo is not None and mc_hi is not None:
+            parts.append(
+                f"{mc_lo:.{dp}f}{unit} (SSP2-4.5) or {mc_hi:.{dp}f}{unit} "
+                f"(SSP3-7.0) by 2050–2069"
+            )
+        parts.append(
+            f"{lc_lo:.{dp}f}{unit} (SSP2-4.5) or {lc_hi:.{dp}f}{unit} "
+            f"(SSP3-7.0) by 2080–2099"
+        )
+        return "; ".join(parts) + "."
+
+    for prefix, label, unit, dp in (
+        ("hot_days", "Days at or above 35°C (per year)", "", 0),
+        ("temp", "Mean annual temperature", "°C", 1),
+        ("precip", "Mean daily rainfall", " mm", 2),
+    ):
+        r = _fmt(prefix, label, unit, dp)
+        if r:
+            rows.append(r)
+    return rows
+
+
+def build_climate_lines(
+    climate: Optional[dict],
+    report_date: Optional[str] = None,
+) -> dict:
+    """Section content for the NARCliM 2.0 climate-projection layer.
+
+    prior-art-checked: consumes climate_risk_raster.query_narclim_summary output
+    (fetched in services/conveyancing.py); this builder adds NO hazard logic and
+    computes NO score — it renders the projection numbers the raster returned,
+    with scenario + epoch labels, per SPEC CORRECTIONS C1/C3/C5.
+
+    Four fetcher states in ``climate["state"]``:
+      present       → per-variable rows + framing + source (render True)
+      no_coverage   → honest "no grid cell" line, no number (render True)
+      out_of_domain → honest "outside domain" line, no number (render True)
+      unavailable   → honest "not available" line, no number (render True)
+      None/absent   → render False (section omitted; never a false claim)
+
+    Returns {"render", "state", "rows", "framing", "source_line",
+             "status_line", "grid_note"}. A projection NUMBER is emitted only in
+    the "present" state — states b/c/d carry status_line text and no figure.
+    """
+    out = {"render": False, "state": "absent", "rows": [], "framing": None,
+           "source_line": None, "status_line": None, "grid_note": None}
+    state = (climate or {}).get("state")
+    if not state:
+        return out
+
+    if state == "present":
+        summary = (climate or {}).get("summary") or {}
+        rows = _climate_metric_rows(summary)
+        if not rows:
+            # Payload claimed present but no renderable variable — degrade to the
+            # honest no-coverage line rather than emit an empty section.
+            out.update(render=True, state="no_coverage",
+                       status_line=_CLIMATE_NO_COVERAGE)
+            return out
+        out["render"] = True
+        out["state"] = "present"
+        out["rows"] = rows
+        out["framing"] = _CLIMATE_FRAMING_LINE
+        out["source_line"] = _NARCLIM_SOURCE_LINE.format(
+            date=report_date or "the date of generation"
+        )
+        gd = summary.get("grid_distance_km")
+        if gd is not None:
+            out["grid_note"] = (
+                f"Nearest NARCliM projection grid cell: {gd:g} km from the "
+                f"property centroid."
+            )
+        return out
+
+    out["render"] = True
+    out["state"] = state
+    if state == "out_of_domain":
+        out["status_line"] = _CLIMATE_OUT_OF_DOMAIN
+    elif state == "no_coverage":
+        out["status_line"] = _CLIMATE_NO_COVERAGE
+    else:  # "unavailable" or any unrecognised non-present state
+        out["state"] = "unavailable"
+        out["status_line"] = _CLIMATE_UNAVAILABLE
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -2921,6 +3060,7 @@ def generate_pdf(
     capacity=None,
     structures_records=None,
     structures_records_status: Optional[str] = None,
+    climate: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -4738,6 +4878,34 @@ def generate_pdf(
             story.append(Paragraph(_xml_escape(_struct_lines["detection_note"]), ss["caveat"]))
 
     # ------------------------------------------------------------------
+    # SECTION — Climate & Hazard Exposure (modelled projections)
+    # Forward-looking NARCliM 2.0 layer, factual metrics only: NO composite
+    # score, NO band/verdict, NO insurability/safety/value claim (legal
+    # assessment + #699). Renders the fetcher's present state OR an honest
+    # not-available state; it is disclosure, so it does NOT flip the cover
+    # CONSTRAINTS tile. Feature-flagged so a legal hold can disable it live.
+    # ------------------------------------------------------------------
+    if os.environ.get("CONVEYANCING_CLIMATE_ENABLED", "true").lower() in ("1", "true", "yes"):
+        _climate_lines = build_climate_lines(
+            climate, report_date=date.today().strftime("%d %B %Y")
+        )
+        if _climate_lines["render"]:
+            h2(f"{_sec_no}. Climate & Hazard Exposure — Modelled Projections")
+            _sec_no += 1
+            if _climate_lines["state"] == "present":
+                story.append(Paragraph(_xml_escape(_climate_lines["framing"]), ss["body"]))
+                story.append(Spacer(1, 1 * mm))
+                for _row in _climate_lines["rows"]:
+                    story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
+                if _climate_lines["grid_note"]:
+                    story.append(Spacer(1, 1 * mm))
+                    story.append(Paragraph(_xml_escape(_climate_lines["grid_note"]), ss["caveat"]))
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_climate_lines["source_line"]), ss["caveat"]))
+            else:
+                story.append(Paragraph(_xml_escape(_climate_lines["status_line"]), ss["note"]))
+
+    # ------------------------------------------------------------------
     # SECTION (final) — Disclosure Notes
     # ------------------------------------------------------------------
     h2(f"{_sec_no}. Disclosure Notes")
@@ -5122,6 +5290,14 @@ def main():
     else:
         print("  application-records lookup unavailable — section will state 'Not assessed'")
 
+    print("\nQuerying NARCliM 2.0 climate projections ...")
+    try:
+        from climate_risk_raster import query_narclim_state
+    except ImportError:
+        from services.climate_risk_raster import query_narclim_state
+    climate = query_narclim_state(lat, lng)
+    print(f"  climate projection state: {climate.get('state')}")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -5142,6 +5318,7 @@ def main():
             capacity=capacity,
             structures_records=structures_records,
             structures_records_status=structures_records_status,
+            climate=climate,
         )
 
 

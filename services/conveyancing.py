@@ -593,7 +593,28 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("structures/records lookup failed: %s", e)
             return None, "failed"
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    def _fetch_climate():
+        """NARCliM 2.0 projection state — the four data states kept DISTINCT.
+
+        prior-art-checked: reuses climate_risk_raster.query_narclim_state (thin
+        wrapper over query_narclim_summary) — NO new hazard scoring, NO composite
+        score (barred by the legal assessment; #699). out_of_domain (permanent
+        geographic limit) and unavailable (fixable infra gap) are NOT collapsed;
+        that is why this calls query_narclim_state directly instead of the brief's
+        _fetch_climate_risk (which flattens both to None). The renderer shows
+        factual projection metrics only, never a number in a non-present state.
+        """
+        try:
+            try:
+                from climate_risk_raster import query_narclim_state
+            except ImportError:
+                from services.climate_risk_raster import query_narclim_state
+            return query_narclim_state(req.lat, req.lng)
+        except Exception as e:
+            logger.warning("NARCliM projection lookup failed: %s", e)
+            return {"state": "unavailable"}
+
+    with ThreadPoolExecutor(max_workers=9) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
@@ -602,6 +623,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         corridors_future = executor.submit(_fetch_corridors)
         tod_future = executor.submit(_fetch_tod)
         structures_future = executor.submit(_fetch_structures_records)
+        climate_future = executor.submit(_fetch_climate)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
@@ -610,6 +632,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         corridors_result = corridors_future.result()
         tod_result, capacity_result = tod_future.result()
         structures_records_result, structures_records_status = structures_future.result()
+        climate_result = climate_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -645,6 +668,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         capacity=capacity_result,
         structures_records=structures_records_result,
         structures_records_status=structures_records_status,
+        climate=climate_result,
     )
 
     # Upload to R2

@@ -268,6 +268,22 @@ class TestStaticClaimsGuard:
         "max_permitted_form",
         "ceiling_dwellings",
         "ceiling_dev_type=_",   # engine call in this file must pass ceiling=None
+        # Climate section (Section 13/12) is MODELLED PROJECTIONS ONLY — never a
+        # hazard verdict, insurability call, or safety statement. These rendered
+        # phrases must never enter the generator. (The bare stem "insurab" is NOT
+        # source-checkable here — the negating comment "NO insurability claim"
+        # contains it legitimately; the RENDERED-output guard in
+        # test_conveyancing_climate.py::TestNoVerdictLanguage covers that seam.)
+        "at risk of flood",
+        "at risk of bushfire",
+        "will flood",
+        "will burn",
+        "is uninsurable",
+        "not insurable",
+        "unsafe to",
+        # Climate composite score / band is barred (#699, legal assessment):
+        "climate_risk_score(",   # the composite scorer must NOT be wired into the PDF
+        "climate risk score",
     ]
 
     # Regex patterns (as opposed to literal substrings) forbidden in the
