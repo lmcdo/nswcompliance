@@ -508,6 +508,8 @@ scripts/
 !scripts/check_test_baselines.py
 !scripts/satellite_freshness_monitor.py
 !scripts/run_monitors.py
+!scripts/run_alerts_dispatch.py
+!scripts/download_narclim_rasters.py
 !scripts/numeric_control_review.py
 # Weekly maintenance cron jobs (migrated off GitHub Actions, 2026-06)
 !scripts/security_scan.py

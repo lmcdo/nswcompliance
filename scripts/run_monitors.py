@@ -57,6 +57,14 @@ MONITORS = {
     "dcp-watchdog": {
         "cmd": ["python", "scripts/dcp_watchdog.py"],
     },
+    "property-alerts": {
+        # Property-alerts delivery: email each active subscriber about new
+        # development applications near their address (the last mile on the
+        # existing threat_radar subscription/check machinery). Needs
+        # DATABASE_URL + RESEND_API_KEY on the Railway service. Exit 2 =
+        # per-subscription send failures (dispatcher already Telegram-alerted).
+        "cmd": ["python", "scripts/run_alerts_dispatch.py"],
+    },
     "regulatory-freshness": {
         "cmd": ["python", "scripts/regulatory_freshness_monitor.py"],
     },

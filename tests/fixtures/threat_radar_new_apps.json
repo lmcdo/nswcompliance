@@ -1,0 +1,130 @@
+[
+  {
+    "PlanningPortalApplicationNumber": "PAN-652178",
+    "DateLastUpdated": "2026-07-02T22:56:35.423",
+    "SubmissionDate": "2026-06-29",
+    "LodgementDate": "2026-06-30",
+    "AssessmentExhibitionEndDate": "2026-07-21T00:00:00",
+    "AssessmentExhibitionStartDate": "2026-07-07T00:00:00",
+    "CostOfDevelopment": 1144000.0,
+    "NumberOfNewDwellings": 2,
+    "NumberOfStoreys": 2,
+    "NumberOfExistingLots": 1,
+    "NumberOfProposedLots": 2,
+    "CouncilApplicationNumber": "DA/2026/0548",
+    "ApplicationStatus": "Under Assessment",
+    "ApplicationType": "Development Application",
+    "AccompaniedByVPAFlag": "N",
+    "DevelopmentSubjectToSICFlag": "N",
+    "EPIVariationProposedFlag": "N",
+    "SubdivisionProposedFlag": "Y",
+    "DeterminationAuthority": "Unknown",
+    "Council": {
+      "CouncilName": "Inner West Council"
+    },
+    "DevelopmentType": [
+      {
+        "DevelopmentType": "Demolition"
+      },
+      {
+        "DevelopmentType": "Subdivision"
+      },
+      {
+        "DevelopmentType": "Erection of a new structure"
+      },
+      {
+        "DevelopmentType": "Semi-detached dwelling"
+      }
+    ],
+    "SubdivisionType": [
+      {
+        "SubdivisionType": "Torrens Title"
+      }
+    ],
+    "Location": [
+      {
+        "FullAddress": "10 CALVERT STREET MARRICKVILLE 2204",
+        "X": "151.158204287",
+        "Y": "-33.913537068",
+        "StreetNumber1": "10",
+        "StreetName": "CALVERT",
+        "StreetType": "STREET",
+        "Suburb": "MARRICKVILLE",
+        "Postcode": "2204",
+        "State": "New South Wales",
+        "Lot": [
+          {
+            "Lot": "A",
+            "PlanLabel": "DP348234"
+          }
+        ]
+      },
+      {
+        "FullAddress": "12 CALVERT STREET MARRICKVILLE 2204",
+        "X": "151.158204287",
+        "Y": "-33.913537068",
+        "StreetNumber1": "12",
+        "StreetName": "CALVERT",
+        "StreetType": "STREET",
+        "Suburb": "MARRICKVILLE",
+        "Postcode": "2204",
+        "State": "New South Wales",
+        "Lot": [
+          {
+            "Lot": "A",
+            "PlanLabel": "DP348234"
+          }
+        ]
+      }
+    ],
+    "_distance_m": 88.0
+  },
+  {
+    "PlanningPortalApplicationNumber": "PAN-651563",
+    "DateLastUpdated": "2026-07-02T22:55:07.183",
+    "SubmissionDate": "2026-06-29",
+    "LodgementDate": "2026-06-30",
+    "DeterminationDate": "2025-11-19",
+    "CostOfDevelopment": 340000.0,
+    "NumberOfNewDwellings": 1,
+    "NumberOfStoreys": 1,
+    "ModificationApplicationNumber": "D/2019/241",
+    "CouncilApplicationNumber": "MOD/2026/0245",
+    "ApplicationStatus": "Under Assessment",
+    "ApplicationType": "Modification Application",
+    "AccompaniedByVPAFlag": "N",
+    "EPIVariationProposedFlag": "N",
+    "DeterminationAuthority": "Unknown",
+    "Council": {
+      "CouncilName": "Inner West Council"
+    },
+    "DevelopmentType": [
+      {
+        "DevelopmentType": "Dwelling house"
+      },
+      {
+        "DevelopmentType": "Alterations or additions to an existing building or structure"
+      }
+    ],
+    "Location": [
+      {
+        "FullAddress": "28 THEODORE STREET BALMAIN 2041",
+        "X": "151.175635567",
+        "Y": "-33.858236272",
+        "StreetNumber1": "28",
+        "StreetName": "THEODORE",
+        "StreetType": "STREET",
+        "Suburb": "BALMAIN",
+        "Postcode": "2041",
+        "State": "New South Wales",
+        "Lot": [
+          {
+            "Lot": "A",
+            "PlanLabel": "DP441387"
+          }
+        ]
+      }
+    ],
+    "_distance_m": 142.0
+  }
+]

@@ -262,7 +262,15 @@ def run_conveyancing(req: ConveyancingRequest):
                 _conn = psycopg2.connect(_db_url)
                 _conn.autocommit = True
                 try:
-                    das = fetch_nearby_das(_conn, lat, lng, council_name=council_name)
+                    # council_name=None: the 200m Haversine radius filter in
+                    # fetch_nearby_das already scopes the search precisely. The
+                    # council filter is redundant AND buggy — the DB stores a
+                    # different council-name vocabulary than the LEP-derived name
+                    # (e.g. "The Council of the Shire of Hornsby" vs "Hornsby
+                    # Shire Council"), so filtering silently returned zero and
+                    # printed a false "no DAs nearby". Matches intelligence_brief
+                    # _fetch_nearby_das, which passes None for the same reason.
+                    das = fetch_nearby_das(_conn, lat, lng, council_name=None)
                     da_count = len(das)
                 finally:
                     _conn.close()
@@ -448,8 +456,16 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         try:
             conn = psycopg2.connect(db_url)
             conn.autocommit = True
-            # Nearby DAs from local DB (replaces live ePlanning API)
-            _das = fetch_nearby_das(conn, req.lat, req.lng, council_name=council_name)
+            # Nearby DAs from local DB (replaces live ePlanning API).
+            # prior-art-checked: aligns this call with services/intelligence_brief.py
+            # _fetch_nearby_das, which already passes council_name=None — no new
+            # capability, this REMOVES a redundant/buggy filter to match it.
+            # council_name=None: the 200m Haversine radius filter scopes the
+            # search; the council filter is buggy because the DB uses a different
+            # council-name vocabulary than the LEP-derived name, so filtering
+            # silently returned zero → a false "no DAs" in the Nearby Development
+            # Activity section.
+            _das = fetch_nearby_das(conn, req.lat, req.lng, council_name=None)
             key_sites_clause = controls.get("key_sites_clause")
             epi_name = controls.get("zone_epi", "")
             prop_zone = controls.get("zone", "")
