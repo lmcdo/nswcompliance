@@ -288,6 +288,47 @@ def query_narclim_summary(lat: float, lng: float) -> dict:
     return summary
 
 
+def query_narclim_state(lat: float, lng: float) -> dict:
+    """State envelope over :func:`query_narclim_summary` for renderers.
+
+    prior-art-checked: thin exception->state wrapper over the existing
+    query_narclim_summary (same module) — adds NO new data source, query or
+    hazard logic; only classifies that function's result/exceptions into four
+    render states so consumers don't each re-implement the try/except mapping.
+
+    Keeps the four data states DISTINCT so a consumer (e.g. the conveyancing
+    PDF) can render a permanent geographic limit (``out_of_domain``) differently
+    from a fixable infrastructure gap (``unavailable``) — the two must never be
+    collapsed into a single line, which would imply missing projections are
+    fixable when they are a domain boundary (or vice versa).
+
+    Returns one of:
+      ``{"state": "present", "summary": {...}}``  populated grid coverage
+      ``{"state": "no_coverage"}``                queried, no delta returned
+      ``{"state": "out_of_domain"}``              lat/lng outside NARCliM domain
+      ``{"state": "unavailable"}``                rasters absent / lookup failed
+    """
+    try:
+        summary = query_narclim_summary(lat, lng)
+    except ValueError:
+        # Bounds check in query_narclim — a permanent geographic limit.
+        return {"state": "out_of_domain"}
+    except FileNotFoundError:
+        # Rasters not deployed to this runtime — an infrastructure gap.
+        import logging
+        logging.getLogger(__name__).warning(
+            "NARCliM rasters not found (NARCLIM_DIR=%s)", DATA_DIR
+        )
+        return {"state": "unavailable"}
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning("NARCliM lookup failed", exc_info=True)
+        return {"state": "unavailable"}
+    if summary and any(k.endswith("_delta_2090") for k in summary):
+        return {"state": "present", "summary": summary}
+    return {"state": "no_coverage"}
+
+
 # ── CLI test ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
