@@ -1,92 +1,123 @@
 {
   "tier": "critical",
-  "justification": "Live production data-integrity fix in the conveyancing report (a legal due-diligence document). The Nearby Development Activity section filtered fetch_nearby_das by the LEP-derived council name, but the development_applications table stores a DIFFERENT council-name vocabulary (e.g. 'The Council of the Shire of Hornsby' vs 'Hornsby Shire Council'), so the SQL filter matched zero rows and printed a false 'No development applications within 200m' for ~6 councils — 1,668 real DAs hidden — including Hornsby and Ryde, which are live conveyancing LGAs whose marketing pages advertise 'nearby DA activity'. A false negative in a legal report is the exact silent-wrong-result the truth regime exists to prevent.",
-  "commit_hash": "11d246d9",
+  "justification": "New Section 'Structures & Records' in the conveyancing PDF (Stage 1 of 2) — the product's highest-liability text. It lists the subject lot's DA/CDC application records and, where structure detection runs (Stage 2), raises a structure with no matching record as a FACTUAL QUESTION, never an allegation. The defining constraint: no rendered string on any branch may state or imply a structure is unapproved/illegal/unauthorised/non-compliant/a breach/without consent. Wrong output here is a defamation or negligent-misstatement claim, so the no-verdict-word guard, three-state failure handling, fail-closed council resolution and adversarial wording review are the core of this change.",
+  "commit_hash": "b161d604",
   "files": [
+    "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",
-    "tests/test_conveyancing_nearby_da_council.py"
+    "tests/test_conveyancing_structures.py",
+    "tests/test_conveyancing_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "Confirmed live against the production DB (2026-07-08): 6 councils whose LEP-derived name does not match the DB council_name — Broken Hill (147 DAs), Ryde (354), Glen Innes Severn (109), Hornsby (631), Hunters Hill (166), Kiama (261) = 1,668 DAs hidden. For a real Ryde point at radius 200m the council-filtered query returned 0 while council_name=None returned 1; for a Hornsby point 0 vs 10. fetch_nearby_das already applies a precise Haversine radius filter (dist <= radius_m), so the council filter adds nothing but the mismatch risk.",
-    "assumption_mismatch": "The root cause is that council names are consumer-specific: the ePlanning API, the DB, and the LEP instrument each use a different string for the same council. A single derived name cannot satisfy all of them. The fix removes the council filter entirely from the conveyancing DB path so no vocabulary needs to match — the spatial radius does the scoping. This mirrors services/intelligence_brief.py _fetch_nearby_das, which already passes council_name=None; the conveyancing path was the only consumer still filtering.",
-    "new_vs_existing": "No new capability — this REMOVES a redundant, buggy filter argument at two call sites to align with the brief's existing fetcher. fetch_nearby_das is unchanged. The council_name variable is still derived and used for the other sections (structures/DCP); only the two nearby-DA calls stop passing it.",
-    "external_source_error": "The DB query itself is unchanged in its failure behaviour: fetch_nearby_das already returns [] on any DB exception (with a rollback and a warning log) and the PDF path renders a None result as 'Not assessed'. Removing the council filter cannot introduce a new failure mode — it only stops the success path from wrongly filtering to zero. No external API is added; the DB is the single source.",
-    "frontend_type": "No frontend or API-contract change. da_count stays an int; the PDF NearbyDA rows keep the same shape. The only observable difference is that mismatched-council properties now return a truthful non-zero count / populated list where they previously returned a false zero. jest and tsc surfaces are untouched.",
-    "user_failure_mode": "The failure being fixed is the worst kind for a legal document: a confident false negative ('No development applications within 200m') that a buyer relies on for due diligence and is then blindsided by a real neighbouring development. The fix removes the mechanism that produced it; a source-guard test prevents the filter from being re-added, and the DB-marked test proves the real DAs now surface. The only residual is a genuine data-coverage gap (a council with zero ingested DAs), which is honestly an empty result, flagged as a separate follow-up rather than masked."
+    "existing_data": "Stage 1 uses ONLY application records, no imagery/detection call. Reuses pre_da_history.get_da_events + get_pcc_events (live OnlineDA/OnlineCDC, records begin ~2019) + _extract_da_fields shape + the _LGA_TO_COUNCIL ePlanning name map. Verified live 2026-07-07: 14 Stanley St Concord resolves 10+ DA/CDC records once the council is mapped to 'City of Canada Bay Council'. Bowral (Wingecarribee) is unmapped and fails closed to 'Not assessed'. The conveyancing pipeline holds NO structure detection today, so Stage 1 renders records + the honest 'detection not run' state; the gap machinery is built and tested but dormant until Stage 2.",
+    "assumption_mismatch": "A live code check caught a silent-wrong-result: the pipeline derives the LEP council name ('Canada Bay Council') but OnlineDA requires the exact 'City of Canada Bay Council' — an unmapped name returns zero rows, which would have printed a FALSE 'no applications on record'. Fixed by _resolve_eplanning_council + fail-closed: an unresolved council renders 'Not assessed', never a false negative. An adversarial legal red-team also found the original gap sentence built the 'unapproved' imputation by ordering (visible structure -> no record -> interrogate vendor); the sentence was restructured to lead with the data-window limitation and carry an explicit non-imputation line.",
+    "new_vs_existing": "Reused: pre_da_history fetchers + council map; the get_*_live wrapper pattern; the parallel-future executor of PR #674/#689/#691; the PDF section pattern of the shipped sibling sections. New: a floor-simple reconciliation builder, a fail-closed ePlanning-council resolver, and the no-verdict-word wording. NO new detection or fetcher code; NO imagery call in Stage 1; the brief and exempt_screening (deliberately unwired, #490) are untouched.",
+    "external_source_error": "Records lookup failed or council unresolved -> (None, 'failed') -> the section states 'Not assessed', never an implied absence of applications. Records ran and found none -> the hedged 'no applications appear ... this is common for established properties ... not, on its own, a finding' sentence. Address matching is fuzzy text (the Portal keys nothing to a lot id), so the heading is 'Applications matched to this address' with a caveat that nearby same-street records may appear — no overclaim of exclusivity.",
+    "frontend_type": "No frontend or API-contract change: the section is a PDF-render addition behind two generate_pdf keyword args (structures_records, structures_records_status) defaulting to None. The free-tier JSON, the pipeline cache and the Next.js components are untouched; jest and tsc see no new types.",
+    "user_failure_mode": "The catastrophic failure is a reader inferring a structure is unauthorised (defamation of the vendor) or reading a professional guarantee into the section (negligent misstatement / ACL s18). Pinned by: an exhaustive test that renders EVERY branch and fails if any verdict framing appears; the gap sentence restructured after an adversarial red-team to lead with the limitation + a non-imputation line; the fail-closed council resolver that prevents a false 'no records'; the confidence floor that drops low-confidence detections; and the gap string kept DORMANT in Stage 1 (no detections) so the highest-risk text reaches no reader until Stage 2, which is gated on review + legal sign-off."
   },
   "functions": [
     {
-      "name": "run_conveyancing",
-      "file_line": "services/conveyancing.py:192",
-      "input": "a ConveyancingRequest (address / lat-lng / prop_id) for the free-tier disclosure endpoint",
-      "output": "the free-tier response whose da_count now reflects the true nearby-DA count (council_name=None), not a false zero for vocabulary-mismatched councils",
-      "if_none": "on a DB error the surrounding try/except leaves da_count at 0 and logs — unchanged; the fix only removes the spurious council filter that produced a false zero on success"
+      "name": "build_structures_records_lines",
+      "file_line": "scripts/generate_conveyancing_report.py:2794",
+      "input": "the subject-lot DA/CDC records list (or None / [] ), an optional detections list (None in Stage 1), and a records_status flag",
+      "output": "a render plan of only verdict-free strings: intro, verbatim record lines, a hedged no-records or Not-assessed status line, any hedged gap lines, and the detection-not-run note",
+      "if_none": "records None or status failed returns not_assessed with a 'Not assessed' status line; [] returns the hedged 'no applications appear' sentence — the two are kept distinct so a failed lookup never reads as a checked absence"
     },
     {
-      "name": "_fetch_db_data",
-      "file_line": "services/conveyancing.py:443",
-      "input": "the PDF-path DB prefetch closure using req.lat/req.lng and the shared connection",
-      "output": "the nearby-DA list for the PDF's Nearby Development Activity section, now scoped by the 200m radius alone (council_name=None) so vocabulary-mismatched councils surface their real DAs",
-      "if_none": "a DB failure still returns _das=None which the renderer shows as 'Not assessed', never a false 'no DAs' — the fix corrects the success path, the failure path is unchanged"
+      "name": "get_structures_records_live",
+      "file_line": "scripts/generate_conveyancing_report.py:2321",
+      "input": "the pipeline-derived council name and the property address",
+      "output": "a tuple of the DA+CDC records list and an 'ok' status when the council resolves to an ePlanning-accepted name, else (None, 'failed')",
+      "if_none": "an unresolved council or a fetch exception returns (None, 'failed') so the section states 'Not assessed' — failing closed is deliberate because an unmapped council silently returns zero rows and would otherwise print a false 'no applications on record'"
+    },
+    {
+      "name": "_council_recognised_by_eplanning",
+      "file_line": "scripts/generate_conveyancing_report.py:2300",
+      "input": "a council name string to validate against the live ePlanning OnlineDA vocabulary",
+      "output": "True when the API returns rows for that CouncilName (a recognised name), False when it returns nothing or the probe errors",
+      "if_none": "a False result makes the caller fail closed to 'Not assessed', so an API-unrecognised council name can never read as a false 'no records'"
     }
   ],
   "values": [
     {
-      "value": "the nearby-DA result list feeding da_count (free tier) and the PDF Nearby Development Activity section",
-      "read_at": "services/conveyancing.py:273",
-      "nullable": "yes — fetch_nearby_das returns [] on empty and None-guarded failure",
-      "guard_at": "services/conveyancing.py:273 + :468 (council_name=None; the Haversine dist <= radius_m filter in conveyancing_db.fetch_nearby_das enforces the 200m scope)",
-      "if_missing": "an empty result now means a genuine absence within 200m, not a council-name mismatch; a fetch failure renders 'Not assessed' in the PDF path, never a false 'no DAs'"
-    }
-  ],
-  "queries": [
+      "value": "app_type / dev_type / date / status / pan rendered verbatim into each application-record line",
+      "read_at": "scripts/generate_conveyancing_report.py:2770",
+      "nullable": "yes — any record field can be absent from the ePlanning response",
+      "guard_at": "scripts/generate_conveyancing_report.py:2770 (each field falls back to a stated 'not stated in the record'; the raw status token, e.g. Determined/Refused, is rendered as-is and never rewritten to 'approved')",
+      "if_missing": "the line states the field is not stated in the record; no value is invented and the record status is never upgraded to an approval word"
+    },
     {
-      "purpose": "nearby development applications within 200m of the property for the conveyancing report",
-      "file_line": "scripts/conveyancing_db.py:654",
-      "where_clause": "latitude/longitude bounding box + (lodgement_date >= since OR determination_date >= since); the council_name = %s predicate is NO LONGER added by the conveyancing callers (the source of the false negative). Post-query Haversine dist <= radius_m enforces exact proximity."
+      "value": "detection confidence gating whether a structure may generate a gap line",
+      "read_at": "scripts/generate_conveyancing_report.py:2794",
+      "nullable": "yes — a detection may carry no confidence",
+      "guard_at": "scripts/generate_conveyancing_report.py:2794 (_STRUCT_CONFIDENCE_FLOOR: a detection below the floor is dropped and never produces a gap line; None confidence is treated as usable only in tests)",
+      "if_missing": "a low-confidence detection (a shadow or vegetation mis-segmentation) is dropped, so it cannot manufacture a reconciliation gap"
+    },
+    {
+      "value": "the council name validated against the live ePlanning vocabulary before any record is trusted",
+      "read_at": "scripts/generate_conveyancing_report.py:2321",
+      "nullable": "yes — the derived council may be empty or unrecognised by the API",
+      "guard_at": "scripts/generate_conveyancing_report.py:2300 (_council_recognised_by_eplanning probes OnlineDA; an empty result means the name is not in the API's vocabulary)",
+      "if_missing": "an empty or unrecognised council fails the whole lookup closed to 'Not assessed' — a wrong name returns zero rows and would otherwise read as a false absence"
     }
   ],
+  "queries": "N/A — no SQL changed; the records come from the live NSW ePlanning OnlineDA/OnlineCDC endpoints via the reused pre_da_history fetchers",
   "break_it": [
     {
-      "scenario": "A property in a council whose DB name differs from its LEP-derived name (Hornsby, Ryde, Hunters Hill, Kiama, Broken Hill, Glen Innes)",
-      "what_happens": "Before the fix the council filter matched zero DB rows and the report printed a false 'No development applications within 200m'; a buyer relies on it and is blindsided by a neighbouring development",
+      "scenario": "A structure approved in 2005 (pre-Portal) shows as a reconciliation gap",
+      "what_happens": "Without the data-window hedge the reader infers the structure is unauthorised; a 2005 approval simply predates the ~2019 Portal records",
       "mitigated": true,
-      "how": "the council filter is removed; the 200m Haversine radius alone scopes the search, so the real DAs surface regardless of council-name vocabulary — proven live (Hornsby 0 -> 10, Ryde 0 -> 1)",
-      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -m database (DATABASE_URL set)"
+      "how": "the gap sentence leads with 'records available to us begin around 2019 and do not include ...' and names 'one predating the record window' as an expected cause, plus a 'not, on its own, a finding about the structure' non-imputation line",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k pre2019"
     },
     {
-      "scenario": "A future edit re-adds council_name=council_name to either fetch_nearby_das call",
-      "what_happens": "The false-negative regresses silently for the mismatched councils",
+      "scenario": "An exempt-development shed (no application required) shows as a gap",
+      "what_happens": "A reader infers the shed is unauthorised when it lawfully needs no application at all",
       "mitigated": true,
-      "how": "a source-guard test asserts neither conveyancing fetch_nearby_das call passes council_name=council_name and both pass council_name=None",
-      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -k no_council_filter"
+      "how": "the sentence names 'a structure that is exempt development and needs no application' as the FIRST expected cause; the feature never attempts exemption determination (exempt_screening stays unwired)",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k hedged_sentence"
     },
     {
-      "scenario": "Dropping the council filter pulls in DAs from an adjacent council within 200m",
-      "what_happens": "A development 180m away across a council boundary appears in the list",
+      "scenario": "The pipeline derives a council name OnlineDA does not accept (e.g. Canada Bay, Wingecarribee)",
+      "what_happens": "The exact-match CouncilName filter returns zero rows and the section prints a FALSE 'no applications on record' for a property that has many",
       "mitigated": true,
-      "how": "that is correct and desirable for a proximity disclosure — a development 180m away matters to a buyer regardless of which council it sits in; the brief already takes this approach and the Haversine radius still bounds it to 200m",
-      "repro": "read conveyancing_db.fetch_nearby_das — dist <= radius_m still applies with council_name=None"
+      "how": "_resolve_eplanning_council maps the name to the accepted ePlanning string or returns None; an unresolved council fails the lookup closed to 'Not assessed' — verified live: Concord now resolves records, Bowral (Wingecarribee unmapped) renders 'Not assessed'",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k 'unresolvable_council_fails_closed or resolves_lep_name'"
     },
     {
-      "scenario": "The free-tier /conveyancing da_count surfaced the same false zero, not just the PDF",
-      "what_happens": "The free-tier disclosure showed 'da_count: 0' for the mismatched councils, so a buyer saw a false 'no nearby activity' before ever paying for the PDF",
+      "scenario": "A SAM false positive (shadow or vegetation) is detected as a structure",
+      "what_happens": "A non-existent structure generates a gap line and an implied irregularity",
       "mitigated": true,
-      "how": "both call sites were fixed (services/conveyancing.py:273 free tier and :468 PDF prefetch); the source-guard test asserts EVERY fetch_nearby_das call in the file passes council_name=None, not just one",
-      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -k no_council_filter (scans all call sites)"
+      "how": "detections below _STRUCT_CONFIDENCE_FLOOR are dropped before any gap line is built; the section never asserts a structure exists as fact (Stage 2 wording is 'visible in imagery' with a date)",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k low_confidence"
     },
     {
-      "scenario": "A council genuinely has no DAs ingested (MidCoast: zero rows in development_applications)",
-      "what_happens": "The section still renders 'no development applications within 200m', which reflects a DATA-COVERAGE gap, not a filter bug — removing the council filter does not fabricate DAs where the DB has none",
+      "scenario": "The application-records lookup errors part-way through report generation",
+      "what_happens": "An empty section reads as 'no applications', a false checked-clean on a failed lookup",
       "mitigated": true,
-      "how": "this fix is scoped to the filter mismatch only; where the DB genuinely holds no rows the honest empty result stands, and the coverage gap is flagged as a separate follow-up in post_merge — the fix never invents data",
-      "repro": "query development_applications for MidCoast -> 0 rows; council_name=None still returns [] (a genuine absence, not masked as fixed)"
+      "how": "a failed fetch returns (None, 'failed') and the section states 'Not assessed — the application-records lookup was unavailable', distinct from the successful-empty sentence",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k fetch_exception_is_failed"
+    },
+    {
+      "scenario": "A future edit introduces a verdict word (unapproved/illegal/unauthorised/...) on any code path",
+      "what_happens": "The report defames the vendor by stating or implying a structure is unlawful",
+      "mitigated": true,
+      "how": "an exhaustive test renders every builder branch and fails if any forbidden framing appears; a second central runtime guard in test_conveyancing_truth.py repeats the scan; the gap string is dormant in Stage 1 regardless",
+      "repro": "python -m pytest tests/test_conveyancing_structures.py -k NoVerdictWord"
+    },
+    {
+      "scenario": "The fuzzy address match lists a neighbouring same-street property's application as this property's",
+      "what_happens": "A record for 16 Stanley St is presented as the history of 14 Stanley St — a factual overclaim on a legal document",
+      "mitigated": true,
+      "how": "the heading is 'Applications matched to this address' (not 'on record for this property') and a caveat states matching is by address text and may include nearby same-street properties — check the PAN before relying on it",
+      "repro": "read reports/conveyancing/verify_concord_structures.pdf Section 12 — heading + caveat present"
     }
   ],
   "post_merge": {
-    "db_reset": "No — no schema or data change; a query-filter change only",
-    "secrets": "No",
-    "other_repo": "No — self-contained in services/conveyancing.py + its test",
-    "manual_verify": "Yes — regenerate a Hornsby or Ryde conveyancing PDF through the deployed Railway pipeline and confirm the Nearby Development Activity section now lists DAs instead of 'none'. NOTE (separate follow-up, not this PR): the same LEP-vs-API vs LEP-vs-DB vocabulary problem lives in 4+ hardcoded council maps; the live-ePlanning path (get_nearby_das) and the broader map consolidation should be audited separately."
+    "db_reset": "No — no database schema or data changes anywhere in this branch",
+    "secrets": "No — the ePlanning OnlineDA/OnlineCDC endpoints are public NSW services requiring no keys",
+    "other_repo": "No — self-contained in scripts and services plus their tests",
+    "manual_verify": "Yes — this is the product's highest-liability text: a human (ideally a lawyer) must read every Section 12/13 sentence against the no-verdict rule before Stage 2 is built, since Stage 2 makes the dormant gap sentence user-visible. Also regenerate the Concord + Bowral PDFs through the deployed Railway pipeline (Concord resolves records, Bowral fails closed to 'Not assessed')."
   }
 }

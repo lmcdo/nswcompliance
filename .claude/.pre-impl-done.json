@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-07-07T11:00:00+10:00",
-  "target": "deploy NARCLIM rasters to the conveyancing/API Python runtime via R2 startup-download (mirror download_hawkesbury_rasters.py)",
-  "findings_summary": "6 NARCliM .nc files (~1.8GB: TXge35 33MBx2, tas ~400MBx2, prAdjust ~490MBx2) FOUND in Downloads, validated via query_narclim_summary (real projections: Sydney heat 15.5->34.8 late-century). R2 access works (bucket nsw-planning-pdfs), narclim/ prefix empty->uploading now. Dockerfile.python CMD runs download_hawkesbury_rasters.py && uvicorn; climate_risk_raster.DATA_DIR is fixed repo/data/narclim (not env-configurable) -> make env-aware (NARCLIM_DIR) so Railway can point at writable /tmp/narclim. Composite degrades gracefully if absent (except FileNotFoundError). No DB writes."
+ "status": "trivial",
+ "timestamp": "2026-07-07T17:46:53.576789",
+ "reason": "robust fix for council-name->ePlanning-API mismatch: fix wrong canonical map entry (canada bay) + replace hardcoded resolver with API-vocabulary probe validation; no new DB queries, pure fix on already-QA-gated feature"
 }
