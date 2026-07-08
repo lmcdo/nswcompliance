@@ -1,38 +1,46 @@
 {
-  "tier": "minor",
-  "justification": "Content-only addition: one new blog article (conveyancer duty of care + climate risk) plus its one-line registry entry in blog-articles.ts. No application logic, no data flow, no DB, no API. Marketing/SEO funnel piece aimed at the conveyancer channel, per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07). The only real risk is legal-language accuracy and overclaim, handled below.",
-  "commit_hash": "bf6ad612",
+  "tier": "standard",
+  "justification": "Brief access decision implementation: the Intelligence Brief run route was fully open + anonymous with NO rate limit on a ~40s background job (cost/abuse hole), and the result had no lead-capture. Adds an IP rate-limit to the run route and an email-OPTIONAL post-result strip (never gates the result). Standard tier: one guard on an existing route + one reused UI component, no DB writes, no logic change to the brief itself.",
+  "commit_hash": "f4b84a7a",
   "files": [
-    "frontend-nextjs/app/blog/conveyancer-duty-climate-risk-nsw/page.tsx",
-    "frontend-nextjs/lib/blog-articles.ts"
+    "frontend-nextjs/app/api/intelligence-brief/route.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
+  "pre_impl": {
+    "existing_data": "Run route /api/intelligence-brief triggers the Trigger.dev job from {address}; confirmed no prior rate-limit/auth/email gate. Reuses lib/rate-limit (satelliteRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders) and components/reports/PostResultEmailStrip (posts to the existing /api/canibuildit/lead with interest_type).",
+    "assumption_mismatch": "The Brief stays open + anonymous per RULE 4 (early access, no signup/paywall) — the rate limit is an abuse/cost guard (12/hr/IP, generous for humans), NOT a paywall; the email strip is optional and post-result, NOT a gate.",
+    "new_vs_existing": "prior-art: no new components — reuses the shared rate-limiter and PostResultEmailStrip (same pattern as the satellite tools and the alerts opt-in)."
+  },
+  "functions": "N/A — frontend route guard + reused UI component; no new Python functions.",
+  "values": "N/A — address resolved as metadataEvent?.data.address ?? selectedAddress (selectedAddress is a non-null string state).",
+  "queries": "N/A — no database access; run route hits Trigger.dev, strip posts to the existing lead API.",
   "break_it": [
     {
-      "scenario": "The article overstates the legal position — implies NSW conveyancers have a settled statutory duty to provide climate analysis",
-      "what_happens": "A reader relies on a false statement of law; the piece becomes misleading and damages the brand's credibility with the exact professional audience it targets",
+      "scenario": "A script floods the Brief run route to burn compute",
+      "what_happens": "after 12 runs/hour from one IP the route returns 429 with rate-limit headers; the job is not triggered",
       "mitigated": true,
-      "how": "the copy explicitly says NSW has NOT legislated a vendor climate-disclosure duty and frames the duty scope as evolving/prudent-practice, not mandated; Shaddock is cited accurately (information-provider liability for negligent omission); the corporate climate-disclosure standard is described as a signal of direction, not a duty on conveyancers",
-      "repro": "read the #direction and #duty sections — each carries an explicit 'this does not bind a residential transaction / does not suggest it has' qualifier"
+      "how": "checkRateLimit(clientId, satelliteRateLimiter, 12, 3600000) guards the top of POST before any Trigger.dev call",
+      "repro": "POST /api/intelligence-brief 13x from one IP within an hour -> 13th returns 429"
     },
     {
-      "scenario": "The article uses a climate 'score' or 'at risk' verdict, repeating the misleading-conduct pattern the org's own legal review banned (#699)",
-      "what_happens": "Property-defamation / misleading-conduct exposure of the same kind that was removed from the live climate tool",
+      "scenario": "The email strip accidentally blocks or gates the brief result",
+      "what_happens": "it must not — the result renders fully; the strip is an optional add-on shown only when state==='complete'",
       "mitigated": true,
-      "how": "the copy states projections should be shown 'as cited, dated context — not as a score or a verdict, which can mislead'; no suburb-level 'will be underwater' claims; liability-word sweep returned zero flagged terms",
-      "repro": "grep the page for 'score'/'at risk'/'underwater' — only appears in the negative ('not a score or a verdict')"
+      "how": "PostResultEmailStrip is self-contained (own state, silent-fail fetch) and rendered after the result, never in front of it",
+      "repro": "complete a brief, ignore the strip -> full brief visible and usable"
     },
     {
-      "scenario": "The article claims the report renders coastal/estuarine inundation, which is not yet shipped (data loaded, render pending)",
-      "what_happens": "A false product-capability claim; a conveyancer buys expecting a section that isn't there",
+      "scenario": "Upstash Redis is unavailable when the rate-limit check runs",
+      "what_happens": "checkRateLimit catches the Redis error and falls back to the in-memory limiter (per-instance) — the brief still runs, it does not hard-fail or block legitimate users",
       "mitigated": true,
-      "how": "the CTA lists only LIVE capabilities (LEP/SEPP/DCP controls, flood and bushfire mapping, cited climate projections from merged #702); estuarine inundation is referenced only as a newly published NSW GOVERNMENT dataset a buyer needs, never as a current report feature",
-      "repro": "read the CTA block — it names flood, bushfire, climate projections; not coastal/estuarine as a report section"
+      "how": "the shared checkRateLimit wraps limiter.limit() in try/catch and falls through to in-memory on error (verified in lib/rate-limit.ts)",
+      "repro": "with Redis unreachable, POST /api/intelligence-brief still returns a runId via the in-memory fallback, not a 500"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No",
+    "secrets": "No — reuses existing UPSTASH_REDIS + lead API; no new env vars.",
     "other_repo": "No",
-    "manual_verify": "Yes — confirm the Vercel PR preview build compiles the new page (bare worktree skipped local tsc/jest) and the article renders in the /blog index and at /blog/conveyancer-duty-climate-risk-nsw; a parallel session owns ce-conveyancing-coastal-inundation-2026-07, so reconcile internal-linking (Priority 2) with that work before adding coastal references."
+    "manual_verify": "Yes — run a brief on prod: confirm it still runs anonymously (no signup), the result renders in full, an optional 'email me this brief' strip appears on completion, and rapid repeated runs from one IP eventually 429."
   }
 }

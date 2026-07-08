@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult, type EnvelopeGap, type InputLedgerRow } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
@@ -2925,6 +2926,16 @@ function IntelligenceBriefInner() {
               </button>
             )}
           </div>
+
+          {/* Optional lead capture — never gates the result; offers to email the
+              brief so an interested visitor becomes a follow-up-able contact. */}
+          {state === 'complete' && (
+            <PostResultEmailStrip
+              address={metadataEvent?.data.address ?? selectedAddress ?? ''}
+              product="intelligence-brief"
+              copy="Want this brief emailed to you? Drop your address and we'll send it over."
+            />
+          )}
 
           {/* Aerial — NSW SIX Maps 10cm imagery for the lot (reuses AerialTile). */}
           {(metadataEvent?.data.lat ?? selectedLat) != null && (metadataEvent?.data.lng ?? selectedLng) != null && (

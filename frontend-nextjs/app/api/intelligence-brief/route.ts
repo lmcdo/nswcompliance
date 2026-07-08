@@ -9,6 +9,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@trigger.dev/sdk/v3';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15;
@@ -26,6 +32,18 @@ interface IntelligenceBriefBody {
 }
 
 export async function POST(request: NextRequest) {
+  // The Brief is open + anonymous (early-access, no signup/paywall — RULE 4),
+  // but each run is an expensive ~40s background job, so cap abuse/cost per IP.
+  // Generous for a human running a few briefs; kills scripted floods.
+  const clientId = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientId, satelliteRateLimiter, 12, 3_600_000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'You have run several briefs in a short window. Please try again shortly.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   let body: IntelligenceBriefBody;
   try {
     body = await request.json();
