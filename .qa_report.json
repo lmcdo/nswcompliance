@@ -1,47 +1,92 @@
 {
-  "tier": "standard",
-  "justification": "Liability fix to the live public /climate-risk tool + card + marketing page. The result card and page presented a composite 1-100 climate 'risk score' with a verdict band and traffic-light (green->red) colour coding — both explicitly prohibited by the org's own climate-risk legal assessment (ce-climate-risk-score-legal-assessment lines 77, 81), and a smoke test showed the verdict is misleading cross-location (Byron Bay 'Very High' with 9 heat days vs Penrith 'Moderate' with 87). Standard tier: user-facing copy/UI only, no logic/data-flow/DB change, but legal-sensitive — the risk is a residual verdict/traffic-light cue slipping through, covered by the sweep + break-it below.",
-  "commit_hash": "d1c5eaac",
+  "tier": "critical",
+  "justification": "Live production data-integrity fix in the conveyancing report (a legal due-diligence document). The Nearby Development Activity section filtered fetch_nearby_das by the LEP-derived council name, but the development_applications table stores a DIFFERENT council-name vocabulary (e.g. 'The Council of the Shire of Hornsby' vs 'Hornsby Shire Council'), so the SQL filter matched zero rows and printed a false 'No development applications within 200m' for ~6 councils — 1,668 real DAs hidden — including Hornsby and Ryde, which are live conveyancing LGAs whose marketing pages advertise 'nearby DA activity'. A false negative in a legal report is the exact silent-wrong-result the truth regime exists to prevent.",
+  "commit_hash": "11d246d9",
   "files": [
-    "frontend-nextjs/components/tools/ClimateRiskResultCard.tsx",
-    "frontend-nextjs/app/climate-risk/page.tsx",
-    "frontend-nextjs/components/tools/ClimateRiskTool.tsx"
+    "services/conveyancing.py",
+    "tests/test_conveyancing_nearby_da_council.py"
   ],
   "pre_impl": {
-    "existing_data": "The card/page consumed the existing /pipeline/climate-risk response (score, band, hazards, narclim_summary). The brief already retired the composite score for a 'Climate Disclosure Profile' (intelligence_brief.py:807) — this brings the standalone tool in line. No API/response shape change; the API still returns score/band, the UI simply stops rendering them as a verdict.",
-    "assumption_mismatch": "The composite score/band is dominated by coastal/flood weighting, so it inverts on heat (coastal town out-scores a far hotter western suburb) — confirmed live across 6 NSW climate zones. So the fix removes the composite headline entirely rather than recolouring it, and leads with the factual per-hazard exposure + NARCliM projection metrics (which are sound and correctly differentiated).",
-    "new_vs_existing": "No new components; edits to the existing card/tool/page. Present/Not-present badge style reused from the rewritten card in the page's sample mockup for consistency."
+    "existing_data": "Confirmed live against the production DB (2026-07-08): 6 councils whose LEP-derived name does not match the DB council_name — Broken Hill (147 DAs), Ryde (354), Glen Innes Severn (109), Hornsby (631), Hunters Hill (166), Kiama (261) = 1,668 DAs hidden. For a real Ryde point at radius 200m the council-filtered query returned 0 while council_name=None returned 1; for a Hornsby point 0 vs 10. fetch_nearby_das already applies a precise Haversine radius filter (dist <= radius_m), so the council filter adds nothing but the mismatch risk.",
+    "assumption_mismatch": "The root cause is that council names are consumer-specific: the ePlanning API, the DB, and the LEP instrument each use a different string for the same council. A single derived name cannot satisfy all of them. The fix removes the council filter entirely from the conveyancing DB path so no vocabulary needs to match — the spatial radius does the scoping. This mirrors services/intelligence_brief.py _fetch_nearby_das, which already passes council_name=None; the conveyancing path was the only consumer still filtering.",
+    "new_vs_existing": "No new capability — this REMOVES a redundant, buggy filter argument at two call sites to align with the brief's existing fetcher. fetch_nearby_das is unchanged. The council_name variable is still derived and used for the other sections (structures/DCP); only the two nearby-DA calls stop passing it.",
+    "external_source_error": "The DB query itself is unchanged in its failure behaviour: fetch_nearby_das already returns [] on any DB exception (with a rollback and a warning log) and the PDF path renders a None result as 'Not assessed'. Removing the council filter cannot introduce a new failure mode — it only stops the success path from wrongly filtering to zero. No external API is added; the DB is the single source.",
+    "frontend_type": "No frontend or API-contract change. da_count stays an int; the PDF NearbyDA rows keep the same shape. The only observable difference is that mismatched-council properties now return a truthful non-zero count / populated list where they previously returned a false zero. jest and tsc surfaces are untouched.",
+    "user_failure_mode": "The failure being fixed is the worst kind for a legal document: a confident false negative ('No development applications within 200m') that a buyer relies on for due diligence and is then blindsided by a real neighbouring development. The fix removes the mechanism that produced it; a source-guard test prevents the filter from being re-added, and the DB-marked test proves the real DAs now surface. The only residual is a genuine data-coverage gap (a council with zero ingested DAs), which is honestly an empty result, flagged as a separate follow-up rather than masked."
   },
-  "functions": "N/A — frontend TSX copy/presentation change; no Python functions, no new logic.",
-  "values": "N/A — no data reads changed; the card renders the same API fields, minus the composite score/band verdict.",
-  "queries": "N/A — no database access; no API contract change.",
+  "functions": [
+    {
+      "name": "run_conveyancing",
+      "file_line": "services/conveyancing.py:192",
+      "input": "a ConveyancingRequest (address / lat-lng / prop_id) for the free-tier disclosure endpoint",
+      "output": "the free-tier response whose da_count now reflects the true nearby-DA count (council_name=None), not a false zero for vocabulary-mismatched councils",
+      "if_none": "on a DB error the surrounding try/except leaves da_count at 0 and logs — unchanged; the fix only removes the spurious council filter that produced a false zero on success"
+    },
+    {
+      "name": "_fetch_db_data",
+      "file_line": "services/conveyancing.py:443",
+      "input": "the PDF-path DB prefetch closure using req.lat/req.lng and the shared connection",
+      "output": "the nearby-DA list for the PDF's Nearby Development Activity section, now scoped by the 200m radius alone (council_name=None) so vocabulary-mismatched councils surface their real DAs",
+      "if_none": "a DB failure still returns _das=None which the renderer shows as 'Not assessed', never a false 'no DAs' — the fix corrects the success path, the failure path is unchanged"
+    }
+  ],
+  "values": [
+    {
+      "value": "the nearby-DA result list feeding da_count (free tier) and the PDF Nearby Development Activity section",
+      "read_at": "services/conveyancing.py:273",
+      "nullable": "yes — fetch_nearby_das returns [] on empty and None-guarded failure",
+      "guard_at": "services/conveyancing.py:273 + :468 (council_name=None; the Haversine dist <= radius_m filter in conveyancing_db.fetch_nearby_das enforces the 200m scope)",
+      "if_missing": "an empty result now means a genuine absence within 200m, not a council-name mismatch; a fetch failure renders 'Not assessed' in the PDF path, never a false 'no DAs'"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "nearby development applications within 200m of the property for the conveyancing report",
+      "file_line": "scripts/conveyancing_db.py:654",
+      "where_clause": "latitude/longitude bounding box + (lodgement_date >= since OR determination_date >= since); the council_name = %s predicate is NO LONGER added by the conveyancing callers (the source of the false negative). Post-query Haversine dist <= radius_m enforces exact proximity."
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A residual traffic-light (green/amber/red) cue implies a safety/danger verdict",
-      "what_happens": "would breach the legal posture (line 81). Swept: the composite score/band headline, the green->red band ladder, the per-hazard X/20 colour chips, and the red/amber projection numbers were all removed/neutralised to gray on both the card and the page's sample mockup",
+      "scenario": "A property in a council whose DB name differs from its LEP-derived name (Hornsby, Ryde, Hunters Hill, Kiama, Broken Hill, Glen Innes)",
+      "what_happens": "Before the fix the council filter matched zero DB rows and the report printed a false 'No development applications within 200m'; a buyer relies on it and is blindsided by a neighbouring development",
       "mitigated": true,
-      "how": "grep confirms no user-facing '/100', 'Very High', 'risk score', 'composite score', or hazard-verdict green/red remains (hazard-TYPE and data-TYPE icon colours are not verdicts and are kept)",
-      "repro": "grep -inE 'risk score|composite score|/ 100|Very High|score out of' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx frontend-nextjs/app/climate-risk/page.tsx | grep -v '//'"
+      "how": "the council filter is removed; the 200m Haversine radius alone scopes the search, so the real DAs surface regardless of council-name vocabulary — proven live (Hornsby 0 -> 10, Ryde 0 -> 1)",
+      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -m database (DATABASE_URL set)"
     },
     {
-      "scenario": "Banned liability language (safe/suitable/insurable/at-risk) in the climate copy",
-      "what_happens": "would breach the language audit + legal posture; climate copy is the highest-risk text",
+      "scenario": "A future edit re-adds council_name=council_name to either fetch_nearby_das call",
+      "what_happens": "The false-negative regresses silently for the mismatched councils",
       "mitigated": true,
-      "how": "'Suitable for insurance assessments' removed; explicit 'not a risk rating / prediction / statement about insurability, safety or value' framing added to the card header and disclaimer",
-      "repro": "grep -inoE '\\b(safe|suitable|guaranteed|insurab|uninsurab|at risk)\\b' frontend-nextjs/components/tools/ClimateRiskResultCard.tsx frontend-nextjs/app/climate-risk/page.tsx"
+      "how": "a source-guard test asserts neither conveyancing fetch_nearby_das call passes council_name=council_name and both pass council_name=None",
+      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -k no_council_filter"
     },
     {
-      "scenario": "The page's hardcoded sample mockup contradicts the real (rewritten) card",
-      "what_happens": "users would be shown an example output they will not actually receive",
+      "scenario": "Dropping the council filter pulls in DAs from an adjacent council within 200m",
+      "what_happens": "A development 180m away across a council boundary appears in the list",
       "mitigated": true,
-      "how": "the sample header and per-hazard chips were converted to the same neutral exposure-count + Present/Not-present style the live card now renders",
-      "repro": "visual: /climate-risk sample section matches ClimateRiskResultCard output"
+      "how": "that is correct and desirable for a proximity disclosure — a development 180m away matters to a buyer regardless of which council it sits in; the brief already takes this approach and the Haversine radius still bounds it to 200m",
+      "repro": "read conveyancing_db.fetch_nearby_das — dist <= radius_m still applies with council_name=None"
+    },
+    {
+      "scenario": "The free-tier /conveyancing da_count surfaced the same false zero, not just the PDF",
+      "what_happens": "The free-tier disclosure showed 'da_count: 0' for the mismatched councils, so a buyer saw a false 'no nearby activity' before ever paying for the PDF",
+      "mitigated": true,
+      "how": "both call sites were fixed (services/conveyancing.py:273 free tier and :468 PDF prefetch); the source-guard test asserts EVERY fetch_nearby_das call in the file passes council_name=None, not just one",
+      "repro": "python -m pytest tests/test_conveyancing_nearby_da_council.py -k no_council_filter (scans all call sites)"
+    },
+    {
+      "scenario": "A council genuinely has no DAs ingested (MidCoast: zero rows in development_applications)",
+      "what_happens": "The section still renders 'no development applications within 200m', which reflects a DATA-COVERAGE gap, not a filter bug — removing the council filter does not fabricate DAs where the DB has none",
+      "mitigated": true,
+      "how": "this fix is scoped to the filter mismatch only; where the DB genuinely holds no rows the honest empty result stands, and the coverage gap is flagged as a separate follow-up in post_merge — the fix never invents data",
+      "repro": "query development_applications for MidCoast -> 0 rows; council_name=None still returns [] (a genuine absence, not masked as fixed)"
     }
   ],
   "post_merge": {
-    "db_reset": "No",
+    "db_reset": "No — no schema or data change; a query-filter change only",
     "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — load /climate-risk, run a real address, confirm the result card leads with hazard exposure + NARCliM projection metrics (each sourced), shows NO composite score/band verdict and NO green/red risk colouring, and the disclaimer states it is not a risk rating or financial advice. Follow-up (not this PR): the page's hardcoded sample mockup could be regenerated from a live response for full fidelity."
+    "other_repo": "No — self-contained in services/conveyancing.py + its test",
+    "manual_verify": "Yes — regenerate a Hornsby or Ryde conveyancing PDF through the deployed Railway pipeline and confirm the Nearby Development Activity section now lists DAs instead of 'none'. NOTE (separate follow-up, not this PR): the same LEP-vs-API vs LEP-vs-DB vocabulary problem lives in 4+ hardcoded council maps; the live-ePlanning path (get_nearby_das) and the broader map consolidation should be audited separately."
   }
 }
