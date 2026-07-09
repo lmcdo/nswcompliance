@@ -1,49 +1,51 @@
 {
   "tier": "standard",
-  "justification": "Content + internal-linking: one new conveyancer-duty blog article + its registry entry, PLUS funnel wiring — a report/hub CTA added to two dead-ending buyer articles (flood-zone, uninsurable) and a Further-reading section on the /for/conveyancers hub, all plain next/link (no new imports, no logic/data/DB/API). Standard tier only because five .tsx files trip the minor-tier file-count floor; the change is content and static links. Marketing/SEO funnel work per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07, Priority 1+2). Real risks: legal-language overclaim (handled below) and a JSX/TS slip in a bare worktree (caught by the Vercel preview build).",
+  "justification": "Content + internal-linking: one new conveyancer-duty blog article + its registry entry, PLUS funnel wiring \u00e2\u20ac\u201d a report/hub CTA added to two dead-ending buyer articles (flood-zone, uninsurable) and a Further-reading section on the /for/conveyancers hub, all plain next/link (no new imports, no logic/data/DB/API). Standard tier only because five .tsx files trip the minor-tier file-count floor; the change is content and static links. Marketing/SEO funnel work per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07, Priority 1+2). Real risks: legal-language overclaim (handled below) and a JSX/TS slip in a bare worktree (caught by the Vercel preview build).",
   "pre_impl": {
     "existing_data": "Audited the existing blog cluster before writing: section-10-7-flood-risk-nsw already funnels to /reports/conveyancing + /for/conveyancers; is-my-house-in-a-flood-zone-nsw, uninsurable-property-climate-risk, climate-risk-data-provider-australia and bushfire-attack-level all DEAD-END (no report CTA); the /for/conveyancers hub linked to none of the cluster. This change wires the two highest-traffic dead-ends and the hub; the other two remain a follow-up.",
-    "assumption_mismatch": "Assumed each target article imports next/link and ends with a BlogDisclaimer + back-to-blog footer — verified by grep before editing (both do), so the inserted CTA uses plain Link with no new imports and cannot break the import graph. The /for/conveyancers page already imports Link. A bare worktree skipped local tsc/jest, so the Vercel preview build is the compile check.",
+    "assumption_mismatch": "Assumed each target article imports next/link and ends with a BlogDisclaimer + back-to-blog footer \u00e2\u20ac\u201d verified by grep before editing (both do), so the inserted CTA uses plain Link with no new imports and cannot break the import graph. The /for/conveyancers page already imports Link. A bare worktree skipped local tsc/jest, so the Vercel preview build is the compile check.",
     "new_vs_existing": "Reuses the existing CTA/link pattern verbatim from the qld-seller-disclosure article and the hub's own styling; no new component, no new dependency. The only new file is the one article page; everything else is added links inside existing pages."
   },
   "functions": "N/A - content and static internal links only; no functions added or changed.",
   "values": "N/A - no runtime values; static JSX link hrefs only.",
   "queries": "N/A - no database or API queries.",
-  "commit_hash": "d5459d39",
+  "commit_hash": "83736fd0",
   "files": [
     "frontend-nextjs/app/blog/conveyancer-duty-climate-risk-nsw/page.tsx",
     "frontend-nextjs/lib/blog-articles.ts",
     "frontend-nextjs/app/for/conveyancers/page.tsx",
     "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
-    "frontend-nextjs/app/blog/uninsurable-property-climate-risk/page.tsx"
+    "frontend-nextjs/app/blog/uninsurable-property-climate-risk/page.tsx",
+    "frontend-nextjs/app/blog/climate-risk-data-provider-australia/page.tsx",
+    "frontend-nextjs/app/blog/bushfire-attack-level-bal-property-buyers/page.tsx"
   ],
   "break_it": [
     {
-      "scenario": "The article overstates the legal position — implies NSW conveyancers have a settled statutory duty to provide climate analysis",
+      "scenario": "The article overstates the legal position \u00e2\u20ac\u201d implies NSW conveyancers have a settled statutory duty to provide climate analysis",
       "what_happens": "A reader relies on a false statement of law; the piece becomes misleading and damages the brand's credibility with the exact professional audience it targets",
       "mitigated": true,
       "how": "the copy explicitly says NSW has NOT legislated a vendor climate-disclosure duty and frames the duty scope as evolving/prudent-practice, not mandated; Shaddock is cited accurately (information-provider liability for negligent omission); the corporate climate-disclosure standard is described as a signal of direction, not a duty on conveyancers",
-      "repro": "read the #direction and #duty sections — each carries an explicit 'this does not bind a residential transaction / does not suggest it has' qualifier"
+      "repro": "read the #direction and #duty sections \u00e2\u20ac\u201d each carries an explicit 'this does not bind a residential transaction / does not suggest it has' qualifier"
     },
     {
       "scenario": "The article uses a climate 'score' or 'at risk' verdict, repeating the misleading-conduct pattern the org's own legal review banned (#699)",
       "what_happens": "Property-defamation / misleading-conduct exposure of the same kind that was removed from the live climate tool",
       "mitigated": true,
-      "how": "the copy states projections should be shown 'as cited, dated context — not as a score or a verdict, which can mislead'; no suburb-level 'will be underwater' claims; liability-word sweep returned zero flagged terms",
-      "repro": "grep the page for 'score'/'at risk'/'underwater' — only appears in the negative ('not a score or a verdict')"
+      "how": "the copy states projections should be shown 'as cited, dated context \u00e2\u20ac\u201d not as a score or a verdict, which can mislead'; no suburb-level 'will be underwater' claims; liability-word sweep returned zero flagged terms",
+      "repro": "grep the page for 'score'/'at risk'/'underwater' \u00e2\u20ac\u201d only appears in the negative ('not a score or a verdict')"
     },
     {
       "scenario": "The article claims the report renders coastal/estuarine inundation, which is not yet shipped (data loaded, render pending)",
       "what_happens": "A false product-capability claim; a conveyancer buys expecting a section that isn't there",
       "mitigated": true,
       "how": "the CTA lists only LIVE capabilities (LEP/SEPP/DCP controls, flood and bushfire mapping, cited climate projections from merged #702); estuarine inundation is referenced only as a newly published NSW GOVERNMENT dataset a buyer needs, never as a current report feature",
-      "repro": "read the CTA block — it names flood, bushfire, climate projections; not coastal/estuarine as a report section"
+      "repro": "read the CTA block \u00e2\u20ac\u201d it names flood, bushfire, climate projections; not coastal/estuarine as a report section"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — confirm the Vercel PR preview build compiles the new page (bare worktree skipped local tsc/jest) and the article renders in the /blog index and at /blog/conveyancer-duty-climate-risk-nsw; a parallel session owns ce-conveyancing-coastal-inundation-2026-07, so reconcile internal-linking (Priority 2) with that work before adding coastal references."
+    "manual_verify": "Yes \u00e2\u20ac\u201d confirm the Vercel PR preview build compiles the new page (bare worktree skipped local tsc/jest) and the article renders in the /blog index and at /blog/conveyancer-duty-climate-risk-nsw; a parallel session owns ce-conveyancing-coastal-inundation-2026-07, so reconcile internal-linking (Priority 2) with that work before adding coastal references."
   }
 }

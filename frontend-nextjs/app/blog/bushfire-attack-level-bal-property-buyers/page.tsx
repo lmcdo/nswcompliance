@@ -741,6 +741,24 @@ export default function BushfireBALPropertyBuyersPage() {
               Check bushfire risk
               <ArrowRight className="w-4 h-4" />
             </TrackedLink>
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+              Doing full pre-purchase due diligence? The{' '}
+              <Link
+                href="/reports/conveyancing"
+                className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+              >
+                Conveyancing Planning Disclosure report
+              </Link>{' '}
+              puts bushfire status alongside flood, planning controls, and cited
+              climate projections in one document &mdash; see{' '}
+              <Link
+                href="/for/conveyancers"
+                className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+              >
+                tools for conveyancers
+              </Link>
+              .
+            </p>
           </div>
         </section>
 
