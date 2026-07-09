@@ -5,7 +5,7 @@ import { LandingVisibility } from '@/components/reports/landing/LandingVisibilit
 import { SoftwareAppJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
-  title: 'Neighbour Development Threat Radar — PlotDetect',
+  title: 'Development Monitoring — PlotDetect',
   description: 'See active development applications and CDCs within 500m of any NSW address. Subscribe for weekly alerts when new applications are lodged.',
   openGraph: {
     title: 'What\'s being built near you in NSW?',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Neighbour Development Threat Radar — PlotDetect',
+    title: 'Development Monitoring — PlotDetect',
     description: 'Scan for active development applications within 500m of any NSW address. Free.',
   },
 }
@@ -32,7 +32,7 @@ export default async function ThreatRadarPage({ searchParams }: Props) {
   return (
     <div>
       <SoftwareAppJsonLd
-        name="Neighbour Development Threat Radar"
+        name="Development Monitoring"
         description="See active development applications and CDCs within 500m of any NSW address. Subscribe for weekly alerts when new applications are lodged."
         url="/reports/threat-radar"
       />

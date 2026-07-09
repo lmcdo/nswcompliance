@@ -73,7 +73,7 @@ const SECTION_LABELS: Record<string, { label: string; description: string }> = {
   'satellite.flood': { label: 'Flood Analysis', description: 'Multi-source flood occurrence screening' },
   'satellite.climate_disclosure': { label: 'Climate Hazards & Projections', description: 'Hazard screening, heat and rainfall calculations, climate-model projections' },
   'satellite.granny_flat': { label: 'Secondary Dwelling', description: 'Granny-flat feasibility — buildings on the lot + eligibility' },
-  'satellite.pre_da_history': { label: 'Pre-DA Site History', description: 'Historical development activity timeline' },
+  'satellite.pre_da_history': { label: 'Prior Development Activity', description: 'Historical development activity timeline' },
   'satellite.terrain': { label: 'Terrain Analysis', description: 'Slope, aspect and drainage from elevation' },
   'satellite.solar': { label: 'Solar Potential', description: 'Roof capacity and yield from aerial imagery (Google Solar)' },
 };
@@ -2527,7 +2527,7 @@ function IntelligenceBriefInner() {
   const metadataEvent = parts.find((p): p is Extract<BriefEvent, { event: 'metadata' }> => p.event === 'metadata');
   const sectionEvents = parts
     .filter((p): p is Extract<BriefEvent, { event: 'section' }> => p.event === 'section')
-    // Pre-DA Site History soft-dropped (2026-06): it needs a heavy ML dependency
+    // Prior Development Activity soft-dropped (2026-06): it needs a heavy ML dependency
     // (torch/Tessera) the web container can't host, so it always errored. Hide the card
     // until it's decoupled to a worker. Backend code retained — re-enable by removing
     // this filter, restoring the toggle, and re-adding it to EXPECTED_SECTIONS_SAT.

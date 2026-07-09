@@ -1,46 +1,54 @@
 {
   "tier": "standard",
-  "justification": "Brief access decision implementation: the Intelligence Brief run route was fully open + anonymous with NO rate limit on a ~40s background job (cost/abuse hole), and the result had no lead-capture. Adds an IP rate-limit to the run route and an email-OPTIONAL post-result strip (never gates the result). Standard tier: one guard on an existing route + one reused UI component, no DB writes, no logic change to the brief itself.",
-  "commit_hash": "f4b84a7a",
+  "justification": "IP-compliance copy fix: the consumer report pages (canibuildit surface) exposed internal product codenames — 'Threat Radar', 'Pre-DA Site History', 'Granny Flat Yield Predictor', 'Flood Truth' — in page titles, nav labels and metadata, which the blog-content IP rule bans from any public page. Renamed to the factual public names already used on the info site. Standard tier: string-literal copy only, no logic/data/DB change, route slugs unchanged.",
+  "commit_hash": "b3ee6de7",
   "files": [
-    "frontend-nextjs/app/api/intelligence-brief/route.ts",
+    "frontend-nextjs/app/reports/page.tsx",
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/reports/threat-radar/page.tsx",
+    "frontend-nextjs/app/reports/threat-radar/[report_id]/page.tsx",
+    "frontend-nextjs/app/reports/pre-da-history/page.tsx",
+    "frontend-nextjs/app/reports/shadow/page.tsx",
+    "frontend-nextjs/app/reports/solar-yield/page.tsx",
+    "frontend-nextjs/app/reports/flood/[report_id]/page.tsx",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Run route /api/intelligence-brief triggers the Trigger.dev job from {address}; confirmed no prior rate-limit/auth/email gate. Reuses lib/rate-limit (satelliteRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders) and components/reports/PostResultEmailStrip (posts to the existing /api/canibuildit/lead with interest_type).",
-    "assumption_mismatch": "The Brief stays open + anonymous per RULE 4 (early access, no signup/paywall) — the rate limit is an abuse/cost guard (12/hr/IP, generous for humans), NOT a paywall; the email strip is optional and post-result, NOT a gate.",
-    "new_vs_existing": "prior-art: no new components — reuses the shared rate-limiter and PostResultEmailStrip (same pattern as the satellite tools and the alerts opt-in)."
+    "existing_data": "canibuildit.com.au rewrites to /reports (already PlotDetect-branded). The tiles + tool-page metadata carried internal codenames. Factual public names reused verbatim from the info-site reports section shipped this session (Development Monitoring, Granny Flat Feasibility, Overshadowing, Solar potential, Flood Risk, Prior Development Activity).",
+    "assumption_mismatch": "The 'rebrand' was a near-non-issue (brand already consistent); the real finding was a systemic IP-rule violation (internal names public). Route slugs (/reports/threat-radar etc.) are intentionally KEPT — display name is decoupled from URL per the info-site decision, so no link/SEO breakage.",
+    "new_vs_existing": "No new components; pure rename of user-facing string literals. Verified no code identifiers (imports/components/types) were touched."
   },
-  "functions": "N/A — frontend route guard + reused UI component; no new Python functions.",
-  "values": "N/A — address resolved as metadataEvent?.data.address ?? selectedAddress (selectedAddress is a non-null string state).",
-  "queries": "N/A — no database access; run route hits Trigger.dev, strip posts to the existing lead API.",
+  "functions": "N/A — copy-only rename across report page string literals; no functions changed.",
+  "values": "N/A — no data reads changed.",
+  "queries": "N/A — no database access.",
   "break_it": [
     {
-      "scenario": "A script floods the Brief run route to burn compute",
-      "what_happens": "after 12 runs/hour from one IP the route returns 429 with rate-limit headers; the job is not triggered",
+      "scenario": "A rename accidentally changes a route slug or component name, breaking a link or the build",
+      "what_happens": "would 404 a tool or fail the build",
       "mitigated": true,
-      "how": "checkRateLimit(clientId, satelliteRateLimiter, 12, 3600000) guards the top of POST before any Trigger.dev call",
-      "repro": "POST /api/intelligence-brief 13x from one IP within an hour -> 13th returns 429"
+      "how": "replacements targeted string literals only; hrefs (/reports/<slug>) left unchanged; grep confirmed no import/component/type identifier was altered",
+      "repro": "grep the diff for import/function/const identifiers among the renamed strings -> none"
     },
     {
-      "scenario": "The email strip accidentally blocks or gates the brief result",
-      "what_happens": "it must not — the result renders fully; the strip is an optional add-on shown only when state==='complete'",
+      "scenario": "A banned internal codename survives somewhere on a public report page",
+      "what_happens": "a banned internal codename stays visible on a public consumer page, breaching the IP rule",
       "mitigated": true,
-      "how": "PostResultEmailStrip is self-contained (own state, silent-fail fetch) and rendered after the result, never in front of it",
-      "repro": "complete a brief, ignore the strip -> full brief visible and usable"
+      "how": "full-tree sweep post-change returns zero matches for Threat Radar / Pre-DA Site History / Shadow Ambush / Solar Yield Underwriter / Granny Flat Yield Predictor / Flood Truth across app/reports/",
+      "repro": "grep -rnE 'Threat Radar|Pre-DA Site History|Flood Truth|Granny Flat Yield Predictor' app/reports/ -> empty"
     },
     {
-      "scenario": "Upstash Redis is unavailable when the rate-limit check runs",
-      "what_happens": "checkRateLimit catches the Redis error and falls back to the in-memory limiter (per-instance) — the brief still runs, it does not hard-fail or block legitimate users",
+      "scenario": "A rename leaves awkward/wrong public copy (e.g. lowercased 'flood screening Report')",
+      "what_happens": "a homeowner sees awkward or lowercased copy that reads as unfinished on a public page",
       "mitigated": true,
-      "how": "the shared checkRateLimit wraps limiter.limit() in try/catch and falls through to in-memory on error (verified in lib/rate-limit.ts)",
-      "repro": "with Redis unreachable, POST /api/intelligence-brief still returns a runId via the in-memory fallback, not a 500"
+      "how": "the generic 'flood screening' substitution was corrected to the consumer name 'Flood Risk' in every title/label; only one code comment retains the generic phrase",
+      "repro": "grep 'flood screening' app/reports/ -> only the code comment remains"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — reuses existing UPSTASH_REDIS + lead API; no new env vars.",
+    "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — run a brief on prod: confirm it still runs anonymously (no signup), the result renders in full, an optional 'email me this brief' strip appears on completion, and rapid repeated runs from one IP eventually 429."
+    "manual_verify": "Yes — load canibuildit.com.au: confirm the 7 tiles show factual names (Development Monitoring, Granny Flat Feasibility, Overshadowing Check, Rooftop Solar Potential, Prior Development Activity, Flood Risk Check, Bushfire Pre-Screen), the nav labels match, and each tool page title/metadata carries no internal codename."
   }
 }
