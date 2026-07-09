@@ -39,42 +39,66 @@ function assessSubdivision(data: {
   lot_area_sqm: number | null;
   min_lot_size_sqm: number | null;
   permitted: string[];
+  prohibited: string[];
 }): { likely: 'yes' | 'no' | 'maybe'; reason: string } {
-  const { zone_code, lot_area_sqm, min_lot_size_sqm, permitted } = data;
+  const { zone_code, lot_area_sqm, min_lot_size_sqm, permitted, prohibited } = data;
 
   // Industrial/environmental zones
   if (typeof zone_code === 'string' && (zone_code.startsWith('IN') || zone_code.startsWith('E') || zone_code.startsWith('W') || zone_code.startsWith('C1') || zone_code === 'SP1' || zone_code === 'SP2')) {
     return { likely: 'no', reason: `Zone ${zone_code} does not typically permit residential subdivision.` };
   }
 
-  // Check if dual occupancy or multi dwelling is permitted
-  const hasDualOcc = permitted.some(u =>
-    u.toLowerCase().includes('dual occupancy') || u.toLowerCase().includes('multi dwelling')
-  );
+  const hasDualOcc = permitted.some(u => u.toLowerCase().includes('dual occupancy'));
+  const hasMultiDwelling = permitted.some(u => u.toLowerCase().includes('multi dwelling'));
+  const dualOccProhibited = prohibited.some(u => u.toLowerCase().includes('dual occupancy'));
+
+  // "hasDensity" = either dual occ or multi dwelling is permitted
+  const hasDensity = hasDualOcc || hasMultiDwelling;
 
   if (!lot_area_sqm || !min_lot_size_sqm) {
-    if (hasDualOcc) {
-      return { likely: 'maybe', reason: 'Dual occupancy appears permitted in this zone, but lot area data is not available to confirm minimum lot size compliance. Check with council.' };
+    if (hasDensity) {
+      const types = [hasDualOcc && 'dual occupancy', hasMultiDwelling && 'multi dwelling housing'].filter(Boolean).join(' and ');
+      return { likely: 'maybe', reason: `This zone permits ${types}, but lot area data is not available to confirm minimum lot size compliance. Check with council.` };
     }
     return { likely: 'maybe', reason: 'Insufficient data to determine subdivision eligibility. Check your LEP minimum lot size against your actual lot area.' };
   }
 
-  // Can fit two lots?
   const canFitTwo = lot_area_sqm >= min_lot_size_sqm * 2;
 
   if (canFitTwo && hasDualOcc) {
     return { likely: 'yes', reason: `Your lot (${lot_area_sqm.toLocaleString()}m²) is at least twice the minimum lot size (${min_lot_size_sqm}m²), and dual occupancy is permitted in zone ${zone_code}. Torrens title subdivision may be possible.` };
   }
 
-  if (canFitTwo && !hasDualOcc) {
-    return { likely: 'maybe', reason: `Your lot is large enough (${lot_area_sqm.toLocaleString()}m²), but dual occupancy does not appear as a permitted use in zone ${zone_code}. Strata subdivision for an attached dual occupancy may still be possible. Check with a planner.` };
+  if (canFitTwo && hasMultiDwelling && !hasDualOcc) {
+    const prohibitedNote = dualOccProhibited
+      ? `Dual occupancy is prohibited in zone ${zone_code}, but multi dwelling housing is permitted.`
+      : `Dual occupancy is not listed as permitted in zone ${zone_code}, but multi dwelling housing is permitted.`;
+    return { likely: 'maybe', reason: `Your lot (${lot_area_sqm.toLocaleString()}m²) is at least twice the minimum lot size (${min_lot_size_sqm}m²). ${prohibitedNote} A multi dwelling housing development with strata subdivision may be possible. Consult a planner.` };
+  }
+
+  if (canFitTwo && !hasDensity) {
+    const prohibitedNote = dualOccProhibited
+      ? `Dual occupancy is prohibited in zone ${zone_code}.`
+      : `Dual occupancy does not appear as a permitted use in zone ${zone_code}.`;
+    return { likely: 'maybe', reason: `Your lot is large enough (${lot_area_sqm.toLocaleString()}m²), but ${prohibitedNote.toLowerCase()} Strata subdivision for an attached dual occupancy may still be possible. Check with a planner.` };
   }
 
   if (!canFitTwo && hasDualOcc) {
     return { likely: 'maybe', reason: `Dual occupancy is permitted, but your lot (${lot_area_sqm.toLocaleString()}m²) is below twice the minimum lot size (${min_lot_size_sqm * 2}m²). Strata subdivision (attached dual occupancy) may be possible, but Torrens title is unlikely.` };
   }
 
-  return { likely: 'no', reason: `Your lot (${lot_area_sqm.toLocaleString()}m²) is below twice the minimum lot size (${min_lot_size_sqm * 2}m²), and dual occupancy does not appear permitted in zone ${zone_code}.` };
+  if (!canFitTwo && hasMultiDwelling && !hasDualOcc) {
+    const prohibitedNote = dualOccProhibited
+      ? `Dual occupancy is prohibited in zone ${zone_code}, but multi dwelling housing is permitted.`
+      : `Dual occupancy is not listed as permitted in zone ${zone_code}, but multi dwelling housing is permitted.`;
+    return { likely: 'maybe', reason: `Your lot (${lot_area_sqm.toLocaleString()}m²) is below twice the minimum lot size (${min_lot_size_sqm * 2}m²) for Torrens title. ${prohibitedNote} A multi dwelling housing development with strata subdivision may still be possible. Consult a planner.` };
+  }
+
+  // Neither dual occ nor multi dwelling permitted, lot too small
+  const prohibitedNote = dualOccProhibited
+    ? `dual occupancy is prohibited in zone ${zone_code}`
+    : `dual occupancy does not appear permitted in zone ${zone_code}`;
+  return { likely: 'no', reason: `Your lot (${lot_area_sqm.toLocaleString()}m²) is below twice the minimum lot size (${min_lot_size_sqm * 2}m²), and ${prohibitedNote}.` };
 }
 
 export default function SubdivisionCheckPage() {
@@ -108,6 +132,7 @@ export default function SubdivisionCheckPage() {
 
       // Fetch permissibility for dwelling type check
       let permitted: string[] = [];
+      let prohibited: string[] = [];
       if (zone_code !== 'Unknown' && lga) {
         try {
           const lepRes = await fetch(
@@ -119,6 +144,9 @@ export default function SubdivisionCheckPage() {
               permitted = lepData.entries
                 .filter((e: { permissibility: string }) => e.permissibility === 'Permitted')
                 .map((e: { development_type: string }) => e.development_type);
+              prohibited = lepData.entries
+                .filter((e: { permissibility: string }) => e.permissibility === 'Prohibited')
+                .map((e: { development_type: string }) => e.development_type);
             }
           }
         } catch {
@@ -126,7 +154,7 @@ export default function SubdivisionCheckPage() {
         }
       }
 
-      const assessment = assessSubdivision({ zone_code, lot_area_sqm, min_lot_size_sqm, permitted });
+      const assessment = assessSubdivision({ zone_code, lot_area_sqm, min_lot_size_sqm, permitted, prohibited });
 
       setResult({
         address: prop.address ?? address,
@@ -258,9 +286,11 @@ export default function SubdivisionCheckPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Max height</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {result.height_m != null ? `${result.height_m}m` : '—'}
-                  </p>
+                  {result.height_m != null ? (
+                    <p className="text-sm font-semibold text-gray-900">{result.height_m}m</p>
+                  ) : (
+                    <p className="text-sm font-semibold text-gray-400">Not mapped</p>
+                  )}
                 </div>
               </div>
             </div>

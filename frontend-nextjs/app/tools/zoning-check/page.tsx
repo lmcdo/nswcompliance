@@ -174,21 +174,36 @@ export default function ZoningCheckPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Max height</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.height_m != null ? `${result.height_m}m` : '—'}
-              </p>
+              {result.height_m != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.height_m}m</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for height controls</p>
+                </>
+              )}
             </div>
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">FSR</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.fsr != null ? `${result.fsr}:1` : '—'}
-              </p>
+              {result.fsr != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.fsr}:1</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for FSR controls</p>
+                </>
+              )}
             </div>
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Min lot size</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.min_lot_size_sqm != null ? `${result.min_lot_size_sqm}m²` : '—'}
-              </p>
+              {result.min_lot_size_sqm != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.min_lot_size_sqm}m²</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for lot size controls</p>
+                </>
+              )}
             </div>
           </div>
 
