@@ -1,42 +1,38 @@
 {
-  "tier": "critical",
-  "justification": "New 'Climate & Hazard Exposure' section in the conveyancing PDF, a PAID LEGAL document. It renders NARCliM 2.0 modelled climate projections (extreme-heat days, temperature, rainfall). Critical tier because the failure mode is a silently-wrong or verdict-laden claim in a legal document (ACL s18 / negligent-misstatement exposure per the org climate-risk legal assessment), and data flows from raster reads through a new fetcher and builder into rendered legal text. Factual metrics only: no composite score, band, or verdict (mirrors the #699 live-tool fix).",
-  "commit_hash": "b4acf0e3",
+  "tier": "minor",
+  "justification": "Content-only addition: one new blog article (conveyancer duty of care + climate risk) plus its one-line registry entry in blog-articles.ts. No application logic, no data flow, no DB, no API. Marketing/SEO funnel piece aimed at the conveyancer channel, per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07). The only real risk is legal-language accuracy and overclaim, handled below.",
+  "commit_hash": "bf6ad612",
   "files": [
-    "scripts/generate_conveyancing_report.py",
-    "services/climate_risk_raster.py",
-    "services/conveyancing.py",
-    "tests/test_conveyancing_climate.py",
-    "tests/test_conveyancing_truth.py",
-    "tests/fixtures/climate_narclim.json"
+    "frontend-nextjs/app/blog/conveyancer-duty-climate-risk-nsw/page.tsx",
+    "frontend-nextjs/lib/blog-articles.ts"
   ],
-  "pre_impl": {
-    "existing_data": "Reused climate_risk_raster.query_narclim_summary (NARCliM 2.0 rasters, flat 34-key dict), verified live at three geocoded NSW addresses (Concord, Katoomba, Bowral); no new data source or query was added by this change.",
-    "assumption_mismatch": "Confirmed the _mid and _high suffixes are the two SSP scenarios (ssp245 and ssp370 in NARCLIM_FILES), not ensemble percentiles, so the rendered scenario labels are accurate rather than fabricated; baseline period is 2015-2024 per TIME_PERIODS.",
-    "new_vs_existing": "New code is query_narclim_state (thin four-state wrapper), build_climate_lines and _climate_metric_rows (pure renderers), and the _fetch_climate future; deliberately did NOT reuse climate_risk_score, whose composite score is legally barred and which re-derives flood and bushfire already present in the PDF.",
-    "external_source_error": "The NARCliM rasters may be absent on the deployed image; query_narclim_state maps FileNotFoundError to the unavailable state and the section renders an honest not-available line with no number, verified end-to-end by pointing NARCLIM_DIR at an empty path.",
-    "frontend_type": "No frontend or TypeScript change; this is a Python PDF-generation feature only, and generate_pdf gained an Optional climate kwarg defaulting to None so every existing caller is unaffected by the new parameter.",
-    "user_failure_mode": "A conveyancer or buyer could read a modelled 2090 projection as a current fact or a safety verdict; this is mitigated by scenario and epoch labels bound to every number plus a framing line stating the figures are modelled, not current mapping, and not an insurance or value statement."
-  },
-  "functions": [
-    {"name": "build_climate_lines", "file_line": "scripts/generate_conveyancing_report.py:2922", "input": "the fetcher state envelope dict with a state key and an optional summary, plus an optional report_date string used only for the source-line currency stamp", "output": "a render dict of rows, framing, source_line, status_line and grid_note where a projection number appears only in the present state and never in an honest not-available state", "if_none": "a None or empty payload returns render False so the entire section is omitted rather than emitting a false, empty, or fabricated claim in the document"},
-    {"name": "_climate_metric_rows", "file_line": "scripts/generate_conveyancing_report.py:2883", "input": "the NARCliM summary dict of flat per-variable, per-epoch, per-scenario floating-point values as returned by query_narclim_summary", "output": "one factual sentence per variable where every number is read from the summary and carries its SSP scenario and epoch label so a projected value cannot read as current", "if_none": "a variable missing its baseline or late-century values is skipped entirely, so a partial grid response names only the variables it actually returned rather than zero-filling"},
-    {"name": "query_narclim_state", "file_line": "services/climate_risk_raster.py:291", "input": "a latitude and longitude which are passed straight through to the existing query_narclim_summary raster-sampling function without modification", "output": "one of four distinct state dicts, present, no_coverage, out_of_domain, or unavailable, so a consumer never collapses a permanent domain limit into a fixable infrastructure gap", "if_none": "any unexpected exception maps to unavailable and a domain-bounds ValueError maps to out_of_domain, so a non-present result can never carry a projection number"}
-  ],
-  "values": "N/A - this change reads no DB or API values; every projection number is read from the local NARCliM rasters at runtime via query_narclim_summary and is never hardcoded or approximated.",
-  "queries": "N/A - this change performs no database queries; it reuses an existing raster-sampling function and adds pure rendering plus a thin state wrapper.",
   "break_it": [
-    {"scenario": "The NARCliM rasters are not present on the deployed Railway image at the moment a conveyancing report is generated", "what_happens": "query_narclim_state catches FileNotFoundError and returns the unavailable state, so the section renders an honest not-available line and shows no projection number at all", "mitigated": "Yes - mitigated as described", "how": "verified end-to-end by generating a real PDF with NARCLIM_DIR pointing at an empty path, and guarded by TestNarclimStateMapping.test_file_not_found_is_unavailable", "repro": "NARCLIM_DIR=/nonexistent python scripts/generate_conveyancing_report.py --address '14 Stanley Street, Concord NSW 2137' --lat -33.86382 --lng 151.10586 --output /tmp/x.pdf"},
-    {"scenario": "The property address is outside the NARCliM south-east Australia projection domain bounding box", "what_happens": "the domain bounds check raises ValueError which maps to out_of_domain, a permanent geographic limit rendered distinctly from a fixable infrastructure gap so the reader is not misled about fixability", "mitigated": "Yes - mitigated as described", "how": "query_narclim_state catches ValueError before any file access and returns out_of_domain, guarded by TestNarclimStateMapping.test_out_of_domain_and_unavailable_not_collapsed", "repro": "pytest tests/test_conveyancing_climate.py::TestNarclimStateMapping -q"},
-    {"scenario": "A future edit swaps the mid-century and late-century values or drops an SSP scenario label inside a rendered metric row", "what_happens": "a 2050 figure could render at the 2080-2099 epoch or a number could lose its scenario tag, causing a projection to read as a current or single-scenario fact", "mitigated": "Yes - mitigated as described", "how": "the Katoomba fixture pins four mutually-distinct cells so any epoch or label swap breaks a specific asserted substring, confirmed by a mutation harness that catches five of five builder mutations", "repro": "pytest tests/test_conveyancing_climate.py::TestPresentGolden::test_katoomba_all_four_scenario_epoch_cells_pinned -q"},
-    {"scenario": "A future edit hardcodes or approximates a projection number instead of reading it from the raster result dict", "what_happens": "the three differentiated fixtures would render identical or wrong numbers, presenting fabricated projection figures inside a paid legal document", "mitigated": "Yes - mitigated as described", "how": "three geographically differentiated golden fixtures plus a per-row number-traceability test fail any constant or fabricated value in the rendered rows", "repro": "pytest tests/test_conveyancing_climate.py::TestInterpolationNotHardcoded -q"},
-    {"scenario": "A future edit surfaces the composite 1-100 climate score or a verdict band inside the PDF climate section", "what_happens": "the section would present a legally barred score or verdict, reintroducing the misleading cross-location framing that #699 removed from the live public tool", "mitigated": "Yes - mitigated as described", "how": "the section never imports climate_risk_score, the truth guard forbids the token climate_risk_score-open-paren and the phrase climate risk score in the generator, and a rendered-output test forbids score and band words", "repro": "pytest tests/test_conveyancing_truth.py::TestStaticClaimsGuard tests/test_conveyancing_climate.py::TestNoVerdictLanguage -q"},
-    {"scenario": "The raster returns an empty summary or a summary with no delta keys for an in-domain point", "what_happens": "an empty or delta-less summary could otherwise render an empty section or an unlabelled figure with no scenario or epoch context", "mitigated": "Yes - mitigated as described", "how": "build_climate_lines downgrades an empty or delta-less present payload to no_coverage and renders no number, and the nearest grid-cell distance is disclosed in the source note", "repro": "pytest tests/test_conveyancing_climate.py::TestDataStates -q"}
+    {
+      "scenario": "The article overstates the legal position — implies NSW conveyancers have a settled statutory duty to provide climate analysis",
+      "what_happens": "A reader relies on a false statement of law; the piece becomes misleading and damages the brand's credibility with the exact professional audience it targets",
+      "mitigated": true,
+      "how": "the copy explicitly says NSW has NOT legislated a vendor climate-disclosure duty and frames the duty scope as evolving/prudent-practice, not mandated; Shaddock is cited accurately (information-provider liability for negligent omission); the corporate climate-disclosure standard is described as a signal of direction, not a duty on conveyancers",
+      "repro": "read the #direction and #duty sections — each carries an explicit 'this does not bind a residential transaction / does not suggest it has' qualifier"
+    },
+    {
+      "scenario": "The article uses a climate 'score' or 'at risk' verdict, repeating the misleading-conduct pattern the org's own legal review banned (#699)",
+      "what_happens": "Property-defamation / misleading-conduct exposure of the same kind that was removed from the live climate tool",
+      "mitigated": true,
+      "how": "the copy states projections should be shown 'as cited, dated context — not as a score or a verdict, which can mislead'; no suburb-level 'will be underwater' claims; liability-word sweep returned zero flagged terms",
+      "repro": "grep the page for 'score'/'at risk'/'underwater' — only appears in the negative ('not a score or a verdict')"
+    },
+    {
+      "scenario": "The article claims the report renders coastal/estuarine inundation, which is not yet shipped (data loaded, render pending)",
+      "what_happens": "A false product-capability claim; a conveyancer buys expecting a section that isn't there",
+      "mitigated": true,
+      "how": "the CTA lists only LIVE capabilities (LEP/SEPP/DCP controls, flood and bushfire mapping, cited climate projections from merged #702); estuarine inundation is referenced only as a newly published NSW GOVERNMENT dataset a buyer needs, never as a current report feature",
+      "repro": "read the CTA block — it names flood, bushfire, climate projections; not coastal/estuarine as a report section"
+    }
   ],
   "post_merge": {
-    "db_reset": "No - this change performs no database migration or data change, so no reset or backfill is required after merge.",
-    "secrets": "No - no new secret is introduced; the only new configuration is the optional CONVEYANCING_CLIMATE_ENABLED flag (default on) alongside the existing NARCLIM_DIR path.",
-    "other_repo": "No - the change is contained in this repository; the NARCliM rasters it reads were already deployed to the Railway Python image in PR #698.",
-    "manual_verify": "Yes - regenerate a live conveyancing PDF for one metro and one regional NSW address and read that the climate section renders projections with scenario and epoch labels and no verdict wording."
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes — confirm the Vercel PR preview build compiles the new page (bare worktree skipped local tsc/jest) and the article renders in the /blog index and at /blog/conveyancer-duty-climate-risk-nsw; a parallel session owns ce-conveyancing-coastal-inundation-2026-07, so reconcile internal-linking (Priority 2) with that work before adding coastal references."
   }
 }
