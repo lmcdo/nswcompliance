@@ -266,6 +266,36 @@ export default function UninsurablePropertyPage() {
 
         <BlogDisclaimer />
 
+        {/* Related / funnel */}
+        <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/30 p-6">
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Before you exchange, see the hazard picture for the specific
+            address:{' '}
+            <Link
+              href="/reports/conveyancing"
+              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+            >
+              the Conveyancing Planning Disclosure report
+            </Link>{' '}
+            gathers flood mapping, bushfire status, and cited climate
+            projections into one document. For practitioners, see{' '}
+            <Link
+              href="/for/conveyancers"
+              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+            >
+              tools for conveyancers
+            </Link>{' '}
+            and{' '}
+            <Link
+              href="/blog/conveyancer-duty-climate-risk-nsw"
+              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
+            >
+              the duty of care behind a property certificate
+            </Link>
+            .
+          </p>
+        </div>
+
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">
           <Link href="/blog" className="text-sm text-slate-500 hover:text-teal-600 transition-colors">

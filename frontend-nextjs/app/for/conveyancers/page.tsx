@@ -140,6 +140,38 @@ export default function ConveyancersPage() {
         </p>
       </section>
 
+      {/* Further reading — the disclosure/hazard cluster */}
+      <section className="max-w-3xl mx-auto px-6 pb-16">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Further reading</h2>
+        <ul className="space-y-2 text-sm">
+          <li>
+            <Link href="/blog/conveyancer-duty-climate-risk-nsw" className="text-teal-700 hover:text-teal-800 underline underline-offset-2">
+              The duty of care behind a property certificate — and where the standard searches stop
+            </Link>
+          </li>
+          <li>
+            <Link href="/blog/section-10-7-flood-risk-nsw" className="text-teal-700 hover:text-teal-800 underline underline-offset-2">
+              The s10.7 flood data gap: what NSW buyers aren&apos;t told
+            </Link>
+          </li>
+          <li>
+            <Link href="/blog/is-my-house-in-a-flood-zone-nsw" className="text-teal-700 hover:text-teal-800 underline underline-offset-2">
+              Is my house in a flood zone? How to check in NSW
+            </Link>
+          </li>
+          <li>
+            <Link href="/blog/uninsurable-property-climate-risk" className="text-teal-700 hover:text-teal-800 underline underline-offset-2">
+              Climate risk and the repricing of property insurance
+            </Link>
+          </li>
+          <li>
+            <Link href="/blog/qld-seller-disclosure-nsw-comparison" className="text-teal-700 hover:text-teal-800 underline underline-offset-2">
+              QLD seller disclosure vs NSW buyer-beware: how the states compare
+            </Link>
+          </li>
+        </ul>
+      </section>
+
       <SiteFooter />
     </main>
   );

@@ -1,10 +1,21 @@
 {
-  "tier": "minor",
-  "justification": "Content-only addition: one new blog article (conveyancer duty of care + climate risk) plus its one-line registry entry in blog-articles.ts. No application logic, no data flow, no DB, no API. Marketing/SEO funnel piece aimed at the conveyancer channel, per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07). The only real risk is legal-language accuracy and overclaim, handled below.",
-  "commit_hash": "bf6ad612",
+  "tier": "standard",
+  "justification": "Content + internal-linking: one new conveyancer-duty blog article + its registry entry, PLUS funnel wiring — a report/hub CTA added to two dead-ending buyer articles (flood-zone, uninsurable) and a Further-reading section on the /for/conveyancers hub, all plain next/link (no new imports, no logic/data/DB/API). Standard tier only because five .tsx files trip the minor-tier file-count floor; the change is content and static links. Marketing/SEO funnel work per the reconciled content plan (ce-conveyancing-coastal-inundation-2026-07, Priority 1+2). Real risks: legal-language overclaim (handled below) and a JSX/TS slip in a bare worktree (caught by the Vercel preview build).",
+  "pre_impl": {
+    "existing_data": "Audited the existing blog cluster before writing: section-10-7-flood-risk-nsw already funnels to /reports/conveyancing + /for/conveyancers; is-my-house-in-a-flood-zone-nsw, uninsurable-property-climate-risk, climate-risk-data-provider-australia and bushfire-attack-level all DEAD-END (no report CTA); the /for/conveyancers hub linked to none of the cluster. This change wires the two highest-traffic dead-ends and the hub; the other two remain a follow-up.",
+    "assumption_mismatch": "Assumed each target article imports next/link and ends with a BlogDisclaimer + back-to-blog footer — verified by grep before editing (both do), so the inserted CTA uses plain Link with no new imports and cannot break the import graph. The /for/conveyancers page already imports Link. A bare worktree skipped local tsc/jest, so the Vercel preview build is the compile check.",
+    "new_vs_existing": "Reuses the existing CTA/link pattern verbatim from the qld-seller-disclosure article and the hub's own styling; no new component, no new dependency. The only new file is the one article page; everything else is added links inside existing pages."
+  },
+  "functions": "N/A - content and static internal links only; no functions added or changed.",
+  "values": "N/A - no runtime values; static JSX link hrefs only.",
+  "queries": "N/A - no database or API queries.",
+  "commit_hash": "d5459d39",
   "files": [
     "frontend-nextjs/app/blog/conveyancer-duty-climate-risk-nsw/page.tsx",
-    "frontend-nextjs/lib/blog-articles.ts"
+    "frontend-nextjs/lib/blog-articles.ts",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
+    "frontend-nextjs/app/blog/uninsurable-property-climate-risk/page.tsx"
   ],
   "break_it": [
     {
