@@ -10,6 +10,13 @@ export interface BlogArticle {
 }
 
 export const ARTICLES: BlogArticle[] = [
+  {
+    slug: 'conveyancer-duty-climate-risk-nsw',
+    title: 'Conveyancers and climate risk: the duty of care in NSW property transactions',
+    description: "NSW is buyer-beware, but the duty of care behind a property adviser is widening as flood and climate data goes public. What the standard searches leave out, and what careful practice looks like now.",
+    category: 'Climate Risk',
+    date: '2026-07-09',
+  },
   /* ---- Hub 1: Granny Flat Rules ---- */
   {
     slug: 'can-i-build-a-granny-flat-nsw',
