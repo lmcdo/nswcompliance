@@ -5,10 +5,10 @@ import { LandingVisibility } from '@/components/reports/landing/LandingVisibilit
 import { ProductJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
-  title: 'Rooftop Solar Yield Estimate — PlotDetect',
+  title: 'Rooftop Solar Potential Estimate — PlotDetect',
   description: 'How much solar can this NSW roof generate? Satellite-derived roof geometry and local irradiance data for an estimated annual kWh yield — free for any address.',
   openGraph: {
-    title: 'Rooftop Solar Yield — Free for any NSW address',
+    title: 'Rooftop Solar Potential — Free for any NSW address',
     description: 'Satellite roof geometry + local irradiance = your estimated annual yield. Takes 60 seconds.',
     url: 'https://plotdetect.com.au/reports/solar-yield',
     siteName: 'plotdetect.com.au',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Rooftop Solar Yield Estimate — PlotDetect',
+    title: 'Rooftop Solar Potential Estimate — PlotDetect',
     description: 'Annual solar yield estimate for any NSW address. Free, instant.',
   },
 }
@@ -32,7 +32,7 @@ export default async function SolarYieldPage({ searchParams }: Props) {
   return (
     <div>
       <ProductJsonLd
-        name="Rooftop Solar Yield Estimate"
+        name="Rooftop Solar Potential Estimate"
         description="How much solar can this NSW roof generate? Satellite-derived roof geometry and local irradiance data for an estimated annual kWh yield — free for any address."
         url="/reports/solar-yield"
         price="39"

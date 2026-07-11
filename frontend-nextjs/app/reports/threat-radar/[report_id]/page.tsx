@@ -18,7 +18,7 @@ export async function generateMetadata(
 
   const address = data?.address ?? 'Property';
   return {
-    title: `Threat Radar — ${address}`,
+    title: `Development Monitoring — ${address}`,
     description: `Nearby DA and CDC activity for ${address}. Development pressure, application types, and construction timelines.`,
     robots: { index: false },
   };

@@ -5,10 +5,10 @@ import { LandingVisibility } from '@/components/reports/landing/LandingVisibilit
 import { ProductJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
-  title: 'Shadow Risk Analyser — PlotDetect',
+  title: 'Overshadowing Check — PlotDetect',
   description: 'Will a proposed development cast shadows on your property? Solar access analysis across the five ADG test scenarios for any NSW address.',
   openGraph: {
-    title: 'Shadow Risk Analyser — Will that development overshadow your home?',
+    title: 'Overshadowing Check — Will that development overshadow your home?',
     description: 'Winter solstice shadow analysis for any NSW address. Check the impact of a proposed building before you object.',
     url: 'https://plotdetect.com.au/reports/shadow',
     siteName: 'plotdetect.com.au',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Shadow Risk Analyser — PlotDetect',
+    title: 'Overshadowing Check — PlotDetect',
     description: 'Shadow path analysis across 5 solar access test scenarios for any NSW address.',
   },
 }
@@ -32,7 +32,7 @@ export default async function ShadowPage({ searchParams }: Props) {
   return (
     <div>
       <ProductJsonLd
-        name="Shadow Risk Analyser"
+        name="Overshadowing Check"
         description="Will a proposed development cast shadows on your property? Solar access analysis across the five ADG test scenarios for any NSW address."
         url="/reports/shadow"
         price="39"
