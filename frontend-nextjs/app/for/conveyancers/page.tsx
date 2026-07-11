@@ -73,6 +73,34 @@ export default function ConveyancersPage() {
         </div>
       </section>
 
+      {/* Trust — can you stand behind it */}
+      <section className="max-w-3xl mx-auto px-6 pb-12">
+        <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="w-5 h-5 text-teal-600" />
+            <h2 className="text-lg font-bold text-gray-900">
+              Can you put this in front of a client?
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Every control in the report is traced to the published clause and page
+            it comes from &mdash; zoning and SEPP from the NSW Planning Portal, flood
+            and hazard mapping from Spatial Services NSW and council flood studies,
+            bushfire from the NSW Rural Fire Service. Figures are indicative and
+            computed from published planning controls, not advice &mdash; the report
+            sits alongside the s10.7 certificate and a qualified town planner, not in
+            place of them.{' '}
+            <Link
+              href="/how-it-works"
+              className="text-teal-700 hover:text-teal-800 underline underline-offset-2"
+            >
+              See how each check is sourced
+            </Link>
+            .
+          </p>
+        </div>
+      </section>
+
       {/* Pricing as disbursement */}
       <section className="bg-gray-50 border-y border-gray-100 py-12 px-6">
         <div className="max-w-3xl mx-auto">

@@ -1,54 +1,23 @@
 {
-  "tier": "standard",
-  "justification": "IP-compliance copy fix: the consumer report pages (canibuildit surface) exposed internal product codenames — 'Threat Radar', 'Pre-DA Site History', 'Granny Flat Yield Predictor', 'Flood Truth' — in page titles, nav labels and metadata, which the blog-content IP rule bans from any public page. Renamed to the factual public names already used on the info site. Standard tier: string-literal copy only, no logic/data/DB change, route slugs unchanged.",
-  "commit_hash": "b3ee6de7",
+  "tier": "minor",
+  "justification": "Content-only: adds one 'Can you put this in front of a client?' trust/methodology block to the /for/conveyancers landing page (the Phase-0 credibility asset for the skeptical conveyancer target). Static JSX, plain next/link, reuses an already-imported icon (ShieldCheck). No logic, data, DB, or API. No PI-insurance claim is made (policy quoted, not yet bound). Grounded in the report's real government sources; RULE-4 clean (no 'free' next to the paid report; prices already valid since billing is live).",
+  "commit_hash": "1606e674",
   "files": [
-    "frontend-nextjs/app/reports/page.tsx",
-    "frontend-nextjs/app/reports/layout.tsx",
-    "frontend-nextjs/app/reports/threat-radar/page.tsx",
-    "frontend-nextjs/app/reports/threat-radar/[report_id]/page.tsx",
-    "frontend-nextjs/app/reports/pre-da-history/page.tsx",
-    "frontend-nextjs/app/reports/shadow/page.tsx",
-    "frontend-nextjs/app/reports/solar-yield/page.tsx",
-    "frontend-nextjs/app/reports/flood/[report_id]/page.tsx",
-    "frontend-nextjs/app/reports/granny-flat/page.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "frontend-nextjs/app/for/conveyancers/page.tsx"
   ],
-  "pre_impl": {
-    "existing_data": "canibuildit.com.au rewrites to /reports (already PlotDetect-branded). The tiles + tool-page metadata carried internal codenames. Factual public names reused verbatim from the info-site reports section shipped this session (Development Monitoring, Granny Flat Feasibility, Overshadowing, Solar potential, Flood Risk, Prior Development Activity).",
-    "assumption_mismatch": "The 'rebrand' was a near-non-issue (brand already consistent); the real finding was a systemic IP-rule violation (internal names public). Route slugs (/reports/threat-radar etc.) are intentionally KEPT — display name is decoupled from URL per the info-site decision, so no link/SEO breakage.",
-    "new_vs_existing": "No new components; pure rename of user-facing string literals. Verified no code identifiers (imports/components/types) were touched."
-  },
-  "functions": "N/A — copy-only rename across report page string literals; no functions changed.",
-  "values": "N/A — no data reads changed.",
-  "queries": "N/A — no database access.",
   "break_it": [
     {
-      "scenario": "A rename accidentally changes a route slug or component name, breaking a link or the build",
-      "what_happens": "would 404 a tool or fail the build",
+      "scenario": "The trust block claims something not yet true — e.g. that the product carries PI insurance (only quoted, not bound) or overstates data accuracy",
+      "what_happens": "A false trust claim to a liability-obsessed audience — the exact credibility own-goal Phase 0 exists to avoid",
       "mitigated": true,
-      "how": "replacements targeted string literals only; hrefs (/reports/<slug>) left unchanged; grep confirmed no import/component/type identifier was altered",
-      "repro": "grep the diff for import/function/const identifiers among the renamed strings -> none"
-    },
-    {
-      "scenario": "A banned internal codename survives somewhere on a public report page",
-      "what_happens": "a banned internal codename stays visible on a public consumer page, breaching the IP rule",
-      "mitigated": true,
-      "how": "full-tree sweep post-change returns zero matches for Threat Radar / Pre-DA Site History / Shadow Ambush / Solar Yield Underwriter / Granny Flat Yield Predictor / Flood Truth across app/reports/",
-      "repro": "grep -rnE 'Threat Radar|Pre-DA Site History|Flood Truth|Granny Flat Yield Predictor' app/reports/ -> empty"
-    },
-    {
-      "scenario": "A rename leaves awkward/wrong public copy (e.g. lowercased 'flood screening Report')",
-      "what_happens": "a homeowner sees awkward or lowercased copy that reads as unfinished on a public page",
-      "mitigated": true,
-      "how": "the generic 'flood screening' substitution was corrected to the consumer name 'Flood Risk' in every title/label; only one code comment retains the generic phrase",
-      "repro": "grep 'flood screening' app/reports/ -> only the code comment remains"
+      "how": "the block makes NO insurance claim; it states only what is verifiably true (each control traced to the published clause and page; named government sources) and explicitly frames figures as 'indicative ... not advice', sitting alongside the s10.7 certificate and a town planner; liability-word sweep returned zero flagged terms",
+      "repro": "read the added section — no 'insured', 'accurate', 'guaranteed', 'comprehensive'; only sourcing + the indicative/not-advice caveat"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — load canibuildit.com.au: confirm the 7 tiles show factual names (Development Monitoring, Granny Flat Feasibility, Overshadowing Check, Rooftop Solar Potential, Prior Development Activity, Flood Risk Check, Bushfire Pre-Screen), the nav labels match, and each tool page title/metadata carries no internal codename."
+    "manual_verify": "Yes — confirm the Vercel PR preview build compiles /for/conveyancers (bare worktree skipped local tsc) and the trust block renders between the value grid and the pricing section. Add a PI-insurance line only once the policy is actually bound (not just quoted)."
   }
 }
