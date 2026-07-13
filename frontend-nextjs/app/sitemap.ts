@@ -51,6 +51,7 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/open-data`,          priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/tools/zoning-check`,      priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/subdivision-check`, priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
+        { url: `${base}/tools/upzoning-check`,    priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/check`,           priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports`,          priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/reports/flood`,   priority: 0.9,  changeFrequency: 'weekly',  lastModified: now },

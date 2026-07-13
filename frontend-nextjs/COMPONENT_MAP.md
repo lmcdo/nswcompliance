@@ -152,6 +152,29 @@ grep -r "from.*HeritageProvisions" app/ components/
 
 ---
 
+## Free Tools — /tools/*
+
+### `/tools/upzoning-check` — Upzoning Check (2025 LMR/TOD reforms)
+
+**Page Component:** `app/tools/upzoning-check/page.tsx` (client; mirrors `zoning-check` structure)
+
+**Data Flow:**
+```
+PropertySearch → POST /api/upzoning (proxy, rate-limited)
+  → Python POST /pipeline/upzoning (services/upzoning_check.py)
+    → resolve_address + parse_controls (conveyancing pipeline helpers)
+    → lot_dimensions (area/frontage from Portal geometry)
+    → housing_sepp_eligibility.evaluate_eligibility (live 776/752/759/452 gates,
+      heritage suppression, fail-closed) — ALL eligibility logic lives here
+  ← { status: ok|not_residential|unavailable, forms[], gates, heritage }
+```
+
+**Three-state rules:** engine `reason` strings render verbatim; `unconfirmed` → amber
+"not determinable" (never green); `status=unavailable` → visible outage box (an outage
+must never render as "nothing possible").
+
+---
+
 ## Reports - Intelligence Brief
 
 ### `/reports/intelligence-brief` - Intelligence Brief Page

@@ -1,23 +1,57 @@
 {
- "tier": "minor",
- "justification": "Test-only fix: PR #703 renamed the granny-flat cross-sell card titles from internal codenames to consumer names, but CrossSellCards.test.tsx still asserted the old codenames, breaking jest on main (2 failures). Updates the two expectations to the current rendered titles; no production code touched.",
+ "tier": "standard",
+ "justification": "New free consumer tool (/tools/upzoning-check): per-address Housing-SEPP form eligibility under the 2025 LMR/TOD reforms. ALL eligibility logic is delegated verbatim to the existing tested engine (services/housing_sepp_eligibility.evaluate_eligibility \u2014 live 776/752/759/452 gates, heritage suppression, fail-closed); the new code is a thin exposure layer (FastAPI endpoint + rate-limited Next proxy + page) plus 9 route-level tests that run the REAL engine. Pre-impl live smoke test (2026-07-13, 3 real addresses) proved the data path and caught the heritage false-positive a hand-rolled shortcut produces.",
  "commit_hash": "pending",
  "files": [
-  "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx"
+  "services/upzoning_check.py",
+  "services/compliance_api_server.py",
+  "tests/test_upzoning_check.py",
+  "frontend-nextjs/app/api/upzoning/route.ts",
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+  "frontend-nextjs/app/sitemap.ts",
+  "frontend-nextjs/COMPONENT_MAP.md"
  ],
  "break_it": [
   {
-   "scenario": "The new expectations pass vacuously against some other element containing the same text",
-   "what_happens": "The test would stop guarding the cross-sell card rendering entirely",
+   "scenario": "Heritage lot rendered as LMR-eligible (the Haberfield trap: the 776 exclusion layer is sparse and returns nothing on HCA lots, so a zone+776 shortcut says terraces are allowed in a conservation area)",
+   "what_happens": "A maximum-liability false positive on a public consumer surface \u2014 telling a heritage-land owner they gained development rights they do not have",
    "mitigated": true,
-   "how": "the titles asserted are the exact card heading strings in app/reports/granny-flat/page.tsx CrossSellCards default fail branch; the sibling link-href test in the same describe block still pins the threat-radar destination",
-   "repro": "npx jest --testPathPattern=CrossSellCards -> 7/7 pass; grep 'Development Monitoring' app/reports/granny-flat/page.tsx"
+   "how": "the endpoint never composes gates itself \u2014 it passes the parsed heritage flag into evaluate_eligibility, whose heritage suppression is engine-tested; test_heritage_lot_suppresses_lmr_forms_but_not_base_forms re-asserts it end-to-end at the route with the real engine running",
+   "repro": "pytest tests/test_upzoning_check.py::test_heritage_lot_suppresses_lmr_forms_but_not_base_forms"
+  },
+  {
+   "scenario": "Standards-table outage renders as an empty-but-successful result ('no housing types shown' reads as 'nothing is possible here')",
+   "what_happens": "A silent wrong result served during a DB outage \u2014 the silent-failure class pre-pr-review #4 exists to catch",
+   "mitigated": true,
+   "how": "evaluate_eligibility returns [] for BOTH non-residential zones and standards failures; the endpoint disambiguates via status ok|not_residential|unavailable and the page renders 'unavailable' as a visible amber outage box stating it is a data outage, not a planning result",
+   "repro": "pytest tests/test_upzoning_check.py::test_standards_outage_reports_unavailable_not_empty_success"
+  },
+  {
+   "scenario": "Unconfirmed lot data (no mappable frontage/area) rendered as a definitive 'does not meet standards'",
+   "what_happens": "Grey-as-red: a data gap presented as a failed standard (the Bowral regression class)",
+   "mitigated": true,
+   "how": "the engine's unconfirmed flag flows through asdict untouched; the page renders unconfirmed forms with an amber not-determinable icon and the engine's own hedged reason wording, distinct from both green and grey states",
+   "repro": "pytest tests/test_upzoning_check.py::test_missing_lot_dimensions_yields_unconfirmed_not_eligible"
+  },
+  {
+   "scenario": "Liability language drift on a free public surface ('you can build X' framed as advice or approval)",
+   "what_happens": "Consumer-law exposure \u2014 same stakes as the paid PDF wording, on an anonymous free page",
+   "mitigated": true,
+   "how": "engine reason strings render verbatim (never rewritten in TS); all new copy passed the banned-word grep clean; the page carries an explicit not-planning-advice paragraph and every result is framed 'subject to a development application'; the eligibility framing is a mapped-standards screen, never an outcome",
+   "repro": "grep -inE banned-word list over the three new files returns nothing"
+  },
+  {
+   "scenario": "Live ArcGIS gate failure produces a false eligible (gate query dies, form passes anyway)",
+   "what_happens": "Network flake converts into granted development rights",
+   "mitigated": true,
+   "how": "gates are fetched via the engine's own _gate_inputs, which is fail-closed by design (any gate failure -> conservative False, never falsely eligible; engine reasons hedge with 'or area unconfirmed'); the accepted trade-off is a conservative false negative during outages, never a false positive",
+   "repro": "existing engine tests test_housing_sepp_eligibility.py pin _gate_inputs fail-safety; endpoint passes gates through without modification"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "No \u2014 jest suite is the verification; failures reproduced on main before the fix and pass after it."
+  "manual_verify": "Yes \u2014 after Railway deploy, run one real TOD-positive address (67 Warialda St Kogarah: expect TOD chip yes) and one heritage HCA address (1 Ramsay St Haberfield: expect heritage banner + LMR forms suppressed) through the live page; confirm the Vercel preview renders /tools/upzoning-check."
  }
 }
