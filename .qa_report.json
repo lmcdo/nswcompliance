@@ -1,23 +1,23 @@
 {
-  "tier": "minor",
-  "justification": "Content-only: adds one 'Can you put this in front of a client?' trust/methodology block to the /for/conveyancers landing page (the Phase-0 credibility asset for the skeptical conveyancer target). Static JSX, plain next/link, reuses an already-imported icon (ShieldCheck). No logic, data, DB, or API. No PI-insurance claim is made (policy quoted, not yet bound). Grounded in the report's real government sources; RULE-4 clean (no 'free' next to the paid report; prices already valid since billing is live).",
-  "commit_hash": "1606e674",
-  "files": [
-    "frontend-nextjs/app/for/conveyancers/page.tsx"
-  ],
-  "break_it": [
-    {
-      "scenario": "The trust block claims something not yet true — e.g. that the product carries PI insurance (only quoted, not bound) or overstates data accuracy",
-      "what_happens": "A false trust claim to a liability-obsessed audience — the exact credibility own-goal Phase 0 exists to avoid",
-      "mitigated": true,
-      "how": "the block makes NO insurance claim; it states only what is verifiably true (each control traced to the published clause and page; named government sources) and explicitly frames figures as 'indicative ... not advice', sitting alongside the s10.7 certificate and a town planner; liability-word sweep returned zero flagged terms",
-      "repro": "read the added section — no 'insured', 'accurate', 'guaranteed', 'comprehensive'; only sourcing + the indicative/not-advice caveat"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — confirm the Vercel PR preview build compiles /for/conveyancers (bare worktree skipped local tsc) and the trust block renders between the value grid and the pricing section. Add a PI-insurance line only once the policy is actually bound (not just quoted)."
+ "tier": "minor",
+ "justification": "Test-only fix: PR #703 renamed the granny-flat cross-sell card titles from internal codenames to consumer names, but CrossSellCards.test.tsx still asserted the old codenames, breaking jest on main (2 failures). Updates the two expectations to the current rendered titles; no production code touched.",
+ "commit_hash": "pending",
+ "files": [
+  "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx"
+ ],
+ "break_it": [
+  {
+   "scenario": "The new expectations pass vacuously against some other element containing the same text",
+   "what_happens": "The test would stop guarding the cross-sell card rendering entirely",
+   "mitigated": true,
+   "how": "the titles asserted are the exact card heading strings in app/reports/granny-flat/page.tsx CrossSellCards default fail branch; the sibling link-href test in the same describe block still pins the threat-radar destination",
+   "repro": "npx jest --testPathPattern=CrossSellCards -> 7/7 pass; grep 'Development Monitoring' app/reports/granny-flat/page.tsx"
   }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No \u2014 jest suite is the verification; failures reproduced on main before the fix and pass after it."
+ }
 }
