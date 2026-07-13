@@ -24,8 +24,12 @@ GROUPED = {
 
 GATES_LMR = {"in_lmr_area": True, "in_tod": False, "dual_occ_prohibited": False}
 
+# Real parse_controls shape (generate_conveyancing_report.py:3999): "zone" holds
+# the CODE, "zone_full" holds the portal's zone NAME with NO code embedded. The
+# original fixture embedded the code in zone_full, which masked a preference-order
+# bug the live verify caught (every lot mislabelled not_residential).
 CONTROLS_CLEAN = {
-    "zone": "R2", "zone_full": "R2 Low Density Residential",
+    "zone": "R2", "zone_full": "Low Density Residential",
     "zone_epi": "Test LEP 2013", "legislation_url": "https://legislation.nsw.gov.au/test",
     "heritage_items": [], "heritage_hca": [],
 }
@@ -119,10 +123,21 @@ def test_missing_lot_dimensions_yields_unconfirmed_not_eligible(client, wire):
 
 
 def test_non_residential_zone_is_labelled_not_unavailable(client, wire):
-    wire["controls"] = {**CONTROLS_CLEAN, "zone": "B4", "zone_full": "B4 Mixed Use"}
+    wire["controls"] = {**CONTROLS_CLEAN, "zone": "B4", "zone_full": "Mixed Use"}
     data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
     assert data["status"] == "not_residential"
     assert data["forms"] == []
+
+
+def test_zone_code_comes_from_the_zone_field_not_the_name(client, wire):
+    """Live-verify regression (2026-07-13): zone_full is the portal's NAME with no
+    code ("High Density Residential"); normalising it yields "HIGH" and mislabels
+    a real R4 lot not_residential. The code must come from the "zone" field."""
+    wire["controls"] = {**CONTROLS_CLEAN, "zone": "R4", "zone_full": "High Density Residential"}
+    data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
+    assert data["zone"] == "R4"
+    assert data["status"] == "ok"
+    assert data["zone_full"] == "High Density Residential"
 
 
 # --- failure cases ---------------------------------------------------------------

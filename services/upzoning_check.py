@@ -134,11 +134,18 @@ def run_upzoning_check(req: UpzoningRequest):
     heritage_hca = controls.get("heritage_hca") or []
     heritage = bool(heritage_items or heritage_hca)
 
-    zone_full = controls.get("zone_full") or controls.get("zone")
-    zone = hse.normalize_zone(zone_full)
+    # parse_controls field semantics (generate_conveyancing_report.py:3999):
+    # "zone" carries the CODE (portal Zone attr, e.g. "R2"); "zone_full" is the
+    # portal's zone NAME with no code (e.g. "Low Density Residential"). Normalising
+    # the name yields garbage ("LOW") and mislabels every lot not_residential —
+    # caught by the live verify run 2026-07-13, pinned in
+    # test_zone_code_comes_from_the_zone_field_not_the_name.
+    zone_code_src = controls.get("zone")
+    zone = hse.normalize_zone(zone_code_src)
+    zone_name = controls.get("zone_full")
 
     forms = hse.evaluate_eligibility(
-        zone_full,
+        zone_code_src,
         lot_area_m2,
         lot_width_m,
         lat,
@@ -163,7 +170,7 @@ def run_upzoning_check(req: UpzoningRequest):
         "lng": lng,
         "run_date": date.today().isoformat(),
         "zone": zone or None,
-        "zone_full": zone_full,
+        "zone_full": zone_name or zone_code_src,
         "zone_epi": controls.get("zone_epi"),
         "legislation_url": controls.get("legislation_url"),
         "lot_area_m2": lot_area_m2,

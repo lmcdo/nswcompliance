@@ -1,7 +1,7 @@
 {
  "tier": "standard",
- "justification": "New free consumer tool (/tools/upzoning-check): per-address Housing-SEPP form eligibility under the 2025 LMR/TOD reforms. ALL eligibility logic is delegated verbatim to the existing tested engine (services/housing_sepp_eligibility.evaluate_eligibility \u2014 live 776/752/759/452 gates, heritage suppression, fail-closed); the new code is a thin exposure layer (FastAPI endpoint + rate-limited Next proxy + page) plus 9 route-level tests that run the REAL engine. Pre-impl live smoke test (2026-07-13, 3 real addresses) proved the data path and caught the heritage false-positive a hand-rolled shortcut produces.",
- "commit_hash": "pending",
+ "justification": "New free consumer tool (/tools/upzoning-check): per-address Housing-SEPP form eligibility under the 2025 LMR/TOD reforms. ALL eligibility logic is delegated verbatim to the existing tested engine (services/housing_sepp_eligibility.evaluate_eligibility \u2014 live 776/752/759/452 gates, heritage suppression, fail-closed); the new code is a thin exposure layer (FastAPI endpoint + rate-limited Next proxy + page) plus 9 route-level tests that run the REAL engine. Pre-impl live smoke test (2026-07-13, 3 real addresses) proved the data path and caught the heritage false-positive a hand-rolled shortcut produces. FOLLOW-UP FIX (same PR): live verify caught a zone-field preference bug \u2014 parse_controls stores the CODE in 'zone' and the NAME in 'zone_full'; normalizing the name yielded 'HIGH'/'LOW' and mislabelled every lot not_residential. Fixed + fixture corrected to the real portal shape + regression test added; live re-verify shows all three archetype addresses correct (Kogarah R4/TOD ok, Haberfield heritage exclusions, Concord lot-size gates).",
+ "commit_hash": "b3e306f6",
  "files": [
   "services/upzoning_check.py",
   "services/compliance_api_server.py",
@@ -46,6 +46,13 @@
    "mitigated": true,
    "how": "gates are fetched via the engine's own _gate_inputs, which is fail-closed by design (any gate failure -> conservative False, never falsely eligible; engine reasons hedge with 'or area unconfirmed'); the accepted trade-off is a conservative false negative during outages, never a false positive",
    "repro": "existing engine tests test_housing_sepp_eligibility.py pin _gate_inputs fail-safety; endpoint passes gates through without modification"
+  },
+  {
+   "scenario": "Test fixtures use an idealised field shape that masks a real-data mapping bug (zone_full fixture embedded the code, so normalizing the wrong field still passed)",
+   "what_happens": "All mocked tests green while every real lot is mislabelled not_residential in production",
+   "mitigated": true,
+   "how": "fixtures corrected to the documented parse_controls shape (name WITHOUT code); test_zone_code_comes_from_the_zone_field_not_the_name pins the preference; live end-to-end run against real Portal/ArcGIS/DB is part of the verification record",
+   "repro": "pytest tests/test_upzoning_check.py::test_zone_code_comes_from_the_zone_field_not_the_name"
   }
  ],
  "post_merge": {
