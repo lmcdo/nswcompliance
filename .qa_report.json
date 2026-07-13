@@ -1,23 +1,111 @@
 {
-  "tier": "minor",
-  "justification": "Content-only: adds one 'Can you put this in front of a client?' trust/methodology block to the /for/conveyancers landing page (the Phase-0 credibility asset for the skeptical conveyancer target). Static JSX, plain next/link, reuses an already-imported icon (ShieldCheck). No logic, data, DB, or API. No PI-insurance claim is made (policy quoted, not yet bound). Grounded in the report's real government sources; RULE-4 clean (no 'free' next to the paid report; prices already valid since billing is live).",
-  "commit_hash": "1606e674",
-  "files": [
-    "frontend-nextjs/app/for/conveyancers/page.tsx"
-  ],
-  "break_it": [
-    {
-      "scenario": "The trust block claims something not yet true — e.g. that the product carries PI insurance (only quoted, not bound) or overstates data accuracy",
-      "what_happens": "A false trust claim to a liability-obsessed audience — the exact credibility own-goal Phase 0 exists to avoid",
-      "mitigated": true,
-      "how": "the block makes NO insurance claim; it states only what is verifiably true (each control traced to the published clause and page; named government sources) and explicitly frames figures as 'indicative ... not advice', sitting alongside the s10.7 certificate and a town planner; liability-word sweep returned zero flagged terms",
-      "repro": "read the added section — no 'insured', 'accurate', 'guaranteed', 'comprehensive'; only sourcing + the indicative/not-advice caveat"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes — confirm the Vercel PR preview build compiles /for/conveyancers (bare worktree skipped local tsc) and the trust block renders between the value grid and the pricing section. Add a PI-insurance line only once the policy is actually bound (not just quoted)."
+ "tier": "standard",
+ "justification": "New free consumer tool (/tools/upzoning-check): per-address Housing-SEPP form eligibility under the 2025 LMR/TOD reforms. ALL eligibility logic is delegated verbatim to the existing tested engine (services/housing_sepp_eligibility.evaluate_eligibility - live 776/752/759/452 gates, heritage suppression, fail-closed); the new code is a thin exposure layer (FastAPI endpoint + rate-limited Next proxy + page) plus 10 route-level tests that run the REAL engine. Live end-to-end verification against real Portal/ArcGIS/DB ran twice: the first run caught a zone-field mapping bug (fixed + regression-pinned); the second run shows all three archetype addresses correct (Kogarah R4/TOD, Haberfield heritage exclusions, Concord lot-size gates). Also includes a 2-line jest fix for CrossSellCards expectations left stale by the #703 codename rename (pre-existing main breakage).",
+ "commit_hash": "23e832ce",
+ "files": [
+  "services/upzoning_check.py",
+  "services/compliance_api_server.py",
+  "tests/test_upzoning_check.py",
+  "frontend-nextjs/app/api/upzoning/route.ts",
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+  "frontend-nextjs/app/sitemap.ts",
+  "frontend-nextjs/COMPONENT_MAP.md",
+  "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx"
+ ],
+ "pre_impl": {
+  "existing_data": "Everything needed already existed and is reused, none re-implemented: resolve_address/get_raw_controls/parse_controls from scripts/generate_conveyancing_report.py (the conveyancing pipeline's own address-to-controls path), fetch_lot_geometry/calculate_lot_dimensions from services/lot_dimensions.py, and the whole eligibility engine services/housing_sepp_eligibility.py with its live gate fetchers in services/portal_constraints.py (layers 776/752/759/452, verified live in the 2026-07-13 pre-impl smoke test).",
+  "assumption_mismatch": "Two assumptions died on contact with reality. (1) The memory note said the eligibility engine was frontend-only with mock station data - stale; the backend engine exists, is tested, and queries live layers. (2) parse_controls field naming: assumed zone_full carried the zone code; it actually carries the portal's zone NAME with no code (generate_conveyancing_report.py:3999), which the live verify exposed when every address came back not_residential - fixed and regression-pinned.",
+  "new_vs_existing": "New: services/upzoning_check.py (thin router, no gate or eligibility logic), the /api/upzoning proxy, and the /tools/upzoning-check page. Explicitly NOT reused: app/api/housing-sepp/eligibility/route.ts - it trusts caller-supplied isLMRArea and defaults it TRUE when unspecified (route.ts:198), which is precisely the Haberfield heritage false-positive the smoke test demonstrated; the Python engine is the single safe composition and this endpoint delegates to it."
+ },
+ "functions": [
+  {
+   "name": "run_upzoning_check",
+   "file_line": "services/upzoning_check.py:105",
+   "input": "UpzoningRequest with a single free-text NSW street address string",
+   "output": "dict: zone code and name, lot area/frontage, heritage flag plus item names, live gate booleans, status ok|not_residential|unavailable, and forms[] serialized verbatim from FormEligibility",
+   "if_none": "Unresolvable address or missing coordinates raises HTTPException 422 (blank address 400); every downstream helper failure degrades to None inputs which the engine treats as unconfirmed, never as a passed standard"
+  },
+  {
+   "name": "_controls_for",
+   "file_line": "services/upzoning_check.py:79",
+   "input": "Planning Portal property id integer, or None when address resolution produced no id",
+   "output": "parse_controls dict carrying zone code, zone name, EPI name, legislation url and heritage item/HCA lists",
+   "if_none": "Missing prop_id or a fetch exception returns parse_controls([]) - the empty-shape dict - so zone stays None and the response degrades to not_residential labelling rather than crashing or fabricating controls"
+  },
+  {
+   "name": "_lot_dims",
+   "file_line": "services/upzoning_check.py:90",
+   "input": "Planning Portal property id integer, or None when the address did not resolve to a lot",
+   "output": "tuple of lot area in square metres and frontage in metres derived from Portal lot geometry",
+   "if_none": "Any gap (no prop_id, fetch failure, degenerate geometry) returns (None, None); the engine then marks width/area-gated forms unconfirmed and conservatively ineligible, which the page renders as amber not-determinable, never green"
   }
+ ],
+ "values": [
+  {
+   "value": "controls zone field (Planning Portal Zone attribute - the zone CODE)",
+   "read_at": "services/upzoning_check.py run_upzoning_check, after the parallel controls fetch",
+   "if_missing": "normalize_zone of an empty value returns empty string, forms come back [], and the response is labelled not_residential - no eligibility is ever asserted without a mapped residential zone code"
+  },
+  {
+   "value": "gates dict from hse._gate_inputs (live 776/752/759/452 point queries)",
+   "read_at": "services/upzoning_check.py run_upzoning_check, parallel executor branch",
+   "if_missing": "_gate_inputs is fail-closed by design: any gate query failure yields conservative False (never falsely eligible) and the engine reason strings hedge with the area-unconfirmed wording"
+  },
+  {
+   "value": "FormEligibility.unconfirmed flag per form",
+   "read_at": "page.tsx form-card render branch (amber vs green vs grey)",
+   "if_missing": "asdict serialization preserves the field; the page defaults falsy, so an absent flag renders the stricter plain-ineligible state, never an eligible one"
+  }
+ ],
+ "queries": "N/A - this change adds no SQL. The only DB read is the engine's existing housing_sepp_standards fetch inside housing_sepp_eligibility._fetch_standards_grouped, which is untouched; its failure path is exercised by test_standards_outage_reports_unavailable_not_empty_success.",
+ "break_it": [
+  {
+   "scenario": "Heritage lot rendered as LMR-eligible (the Haberfield trap: the 776 exclusion layer is sparse and returns nothing on HCA lots, so a zone-plus-776 shortcut says terraces are allowed in a conservation area)",
+   "what_happens": "A maximum-liability false positive on a public consumer surface - telling a heritage-land owner they gained development rights they do not have",
+   "mitigated": true,
+   "how": "the endpoint never composes gates itself - it passes the parsed heritage flag into evaluate_eligibility, whose heritage suppression is engine-tested; test_heritage_lot_suppresses_lmr_forms_but_not_base_forms re-asserts it end-to-end at the route with the real engine running, and the live Haberfield run shows the exclusions rendering",
+   "repro": "pytest tests/test_upzoning_check.py::test_heritage_lot_suppresses_lmr_forms_but_not_base_forms"
+  },
+  {
+   "scenario": "Standards-table outage renders as an empty-but-successful result, so no housing types shown reads as nothing is possible here",
+   "what_happens": "A silent wrong result served during a DB outage - the silent-failure class pre-pr-review rule four exists to catch",
+   "mitigated": true,
+   "how": "evaluate_eligibility returns [] for BOTH non-residential zones and standards failures; the endpoint disambiguates via status ok|not_residential|unavailable and the page renders unavailable as a visible amber outage box stating it is a data outage, not a planning result",
+   "repro": "pytest tests/test_upzoning_check.py::test_standards_outage_reports_unavailable_not_empty_success"
+  },
+  {
+   "scenario": "Unconfirmed lot data (no mappable frontage or area) rendered as a definitive does-not-meet-standards verdict",
+   "what_happens": "Grey-as-red: a data gap presented to the user as a failed standard, the Bowral regression class",
+   "mitigated": true,
+   "how": "the engine unconfirmed flag flows through asdict untouched; the page renders unconfirmed forms with an amber not-determinable icon and the engine's own hedged reason wording, visually distinct from both eligible green and failed grey",
+   "repro": "pytest tests/test_upzoning_check.py::test_missing_lot_dimensions_yields_unconfirmed_not_eligible"
+  },
+  {
+   "scenario": "Liability language drift on a free public surface - eligibility framed as advice or an approval outcome",
+   "what_happens": "Consumer-law exposure at the same stakes as the paid PDF wording, on an anonymous free page",
+   "mitigated": true,
+   "how": "engine reason strings render verbatim and are never rewritten in TypeScript; all new copy passed the banned-word grep clean; the page carries an explicit not-planning-advice paragraph and frames every result as a mapped-standards screen subject to a development application",
+   "repro": "grep -inE the banned-word alternation over the three new files returns nothing"
+  },
+  {
+   "scenario": "Live ArcGIS gate failure silently produces a false eligible (a gate query dies mid-request and the form passes anyway)",
+   "what_happens": "A network flake converts into granted development rights shown to an anonymous visitor",
+   "mitigated": true,
+   "how": "gates come exclusively from the engine's own _gate_inputs, fail-closed by design (failure yields conservative False, never falsely eligible); the accepted trade-off is a conservative false negative during outages with hedged wording, never a false positive",
+   "repro": "existing tests in tests/test_housing_sepp_eligibility.py pin _gate_inputs fail-safety; the endpoint passes gates through without modification"
+  },
+  {
+   "scenario": "Test fixtures use an idealised field shape that masks a real-data mapping bug - the zone_full fixture embedded the zone code, so normalizing the wrong field still passed every mocked test",
+   "what_happens": "All mocked tests green while every real lot is mislabelled not_residential in production - exactly what the first live verify run showed",
+   "mitigated": true,
+   "how": "fixtures corrected to the documented parse_controls shape (zone name WITHOUT code, per generate_conveyancing_report.py:3999); test_zone_code_comes_from_the_zone_field_not_the_name pins the field preference; the live end-to-end re-run against real Portal, ArcGIS and DB is part of the verification record",
+   "repro": "pytest tests/test_upzoning_check.py::test_zone_code_comes_from_the_zone_field_not_the_name"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after Railway deploy, run 67 Warialda St Kogarah (expect TOD chip yes, mid-rise eligible) and 1 Ramsay St Haberfield (expect heritage banner, LMR forms excluded) through the live page; confirm the Vercel preview renders /tools/upzoning-check and the proxy reaches the Railway endpoint."
+ }
 }
