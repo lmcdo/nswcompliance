@@ -103,10 +103,37 @@ export default function AssessmentPage() {
     [selectedProperty?.heritage?.heritageType]
   );
 
-  // Spatial context (amenity + street) — user-initiated fetch
+  // Lot boundary + centroid (WGS84) for the aerial tile — same source the brief
+  // and /property pages use. The centroid is kept as well because
+  // selectedCoordinates is ONLY set on the Google-autocomplete path; the
+  // "Analyze Property" button calls onAddressSelect without coordinates
+  // (PropertySearch.tsx), which previously left the tile unable to mount.
+  const [profileMap, setProfileMap] = useState<{
+    lat: number;
+    lng: number;
+    lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null;
+  } | null>(null);
+  useEffect(() => {
+    setProfileMap(null);
+    if (!selectedAddress) return;
+    let cancelled = false;
+    fetch(`/api/property/profile?address=${encodeURIComponent(selectedAddress)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || typeof d?.lat !== 'number' || typeof d?.lng !== 'number') return;
+        setProfileMap({ lat: d.lat, lng: d.lng, lotPolygon: d.lotPolygon ?? null });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedAddress]);
+  const mapLat = selectedCoordinates?.lat ?? profileMap?.lat ?? null;
+  const mapLng = selectedCoordinates?.lng ?? profileMap?.lng ?? null;
+
+  // Spatial context (amenity + street) — user-initiated fetch. Uses the same
+  // coordinate fallback as the aerial tile so the button path gets the card too.
   const spatialContext = useSpatialContext(
-    selectedCoordinates?.lat ?? null,
-    selectedCoordinates?.lng ?? null,
+    mapLat,
+    mapLng,
     selectedProperty?.constraints?.precinctId ?? null,
   );
 
@@ -123,21 +150,6 @@ export default function AssessmentPage() {
     if (viewModeRef.current !== 'dcp') setDcpEverActivated(false);
     spatialContext.reset();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAddress]);
-
-  // Lot boundary (WGS84 GeoJSON) for the aerial tile — same source the brief and
-  // /property pages use. The /api/property payload only carries the centroid, so
-  // the polygon needs its own fetch.
-  const [lotPolygon, setLotPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
-  useEffect(() => {
-    setLotPolygon(null);
-    if (!selectedAddress) return;
-    let cancelled = false;
-    fetch(`/api/property/profile?address=${encodeURIComponent(selectedAddress)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d?.lotPolygon) setLotPolygon(d.lotPolygon); })
-      .catch(() => {});
-    return () => { cancelled = true; };
   }, [selectedAddress]);
 
   // Navigation handler for Pattern Book -> DCP cross-references
@@ -382,12 +394,12 @@ export default function AssessmentPage() {
             </div>
 
             {/* Aerial — NSW SIX Maps imagery with the lot boundary (shared AerialTile) */}
-            {selectedProperty && selectedCoordinates && (
+            {selectedProperty && mapLat != null && mapLng != null && (
               <div className="bg-white rounded-lg border overflow-hidden">
                 <AerialTile
-                  lat={selectedCoordinates.lat}
-                  lng={selectedCoordinates.lng}
-                  lotPolygon={lotPolygon}
+                  lat={mapLat}
+                  lng={mapLng}
+                  lotPolygon={profileMap?.lotPolygon ?? null}
                 />
                 <p className="px-3 py-1.5 text-xs text-slate-400">
                   NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
@@ -404,12 +416,12 @@ export default function AssessmentPage() {
             )}
 
             {/* Spatial context — amenity walkability + street type */}
-            {selectedCoordinates && (
+            {mapLat != null && mapLng != null && (
               <SpatialContextCard
                 state={spatialContext.state}
                 onFetch={spatialContext.fetch}
-                lat={selectedCoordinates.lat}
-                lng={selectedCoordinates.lng}
+                lat={mapLat}
+                lng={mapLng}
               />
             )}
 
