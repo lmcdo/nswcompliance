@@ -30,7 +30,10 @@ export async function generateSitemaps() {
 }
 
 export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
-  const base = 'https://plotdetect.com.au'
+  // The app's canonical consumer domain (Option B). plotdetect.com.au is the
+  // separate info-site project and 404s for app routes — advertising it here
+  // sent search engines to dead URLs.
+  const base = 'https://www.canibuildit.com.au'
   const now = new Date()
 
   switch (id) {

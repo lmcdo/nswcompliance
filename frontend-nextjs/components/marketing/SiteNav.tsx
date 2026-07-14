@@ -10,9 +10,10 @@ export function SiteNav({ maxWidth = 'max-w-5xl' }: SiteNavProps) {
   return (
     <nav className="bg-slate-950 border-b border-slate-800/50">
       <div className={`flex items-center justify-between px-6 py-4 ${maxWidth} mx-auto`}>
-        <Link href="/" className="text-base font-bold tracking-tight text-white">
+        {/* Brand home = the info site (Option B) — not the app root. */}
+        <a href="https://plotdetect.com.au" className="text-base font-bold tracking-tight text-white">
           Plot<span className="text-teal-400">Detect</span>
-        </Link>
+        </a>
         <div className="flex items-center gap-6">
           <Link href="/tools/zoning-check" className="text-sm text-slate-400 hover:text-white transition-colors">
             Free Tools

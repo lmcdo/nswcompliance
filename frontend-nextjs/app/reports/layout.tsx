@@ -46,11 +46,13 @@ export default async function ReportsLayout({ children }: { children: React.Reac
     <div className={`min-h-screen bg-slate-50 ${fraunces.variable}`}>
       <header className="bg-slate-950 border-b border-slate-800/50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+          {/* Brand home is the info site (Option B domain split) — the logo must
+              lead out of the app, not loop back into it. */}
+          <a href="https://plotdetect.com.au" className="flex items-center gap-2">
             <span className="font-semibold text-white text-base tracking-tight">
               Plot<span className="text-teal-400">Detect</span>
             </span>
-          </Link>
+          </a>
           <nav className="flex items-center gap-1 overflow-x-auto">
             {NAV_ITEMS.map(({ href, label }) => (
               <Link

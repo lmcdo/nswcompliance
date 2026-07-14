@@ -32,6 +32,11 @@ interface ZoneResult {
   heritage_conservation_area: boolean;
 }
 
+function deslug(devType: string): string {
+  const words = devType.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export default function ZoningCheckPage() {
   const [result, setResult] = useState<ZoneResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -238,7 +243,7 @@ export default function ZoningCheckPage() {
                     key={use}
                     className="px-2.5 py-1 text-xs bg-green-50 text-green-700 rounded-full border border-green-200"
                   >
-                    {use}
+                    {deslug(use)}
                   </span>
                 ))}
                 {result.permitted.length > 12 && (
@@ -263,7 +268,7 @@ export default function ZoningCheckPage() {
                     key={use}
                     className="px-2.5 py-1 text-xs bg-red-50 text-red-600 rounded-full border border-red-200"
                   >
-                    {use}
+                    {deslug(use)}
                   </span>
                 ))}
                 {result.prohibited.length > 8 && (
