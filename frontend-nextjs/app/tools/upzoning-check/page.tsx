@@ -380,7 +380,7 @@ export default function UpzoningCheckPage() {
                           {/* A "no" on the reform pathway is NOT "cannot build" — the
                               council's own plan may permit this type via a standard DA.
                               Without this line, a Bowral owner reads "townhouses: no"
-                              while standing next to lawfully approved townhouses. */}
+                              while standing next to townhouses consented under that pathway. */}
                           {!f.eligible && !f.unconfirmed && f.requires_lmr_area && f.reason.includes('Low and Mid-Rise reform area') && (
                             <p className="text-[11px] text-gray-500 mt-1">
                               This result covers the 2025 Low and Mid-Rise reforms only. This
