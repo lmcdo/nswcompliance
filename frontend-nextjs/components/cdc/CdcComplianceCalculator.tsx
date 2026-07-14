@@ -212,7 +212,10 @@ export function CdcComplianceCalculator({
             <AutoChecksDisplay data={eligibilityData} />
           )}
 
-          {/* Lot Dimensions - clean, minimal */}
+          {/* Lot Dimensions - clean, minimal. For a battleaxe the raw
+              frontage/depth classify arbitrary edges of the L (the main
+              property card suppresses them for the same reason) — show the
+              main-lot width/depth the calculator itself uses instead. */}
           {lotDimensions && (
             <div className="border-t border-gray-100 pt-3">
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -223,16 +226,44 @@ export function CdcComplianceCalculator({
                   <span className="text-gray-500">Area</span>{' '}
                   <span className="font-medium text-gray-900">{lotDimensions.area.toFixed(0)}m²</span>
                 </div>
-                <div>
-                  <span className="text-gray-500">Frontage</span>{' '}
-                  <span className="font-medium text-gray-900">{lotDimensions.frontage.toFixed(1)}m</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Depth</span>{' '}
-                  <span className="font-medium text-gray-900">{lotDimensions.depth.toFixed(1)}m</span>
-                </div>
+                {lotDimensions.lotType === 'battleaxe' ? (
+                  <>
+                    {(battleaxeAwareLotWidth(lotDimensions) ?? 0) > 0 && (
+                      <div>
+                        <span className="text-gray-500">Main lot width</span>{' '}
+                        <span className="font-medium text-gray-900">
+                          {(battleaxeAwareLotWidth(lotDimensions) as number).toFixed(1)}m
+                        </span>
+                      </div>
+                    )}
+                    {(battleaxeAwareLotDepth(lotDimensions) ?? 0) > 0 && (
+                      <div>
+                        <span className="text-gray-500">Main lot depth</span>{' '}
+                        <span className="font-medium text-gray-900">
+                          {(battleaxeAwareLotDepth(lotDimensions) as number).toFixed(1)}m
+                        </span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Frontage</span>{' '}
+                      <span className="font-medium text-gray-900">{lotDimensions.frontage.toFixed(1)}m</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Depth</span>{' '}
+                      <span className="font-medium text-gray-900">{lotDimensions.depth.toFixed(1)}m</span>
+                    </div>
+                  </>
+                )}
               </div>
-              {lotDimensions.confidence && lotDimensions.confidence < 0.8 && (
+              {lotDimensions.lotType === 'battleaxe' && (
+                <p className="text-xs text-gray-400 mt-1 italic">
+                  Battleaxe (flag) lot — width and depth describe the main lot, excluding the access way
+                </p>
+              )}
+              {lotDimensions.confidence && lotDimensions.confidence < 0.8 && lotDimensions.lotType !== 'battleaxe' && (
                 <p className="text-xs text-gray-400 mt-1 italic">
                   Irregular lot - dimensions estimated
                 </p>

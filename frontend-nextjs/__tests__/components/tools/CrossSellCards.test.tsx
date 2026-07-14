@@ -96,20 +96,20 @@ beforeEach(() => mockFetch.mockReset());
 // ---------------------------------------------------------------------------
 
 describe('CrossSellCards — ineligible (fail) result', () => {
-  it('shows Threat Radar cross-sell card', async () => {
+  it('shows development monitoring cross-sell card (consumer title, no internal codename — #703)', async () => {
     mockIneligibleDetect();
     render(<GrannyFlatPage />);
     await runDetect();
     await screen.findByText('Not eligible');
-    expect(screen.getByText('Neighbour Development Threat Radar')).toBeInTheDocument();
+    expect(screen.getByText('Development Monitoring')).toBeInTheDocument();
   });
 
-  it('shows Flood Truth card on default ineligible result', async () => {
+  it('shows flood card on default ineligible result (consumer title, no internal codename — #703)', async () => {
     mockIneligibleDetect();
     render(<GrannyFlatPage />);
     await runDetect();
     await screen.findByText('Not eligible');
-    expect(screen.getByText('Wet Season Flood Truth')).toBeInTheDocument();
+    expect(screen.getByText('Flood Risk')).toBeInTheDocument();
   });
 
   it('Threat Radar link points to /reports/threat-radar with encoded address', async () => {

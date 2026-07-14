@@ -238,3 +238,72 @@ class TestScaleFactor:
         raw_x = 100.0 * _SCALE_FACTOR
         corrected = raw_x / _SCALE_FACTOR
         assert corrected == pytest.approx(100.0)
+
+
+# ---------------------------------------------------------------------------
+# Battleaxe (flag-lot) detection — port of lot-shape-analysis.ts.
+# Golden fixture: 38 PARK ROAD BOWRAL 2576 (propId 1119594), real Portal
+# cadastre geometry fetched 2026-07-14. Reference values are the frontend
+# implementation's verified output (Verify UI): handle 16.31 m x 43.1 m,
+# head 70.09 m wide, head area 3,710 m2, total lot 4,189 m2.
+# ---------------------------------------------------------------------------
+
+import json
+import os
+
+from services.lot_dimensions import eligibility_lot_width
+
+_FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "lot_geometry_38_park_rd_bowral.json")
+
+
+class TestBattleaxeDetection:
+    def _bowral_dims(self):
+        with open(_FIXTURE) as f:
+            fx = json.load(f)
+        return calculate_lot_dimensions(fx.get("geometry"))
+
+    def test_bowral_golden_classified_battleaxe(self):
+        dims = self._bowral_dims()
+        assert dims is not None
+        assert dims.lot_type == "battleaxe"
+
+    def test_bowral_golden_matches_frontend_reference_values(self):
+        """The Python port must reproduce the TS implementation's verified output."""
+        dims = self._bowral_dims()
+        assert dims.battleaxe_access_way_width_m == pytest.approx(16.31, abs=0.05)
+        assert dims.battleaxe_access_way_length_m == pytest.approx(43.1, abs=0.5)
+        assert dims.battleaxe_main_lot_width_m == pytest.approx(70.09, abs=0.05)
+        assert dims.battleaxe_main_lot_area_m2 == pytest.approx(3710, abs=10)
+        assert dims.area_m2 == pytest.approx(4188.6, abs=1)
+
+    def test_bowral_eligibility_width_is_head_not_handle(self):
+        """The SEPP width tests must see the developable head (70 m), never the
+        16 m access handle and never None — the exact defect that rendered every
+        width-gated form 'unconfirmed' on the live tool."""
+        dims = self._bowral_dims()
+        assert eligibility_lot_width(dims) == pytest.approx(70.09, abs=0.05)
+
+    def test_rectangular_lot_is_not_battleaxe_and_keeps_frontage(self):
+        ring = _rect_ring(15.0, 40.0)
+        dims = calculate_lot_dimensions({"rings": [ring]})
+        assert dims.lot_type == "rectangular"
+        assert dims.battleaxe_main_lot_width_m is None
+        assert eligibility_lot_width(dims) == dims.frontage_m
+
+    def test_eligibility_width_none_for_none_dims(self):
+        assert eligibility_lot_width(None) is None
+
+    def test_synthetic_flag_lot_detected(self):
+        """L-shaped flag lot: 4m x 30m handle attached to a 20m x 25m head."""
+        pts_m = [
+            (0, 0), (4, 0),          # handle bottom
+            (4, 30), (20, 30),       # handle up, step out to head
+            (20, 55), (0, 55),       # head right side up, top
+        ]
+        ring = [_to_3857(x, y) for x, y in pts_m]
+        ring.append(ring[0])
+        dims = calculate_lot_dimensions({"rings": [ring]})
+        assert dims.lot_type == "battleaxe"
+        assert dims.battleaxe_access_way_width_m == pytest.approx(4.0, abs=0.5)
+        assert dims.battleaxe_main_lot_width_m == pytest.approx(20.0, abs=0.5)
+        assert eligibility_lot_width(dims) == pytest.approx(20.0, abs=0.5)

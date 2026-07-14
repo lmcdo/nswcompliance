@@ -1,3 +1,5 @@
+import 'maplibre-gl/dist/maplibre-gl.css';
+// ^ must be imported in a server component to avoid dynamic chunk 404 (see AerialTile.tsx)
 import Link from 'next/link';
 
 export default function PropertyLayout({ children }: { children: React.ReactNode }) {

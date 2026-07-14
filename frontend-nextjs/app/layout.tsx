@@ -11,7 +11,7 @@ import { PostHogProvider } from '@/components/providers/PostHogProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://plotdetect.com.au'),
+  metadataBase: new URL('https://www.canibuildit.com.au'),
   title: {
     default: 'PlotDetect — NSW Property Intelligence',
     template: '%s | PlotDetect',

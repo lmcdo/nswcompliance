@@ -29,6 +29,15 @@ class LotDimensions(BaseModel):
     # (fills <60% of its oriented bounding box) — so a null frontage renders as
     # "can't be measured", not as a broken lookup. None = shape not assessed.
     irregular: Optional[bool] = None
+    # Shape classification: 'rectangular' | 'battleaxe' | 'irregular'.
+    # None = not assessed (older payloads). Battleaxe (flag) lots carry the
+    # handle/head breakdown below — width-based eligibility tests must use the
+    # developable HEAD width, not the handle (lot_dimensions.eligibility_lot_width).
+    lot_type: Optional[str] = None
+    battleaxe_access_way_width_m: Optional[float] = None
+    battleaxe_access_way_length_m: Optional[float] = None
+    battleaxe_main_lot_width_m: Optional[float] = None
+    battleaxe_main_lot_area_m2: Optional[float] = None
 
 
 class DCPControl(BaseModel):

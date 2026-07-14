@@ -30,6 +30,7 @@ import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI, useSpatialContext } from '@/hooks';
 import { SpatialContextCard } from '@/components/property/SpatialContextCard';
+import AerialTile from '@/components/reports/AerialTile';
 import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
@@ -102,10 +103,37 @@ export default function AssessmentPage() {
     [selectedProperty?.heritage?.heritageType]
   );
 
-  // Spatial context (amenity + street) — user-initiated fetch
+  // Lot boundary + centroid (WGS84) for the aerial tile — same source the brief
+  // and /property pages use. The centroid is kept as well because
+  // selectedCoordinates is ONLY set on the Google-autocomplete path; the
+  // "Analyze Property" button calls onAddressSelect without coordinates
+  // (PropertySearch.tsx), which previously left the tile unable to mount.
+  const [profileMap, setProfileMap] = useState<{
+    lat: number;
+    lng: number;
+    lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null;
+  } | null>(null);
+  useEffect(() => {
+    setProfileMap(null);
+    if (!selectedAddress) return;
+    let cancelled = false;
+    fetch(`/api/property/profile?address=${encodeURIComponent(selectedAddress)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || typeof d?.lat !== 'number' || typeof d?.lng !== 'number') return;
+        setProfileMap({ lat: d.lat, lng: d.lng, lotPolygon: d.lotPolygon ?? null });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedAddress]);
+  const mapLat = selectedCoordinates?.lat ?? profileMap?.lat ?? null;
+  const mapLng = selectedCoordinates?.lng ?? profileMap?.lng ?? null;
+
+  // Spatial context (amenity + street) — user-initiated fetch. Uses the same
+  // coordinate fallback as the aerial tile so the button path gets the card too.
   const spatialContext = useSpatialContext(
-    selectedCoordinates?.lat ?? null,
-    selectedCoordinates?.lng ?? null,
+    mapLat,
+    mapLng,
     selectedProperty?.constraints?.precinctId ?? null,
   );
 
@@ -365,6 +393,20 @@ export default function AssessmentPage() {
               )}
             </div>
 
+            {/* Aerial — NSW SIX Maps imagery with the lot boundary (shared AerialTile) */}
+            {selectedProperty && mapLat != null && mapLng != null && (
+              <div className="bg-white rounded-lg border overflow-hidden">
+                <AerialTile
+                  lat={mapLat}
+                  lng={mapLng}
+                  lotPolygon={profileMap?.lotPolygon ?? null}
+                />
+                <p className="px-3 py-1.5 text-xs text-slate-400">
+                  NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
+                </p>
+              </div>
+            )}
+
             {/* Planning API Data - All Layers */}
             {selectedProperty && (
               <PropertyDetailsComprehensive
@@ -374,12 +416,12 @@ export default function AssessmentPage() {
             )}
 
             {/* Spatial context — amenity walkability + street type */}
-            {selectedCoordinates && (
+            {mapLat != null && mapLng != null && (
               <SpatialContextCard
                 state={spatialContext.state}
                 onFetch={spatialContext.fetch}
-                lat={selectedCoordinates.lat}
-                lng={selectedCoordinates.lng}
+                lat={mapLat}
+                lng={mapLng}
               />
             )}
 

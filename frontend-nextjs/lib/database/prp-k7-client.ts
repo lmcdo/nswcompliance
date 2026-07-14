@@ -65,7 +65,7 @@ export class PRPK7DatabaseClient {
  rp.ref_number,
  rp.document_id,
  rp.section_header
- FROM regulatory_provisions_clean_clean rp
+ FROM regulatory_provisions_clean rp
  JOIN quantitative_standards qs ON rp.id = qs.provision_id
  WHERE rp.zone = $1
  AND rp.development_type IS NOT NULL
@@ -235,7 +235,7 @@ export class PRPK7DatabaseClient {
 
  const standards = await client.query(`
  SELECT COUNT(qs.id) as linked_standards
- FROM regulatory_provisions_clean_clean rp
+ FROM regulatory_provisions_clean rp
  JOIN quantitative_standards qs ON rp.id = qs.provision_id
  WHERE rp.zone = $1
  AND qs.context LIKE 'setback_%'

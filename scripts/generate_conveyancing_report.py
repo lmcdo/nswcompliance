@@ -273,6 +273,10 @@ DCP_ONBOARDED_SLUGS: frozenset[str] = frozenset({
     "georges_river", "hornsby", "inner_west", "ku_ring_gai", "leichhardt", "liverpool",
     "marrickville", "northern_beaches", "parramatta", "penrith", "randwick", "ryde",
     "strathfield", "sutherland_shire", "the_hills", "waverley", "woollahra",
+    # Wingecarribee: numeric controls from the Bowral/Mittagong/Moss Vale town
+    # plans (identical Part C template, Phase-0 verified) — see
+    # scripts/insert_wingecarribee_setbacks.py.
+    "wingecarribee",
 })
 
 # Suburb → former-council slug (Inner West LGA post-2016 amalgamation).
