@@ -1,111 +1,102 @@
 {
- "tier": "standard",
- "justification": "New free consumer tool (/tools/upzoning-check): per-address Housing-SEPP form eligibility under the 2025 LMR/TOD reforms. ALL eligibility logic is delegated verbatim to the existing tested engine (services/housing_sepp_eligibility.evaluate_eligibility - live 776/752/759/452 gates, heritage suppression, fail-closed); the new code is a thin exposure layer (FastAPI endpoint + rate-limited Next proxy + page) plus 10 route-level tests that run the REAL engine. Live end-to-end verification against real Portal/ArcGIS/DB ran twice: the first run caught a zone-field mapping bug (fixed + regression-pinned); the second run shows all three archetype addresses correct (Kogarah R4/TOD, Haberfield heritage exclusions, Concord lot-size gates). Also includes a 2-line jest fix for CrossSellCards expectations left stale by the #703 codename rename (pre-existing main breakage).",
- "commit_hash": "23e832ce",
+ "tier": "critical",
+ "justification": "Fixes a silent wrong-eligibility bug in the shared Housing-SEPP engine: in_lmr_area was derived as 'not on the 776 exclusion map', which over-includes all of regional NSW because 776 only carves out spots INSIDE covered areas \u2014 absence from the exclusion map is not inclusion. Proven live 2026-07-13/14: 38 Park Rd Bowral (no town centre, TOD or exclusion feature within 1 km) was reported in the reform area by the engine while Verify's LGA check and the SEPP's s22 definition say it is not. The engine feeds BOTH the live public upzoning tool and the intelligence brief, so the false in-area answer could surface eligible LMR forms (terraces green) in towns the reform does not cover. New derivation: anchored (within 800 m of a Town Centres Map (766) polygon OR inside a TOD catchment 752/759) AND NOT excluded (776), fail-closed on every query.",
+ "commit_hash": "3c7af199",
  "files": [
-  "services/upzoning_check.py",
-  "services/compliance_api_server.py",
-  "tests/test_upzoning_check.py",
-  "frontend-nextjs/app/api/upzoning/route.ts",
-  "frontend-nextjs/app/tools/upzoning-check/page.tsx",
-  "frontend-nextjs/app/sitemap.ts",
-  "frontend-nextjs/COMPONENT_MAP.md",
-  "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx"
+  "services/portal_constraints.py",
+  "services/housing_sepp_eligibility.py",
+  "tests/test_housing_sepp_eligibility.py"
  ],
  "pre_impl": {
-  "existing_data": "Everything needed already existed and is reused, none re-implemented: resolve_address/get_raw_controls/parse_controls from scripts/generate_conveyancing_report.py (the conveyancing pipeline's own address-to-controls path), fetch_lot_geometry/calculate_lot_dimensions from services/lot_dimensions.py, and the whole eligibility engine services/housing_sepp_eligibility.py with its live gate fetchers in services/portal_constraints.py (layers 776/752/759/452, verified live in the 2026-07-13 pre-impl smoke test).",
-  "assumption_mismatch": "Two assumptions died on contact with reality. (1) The memory note said the eligibility engine was frontend-only with mock station data - stale; the backend engine exists, is tested, and queries live layers. (2) parse_controls field naming: assumed zone_full carried the zone code; it actually carries the portal's zone NAME with no code (generate_conveyancing_report.py:3999), which the live verify exposed when every address came back not_residential - fixed and regression-pinned.",
-  "new_vs_existing": "New: services/upzoning_check.py (thin router, no gate or eligibility logic), the /api/upzoning proxy, and the /tools/upzoning-check page. Explicitly NOT reused: app/api/housing-sepp/eligibility/route.ts - it trusts caller-supplied isLMRArea and defaults it TRUE when unspecified (route.ts:198), which is precisely the Haberfield heritage false-positive the smoke test demonstrated; the Python engine is the single safe composition and this endpoint delegates to it."
+  "existing_data": "Everything reused, nothing re-implemented: query_arcgis_point_buffered already existed in portal_constraints with a distance_m parameter (built for buffered layer queries); fetch_tod_catchment and fetch_sepp_exclusions already produce the other two terms of the new derivation; the EPLANNING_LAYERS registry pattern was extended with one entry (766). The LMR prescope plan (ce-lmr-pipeline-prescope-2026-06) had already mapped the derivation approach and flagged the 776-semantics risk that this fix resolves.",
+  "assumption_mismatch": "The shipped engine assumed absence from the 776 exclusion map means the reform applies \u2014 the optimistic reading of an ambiguity the prescope plan explicitly flagged as unresolved risk two. Live enumeration re-confirmed 2026-07-14 that no inclusion layer exists (only 752/759/766/776), and the live Bowral probe showed zero anchor features within a kilometre of a lot the old gate reported as in-area, falsifying the assumption.",
+  "new_vs_existing": "New: one fetcher (fetch_town_centre_catchment, a thin buffered query over layer 766) and the boolean composition inside _gate_inputs. Explicitly NOT built: no new PostGIS ingestion (live ArcGIS query per the prescope architecture decision), no walking-network computation (radial 800 m proxy, documented as slightly generous at the margin), and no change to Verify's separate frontend isLMRApplicable check (consolidation to this gate is the eligibility-consolidation plan's scope, not this PR).",
+  "external_source_error": "Every external call is fail-closed: a 766 query failure leaves near_town_centre False (test-pinned), a 776 failure leaves not_excluded False, a TOD failure leaves in_tod False \u2014 any failure path yields in_lmr_area False, so an outage can only under-report eligibility, never grant it. The buffered query uses the shared 8-second ArcGIS timeout and the public no-key endpoint that the existing gates already depend on.",
+  "frontend_type": "No frontend type changes: the gates dict keeps the identical shape ({in_lmr_area, in_tod, dual_occ_prohibited}, all booleans), so the upzoning page chips and the brief's eligibility card consume it unchanged; only the truth value for unanchored regional lots flips from True to False, which the existing 'Not in a Low and Mid-Rise reform area (or area unconfirmed)' engine wording already covers.",
+  "user_failure_mode": "Before: a regional homeowner could see terraces or apartments rendered as meeting reform standards in a town the reform does not cover \u2014 a silent false positive on a public page and in the brief. After: unanchored lots read 'Not in a Low and Mid-Rise reform area'; the residual failure mode is the conservative direction (a lot between the 766 radial buffer and true walking distance may read out-of-area, and station-precinct anchors outside published TOD polygons are not yet derived), which under-reports and is documented in the code comment."
  },
  "functions": [
   {
-   "name": "run_upzoning_check",
-   "file_line": "services/upzoning_check.py:105",
-   "input": "UpzoningRequest with a single free-text NSW street address string",
-   "output": "dict: zone code and name, lot area/frontage, heritage flag plus item names, live gate booleans, status ok|not_residential|unavailable, and forms[] serialized verbatim from FormEligibility",
-   "if_none": "Unresolvable address or missing coordinates raises HTTPException 422 (blank address 400); every downstream helper failure degrades to None inputs which the engine treats as unconfirmed, never as a passed standard"
+   "name": "fetch_town_centre_catchment",
+   "file_line": "services/portal_constraints.py:481",
+   "input": "Latitude and longitude in GDA94 plus an optional buffer distance in metres defaulting to 800",
+   "output": "Dict with within_catchment boolean and the matched town centre LABEL string, or None when the ArcGIS query fails entirely",
+   "if_none": "Callers must treat None as not anchored \u2014 _gate_inputs wraps the call in try/except and leaves near_town_centre False on None or exception, so a layer outage can never place a lot inside the reform area"
   },
   {
-   "name": "_controls_for",
-   "file_line": "services/upzoning_check.py:79",
-   "input": "Planning Portal property id integer, or None when address resolution produced no id",
-   "output": "parse_controls dict carrying zone code, zone name, EPI name, legislation url and heritage item/HCA lists",
-   "if_none": "Missing prop_id or a fetch exception returns parse_controls([]) - the empty-shape dict - so zone stays None and the response degrades to not_residential labelling rather than crashing or fabricating controls"
-  },
-  {
-   "name": "_lot_dims",
-   "file_line": "services/upzoning_check.py:90",
-   "input": "Planning Portal property id integer, or None when the address did not resolve to a lot",
-   "output": "tuple of lot area in square metres and frontage in metres derived from Portal lot geometry",
-   "if_none": "Any gap (no prop_id, fetch failure, degenerate geometry) returns (None, None); the engine then marks width/area-gated forms unconfirmed and conservatively ineligible, which the page renders as amber not-determinable, never green"
+   "name": "_gate_inputs",
+   "file_line": "services/housing_sepp_eligibility.py:132",
+   "input": "Optional latitude and longitude of the resolved lot centroid",
+   "output": "Dict of the three gate booleans: in_lmr_area (now anchored AND not excluded), in_tod, dual_occ_prohibited",
+   "if_none": "Missing coordinates return all-False immediately; each gate query failure logs a warning and leaves its term at the conservative False, so partial outages degrade to fewer eligible forms rather than wrong eligible forms"
   }
  ],
  "values": [
   {
-   "value": "controls zone field (Planning Portal Zone attribute - the zone CODE)",
-   "read_at": "services/upzoning_check.py run_upzoning_check, after the parallel controls fetch",
-   "if_missing": "normalize_zone of an empty value returns empty string, forms come back [], and the response is labelled not_residential - no eligibility is ever asserted without a mapped residential zone code"
+   "value": "near_town_centre from fetch_town_centre_catchment within_catchment",
+   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, third gate block",
+   "if_missing": "Stays False on None or exception \u2014 the anchor term simply does not fire and in_lmr_area falls back to the TOD anchor or False"
   },
   {
-   "value": "gates dict from hse._gate_inputs (live 776/752/759/452 point queries)",
-   "read_at": "services/upzoning_check.py run_upzoning_check, parallel executor branch",
-   "if_missing": "_gate_inputs is fail-closed by design: any gate query failure yields conservative False (never falsely eligible) and the engine reason strings hedge with the area-unconfirmed wording"
+   "value": "not_excluded from fetch_sepp_exclusions low_mid_rise",
+   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, first gate block",
+   "if_missing": "Stays False on None or exception, which zeroes in_lmr_area regardless of anchors \u2014 an exclusion-map outage can never un-exclude a lot"
   },
   {
-   "value": "FormEligibility.unconfirmed flag per form",
-   "read_at": "page.tsx form-card render branch (amber vs green vs grey)",
-   "if_missing": "asdict serialization preserves the field; the page defaults falsy, so an absent flag renders the stricter plain-ineligible state, never an eligible one"
+   "value": "in_tod from fetch_tod_catchment",
+   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, second gate block",
+   "if_missing": "Stays False; the lot loses the TOD anchor and mid-rise forms show the engine's not-in-catchment wording"
   }
  ],
- "queries": "N/A - this change adds no SQL. The only DB read is the engine's existing housing_sepp_standards fetch inside housing_sepp_eligibility._fetch_standards_grouped, which is untouched; its failure path is exercised by test_standards_outage_reports_unavailable_not_empty_success.",
+ "queries": "N/A - no SQL changes. All three touched paths are live ArcGIS point/buffer queries against public NSW ePlanning layers; the only DB read in the engine (housing_sepp_standards) is untouched.",
  "break_it": [
   {
-   "scenario": "Heritage lot rendered as LMR-eligible (the Haberfield trap: the 776 exclusion layer is sparse and returns nothing on HCA lots, so a zone-plus-776 shortcut says terraces are allowed in a conservation area)",
-   "what_happens": "A maximum-liability false positive on a public consumer surface - telling a heritage-land owner they gained development rights they do not have",
+   "scenario": "Regional lot far from any nominated centre reported inside the reform area because it is absent from the sparse 776 exclusion map (the exact Bowral production bug this PR fixes)",
+   "what_happens": "Terraces and apartment forms render as meeting reform standards on the public tool and in the brief for towns the reform does not cover \u2014 a silent false positive in eligibility",
    "mitigated": true,
-   "how": "the endpoint never composes gates itself - it passes the parsed heritage flag into evaluate_eligibility, whose heritage suppression is engine-tested; test_heritage_lot_suppresses_lmr_forms_but_not_base_forms re-asserts it end-to-end at the route with the real engine running, and the live Haberfield run shows the exclusions rendering",
-   "repro": "pytest tests/test_upzoning_check.py::test_heritage_lot_suppresses_lmr_forms_but_not_base_forms"
+   "how": "in_lmr_area now requires a positive anchor (766 within 800 m or inside TOD) AND not-excluded; test_gate_inputs_not_excluded_alone_is_NOT_in_lmr_area pins it and the live Bowral re-run shows all LMR forms reading not-in-area",
+   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_not_excluded_alone_is_NOT_in_lmr_area; live run of 38 Park Rd Bowral recorded in the PR"
   },
   {
-   "scenario": "Standards-table outage renders as an empty-but-successful result, so no housing types shown reads as nothing is possible here",
-   "what_happens": "A silent wrong result served during a DB outage - the silent-failure class pre-pr-review rule four exists to catch",
+   "scenario": "Town Centres layer query dies mid-request and the lot silently gains the anchor anyway",
+   "what_happens": "A network flake would convert into reform-area membership and potentially green LMR forms",
    "mitigated": true,
-   "how": "evaluate_eligibility returns [] for BOTH non-residential zones and standards failures; the endpoint disambiguates via status ok|not_residential|unavailable and the page renders unavailable as a visible amber outage box stating it is a data outage, not a planning result",
-   "repro": "pytest tests/test_upzoning_check.py::test_standards_outage_reports_unavailable_not_empty_success"
+   "how": "the fetcher returns None on failure and _gate_inputs leaves near_town_centre False on None or exception; test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored pins the fail-closed direction",
+   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored"
   },
   {
-   "scenario": "Unconfirmed lot data (no mappable frontage or area) rendered as a definitive does-not-meet-standards verdict",
-   "what_happens": "Grey-as-red: a data gap presented to the user as a failed standard, the Bowral regression class",
+   "scenario": "A genuinely anchored lot inside a nominated catchment loses eligibility because the new AND-composition is wired backwards",
+   "what_happens": "Under-reporting in the covered areas \u2014 the tool stops showing reform rights where they genuinely exist, a correctness regression in the other direction",
    "mitigated": true,
-   "how": "the engine unconfirmed flag flows through asdict untouched; the page renders unconfirmed forms with an amber not-determinable icon and the engine's own hedged reason wording, visually distinct from both eligible green and failed grey",
-   "repro": "pytest tests/test_upzoning_check.py::test_missing_lot_dimensions_yields_unconfirmed_not_eligible"
+   "how": "positive-path tests pin both anchors independently (town-centre-only and TOD-only both yield in_lmr_area True when not excluded), and the live Gladesville town-centre centroid probe plus the live Kogarah TOD lot both return True post-change",
+   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_town_centre_anchor_plus_not_excluded_is_in_lmr_area and ::test_gate_inputs_tod_anchor_plus_not_excluded_is_in_lmr_area"
   },
   {
-   "scenario": "Liability language drift on a free public surface - eligibility framed as advice or an approval outcome",
-   "what_happens": "Consumer-law exposure at the same stakes as the paid PDF wording, on an anonymous free page",
+   "scenario": "A lot inside a 776 exclusion carve-out but near a town centre reads as in-area because exclusion is no longer consulted",
+   "what_happens": "The exclusion map exists precisely to remove such lots from the reform \u2014 ignoring it would over-report in the carved-out pockets",
    "mitigated": true,
-   "how": "engine reason strings render verbatim and are never rewritten in TypeScript; all new copy passed the banned-word grep clean; the page carries an explicit not-planning-advice paragraph and frames every result as a mapped-standards screen subject to a development application",
-   "repro": "grep -inE the banned-word alternation over the three new files returns nothing"
+   "how": "the composition is anchored AND not_excluded; test_gate_inputs_anchored_but_excluded_is_not_in_lmr_area pins that an excluded lot stays out even with both anchors true",
+   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_anchored_but_excluded_is_not_in_lmr_area"
   },
   {
-   "scenario": "Live ArcGIS gate failure silently produces a false eligible (a gate query dies mid-request and the form passes anyway)",
-   "what_happens": "A network flake converts into granted development rights shown to an anonymous visitor",
+   "scenario": "The radial 800 m buffer over-includes lots that are within 800 m straight-line but beyond 800 m walking distance of a centre (s22 says walking distance)",
+   "what_happens": "A margin of lots just outside true walking range could read in-area \u2014 over-report at the boundary, the direction the doctrine forbids",
    "mitigated": true,
-   "how": "gates come exclusively from the engine's own _gate_inputs, fail-closed by design (failure yields conservative False, never falsely eligible); the accepted trade-off is a conservative false negative during outages with hedged wording, never a false positive",
-   "repro": "existing tests in tests/test_housing_sepp_eligibility.py pin _gate_inputs fail-safety; the endpoint passes gates through without modification"
+   "how": "accepted, documented proxy: the fetcher docstring and gate comment state radial superset-of walking; the per-form standards still gate downstream, consent wording remains subject-to-DA, and the ineligible wording already hedges with area-unconfirmed phrasing; a walking-network refinement is out of scope and recorded in the code comment",
+   "repro": "read services/portal_constraints.py fetch_town_centre_catchment docstring \u2014 the proxy and its direction are stated in the shipped code"
   },
   {
-   "scenario": "Test fixtures use an idealised field shape that masks a real-data mapping bug - the zone_full fixture embedded the zone code, so normalizing the wrong field still passed every mocked test",
-   "what_happens": "All mocked tests green while every real lot is mislabelled not_residential in production - exactly what the first live verify run showed",
+   "scenario": "Station-precinct anchors that sit outside published TOD polygons are not derived (station point data is not ingested), so some legitimately covered lots read out-of-area",
+   "what_happens": "Under-reporting near stations that lack a published TOD polygon \u2014 conservative but incomplete coverage of the s22 definition",
    "mitigated": true,
-   "how": "fixtures corrected to the documented parse_controls shape (zone name WITHOUT code, per generate_conveyancing_report.py:3999); test_zone_code_comes_from_the_zone_field_not_the_name pins the field preference; the live end-to-end re-run against real Portal, ArcGIS and DB is part of the verification record",
-   "repro": "pytest tests/test_upzoning_check.py::test_zone_code_comes_from_the_zone_field_not_the_name"
+   "how": "accepted conservative gap, inherited from the prescope plan's phase-three scope: under-report is the doctrine-permitted direction; deriving station-point catchments is the documented follow-up and cannot produce false positives meanwhile",
+   "repro": "ce-lmr-pipeline-prescope-2026-06 phase 3 records the station-data dependency; the gate comment references the derivation basis"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - after Railway deploy, run 67 Warialda St Kogarah (expect TOD chip yes, mid-rise eligible) and 1 Ramsay St Haberfield (expect heritage banner, LMR forms excluded) through the live page; confirm the Vercel preview renders /tools/upzoning-check and the proxy reaches the Railway endpoint."
+  "manual_verify": "Yes - after Railway deploy, re-run 38 Park Rd Bowral on the live tool (LMR chip must read not-established and terraces must read not-in-area) and 67 Warialda St Kogarah (must stay fully eligible); spot-check one town-centre-anchored Sydney address renders LMR forms. The brief inherits the gate silently - regenerate any cached Bowral-area briefs if surfaced to users."
  }
 }
