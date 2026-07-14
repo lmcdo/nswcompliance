@@ -1,23 +1,60 @@
 {
- "tier": "minor",
- "justification": "Data-registration script only (no product logic): wires Wingecarribee into the existing VerifyOpsBot monitoring. 3 dcp_chapter_registry rows (SHA-256 baselines computed from the verified cached PDFs, baseline copies uploaded to R2), the 32 numeric control rows linked via source_chapter_key (closes the dcp_watchdog blind-spot check; enables change-triggered needs_review), and the Wingecarribee LEP registered in instrument_registry for the legislation monitor. Dry-run first; all inserts idempotent (existence checks); one UPDATE scoped WHERE lga='wingecarribee' AND source_chapter_key IS NULL. Verified post-run: 3 confirmed registry rows with hash+R2 path, 0 unlinked controls, LEP watch active.",
- "commit_hash": "e21c8d2d",
+ "tier": "standard",
+ "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses.",
+ "commit_hash": "fa71bfed",
  "files": [
-  "scripts/register_wingecarribee_monitoring.py"
+  "frontend-nextjs/app/reports/layout.tsx",
+  "frontend-nextjs/components/marketing/SiteNav.tsx",
+  "frontend-nextjs/app/sitemap.ts",
+  "frontend-nextjs/app/layout.tsx",
+  "frontend-nextjs/app/tools/zoning-check/page.tsx"
  ],
+ "pre_impl": {
+  "existing_data": "The Option B domain architecture memory (project-domain-architecture-2026-06, confirmed live 2026-07-04) defines the split this PR aligns to: plotdetect.com.au = info-site project, canibuildit = this app's consumer domain, pro subdomains = this app's pro doors. The deslug formatter already existed on the upzoning page and is duplicated as a two-line local helper per the established page-local pattern.",
+  "assumption_mismatch": "The sitemap/metadataBase misdirection was discovered while investigating the user's domain complaint: both predate the Option B split and were never repointed - verified live that plotdetect.com.au/tools/upzoning-check 404s while canibuildit serves it, so the sitemap was actively advertising dead URLs to search engines.",
+  "new_vs_existing": "No new capability: two href changes, two base-URL constants, one two-line formatter reuse. Deliberately NOT changed: the middleware host-routing (correct per Option B), the footer platform links, and any per-host canonical scheme (single consumer canonical is the simplest correct step; per-host canonicals for the pro subdomains can follow if pro-page SEO ever matters)."
+ },
+ "functions": "N/A - presentational and configuration changes only; the only added code is a two-line label formatter copied from the upzoning page.",
+ "values": [
+  {
+   "value": "sitemap base URL",
+   "read_at": "app/sitemap.ts emitted URLs (Google Search Console ingestion)",
+   "if_missing": "Constant, cannot be missing; the defect was it being the WRONG constant - now the domain that actually serves the routes"
+  },
+  {
+   "value": "metadataBase",
+   "read_at": "Next.js canonical/OG URL resolution in app/layout.tsx",
+   "if_missing": "Next falls back to the deploy URL; explicitly set to the consumer domain so all four serving domains canonicalise to one home"
+  }
+ ],
+ "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "The monitor watches the wrong URL (hand-built planURL with normalised spacing) and every weekly check 404s, incrementing check_failures forever",
-   "what_happens": "Silent monitoring failure \u2014 the one thing the registration exists to prevent",
+   "scenario": "The logo link change strands pro users (brief/verify) on the consumer-agnostic info site with no way back to their product",
+   "what_happens": "A pro user clicking the logo mid-workflow loses their place in the product",
    "mitigated": true,
-   "how": "council_url values are the EXACT planURLs returned by the Portal /dcp endpoint (the irregular double-spaces are real and were proven load-bearing when a hand-built URL 404ed during Phase-0); baseline hashes were computed from PDFs fetched via those exact URLs",
-   "repro": "curl each council_url in the script returns %PDF; ce-wingecarribee-numeric-onboarding-2026-07.md records the 404 lesson"
+   "how": "the info site is the brand home with navigation to every product door (its whole purpose under Option B); in-app navigation tabs remain unchanged next to the logo, so the logo is the only element that exits - standard brand-home convention",
+   "repro": "load brief.plotdetect.com.au - the report tabs still navigate in-app; only the wordmark exits"
+  },
+  {
+   "scenario": "Repointing the sitemap de-indexes pages Google already indexed under plotdetect.com.au",
+   "what_happens": "Temporary ranking churn on any accidentally-indexed app URLs",
+   "mitigated": true,
+   "how": "those URLs 404 today (verified live), so nothing real is lost - Google currently holds dead entries; the new sitemap points at URLs that return 200 on the domain that serves them, strictly better than advertising 404s",
+   "repro": "curl plotdetect.com.au/tools/upzoning-check returns 404; same path on www.canibuildit.com.au returns 200"
+  },
+  {
+   "scenario": "deslug mangles a slug that encodes meaningful punctuation (e.g. the catch-all land-use entry)",
+   "what_happens": "A legal-table entry renders with altered meaning",
+   "mitigated": true,
+   "how": "deslug only replaces underscores with spaces and capitalises the first letter - no word changes; the catch-all renders as the legislation's own wording",
+   "repro": "deslug('any_other_development_not_specified_in_item_2_or_4') in the page code"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "No \u2014 registration verified post-run in this session (3 registry rows confirmed+hashed+R2, 0 unlinked controls, LEP watch active); the next weekly r2_monitor run exercises it end-to-end."
+  "manual_verify": "Yes - after Vercel deploy: (1) logo on brief.plotdetect.com.au and canibuildit tools pages lands on plotdetect.com.au; (2) view-source canonical on /tools/upzoning-check shows www.canibuildit.com.au; (3) zoning-check chips read 'Multi dwelling housing' not slugs. Then resubmit the sitemap in Search Console."
  }
 }
