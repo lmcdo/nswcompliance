@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New offline analysis lane (not a production/serving path): a read-only exporter of regulatory_provisions and an offline near-duplicate/contradiction audit over the exported corpus, wrapping enjalot/latent-scope for classifier-QA and canonicalisation. Standard tier because it opens a new DB read path and handles the full provisions corpus, but it writes nothing back to the database, serves no user-facing output, and its artifacts are git-ignored. The whole lane can run egress-free via the TF-IDF embedder.",
- "commit_hash": "19ba90d6",
+ "commit_hash": "56d8b420",
  "files": [
   "scripts/latent_scope_export.py",
   "scripts/latent_scope_dup_audit.py",
@@ -18,21 +18,21 @@
  "functions": [
   {
    "name": "_build_query",
-   "file_line": "scripts/latent_scope_export.py:64",
+   "file_line": "scripts/latent_scope_export.py:65",
    "input": "council filter list, actionable_only flag, current_only flag, min_chars int, optional row limit",
    "output": "a parameterised read-only SELECT string plus its bound params list, ready for cursor.execute",
    "if_none": "no councils means all councils; current_only False exports stale rows too (is_current still selected as a column)"
   },
   {
    "name": "fetch_provisions",
-   "file_line": "scripts/latent_scope_export.py:117",
+   "file_line": "scripts/latent_scope_export.py:120",
    "input": "the same filter arguments, used to build and run the query",
    "output": "a tuple of column names and fetched provision rows read from regulatory_provisions",
    "if_none": "connection is pinned READ ONLY before any statement so a stray write raises instead of mutating the database"
   },
   {
    "name": "write_output",
-   "file_line": "scripts/latent_scope_export.py:150",
+   "file_line": "scripts/latent_scope_export.py:153",
    "input": "column names, fetched rows, target output path, and the desired format string",
    "output": "the path actually written, as parquet or CSV, with the parent directory created",
    "if_none": "if parquet is requested but pyarrow is unavailable it falls back to CSV rather than hard-failing the export"
@@ -74,8 +74,8 @@
  "queries": [
   {
    "purpose": "Read-only bulk export of provisions for offline latent-scope analysis; no writeback path exists in the lane",
-   "file_line": "scripts/latent_scope_export.py:106",
-   "where_clause": "provision_text IS NOT NULL AND length(btrim(provision_text)) >= %s, plus optional is_current = TRUE, v2_is_actionable = TRUE, and former_council = ANY(%s); executed under conn.set_session(readonly=True) so no INSERT/UPDATE/DELETE can run"
+   "file_line": "scripts/latent_scope_export.py:109",
+   "where_clause": "provision_text IS NOT NULL AND length(btrim(provision_text)) >= %s, plus optional is_current = TRUE, v2_is_actionable = TRUE, and lower(source_council) = ANY(%s); executed under conn.set_session(readonly=True) so no INSERT/UPDATE/DELETE can run. Verified live: table has 65 cols / 53,716 rows, source_council holds lowercase slugs"
   }
  ],
  "break_it": [
@@ -105,6 +105,6 @@
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - where DB_* env is set: run scripts/latent_scope_export.py --council Marrickville --actionable-only, confirm data/latent_scope/provisions.parquet has the is_current column and expected row count, then scripts/latent_scope_dup_audit.py --embedder tfidf and eyeball dup_worklist.csv (numeric_mismatch rows first). Functional test on synthetic data already passed via venv_linux."
+  "manual_verify": "Done against production (read-only): scripts/latent_scope_export.py --council marrickville --actionable-only exported 7,577 provisions; scripts/latent_scope_dup_audit.py --embedder tfidf --min-cosine 0.92 --include-same-scope produced 8,261 candidate pairs (1,093 numeric_mismatch) into dup_worklist.csv. Remaining USER step: triage the worklist (top rows include chunking-artifact parking tables) and optionally run the full cross-council corpus."
  }
 }

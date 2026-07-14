@@ -51,10 +51,11 @@ EXPORT_COLUMNS: Tuple[str, ...] = (
     "v2_is_actionable",
     "is_current",  # currency flag — exported so staleness is visible, not hidden
     "v2_applicable_dev_types",
-    "former_council",
+    "source_council",  # lowercase council slugs, e.g. 'marrickville' (may be NULL)
     "v2_precinct_id",
     "v2_dcp_part",
-    "source_ref",
+    "ref_number",
+    "source_chapter_key",
     "pdf_page_image_url",
 )
 
@@ -77,7 +78,8 @@ def _build_query(
     ``current_only=True`` to restrict to live rows (``is_current = TRUE``).
 
     Args:
-        councils: If given, restrict to these ``former_council`` values.
+        councils: If given, restrict to these ``source_council`` values
+            (case-insensitive; the column stores lowercase slugs).
         actionable_only: If True, only ``v2_is_actionable = TRUE`` rows.
         current_only: If True, only ``is_current = TRUE`` (live) rows.
         min_chars: Drop provisions whose trimmed text is shorter than this.
@@ -100,8 +102,9 @@ def _build_query(
         where.append("v2_is_actionable = TRUE")
 
     if councils:
-        where.append("former_council = ANY(%s)")
-        params.append(list(councils))
+        # source_council holds lowercase slugs; match case-insensitively.
+        where.append("lower(source_council) = ANY(%s)")
+        params.append([c.lower() for c in councils])
 
     sql = f"SELECT {cols} FROM regulatory_provisions WHERE " + " AND ".join(where)
     # Currency: is_current is SELECTed (see EXPORT_COLUMNS) so staleness stays
@@ -194,7 +197,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="append",
         default=None,
         metavar="NAME",
-        help="Restrict to a former_council (repeatable, e.g. --council Marrickville).",
+        help="Restrict to a source_council, case-insensitive (repeatable, "
+        "e.g. --council marrickville).",
     )
     parser.add_argument(
         "--actionable-only",

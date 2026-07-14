@@ -64,7 +64,7 @@ Run where the DB env vars are set (`DB_HOST` / `DB_NAME` / `DB_USER` /
 
 ```bash
 # One council, actionable provisions only (good first slice):
-python scripts/latent_scope_export.py --council Marrickville --actionable-only
+python scripts/latent_scope_export.py --council marrickville --actionable-only
 
 # The whole table (46k rows) as parquet:
 python scripts/latent_scope_export.py
@@ -75,8 +75,11 @@ python scripts/latent_scope_export.py --format csv --limit 2000
 
 Output → `data/latent_scope/provisions.parquet` (git-ignored). Columns:
 `id, provision_text, v2_topic, v2_marker, v2_is_actionable, is_current,
-v2_applicable_dev_types, former_council, v2_precinct_id, v2_dcp_part,
-source_ref, pdf_page_image_url`.
+v2_applicable_dev_types, source_council, v2_precinct_id, v2_dcp_part,
+ref_number, source_chapter_key, pdf_page_image_url`.
+
+`source_council` holds lowercase slugs (`marrickville`, `ku_ring_gai`, …) and is
+NULL for ~19k rows; `--council` matches case-insensitively.
 
 `is_current` is exported (not force-filtered) so a QA pass can **see** stale /
 superseded provisions — colour-by `is_current` on the map to spot them. Pass

@@ -172,7 +172,7 @@ def build_worklist(df, pairs: Sequence[Tuple[int, int, float]], cross_scope_only
     import pandas as pd
 
     text_col = "provision_text"
-    council_col = "former_council"
+    council_col = "source_council"
     precinct_col = "v2_precinct_id"
     topic_col = "v2_topic"
 
