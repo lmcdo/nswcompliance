@@ -1,104 +1,86 @@
 {
  "tier": "standard",
- "justification": "Ports the frontend's proven battleaxe (flag-lot) detection to the Python lot-dimensions helper and feeds a battleaxe-aware width into the Housing-SEPP eligibility engine (upzoning tool + intelligence brief). Before: the Python helper returned no width for flag lots (the OBB model rejects shapes filling <60% of their box), so every width-gated form rendered 'unconfirmed' \u2014 a 4,189 m2 R3 lot (38 Park Rd Bowral) showed seven non-answers while Verify's frontend correctly measured a 16.31 m handle and 70.09 m developable head. The port keeps the TS thresholds verbatim and reproduces the frontend's verified output exactly on the real Bowral cadastre fixture (16.31/43.1/70.09/3710). Live end-to-end now shows Bowral: granny flat ELIGIBLE, dual occupancy ELIGIBLE, LMR forms correctly not-in-area.",
- "commit_hash": "6e4aac0e",
+ "justification": "Closes the 'townhouses: no' mislead on the upzoning tool. The tool screens the 2025 LMR/TOD reform pathway only, but a plain 'no' on a form read as 'cannot build' \u2014 physically contradicted at 38 Park Rd Bowral, where neighbouring townhouses were lawfully approved through the ordinary DA pathway that Wingecarribee LEP 2010 zone R3 explicitly lists (Multi dwelling housing, permitted with consent \u2014 verified verbatim from the legislation). Changes: (1) per-form clarification line whenever a form fails ONLY the reform-area gate; (2) a new LEP land-use panel rendering the council's own zone table verbatim from the coverage-gated /api/lep/permissibility endpoint; (3) lga_name derived match-based from the EPI name in the backend response; (4) Wingecarribee's LEP land-use table loaded into production via the existing scraper (21 zones, 843 entries, coverage-complete with provenance, R3 spot-checked against the legislation text); (5) drive-by fix of zoning-check's silently-empty permitted/prohibited chips (filters compared capitalized values against the DB's lowercase enum since launch).",
+ "commit_hash": "60366901",
  "files": [
-  "services/lot_dimensions.py",
-  "services/constraint_models.py",
   "services/upzoning_check.py",
-  "services/intelligence_brief.py",
-  "tests/test_lot_dimensions.py",
   "tests/test_upzoning_check.py",
-  "tests/fixtures/lot_geometry_38_park_rd_bowral.json",
-  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx",
+  "frontend-nextjs/app/tools/zoning-check/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "The proven algorithm already existed in the frontend (lib/geometry/lot-shape-analysis.ts detectBattleaxeLot + effective-lot-width.ts battleaxeAwareLotWidth, both test-backed) and produced the verified 16.31 m / 70.09 m Bowral result in Verify; the Python side already had the OBB frontage model whose <60%-fill rejection is exactly the flag-lot class. This PR ports rather than invents: thresholds, slice count and confidence scoring are kept verbatim from the TS source.",
-  "assumption_mismatch": "The prior assumption was that a null frontage on irregular lots was an acceptable conservative gap; the Verify screenshot comparison showed the same company already measures these lots correctly on another surface, so the gap was a siloed-capability defect, not a data limitation. Also corrected in passing: lot_dimensions imported LotDimensions via intelligence_brief although its true home is constraint_models (indirection removed, no cycle).",
-  "new_vs_existing": "New: the ported detector functions and the eligibility_lot_width helper in services/lot_dimensions.py, plus five optional backward-compatible fields on the LotDimensions pydantic model. Changed consumers: upzoning _lot_dims and the brief's eligibility width now use the battleaxe-aware helper. Deliberately NOT changed: constraint_arithmetic's frontage/depth estimation (setback geometry semantics differ from width-eligibility semantics \u2014 noted for follow-up), and the frontend TS implementation stays untouched as the reference."
+  "existing_data": "Everything reused: the /api/lep/permissibility endpoint already existed (coverage-gated, returns source_url + scraped_at), the lep_land_use_table/lep_zone_coverage schema and scraper already existed (25 LGAs loaded), and the EPI id for Wingecarribee (epi-2010-0245) plus the full LEP HTML were verified in the prior session. No new endpoint, table or scraper was written \u2014 Wingecarribee was added to the existing pipeline's data.",
+  "assumption_mismatch": "Two live-data corrections: (1) the permissibility DB stores lowercase enum values and slugified dev types \u2014 zoning-check filtered on capitalized 'Permitted'/'Prohibited', so its chips have rendered empty since launch (fixed); (2) the lep_zone_coverage vocabulary is the bare LGA name (Wingecarribee, Sydney, Inner West), NOT the '...Shire Council' form the DA API wants, so lga_name derivation deliberately does not reuse _council_from_zone_epi's normalisation.",
+  "new_vs_existing": "New: the LepLandUsePanel component (verbatim chips from the existing API, no planning logic), one clarification paragraph on LMR-gated form cards, and a match-based lga_name field in the backend response. Deliberately NOT built: any dev-type mapping between SEPP form keys and LEP land-use terms \u2014 the panel reproduces the table verbatim instead, because a fuzzy mapping (e.g. manor house vs residential flat building definitions) is regulatory interpretation and out of bounds."
  },
  "functions": [
   {
-   "name": "_detect_battleaxe",
-   "file_line": "services/lot_dimensions.py:220",
-   "input": "Polygon points in real metres (closing point removed), from the Portal cadastre ring",
-   "output": "Dict with access-way width/length, main-lot width/area and confidence, or None when the lot is not a battleaxe",
-   "if_none": "None simply means not-a-battleaxe \u2014 calculate_lot_dimensions then classifies rectangular or irregular and the width falls back to the OBB frontage or stays None (engine unconfirmed path unchanged)"
-  },
-  {
-   "name": "eligibility_lot_width",
-   "file_line": "services/lot_dimensions.py:117",
-   "input": "A LotDimensions instance or None",
-   "output": "The developable head width for a battleaxe lot, otherwise the cadastral frontage; None when nothing usable exists",
-   "if_none": "Callers pass None straight into evaluate_eligibility, which marks width-gated forms unconfirmed and conservatively ineligible \u2014 identical to today's behaviour, so the change can only ADD resolved answers, never remove the conservative path"
-  },
-  {
-   "name": "_lot_dims",
-   "file_line": "services/upzoning_check.py:98",
-   "input": "Planning Portal property id integer, or None",
-   "output": "Tuple of lot area, battleaxe-aware eligibility width, and lot_type string for UI labelling",
-   "if_none": "Any gap returns (None, None, None); the page renders width as not-mapped and the engine keeps its unconfirmed handling"
+   "name": "run_upzoning_check",
+   "file_line": "services/upzoning_check.py:119",
+   "input": "UpzoningRequest with a free-text NSW street address string",
+   "output": "Existing response envelope plus lga_name \u2014 the bare LGA derived by regex match from an EPI name of the form '<LGA> Local Environmental Plan <year>'",
+   "if_none": "A missing or non-LEP zone_epi yields lga_name None; the page then simply does not render the land-use panel \u2014 fail-closed context omission, never a wrong-council lookup"
   }
  ],
  "values": [
   {
-   "value": "battleaxe_main_lot_width_m on LotDimensions",
-   "read_at": "services/lot_dimensions.py eligibility_lot_width",
-   "if_missing": "Falsy or absent means fallback to frontage_m \u2014 a detector miss degrades to the previous behaviour, never to a fabricated width"
+   "value": "lga_name in the upzoning response",
+   "read_at": "page.tsx LepLandUsePanel render condition (zone AND lga_name required)",
+   "if_missing": "Panel absent \u2014 additive context degrades to today's page, no error surface"
   },
   {
-   "value": "lot_type in the upzoning response",
-   "read_at": "frontend page header chip (Width (main lot, battleaxe) vs Frontage label)",
-   "if_missing": "Null renders the plain Frontage label \u2014 labelling degrades, values do not"
+   "value": "covered flag from /api/lep/permissibility",
+   "read_at": "LepLandUsePanel effect \u2014 data.covered gate before setting entries",
+   "if_missing": "covered false or fetch failure leaves entries null and the panel returns null; an uncovered council can never show a partial or wrong table"
   },
   {
-   "value": "lot_dims_for_ca in the brief eligibility block",
-   "read_at": "services/intelligence_brief.py sepp_housing section",
-   "if_missing": "eligibility_lot_width(None) returns None and the brief's eligibility falls back to the unconfirmed path exactly as before"
+   "value": "source_url + entries from lep_land_use_table",
+   "read_at": "LepLandUsePanel chips + source link",
+   "if_missing": "Entries render only when present; the source link renders only when the coverage row carries provenance"
   }
  ],
- "queries": "N/A - no SQL. Pure geometry on the already-fetched Portal cadastre ring; one real fixture file recorded from the live Portal for tests.",
+ "queries": "N/A in code \u2014 no new SQL was written; the panel consumes the existing coverage-gated endpoint. Data operation performed once: the existing scraper loaded Wingecarribee (DELETE scoped to lga='Wingecarribee' removed 0 rows, 843 inserts, 21 coverage rows with source_url provenance), dry-run first, R3 output spot-checked against the legislation text fetched the prior day.",
  "break_it": [
   {
-   "scenario": "The port drifts from the TS reference (different slice count, thresholds or handle/head attribution) and silently reports a different width than Verify shows for the same lot",
-   "what_happens": "Two surfaces of the same product disagree on a measurable number \u2014 the credibility failure this PR exists to close",
+   "scenario": "The panel renders a wrong council's land-use table because the LGA string leaks from a non-LEP instrument title or a mismatched vocabulary",
+   "what_happens": "Verbatim-looking legal content attributed to the wrong plan \u2014 worse than no panel at all",
    "mitigated": true,
-   "how": "thresholds kept verbatim and the golden test pins the Python output to the frontend's verified Bowral values to two decimals (16.31 handle, 70.09 head, 43.1 length, 3710 head area)",
-   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_bowral_golden_matches_frontend_reference_values"
+   "how": "lga_name is match-based (regex requires the literal 'Local Environmental Plan <year>' shape; anything else yields None \u2014 test-pinned), and the server-side coverage gate means an unknown zone/LGA pair returns covered:false so the panel never renders on a miss",
+   "repro": "pytest tests/test_upzoning_check.py::test_lga_name_none_for_non_lep_instrument"
   },
   {
-   "scenario": "A rectangular or mildly irregular lot is misclassified as battleaxe and its width silently inflated to the max cross-section",
-   "what_happens": "Width-gated forms could pass on a lot narrower than the minimum \u2014 a false eligible",
+   "scenario": "A partially-scraped council shows an incomplete permitted list, silently omitting uses",
+   "what_happens": "Reader concludes a use is not listed when our scrape simply missed it",
    "mitigated": true,
-   "how": "detection requires ALL of: 6+ vertices, a sustained (3+ consecutive) narrow run under 40% of head width, head at least 9 m, strong min/max contrast and the narrow run a minority of length \u2014 the verbatim TS criteria; the rectangular test pins non-detection and frontage fallback",
-   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_rectangular_lot_is_not_battleaxe_and_keeps_frontage"
+   "how": "the existing lep_zone_coverage is_complete gate \u2014 the endpoint returns nothing unless the zone's scrape was marked complete; Wingecarribee's 21 zones were loaded in one atomic run and the R3 row set was verified against the legislation verbatim (14 with-consent entries incl. the catch-all)",
+   "repro": "SELECT is_complete FROM lep_zone_coverage WHERE lga='Wingecarribee' AND zone='R3' returns true; count of permitted rows = 14"
   },
   {
-   "scenario": "Detector crashes on a degenerate ring (duplicate points, zero-extent bbox) and takes the whole dimensions call down",
-   "what_happens": "Lots that previously got area/frontage would start returning nothing \u2014 a regression for every lot, not just battleaxes",
+   "scenario": "The clarification line renders under the wrong cards (e.g. under lot-size failures), diluting a targeted legal clarification into boilerplate",
+   "what_happens": "The one sentence that matters gets banner-blindness treatment",
    "mitigated": true,
-   "how": "the detector guards zero extents, <6 vertices and <2 slice intersections by returning None (not-a-battleaxe), and the existing degenerate-polygon tests in the file still pass unchanged (29/29 then 2831 full suite)",
-   "repro": "pytest tests/test_lot_dimensions.py -q"
+   "how": "the line is gated on requires_lmr_area AND not eligible AND not unconfirmed AND the reason string containing the engine's literal reform-area wording \u2014 only the exact failure mode the mislead came from",
+   "repro": "read the render condition in page.tsx; forms failing on lot size or TOD keep their existing rendering"
   },
   {
-   "scenario": "The head width leaks into displays as if it were street frontage",
-   "what_happens": "A 70 m 'frontage' on a lot with a 16 m street opening misstates the cadastre to users",
+   "scenario": "The LEP panel invites a permissibility misreading \u2014 a listed use taken as an approval, or the catch-all line as carte blanche",
+   "what_happens": "Consumer-law exposure on verbatim-but-misframed legal content",
    "mitigated": true,
-   "how": "the endpoint returns lot_type alongside the width and the page renders 'Width (main lot, battleaxe)' for flag lots instead of 'Frontage'; the response comment documents the semantics",
-   "repro": "pytest tests/test_upzoning_check.py::test_battleaxe_lot_uses_head_width_for_eligibility asserts lot_type flows through"
+   "how": "panel copy states these are uses that can be APPLIED FOR through a standard development application, entries are reproduced from the plan's land-use table (incl. the catch-all rendered verbatim as the legislation words it), and the source link goes to the legislation itself; liability grep on all new strings is clean",
+   "repro": "banned-word grep over the two changed pages returns nothing"
   },
   {
-   "scenario": "The brief consumer change alters eligibility on non-battleaxe lots",
-   "what_happens": "A blanket behaviour shift in the paid-adjacent brief rather than a targeted fix",
+   "scenario": "The zoning-check case fix suddenly un-hides chips that render raw slugs, trading a silent-empty bug for a visibly broken one",
+   "what_happens": "Previously-empty sections now show underscored slugs to users",
    "mitigated": true,
-   "how": "eligibility_lot_width returns frontage_m verbatim for every non-battleaxe lot_type (including None from older payloads), so only flag lots change; full pytest incl. the brief goldens passes",
-   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_rectangular_lot_is_not_battleaxe_and_keeps_frontage plus the full suite run"
+   "how": "accepted with eyes open: the chips now render real data (correct content beats hidden content), slugs read as lowercase words with underscores replaced only in the new panel's deslug; zoning-check displays the raw dev_type strings which are readable slugified names \u2014 a cosmetic prettify is noted as follow-up rather than blocking a correctness fix",
+   "repro": "run zoning-check on a covered LGA address and observe the permitted/prohibited sections now populate"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - after Railway deploy, run 38 Park Rd Bowral on the live tool: expect 'Width (main lot, battleaxe): 70 m', granny flat and dual occupancy green, LMR forms not-in-area. Kogarah spot-check unchanged."
+  "manual_verify": "Yes - after deploys: run 38 Park Rd Bowral on the live tool; expect the clarification line under the LMR-gated forms AND the new panel 'What Wingecarribee Local Environmental Plan 2010 lists for zone R3' with Multi dwelling housing in the permitted chips. Also spot-check a zoning-check run on a covered LGA (e.g. Randwick) to see the previously-empty permitted/prohibited chips now render."
  }
 }

@@ -16,7 +16,7 @@
  * Funnel: free instant result → /reports/intelligence-brief for capacity analysis
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
@@ -46,6 +46,7 @@ interface UpzoningResult {
   lot_area_m2: number | null;
   lot_width_m: number | null;
   lot_type: 'rectangular' | 'battleaxe' | 'irregular' | null;
+  lga_name: string | null;
   heritage: { flag: boolean; items: string[]; hca: string[] };
   gates: { in_lmr_area: boolean; in_tod: boolean; dual_occ_prohibited: boolean };
   status: 'ok' | 'not_residential' | 'unavailable';
@@ -69,6 +70,97 @@ const FORM_LABELS: Record<string, string> = {
 
 function formLabel(devType: string): string {
   return FORM_LABELS[devType] ?? devType.replace(/_/g, ' ');
+}
+
+function deslug(devType: string): string {
+  const words = devType.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+interface LepEntry {
+  development_type: string;
+  permissibility: 'exempt' | 'permitted' | 'prohibited';
+}
+
+/**
+ * What the council's OWN plan lists for this zone — verbatim land-use table
+ * entries from our scraped legislation data (coverage-gated server side; the
+ * panel simply does not render for councils we have not loaded). This is the
+ * ordinary development-application pathway, separate from the 2025 reforms.
+ */
+function LepLandUsePanel({ zone, lga, zoneEpi }: { zone: string; lga: string; zoneEpi: string | null }) {
+  const [entries, setEntries] = useState<LepEntry[] | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setEntries(null);
+    fetch(`/api/lep/permissibility?zone=${encodeURIComponent(zone)}&lga=${encodeURIComponent(lga)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.covered) return;
+        setEntries(data.entries ?? []);
+        setSourceUrl(data.source_url ?? null);
+      })
+      .catch(() => {
+        // Panel is additive context — absence is the fail state, never an error box.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [zone, lga]);
+
+  if (!entries || entries.length === 0) return null;
+
+  const withConsent = entries.filter((e) => e.permissibility === 'permitted');
+  const prohibited = entries.filter((e) => e.permissibility === 'prohibited');
+
+  return (
+    <div className="rounded-xl border border-gray-200 p-5">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">
+        What {zoneEpi ?? `the ${lga} local plan`} lists for zone {zone}
+      </h3>
+      <p className="text-xs text-gray-400 mb-3">
+        The ordinary council pathway, separate from the 2025 reforms: uses listed as
+        permitted here can be applied for through a standard development application.
+        Entries are reproduced from the plan&apos;s land-use table.
+      </p>
+      {withConsent.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Permitted with consent</p>
+          <div className="flex flex-wrap gap-1.5">
+            {withConsent.map((e) => (
+              <span key={e.development_type} className="px-2 py-0.5 text-[11px] bg-green-50 text-green-700 rounded-full border border-green-200">
+                {deslug(e.development_type)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {prohibited.length > 0 && (
+        <details>
+          <summary className="text-xs font-medium text-gray-500 cursor-pointer">
+            Prohibited ({prohibited.length} uses)
+          </summary>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {prohibited.map((e) => (
+              <span key={e.development_type} className="px-2 py-0.5 text-[11px] bg-gray-50 text-gray-500 rounded-full border border-gray-200">
+                {deslug(e.development_type)}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
+      {sourceUrl && (
+        <p className="text-[11px] text-gray-400 mt-3">
+          Source:{' '}
+          <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">
+            land-use table on NSW legislation
+          </a>
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function UpzoningCheckPage() {
@@ -285,6 +377,18 @@ export default function UpzoningCheckPage() {
                           <p className={`text-xs mt-1 ${f.eligible ? 'text-green-700' : f.unconfirmed ? 'text-amber-700' : 'text-gray-600'}`}>
                             {f.reason}
                           </p>
+                          {/* A "no" on the reform pathway is NOT "cannot build" — the
+                              council's own plan may permit this type via a standard DA.
+                              Without this line, a Bowral owner reads "townhouses: no"
+                              while standing next to lawfully approved townhouses. */}
+                          {!f.eligible && !f.unconfirmed && f.requires_lmr_area && f.reason.includes('Low and Mid-Rise reform area') && (
+                            <p className="text-[11px] text-gray-500 mt-1">
+                              This result covers the 2025 Low and Mid-Rise reforms only. This
+                              housing type may still be permitted under the council&apos;s own
+                              Local Environmental Plan through a standard development
+                              application — see the council&apos;s land-use table below.
+                            </p>
+                          )}
                           {(f.source_clause || f.legislation_url) && (
                             <p className="text-[11px] text-gray-400 mt-1.5">
                               {f.source_clause && <span>Source: {f.source_clause}</span>}
@@ -314,6 +418,10 @@ export default function UpzoningCheckPage() {
                   ))}
                 </div>
               </div>
+
+              {result.zone && result.lga_name && (
+                <LepLandUsePanel zone={result.zone} lga={result.lga_name} zoneEpi={result.zone_epi} />
+              )}
 
               {/* CTA */}
               <div className="bg-slate-950 rounded-xl p-6 flex items-center justify-between gap-4">
