@@ -1,86 +1,91 @@
 {
  "tier": "standard",
- "justification": "Closes the 'townhouses: no' mislead on the upzoning tool. The tool screens the 2025 LMR/TOD reform pathway only, but a plain 'no' on a form read as 'cannot build' \u2014 physically contradicted at 38 Park Rd Bowral, where neighbouring townhouses were lawfully approved through the ordinary DA pathway that Wingecarribee LEP 2010 zone R3 explicitly lists (Multi dwelling housing, permitted with consent \u2014 verified verbatim from the legislation). Changes: (1) per-form clarification line whenever a form fails ONLY the reform-area gate; (2) a new LEP land-use panel rendering the council's own zone table verbatim from the coverage-gated /api/lep/permissibility endpoint; (3) lga_name derived match-based from the EPI name in the backend response; (4) Wingecarribee's LEP land-use table loaded into production via the existing scraper (21 zones, 843 entries, coverage-complete with provenance, R3 spot-checked against the legislation text); (5) drive-by fix of zoning-check's silently-empty permitted/prohibited chips (filters compared capitalized values against the DB's lowercase enum since launch).",
- "commit_hash": "60366901",
+ "justification": "Onboards Wingecarribee to the numeric DCP-controls dataset (the 29th LGA) so the Bowral demo lot gets real setback/landscaping/parking/height numbers. 32 hand-curated rows extracted VERBATIM from the in-force town plans (Bowral/Mittagong/Moss Vale, amended 2015), each with source quote + section ref + PDF page, loaded via the established per-council insert-script pattern. Preceded by a full Phase-0 smoke test with live data (ce-wingecarribee-numeric-onboarding-2026-07.md): the three town plans were fetched from the Portal /dcp planURLs, proven 100% machine-readable, and their residential values proven IDENTICAL across the three towns (single-slug design validated). One genuine source defect found (C3.9.2(c)(ii) omits its height threshold in all three published documents) \u2014 loaded with needs_review=TRUE and verified WITHHELD by the fetcher (#707 fail-closed). End-to-end verified in production: address -> slug wingecarribee -> fetch_dcp_setbacks returns 31 controls (flagged row excluded).",
+ "commit_hash": "c8dbeebd",
  "files": [
-  "services/upzoning_check.py",
-  "tests/test_upzoning_check.py",
-  "frontend-nextjs/app/tools/upzoning-check/page.tsx",
-  "frontend-nextjs/app/tools/zoning-check/page.tsx"
+  "scripts/insert_wingecarribee_setbacks.py",
+  "scripts/generate_conveyancing_report.py",
+  "tests/test_conveyancing_data_integrity.py"
  ],
  "pre_impl": {
-  "existing_data": "Everything reused: the /api/lep/permissibility endpoint already existed (coverage-gated, returns source_url + scraped_at), the lep_land_use_table/lep_zone_coverage schema and scraper already existed (25 LGAs loaded), and the EPI id for Wingecarribee (epi-2010-0245) plus the full LEP HTML were verified in the prior session. No new endpoint, table or scraper was written \u2014 Wingecarribee was added to the existing pipeline's data.",
-  "assumption_mismatch": "Two live-data corrections: (1) the permissibility DB stores lowercase enum values and slugified dev types \u2014 zoning-check filtered on capitalized 'Permitted'/'Prohibited', so its chips have rendered empty since launch (fixed); (2) the lep_zone_coverage vocabulary is the bare LGA name (Wingecarribee, Sydney, Inner West), NOT the '...Shire Council' form the DA API wants, so lga_name derivation deliberately does not reuse _council_from_zone_epi's normalisation.",
-  "new_vs_existing": "New: the LepLandUsePanel component (verbatim chips from the existing API, no planning logic), one clarification paragraph on LMR-gated form cards, and a match-based lga_name field in the backend response. Deliberately NOT built: any dev-type mapping between SEPP form keys and LEP land-use terms \u2014 the panel reproduces the table verbatim instead, because a fuzzy mapping (e.g. manor house vs residential flat building definitions) is regulatory interpretation and out of bounds."
+  "existing_data": "Everything reused: the dcp_setback_controls schema (constrained enums for applicability/extraction_method discovered live and complied with), the lga_registry FK pattern, the insert-script pattern (insert_ashfield_sd_setbacks.py), the DCP_ONBOARDED_SLUGS completeness gate at generate_conveyancing_report.py:270, and the needs_review fail-closed handling shipped in #707. The Phase-0 probe also reused the Portal /dcp endpoint discovered in May and the pypdf tooling already in the environment.",
+  "assumption_mismatch": "Three assumptions corrected by live data: (1) the Portal /dcp endpoint does NOT resolve which town plan governs a property \u2014 it returns the council's whole 18-document catalogue, so per-town scoping had to come from the documents themselves; (2) neutralized by the decisive finding that the three town plans share one Part C template with identical residential values (verified verbatim in all three), making a single wingecarribee slug safe; (3) applicability and extraction_method turned out to be constrained enums and lga has an FK to lga_registry \u2014 all discovered by the first insert attempts and complied with rather than worked around.",
+  "new_vs_existing": "New: one insert script (32 data rows, self-contained with an idempotent lga_registry registration) and one slug added to the existing DCP_ONBOARDED_SLUGS gate. Explicitly NOT built: any full-text DCP extraction (deferred until the consolidated Wingecarribee DCP 2026 is adopted \u2014 onboarding 17 soon-to-be-replaced documents is throwaway), any secondary-dwelling rows (the town plans' Part C sections extracted do not carry SD-specific numerics \u2014 absence fails closed), and any village/rural DCP rows (unverified against the template; town-plan scope only)."
  },
  "functions": [
   {
-   "name": "run_upzoning_check",
-   "file_line": "services/upzoning_check.py:119",
-   "input": "UpzoningRequest with a free-text NSW street address string",
-   "output": "Existing response envelope plus lga_name \u2014 the bare LGA derived by regex match from an EPI name of the form '<LGA> Local Environmental Plan <year>'",
-   "if_none": "A missing or non-LEP zone_epi yields lga_name None; the page then simply does not render the land-use panel \u2014 fail-closed context omission, never a wrong-council lookup"
+   "name": "main",
+   "file_line": "scripts/insert_wingecarribee_setbacks.py:232",
+   "input": "Optional --dry-run flag; DATABASE_URL or SUPABASE_DB_URL from the environment",
+   "output": "Idempotent load: lga_registry upsert plus 32 dcp_setback_controls rows with verbatim source_text, section_ref, pdf_page, dcp_version and needs_review flags; prints per-row outcome and totals",
+   "if_none": "Missing DB URL exits 1 before touching anything; the dup-check skips rows that already exist (keyed on lga+dev_type+control_type+condition) so re-running cannot double-insert; dry-run prints the full row table with zero writes"
   }
  ],
  "values": [
   {
-   "value": "lga_name in the upzoning response",
-   "read_at": "page.tsx LepLandUsePanel render condition (zone AND lga_name required)",
-   "if_missing": "Panel absent \u2014 additive context degrades to today's page, no error surface"
+   "value": "needs_review=TRUE on the C3.9.2(c)(ii) side-setback row",
+   "read_at": "conveyancing_db.fetch_dcp_setbacks consumers (PDF + free endpoint)",
+   "if_missing": "The fetcher withholds flagged rows (#707) \u2014 verified live: 32 rows in DB, 31 served; the defective-source value can never render to a user until the user rules on it"
   },
   {
-   "value": "covered flag from /api/lep/permissibility",
-   "read_at": "LepLandUsePanel effect \u2014 data.covered gate before setting entries",
-   "if_missing": "covered false or fetch failure leaves entries null and the panel returns null; an uncovered council can never show a partial or wrong table"
+   "value": "wingecarribee in DCP_ONBOARDED_SLUGS",
+   "read_at": "generate_conveyancing_report.detect_former_council (the completeness gate)",
+   "if_missing": "Without the slug the gate returns None and every consumer skips DCP setbacks entirely for Wingecarribee addresses \u2014 the pre-change behaviour, fail-closed"
   },
   {
-   "value": "source_url + entries from lep_land_use_table",
-   "read_at": "LepLandUsePanel chips + source link",
-   "if_missing": "Entries render only when present; the source link renders only when the coverage row carries provenance"
+   "value": "dcp_version = 'Wingecarribee DCP 2010 town plans, as amended 2015'",
+   "read_at": "row provenance for the DCP-2026 supersession swap",
+   "if_missing": "Every row carries it; when the consolidated DCP 2026 commences, rows are identifiable and is_current versioning retires them cleanly"
   }
  ],
- "queries": "N/A in code \u2014 no new SQL was written; the panel consumes the existing coverage-gated endpoint. Data operation performed once: the existing scraper loaded Wingecarribee (DELETE scoped to lga='Wingecarribee' removed 0 rows, 843 inserts, 21 coverage rows with source_url provenance), dry-run first, R3 output spot-checked against the legislation text fetched the prior day.",
+ "queries": [
+  {
+   "purpose": "Idempotent production load of 32 numeric controls plus lga_registry registration, dry-run first; verified post-load 32 rows present, 31 served (one withheld by needs_review)",
+   "file_line": "scripts/insert_wingecarribee_setbacks.py:245",
+   "where_clause": "duplicate check WHERE lga AND dev_type AND control_type AND COALESCE(condition); lga_registry ON CONFLICT (slug) DO NOTHING; inserts only, no DELETE or UPDATE"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "The panel renders a wrong council's land-use table because the LGA string leaks from a non-LEP instrument title or a mismatched vocabulary",
-   "what_happens": "Verbatim-looking legal content attributed to the wrong plan \u2014 worse than no panel at all",
+   "scenario": "A value differs between the three town plans and the single-slug design serves Bowral's number to a Mittagong address",
+   "what_happens": "Wrong council control rendered with a confident source citation \u2014 worse than absence",
    "mitigated": true,
-   "how": "lga_name is match-based (regex requires the literal 'Local Environmental Plan <year>' shape; anything else yields None \u2014 test-pinned), and the server-side coverage gate means an unknown zone/LGA pair returns covered:false so the panel never renders on a miss",
-   "repro": "pytest tests/test_upzoning_check.py::test_lga_name_none_for_non_lep_instrument"
+   "how": "the Phase-0 probe compared the setback tables verbatim across all three town plans before the design was chosen (identical, including the same source typo); scope is limited to the shared Part C template and the dcp_version field names the town-plan basis",
+   "repro": "ce-wingecarribee-numeric-onboarding-2026-07.md records the three-way comparison output"
   },
   {
-   "scenario": "A partially-scraped council shows an incomplete permitted list, silently omitting uses",
-   "what_happens": "Reader concludes a use is not listed when our scrape simply missed it",
+   "scenario": "The defective source clause (missing height threshold) gets served with an interpreted value",
+   "what_happens": "A number the council never published, rendered as if quoted \u2014 fabricated regulatory data",
    "mitigated": true,
-   "how": "the existing lep_zone_coverage is_complete gate \u2014 the endpoint returns nothing unless the zone's scrape was marked complete; Wingecarribee's 21 zones were loaded in one atomic run and the R3 row set was verified against the legislation verbatim (14 with-consent entries incl. the catch-all)",
-   "repro": "SELECT is_complete FROM lep_zone_coverage WHERE lga='Wingecarribee' AND zone='R3' returns true; count of permitted rows = 14"
+   "how": "the row stores the verbatim defective text with [sic], needs_review=TRUE and a review_reason naming all three documents' page numbers; live verification shows the fetcher withholds it (31 of 32 served)",
+   "repro": "SELECT needs_review, review_reason FROM dcp_setback_controls WHERE lga='wingecarribee' AND needs_review"
   },
   {
-   "scenario": "The clarification line renders under the wrong cards (e.g. under lot-size failures), diluting a targeted legal clarification into boilerplate",
-   "what_happens": "The one sentence that matters gets banner-blindness treatment",
+   "scenario": "Re-running the insert script double-loads the rows",
+   "what_happens": "Duplicate controls inflate or contradict the rendered values",
    "mitigated": true,
-   "how": "the line is gated on requires_lmr_area AND not eligible AND not unconfirmed AND the reason string containing the engine's literal reform-area wording \u2014 only the exact failure mode the mislead came from",
-   "repro": "read the render condition in page.tsx; forms failing on lot size or TOD keep their existing rendering"
+   "how": "per-row duplicate check on lga+dev_type+control_type+condition skips existing rows; the registry upsert is ON CONFLICT DO NOTHING",
+   "repro": "run the script twice; second run prints 32 SKIP (dup) and inserts nothing"
   },
   {
-   "scenario": "The LEP panel invites a permissibility misreading \u2014 a listed use taken as an approval, or the catch-all line as carte blanche",
-   "what_happens": "Consumer-law exposure on verbatim-but-misframed legal content",
+   "scenario": "The DCP 2026 consolidation commences and these town-plan rows silently keep serving stale controls",
+   "what_happens": "Superseded numbers served with live-looking provenance",
    "mitigated": true,
-   "how": "panel copy states these are uses that can be APPLIED FOR through a standard development application, entries are reproduced from the plan's land-use table (incl. the catch-all rendered verbatim as the legislation words it), and the source link goes to the legislation itself; liability grep on all new strings is clean",
-   "repro": "banned-word grep over the two changed pages returns nothing"
+   "how": "every row carries dcp_version naming the 2015-amended town plans and pdf_page into the archived reference PDF; is_current versioning is the established supersession mechanism; the onboarding plan file records the watch on the consolidation's adoption",
+   "repro": "ce-wingecarribee-numeric-onboarding-2026-07.md remaining-unknowns section"
   },
   {
-   "scenario": "The zoning-check case fix suddenly un-hides chips that render raw slugs, trading a silent-empty bug for a visibly broken one",
-   "what_happens": "Previously-empty sections now show underscored slugs to users",
+   "scenario": "A Wingecarribee village or rural lot (outside the three towns) gets town-plan numbers",
+   "what_happens": "Controls from the wrong document family applied to Robertson/Berrima/rural addresses",
    "mitigated": true,
-   "how": "accepted with eyes open: the chips now render real data (correct content beats hidden content), slugs read as lowercase words with underscores replaced only in the new panel's deslug; zoning-check displays the raw dev_type strings which are readable slugified names \u2014 a cosmetic prettify is noted as follow-up rather than blocking a correctness fix",
-   "repro": "run zoning-check on a covered LGA address and observe the permitted/prohibited sections now populate"
+   "how": "accepted residual, conservative direction unavailable without per-document scoping: the three TOWN plans cover the population centres; village DCPs were not verified and their lots will currently receive the town-plan template values. Flagged for follow-up in the onboarding plan; the SEPP/LEP layers (which dominate eligibility) are per-lot regardless",
+   "repro": "onboarding plan remaining-unknowns; village-plan comparison is the named follow-up"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - after deploys: run 38 Park Rd Bowral on the live tool; expect the clarification line under the LMR-gated forms AND the new panel 'What Wingecarribee Local Environmental Plan 2010 lists for zone R3' with Multi dwelling housing in the permitted chips. Also spot-check a zoning-check run on a covered LGA (e.g. Randwick) to see the previously-empty permitted/prohibited chips now render."
+  "manual_verify": "Yes - two items: (1) after Railway deploy, run a Bowral conveyancing report and confirm the DCP setbacks section renders the town-plan values with clause refs; (2) USER RULING NEEDED on the flagged C3.9.2(c)(ii) row (height threshold omitted in the published documents \u2014 implied 3m as the complement of clause (i), or confirm with council) via the setback review tool."
  }
 }

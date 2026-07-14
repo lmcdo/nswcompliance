@@ -451,3 +451,21 @@ class TestHeritageMerge:
 
         assert result["heritage_hca"] == ["Heritage Conservation Area (PostGIS)"]
         assert len(result["heritage_items"]) == 2
+
+
+class TestWingecarribeeOnboarding:
+    """Wingecarribee numeric controls (Bowral/Mittagong/Moss Vale town plans) —
+    the slug must derive from the EPI name and be accepted by the onboarding gate,
+    so fetch_dcp_setbacks serves the loaded rows (insert_wingecarribee_setbacks.py)."""
+
+    def test_wingecarribee_slug_is_onboarded(self):
+        from generate_conveyancing_report import DCP_ONBOARDED_SLUGS
+        assert "wingecarribee" in DCP_ONBOARDED_SLUGS
+
+    def test_detect_former_council_resolves_wingecarribee_from_epi(self):
+        from generate_conveyancing_report import detect_former_council
+        result = detect_former_council(
+            "38 Park Road, Bowral NSW 2576",
+            zone_epi="Wingecarribee Local Environmental Plan 2010",
+        )
+        assert result == "wingecarribee"
