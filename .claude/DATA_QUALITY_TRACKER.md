@@ -84,9 +84,22 @@ Snapshot of all 854 IDs + snippets: `data/latent_scope/ocr_corruption_worklist.c
 extractor/font path, not a content problem. Needs confirming against the source
 extractor before re-running.
 
-**Impact / urgency:** City of Sydney live rule text is essentially unusable.
-FIRST ACTION: confirm whether City of Sydney is served in any live report/product;
-if yes, this is urgent (garbage text in a customer-facing surface).
+**Impact / urgency (traced 2026-07-15):**
+- **SERVED customer-facing: YES, but confined to the DCP provisions display panel.**
+  City of Sydney is configured and reachable (`frontend-nextjs/lib/council-config.ts:191`,
+  no disable gate). `app/api/provisions/for-property/route.ts` selects `provision_text`,
+  filters `is_current = TRUE` and `document_id ILIKE '%Sydney_DCP%'` (route.ts:548,846,873),
+  and `components/compliance/PageGroupedProvisions.tsx` renders it raw. So a CoS address
+  lookup shows the 644 live doubled-character rows in the provisions list.
+- **Existing sanitisation does NOT help:** `stripOcrHeaderPrefix` (route.ts:125) is a
+  Marrickville-only page-header regex — a no-op for CoS; it does not touch doubled chars.
+- **NOT affected:** capacity/constraint engine (reads `dcp_setback_controls`, where CoS is
+  clean — 0/27 corrupted source_text, 0 controls linked to a corrupted provision),
+  intelligence brief, and conveyancing (none read `regulatory_provisions`).
+- **Net severity:** a user-facing *display* defect in the provisions panel, NOT a
+  wrong-number / liability defect. Computed numbers and verdicts for CoS remain correct.
+  Business open question: actual CoS lookup traffic (config is live, but CoS is not a
+  beachhead council).
 
 **Fix (not yet done):**
 1. Identify the extractor/config that produced the doubled glyphs.
