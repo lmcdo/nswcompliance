@@ -1,91 +1,23 @@
 {
- "tier": "standard",
- "justification": "Onboards Wingecarribee to the numeric DCP-controls dataset (the 29th LGA) so the Bowral demo lot gets real setback/landscaping/parking/height numbers. 32 hand-curated rows extracted VERBATIM from the in-force town plans (Bowral/Mittagong/Moss Vale, amended 2015), each with source quote + section ref + PDF page, loaded via the established per-council insert-script pattern. Preceded by a full Phase-0 smoke test with live data (ce-wingecarribee-numeric-onboarding-2026-07.md): the three town plans were fetched from the Portal /dcp planURLs, proven 100% machine-readable, and their residential values proven IDENTICAL across the three towns (single-slug design validated). One genuine source defect found (C3.9.2(c)(ii) omits its height threshold in all three published documents) \u2014 loaded with needs_review=TRUE and verified WITHHELD by the fetcher (#707 fail-closed). End-to-end verified in production: address -> slug wingecarribee -> fetch_dcp_setbacks returns 31 controls (flagged row excluded).",
- "commit_hash": "c8dbeebd",
+ "tier": "minor",
+ "justification": "Data-registration script only (no product logic): wires Wingecarribee into the existing VerifyOpsBot monitoring. 3 dcp_chapter_registry rows (SHA-256 baselines computed from the verified cached PDFs, baseline copies uploaded to R2), the 32 numeric control rows linked via source_chapter_key (closes the dcp_watchdog blind-spot check; enables change-triggered needs_review), and the Wingecarribee LEP registered in instrument_registry for the legislation monitor. Dry-run first; all inserts idempotent (existence checks); one UPDATE scoped WHERE lga='wingecarribee' AND source_chapter_key IS NULL. Verified post-run: 3 confirmed registry rows with hash+R2 path, 0 unlinked controls, LEP watch active.",
+ "commit_hash": "e21c8d2d",
  "files": [
-  "scripts/insert_wingecarribee_setbacks.py",
-  "scripts/generate_conveyancing_report.py",
-  "tests/test_conveyancing_data_integrity.py"
- ],
- "pre_impl": {
-  "existing_data": "Everything reused: the dcp_setback_controls schema (constrained enums for applicability/extraction_method discovered live and complied with), the lga_registry FK pattern, the insert-script pattern (insert_ashfield_sd_setbacks.py), the DCP_ONBOARDED_SLUGS completeness gate at generate_conveyancing_report.py:270, and the needs_review fail-closed handling shipped in #707. The Phase-0 probe also reused the Portal /dcp endpoint discovered in May and the pypdf tooling already in the environment.",
-  "assumption_mismatch": "Three assumptions corrected by live data: (1) the Portal /dcp endpoint does NOT resolve which town plan governs a property \u2014 it returns the council's whole 18-document catalogue, so per-town scoping had to come from the documents themselves; (2) neutralized by the decisive finding that the three town plans share one Part C template with identical residential values (verified verbatim in all three), making a single wingecarribee slug safe; (3) applicability and extraction_method turned out to be constrained enums and lga has an FK to lga_registry \u2014 all discovered by the first insert attempts and complied with rather than worked around.",
-  "new_vs_existing": "New: one insert script (32 data rows, self-contained with an idempotent lga_registry registration) and one slug added to the existing DCP_ONBOARDED_SLUGS gate. Explicitly NOT built: any full-text DCP extraction (deferred until the consolidated Wingecarribee DCP 2026 is adopted \u2014 onboarding 17 soon-to-be-replaced documents is throwaway), any secondary-dwelling rows (the town plans' Part C sections extracted do not carry SD-specific numerics \u2014 absence fails closed), and any village/rural DCP rows (unverified against the template; town-plan scope only)."
- },
- "functions": [
-  {
-   "name": "main",
-   "file_line": "scripts/insert_wingecarribee_setbacks.py:232",
-   "input": "Optional --dry-run flag; DATABASE_URL or SUPABASE_DB_URL from the environment",
-   "output": "Idempotent load: lga_registry upsert plus 32 dcp_setback_controls rows with verbatim source_text, section_ref, pdf_page, dcp_version and needs_review flags; prints per-row outcome and totals",
-   "if_none": "Missing DB URL exits 1 before touching anything; the dup-check skips rows that already exist (keyed on lga+dev_type+control_type+condition) so re-running cannot double-insert; dry-run prints the full row table with zero writes"
-  }
- ],
- "values": [
-  {
-   "value": "needs_review=TRUE on the C3.9.2(c)(ii) side-setback row",
-   "read_at": "conveyancing_db.fetch_dcp_setbacks consumers (PDF + free endpoint)",
-   "if_missing": "The fetcher withholds flagged rows (#707) \u2014 verified live: 32 rows in DB, 31 served; the defective-source value can never render to a user until the user rules on it"
-  },
-  {
-   "value": "wingecarribee in DCP_ONBOARDED_SLUGS",
-   "read_at": "generate_conveyancing_report.detect_former_council (the completeness gate)",
-   "if_missing": "Without the slug the gate returns None and every consumer skips DCP setbacks entirely for Wingecarribee addresses \u2014 the pre-change behaviour, fail-closed"
-  },
-  {
-   "value": "dcp_version = 'Wingecarribee DCP 2010 town plans, as amended 2015'",
-   "read_at": "row provenance for the DCP-2026 supersession swap",
-   "if_missing": "Every row carries it; when the consolidated DCP 2026 commences, rows are identifiable and is_current versioning retires them cleanly"
-  }
- ],
- "queries": [
-  {
-   "purpose": "Idempotent production load of 32 numeric controls plus lga_registry registration, dry-run first; verified post-load 32 rows present, 31 served (one withheld by needs_review)",
-   "file_line": "scripts/insert_wingecarribee_setbacks.py:245",
-   "where_clause": "duplicate check WHERE lga AND dev_type AND control_type AND COALESCE(condition); lga_registry ON CONFLICT (slug) DO NOTHING; inserts only, no DELETE or UPDATE"
-  }
+  "scripts/register_wingecarribee_monitoring.py"
  ],
  "break_it": [
   {
-   "scenario": "A value differs between the three town plans and the single-slug design serves Bowral's number to a Mittagong address",
-   "what_happens": "Wrong council control rendered with a confident source citation \u2014 worse than absence",
+   "scenario": "The monitor watches the wrong URL (hand-built planURL with normalised spacing) and every weekly check 404s, incrementing check_failures forever",
+   "what_happens": "Silent monitoring failure \u2014 the one thing the registration exists to prevent",
    "mitigated": true,
-   "how": "the Phase-0 probe compared the setback tables verbatim across all three town plans before the design was chosen (identical, including the same source typo); scope is limited to the shared Part C template and the dcp_version field names the town-plan basis",
-   "repro": "ce-wingecarribee-numeric-onboarding-2026-07.md records the three-way comparison output"
-  },
-  {
-   "scenario": "The defective source clause (missing height threshold) gets served with an interpreted value",
-   "what_happens": "A number the council never published, rendered as if quoted \u2014 fabricated regulatory data",
-   "mitigated": true,
-   "how": "the row stores the verbatim defective text with [sic], needs_review=TRUE and a review_reason naming all three documents' page numbers; live verification shows the fetcher withholds it (31 of 32 served)",
-   "repro": "SELECT needs_review, review_reason FROM dcp_setback_controls WHERE lga='wingecarribee' AND needs_review"
-  },
-  {
-   "scenario": "Re-running the insert script double-loads the rows",
-   "what_happens": "Duplicate controls inflate or contradict the rendered values",
-   "mitigated": true,
-   "how": "per-row duplicate check on lga+dev_type+control_type+condition skips existing rows; the registry upsert is ON CONFLICT DO NOTHING",
-   "repro": "run the script twice; second run prints 32 SKIP (dup) and inserts nothing"
-  },
-  {
-   "scenario": "The DCP 2026 consolidation commences and these town-plan rows silently keep serving stale controls",
-   "what_happens": "Superseded numbers served with live-looking provenance",
-   "mitigated": true,
-   "how": "every row carries dcp_version naming the 2015-amended town plans and pdf_page into the archived reference PDF; is_current versioning is the established supersession mechanism; the onboarding plan file records the watch on the consolidation's adoption",
-   "repro": "ce-wingecarribee-numeric-onboarding-2026-07.md remaining-unknowns section"
-  },
-  {
-   "scenario": "A Wingecarribee village or rural lot (outside the three towns) gets town-plan numbers",
-   "what_happens": "Controls from the wrong document family applied to Robertson/Berrima/rural addresses",
-   "mitigated": true,
-   "how": "accepted residual, conservative direction unavailable without per-document scoping: the three TOWN plans cover the population centres; village DCPs were not verified and their lots will currently receive the town-plan template values. Flagged for follow-up in the onboarding plan; the SEPP/LEP layers (which dominate eligibility) are per-lot regardless",
-   "repro": "onboarding plan remaining-unknowns; village-plan comparison is the named follow-up"
+   "how": "council_url values are the EXACT planURLs returned by the Portal /dcp endpoint (the irregular double-spaces are real and were proven load-bearing when a hand-built URL 404ed during Phase-0); baseline hashes were computed from PDFs fetched via those exact URLs",
+   "repro": "curl each council_url in the script returns %PDF; ce-wingecarribee-numeric-onboarding-2026-07.md records the 404 lesson"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - two items: (1) after Railway deploy, run a Bowral conveyancing report and confirm the DCP setbacks section renders the town-plan values with clause refs; (2) USER RULING NEEDED on the flagged C3.9.2(c)(ii) row (height threshold omitted in the published documents \u2014 implied 3m as the complement of clause (i), or confirm with council) via the setback review tool."
+  "manual_verify": "No \u2014 registration verified post-run in this session (3 registry rows confirmed+hashed+R2, 0 unlinked controls, LEP watch active); the next weekly r2_monitor run exercises it end-to-end."
  }
 }
