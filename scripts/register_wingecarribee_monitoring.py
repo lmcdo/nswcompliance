@@ -100,8 +100,10 @@ def upload_to_r2(local_path: str, key: str) -> str:
 def main():
     pdf_dir = None
     for a in sys.argv[1:]:
-        if a.startswith("--pdf-dir="):
-            pdf_dir = a.split("=", 1)[1]
+        if a.startswith("--pdf-dir=") and "=" in a:
+            parts = a.split("=", 1)
+            if len(parts) == 2 and parts[1].strip():
+                pdf_dir = parts[1].strip()
     if not pdf_dir:
         print("Pass --pdf-dir=<dir containing the three town plan PDFs>")
         sys.exit(1)
