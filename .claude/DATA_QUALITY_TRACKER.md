@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2026-01-24
-**Session:** DCP Extraction QA Test Framework
+**Last Updated:** 2026-07-15
+**Session:** latent-scope analysis lane — corpus QA
 
 ---
 
@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-29: Doubled-character OCR corruption in provision_text (City of Sydney 684/644 live; ku-ring-gai, campbelltown, ashfield) | 🔴 Open — needs re-extraction | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
@@ -38,6 +39,60 @@
 | DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
 | DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
 | DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-29: Doubled-character OCR corruption in provision_text
+
+**Status:** 🔴 Open — needs re-extraction
+**Found:** 2026-07-15 (surfaced by the latent-scope duplicate-audit lane)
+**Priority:** P1 (>2% threshold breached for affected councils; City of Sydney ~97% of live actionable rules)
+
+**Problem:** In affected provisions every character of the extracted text is
+doubled, e.g. `SSPPEECCIIFFIICC SSIITTEESS`, `KKuu--rriinngg--ggaaii`,
+`DDeevveellooppmmeenntt`. The `provision_text` is effectively unreadable — the
+field customer-facing reports and the capacity/compliance engines read from.
+
+**How it was found:** The cross-council duplicate audit
+(`scripts/latent_scope_dup_audit.py`) returned false "contradiction" pairs
+because TF-IDF was matching this garbled boilerplate rather than rule meaning.
+Investigating the noise revealed the systematic corruption.
+
+**Scope (live DB, full `regulatory_provisions`, 53,716 rows, 2026-07-15):**
+854 corrupted rows total (1.6% overall), concentrated by council:
+
+| Council | Corrupted | Live (`is_current`) |
+|---|---|---|
+| city_of_sydney | 684 | 644 |
+| ku_ring_gai | 98 | 14 |
+| campbelltown | 37 | 37 |
+| ashfield | 27 | 0 (not served) |
+| northern_beaches | 3 | 3 |
+| (NULL council) | 5 | 5 |
+
+**Detection query (read-only; regenerates the full ID list any time):**
+```sql
+SELECT id, source_council, is_current, v2_is_actionable
+FROM regulatory_provisions
+WHERE provision_text ~ '([A-Za-z])\1([A-Za-z])\2([A-Za-z])\3'
+ORDER BY source_council NULLS LAST, id;
+```
+Snapshot of all 854 IDs + snippets: `data/latent_scope/ocr_corruption_worklist.csv` (git-ignored, local).
+
+**Root cause (suspected):** the PDF→text extraction step for these documents
+(City of Sydney DCP 2012 in particular) doubled every glyph — likely a specific
+extractor/font path, not a content problem. Needs confirming against the source
+extractor before re-running.
+
+**Impact / urgency:** City of Sydney live rule text is essentially unusable.
+FIRST ACTION: confirm whether City of Sydney is served in any live report/product;
+if yes, this is urgent (garbage text in a customer-facing surface).
+
+**Fix (not yet done):**
+1. Identify the extractor/config that produced the doubled glyphs.
+2. Re-extract the affected documents; verify `provision_text` is clean.
+3. Re-run downstream tagging (`v2_*`) for re-extracted rows.
+4. Re-check with the detection query — target 0 corrupted rows for live councils.
 
 ---
 

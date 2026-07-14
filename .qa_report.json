@@ -1,14 +1,15 @@
 {
  "tier": "standard",
  "justification": "New offline analysis lane (not a production/serving path): a read-only exporter of regulatory_provisions and an offline near-duplicate/contradiction audit over the exported corpus, wrapping enjalot/latent-scope for classifier-QA and canonicalisation. Standard tier because it opens a new DB read path and handles the full provisions corpus, but it writes nothing back to the database, serves no user-facing output, and its artifacts are git-ignored. The whole lane can run egress-free via the TF-IDF embedder.",
- "commit_hash": "56d8b420",
+ "commit_hash": "0daff13e",
  "files": [
   "scripts/latent_scope_export.py",
   "scripts/latent_scope_dup_audit.py",
   "requirements-latentscope.txt",
   "docs/latent_scope_runbook.md",
   ".gitignore",
-  ".qa_report.json"
+  ".qa_report.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
  ],
  "pre_impl": {
   "existing_data": "No prior semantic/corpus-level QA tool exists. The prior-art guard flagged frontend provisions APIs (app/api/provisions/*), NumericChecker/numericCompliance (per-property value-vs-control), and the extraction-time markdown parser — all per-record serving/extraction, none a corpus-wide export or dedup audit. Reuse not viable; documented in each script's prior-art-checked line. DB connection reuses services/db_config.get_connection (the established read path); is_current usage mirrors services/shadow_detector.py.",
