@@ -1,61 +1,110 @@
 {
  "tier": "standard",
- "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses. ADDED: the How It Works page documented 9 tools but omitted the Intelligence Brief entirely (the brief's own footer links to this page) - an Intelligence Brief section added with sources/cadence/limitations matching the product's actual data sources and liability posture (computed ceiling not approval, absence-is-not-clearance).",
- "commit_hash": "262c91a8",
+ "justification": "New offline analysis lane (not a production/serving path): a read-only exporter of regulatory_provisions and an offline near-duplicate/contradiction audit over the exported corpus, wrapping enjalot/latent-scope for classifier-QA and canonicalisation. Standard tier because it opens a new DB read path and handles the full provisions corpus, but it writes nothing back to the database, serves no user-facing output, and its artifacts are git-ignored. The whole lane can run egress-free via the TF-IDF embedder.",
+ "commit_hash": "19ba90d6",
  "files": [
-  "frontend-nextjs/app/reports/layout.tsx",
-  "frontend-nextjs/components/marketing/SiteNav.tsx",
-  "frontend-nextjs/app/sitemap.ts",
-  "frontend-nextjs/app/layout.tsx",
-  "frontend-nextjs/app/tools/zoning-check/page.tsx",
-  "frontend-nextjs/app/how-it-works/page.tsx"
+  "scripts/latent_scope_export.py",
+  "scripts/latent_scope_dup_audit.py",
+  "requirements-latentscope.txt",
+  "docs/latent_scope_runbook.md",
+  ".gitignore",
+  ".qa_report.json"
  ],
  "pre_impl": {
-  "existing_data": "The Option B domain architecture memory (project-domain-architecture-2026-06, confirmed live 2026-07-04) defines the split this PR aligns to: plotdetect.com.au = info-site project, canibuildit = this app's consumer domain, pro subdomains = this app's pro doors. The deslug formatter already existed on the upzoning page and is duplicated as a two-line local helper per the established page-local pattern.",
-  "assumption_mismatch": "The sitemap/metadataBase misdirection was discovered while investigating the user's domain complaint: both predate the Option B split and were never repointed - verified live that plotdetect.com.au/tools/upzoning-check 404s while canibuildit serves it, so the sitemap was actively advertising dead URLs to search engines.",
-  "new_vs_existing": "No new capability: two href changes, two base-URL constants, one two-line formatter reuse. Deliberately NOT changed: the middleware host-routing (correct per Option B), the footer platform links, and any per-host canonical scheme (single consumer canonical is the simplest correct step; per-host canonicals for the pro subdomains can follow if pro-page SEO ever matters)."
+  "existing_data": "No prior semantic/corpus-level QA tool exists. The prior-art guard flagged frontend provisions APIs (app/api/provisions/*), NumericChecker/numericCompliance (per-property value-vs-control), and the extraction-time markdown parser — all per-record serving/extraction, none a corpus-wide export or dedup audit. Reuse not viable; documented in each script's prior-art-checked line. DB connection reuses services/db_config.get_connection (the established read path); is_current usage mirrors services/shadow_detector.py.",
+  "assumption_mismatch": "Seeded by a POC that ran the real latent-scope pipeline on 452 Marrickville DCP chunks with a local TF-IDF embedder (Hugging Face egress was policy-blocked). This PR is the committed tooling so it can run against the real 46,585-row table where DB env is set; DATABASE_URL/DB_* are not reachable from the authoring environment.",
+  "new_vs_existing": "New analysis-lane capability, deliberately isolated: heavy deps (torch/umap/hdbscan) pinned to a separate venv via requirements-latentscope.txt, never venv_linux. No production code imports these scripts."
  },
- "functions": "N/A - presentational and configuration changes only; the only added code is a two-line label formatter copied from the upzoning page.",
- "values": [
+ "functions": [
   {
-   "value": "sitemap base URL",
-   "read_at": "app/sitemap.ts emitted URLs (Google Search Console ingestion)",
-   "if_missing": "Constant, cannot be missing; the defect was it being the WRONG constant - now the domain that actually serves the routes"
+   "name": "_build_query",
+   "file_line": "scripts/latent_scope_export.py:64",
+   "input": "council filter list, actionable_only flag, current_only flag, min_chars int, optional row limit",
+   "output": "a parameterised read-only SELECT string plus its bound params list, ready for cursor.execute",
+   "if_none": "no councils means all councils; current_only False exports stale rows too (is_current still selected as a column)"
   },
   {
-   "value": "metadataBase",
-   "read_at": "Next.js canonical/OG URL resolution in app/layout.tsx",
-   "if_missing": "Next falls back to the deploy URL; explicitly set to the consumer domain so all four serving domains canonicalise to one home"
+   "name": "fetch_provisions",
+   "file_line": "scripts/latent_scope_export.py:117",
+   "input": "the same filter arguments, used to build and run the query",
+   "output": "a tuple of column names and fetched provision rows read from regulatory_provisions",
+   "if_none": "connection is pinned READ ONLY before any statement so a stray write raises instead of mutating the database"
+  },
+  {
+   "name": "write_output",
+   "file_line": "scripts/latent_scope_export.py:150",
+   "input": "column names, fetched rows, target output path, and the desired format string",
+   "output": "the path actually written, as parquet or CSV, with the parent directory created",
+   "if_none": "if parquet is requested but pyarrow is unavailable it falls back to CSV rather than hard-failing the export"
+  },
+  {
+   "name": "numeric_tokens",
+   "file_line": "scripts/latent_scope_dup_audit.py:66",
+   "input": "a single provision text string to scan for planning numbers",
+   "output": "a frozenset of normalised value-plus-unit tokens such as 4.5m or 20percent",
+   "if_none": "text with no recognised number+unit yields an empty set, which suppresses the numeric_mismatch contradiction flag"
+  },
+  {
+   "name": "find_pairs",
+   "file_line": "scripts/latent_scope_dup_audit.py:125",
+   "input": "a matrix of L2-normalised embedding vectors, a minimum cosine threshold, and a neighbour count",
+   "output": "deduplicated (i, j, cosine) pairs at or above the threshold, sorted by descending similarity",
+   "if_none": "uses a cosine k-nearest-neighbour search rather than a full N-by-N matrix so it scales to the whole 46k-row table"
+  },
+  {
+   "name": "build_worklist",
+   "file_line": "scripts/latent_scope_dup_audit.py:170",
+   "input": "the exported dataframe, the candidate pairs, and a cross-scope-only toggle",
+   "output": "a ranked dataframe of pairs with contradiction rows (differing numeric standards) sorted to the top",
+   "if_none": "same-council same-precinct pairs are dropped unless --include-same-scope is passed; empty input yields an empty worklist"
   }
  ],
- "queries": "N/A - no database access in this change.",
+ "values": [
+  {
+   "value": "provision_text",
+   "read_at": "regulatory_provisions SELECT in _build_query",
+   "if_missing": "Filtered out at query time (provision_text IS NOT NULL AND length(btrim()) >= min_chars); audit also drops NaN text before embedding"
+  },
+  {
+   "value": "is_current",
+   "read_at": "exported column; optional WHERE is_current = TRUE via --current-only",
+   "if_missing": "Column is exported, not force-filtered, so stale rows are visible to the QA pass rather than silently dropped; --current-only restricts to live rows when wanted"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Read-only bulk export of provisions for offline latent-scope analysis; no writeback path exists in the lane",
+   "file_line": "scripts/latent_scope_export.py:106",
+   "where_clause": "provision_text IS NOT NULL AND length(btrim(provision_text)) >= %s, plus optional is_current = TRUE, v2_is_actionable = TRUE, and former_council = ANY(%s); executed under conn.set_session(readonly=True) so no INSERT/UPDATE/DELETE can run"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "The logo link change strands pro users (brief/verify) on the consumer-agnostic info site with no way back to their product",
-   "what_happens": "A pro user clicking the logo mid-workflow loses their place in the product",
+   "scenario": "Export silently drops superseded provisions, so a QA pass never sees stale data",
+   "what_happens": "Mislabelled/stale rows would be invisible — the opposite of the tool's purpose",
    "mitigated": true,
-   "how": "the info site is the brand home with navigation to every product door (its whole purpose under Option B); in-app navigation tabs remain unchanged next to the logo, so the logo is the only element that exits - standard brand-home convention",
-   "repro": "load brief.plotdetect.com.au - the report tabs still navigate in-app; only the wordmark exits"
+   "how": "is_current is exported as a column (not force-filtered); colour-by is_current on the map surfaces stale rows. --current-only is opt-in, off by default",
+   "repro": "python scripts/latent_scope_export.py --limit 100 then inspect the is_current column in the parquet"
   },
   {
-   "scenario": "Repointing the sitemap de-indexes pages Google already indexed under plotdetect.com.au",
-   "what_happens": "Temporary ranking churn on any accidentally-indexed app URLs",
+   "scenario": "numeric_mismatch flag fires on incidental number differences and floods the worklist with false contradictions",
+   "what_happens": "Analyst wastes time on non-contradictions",
    "mitigated": true,
-   "how": "those URLs 404 today (verified live), so nothing real is lost - Google currently holds dead entries; the new sitemap points at URLs that return 200 on the domain that serves them, strictly better than advertising 404s",
-   "repro": "curl plotdetect.com.au/tools/upzoning-check returns 404; same path on www.canibuildit.com.au returns 200"
+   "how": "mismatch only fires when both provisions carry numeric tokens AND their token sets differ, AND the pair is already above the cosine threshold (near-identical wording); value+unit tokens are normalised (4.50 -> 4.5, metres/m -> m). It is explicitly a review candidate, never an assertion",
+   "repro": "synthetic test: '4.5 metres' vs '3 metres' setback pair flags True; identical biodiversity boilerplate flags False"
   },
   {
-   "scenario": "deslug mangles a slug that encodes meaningful punctuation (e.g. the catch-all land-use entry)",
-   "what_happens": "A legal-table entry renders with altered meaning",
+   "scenario": "sentence-transformers unavailable (HF egress blocked or dep missing) hard-fails the audit",
+   "what_happens": "Audit crashes with an import error",
    "mitigated": true,
-   "how": "deslug only replaces underscores with spaces and capitalises the first letter - no word changes; the catch-all renders as the legislation's own wording",
-   "repro": "deslug('any_other_development_not_specified_in_item_2_or_4') in the page code"
+   "how": "--embedder tfidf is fully offline (sklearn only); the sentence-transformers path raises a clear SystemExit pointing at the tfidf fallback and requirements file",
+   "repro": "run with --embedder tfidf on a machine with no network"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - after Vercel deploy: (1) logo on brief.plotdetect.com.au and canibuildit tools pages lands on plotdetect.com.au; (2) view-source canonical on /tools/upzoning-check shows www.canibuildit.com.au; (3) zoning-check chips read 'Multi dwelling housing' not slugs. Then resubmit the sitemap in Search Console."
+  "manual_verify": "Yes - where DB_* env is set: run scripts/latent_scope_export.py --council Marrickville --actionable-only, confirm data/latent_scope/provisions.parquet has the is_current column and expected row count, then scripts/latent_scope_dup_audit.py --embedder tfidf and eyeball dup_worklist.csv (numeric_mismatch rows first). Functional test on synthetic data already passed via venv_linux."
  }
 }
