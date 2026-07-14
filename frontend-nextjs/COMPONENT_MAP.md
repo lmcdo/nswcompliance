@@ -15,6 +15,11 @@
 
 **Page Component:** `app/assessment/page.tsx`
 
+**Left Panel (property context):**
+- Aerial tile with lot boundary: shared `components/reports/AerialTile.tsx` (SIX Maps imagery);
+  polygon fetched from `/api/property/profile` (same source as brief + /property pages);
+  `maplibre-gl.css` imported in `app/assessment/layout.tsx`
+
 **Provisions Display:**
 - **DCP Tab (Table of Contents view):**
   - `ProvisionsByTocStructure.tsx` (lines 1-100)

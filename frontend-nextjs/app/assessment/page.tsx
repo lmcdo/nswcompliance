@@ -30,6 +30,7 @@ import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI, useSpatialContext } from '@/hooks';
 import { SpatialContextCard } from '@/components/property/SpatialContextCard';
+import AerialTile from '@/components/reports/AerialTile';
 import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
@@ -122,6 +123,21 @@ export default function AssessmentPage() {
     if (viewModeRef.current !== 'dcp') setDcpEverActivated(false);
     spatialContext.reset();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddress]);
+
+  // Lot boundary (WGS84 GeoJSON) for the aerial tile — same source the brief and
+  // /property pages use. The /api/property payload only carries the centroid, so
+  // the polygon needs its own fetch.
+  const [lotPolygon, setLotPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
+  useEffect(() => {
+    setLotPolygon(null);
+    if (!selectedAddress) return;
+    let cancelled = false;
+    fetch(`/api/property/profile?address=${encodeURIComponent(selectedAddress)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d?.lotPolygon) setLotPolygon(d.lotPolygon); })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, [selectedAddress]);
 
   // Navigation handler for Pattern Book -> DCP cross-references
@@ -364,6 +380,20 @@ export default function AssessmentPage() {
                 </div>
               )}
             </div>
+
+            {/* Aerial — NSW SIX Maps imagery with the lot boundary (shared AerialTile) */}
+            {selectedProperty && selectedCoordinates && (
+              <div className="bg-white rounded-lg border overflow-hidden">
+                <AerialTile
+                  lat={selectedCoordinates.lat}
+                  lng={selectedCoordinates.lng}
+                  lotPolygon={lotPolygon}
+                />
+                <p className="px-3 py-1.5 text-xs text-slate-400">
+                  NSW SIX Maps aerial imagery &middot; &copy; NSW Government CC BY 4.0
+                </p>
+              </div>
+            )}
 
             {/* Planning API Data - All Layers */}
             {selectedProperty && (
