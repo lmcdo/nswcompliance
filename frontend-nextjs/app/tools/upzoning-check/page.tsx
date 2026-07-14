@@ -45,6 +45,7 @@ interface UpzoningResult {
   legislation_url: string | null;
   lot_area_m2: number | null;
   lot_width_m: number | null;
+  lot_type: 'rectangular' | 'battleaxe' | 'irregular' | null;
   heritage: { flag: boolean; items: string[]; hca: string[] };
   gates: { in_lmr_area: boolean; in_tod: boolean; dual_occ_prohibited: boolean };
   status: 'ok' | 'not_residential' | 'unavailable';
@@ -176,7 +177,11 @@ export default function UpzoningCheckPage() {
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
               <span>Lot area: {result.lot_area_m2 != null ? `${Math.round(result.lot_area_m2)} m²` : 'not mapped'}</span>
-              <span>Frontage: {result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}</span>
+              <span>
+                {result.lot_type === 'battleaxe'
+                  ? `Width (main lot, battleaxe): ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`
+                  : `Frontage: ${result.lot_width_m != null ? `${Math.round(result.lot_width_m)} m` : 'not mapped'}`}
+              </span>
             </div>
           </div>
 

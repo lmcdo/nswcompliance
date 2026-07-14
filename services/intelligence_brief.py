@@ -2012,6 +2012,7 @@ from services.portal_constraints import (
 from services.lot_dimensions import (
     fetch_lot_geometry,
     calculate_lot_dimensions,
+    eligibility_lot_width,
 )
 
 
@@ -3748,8 +3749,10 @@ def _generate_brief_sse(
 
             # Per-form eligibility with citations — the ONE engine run this
             # brief makes; the capacity ceiling below reuses the same results.
+            # Width is battleaxe-aware: on a flag lot the SEPP width tests need
+            # the developable HEAD width, not the access-handle frontage.
             lot_dims_for_ca = planning_controls.lot_dimensions.value if planning_controls.lot_dimensions else None
-            _lot_width = lot_dims_for_ca.frontage_m if lot_dims_for_ca else None
+            _lot_width = eligibility_lot_width(lot_dims_for_ca)
             eligibility_results = _sepp_eligibility_results(
                 zone_code, lat, lng, lot_area_m2, _lot_width, _heritage_lmr,
             )

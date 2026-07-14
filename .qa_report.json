@@ -1,102 +1,104 @@
 {
- "tier": "critical",
- "justification": "Fixes a silent wrong-eligibility bug in the shared Housing-SEPP engine: in_lmr_area was derived as 'not on the 776 exclusion map', which over-includes all of regional NSW because 776 only carves out spots INSIDE covered areas \u2014 absence from the exclusion map is not inclusion. Proven live 2026-07-13/14: 38 Park Rd Bowral (no town centre, TOD or exclusion feature within 1 km) was reported in the reform area by the engine while Verify's LGA check and the SEPP's s22 definition say it is not. The engine feeds BOTH the live public upzoning tool and the intelligence brief, so the false in-area answer could surface eligible LMR forms (terraces green) in towns the reform does not cover. New derivation: anchored (within 800 m of a Town Centres Map (766) polygon OR inside a TOD catchment 752/759) AND NOT excluded (776), fail-closed on every query.",
- "commit_hash": "3c7af199",
+ "tier": "standard",
+ "justification": "Ports the frontend's proven battleaxe (flag-lot) detection to the Python lot-dimensions helper and feeds a battleaxe-aware width into the Housing-SEPP eligibility engine (upzoning tool + intelligence brief). Before: the Python helper returned no width for flag lots (the OBB model rejects shapes filling <60% of their box), so every width-gated form rendered 'unconfirmed' \u2014 a 4,189 m2 R3 lot (38 Park Rd Bowral) showed seven non-answers while Verify's frontend correctly measured a 16.31 m handle and 70.09 m developable head. The port keeps the TS thresholds verbatim and reproduces the frontend's verified output exactly on the real Bowral cadastre fixture (16.31/43.1/70.09/3710). Live end-to-end now shows Bowral: granny flat ELIGIBLE, dual occupancy ELIGIBLE, LMR forms correctly not-in-area.",
+ "commit_hash": "6e4aac0e",
  "files": [
-  "services/portal_constraints.py",
-  "services/housing_sepp_eligibility.py",
-  "tests/test_housing_sepp_eligibility.py"
+  "services/lot_dimensions.py",
+  "services/constraint_models.py",
+  "services/upzoning_check.py",
+  "services/intelligence_brief.py",
+  "tests/test_lot_dimensions.py",
+  "tests/test_upzoning_check.py",
+  "tests/fixtures/lot_geometry_38_park_rd_bowral.json",
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "Everything reused, nothing re-implemented: query_arcgis_point_buffered already existed in portal_constraints with a distance_m parameter (built for buffered layer queries); fetch_tod_catchment and fetch_sepp_exclusions already produce the other two terms of the new derivation; the EPLANNING_LAYERS registry pattern was extended with one entry (766). The LMR prescope plan (ce-lmr-pipeline-prescope-2026-06) had already mapped the derivation approach and flagged the 776-semantics risk that this fix resolves.",
-  "assumption_mismatch": "The shipped engine assumed absence from the 776 exclusion map means the reform applies \u2014 the optimistic reading of an ambiguity the prescope plan explicitly flagged as unresolved risk two. Live enumeration re-confirmed 2026-07-14 that no inclusion layer exists (only 752/759/766/776), and the live Bowral probe showed zero anchor features within a kilometre of a lot the old gate reported as in-area, falsifying the assumption.",
-  "new_vs_existing": "New: one fetcher (fetch_town_centre_catchment, a thin buffered query over layer 766) and the boolean composition inside _gate_inputs. Explicitly NOT built: no new PostGIS ingestion (live ArcGIS query per the prescope architecture decision), no walking-network computation (radial 800 m proxy, documented as slightly generous at the margin), and no change to Verify's separate frontend isLMRApplicable check (consolidation to this gate is the eligibility-consolidation plan's scope, not this PR).",
-  "external_source_error": "Every external call is fail-closed: a 766 query failure leaves near_town_centre False (test-pinned), a 776 failure leaves not_excluded False, a TOD failure leaves in_tod False \u2014 any failure path yields in_lmr_area False, so an outage can only under-report eligibility, never grant it. The buffered query uses the shared 8-second ArcGIS timeout and the public no-key endpoint that the existing gates already depend on.",
-  "frontend_type": "No frontend type changes: the gates dict keeps the identical shape ({in_lmr_area, in_tod, dual_occ_prohibited}, all booleans), so the upzoning page chips and the brief's eligibility card consume it unchanged; only the truth value for unanchored regional lots flips from True to False, which the existing 'Not in a Low and Mid-Rise reform area (or area unconfirmed)' engine wording already covers.",
-  "user_failure_mode": "Before: a regional homeowner could see terraces or apartments rendered as meeting reform standards in a town the reform does not cover \u2014 a silent false positive on a public page and in the brief. After: unanchored lots read 'Not in a Low and Mid-Rise reform area'; the residual failure mode is the conservative direction (a lot between the 766 radial buffer and true walking distance may read out-of-area, and station-precinct anchors outside published TOD polygons are not yet derived), which under-reports and is documented in the code comment."
+  "existing_data": "The proven algorithm already existed in the frontend (lib/geometry/lot-shape-analysis.ts detectBattleaxeLot + effective-lot-width.ts battleaxeAwareLotWidth, both test-backed) and produced the verified 16.31 m / 70.09 m Bowral result in Verify; the Python side already had the OBB frontage model whose <60%-fill rejection is exactly the flag-lot class. This PR ports rather than invents: thresholds, slice count and confidence scoring are kept verbatim from the TS source.",
+  "assumption_mismatch": "The prior assumption was that a null frontage on irregular lots was an acceptable conservative gap; the Verify screenshot comparison showed the same company already measures these lots correctly on another surface, so the gap was a siloed-capability defect, not a data limitation. Also corrected in passing: lot_dimensions imported LotDimensions via intelligence_brief although its true home is constraint_models (indirection removed, no cycle).",
+  "new_vs_existing": "New: the ported detector functions and the eligibility_lot_width helper in services/lot_dimensions.py, plus five optional backward-compatible fields on the LotDimensions pydantic model. Changed consumers: upzoning _lot_dims and the brief's eligibility width now use the battleaxe-aware helper. Deliberately NOT changed: constraint_arithmetic's frontage/depth estimation (setback geometry semantics differ from width-eligibility semantics \u2014 noted for follow-up), and the frontend TS implementation stays untouched as the reference."
  },
  "functions": [
   {
-   "name": "fetch_town_centre_catchment",
-   "file_line": "services/portal_constraints.py:481",
-   "input": "Latitude and longitude in GDA94 plus an optional buffer distance in metres defaulting to 800",
-   "output": "Dict with within_catchment boolean and the matched town centre LABEL string, or None when the ArcGIS query fails entirely",
-   "if_none": "Callers must treat None as not anchored \u2014 _gate_inputs wraps the call in try/except and leaves near_town_centre False on None or exception, so a layer outage can never place a lot inside the reform area"
+   "name": "_detect_battleaxe",
+   "file_line": "services/lot_dimensions.py:220",
+   "input": "Polygon points in real metres (closing point removed), from the Portal cadastre ring",
+   "output": "Dict with access-way width/length, main-lot width/area and confidence, or None when the lot is not a battleaxe",
+   "if_none": "None simply means not-a-battleaxe \u2014 calculate_lot_dimensions then classifies rectangular or irregular and the width falls back to the OBB frontage or stays None (engine unconfirmed path unchanged)"
   },
   {
-   "name": "_gate_inputs",
-   "file_line": "services/housing_sepp_eligibility.py:132",
-   "input": "Optional latitude and longitude of the resolved lot centroid",
-   "output": "Dict of the three gate booleans: in_lmr_area (now anchored AND not excluded), in_tod, dual_occ_prohibited",
-   "if_none": "Missing coordinates return all-False immediately; each gate query failure logs a warning and leaves its term at the conservative False, so partial outages degrade to fewer eligible forms rather than wrong eligible forms"
+   "name": "eligibility_lot_width",
+   "file_line": "services/lot_dimensions.py:117",
+   "input": "A LotDimensions instance or None",
+   "output": "The developable head width for a battleaxe lot, otherwise the cadastral frontage; None when nothing usable exists",
+   "if_none": "Callers pass None straight into evaluate_eligibility, which marks width-gated forms unconfirmed and conservatively ineligible \u2014 identical to today's behaviour, so the change can only ADD resolved answers, never remove the conservative path"
+  },
+  {
+   "name": "_lot_dims",
+   "file_line": "services/upzoning_check.py:98",
+   "input": "Planning Portal property id integer, or None",
+   "output": "Tuple of lot area, battleaxe-aware eligibility width, and lot_type string for UI labelling",
+   "if_none": "Any gap returns (None, None, None); the page renders width as not-mapped and the engine keeps its unconfirmed handling"
   }
  ],
  "values": [
   {
-   "value": "near_town_centre from fetch_town_centre_catchment within_catchment",
-   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, third gate block",
-   "if_missing": "Stays False on None or exception \u2014 the anchor term simply does not fire and in_lmr_area falls back to the TOD anchor or False"
+   "value": "battleaxe_main_lot_width_m on LotDimensions",
+   "read_at": "services/lot_dimensions.py eligibility_lot_width",
+   "if_missing": "Falsy or absent means fallback to frontage_m \u2014 a detector miss degrades to the previous behaviour, never to a fabricated width"
   },
   {
-   "value": "not_excluded from fetch_sepp_exclusions low_mid_rise",
-   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, first gate block",
-   "if_missing": "Stays False on None or exception, which zeroes in_lmr_area regardless of anchors \u2014 an exclusion-map outage can never un-exclude a lot"
+   "value": "lot_type in the upzoning response",
+   "read_at": "frontend page header chip (Width (main lot, battleaxe) vs Frontage label)",
+   "if_missing": "Null renders the plain Frontage label \u2014 labelling degrades, values do not"
   },
   {
-   "value": "in_tod from fetch_tod_catchment",
-   "read_at": "services/housing_sepp_eligibility.py _gate_inputs, second gate block",
-   "if_missing": "Stays False; the lot loses the TOD anchor and mid-rise forms show the engine's not-in-catchment wording"
+   "value": "lot_dims_for_ca in the brief eligibility block",
+   "read_at": "services/intelligence_brief.py sepp_housing section",
+   "if_missing": "eligibility_lot_width(None) returns None and the brief's eligibility falls back to the unconfirmed path exactly as before"
   }
  ],
- "queries": "N/A - no SQL changes. All three touched paths are live ArcGIS point/buffer queries against public NSW ePlanning layers; the only DB read in the engine (housing_sepp_standards) is untouched.",
+ "queries": "N/A - no SQL. Pure geometry on the already-fetched Portal cadastre ring; one real fixture file recorded from the live Portal for tests.",
  "break_it": [
   {
-   "scenario": "Regional lot far from any nominated centre reported inside the reform area because it is absent from the sparse 776 exclusion map (the exact Bowral production bug this PR fixes)",
-   "what_happens": "Terraces and apartment forms render as meeting reform standards on the public tool and in the brief for towns the reform does not cover \u2014 a silent false positive in eligibility",
+   "scenario": "The port drifts from the TS reference (different slice count, thresholds or handle/head attribution) and silently reports a different width than Verify shows for the same lot",
+   "what_happens": "Two surfaces of the same product disagree on a measurable number \u2014 the credibility failure this PR exists to close",
    "mitigated": true,
-   "how": "in_lmr_area now requires a positive anchor (766 within 800 m or inside TOD) AND not-excluded; test_gate_inputs_not_excluded_alone_is_NOT_in_lmr_area pins it and the live Bowral re-run shows all LMR forms reading not-in-area",
-   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_not_excluded_alone_is_NOT_in_lmr_area; live run of 38 Park Rd Bowral recorded in the PR"
+   "how": "thresholds kept verbatim and the golden test pins the Python output to the frontend's verified Bowral values to two decimals (16.31 handle, 70.09 head, 43.1 length, 3710 head area)",
+   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_bowral_golden_matches_frontend_reference_values"
   },
   {
-   "scenario": "Town Centres layer query dies mid-request and the lot silently gains the anchor anyway",
-   "what_happens": "A network flake would convert into reform-area membership and potentially green LMR forms",
+   "scenario": "A rectangular or mildly irregular lot is misclassified as battleaxe and its width silently inflated to the max cross-section",
+   "what_happens": "Width-gated forms could pass on a lot narrower than the minimum \u2014 a false eligible",
    "mitigated": true,
-   "how": "the fetcher returns None on failure and _gate_inputs leaves near_town_centre False on None or exception; test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored pins the fail-closed direction",
-   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored"
+   "how": "detection requires ALL of: 6+ vertices, a sustained (3+ consecutive) narrow run under 40% of head width, head at least 9 m, strong min/max contrast and the narrow run a minority of length \u2014 the verbatim TS criteria; the rectangular test pins non-detection and frontage fallback",
+   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_rectangular_lot_is_not_battleaxe_and_keeps_frontage"
   },
   {
-   "scenario": "A genuinely anchored lot inside a nominated catchment loses eligibility because the new AND-composition is wired backwards",
-   "what_happens": "Under-reporting in the covered areas \u2014 the tool stops showing reform rights where they genuinely exist, a correctness regression in the other direction",
+   "scenario": "Detector crashes on a degenerate ring (duplicate points, zero-extent bbox) and takes the whole dimensions call down",
+   "what_happens": "Lots that previously got area/frontage would start returning nothing \u2014 a regression for every lot, not just battleaxes",
    "mitigated": true,
-   "how": "positive-path tests pin both anchors independently (town-centre-only and TOD-only both yield in_lmr_area True when not excluded), and the live Gladesville town-centre centroid probe plus the live Kogarah TOD lot both return True post-change",
-   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_town_centre_anchor_plus_not_excluded_is_in_lmr_area and ::test_gate_inputs_tod_anchor_plus_not_excluded_is_in_lmr_area"
+   "how": "the detector guards zero extents, <6 vertices and <2 slice intersections by returning None (not-a-battleaxe), and the existing degenerate-polygon tests in the file still pass unchanged (29/29 then 2831 full suite)",
+   "repro": "pytest tests/test_lot_dimensions.py -q"
   },
   {
-   "scenario": "A lot inside a 776 exclusion carve-out but near a town centre reads as in-area because exclusion is no longer consulted",
-   "what_happens": "The exclusion map exists precisely to remove such lots from the reform \u2014 ignoring it would over-report in the carved-out pockets",
+   "scenario": "The head width leaks into displays as if it were street frontage",
+   "what_happens": "A 70 m 'frontage' on a lot with a 16 m street opening misstates the cadastre to users",
    "mitigated": true,
-   "how": "the composition is anchored AND not_excluded; test_gate_inputs_anchored_but_excluded_is_not_in_lmr_area pins that an excluded lot stays out even with both anchors true",
-   "repro": "pytest tests/test_housing_sepp_eligibility.py::test_gate_inputs_anchored_but_excluded_is_not_in_lmr_area"
+   "how": "the endpoint returns lot_type alongside the width and the page renders 'Width (main lot, battleaxe)' for flag lots instead of 'Frontage'; the response comment documents the semantics",
+   "repro": "pytest tests/test_upzoning_check.py::test_battleaxe_lot_uses_head_width_for_eligibility asserts lot_type flows through"
   },
   {
-   "scenario": "The radial 800 m buffer over-includes lots that are within 800 m straight-line but beyond 800 m walking distance of a centre (s22 says walking distance)",
-   "what_happens": "A margin of lots just outside true walking range could read in-area \u2014 over-report at the boundary, the direction the doctrine forbids",
+   "scenario": "The brief consumer change alters eligibility on non-battleaxe lots",
+   "what_happens": "A blanket behaviour shift in the paid-adjacent brief rather than a targeted fix",
    "mitigated": true,
-   "how": "accepted, documented proxy: the fetcher docstring and gate comment state radial superset-of walking; the per-form standards still gate downstream, consent wording remains subject-to-DA, and the ineligible wording already hedges with area-unconfirmed phrasing; a walking-network refinement is out of scope and recorded in the code comment",
-   "repro": "read services/portal_constraints.py fetch_town_centre_catchment docstring \u2014 the proxy and its direction are stated in the shipped code"
-  },
-  {
-   "scenario": "Station-precinct anchors that sit outside published TOD polygons are not derived (station point data is not ingested), so some legitimately covered lots read out-of-area",
-   "what_happens": "Under-reporting near stations that lack a published TOD polygon \u2014 conservative but incomplete coverage of the s22 definition",
-   "mitigated": true,
-   "how": "accepted conservative gap, inherited from the prescope plan's phase-three scope: under-report is the doctrine-permitted direction; deriving station-point catchments is the documented follow-up and cannot produce false positives meanwhile",
-   "repro": "ce-lmr-pipeline-prescope-2026-06 phase 3 records the station-data dependency; the gate comment references the derivation basis"
+   "how": "eligibility_lot_width returns frontage_m verbatim for every non-battleaxe lot_type (including None from older payloads), so only flag lots change; full pytest incl. the brief goldens passes",
+   "repro": "pytest tests/test_lot_dimensions.py::TestBattleaxeDetection::test_rectangular_lot_is_not_battleaxe_and_keeps_frontage plus the full suite run"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Yes - after Railway deploy, re-run 38 Park Rd Bowral on the live tool (LMR chip must read not-established and terraces must read not-in-area) and 67 Warialda St Kogarah (must stay fully eligible); spot-check one town-centre-anchored Sydney address renders LMR forms. The brief inherits the gate silently - regenerate any cached Bowral-area briefs if surfaced to users."
+  "manual_verify": "Yes - after Railway deploy, run 38 Park Rd Bowral on the live tool: expect 'Width (main lot, battleaxe): 70 m', granny flat and dual occupancy green, LMR forms not-in-area. Kogarah spot-check unchanged."
  }
 }
