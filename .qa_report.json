@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New pure-logic serializer module with no DB writes, no external API calls, and no user-facing surface yet; it feeds a future LLM selection layer, so silent wrong output matters (standard, not low), but nothing here mutates production data (not critical).",
-  "commit_hash": "2f923e0a",
+  "commit_hash": "f0db83fe",
   "files": ["services/brief_manifest.py", "tests/test_brief_manifest.py"],
   "pre_impl": {
     "existing_data": "Consumes DevelopmentBrief/RenovationBrief pydantic models or their model_dump() dicts from services/intelligence_brief.py; reads nothing from the database directly.",
