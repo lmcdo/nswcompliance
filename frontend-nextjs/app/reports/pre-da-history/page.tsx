@@ -5,10 +5,10 @@ import { LandingVisibility } from '@/components/reports/landing/LandingVisibilit
 import { ProductJsonLd } from '@/lib/json-ld'
 
 export const metadata: Metadata = {
-  title: 'Pre-DA Site History Report — PlotDetect',
+  title: 'Prior Development Activity Report — PlotDetect',
   description: 'What happened on this land before you got here? Satellite change detection, DA history, heritage overlay, and flood/fire annotations for any NSW address.',
   openGraph: {
-    title: 'Pre-DA Site History — Satellite change detection for any NSW address',
+    title: 'Prior Development Activity — Satellite change detection for any NSW address',
     description: 'Eight years of satellite imagery analysed for physical changes, cross-referenced with DA records, heritage overlays, and natural disaster events. Free to run.',
     url: 'https://plotdetect.com.au/reports/pre-da-history',
     siteName: 'plotdetect.com.au',
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Pre-DA Site History — PlotDetect',
+    title: 'Prior Development Activity — PlotDetect',
     description: 'Satellite change detection + DA history for any NSW address. Free, instant.',
   },
 }
@@ -32,7 +32,7 @@ export default async function PreDAHistoryPage({ searchParams }: Props) {
   return (
     <div>
       <ProductJsonLd
-        name="Pre-DA Site History Report"
+        name="Prior Development Activity Report"
         description="What happened on this land before you got here? Satellite change detection, DA history, heritage overlay, and flood/fire annotations for any NSW address."
         url="/reports/pre-da-history"
         price="49"

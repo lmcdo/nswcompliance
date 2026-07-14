@@ -168,9 +168,11 @@ def fetch_dcp_setbacks(
         cur.execute(
             """
             SELECT dev_type, control_type, value_min, value_max, unit,
-                   condition, source_text, section_ref, applicability
+                   condition, source_text, section_ref, applicability,
+                   needs_review
             FROM dcp_setback_controls
             WHERE lga = %s AND is_current = TRUE
+              AND (needs_review IS NULL OR needs_review = FALSE)
             ORDER BY
                 CASE dev_type WHEN 'dwelling_house' THEN 0 ELSE 1 END,
                 CASE control_type
@@ -221,7 +223,16 @@ def fetch_dcp_setbacks(
     # Zone advisory: strip prefix digit from zone code (e.g. "R2" from "R2 Low Density")
     zone_prefix = (zone_code.strip().split()[0].upper() if zone_code and zone_code.strip() else "")
 
-    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability in rows:
+    for dev_type, ctrl_type, vmin, vmax, unit, condition, source_text, section_ref, applicability, needs_review in rows:
+        # Fail-closed on currency (mirrors the web route /api/dcp/structured-controls):
+        # a control flagged for human review after a DCP amendment must never render
+        # as an authoritative number in the PDF. The SQL WHERE already excludes
+        # needs_review rows; this per-row guard keeps the exclusion even if that SQL
+        # filter is ever changed. Under-review controls are suppressed and treated as
+        # "not available", consistent with how the report omits controls a council
+        # has no data for.
+        if needs_review:
+            continue
         # Skip zone-specific controls that explicitly reference a DIFFERENT zone.
         # Conservative: only skip when condition names zones AND our zone isn't among them.
         if zone_prefix and applicability == "zone_specific" and condition:

@@ -15,6 +15,11 @@
 
 **Page Component:** `app/assessment/page.tsx`
 
+**Left Panel (property context):**
+- Aerial tile with lot boundary: shared `components/reports/AerialTile.tsx` (SIX Maps imagery);
+  polygon fetched from `/api/property/profile` (same source as brief + /property pages);
+  `maplibre-gl.css` imported in `app/assessment/layout.tsx`
+
 **Provisions Display:**
 - **DCP Tab (Table of Contents view):**
   - `ProvisionsByTocStructure.tsx` (lines 1-100)
@@ -149,6 +154,30 @@ grep -r "from.*HeritageProvisions" app/ components/
 | Topic filter chips | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | TBD |
 | Heritage layer toggle | `/assessment` filters | TBD | TBD |
 | DCP currency status bar (dot + verified date + staleness/amendment badges + disclaimer) | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | ~1825 |
+
+---
+
+## Free Tools — /tools/*
+
+### `/tools/upzoning-check` — Upzoning Check (2025 LMR/TOD reforms)
+
+**Page Component:** `app/tools/upzoning-check/page.tsx` (client; mirrors `zoning-check` structure)
+
+**Data Flow:**
+```
+PropertySearch → POST /api/upzoning (proxy, rate-limited)
+  → Python POST /pipeline/upzoning (services/upzoning_check.py)
+    → resolve_address + parse_controls (conveyancing pipeline helpers)
+    → lot_dimensions (area + battleaxe-aware width from Portal geometry;
+      flag lots use the developable head width, not the access handle)
+    → housing_sepp_eligibility.evaluate_eligibility (live 776/752/759/452 gates,
+      heritage suppression, fail-closed) — ALL eligibility logic lives here
+  ← { status: ok|not_residential|unavailable, forms[], gates, heritage }
+```
+
+**Three-state rules:** engine `reason` strings render verbatim; `unconfirmed` → amber
+"not determinable" (never green); `status=unavailable` → visible outage box (an outage
+must never render as "nothing possible").
 
 ---
 

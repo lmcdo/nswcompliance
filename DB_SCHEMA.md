@@ -6,6 +6,25 @@ Total Provisions: 46,585 (10,008 actionable)
 
 See DB_SCHEMA_RAW.txt for full column details.
 
+## ⚠️ TABLE STATUS — READ FIRST (which table to use)
+
+Every table below is also labelled **inside the database** (`COMMENT ON TABLE`). To see a table's status live:
+`SELECT relname, obj_description(oid) FROM pg_class WHERE relname='<table>';`
+
+**USE THESE (canonical, maintained):**
+- **DCP / LEP / SEPP provision TEXT** → `regulatory_provisions` (written by `scripts/dcp_commit_approved.py`; enriched read view `regulatory_provisions_canonical`).
+- **Numeric DCP CONTROLS** (setbacks, parking, landscaping, height) → `dcp_setback_controls` (written by `/internal/setback-review` + `insert_*`/`ocr_*` scripts). Feeds the conveyancing report AND the brief capacity engine.
+- **Capacity / constraint arithmetic** → the Python engine `services/constraint_arithmetic.py` (which reads `dcp_setback_controls`) — not a table you query directly.
+- DCP pipeline: `dcp_chapter_registry` (monitor/registry), `dcp_table_of_contents` (TOC), `dcp_review_queue` (change-review inbox), `dcp_precinct_boundaries` (precinct polygons).
+
+**NEVER READ — frozen legacy / empty (being retired; see `~/.claude/plans/ce-dcp-table-architecture-remediation-2026-07.md`):**
+- `dcp_general_requirements`, `dcp_general_provisions` — FROZEN Oct-2025 one-off snapshot, no live writer. (Only `/api/capacity/calculate` + `/api/compliance/dcp-complete` still read them; being repointed onto `dcp_setback_controls`.)
+- `regulatory_provisions_clean` (and the phantom `regulatory_provisions_clean_clean`) — frozen, no writer.
+- `dcp_precinct_requirements`, `dcp_precinct_provisions`, `provision_versions` — empty.
+- `*_backup_*`, `*_corrupted_*`, `*_old_*` — backups / dead.
+
+**Rule of thumb:** if code reads a NEVER-READ table, that's a bug — the maintained equivalent is listed above.
+
 ## Core Tables (Must Know)
 
 regulatory_provisions - 46,585 rows, 51 cols

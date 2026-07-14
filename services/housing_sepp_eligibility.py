@@ -23,6 +23,7 @@ from services.portal_constraints import (
     fetch_sepp_exclusions,
     fetch_dual_occ_prohibition,
     fetch_tod_catchment,
+    fetch_town_centre_catchment,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,19 +132,25 @@ def _fetch_standards_grouped() -> dict:
 def _gate_inputs(lat: Optional[float], lng: Optional[float]) -> dict:
     """Compute the authoritative gate inputs from live government layers, fail-safe.
 
-    - in_lmr_area: NOT in the 776 low/mid-rise exclusion map. Conservatively False when the
-      query fails or is indeterminate (so requires_lmr_area forms are not falsely eligible).
+    - in_lmr_area: the s22 "low and mid rise housing area" DERIVED as: anchored
+      (within 800 m of a Town Centres Map polygon (766) OR inside a TOD catchment)
+      AND NOT in the 776 exclusion map. There is no published inclusion layer, and
+      absence from the exclusion map alone is NOT inclusion — 776 only carves out
+      spots inside covered areas, so "not excluded" over-includes all of regional
+      NSW (Bowral regression, 2026-07-13: 38 Park Rd Bowral has no anchor within
+      1 km yet the old not-excluded rule reported it in-area). Conservatively
+      False when any required query fails.
     - in_tod: inside a published TOD catchment (752/759).
     - dual_occ_prohibited: inside the ePlanning 452 dual-occupancy prohibition area.
     """
-    in_lmr_area = False
     in_tod = False
     dual_occ_prohibited = False
     if lat is None or lng is None:
         return {"in_lmr_area": False, "in_tod": False, "dual_occ_prohibited": False}
+    not_excluded = False
     try:
         excl = fetch_sepp_exclusions(lat, lng)
-        in_lmr_area = bool(excl and excl.get("low_mid_rise") is False)
+        not_excluded = bool(excl and excl.get("low_mid_rise") is False)
     except Exception:
         logger.warning("LMR exclusion gate (776) query failed")
     try:
@@ -151,6 +158,15 @@ def _gate_inputs(lat: Optional[float], lng: Optional[float]) -> dict:
         in_tod = bool(tod and tod.get("in_tod"))
     except Exception:
         logger.warning("TOD catchment gate (752/759) query failed")
+    near_town_centre = False
+    try:
+        tc = fetch_town_centre_catchment(lat, lng)
+        near_town_centre = bool(tc and tc.get("within_catchment"))
+    except Exception:
+        logger.warning("Town Centres gate (766) query failed")
+    # Anchored = near a nominated town centre OR inside a TOD precinct; a failed
+    # anchor query leaves its term False (never falsely anchored).
+    in_lmr_area = (near_town_centre or in_tod) and not_excluded
     try:
         dop = fetch_dual_occ_prohibition(lat, lng)
         dual_occ_prohibited = bool(dop and dop.get("prohibited"))

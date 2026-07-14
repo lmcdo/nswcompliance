@@ -112,41 +112,45 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Get setbacks
-    const setbacks = await getSetbacks(zone, formerCouncil, address, normalizedLGA, coordinates);
+    const setbacks = await getSetbacks(zone, formerCouncil, address, normalizedLGA, coordinates, developmentType);
 
     // 4. Get parking requirements
+    // Repointed off frozen dcp_general_requirements (Inner-West-only snapshot,
+    // no live writer) onto the maintained dcp_setback_controls — the same table
+    // the conveyancing report + brief capacity engine use. Keyed by the
+    // former-council slug; needs_review-guarded (fail-closed), incl. universal rows.
     const parkingQuery = `
-      SELECT requirement_text, value_numeric
-      FROM dcp_general_requirements
+      SELECT source_text AS requirement_text, value_min AS value_numeric
+      FROM dcp_setback_controls
       WHERE lga = $1
-        AND former_council = $2
-        AND category ILIKE '%parking%'
-        AND ($3 = ANY(development_types) OR development_types IS NULL)
-        AND value_numeric IS NOT NULL
+        AND dev_type IN ($2, 'universal_residential')
+        AND control_type IN ('car_parking','bicycle_parking','driveway_width','driveway_gradient')
+        AND (is_current IS NULL OR is_current = TRUE)
+        AND (needs_review IS NULL OR needs_review = FALSE)
       LIMIT 3
     `;
 
-    const parkingResult = await pool.query(parkingQuery, [normalizedLGA, formerCouncil, developmentType]);
+    const parkingResult = await pool.query(parkingQuery, [formerCouncil, developmentType]);
 
     // 5. Get landscaping requirements
     const landscapingQuery = `
       SELECT
-        requirement_text,
-        value_numeric,
+        source_text AS requirement_text,
+        value_min AS value_numeric,
         unit,
-        part_name,
+        source_chapter_key AS part_name,
         pdf_page,
-        pdf_page_image_url
-      FROM dcp_general_requirements
+        NULL::text AS pdf_page_image_url
+      FROM dcp_setback_controls
       WHERE lga = $1
-        AND former_council = $2
-        AND (category ILIKE '%landscap%' OR category ILIKE '%open space%')
-        AND ($3 = ANY(development_types) OR development_types IS NULL)
-        AND value_numeric IS NOT NULL
+        AND dev_type IN ($2, 'universal_residential')
+        AND control_type IN ('landscaping_min','deep_soil_min','tree_canopy_min','communal_open_space_min','private_open_space')
+        AND (is_current IS NULL OR is_current = TRUE)
+        AND (needs_review IS NULL OR needs_review = FALSE)
       LIMIT 3
     `;
 
-    const landscapingResult = await pool.query(landscapingQuery, [normalizedLGA, formerCouncil, developmentType]);
+    const landscapingResult = await pool.query(landscapingQuery, [formerCouncil, developmentType]);
 
     // Calculate total buildable GFA
     let maxBuildableGFA = null;
@@ -214,7 +218,8 @@ async function getSetbacks(
   formerCouncil: string,
   address: string,
   lga: string,
-  coordinates?: { lat: number; lng: number }
+  coordinates?: { lat: number; lng: number },
+  devType: string = 'dwelling_house'
 ): Promise<SetbackResult> {
   // STRATEGY: Precinct-specific → General provisions → Guidance fallback
   // This cascade ensures users get the most specific data available
@@ -321,35 +326,35 @@ async function getSetbacks(
   // ========================================================================
   // STEP 2: Check general provisions (ZONE + COUNCIL SPECIFIC)
   // ========================================================================
+  // Repointed off frozen dcp_general_requirements onto the maintained
+  // dcp_setback_controls (front/side/rear/separation control types), keyed by
+  // former-council slug + dev type; needs_review-guarded, incl. universal rows.
+  // Column aliases preserve the result-building shape below (subcategory,
+  // requirement_text, value_numeric, value_min/max, unit, conditionals, part_name).
   const generalQuery = `
     SELECT
-      subcategory,
-      requirement_text,
-      value_numeric,
+      replace(control_type, '_setback', '') AS subcategory,
+      source_text AS requirement_text,
+      value_min AS value_numeric,
       value_min,
       value_max,
       unit,
-      applicable_zones,
-      has_conditionals,
-      conditional_text,
-      part_name
-    FROM dcp_general_requirements
+      (condition IS NOT NULL) AS has_conditionals,
+      condition AS conditional_text,
+      source_chapter_key AS part_name
+    FROM dcp_setback_controls
     WHERE lga = $1
-      AND former_council = $2
-      AND requirement_text ILIKE '%setback%'
-      AND (
-        $3 = ANY(applicable_zones)     -- Zone-specific provisions
-        OR applicable_zones IS NULL     -- Universal (NULL = applies to all)
-        OR applicable_zones = '{}'      -- Universal (empty array = applies to all)
-        OR 'ALL' = ANY(applicable_zones)  -- Universal (explicit 'ALL' marker)
-      )
+      AND dev_type IN ($2, 'universal_residential')
+      AND control_type IN ('front_setback','side_setback','rear_setback','separation_from_dwelling')
+      AND (is_current IS NULL OR is_current = TRUE)
+      AND (needs_review IS NULL OR needs_review = FALSE)
     ORDER BY
-      CASE WHEN value_numeric IS NOT NULL THEN 1 ELSE 2 END,
-      subcategory
+      CASE WHEN value_min IS NOT NULL THEN 1 ELSE 2 END,
+      control_type
     LIMIT 15
   `;
 
-  const generalResult = await pool.query(generalQuery, [lga, formerCouncil, zone]);
+  const generalResult = await pool.query(generalQuery, [formerCouncil, devType]);
 
   if (generalResult.rows.length > 0) {
     // Found general setbacks
@@ -430,6 +435,17 @@ async function getSetbacks(
         { boundary: 'front', text: 'Match prevailing setback pattern in your neighbourhood' },
         { boundary: 'side', text: 'Typically 1m-3m depending on neighbourhood' },
         { boundary: 'rear', text: 'Maintain useable outdoor space' }
+      ]
+    };
+  } else if (formerCouncil.toLowerCase().includes('sydney') || formerCouncil.toLowerCase().includes('city_of_sydney')) {
+    return {
+      type: 'prevailing',
+      message: 'City of Sydney uses map-based setbacks (Building Setback and Alignment Map)',
+      method: 'Front setback per Building Setbacks Map; side/rear consistent with adjoining buildings',
+      guidance: [
+        { boundary: 'front', text: 'Consistent with Building Setbacks Map or predominant street setting' },
+        { boundary: 'side', text: 'Relate to established development pattern (heritage areas)' },
+        { boundary: 'rear', text: 'Consistent with adjoining buildings; adopt adjacent or average rear setback' }
       ]
     };
   }

@@ -34,7 +34,7 @@ const TOOLS = [
   },
   {
     href: '/reports/granny-flat',
-    title: 'Granny Flat Yield Predictor',
+    title: 'Granny Flat Feasibility',
     tagline: 'Could this property earn an extra $280\u2013$340/week?',
     description:
       'NSW Government aerial imagery, AI structure detection, planning rule analysis, and rental yield estimate for any NSW address.',
@@ -42,7 +42,7 @@ const TOOLS = [
   },
   {
     href: '/reports/pre-da-history',
-    title: 'Pre-DA Site History',
+    title: 'Prior Development Activity',
     tagline: 'What happened on this land before you got here?',
     description:
       'Eight years of European Space Agency satellite imagery cross-referenced with DA records, heritage overlays, and natural disaster events.',
@@ -50,7 +50,7 @@ const TOOLS = [
   },
   {
     href: '/reports/threat-radar',
-    title: 'Neighbour Threat Radar',
+    title: 'Development Monitoring',
     tagline: 'Know before your neighbour breaks ground.',
     description:
       'Every DA and CDC within 500m of your property \u2014 with weekly email alerts for new lodgements.',
@@ -58,7 +58,7 @@ const TOOLS = [
   },
   {
     href: '/reports/shadow',
-    title: 'Shadow Risk Analyser',
+    title: 'Overshadowing Check',
     tagline: 'Will a new build block your sun?',
     description:
       'Shadow modelled from the maximum-height building envelope across the five ADG solar access test dates used by NSW planning panels.',
@@ -66,7 +66,7 @@ const TOOLS = [
   },
   {
     href: '/reports/solar-yield',
-    title: 'Rooftop Solar Yield',
+    title: 'Rooftop Solar Potential',
     tagline: 'How much could solar earn on this roof?',
     description:
       'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation.',

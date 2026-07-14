@@ -32,6 +32,11 @@ interface ZoneResult {
   heritage_conservation_area: boolean;
 }
 
+function deslug(devType: string): string {
+  const words = devType.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export default function ZoningCheckPage() {
   const [result, setResult] = useState<ZoneResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -68,10 +73,10 @@ export default function ZoningCheckPage() {
             const lepData = await lepRes.json();
             if (lepData.covered && lepData.entries) {
               permitted = lepData.entries
-                .filter((e: { permissibility: string }) => e.permissibility === 'Permitted')
+                .filter((e: { permissibility: string }) => e.permissibility === 'permitted')
                 .map((e: { development_type: string }) => e.development_type);
               prohibited = lepData.entries
-                .filter((e: { permissibility: string }) => e.permissibility === 'Prohibited')
+                .filter((e: { permissibility: string }) => e.permissibility === 'prohibited')
                 .map((e: { development_type: string }) => e.development_type);
             }
           }
@@ -174,21 +179,36 @@ export default function ZoningCheckPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Max height</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.height_m != null ? `${result.height_m}m` : '—'}
-              </p>
+              {result.height_m != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.height_m}m</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for height controls</p>
+                </>
+              )}
             </div>
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">FSR</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.fsr != null ? `${result.fsr}:1` : '—'}
-              </p>
+              {result.fsr != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.fsr}:1</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for FSR controls</p>
+                </>
+              )}
             </div>
             <div className="rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Min lot size</p>
-              <p className="text-xl font-bold text-gray-900">
-                {result.min_lot_size_sqm != null ? `${result.min_lot_size_sqm}m²` : '—'}
-              </p>
+              {result.min_lot_size_sqm != null ? (
+                <p className="text-xl font-bold text-gray-900">{result.min_lot_size_sqm}m²</p>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-gray-900">Not mapped</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Check DCP for lot size controls</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -223,7 +243,7 @@ export default function ZoningCheckPage() {
                     key={use}
                     className="px-2.5 py-1 text-xs bg-green-50 text-green-700 rounded-full border border-green-200"
                   >
-                    {use}
+                    {deslug(use)}
                   </span>
                 ))}
                 {result.permitted.length > 12 && (
@@ -248,7 +268,7 @@ export default function ZoningCheckPage() {
                     key={use}
                     className="px-2.5 py-1 text-xs bg-red-50 text-red-600 rounded-full border border-red-200"
                   >
-                    {use}
+                    {deslug(use)}
                   </span>
                 ))}
                 {result.prohibited.length > 8 && (
