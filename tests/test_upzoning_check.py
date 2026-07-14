@@ -41,9 +41,16 @@ CONTROLS_HERITAGE = {
 
 
 class _Dims:
-    def __init__(self, area, frontage):
+    """Mirrors constraint_models.LotDimensions' consumed fields (incl. battleaxe)."""
+
+    def __init__(self, area, frontage, lot_type="rectangular", main_lot_width=None):
         self.area_m2 = area
         self.frontage_m = frontage
+        self.lot_type = lot_type
+        self.battleaxe_main_lot_width_m = main_lot_width
+        self.battleaxe_access_way_width_m = None
+        self.battleaxe_access_way_length_m = None
+        self.battleaxe_main_lot_area_m2 = None
 
 
 @pytest.fixture
@@ -120,6 +127,20 @@ def test_missing_lot_dimensions_yields_unconfirmed_not_eligible(client, wire):
     forms = _forms_by_type(data)
     assert forms["dual_occupancy"]["eligible"] is False
     assert forms["dual_occupancy"]["unconfirmed"] is True
+
+
+def test_battleaxe_lot_uses_head_width_for_eligibility(client, wire):
+    """Bowral-class regression at route level: a flag lot with a 16 m handle and
+    a 70 m head must feed the HEAD width into the engine — width-gated forms
+    resolve on their merits instead of collapsing to 'unconfirmed'."""
+    wire["dims"] = _Dims(4189.0, None, lot_type="battleaxe", main_lot_width=70.09)
+    data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
+    assert data["lot_width_m"] == pytest.approx(70.09)
+    assert data["lot_type"] == "battleaxe"
+    forms = _forms_by_type(data)
+    # 4,189 m² x 70 m head passes dual-occ (450 m² / 12 m) and terrace width (18 m)
+    assert forms["dual_occupancy"]["eligible"] is True
+    assert forms["terraces"]["eligible"] is True  # in-LMR fixture gates
 
 
 def test_non_residential_zone_is_labelled_not_unavailable(client, wire):

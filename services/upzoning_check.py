@@ -57,10 +57,18 @@ from generate_conveyancing_report import (  # noqa: E402
 
 try:  # Docker (PYTHONPATH=/app)
     import services.housing_sepp_eligibility as hse
-    from services.lot_dimensions import calculate_lot_dimensions, fetch_lot_geometry
+    from services.lot_dimensions import (
+        calculate_lot_dimensions,
+        eligibility_lot_width,
+        fetch_lot_geometry,
+    )
 except ImportError:  # local (run from services/)
     import housing_sepp_eligibility as hse
-    from lot_dimensions import calculate_lot_dimensions, fetch_lot_geometry
+    from lot_dimensions import (
+        calculate_lot_dimensions,
+        eligibility_lot_width,
+        fetch_lot_geometry,
+    )
 
 router = APIRouter(prefix="/pipeline", tags=["upzoning"])
 
@@ -87,18 +95,23 @@ def _controls_for(prop_id: Optional[int]) -> dict:
         return parse_controls([])
 
 
-def _lot_dims(prop_id: Optional[int]) -> tuple[Optional[float], Optional[float]]:
-    """(area_m2, frontage_m) from Portal lot geometry; (None, None) on any gap."""
+def _lot_dims(prop_id: Optional[int]) -> tuple[Optional[float], Optional[float], Optional[str]]:
+    """(area_m2, eligibility_width_m, lot_type) from Portal lot geometry.
+
+    Width is battleaxe-aware (developable head width on a flag lot, cadastral
+    frontage otherwise) — the value the SEPP minimum-lot-width tests need.
+    (None, None, None) on any gap.
+    """
     if not prop_id:
-        return None, None
+        return None, None, None
     try:
         dims = calculate_lot_dimensions(fetch_lot_geometry(str(prop_id)))
     except Exception as e:
         logger.warning("upzoning: lot dimensions failed for prop %s: %s", prop_id, e)
-        return None, None
+        return None, None, None
     if dims is None:
-        return None, None
-    return dims.area_m2, dims.frontage_m
+        return None, None, None
+    return dims.area_m2, eligibility_lot_width(dims), dims.lot_type
 
 
 @router.post("/upzoning")
@@ -127,7 +140,7 @@ def run_upzoning_check(req: UpzoningRequest):
         f_dims = pool.submit(_lot_dims, prop_id)
         f_gates = pool.submit(hse._gate_inputs, lat, lng)
         controls = f_controls.result(timeout=50)
-        lot_area_m2, lot_width_m = f_dims.result(timeout=50)
+        lot_area_m2, lot_width_m, lot_type = f_dims.result(timeout=50)
         gates = f_gates.result(timeout=50)
 
     heritage_items = controls.get("heritage_items") or []
@@ -174,7 +187,11 @@ def run_upzoning_check(req: UpzoningRequest):
         "zone_epi": controls.get("zone_epi"),
         "legislation_url": controls.get("legislation_url"),
         "lot_area_m2": lot_area_m2,
+        # Battleaxe-aware: on a flag lot this is the developable HEAD width (what
+        # the SEPP width tests use), not the access-handle frontage. lot_type
+        # tells the UI which label to render.
         "lot_width_m": lot_width_m,
+        "lot_type": lot_type,
         "heritage": {"flag": heritage, "items": heritage_items, "hca": heritage_hca},
         "gates": gates,
         "status": status,

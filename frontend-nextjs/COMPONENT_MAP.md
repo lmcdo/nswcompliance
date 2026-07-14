@@ -163,7 +163,8 @@ grep -r "from.*HeritageProvisions" app/ components/
 PropertySearch → POST /api/upzoning (proxy, rate-limited)
   → Python POST /pipeline/upzoning (services/upzoning_check.py)
     → resolve_address + parse_controls (conveyancing pipeline helpers)
-    → lot_dimensions (area/frontage from Portal geometry)
+    → lot_dimensions (area + battleaxe-aware width from Portal geometry;
+      flag lots use the developable head width, not the access handle)
     → housing_sepp_eligibility.evaluate_eligibility (live 776/752/759/452 gates,
       heritage suppression, fail-closed) — ALL eligibility logic lives here
   ← { status: ok|not_residential|unavailable, forms[], gates, heritage }
