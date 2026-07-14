@@ -33,6 +33,7 @@ endpoint separates them via ``status`` so the UI never shows a data outage as
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor
+import re
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
@@ -156,6 +157,17 @@ def run_upzoning_check(req: UpzoningRequest):
     zone_code_src = controls.get("zone")
     zone = hse.normalize_zone(zone_code_src)
     zone_name = controls.get("zone_full")
+    # Bare LGA name derived from the EPI name ("Wingecarribee Local Environmental
+    # Plan 2010" -> "Wingecarribee") — the vocabulary the lep_zone_coverage table
+    # and /api/lep/permissibility use (verified against the live table; deliberately
+    # NOT the "...Shire Council" normalisation the DA API wants).
+    zone_epi = controls.get("zone_epi")
+    lga_name = None
+    if zone_epi:
+        m = re.match(r"(.+?)\s+Local Environmental Plan\s+\d{4}", zone_epi, re.IGNORECASE)
+        # Match-based, not strip-based: a non-LEP instrument name yields None
+        # (no land-use panel) rather than leaking the whole title as an "LGA".
+        lga_name = m.group(1).strip() if m else None
 
     forms = hse.evaluate_eligibility(
         zone_code_src,
@@ -184,7 +196,8 @@ def run_upzoning_check(req: UpzoningRequest):
         "run_date": date.today().isoformat(),
         "zone": zone or None,
         "zone_full": zone_name or zone_code_src,
-        "zone_epi": controls.get("zone_epi"),
+        "zone_epi": zone_epi,
+        "lga_name": lga_name,
         "legislation_url": controls.get("legislation_url"),
         "lot_area_m2": lot_area_m2,
         # Battleaxe-aware: on a flag lot this is the developable HEAD width (what

@@ -68,10 +68,10 @@ export default function ZoningCheckPage() {
             const lepData = await lepRes.json();
             if (lepData.covered && lepData.entries) {
               permitted = lepData.entries
-                .filter((e: { permissibility: string }) => e.permissibility === 'Permitted')
+                .filter((e: { permissibility: string }) => e.permissibility === 'permitted')
                 .map((e: { development_type: string }) => e.development_type);
               prohibited = lepData.entries
-                .filter((e: { permissibility: string }) => e.permissibility === 'Prohibited')
+                .filter((e: { permissibility: string }) => e.permissibility === 'prohibited')
                 .map((e: { development_type: string }) => e.development_type);
             }
           }

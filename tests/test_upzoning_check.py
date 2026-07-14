@@ -187,3 +187,19 @@ def test_resolved_without_coordinates_is_422(client, wire):
 
 def test_blank_address_is_400(client, wire):
     assert client.post("/pipeline/upzoning", json={"address": "   "}).status_code == 400
+
+
+# --- lga_name derivation (feeds the LEP land-use panel; must be match-based) ----
+
+def test_lga_name_derived_from_lep_epi_name(client, wire):
+    wire["controls"] = {**CONTROLS_CLEAN, "zone_epi": "Wingecarribee Local Environmental Plan 2010"}
+    data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
+    assert data["lga_name"] == "Wingecarribee"
+
+
+def test_lga_name_none_for_non_lep_instrument(client, wire):
+    """A non-LEP EPI title must yield None (panel absent), never leak the whole
+    title as an LGA name into the permissibility lookup."""
+    wire["controls"] = {**CONTROLS_CLEAN, "zone_epi": "Sydney Region Growth Centres SEPP 2006"}
+    data = client.post("/pipeline/upzoning", json={"address": "x"}).json()
+    assert data["lga_name"] is None
