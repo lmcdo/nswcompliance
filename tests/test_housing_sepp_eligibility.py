@@ -212,19 +212,55 @@ def test_gate_inputs_missing_coords_all_false():
 
 
 def test_gate_inputs_failsafe_on_query_errors(monkeypatch):
-    def _boom(lat, lng):
+    def _boom(*args, **kwargs):
         raise RuntimeError("ArcGIS down")
     monkeypatch.setattr(hse, "fetch_sepp_exclusions", _boom)
     monkeypatch.setattr(hse, "fetch_tod_catchment", _boom)
+    monkeypatch.setattr(hse, "fetch_town_centre_catchment", _boom)
     monkeypatch.setattr(hse, "fetch_dual_occ_prohibition", _boom)
     assert _gate_inputs(-33.8, 151.1) == {"in_lmr_area": False, "in_tod": False, "dual_occ_prohibited": False}
 
 
-def test_gate_inputs_in_lmr_area_only_when_not_excluded(monkeypatch):
-    monkeypatch.setattr(hse, "fetch_sepp_exclusions", lambda lat, lng: {"low_mid_rise": False})
-    monkeypatch.setattr(hse, "fetch_tod_catchment", lambda lat, lng: {"in_tod": False})
+# in_lmr_area derivation: ANCHORED (town centre within 800m OR inside TOD)
+# AND NOT excluded. Absence from the 776 exclusion map alone is NOT inclusion —
+# the Bowral regression (2026-07-13): regional lots with no anchor for miles were
+# reported in-area because 776 only carves out spots inside covered regions.
+
+def _wire_gates(monkeypatch, *, excluded=False, in_tod=False, near_tc=False):
+    monkeypatch.setattr(hse, "fetch_sepp_exclusions", lambda lat, lng: {"low_mid_rise": excluded})
+    monkeypatch.setattr(hse, "fetch_tod_catchment", lambda lat, lng: {"in_tod": in_tod})
+    monkeypatch.setattr(hse, "fetch_town_centre_catchment",
+                        lambda lat, lng, distance_m=800: {"within_catchment": near_tc, "label": None})
     monkeypatch.setattr(hse, "fetch_dual_occ_prohibition", lambda lat, lng: {"prohibited": False})
+
+
+def test_gate_inputs_not_excluded_alone_is_NOT_in_lmr_area(monkeypatch):
+    """The Bowral regression: no anchor anywhere near -> not in the reform area,
+    even though the lot is absent from the exclusion map."""
+    _wire_gates(monkeypatch, excluded=False, in_tod=False, near_tc=False)
+    assert _gate_inputs(-34.488, 150.430)["in_lmr_area"] is False
+
+
+def test_gate_inputs_town_centre_anchor_plus_not_excluded_is_in_lmr_area(monkeypatch):
+    _wire_gates(monkeypatch, excluded=False, near_tc=True)
     assert _gate_inputs(-33.8, 151.1)["in_lmr_area"] is True
-    # excluded -> not in LMR area
-    monkeypatch.setattr(hse, "fetch_sepp_exclusions", lambda lat, lng: {"low_mid_rise": True})
+
+
+def test_gate_inputs_tod_anchor_plus_not_excluded_is_in_lmr_area(monkeypatch):
+    _wire_gates(monkeypatch, excluded=False, in_tod=True)
+    assert _gate_inputs(-33.8, 151.1)["in_lmr_area"] is True
+
+
+def test_gate_inputs_anchored_but_excluded_is_not_in_lmr_area(monkeypatch):
+    _wire_gates(monkeypatch, excluded=True, near_tc=True, in_tod=True)
+    assert _gate_inputs(-33.8, 151.1)["in_lmr_area"] is False
+
+
+def test_gate_inputs_town_centre_query_failure_is_not_falsely_anchored(monkeypatch):
+    """Anchor query dies -> that anchor term stays False; with no TOD either,
+    the lot is NOT in the reform area (fail-closed, never falsely eligible)."""
+    _wire_gates(monkeypatch, excluded=False, in_tod=False)
+    def _boom(*args, **kwargs):
+        raise RuntimeError("766 down")
+    monkeypatch.setattr(hse, "fetch_town_centre_catchment", _boom)
     assert _gate_inputs(-33.8, 151.1)["in_lmr_area"] is False

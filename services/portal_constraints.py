@@ -36,6 +36,11 @@ EPLANNING_LAYERS = {
     # authoritative point-in-polygon, no walking-distance computation needed).
     "todSites":               {"service": "Planning_Portal_SEPP",              "id": 752},
     "todAccelerated":         {"service": "Planning_Portal_SEPP",              "id": 759},
+    # Town Centres Map — the LMR reforms' anchor polygons (LMR Amendment 2025).
+    # These are the centre BOUNDARIES, not catchments: the s22 "low and mid rise
+    # housing area" must be DERIVED as within 800 m of one (no inclusion layer
+    # exists — layer list re-enumerated 2026-07-14).
+    "townCentres":            {"service": "Planning_Portal_SEPP",              "id": 766},
 }
 
 
@@ -471,6 +476,36 @@ def fetch_tod_catchment(lat: float, lng: float) -> Optional[dict]:
     if not any_ok:
         return None
     return {"in_tod": in_tod, "epi_name": epi_name, "lga_name": lga_name}
+
+
+def fetch_town_centre_catchment(lat: float, lng: float, distance_m: int = 800) -> Optional[dict]:
+    """Town Centres Map (766) within ``distance_m`` — the derived LMR-area anchor.
+
+    prior-art-checked: reuses query_arcgis_point_buffered + EPLANNING_LAYERS; no
+    existing fetcher touches layer 766 (only 752/759/776 are wired).
+
+    SEPP (Housing) 2021 s22 defines the "low and mid rise housing area" via
+    walking distance from nominated town centres / station precincts. No
+    inclusion layer is published, so this approximates the test with a radial
+    buffer from the 766 boundary polygons (radial ⊇ walking — slightly generous
+    at the margin; the per-form standards still gate downstream).
+
+    Returns {"within_catchment": bool, "label": str|None} or None on query
+    failure (caller must treat None as NOT anchored — fail-closed).
+    """
+    layer = EPLANNING_LAYERS["townCentres"]
+    url = f"{EPLANNING_BASE}/{layer['service']}/MapServer/{layer['id']}/query"
+    try:
+        feats = query_arcgis_point_buffered(
+            url, lng, lat, distance_m, out_fields="LABEL,EPI_NAME",
+        )
+    except Exception:
+        logger.warning("Town Centres layer (766) query failed")
+        return None
+    if not feats:
+        return {"within_catchment": False, "label": None}
+    attrs = feats[0].get("attributes") or {}
+    return {"within_catchment": True, "label": attrs.get("LABEL")}
 
 
 def fetch_dual_occ_prohibition(lat: float, lng: float) -> Optional[dict]:
