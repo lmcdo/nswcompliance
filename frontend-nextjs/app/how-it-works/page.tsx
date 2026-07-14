@@ -11,6 +11,21 @@ export const metadata: Metadata = {
 
 const TOOLS = [
   {
+    name: 'Intelligence Brief',
+    href: '/reports/intelligence-brief',
+    sources: [
+      { name: 'NSW Planning Portal (layerintersect + lot APIs)', use: 'Zone, height, FSR, lot size, heritage and environmental overlays, plus the cadastral lot geometry' },
+      { name: 'NSW Valuer General', use: 'Land value with five-year history, comparable valuations and recent sales within 500 m' },
+      { name: 'NSW cadastre (strata/lot)', use: 'Lot type, plan number and strata structure' },
+      { name: 'SEPP (Housing) 2021 standards + live reform mapping', use: 'Per-form eligibility (dual occupancy, terraces, apartments) against the state standards, with the reform-area and TOD catchment checked on live government map layers' },
+      { name: 'Council DCP setback controls', use: 'Setback, landscaping and parking numbers feeding the development capacity estimate' },
+      { name: 'NSW ePlanning Portal (OnlineDA + tracking data)', use: 'Nearby applications, determination outcomes and council-wide refusal rates' },
+      { name: 'Satellite and imagery layers', use: 'Aerial structure detection, solar yield (Google Solar), flood screening (JRC/WOfS/BoM), bushfire status (RFS), terrain (5 m DEM) and NARCliM 2.0 climate projections' },
+    ],
+    cadence: 'Government APIs are queried live when the brief runs (typically 1–2 minutes end to end). Satellite layers use each source’s own imagery cadence. DCP controls and land-use tables are updated as councils are onboarded and re-verified by weekly source monitoring.',
+    limitations: 'The development capacity figure is a computed ceiling from mapped controls — not an approval outcome, and merit assessment can produce a different result. Eligibility outcomes are subject to a development application. Layers with no data for a property say so — absence of data is not clearance. Every figure carries its source and as-at date.',
+  },
+  {
     name: 'Granny Flat Eligibility',
     href: '/granny-flat',
     sources: [

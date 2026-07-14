@@ -1,13 +1,14 @@
 {
  "tier": "standard",
- "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses.",
- "commit_hash": "fa71bfed",
+ "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses. ADDED: the How It Works page documented 9 tools but omitted the Intelligence Brief entirely (the brief's own footer links to this page) - an Intelligence Brief section added with sources/cadence/limitations matching the product's actual data sources and liability posture (computed ceiling not approval, absence-is-not-clearance).",
+ "commit_hash": "262c91a8",
  "files": [
   "frontend-nextjs/app/reports/layout.tsx",
   "frontend-nextjs/components/marketing/SiteNav.tsx",
   "frontend-nextjs/app/sitemap.ts",
   "frontend-nextjs/app/layout.tsx",
-  "frontend-nextjs/app/tools/zoning-check/page.tsx"
+  "frontend-nextjs/app/tools/zoning-check/page.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx"
  ],
  "pre_impl": {
   "existing_data": "The Option B domain architecture memory (project-domain-architecture-2026-06, confirmed live 2026-07-04) defines the split this PR aligns to: plotdetect.com.au = info-site project, canibuildit = this app's consumer domain, pro subdomains = this app's pro doors. The deslug formatter already existed on the upzoning page and is duplicated as a two-line local helper per the established page-local pattern.",
