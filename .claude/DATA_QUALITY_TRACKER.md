@@ -114,9 +114,20 @@ extractor before re-running.
 **Remaining — 22 rows need SOURCE re-extraction (NOT strip-fixable):**
 Their body text is doubled *and* scrambled (e.g. `PPrirmimaarryy` = "Primary"), which is not
 losslessly reversible. Split: city_of_sydney 7, ku_ring_gai 10, campbelltown 4, (null) 1.
-Worklist: `data/latent_scope/reextraction_worklist.csv`. Fix = re-pull these ids from the
-source PDFs and re-run `v2_*` tagging. Regenerate the list any time with the detection query
-above (then exclude legitimate doubled-letter words).
+Worklist: `data/latent_scope/reextraction_worklist.csv`. Regenerate any time with the
+detection query above (then exclude legitimate doubled-letter words).
+
+**Root cause identified 2026-07-15 (investigated for re-extraction):** the source PDFs carry a
+DUPLICATED text layer. pymupdf on the local Campbelltown Part 3 PDF returns each line twice
+("Each dwelling shall have a minimum of / Each dwelling shall have a minimum of"); the original
+extractor concatenated the overlapping copies, producing the char-interleaved scramble. A clean
+re-extraction must therefore: (a) DEDUPLICATE the doubled text layer during extraction,
+(b) re-chunk by clause, (c) re-map pages (DB `pdf_page` does not align with the PDF page index —
+DB page 21 pointed at a different clause than the PDF's page 21). This is a pipeline job, not an
+in-place fix: the char-interleaved DB text is not losslessly reversible, and blind page-dumping
+would merge clauses (unsafe for legal text). City of Sydney section-6 source PDF is not local
+(only sections 3-4 are present in `data/dcps/`) → must be re-downloaded first. Deferred to the
+enrichment pipeline; scrambled bodies are already reduced (headers stripped in the 2026-07-15 pass).
 
 ---
 
