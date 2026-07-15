@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
@@ -9,6 +9,12 @@ import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
 import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
+import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
+
+// Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
+// flag AND the Railway-side BRIEF_LLM_OVERLAY_ENABLED must be on for anything
+// to show — turning either off restores today's page exactly.
+const OVERLAY_UI_ENABLED = process.env.NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED === 'true';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -283,7 +289,7 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
     : null;
 
   return (
-    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+    <div id={`brief-section-${section.replace('.', '-')}`} className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
       <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">{meta.label}</h3>
@@ -303,6 +309,8 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
           <div className={`text-sm ${UNAVAILABLE_TEXT_STYLES[unavail.tone]}`}>
             {unavail.detail}
           </div>
+        ) : value && section === 'strata' ? (
+          <StrataDisplay data={value} />
         ) : value ? (
           <SectionData data={value} section={section} satelliteRan={satelliteRan} />
         ) : (
@@ -310,6 +318,84 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Title & Ownership (strata) — answer the question once, in prose
+// ---------------------------------------------------------------------------
+
+// Scheme-type wording for strata lots. The raw enum value "development" means
+// a strata townhouse/villa scheme — rendering it verbatim would be opaque.
+const STRATA_SCHEME_LABELS: Record<string, string> = {
+  apartment: 'Apartment scheme',
+  development: 'Townhouse / villa scheme (non-apartment strata)',
+  ambiguous: 'Strata scheme (building type not determinable from the cadastre)',
+};
+
+function StrataDisplay({ data }: { data: Record<string, unknown> }) {
+  const strataType = typeof data.strata_type === 'string' ? data.strata_type : '';
+  const planLabel = typeof data.plan_label === 'string' && data.plan_label ? data.plan_label : null;
+  const strataPlan = typeof data.strata_plan === 'string' && data.strata_plan ? data.strata_plan : null;
+  const lotNumber = data.lot_number != null && data.lot_number !== '' ? String(data.lot_number) : null;
+  const sectionNumber = data.section_number != null && data.section_number !== '' ? String(data.section_number) : null;
+  // Treat as strata when EITHER signal says so (a contradictory record must
+  // not hide the strata detail).
+  const isStrata = data.is_strata === true || (strataType !== '' && strataType !== 'not_strata');
+
+  // "Lot 5, Section 2, DP900454" — the legal title reference used on
+  // contracts and 10.7 certificates.
+  const legalRef = planLabel
+    ? [lotNumber && `Lot ${lotNumber}`, sectionNumber && `Section ${sectionNumber}`, planLabel]
+        .filter(Boolean)
+        .join(', ')
+    : null;
+
+  if (!isStrata) {
+    // A freehold house needs one sentence, not four rows repeating "not strata".
+    return (
+      <p className="text-sm text-slate-900">
+        Freehold title — this lot is not part of a strata scheme.
+        {legalRef && (
+          <> The legal title reference from the NSW cadastre is{' '}
+          <span className="font-medium">{legalRef}</span>.</>
+        )}
+      </p>
+    );
+  }
+
+  const rows: Array<{ label: string; value: string; hint?: string }> = [
+    { label: 'Title type', value: 'Strata' },
+    { label: 'Scheme type', value: STRATA_SCHEME_LABELS[strataType] ?? formatValue(strataType) },
+  ];
+  const plan = strataPlan ?? planLabel;
+  if (plan) rows.push({ label: 'Strata plan number', value: plan });
+  if (lotNumber) {
+    rows.push({ label: 'Lot in the scheme', value: `Lot ${lotNumber}`,
+                hint: 'This property’s own lot within the strata plan (NSW cadastre).' });
+  }
+  if (data.lot_total != null) {
+    rows.push({ label: 'Lots in the scheme', value: formatValue(data.lot_total),
+                hint: 'Number of lots in the strata scheme (NSW Strata Hub).' });
+  }
+  if (typeof data.dwelling_type === 'string' && data.dwelling_type) {
+    rows.push({ label: 'Building form', value: formatValue(data.dwelling_type),
+                hint: 'Classified from the strata scheme’s lot count (NSW Strata Hub).' });
+  }
+  if (typeof data.registration_date === 'string' && data.registration_date) {
+    rows.push({ label: 'Strata plan registered', value: data.registration_date });
+  }
+
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-3.5">
+      {rows.map((row) => (
+        <div key={row.label} className="flex flex-col">
+          <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{row.label}</dt>
+          <dd className="text-sm text-slate-900 mt-0.5">{row.value}</dd>
+          {row.hint && <dd className="text-[11px] text-slate-400 mt-0.5">{row.hint}</dd>}
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -2535,6 +2621,21 @@ function IntelligenceBriefInner() {
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
 
+  // Brief LLM overlay: user's intent (chip pick) + the assembled brief the
+  // overlay endpoint needs. Payload is null until the brief completes, so the
+  // card can't fetch early; data already lives in `parts` — no re-fetch.
+  const [overlayIntent, setOverlayIntent] = useState<string | null>(null);
+  const overlayPayload = useMemo(() => {
+    if (!OVERLAY_UI_ENABLED || !completeEvent) return null;
+    return assembleBriefPayload({
+      metadata: metadataEvent ? (metadataEvent.data as unknown as Record<string, unknown>) : null,
+      sections: sectionEvents.map((e) => ({ section: e.data.section, data: e.data.data })),
+      complete: completeEvent.data as unknown as Record<string, unknown>,
+      briefType,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeEvent, metadataEvent, sectionEvents.length, briefType]);
+
   // Gaps to hide from the Data Gaps list because they're resolved elsewhere:
   // pre_da is soft-dropped, and a bushfire prescreen that resolved to "not
   // bushfire-prone" (value present, category null) must not also surface as a
@@ -2807,6 +2908,7 @@ function IntelligenceBriefInner() {
     setSelectedAddress('');
     setSelectedLat(null);
     setSelectedLng(null);
+    setOverlayIntent(null);
   }, []);
 
   return (
@@ -2927,6 +3029,21 @@ function IntelligenceBriefInner() {
             )}
           </div>
 
+          {/* Brief LLM overlay (flag-gated OFF by default): intent chips fill
+              the stream wait; the card appears above the dossier once the
+              brief completes. Purely additive — removing this block (or
+              turning either flag off) leaves the page exactly as before. */}
+          {OVERLAY_UI_ENABLED && (
+            <BriefIntentBar
+              intent={overlayIntent}
+              onIntentChange={setOverlayIntent}
+              briefReady={state === 'complete'}
+            />
+          )}
+          {OVERLAY_UI_ENABLED && state === 'complete' && (
+            <BriefOverlayCard briefPayload={overlayPayload} intent={overlayIntent} />
+          )}
+
           {/* Optional lead capture — never gates the result; offers to email the
               brief so an interested visitor becomes a follow-up-able contact. */}
           {state === 'complete' && (
@@ -2969,7 +3086,7 @@ function IntelligenceBriefInner() {
           {/* Section cards — stacked full-width, one per row, in stream order.
               Wide cards let each card's internal key-value grid run 3-4 columns;
               the old 3-column bento starved field-heavy sections into towers. */}
-          <div className="flex flex-col gap-4">
+          <div id="brief-dossier" className="flex flex-col gap-4">
             {sectionEvents.map((event, i) => {
               const section = event.data.section;
               // Development Capacity renders via the dedicated card (carries its

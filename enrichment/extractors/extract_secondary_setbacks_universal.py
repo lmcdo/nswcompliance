@@ -64,12 +64,12 @@ def map_control_type(value_type: str, context: Optional[str], unit: Optional[str
         return 'separation_from_dwelling'
     if value_type == 'height':
         if unit == 'storeys':
-            return 'height_storeys_max'
-        return 'height_max'
+            return 'max_height'
+        return 'max_height'
     if value_type in ('fsr', 'floor_space_ratio'):
-        return 'floor_area_max'
+        return 'max_floor_area'
     if value_type == 'site_coverage':
-        return 'site_coverage_max'
+        return 'max_site_coverage'
     if value_type == 'landscaping':
         return 'landscaping_min'
     return None

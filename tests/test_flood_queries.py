@@ -1119,7 +1119,14 @@ class TestQueryDeaWofs:
 
         mock_ds = MagicMock()
         mock_ds.count = band_count
-        mock_ds.read.return_value = _make_array([[pixel_value]])
+        # Post-#745-D1, bands are selected by NAME: give the mock a
+        # descriptions tuple with 'frequency' LAST and return pixel_value
+        # for that band (other bands return a count-like value).
+        mock_ds.descriptions = tuple(
+            (["count_wet", "count_clear"][:band_count - 1]) + ["frequency"]
+        )
+        mock_ds.read.side_effect = lambda idx: _make_array(
+            [[pixel_value if idx == band_count else 635.0]])
         mock_ds.__enter__ = MagicMock(return_value=mock_ds)
         mock_ds.__exit__ = MagicMock(return_value=False)
 
@@ -1147,18 +1154,16 @@ class TestQueryDeaWofs:
         return mock_ds, resp
 
     def test_happy_path_frequency_band(self, monkeypatch):
-        """3-band TIFF → reads band 3, value 0.45 → 45.0%."""
+        """3-band TIFF → selects the band NAMED frequency, 0.45 → 45.0%."""
         mock_ds, _ = self._setup_wofs_mocks(monkeypatch, 0.45, band_count=3)
         result = ft._query_dea_wofs(-33.87, 151.21)
         assert result["dea_wofs_frequency_pct"] == 45.0
-        mock_ds.read.assert_called_with(3)
 
-    def test_single_band_fallback(self, monkeypatch):
-        """Single-band TIFF → reads band 1."""
+    def test_single_band_named_frequency(self, monkeypatch):
+        """Single band works ONLY when named frequency (no positional read)."""
         mock_ds, _ = self._setup_wofs_mocks(monkeypatch, 0.3, band_count=1)
         result = ft._query_dea_wofs(-33.87, 151.21)
         assert result["dea_wofs_frequency_pct"] == 30.0
-        mock_ds.read.assert_called_with(1)
 
     def test_nodata_neg999_returns_none(self, monkeypatch):
         self._setup_wofs_mocks(monkeypatch, -999.0)
@@ -1177,17 +1182,18 @@ class TestQueryDeaWofs:
         result = ft._query_dea_wofs(-33.87, 151.21)
         assert result["dea_wofs_frequency_pct"] is None
 
-    def test_already_percentage_value_capped(self, monkeypatch):
-        """Value > 1.0 → treated as already percentage, capped at 100."""
+    def test_out_of_range_value_fails_closed(self, monkeypatch):
+        """#745 D1: a frequency can never exceed 1.0 — the old clamp turned a
+        stray count into a fake 100% flood signal. Out-of-range → None."""
         self._setup_wofs_mocks(monkeypatch, 55.5)
         result = ft._query_dea_wofs(-33.87, 151.21)
-        assert result["dea_wofs_frequency_pct"] == 55.5
+        assert result["dea_wofs_frequency_pct"] is None
 
-    def test_value_over_100_capped(self, monkeypatch):
-        """Value > 100 → capped at 100."""
-        self._setup_wofs_mocks(monkeypatch, 150.0)
+    def test_count_magnitude_value_fails_closed(self, monkeypatch):
+        """#745 D1: the live bug value class (count_clear ~635) → None, not 100."""
+        self._setup_wofs_mocks(monkeypatch, 635.0)
         result = ft._query_dea_wofs(-33.87, 151.21)
-        assert result["dea_wofs_frequency_pct"] == 100.0
+        assert result["dea_wofs_frequency_pct"] is None
 
     def test_http_error_returns_none(self, monkeypatch):
         monkeypatch.setattr("requests.get", lambda *a, **kw: (_ for _ in ()).throw(Exception("timeout")))

@@ -193,10 +193,18 @@ app/reports/intelligence-brief/page.tsx
   └─ IntelligenceBriefInner (client component)
       ├─ AddressAutocomplete (address input)
       ├─ useRealtimeStream(@trigger.dev/react-hooks) — subscribes to Trigger.dev stream
+      ├─ BriefIntentBar (flag-gated: intent chips shown during the stream wait)
+      ├─ BriefOverlayCard (flag-gated: fetches /api/brief-overlay after complete + intent picked)
       ├─ ProgressBar (progress during streaming)
       ├─ SectionCard × N (progressive section rendering)
       └─ CompleteSummary (confidence, constraints, gaps)
 ```
+
+**LLM overlay (dark by default):** `components/reports/BriefIntentOverlay.tsx` +
+`app/api/brief-overlay/route.ts` → Railway `/pipeline/brief-overlay`
+(`services/brief_overlay_api.py` → `brief_narration.generate_overlay`). Needs BOTH
+`NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED=true` (Vercel build env) and
+`BRIEF_LLM_OVERLAY_ENABLED=true` (Railway) before anything shows.
 
 **Data Flow:**
 ```
