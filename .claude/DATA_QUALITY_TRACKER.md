@@ -11,7 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
-| DQ-29: Doubled-character OCR corruption in provision_text (City of Sydney 684/644 live; ku-ring-gai, campbelltown, ashfield) | 🔴 Open — needs re-extraction | P1 |
+| DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
@@ -44,7 +44,7 @@
 
 ## DQ-29: Doubled-character OCR corruption in provision_text
 
-**Status:** 🔴 Open — needs re-extraction
+**Status:** 🟡 Partially fixed 2026-07-15 — 845 header lines stripped in DB; 22 scrambled-body rows remain for re-extraction
 **Found:** 2026-07-15 (surfaced by the latent-scope duplicate-audit lane)
 **Priority:** P1 (>2% threshold breached for affected councils; City of Sydney ~97% of live actionable rules)
 
@@ -101,11 +101,22 @@ extractor before re-running.
   Business open question: actual CoS lookup traffic (config is live, but CoS is not a
   beachhead council).
 
-**Fix (not yet done):**
-1. Identify the extractor/config that produced the doubled glyphs.
-2. Re-extract the affected documents; verify `provision_text` is clean.
-3. Re-run downstream tagging (`v2_*`) for re-extracted rows.
-4. Re-check with the detection query — target 0 corrupted rows for live councils.
+**Fix applied 2026-07-15 (production read+transform+write):**
+- Stripped the doubled-glyph header lines from `provision_text` for **845 rows** via a
+  guarded transactional UPDATE — per-id, `WHERE id=%s AND provision_text=<backup value>`
+  (optimistic-concurrency guard), never blanking a row, `statement_timeout=30s`.
+- Verified: City of Sydney sample (id 95298) now renders clean; detection count dropped
+  854 → 57 still matching the pattern, of which **35 are legitimate doubled-letter words**
+  (e.g. the suburb "Woolloomooloo") — false positives, no action.
+- **Backup / rollback source:** `data/latent_scope/ocr_fix_backup.json` (all 854 pre-fix rows,
+  `{id, council, before}`). To roll back, UPDATE each id back to its `before` value.
+
+**Remaining — 22 rows need SOURCE re-extraction (NOT strip-fixable):**
+Their body text is doubled *and* scrambled (e.g. `PPrirmimaarryy` = "Primary"), which is not
+losslessly reversible. Split: city_of_sydney 7, ku_ring_gai 10, campbelltown 4, (null) 1.
+Worklist: `data/latent_scope/reextraction_worklist.csv`. Fix = re-pull these ids from the
+source PDFs and re-run `v2_*` tagging. Regenerate the list any time with the detection query
+above (then exclude legitimate doubled-letter words).
 
 ---
 
