@@ -1,188 +1,202 @@
 {
   "tier": "standard",
-  "justification": "New pure-logic serializer module with no DB writes, no external API calls, and no user-facing surface yet; it feeds a future LLM selection layer, so silent wrong output matters (standard, not low), but nothing here mutates production data (not critical).",
-  "commit_hash": "f0db83fe",
-  "files": ["services/brief_manifest.py", "tests/test_brief_manifest.py"],
+  "justification": "New LLM overlay layer: flag-gated default OFF, additive-only (any failure returns None, base brief untouched), no DB writes. It authors user-visible sentence templates and calls the Anthropic API, so silent wrong output matters (standard); it cannot corrupt stored data or break the existing brief (not critical).",
+  "commit_hash": "77e6e7f4",
+  "files": ["services/brief_templates.py", "services/brief_narration.py", "tests/test_brief_narration.py"],
   "pre_impl": {
-    "existing_data": "Consumes DevelopmentBrief/RenovationBrief pydantic models or their model_dump() dicts from services/intelligence_brief.py; reads nothing from the database directly.",
-    "assumption_mismatch": "If a brief section stops following the DataField shape (value+confidence+source keys), the walker omits it fail-closed and records a warning in manifest.warnings rather than serving unprovenanced data.",
-    "new_vs_existing": "Applies only at call time to whatever brief object is passed in; no stored rows are touched and no schema exists for manifests yet.",
-    "external_source_error": "N/A — no external source is queried by this module.",
-    "frontend_type": "N/A — no frontend consumer until PR-3.",
-    "user_failure_mode": "N/A — not user-facing in this PR."
+    "existing_data": "Consumes BriefManifest from services/brief_manifest.py (merged #738) and brief dumps from the pipeline; calls the Anthropic Messages API; reads no database.",
+    "assumption_mismatch": "If a plan references ids or templates outside the manifest/registry, validate_plan rejects it, one corrected retry runs, then SelectionError fails closed to no-overlay.",
+    "new_vs_existing": "Pure call-time layer behind BRIEF_LLM_OVERLAY_ENABLED (default off); no stored rows, no existing behaviour changes until a PR-3 caller passes enabled.",
+    "external_source_error": "Anthropic API errors raise SelectionError inside select_composition; generate_overlay converts every failure to None so the brief renders unchanged.",
+    "frontend_type": "None yet — RenderedOverlay JSON shape ships to the frontend in PR-3.",
+    "user_failure_mode": "User sees the normal brief with no overlay section; failure is logged server-side."
   },
   "functions": [
     {
-      "name": "build_manifest",
-      "file_line": "services/brief_manifest.py:304",
-      "input": "DevelopmentBrief/RenovationBrief pydantic model or its model_dump dict from the brief pipeline",
-      "output": "BriefManifest with stable-ID field, gap and finding entries plus data hash",
-      "if_none": "Non-dict input raises TypeError at the gate; a None or missing section is simply skipped by the walker with the manifest still produced"
+      "name": "generate_overlay",
+      "file_line": "services/brief_narration.py:421",
+      "input": "brief model or dump plus persona, optional intent and question, optional flag override and injected client",
+      "output": "RenderedOverlay for the UI, or None when the flag is off or anything fails",
+      "if_none": "flag off, unknown intent, API failure, or contract breach all return None with a log line — the base brief is never affected"
     },
     {
-      "name": "check_intent_compatibility",
-      "file_line": "services/brief_manifest.py:213",
-      "input": "brief model or dump dict plus a user intent enum value or string",
-      "output": "IntentCompatibility with four-state status, reason text and strata type",
-      "if_none": "Missing or failed strata classification returns UNKNOWN status with reason, never a silent COMPATIBLE green light"
+      "name": "select_composition",
+      "file_line": "services/brief_narration.py:270",
+      "input": "BriefManifest plus persona/intent/question and an injectable Anthropic-compatible client",
+      "output": "validated CompositionPlan, or SelectionError after the retry budget is exhausted",
+      "if_none": "missing tool_use block, schema-invalid payload, or persistent validation failures raise SelectionError which the orchestrator converts to no-overlay"
     },
     {
-      "name": "_emit_datafield",
-      "file_line": "services/brief_manifest.py:446",
-      "input": "one DataField-shaped dict node plus its dotted path within the brief",
-      "output": "appends field rows or gap rows to the accumulator lists in place",
-      "if_none": "value None with reason becomes a GAP row; value None without reason becomes a queried-empty FIELD row keeping its confidence badge"
+      "name": "validate_plan",
+      "file_line": "services/brief_narration.py:139",
+      "input": "a parsed CompositionPlan plus the manifest it must reference",
+      "output": "list of human-readable contract violations, empty when the plan is valid",
+      "if_none": "gap ids cited as facts, unknown ids or templates, arity breaches, oversize plans, and declined plans without a decline headline are all rejected"
     },
     {
-      "name": "_walk",
-      "file_line": "services/brief_manifest.py:418",
-      "input": "arbitrary section subtree of the dumped brief with its dotted path",
-      "output": "recursively discovered DataField rows appended to field and gap accumulators",
-      "if_none": "scalar or non-walkable nodes are ignored by design because rows require DataField provenance"
+      "name": "render_plan",
+      "file_line": "services/brief_narration.py:370",
+      "input": "a VALIDATED CompositionPlan plus its manifest and an optional caution note",
+      "output": "RenderedOverlay with deduplicated lines keyed by cited entry set",
+      "if_none": "duplicate citation sets render once; empty plans yield an overlay with an empty headline rather than raising"
     },
     {
-      "name": "_is_datafield",
-      "file_line": "services/brief_manifest.py:401",
-      "input": "any node encountered during the tree walk of the brief",
-      "output": "boolean, true only when value, confidence and source keys all present",
-      "if_none": "None or non-dict nodes return False so look-alike records cannot fabricate rows"
+      "name": "_incompatible_overlay",
+      "file_line": "services/brief_narration.py:403",
+      "input": "the deterministic incompatibility reason plus the manifest for citation",
+      "output": "declined RenderedOverlay built with zero LLM involvement",
+      "if_none": "only FIELD strata rows are cited; when the strata row is a GAP the fact list is simply empty"
     },
     {
-      "name": "_enum_value",
-      "file_line": "services/brief_manifest.py:389",
-      "input": "possibly an Enum member from model_dump in default python mode",
-      "output": "the underlying enum value, or the input unchanged for non-enums",
-      "if_none": "None passes through unchanged and is handled by the caller's None path"
+      "name": "overlay_enabled",
+      "file_line": "services/brief_narration.py:77",
+      "input": "optional explicit boolean override, else the BRIEF_LLM_OVERLAY_ENABLED environment variable",
+      "output": "boolean gate for the whole overlay path, default False",
+      "if_none": "unset or any value other than true/1 keeps the overlay dark — the fail-safe direction"
     },
     {
-      "name": "_render_value",
-      "file_line": "services/brief_manifest.py:589",
-      "input": "any present DataField value including lists of records and structs",
-      "output": "single-line pipe-safe text with explicit record counts and overflow markers",
-      "if_none": "empty list renders an explicit queried-empty marker instead of disappearing"
+      "name": "plan_tool_schema",
+      "file_line": "services/brief_narration.py:107",
+      "input": "no arguments; reads the template registry at call time",
+      "output": "tool schema whose template fields are enum-constrained to registry ids",
+      "if_none": "N/A — pure function over module constants"
     },
     {
-      "name": "_summarise_record",
-      "file_line": "services/brief_manifest.py:575",
-      "input": "one record dict from a flattened decision-critical list",
-      "output": "compact key=value summary string over the record's scalar entries",
-      "if_none": "non-dict records fall back to scalar rendering; empty records render a no-detail marker"
+      "name": "_extract_tool_input",
+      "file_line": "services/brief_narration.py:350",
+      "input": "an SDK response object or a dict-shaped fake from tests",
+      "output": "tuple of tool input dict and tool_use id, or None-None when absent",
+      "if_none": "missing tool_use yields None which select_composition turns into SelectionError"
     },
     {
-      "name": "_clip",
-      "file_line": "services/brief_manifest.py:554",
-      "input": "any rendered text destined for one manifest table row",
-      "output": "single-line text with pipes replaced and length capped with ellipsis",
-      "if_none": "callers never pass None; empty string returns empty string safely"
+      "name": "render_line",
+      "file_line": "services/brief_templates.py:224",
+      "input": "template id plus manifest and the entry ids the line must cite",
+      "output": "RenderedLine with verbatim values, provenance suffix and citation ids",
+      "if_none": "unknown template or id raises KeyError/ValueError — a caller bug, since plans must be validated first"
     },
     {
-      "name": "_data_hash",
-      "file_line": "services/brief_manifest.py:628",
-      "input": "the final ordered list of manifest entries after ID assignment",
-      "output": "sha256 hex digest excluding as_at so the hash tracks data changes only",
-      "if_none": "empty entry list hashes deterministically to the empty-canonical digest"
+      "name": "render_gap_line",
+      "file_line": "services/brief_templates.py:212",
+      "input": "one GAP manifest entry with its reason and fallback source",
+      "output": "a Not-checked sentence naming the reason and where to look instead",
+      "if_none": "missing reason or source render explicit no-record markers, never silence"
     },
     {
-      "name": "_collect_findings",
-      "file_line": "services/brief_manifest.py:528",
-      "input": "the dumped brief's compound_constraints and sepp_lep_overrides registers",
-      "output": "finding row dicts with severity and clipped description text",
-      "if_none": "missing or non-dict register entries are skipped without raising"
+      "name": "scan_liability",
+      "file_line": "services/brief_templates.py:53",
+      "input": "any rendered or authored text destined for the user",
+      "output": "list of flagged advisory terms found, empty when clean",
+      "if_none": "empty or None-ish text returns an empty list"
     },
     {
-      "name": "to_prompt_block",
-      "file_line": "services/brief_manifest.py:146",
-      "input": "the manifest's own ordered entries plus address and brief type header",
-      "output": "deterministic pipe table string consumed as the Stage-1 cached prompt block",
-      "if_none": "entries list empty still renders the two header lines deterministically"
+      "name": "assert_templates_clean",
+      "file_line": "services/brief_templates.py:273",
+      "input": "no arguments; scans every authored template phrase at import time",
+      "output": "returns None or raises ValueError naming the offending template",
+      "if_none": "a flagged authored phrase is a build error and must fail loudly, not warn"
+    },
+    {
+      "name": "label_for_path",
+      "file_line": "services/brief_templates.py:176",
+      "input": "a manifest dotted path possibly with a list index suffix",
+      "output": "human-readable label with domain acronyms preserved",
+      "if_none": "empty path yields empty label which renders harmlessly"
+    },
+    {
+      "name": "capabilities_block",
+      "file_line": "services/brief_templates.py:128",
+      "input": "no arguments; reads the template registry",
+      "output": "deterministic CAPABILITIES text for the cached Stage-1 prompt",
+      "if_none": "N/A — pure function over module constants"
     }
   ],
   "values": [
     {
-      "value": "strata_type",
-      "read_at": "services/brief_manifest.py:261",
+      "value": "BRIEF_LLM_OVERLAY_ENABLED env flag",
+      "read_at": "services/brief_narration.py:81",
       "nullable": "yes",
-      "guard_at": "services/brief_manifest.py:264",
-      "if_missing": "empty string falls through to the is_strata fallback and an unrecognised non-empty type returns REVIEW, never silent COMPATIBLE"
+      "guard_at": "services/brief_narration.py:81",
+      "if_missing": "overlay stays off — the user-confirmed default; only true/1 enables"
     },
     {
-      "value": "confidence/source on each DataField node",
-      "read_at": "services/brief_manifest.py:454",
+      "value": "tool_use block in the Stage-1 response",
+      "read_at": "services/brief_narration.py:315",
       "nullable": "yes",
-      "guard_at": "services/brief_manifest.py:460",
-      "if_missing": "row omitted fail-closed and a warning recorded in manifest.warnings"
+      "guard_at": "services/brief_narration.py:316",
+      "if_missing": "SelectionError raised and the orchestrator serves the brief with no overlay"
     },
     {
-      "value": "reason on a None-valued DataField",
-      "read_at": "services/brief_manifest.py:453",
-      "nullable": "yes",
-      "guard_at": "services/brief_manifest.py:471",
-      "if_missing": "no reason means legit-empty, rendered as a FIELD with its confidence badge preserved"
+      "value": "gap entry ids inside a plan's fields list",
+      "read_at": "services/brief_narration.py:168",
+      "nullable": "no",
+      "guard_at": "services/brief_narration.py:145",
+      "if_missing": "a G id cited as a fact is rejected in validation so a failed check can never render as checked-clear"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Granny-flat intent requested for a strata apartment where the LLM previously composed a build plan anyway (live validation 2026-07-15)",
-      "what_happens": "User would receive a feasibility-style overlay for a project the lot cannot legally pursue individually",
+      "scenario": "Stage-1 cites a gap id under a fact template so a failed overlay query renders as an authoritative-looking empty fact",
+      "what_happens": "Reader sees a checked-clear style line for data that was never obtained — the false-negative class",
       "mitigated": true,
-      "how": "services/brief_manifest.py:268 — apartment strata plus physical build intent returns INCOMPATIBLE deterministically before any LLM call",
-      "repro": "pytest tests/test_brief_manifest.py::TestIntentCompatibility::test_apartment_strata_build_intent_is_incompatible"
+      "how": "services/brief_narration.py:145 — fact templates validate against entry ids minus gap ids; killed in live mutation run",
+      "repro": "pytest tests/test_brief_narration.py::TestGapNeverRendersAsFact"
     },
     {
-      "scenario": "Upstream heuristic emits contradictory strata record with is_strata False but strata_type apartment",
-      "what_happens": "Old ordering returned COMPATIBLE, silently disabling the exact guard this module exists to provide",
+      "scenario": "Two legitimately-empty controls render identical marker text and text-keyed dedup silently drops the second field",
+      "what_happens": "One of two distinct queried-empty facts disappears from the overlay without any log or error",
       "mitigated": true,
-      "how": "services/brief_manifest.py:264 — strata_type comparison now outranks the is_strata boolean flag",
-      "repro": "pytest tests/test_brief_manifest.py::TestIntentCompatibility::test_contradictory_strata_record_fails_toward_guard"
+      "how": "services/brief_narration.py:381 — dedup keys on the sorted citation-id set, never on rendered text; killed in live mutation run",
+      "repro": "pytest tests/test_brief_narration.py::TestRenderDedup::test_two_queried_empty_fields_both_render"
     },
     {
-      "scenario": "Caller passes model_dump output where StrataType and ConfidenceLevel remain enum members on Python 3.11",
-      "what_happens": "String comparison silently misses so the apartment guard downgrades and confidence badges render as ConfidenceLevel.AUTHORITATIVE",
+      "scenario": "Model declines a forbidden question but picks a factual headline so the decline reason never reaches the reader",
+      "what_happens": "Overlay shows declined styling with ordinary facts and no explanation of what was declined or why",
       "mitigated": true,
-      "how": "services/brief_manifest.py:389 — _enum_value unwraps members before comparison and rendering; killed live in mutation run",
-      "repro": "pytest tests/test_brief_manifest.py::TestModelInput::test_enum_confidence_renders_value_not_member_repr"
+      "how": "services/brief_narration.py:150 — declined plans must use a standalone decline/clarify/not-covered headline template",
+      "repro": "pytest tests/test_brief_narration.py::TestValidatePlan::test_declined_plan_with_factual_headline_rejected"
     },
     {
-      "scenario": "Legitimately empty control (queried, no height limit exists) conflated with a failed fetch",
-      "what_happens": "A clear answer would render as a data gap, or worse a failure would render as checked-clear",
+      "scenario": "Granny-flat intent on an apartment strata lot reaches the LLM which composes a build plan (live validation 2026-07-15)",
+      "what_happens": "Reader receives feasibility-style content for a project their lot cannot legally pursue individually",
       "mitigated": true,
-      "how": "services/brief_manifest.py:463 — three-state branch maps reason-present to GAP and reason-absent to queried-empty FIELD keeping confidence",
-      "repro": "pytest tests/test_brief_manifest.py::TestThreeState"
+      "how": "services/brief_narration.py:437 — deterministic INCOMPATIBLE pre-check renders the decline with zero API calls, asserted in test",
+      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_apartment_build_intent_never_reaches_llm"
     },
     {
-      "scenario": "Domain record carrying value and reason keys nested in a walked struct resembles a DataField",
-      "what_happens": "A phantom GAP row appears for data that was never a gap, polluting rule-4 gap surfacing downstream",
+      "scenario": "Retry after an invalid plan echoes the tool_use turn without a tool_result and the API rejects the request with a 400",
+      "what_happens": "Every retry fails so a recoverable one-off slip permanently kills the overlay for that request (observed live before fix)",
       "mitigated": true,
-      "how": "services/brief_manifest.py:401 — strict shape check requires value, confidence and source keys together",
-      "repro": "pytest tests/test_brief_manifest.py::TestWalker::test_lookalike_record_does_not_fabricate_gap"
+      "how": "services/brief_narration.py:334 — retry answers the echoed tool_use with an is_error tool_result carrying the violations",
+      "repro": "pytest tests/test_brief_narration.py::TestSelectComposition::test_invalid_first_plan_retried_with_tool_result"
     },
     {
-      "scenario": "DCP control text containing a pipe character shifts the manifest table columns",
-      "what_happens": "The LLM reads part of the value as the confidence column, corrupting citation rendering downstream",
+      "scenario": "The overlay feature flag defaults on or misparses a truthy-looking string so the LLM layer serves audiences that opted out",
+      "what_happens": "Users see AI-selected content the operator never enabled, violating the user-confirmed default-off decision",
       "mitigated": true,
-      "how": "services/brief_manifest.py:557 — pipes replaced with slashes in every rendered cell; killed live in mutation run",
-      "repro": "pytest tests/test_brief_manifest.py::TestWalker::test_pipe_in_value_cannot_shift_columns"
+      "how": "services/brief_narration.py:81 — only the exact strings true/1 enable; flipped-default mutation killed in live run",
+      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_flag_env_true_enables"
     },
     {
-      "scenario": "Decision-critical SEPP or DCP list compacted to a bare record count as in the prototype",
-      "what_happens": "Stage-1 selection cannot see the standards and skips the most relevant field for the user's stated intent",
+      "scenario": "Any unexpected exception in manifest build or rendering propagates and turns a working brief request into a 500",
+      "what_happens": "The additive-only guarantee breaks — an overlay bug damages the base product it was never allowed to touch",
       "mitigated": true,
-      "how": "services/brief_manifest.py:495 — FLATTEN_LIST_PATHS emits one row per record; flatten-disable mutation killed live",
-      "repro": "pytest tests/test_brief_manifest.py::TestWalker::test_flattened_sepp_rows_expose_each_standard"
+      "how": "services/brief_narration.py:460 — last-resort handler logs and returns None; exception-propagation mutation killed after adding a direct test",
+      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_unwalkable_brief_returns_none_not_typeerror"
     },
     {
-      "scenario": "Same data gap arrives from both the walked DataField and the brief-level gap register",
-      "what_happens": "Duplicate gap rows waste tokens and make gap counts wrong, as observed in the live Concord manifest",
+      "scenario": "Authored template wording drifts from the pre-push liability scanner so the overlay gate and repo gate disagree",
+      "what_happens": "Advisory language could ship in overlay templates while the pre-push hook believes user-facing text is clean",
       "mitigated": true,
-      "how": "services/brief_manifest.py:333 — register entries merge only when their field path was not already walked",
-      "repro": "pytest tests/test_brief_manifest.py::TestWalker::test_gap_register_merges_without_duplicates"
+      "how": "services/brief_templates.py:41 mirror + tests compare compiled patterns with scripts/liability_language_check.py; scan-returns-clean mutation killed",
+      "repro": "pytest tests/test_brief_narration.py::TestTemplates::test_flagged_terms_mirror_matches_hook_scanner"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No",
+    "secrets": "No — uses the existing ANTHROPIC_API_KEY already required by lec_collector",
     "other_repo": "No",
-    "manual_verify": "No"
+    "manual_verify": "No — flag stays off in production until PR-3 wiring"
   }
 }
