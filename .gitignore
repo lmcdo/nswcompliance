@@ -574,3 +574,9 @@ data/lep-html/
 # Climate risk intelligence — reference PDFs (future product, not compliance engine core)
 climate_risk_intel/
 temp_dcp_pdfs/
+
+# latent-scope analysis lane — local exports, embeddings, worklists, scopes.
+# These are regenerable analysis artifacts, never committed.
+data/latent_scope/
+latent-scope-data/
+.venv-latentscope/

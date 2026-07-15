@@ -1,103 +1,111 @@
 {
-  "tier": "critical",
-  "justification": "Fixes two live-reproduced silent data corruptions serving WRONG risk numbers to users today (#745 D1+D2): a fake 100% satellite flood frequency on dry lots firing a false user-facing flood constraint, and a storm initial-loss parameter mislabelled as the 1% AEP rainfall depth. Both fixes are fail-closed; critical tier because these are user-facing hazard figures.",
-  "commit_hash": "75f3db5b",
-  "files": [
-    "services/flood_truth.py",
-    "services/portal_constraints.py",
-    "tests/test_flood_wofs_band_order.py",
-    "tests/test_flood_queries.py",
-    "tests/test_portal_constraints.py"
-  ],
-  "pre_impl": {
-    "existing_data": "Reads the DEA WOfS WCS GeoTIFF and the ARR Data Hub JSON live per request; no stored rows change. Downstream consumers (risk level, compound constraints, brief Climate section) already handle None as unavailable.",
-    "assumption_mismatch": "If DEA stops naming a band 'frequency' or ARR never serves an IFD layer, both functions return None and the UI shows checked-unavailable \u2014 missing beats known-wrong (repo Data Integrity rule).",
-    "new_vs_existing": "Applies to every future flood/climate fetch; no backfill exists because neither value is persisted.",
-    "external_source_error": "API failures already returned None; this change extends fail-closed to WRONG-SHAPED successes (unstable band order, absent IFD layer).",
-    "frontend_type": "No frontend type changes required \u2014 the existing checked-unavailable render states already cover None for both the WOfS line and extreme_rainfall.",
-    "user_failure_mode": "Instead of a false 100% flood signal or a fabricated 6.8mm rainfall figure, users see the flood satellite line and extreme-rainfall line as checked-but-unavailable until sources behave/are replaced."
+ "tier": "standard",
+ "justification": "New offline analysis lane (not a production/serving path): a read-only exporter of regulatory_provisions and an offline near-duplicate/contradiction audit over the exported corpus, wrapping enjalot/latent-scope for classifier-QA and canonicalisation. Standard tier because it opens a new DB read path and handles the full provisions corpus, but it writes nothing back to the database, serves no user-facing output, and its artifacts are git-ignored. The whole lane can run egress-free via the TF-IDF embedder.",
+ "commit_hash": "000136c2",
+ "files": [
+  "scripts/latent_scope_export.py",
+  "scripts/latent_scope_dup_audit.py",
+  "requirements-latentscope.txt",
+  "docs/latent_scope_runbook.md",
+  ".gitignore",
+  ".qa_report.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "No prior semantic/corpus-level QA tool exists. The prior-art guard flagged frontend provisions APIs (app/api/provisions/*), NumericChecker/numericCompliance (per-property value-vs-control), and the extraction-time markdown parser — all per-record serving/extraction, none a corpus-wide export or dedup audit. Reuse not viable; documented in each script's prior-art-checked line. DB connection reuses services/db_config.get_connection (the established read path); is_current usage mirrors services/shadow_detector.py.",
+  "assumption_mismatch": "Seeded by a POC that ran the real latent-scope pipeline on 452 Marrickville DCP chunks with a local TF-IDF embedder (Hugging Face egress was policy-blocked). This PR is the committed tooling so it can run against the real 46,585-row table where DB env is set; DATABASE_URL/DB_* are not reachable from the authoring environment.",
+  "new_vs_existing": "New analysis-lane capability, deliberately isolated: heavy deps (torch/umap/hdbscan) pinned to a separate venv via requirements-latentscope.txt, never venv_linux. No production code imports these scripts."
+ },
+ "functions": [
+  {
+   "name": "_build_query",
+   "file_line": "scripts/latent_scope_export.py:65",
+   "input": "council filter list, actionable_only flag, current_only flag, min_chars int, optional row limit",
+   "output": "a parameterised read-only SELECT string plus its bound params list, ready for cursor.execute",
+   "if_none": "no councils means all councils; current_only False exports stale rows too (is_current still selected as a column)"
   },
-  "functions": [
-    {
-      "name": "_wofs_frequency_from_bands",
-      "file_line": "services/flood_truth.py:853",
-      "input": "band description names and per-band pixel values from the WCS GeoTIFF",
-      "output": "the 0-1 frequency from the band NAMED frequency, or None fail-closed",
-      "if_none": "no band named frequency, nodata, NaN, or any value outside [0,1] returns None \u2014 never a positional read, never a clamp"
-    },
-    {
-      "name": "_query_dea_wofs",
-      "file_line": "services/flood_truth.py:891",
-      "input": "lat/lng sampled against the DEA WOfS multi-year composite via WCS",
-      "output": "dea_wofs_frequency_pct 0-100 or None on any failure or wrong shape",
-      "if_none": "downstream risk scoring and compound constraints treat None as no satellite signal \u2014 the false flood constraint cannot fire from a band-order artifact"
-    },
-    {
-      "name": "fetch_arr_ifd",
-      "file_line": "services/portal_constraints.py:565",
-      "input": "lat/lng queried against the ARR Data Hub JSON layers",
-      "output": "IFD table dict ONLY when a layer keyed as IFD exists, else None",
-      "if_none": "BurstIL (storm initial loss) is never consumed as rainfall depth; the brief marks extreme_rainfall unavailable until a genuine BOM IFD source is wired (sourcing decision tracked in #745)"
-    }
-  ],
-  "values": [
-    {
-      "value": "band descriptions tuple on the rasterio dataset",
-      "read_at": "services/flood_truth.py:907",
-      "nullable": "yes",
-      "guard_at": "services/flood_truth.py:875",
-      "if_missing": "empty or unnamed descriptions return None \u2014 no positional fallback"
-    },
-    {
-      "value": "layers dict keys in the ARR response",
-      "read_at": "services/portal_constraints.py:596",
-      "nullable": "yes",
-      "guard_at": "services/portal_constraints.py:600",
-      "if_missing": "no IFD-keyed layer means None; BurstIL presence alone never produces a value"
-    }
-  ],
-  "queries": [],
-  "break_it": [
-    {
-      "scenario": "DEA WCS returns bands in a swapped order so positional band 3 is a count, shown as 100% flood frequency on a dry lot",
-      "what_happens": "Users saw a false 'satellite flood evidence detected' warning; risk level forced to elevated (live-reproduced at Concord AND rural Dubbo)",
-      "mitigated": true,
-      "how": "services/flood_truth.py \u2014 band selected by name from ds.descriptions; live-verified post-fix: Concord 0.04%, Dubbo 0.0%, Parramatta River 0.5%",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestWofsBandSelection::test_concord_swapped_order_returns_true_frequency_not_100"
-    },
-    {
-      "scenario": "A frequency-band value above 1.0 gets clamped into a plausible percentage instead of failing",
-      "what_happens": "The clamp masked the band-identity bug for months by converting counts into fake percentages",
-      "mitigated": true,
-      "how": "services/flood_truth.py \u2014 out-of-range values return None with a warning; old clamp tests inverted to pin fail-closed",
-      "repro": "pytest tests/test_flood_queries.py::TestQueryDeaWofs::test_count_magnitude_value_fails_closed"
-    },
-    {
-      "scenario": "ARR Data Hub serves BurstIL storm initial loss and the code labels it as the 1% AEP 60-min rainfall depth",
-      "what_happens": "Users saw 6.8mm where Sydney's true design rainfall is ~90-100mm, under a fabricated 'BOM IFD' source label",
-      "mitigated": true,
-      "how": "services/portal_constraints.py \u2014 only a layer keyed as IFD is served; BurstIL-only payloads return None (live endpoint shape pinned in test)",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_burstil_only_payload_returns_none"
-    },
-    {
-      "scenario": "A future genuine IFD layer appears but the code keeps failing closed or mixes tables",
-      "what_happens": "Real data would be discarded, or worse, BurstIL preferred over IFD when both exist",
-      "mitigated": true,
-      "how": "IFD-keyed layer is served with the 1% 60-min cell selected from IT (96.3), never BurstIL's 6.8 in the same payload",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_genuine_ifd_layer_is_served_with_sane_magnitude"
-    },
-    {
-      "scenario": "Downstream risk scoring still treats a None WOfS frequency as zero-then-elevated via the effective_pct fallback chain",
-      "what_happens": "A failed satellite read could still contribute to risk level or the satellite-flood compound constraint",
-      "mitigated": true,
-      "how": "flood_truth risk chain reads dea_wofs_frequency_pct or 0.0 so None contributes nothing, and compound_constraints requires flood_wofs_pct is not None AND > 2.0 \u2014 pinned by the full suite (2,939 passed) with the new None paths",
-      "repro": "pytest tests/test_flood_queries.py tests/test_flood_truth.py -q plus tests/test_flood_wofs_band_order.py"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No",
-    "secrets": "No",
-    "other_repo": "No",
-    "manual_verify": "Yes \u2014 regenerate the Concord brief after Railway deploy: WOfS line reads ~0.04% (or unavailable), the false flood compound constraint is gone, and extreme_rainfall shows checked-unavailable until a real IFD source is chosen"
+  {
+   "name": "fetch_provisions",
+   "file_line": "scripts/latent_scope_export.py:120",
+   "input": "the same filter arguments, used to build and run the query",
+   "output": "a tuple of column names and fetched provision rows read from regulatory_provisions",
+   "if_none": "connection is pinned READ ONLY before any statement so a stray write raises instead of mutating the database"
+  },
+  {
+   "name": "write_output",
+   "file_line": "scripts/latent_scope_export.py:153",
+   "input": "column names, fetched rows, target output path, and the desired format string",
+   "output": "the path actually written, as parquet or CSV, with the parent directory created",
+   "if_none": "if parquet is requested but pyarrow is unavailable it falls back to CSV rather than hard-failing the export"
+  },
+  {
+   "name": "numeric_tokens",
+   "file_line": "scripts/latent_scope_dup_audit.py:66",
+   "input": "a single provision text string to scan for planning numbers",
+   "output": "a frozenset of normalised value-plus-unit tokens such as 4.5m or 20percent",
+   "if_none": "text with no recognised number+unit yields an empty set, which suppresses the numeric_mismatch contradiction flag"
+  },
+  {
+   "name": "find_pairs",
+   "file_line": "scripts/latent_scope_dup_audit.py:125",
+   "input": "a matrix of L2-normalised embedding vectors, a minimum cosine threshold, and a neighbour count",
+   "output": "deduplicated (i, j, cosine) pairs at or above the threshold, sorted by descending similarity",
+   "if_none": "uses a cosine k-nearest-neighbour search rather than a full N-by-N matrix so it scales to the whole 46k-row table"
+  },
+  {
+   "name": "build_worklist",
+   "file_line": "scripts/latent_scope_dup_audit.py:170",
+   "input": "the exported dataframe, the candidate pairs, and a cross-scope-only toggle",
+   "output": "a ranked dataframe of pairs with contradiction rows (differing numeric standards) sorted to the top",
+   "if_none": "same-council same-precinct pairs are dropped unless --include-same-scope is passed; empty input yields an empty worklist"
   }
+ ],
+ "values": [
+  {
+   "value": "provision_text",
+   "read_at": "regulatory_provisions SELECT in _build_query",
+   "if_missing": "Filtered out at query time (provision_text IS NOT NULL AND length(btrim()) >= min_chars); audit also drops NaN text before embedding"
+  },
+  {
+   "value": "is_current",
+   "read_at": "exported column; optional WHERE is_current = TRUE via --current-only",
+   "if_missing": "Column is exported, not force-filtered, so stale rows are visible to the QA pass rather than silently dropped; --current-only restricts to live rows when wanted"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Read-only bulk export of provisions for offline latent-scope analysis; no writeback path exists in the lane",
+   "file_line": "scripts/latent_scope_export.py:109",
+   "where_clause": "provision_text IS NOT NULL AND length(btrim(provision_text)) >= %s, plus optional is_current = TRUE, v2_is_actionable = TRUE, and lower(source_council) = ANY(%s); executed under conn.set_session(readonly=True) so no INSERT/UPDATE/DELETE can run. Verified live: table has 65 cols / 53,716 rows, source_council holds lowercase slugs"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Export silently drops superseded provisions, so a QA pass never sees stale data",
+   "what_happens": "Mislabelled/stale rows would be invisible — the opposite of the tool's purpose",
+   "mitigated": true,
+   "how": "is_current is exported as a column (not force-filtered); colour-by is_current on the map surfaces stale rows. --current-only is opt-in, off by default",
+   "repro": "python scripts/latent_scope_export.py --limit 100 then inspect the is_current column in the parquet"
+  },
+  {
+   "scenario": "numeric_mismatch flag fires on incidental number differences and floods the worklist with false contradictions",
+   "what_happens": "Analyst wastes time on non-contradictions",
+   "mitigated": true,
+   "how": "mismatch only fires when both provisions carry numeric tokens AND their token sets differ, AND the pair is already above the cosine threshold (near-identical wording); value+unit tokens are normalised (4.50 -> 4.5, metres/m -> m). It is explicitly a review candidate, never an assertion",
+   "repro": "synthetic test: '4.5 metres' vs '3 metres' setback pair flags True; identical biodiversity boilerplate flags False"
+  },
+  {
+   "scenario": "sentence-transformers unavailable (HF egress blocked or dep missing) hard-fails the audit",
+   "what_happens": "Audit crashes with an import error",
+   "mitigated": true,
+   "how": "--embedder tfidf is fully offline (sklearn only); the sentence-transformers path raises a clear SystemExit pointing at the tfidf fallback and requirements file",
+   "repro": "run with --embedder tfidf on a machine with no network"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Done against production (read-only): scripts/latent_scope_export.py --council marrickville --actionable-only exported 7,577 provisions; scripts/latent_scope_dup_audit.py --embedder tfidf --min-cosine 0.92 --include-same-scope produced 8,261 candidate pairs (1,093 numeric_mismatch) into dup_worklist.csv. Remaining USER step: triage the worklist (top rows include chunking-artifact parking tables) and optionally run the full cross-council corpus."
+ }
 }
