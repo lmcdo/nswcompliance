@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, Suspense, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
@@ -9,6 +9,12 @@ import { cn } from '@/lib/utils';
 import AerialTile from '@/components/reports/AerialTile';
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
 import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
+import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
+
+// Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
+// flag AND the Railway-side BRIEF_LLM_OVERLAY_ENABLED must be on for anything
+// to show — turning either off restores today's page exactly.
+const OVERLAY_UI_ENABLED = process.env.NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED === 'true';
 
 // ---------------------------------------------------------------------------
 // Types — match SSE events from Trigger.dev task (plotdetect-agents)
@@ -2535,6 +2541,21 @@ function IntelligenceBriefInner() {
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
 
+  // Brief LLM overlay: user's intent (chip pick) + the assembled brief the
+  // overlay endpoint needs. Payload is null until the brief completes, so the
+  // card can't fetch early; data already lives in `parts` — no re-fetch.
+  const [overlayIntent, setOverlayIntent] = useState<string | null>(null);
+  const overlayPayload = useMemo(() => {
+    if (!OVERLAY_UI_ENABLED || !completeEvent) return null;
+    return assembleBriefPayload({
+      metadata: metadataEvent ? (metadataEvent.data as unknown as Record<string, unknown>) : null,
+      sections: sectionEvents.map((e) => ({ section: e.data.section, data: e.data.data })),
+      complete: completeEvent.data as unknown as Record<string, unknown>,
+      briefType,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completeEvent, metadataEvent, sectionEvents.length, briefType]);
+
   // Gaps to hide from the Data Gaps list because they're resolved elsewhere:
   // pre_da is soft-dropped, and a bushfire prescreen that resolved to "not
   // bushfire-prone" (value present, category null) must not also surface as a
@@ -2807,6 +2828,7 @@ function IntelligenceBriefInner() {
     setSelectedAddress('');
     setSelectedLat(null);
     setSelectedLng(null);
+    setOverlayIntent(null);
   }, []);
 
   return (
@@ -2926,6 +2948,21 @@ function IntelligenceBriefInner() {
               </button>
             )}
           </div>
+
+          {/* Brief LLM overlay (flag-gated OFF by default): intent chips fill
+              the stream wait; the card appears above the dossier once the
+              brief completes. Purely additive — removing this block (or
+              turning either flag off) leaves the page exactly as before. */}
+          {OVERLAY_UI_ENABLED && (
+            <BriefIntentBar
+              intent={overlayIntent}
+              onIntentChange={setOverlayIntent}
+              briefReady={state === 'complete'}
+            />
+          )}
+          {OVERLAY_UI_ENABLED && state === 'complete' && (
+            <BriefOverlayCard briefPayload={overlayPayload} intent={overlayIntent} />
+          )}
 
           {/* Optional lead capture — never gates the result; offers to email the
               brief so an interested visitor becomes a follow-up-able contact. */}
