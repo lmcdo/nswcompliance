@@ -129,6 +129,17 @@ would merge clauses (unsafe for legal text). City of Sydney section-6 source PDF
 (only sections 3-4 are present in `data/dcps/`) → must be re-downloaded first. Deferred to the
 enrichment pipeline; scrambled bodies are already reduced (headers stripped in the 2026-07-15 pass).
 
+**UI exposure + mitigation 2026-07-15:** Of the 22, only 7 were customer-visible (provisions panel
+filters `is_current AND v2_is_actionable`); the other 15 sit in the DB unused. None have a
+`pdf_page_image_url`, so there is no figure image to fall back on — only the OCR'd text. The 2
+genuinely-unreadable ones (ids 95802, 95807 — City of Sydney section-6 figure/site-plan pages,
+e.g. Cahill Expressway / Herald Square public-domain plans, which appear only for those specific
+sites) were set `v2_is_actionable=false` to remove the text-soup from display (backup:
+`data/latent_scope/actionable_flag_backup.json`; reversible). They are figure legends — the
+enforceable setback controls live in separate text provisions / `dcp_setback_controls`, so nothing
+enforceable was hidden. The remaining 5 shown rows (4 Campbelltown, 1 Ku-ring-gai) are
+readable-but-untidy and left in place pending re-extraction.
+
 ---
 
 ## DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all only
