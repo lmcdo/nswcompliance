@@ -584,13 +584,27 @@ def fetch_arr_ifd(lat: float, lng: float) -> Optional[dict]:
         return None
 
     layers = data.get("layers") or {}
-    burst_il = layers.get("BurstIL") or {}
-    if not burst_il:
+    # Audit finding 2026-07-15 (issue #745 D2, live-reproduced): this endpoint
+    # does NOT serve BOM IFD depths under any parameters. The previous code
+    # consumed layers["BurstIL"] — ARR storm-burst INITIAL LOSS (mm), a design
+    # loss parameter — and labelled it as the 1% AEP 60-min rainfall depth
+    # (6.8 mm shown where Sydney's true value is ~90-100 mm). Fail closed:
+    # only a layer explicitly keyed as IFD may be served; BurstIL never.
+    # Wiring a genuine BOM IFD source is tracked in #745 (sourcing decision).
+    ifd_layer = None
+    for key, value in layers.items():
+        if "ifd" in str(key).lower() and isinstance(value, dict):
+            ifd_layer = value
+            break
+    if not ifd_layer:
+        logger.warning(
+            "ARR Data Hub returned no IFD layer for (%.4f, %.4f) — "
+            "extreme_rainfall reported unavailable (never BurstIL)", lat, lng)
         return None
 
-    durations = burst_il.get("index") or []
-    aep_cols = burst_il.get("columns") or []
-    depths = burst_il.get("data") or []
+    durations = ifd_layer.get("index") or []
+    aep_cols = ifd_layer.get("columns") or []
+    depths = ifd_layer.get("data") or []
 
     # Extract the 1% AEP 60-minute depth for gap detection threshold
     # ARR may return AEP column as "1.0", "1", "1.00", or "1.0%" — normalize

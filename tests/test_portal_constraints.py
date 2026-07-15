@@ -274,7 +274,7 @@ class TestFetchArrIfd:
     @patch("services.portal_constraints.requests.get")
     def test_ifd_data_returned(self, mock_get):
         mock_get.return_value = MagicMock(
-            json=lambda: {"layers": {"BurstIL": {
+            json=lambda: {"layers": {"IFD": {
                 "index": [60, 120],
                 "columns": ["50.0", "1.0"],
                 "data": [[20.5, 85.3], [30.1, 110.0]],
@@ -289,7 +289,7 @@ class TestFetchArrIfd:
     @patch("services.portal_constraints.requests.get")
     def test_missing_1pct_column(self, mock_get):
         mock_get.return_value = MagicMock(
-            json=lambda: {"layers": {"BurstIL": {
+            json=lambda: {"layers": {"IFD": {
                 "index": [60],
                 "columns": ["50.0", "10.0"],
                 "data": [[20.5, 45.0]],
@@ -318,7 +318,7 @@ class TestFetchArrIfd:
         """ARR may return AEP columns as '1', '1.00', or '1.0%' — all should match 1% AEP."""
         for col_format in ["1", "1.00", "1.0%"]:
             mock_get.return_value = MagicMock(
-                json=lambda cf=col_format: {"layers": {"BurstIL": {
+                json=lambda cf=col_format: {"layers": {"IFD": {
                     "index": [60],
                     "columns": ["50.0", cf],
                     "data": [[20.5, 88.0]],

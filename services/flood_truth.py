@@ -850,6 +850,42 @@ def _query_compound_risk_layers(lat: float, lng: float) -> dict:
 _WOFS_HARD_TIMEOUT = 60  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
 
 
+def _wofs_frequency_from_bands(
+    descriptions: list, values: list
+) -> Optional[float]:
+    """Select the WOfS frequency (0.0-1.0) from a GetCoverage response by
+    band NAME, never by position.
+
+    Audit finding 2026-07-15 (issue #745 D1, live-reproduced at 9 NSW points):
+    the DEA WCS returns the three measurement bands (count_wet, count_clear,
+    frequency) in an UNSTABLE order that varies by location — at Concord and
+    at a bone-dry Dubbo paddock, positional band 3 was count_clear (~635),
+    which the old >1.0 clamp converted into a fake 100% flood frequency and a
+    false user-facing flood constraint.
+
+    Fail-closed rules: no band named "frequency" → None (no positional
+    fallback); value outside [0, 1], nodata, or NaN → None. A frequency can
+    never legitimately exceed 1.0 — clamping masks band-identity bugs.
+    """
+    band_idx = next(
+        (i for i, d in enumerate(descriptions)
+         if isinstance(d, str) and d.strip().lower() == "frequency"),
+        None,
+    )
+    if band_idx is None or band_idx >= len(values):
+        logger.warning(
+            "DEA WOfS: no band named 'frequency' in response "
+            "(descriptions=%s) — failing closed", descriptions)
+        return None
+    raw = values[band_idx]
+    if raw == -999.0 or math.isnan(raw) or raw < 0.0 or raw > 1.0:
+        logger.warning(
+            "DEA WOfS: frequency band value %r outside [0,1] — failing closed",
+            raw)
+        return None
+    return raw
+
+
 def _query_dea_wofs(lat: float, lng: float) -> dict:
     """
     Sample DEA Water Observations (WOfS) multi-year composite via WCS.
@@ -875,19 +911,12 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
         if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
             return {"dea_wofs_frequency_pct": None}
         with rasterio.open(io.BytesIO(r.content)) as ds:
-            # Band order: 1=count_wet, 2=count_clear, 3=frequency (0.0–1.0)
-            if ds.count >= 3:
-                raw = float(ds.read(3)[0, 0])
-            else:
-                raw = float(ds.read(1)[0, 0])  # single-band fallback
-        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            descriptions = list(ds.descriptions or [])
+            values = [float(ds.read(i + 1)[0, 0]) for i in range(ds.count)]
+        raw = _wofs_frequency_from_bands(descriptions, values)
+        if raw is None:
             return {"dea_wofs_frequency_pct": None}
-        # frequency band is 0.0–1.0; guard against already-percentage values
-        if raw > 1.0:
-            pct = min(raw, 100.0)
-        else:
-            pct = raw * 100.0
-        return {"dea_wofs_frequency_pct": round(pct, 2)}
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
 
     try:
         with ThreadPoolExecutor(max_workers=1) as inner:
