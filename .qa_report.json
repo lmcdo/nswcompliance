@@ -1,103 +1,112 @@
 {
   "tier": "critical",
-  "justification": "Fixes two live-reproduced silent data corruptions serving WRONG risk numbers to users today (#745 D1+D2): a fake 100% satellite flood frequency on dry lots firing a false user-facing flood constraint, and a storm initial-loss parameter mislabelled as the 1% AEP rainfall depth. Both fixes are fail-closed; critical tier because these are user-facing hazard figures.",
+  "justification": "Fixes three confirmed silent-wrong-result defects from the #745 audit that are user-facing today: a legit-empty coastal check rendered as a data gap, a granny-flat card showing a confident zero-buildings count when detection actually FAILED (the classic silent false negative), and two different lot areas served in one brief. All fixes follow the DataField three-state contract; critical because these shape user decisions on hazards and eligibility.",
   "commit_hash": "75f3db5b",
   "files": [
-    "services/flood_truth.py",
-    "services/portal_constraints.py",
-    "tests/test_flood_wofs_band_order.py",
-    "tests/test_flood_queries.py",
-    "tests/test_portal_constraints.py"
+    "services/intelligence_brief.py",
+    "services/granny_flat.py",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_brief_failclosed.py",
+    "tests/test_granny_flat_mutation.py",
+    "docs/CONFIGURATION.md"
   ],
   "pre_impl": {
-    "existing_data": "Reads the DEA WOfS WCS GeoTIFF and the ARR Data Hub JSON live per request; no stored rows change. Downstream consumers (risk level, compound constraints, brief Climate section) already handle None as unavailable.",
-    "assumption_mismatch": "If DEA stops naming a band 'frequency' or ARR never serves an IFD layer, both functions return None and the UI shows checked-unavailable \u2014 missing beats known-wrong (repo Data Integrity rule).",
-    "new_vs_existing": "Applies to every future flood/climate fetch; no backfill exists because neither value is persisted.",
-    "external_source_error": "API failures already returned None; this change extends fail-closed to WRONG-SHAPED successes (unstable band order, absent IFD layer).",
-    "frontend_type": "No frontend type changes required \u2014 the existing checked-unavailable render states already cover None for both the WOfS line and extreme_rainfall.",
-    "user_failure_mode": "Instead of a false 100% flood signal or a fabricated 6.8mm rainfall figure, users see the flood satellite line and extreme-rainfall line as checked-but-unavailable until sources behave/are replaced."
+    "existing_data": "No stored data changes: DataField construction and the detect request/response schema change at call time only; older clients omitting lot_area_m2/detection_failed keep working (both optional with safe defaults).",
+    "assumption_mismatch": "A caller not sending lot_area_m2 falls back to the geometry shoelace exactly as before; a response without detection_failed reads as false in the UI, matching pre-change rendering for successful detections.",
+    "new_vs_existing": "Applies to every future brief/detect run; nothing persisted needs migration.",
+    "external_source_error": "Modal HTTP failure now RAISES at the call boundary and surfaces as detection_failed with a warning \u2014 never byte-identical to a genuine zero.",
+    "frontend_type": "GfState result variant gains detectionFailed and detectionWarnings optional fields; GrannyFlatCard gains an optional lotAreaM2 prop \u2014 tsc 0 errors, jest 768 passed.",
+    "user_failure_mode": "Coastal checked-clear shows as a clear check (not a gap); failed building scans read count unknown-not-zero; every card in one brief cites one lot area."
   },
   "functions": [
     {
-      "name": "_wofs_frequency_from_bands",
-      "file_line": "services/flood_truth.py:853",
-      "input": "band description names and per-band pixel values from the WCS GeoTIFF",
-      "output": "the 0-1 frequency from the band NAMED frequency, or None fail-closed",
-      "if_none": "no band named frequency, nodata, NaN, or any value outside [0,1] returns None \u2014 never a positional read, never a clamp"
+      "name": "_build_environmental",
+      "file_line": "services/intelligence_brief.py:2811",
+      "input": "portal controls plus overlay query results and failure flags",
+      "output": "the EnvironmentalConstraints model whose coastal_hazards field now honours the three-state DataField contract on legit-empty results",
+      "if_none": "zero coastal layers on a SUCCESSFUL query keeps the overlay success confidence with reason None; only a genuine overlay failure is NOT_AVAILABLE with reason"
     },
     {
-      "name": "_query_dea_wofs",
-      "file_line": "services/flood_truth.py:891",
-      "input": "lat/lng sampled against the DEA WOfS multi-year composite via WCS",
-      "output": "dea_wofs_frequency_pct 0-100 or None on any failure or wrong shape",
-      "if_none": "downstream risk scoring and compound constraints treat None as no satellite signal \u2014 the false flood constraint cannot fire from a band-order artifact"
+      "name": "detect_structures",
+      "file_line": "services/granny_flat.py:728",
+      "input": "GrannyFlatDetectRequest, now optionally carrying the reconciled brief lot_area_m2",
+      "output": "a GrannyFlatDetectResponse carrying the three-state samgeo_structure_count together with the new detection_failed flag and warnings",
+      "if_none": "caller-supplied lot area wins over the geometry shoelace; detection failure yields count None plus detection_failed True plus a warning that the count is unknown, not zero"
     },
     {
-      "name": "fetch_arr_ifd",
-      "file_line": "services/portal_constraints.py:565",
-      "input": "lat/lng queried against the ARR Data Hub JSON layers",
-      "output": "IFD table dict ONLY when a layer keyed as IFD exists, else None",
-      "if_none": "BurstIL (storm initial loss) is never consumed as rainfall depth; the brief marks extreme_rainfall unavailable until a genuine BOM IFD source is wired (sourcing decision tracked in #745)"
+      "name": "_detect_structures_samgeo",
+      "file_line": "services/granny_flat.py:412",
+      "input": "aerial tile path, tile bbox, and optional lot geometry sent to the Modal endpoint",
+      "output": "structure list on success; raises RuntimeError on any call failure",
+      "if_none": "the old blanket except returned an empty list making failure byte-identical to genuine zero \u2014 now the caller records the failure distinctly"
     }
   ],
   "values": [
     {
-      "value": "band descriptions tuple on the rasterio dataset",
-      "read_at": "services/flood_truth.py:907",
+      "value": "coastal_layers on a successful overlay query",
+      "read_at": "services/intelligence_brief.py:3037",
       "nullable": "yes",
-      "guard_at": "services/flood_truth.py:875",
-      "if_missing": "empty or unnamed descriptions return None \u2014 no positional fallback"
+      "guard_at": "services/intelligence_brief.py:3038",
+      "if_missing": "value None with overlay success confidence and reason None \u2014 collect_gaps never lists it"
     },
     {
-      "value": "layers dict keys in the ARR response",
-      "read_at": "services/portal_constraints.py:596",
+      "value": "req.lot_area_m2 on the detect request",
+      "read_at": "services/granny_flat.py:757",
       "nullable": "yes",
-      "guard_at": "services/portal_constraints.py:600",
-      "if_missing": "no IFD-keyed layer means None; BurstIL presence alone never produces a value"
+      "guard_at": "services/granny_flat.py:757",
+      "if_missing": "geometry shoelace fallback used, identical to pre-change behaviour"
+    },
+    {
+      "value": "detection_failed / warnings on the detect response",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1922",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1990",
+      "if_missing": "absent flag reads false so successful detections render exactly as before"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "DEA WCS returns bands in a swapped order so positional band 3 is a count, shown as 100% flood frequency on a dry lot",
-      "what_happens": "Users saw a false 'satellite flood evidence detected' warning; risk level forced to elevated (live-reproduced at Concord AND rural Dubbo)",
+      "scenario": "Successful coastal overlay query with zero layers rendered under Data Gaps with good-news copy on the live Concord brief",
+      "what_happens": "A checked-clear result reads as missing data, contradicting the report's own gap semantics",
       "mitigated": true,
-      "how": "services/flood_truth.py \u2014 band selected by name from ds.descriptions; live-verified post-fix: Concord 0.04%, Dubbo 0.0%, Parramatta River 0.5%",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestWofsBandSelection::test_concord_swapped_order_returns_true_frequency_not_100"
+      "how": "services/intelligence_brief.py coastal_hazards keeps overlay_auth confidence with reason None on legit-empty; collect_gaps exclusion pinned in test",
+      "repro": "pytest tests/test_brief_failclosed.py::test_coastal_legit_empty_is_not_a_gap"
     },
     {
-      "scenario": "A frequency-band value above 1.0 gets clamped into a plausible percentage instead of failing",
-      "what_happens": "The clamp masked the band-identity bug for months by converting counts into fake percentages",
+      "scenario": "Contributions lookup succeeding with zero plans coded as NOT_AVAILABLE plus reason, the same contract violation as coastal",
+      "what_happens": "A legit-empty contributions result would surface as a data gap in the development brief",
       "mitigated": true,
-      "how": "services/flood_truth.py \u2014 out-of-range values return None with a warning; old clamp tests inverted to pin fail-closed",
-      "repro": "pytest tests/test_flood_queries.py::TestQueryDeaWofs::test_count_magnitude_value_fails_closed"
+      "how": "contributions_field now propagates the fetch's own confidence and reason; only a real failure is NOT_AVAILABLE",
+      "repro": "pytest tests/test_brief_failclosed.py plus the brief contract suites in the full run"
     },
     {
-      "scenario": "ARR Data Hub serves BurstIL storm initial loss and the code labels it as the 1% AEP 60-min rainfall depth",
-      "what_happens": "Users saw 6.8mm where Sydney's true design rainfall is ~90-100mm, under a fabricated 'BOM IFD' source label",
+      "scenario": "Modal detection endpoint fails and the card shows zero existing buildings detected on a lot with a house (live Concord brief)",
+      "what_happens": "Users read a confident zero where the truth is unknown \u2014 the worst silent false negative in the report",
       "mitigated": true,
-      "how": "services/portal_constraints.py \u2014 only a layer keyed as IFD is served; BurstIL-only payloads return None (live endpoint shape pinned in test)",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_burstil_only_payload_returns_none"
+      "how": "inner call boundary raises; endpoint marks detection_failed with count None; card renders unknown-not-zero and never the count line",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_modal_call_failure_is_unknown_not_zero and ::test_inner_modal_http_failure_raises_not_empty_list"
     },
     {
-      "scenario": "A future genuine IFD layer appears but the code keeps failing closed or mixes tables",
-      "what_happens": "Real data would be discarded, or worse, BurstIL preferred over IFD when both exist",
+      "scenario": "A genuine zero-structure detection gets misread as a failure after the three-state change",
+      "what_happens": "Real empty lots would lose their legitimate zero count and show a false unavailable state",
       "mitigated": true,
-      "how": "IFD-keyed layer is served with the 1% 60-min cell selected from IT (96.3), never BurstIL's 6.8 in the same payload",
-      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_genuine_ifd_layer_is_served_with_sane_magnitude"
+      "how": "successful empty detection keeps count 0 with detection_failed False \u2014 pinned in its own test",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_genuine_zero_detection_is_zero_not_failed"
     },
     {
-      "scenario": "Downstream risk scoring still treats a None WOfS frequency as zero-then-elevated via the effective_pct fallback chain",
-      "what_happens": "A failed satellite read could still contribute to risk level or the satellite-flood compound constraint",
+      "scenario": "Two different lot areas rendered in one brief (487 vs 505 on the live Concord run)",
+      "what_happens": "SEPP eligibility text and the granny-flat card disagree about the lot size, undermining trust in every number",
       "mitigated": true,
-      "how": "flood_truth risk chain reads dea_wofs_frequency_pct or 0.0 so None contributes nothing, and compound_constraints requires flood_wofs_pct is not None AND > 2.0 \u2014 pinned by the full suite (2,939 passed) with the new None paths",
-      "repro": "pytest tests/test_flood_queries.py tests/test_flood_truth.py -q plus tests/test_flood_wofs_band_order.py"
+      "how": "detect request accepts the reconciled brief lot_area_m2 preferred over the shoelace; the page passes planningCtx.lotAreaM2 through route.ts in both dev-direct and Trigger paths",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_detect_prefers_caller_lot_area"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes \u2014 regenerate the Concord brief after Railway deploy: WOfS line reads ~0.04% (or unavailable), the false flood compound constraint is gone, and extreme_rainfall shows checked-unavailable until a real IFD source is chosen"
+    "manual_verify": "Yes \u2014 regenerate the Concord brief: coastal no longer under Data Gaps; the Secondary Dwelling card shows one lot area matching the rest of the brief, or the unknown-not-zero wording when Modal is down"
   }
 }

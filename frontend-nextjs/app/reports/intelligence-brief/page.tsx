@@ -1896,10 +1896,10 @@ function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
 type GfState =
   | { kind: 'loading' }
   | { kind: 'ineligible'; reason: string; evidence?: string }
-  | { kind: 'result'; count: number | null; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number; structures?: DetectedStructureRow[] }
+  | { kind: 'result'; count: number | null; detectionFailed?: boolean; detectionWarnings?: string[]; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number; structures?: DetectedStructureRow[] }
   | { kind: 'error'; message: string };
 
-function GrannyFlatCard({ address, active }: { address?: string; active: boolean }) {
+function GrannyFlatCard({ address, active, lotAreaM2 }: { address?: string; active: boolean; lotAreaM2?: number | null }) {
   const [state, setState] = useState<GfState | null>(null);
   useEffect(() => {
     if (!active || !address) { setState(null); return; }
@@ -1917,6 +1917,8 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
             const o = (d.data || {}) as Record<string, unknown>;
             setState({
               kind: 'result',
+              detectionFailed: !!o.detection_failed,
+              detectionWarnings: Array.isArray(o.warnings) ? (o.warnings as string[]) : [],
               count: (o.confirmed_structure_count as number) ?? (o.samgeo_structure_count as number) ?? null,
               seppEligible: !!o.sepp_eligible,
               ineligibleReason: (o.sepp_ineligible_reason as string) || undefined,
@@ -1935,7 +1937,7 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
 
     fetch('/api/satellite/granny-flat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, action: 'detect' }),
+      body: JSON.stringify({ address, action: 'detect', ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
     })
       .then(async (r) => {
         const d = await r.json();
@@ -1947,7 +1949,8 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
       .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Couldn’t start the building scan.' }); });
 
     return () => { cancelled = true; };
-  }, [active, address]);
+    // lotAreaM2 intentionally in deps: a late-arriving reconciled area re-runs detect with the right figure
+  }, [active, address, lotAreaM2]);
 
   const Shell = ({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) => (
     <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
@@ -1974,9 +1977,11 @@ function GrannyFlatCard({ address, active }: { address?: string; active: boolean
   return (
     <Shell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
       <p className="text-slate-900">
-        {state.count != null
-          ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
-          : 'Building scan complete.'}
+        {state.detectionFailed
+          ? <>The building scan did not complete — the building count is <span className="font-medium">unknown, not zero</span>. Confirm the structure count in the Granny Flat tool before relying on it.</>
+          : state.count != null
+            ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
+            : 'Building scan complete.'}
       </p>
       <p className="mt-1 text-slate-700">
         {state.seppEligible
@@ -3099,7 +3104,7 @@ function IntelligenceBriefInner() {
               if (section === 'satellite.granny_flat') {
                 // Decoupled: the card fires the gated async route itself (gate +
                 // real Modal scan), rather than the brief's timed-out inline run.
-                card = <GrannyFlatCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} />;
+                card = <GrannyFlatCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} lotAreaM2={planningCtx.lotAreaM2 ?? null} />;
               }
               if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;

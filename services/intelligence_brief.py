@@ -3030,11 +3030,15 @@ def _build_environmental(
             reason="Overlay query did not complete" if overlays_failed else None,
         ),
         coastal_hazards=DataField(
+            # #745 D5: "queried, zero coastal layers" is a checked-CLEAR result,
+            # not a data gap. Legit-empty = value None + NO reason, keeping the
+            # overlay-auth badge (same contract as nearest_features above).
+            # NOT_AVAILABLE + reason is reserved for an actual fetch failure.
             value=coastal_layers if coastal_layers else None,
-            confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
+            confidence=overlay_auth,
             source="sepp_resilience_hazards",
             as_at=today,
-            reason=None if coastal_layers else "No coastal hazard overlays at this location",
+            reason="Overlay query did not complete" if overlays_failed else None,
         ),
         mine_subsidence=DataField(
             value=None if mine_failed else (mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False),
@@ -4015,12 +4019,19 @@ def _generate_brief_sse(
         )
     else:
         contributions_raw = contributions_df.value
+        # #745 D5: propagate the fetch's OWN confidence/reason. A successful
+        # query with zero contributions plans is legit-empty (authoritative,
+        # no reason) — only a genuine fetch failure is NOT_AVAILABLE+reason.
+        contributions_failed = (
+            contributions_df.confidence == ConfidenceLevel.NOT_AVAILABLE
+        )
         contributions_field = DataField(
             value=contributions_raw,
-            confidence=ConfidenceLevel.AUTHORITATIVE if contributions_raw else ConfidenceLevel.NOT_AVAILABLE,
+            confidence=ConfidenceLevel.NOT_AVAILABLE if contributions_failed
+            else ConfidenceLevel.AUTHORITATIVE,
             source="planning_portal_cp",
             as_at=today,
-            reason=None if contributions_raw else "No contributions plans found for this property",
+            reason=contributions_df.reason if contributions_failed else None,
         )
         brief = DevelopmentBrief(
             address=req.address, lat=lat, lng=lng,

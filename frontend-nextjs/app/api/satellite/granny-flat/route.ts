@@ -195,6 +195,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { address, action = 'detect', notification_email } = body;
+  // #745 D3: the brief's VG-reconciled lot area — forwarded so the detect
+  // pipeline uses the SAME figure as every other card (single source of truth).
+  const lotAreaM2: number | null =
+    typeof (body as { lot_area_m2?: unknown }).lot_area_m2 === 'number'
+      ? ((body as { lot_area_m2: number }).lot_area_m2)
+      : null;
   if (!address?.trim()) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
@@ -352,7 +358,7 @@ export async function POST(request: NextRequest) {
         detectResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/detect`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry }),
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
           signal: AbortSignal.timeout(180_000),
         });
       } catch (err) {
@@ -381,7 +387,7 @@ export async function POST(request: NextRequest) {
           lng,
           prop_id,
           report_id: jobId,
-          extra_body: { lot_geometry: lotGeometry },
+          extra_body: { lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
           ...(notification_email ? { notification_email } : {}),
         },
       }),
