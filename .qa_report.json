@@ -1,202 +1,120 @@
 {
   "tier": "standard",
-  "justification": "New LLM overlay layer: flag-gated default OFF, additive-only (any failure returns None, base brief untouched), no DB writes. It authors user-visible sentence templates and calls the Anthropic API, so silent wrong output matters (standard); it cannot corrupt stored data or break the existing brief (not critical).",
-  "commit_hash": "77e6e7f4",
-  "files": ["services/brief_templates.py", "services/brief_narration.py", "tests/test_brief_narration.py"],
+  "justification": "Thin wiring PR: one FastAPI endpoint over the already-QA'd #742 engine, a Next.js proxy route, and flag-gated UI components that render nothing until BOTH env flags are on. No DB access, no change to any existing behaviour while dark; silent wrong output at the endpoint boundary matters (standard), nothing can corrupt data (not critical).",
+  "commit_hash": "7de380ff",
+  "files": [
+    "services/brief_overlay_api.py",
+    "services/compliance_api_server.py",
+    "frontend-nextjs/app/api/brief-overlay/route.ts",
+    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/COMPONENT_MAP.md",
+    "tests/test_brief_overlay_api.py"
+  ],
   "pre_impl": {
-    "existing_data": "Consumes BriefManifest from services/brief_manifest.py (merged #738) and brief dumps from the pipeline; calls the Anthropic Messages API; reads no database.",
-    "assumption_mismatch": "If a plan references ids or templates outside the manifest/registry, validate_plan rejects it, one corrected retry runs, then SelectionError fails closed to no-overlay.",
-    "new_vs_existing": "Pure call-time layer behind BRIEF_LLM_OVERLAY_ENABLED (default off); no stored rows, no existing behaviour changes until a PR-3 caller passes enabled.",
-    "external_source_error": "Anthropic API errors raise SelectionError inside select_composition; generate_overlay converts every failure to None so the brief renders unchanged.",
-    "frontend_type": "None yet — RenderedOverlay JSON shape ships to the frontend in PR-3.",
-    "user_failure_mode": "User sees the normal brief with no overlay section; failure is logged server-side."
+    "existing_data": "Consumes the assembled brief the frontend already holds from the Trigger.dev stream (no re-fetch, per frontend reuse rule); calls generate_overlay from #742; reads no database.",
+    "assumption_mismatch": "If the streamed section shapes drift from the server brief shape, build_manifest inside the engine walks what it can and the overlay degrades to fewer rows or None — never an error on the brief page.",
+    "new_vs_existing": "Everything is dark until BOTH NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED (Vercel build) and BRIEF_LLM_OVERLAY_ENABLED (Railway) are true; with either off the page renders byte-identically to today.",
+    "external_source_error": "Anthropic failures are already converted to overlay=null by the engine; proxy failures return enabled:false; the UI renders nothing for both.",
+    "frontend_type": "New BriefOverlay/OverlayLine types in BriefIntentOverlay.tsx mirror RenderedOverlay JSON; tsc clean (0 errors), jest 768 passed.",
+    "user_failure_mode": "User sees the normal brief with no overlay card; failures logged server-side only."
   },
   "functions": [
     {
-      "name": "generate_overlay",
-      "file_line": "services/brief_narration.py:421",
-      "input": "brief model or dump plus persona, optional intent and question, optional flag override and injected client",
-      "output": "RenderedOverlay for the UI, or None when the flag is off or anything fails",
-      "if_none": "flag off, unknown intent, API failure, or contract breach all return None with a log line — the base brief is never affected"
+      "name": "brief_overlay",
+      "file_line": "services/brief_overlay_api.py:86",
+      "input": "OverlayRequest with assembled brief dict, persona, optional intent and question",
+      "output": "OverlayResponse with enabled flag and overlay dict or null",
+      "if_none": "flag off returns enabled:false without touching the engine; engine returning None yields enabled:true overlay:null so the UI shows nothing"
     },
     {
-      "name": "select_composition",
-      "file_line": "services/brief_narration.py:270",
-      "input": "BriefManifest plus persona/intent/question and an injectable Anthropic-compatible client",
-      "output": "validated CompositionPlan, or SelectionError after the retry budget is exhausted",
-      "if_none": "missing tool_use block, schema-invalid payload, or persistent validation failures raise SelectionError which the orchestrator converts to no-overlay"
+      "name": "_persona_known",
+      "file_line": "services/brief_overlay_api.py:56",
+      "input": "persona string from the request body before any processing",
+      "output": "the same string when it is a known persona value",
+      "if_none": "unknown persona fails pydantic validation and the request is rejected 422 at the gate"
     },
     {
-      "name": "validate_plan",
-      "file_line": "services/brief_narration.py:139",
-      "input": "a parsed CompositionPlan plus the manifest it must reference",
-      "output": "list of human-readable contract violations, empty when the plan is valid",
-      "if_none": "gap ids cited as facts, unknown ids or templates, arity breaches, oversize plans, and declined plans without a decline headline are all rejected"
+      "name": "_intent_known",
+      "file_line": "services/brief_overlay_api.py:63",
+      "input": "optional intent string from the request body",
+      "output": "the same value when null or a recognised Intent enum value",
+      "if_none": "null passes through (no intent chosen yet); unknown intent strings are rejected 422 before reaching the engine"
     },
     {
-      "name": "render_plan",
-      "file_line": "services/brief_narration.py:370",
-      "input": "a VALIDATED CompositionPlan plus its manifest and an optional caution note",
-      "output": "RenderedOverlay with deduplicated lines keyed by cited entry set",
-      "if_none": "duplicate citation sets render once; empty plans yield an overlay with an empty headline rather than raising"
-    },
-    {
-      "name": "_incompatible_overlay",
-      "file_line": "services/brief_narration.py:403",
-      "input": "the deterministic incompatibility reason plus the manifest for citation",
-      "output": "declined RenderedOverlay built with zero LLM involvement",
-      "if_none": "only FIELD strata rows are cited; when the strata row is a GAP the fact list is simply empty"
-    },
-    {
-      "name": "overlay_enabled",
-      "file_line": "services/brief_narration.py:77",
-      "input": "optional explicit boolean override, else the BRIEF_LLM_OVERLAY_ENABLED environment variable",
-      "output": "boolean gate for the whole overlay path, default False",
-      "if_none": "unset or any value other than true/1 keeps the overlay dark — the fail-safe direction"
-    },
-    {
-      "name": "plan_tool_schema",
-      "file_line": "services/brief_narration.py:107",
-      "input": "no arguments; reads the template registry at call time",
-      "output": "tool schema whose template fields are enum-constrained to registry ids",
-      "if_none": "N/A — pure function over module constants"
-    },
-    {
-      "name": "_extract_tool_input",
-      "file_line": "services/brief_narration.py:350",
-      "input": "an SDK response object or a dict-shaped fake from tests",
-      "output": "tuple of tool input dict and tool_use id, or None-None when absent",
-      "if_none": "missing tool_use yields None which select_composition turns into SelectionError"
-    },
-    {
-      "name": "render_line",
-      "file_line": "services/brief_templates.py:224",
-      "input": "template id plus manifest and the entry ids the line must cite",
-      "output": "RenderedLine with verbatim values, provenance suffix and citation ids",
-      "if_none": "unknown template or id raises KeyError/ValueError — a caller bug, since plans must be validated first"
-    },
-    {
-      "name": "render_gap_line",
-      "file_line": "services/brief_templates.py:212",
-      "input": "one GAP manifest entry with its reason and fallback source",
-      "output": "a Not-checked sentence naming the reason and where to look instead",
-      "if_none": "missing reason or source render explicit no-record markers, never silence"
-    },
-    {
-      "name": "scan_liability",
-      "file_line": "services/brief_templates.py:53",
-      "input": "any rendered or authored text destined for the user",
-      "output": "list of flagged advisory terms found, empty when clean",
-      "if_none": "empty or None-ish text returns an empty list"
-    },
-    {
-      "name": "assert_templates_clean",
-      "file_line": "services/brief_templates.py:273",
-      "input": "no arguments; scans every authored template phrase at import time",
-      "output": "returns None or raises ValueError naming the offending template",
-      "if_none": "a flagged authored phrase is a build error and must fail loudly, not warn"
-    },
-    {
-      "name": "label_for_path",
-      "file_line": "services/brief_templates.py:176",
-      "input": "a manifest dotted path possibly with a list index suffix",
-      "output": "human-readable label with domain acronyms preserved",
-      "if_none": "empty path yields empty label which renders harmlessly"
-    },
-    {
-      "name": "capabilities_block",
-      "file_line": "services/brief_templates.py:128",
-      "input": "no arguments; reads the template registry",
-      "output": "deterministic CAPABILITIES text for the cached Stage-1 prompt",
-      "if_none": "N/A — pure function over module constants"
+      "name": "_brief_not_empty",
+      "file_line": "services/brief_overlay_api.py:70",
+      "input": "the brief dict posted back by the frontend",
+      "output": "the same dict when it carries at least an address",
+      "if_none": "an empty or address-less dict is rejected 422 so the engine never walks garbage"
     }
   ],
   "values": [
     {
       "value": "BRIEF_LLM_OVERLAY_ENABLED env flag",
-      "read_at": "services/brief_narration.py:81",
+      "read_at": "services/brief_overlay_api.py:91",
       "nullable": "yes",
-      "guard_at": "services/brief_narration.py:81",
-      "if_missing": "overlay stays off — the user-confirmed default; only true/1 enables"
+      "guard_at": "services/brief_overlay_api.py:91",
+      "if_missing": "endpoint answers enabled:false overlay:null and never calls the engine — the fail-safe default"
     },
     {
-      "value": "tool_use block in the Stage-1 response",
-      "read_at": "services/brief_narration.py:315",
+      "value": "PYTHON_API_URL in the Next.js proxy",
+      "read_at": "frontend-nextjs/app/api/brief-overlay/route.ts:21",
       "nullable": "yes",
-      "guard_at": "services/brief_narration.py:316",
-      "if_missing": "SelectionError raised and the orchestrator serves the brief with no overlay"
+      "guard_at": "frontend-nextjs/app/api/brief-overlay/route.ts:24",
+      "if_missing": "proxy answers enabled:false overlay:null locally instead of throwing on a bad fetch URL"
     },
     {
-      "value": "gap entry ids inside a plan's fields list",
-      "read_at": "services/brief_narration.py:168",
-      "nullable": "no",
-      "guard_at": "services/brief_narration.py:145",
-      "if_missing": "a G id cited as a fact is rejected in validation so a failed check can never render as checked-clear"
+      "value": "overlayPayload assembled from streamed parts",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:2551",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/components/reports/BriefIntentOverlay.tsx:123",
+      "if_missing": "null until the brief completes; the card renders nothing and no fetch fires"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Stage-1 cites a gap id under a fact template so a failed overlay query renders as an authoritative-looking empty fact",
-      "what_happens": "Reader sees a checked-clear style line for data that was never obtained — the false-negative class",
+      "scenario": "Operator believes the overlay is off but the endpoint serves it anyway because the flag check lives only client-side",
+      "what_happens": "Audiences that opted out would receive LLM-selected content against the user-confirmed default-off decision",
       "mitigated": true,
-      "how": "services/brief_narration.py:145 — fact templates validate against entry ids minus gap ids; killed in live mutation run",
-      "repro": "pytest tests/test_brief_narration.py::TestGapNeverRendersAsFact"
+      "how": "services/brief_overlay_api.py:91 — server-side flag check answers enabled:false without calling the engine, asserted with a mock that the engine is never invoked",
+      "repro": "pytest tests/test_brief_overlay_api.py::TestFlagGate::test_flag_off_returns_disabled_without_calling_engine"
     },
     {
-      "scenario": "Two legitimately-empty controls render identical marker text and text-keyed dedup silently drops the second field",
-      "what_happens": "One of two distinct queried-empty facts disappears from the overlay without any log or error",
+      "scenario": "A garbage or address-less brief body reaches the engine and produces a confident-looking empty overlay",
+      "what_happens": "The card could render misleading near-empty content for a request that was never a valid brief",
       "mitigated": true,
-      "how": "services/brief_narration.py:381 — dedup keys on the sorted citation-id set, never on rendered text; killed in live mutation run",
-      "repro": "pytest tests/test_brief_narration.py::TestRenderDedup::test_two_queried_empty_fields_both_render"
+      "how": "services/brief_overlay_api.py:70 — request validators reject unknown persona, unknown intent, oversize question, and address-less briefs with 422",
+      "repro": "pytest tests/test_brief_overlay_api.py::TestRequestValidation"
     },
     {
-      "scenario": "Model declines a forbidden question but picks a factual headline so the decline reason never reaches the reader",
-      "what_happens": "Overlay shows declined styling with ordinary facts and no explanation of what was declined or why",
+      "scenario": "An engine exception at the endpoint boundary leaks a stack trace or breaks the brief page fetch",
+      "what_happens": "The brief page fetch would surface an opaque 500 body and could log user data in tracebacks",
       "mitigated": true,
-      "how": "services/brief_narration.py:150 — declined plans must use a standalone decline/clarify/not-covered headline template",
-      "repro": "pytest tests/test_brief_narration.py::TestValidatePlan::test_declined_plan_with_factual_headline_rejected"
+      "how": "services/brief_overlay_api.py:103 — belt-and-braces handler returns a fixed 500 detail; the UI treats any non-ok as render-nothing",
+      "repro": "pytest tests/test_brief_overlay_api.py::TestErrorIsolation::test_engine_raising_returns_500_not_traceback"
     },
     {
-      "scenario": "Granny-flat intent on an apartment strata lot reaches the LLM which composes a build plan (live validation 2026-07-15)",
-      "what_happens": "Reader receives feasibility-style content for a project their lot cannot legally pursue individually",
+      "scenario": "Railway answers the overlay proxy with a 503 while the user's completed brief is already on screen",
+      "what_happens": "A user who already received their full brief would see an error banner caused by the optional overlay layer",
       "mitigated": true,
-      "how": "services/brief_narration.py:437 — deterministic INCOMPATIBLE pre-check renders the decline with zero API calls, asserted in test",
-      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_apartment_build_intent_never_reaches_llm"
+      "how": "frontend-nextjs/app/api/brief-overlay/route.ts:44 returns enabled:false on any failure and BriefIntentOverlay.tsx catch renders nothing — additive-only in both layers",
+      "repro": "stop Railway locally and confirm the brief page still completes with no overlay card"
     },
     {
-      "scenario": "Retry after an invalid plan echoes the tool_use turn without a tool_result and the API rejects the request with a 400",
-      "what_happens": "Every retry fails so a recoverable one-off slip permanently kills the overlay for that request (observed live before fix)",
+      "scenario": "Switching intent chips races two fetches and a stale response overwrites the newer plan",
+      "what_happens": "The card would show facts selected for the previously chosen intent under the new chip",
       "mitigated": true,
-      "how": "services/brief_narration.py:334 — retry answers the echoed tool_use with an is_error tool_result carrying the violations",
-      "repro": "pytest tests/test_brief_narration.py::TestSelectComposition::test_invalid_first_plan_retried_with_tool_result"
-    },
-    {
-      "scenario": "The overlay feature flag defaults on or misparses a truthy-looking string so the LLM layer serves audiences that opted out",
-      "what_happens": "Users see AI-selected content the operator never enabled, violating the user-confirmed default-off decision",
-      "mitigated": true,
-      "how": "services/brief_narration.py:81 — only the exact strings true/1 enable; flipped-default mutation killed in live run",
-      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_flag_env_true_enables"
-    },
-    {
-      "scenario": "Any unexpected exception in manifest build or rendering propagates and turns a working brief request into a 500",
-      "what_happens": "The additive-only guarantee breaks — an overlay bug damages the base product it was never allowed to touch",
-      "mitigated": true,
-      "how": "services/brief_narration.py:460 — last-resort handler logs and returns None; exception-propagation mutation killed after adding a direct test",
-      "repro": "pytest tests/test_brief_narration.py::TestGenerateOverlay::test_unwalkable_brief_returns_none_not_typeerror"
-    },
-    {
-      "scenario": "Authored template wording drifts from the pre-push liability scanner so the overlay gate and repo gate disagree",
-      "what_happens": "Advisory language could ship in overlay templates while the pre-push hook believes user-facing text is clean",
-      "mitigated": true,
-      "how": "services/brief_templates.py:41 mirror + tests compare compiled patterns with scripts/liability_language_check.py; scan-returns-clean mutation killed",
-      "repro": "pytest tests/test_brief_narration.py::TestTemplates::test_flagged_terms_mirror_matches_hook_scanner"
+      "how": "frontend-nextjs/components/reports/BriefIntentOverlay.tsx:131 — effect keyed on address+intent with an ignore-flag cleanup discards stale responses",
+      "repro": "toggle two chips rapidly with network throttling and confirm the rendered card matches the last chip"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — uses the existing ANTHROPIC_API_KEY already required by lec_collector",
+    "secrets": "No — reuses ANTHROPIC_API_KEY already on Railway",
     "other_repo": "No",
-    "manual_verify": "No — flag stays off in production until PR-3 wiring"
+    "manual_verify": "Yes — to preview: set BRIEF_LLM_OVERLAY_ENABLED=true on Railway and NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED=true on a Vercel preview env, then run a brief and pick an intent chip"
   }
 }
