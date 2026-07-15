@@ -309,6 +309,8 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
           <div className={`text-sm ${UNAVAILABLE_TEXT_STYLES[unavail.tone]}`}>
             {unavail.detail}
           </div>
+        ) : value && section === 'strata' ? (
+          <StrataDisplay data={value} />
         ) : value ? (
           <SectionData data={value} section={section} satelliteRan={satelliteRan} />
         ) : (
@@ -316,6 +318,69 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Title & Ownership (strata) — answer the question once, in prose
+// ---------------------------------------------------------------------------
+
+// Scheme-type wording for strata lots. The raw enum value "development" means
+// a strata townhouse/villa scheme — rendering it verbatim would be opaque.
+const STRATA_SCHEME_LABELS: Record<string, string> = {
+  apartment: 'Apartment scheme',
+  development: 'Townhouse / villa scheme (non-apartment strata)',
+  ambiguous: 'Strata scheme (building type not determinable from the cadastre)',
+};
+
+function StrataDisplay({ data }: { data: Record<string, unknown> }) {
+  const strataType = typeof data.strata_type === 'string' ? data.strata_type : '';
+  const planLabel = typeof data.plan_label === 'string' && data.plan_label ? data.plan_label : null;
+  const strataPlan = typeof data.strata_plan === 'string' && data.strata_plan ? data.strata_plan : null;
+  // Treat as strata when EITHER signal says so (a contradictory record must
+  // not hide the strata detail).
+  const isStrata = data.is_strata === true || (strataType !== '' && strataType !== 'not_strata');
+
+  if (!isStrata) {
+    // A freehold house needs one sentence, not four rows repeating "not strata".
+    return (
+      <p className="text-sm text-slate-900">
+        Freehold title — this lot is not part of a strata scheme.
+        {planLabel && (
+          <> The lot is registered on plan <span className="font-medium">{planLabel}</span> in the NSW cadastre.</>
+        )}
+      </p>
+    );
+  }
+
+  const rows: Array<{ label: string; value: string; hint?: string }> = [
+    { label: 'Title type', value: 'Strata' },
+    { label: 'Scheme type', value: STRATA_SCHEME_LABELS[strataType] ?? formatValue(strataType) },
+  ];
+  const plan = strataPlan ?? planLabel;
+  if (plan) rows.push({ label: 'Strata plan number', value: plan });
+  if (data.lot_total != null) {
+    rows.push({ label: 'Lots in the scheme', value: formatValue(data.lot_total),
+                hint: 'Number of lots in the strata scheme (NSW Strata Hub).' });
+  }
+  if (typeof data.dwelling_type === 'string' && data.dwelling_type) {
+    rows.push({ label: 'Building form', value: formatValue(data.dwelling_type),
+                hint: 'Classified from the strata scheme’s lot count (NSW Strata Hub).' });
+  }
+  if (typeof data.registration_date === 'string' && data.registration_date) {
+    rows.push({ label: 'Strata plan registered', value: data.registration_date });
+  }
+
+  return (
+    <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-3.5">
+      {rows.map((row) => (
+        <div key={row.label} className="flex flex-col">
+          <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{row.label}</dt>
+          <dd className="text-sm text-slate-900 mt-0.5">{row.value}</dd>
+          {row.hint && <dd className="text-[11px] text-slate-400 mt-0.5">{row.hint}</dd>}
+        </div>
+      ))}
+    </dl>
   );
 }
 

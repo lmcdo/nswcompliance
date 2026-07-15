@@ -1,120 +1,39 @@
 {
-  "tier": "standard",
-  "justification": "Thin wiring PR: one FastAPI endpoint over the already-QA'd #742 engine, a Next.js proxy route, and flag-gated UI components that render nothing until BOTH env flags are on. No DB access, no change to any existing behaviour while dark; silent wrong output at the endpoint boundary matters (standard), nothing can corrupt data (not critical).",
-  "commit_hash": "7de380ff",
+  "tier": "minor",
+  "justification": "Display-only copy fix on one brief card: the Title & Ownership card repeated 'not strata' across three rows and leaked the internal field name 'Plan Label'. No data, engine, or API changes; freehold lots now get one prose sentence and strata lots get properly labelled rows.",
+  "commit_hash": "d44ef9f5",
   "files": [
-    "services/brief_overlay_api.py",
-    "services/compliance_api_server.py",
-    "frontend-nextjs/app/api/brief-overlay/route.ts",
-    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/app/internal/page.tsx",
-    "frontend-nextjs/COMPONENT_MAP.md",
-    "tests/test_brief_overlay_api.py"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Consumes the assembled brief the frontend already holds from the Trigger.dev stream (no re-fetch, per frontend reuse rule); calls generate_overlay from #742; reads no database.",
-    "assumption_mismatch": "If the streamed section shapes drift from the server brief shape, build_manifest inside the engine walks what it can and the overlay degrades to fewer rows or None — never an error on the brief page.",
-    "new_vs_existing": "Everything is dark until BOTH NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED (Vercel build) and BRIEF_LLM_OVERLAY_ENABLED (Railway) are true; with either off the page renders byte-identically to today.",
-    "external_source_error": "Anthropic failures are already converted to overlay=null by the engine; proxy failures return enabled:false; the UI renders nothing for both.",
-    "frontend_type": "New BriefOverlay/OverlayLine types in BriefIntentOverlay.tsx mirror RenderedOverlay JSON; tsc clean (0 errors), jest 768 passed.",
-    "user_failure_mode": "User sees the normal brief with no overlay card; failures logged server-side only."
+    "existing_data": "Renders the existing strata DataField already streamed to the page; no new data touched.",
+    "assumption_mismatch": "A contradictory record (is_strata false but strata_type set) renders the STRATA detail view so information is never hidden.",
+    "new_vs_existing": "Pure render change applied at view time; nothing stored."
   },
   "functions": [
     {
-      "name": "brief_overlay",
-      "file_line": "services/brief_overlay_api.py:86",
-      "input": "OverlayRequest with assembled brief dict, persona, optional intent and question",
-      "output": "OverlayResponse with enabled flag and overlay dict or null",
-      "if_none": "flag off returns enabled:false without touching the engine; engine returning None yields enabled:true overlay:null so the UI shows nothing"
-    },
-    {
-      "name": "_persona_known",
-      "file_line": "services/brief_overlay_api.py:56",
-      "input": "persona string from the request body before any processing",
-      "output": "the same string when it is a known persona value",
-      "if_none": "unknown persona fails pydantic validation and the request is rejected 422 at the gate"
-    },
-    {
-      "name": "_intent_known",
-      "file_line": "services/brief_overlay_api.py:63",
-      "input": "optional intent string from the request body",
-      "output": "the same value when null or a recognised Intent enum value",
-      "if_none": "null passes through (no intent chosen yet); unknown intent strings are rejected 422 before reaching the engine"
-    },
-    {
-      "name": "_brief_not_empty",
-      "file_line": "services/brief_overlay_api.py:70",
-      "input": "the brief dict posted back by the frontend",
-      "output": "the same dict when it carries at least an address",
-      "if_none": "an empty or address-less dict is rejected 422 so the engine never walks garbage"
+      "name": "StrataDisplay",
+      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:327",
+      "input": "the strata DataField value dict already held by the page",
+      "output": "one prose sentence for freehold lots or labelled rows for strata lots",
+      "if_none": "null plan label simply omits the plan sentence; unknown scheme type falls back to the humanised enum value"
     }
   ],
-  "values": [
-    {
-      "value": "BRIEF_LLM_OVERLAY_ENABLED env flag",
-      "read_at": "services/brief_overlay_api.py:91",
-      "nullable": "yes",
-      "guard_at": "services/brief_overlay_api.py:91",
-      "if_missing": "endpoint answers enabled:false overlay:null and never calls the engine — the fail-safe default"
-    },
-    {
-      "value": "PYTHON_API_URL in the Next.js proxy",
-      "read_at": "frontend-nextjs/app/api/brief-overlay/route.ts:21",
-      "nullable": "yes",
-      "guard_at": "frontend-nextjs/app/api/brief-overlay/route.ts:24",
-      "if_missing": "proxy answers enabled:false overlay:null locally instead of throwing on a bad fetch URL"
-    },
-    {
-      "value": "overlayPayload assembled from streamed parts",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:2551",
-      "nullable": "yes",
-      "guard_at": "frontend-nextjs/components/reports/BriefIntentOverlay.tsx:123",
-      "if_missing": "null until the brief completes; the card renders nothing and no fetch fires"
-    }
-  ],
+  "values": [],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Operator believes the overlay is off but the endpoint serves it anyway because the flag check lives only client-side",
-      "what_happens": "Audiences that opted out would receive LLM-selected content against the user-confirmed default-off decision",
+      "scenario": "Contradictory upstream record says is_strata false while strata_type says apartment, and the freehold sentence hides the strata signal",
+      "what_happens": "A buyer could read a strata-flagged unit as clean freehold title in the ownership card",
       "mitigated": true,
-      "how": "services/brief_overlay_api.py:91 — server-side flag check answers enabled:false without calling the engine, asserted with a mock that the engine is never invoked",
-      "repro": "pytest tests/test_brief_overlay_api.py::TestFlagGate::test_flag_off_returns_disabled_without_calling_engine"
-    },
-    {
-      "scenario": "A garbage or address-less brief body reaches the engine and produces a confident-looking empty overlay",
-      "what_happens": "The card could render misleading near-empty content for a request that was never a valid brief",
-      "mitigated": true,
-      "how": "services/brief_overlay_api.py:70 — request validators reject unknown persona, unknown intent, oversize question, and address-less briefs with 422",
-      "repro": "pytest tests/test_brief_overlay_api.py::TestRequestValidation"
-    },
-    {
-      "scenario": "An engine exception at the endpoint boundary leaks a stack trace or breaks the brief page fetch",
-      "what_happens": "The brief page fetch would surface an opaque 500 body and could log user data in tracebacks",
-      "mitigated": true,
-      "how": "services/brief_overlay_api.py:103 — belt-and-braces handler returns a fixed 500 detail; the UI treats any non-ok as render-nothing",
-      "repro": "pytest tests/test_brief_overlay_api.py::TestErrorIsolation::test_engine_raising_returns_500_not_traceback"
-    },
-    {
-      "scenario": "Railway answers the overlay proxy with a 503 while the user's completed brief is already on screen",
-      "what_happens": "A user who already received their full brief would see an error banner caused by the optional overlay layer",
-      "mitigated": true,
-      "how": "frontend-nextjs/app/api/brief-overlay/route.ts:44 returns enabled:false on any failure and BriefIntentOverlay.tsx catch renders nothing — additive-only in both layers",
-      "repro": "stop Railway locally and confirm the brief page still completes with no overlay card"
-    },
-    {
-      "scenario": "Switching intent chips races two fetches and a stale response overwrites the newer plan",
-      "what_happens": "The card would show facts selected for the previously chosen intent under the new chip",
-      "mitigated": true,
-      "how": "frontend-nextjs/components/reports/BriefIntentOverlay.tsx:131 — effect keyed on address+intent with an ignore-flag cleanup discards stale responses",
-      "repro": "toggle two chips rapidly with network throttling and confirm the rendered card matches the last chip"
+      "how": "StrataDisplay treats EITHER signal as strata (is_strata true OR a non-not_strata type) so the detail view wins on contradiction",
+      "repro": "render brief with strata value {is_strata: false, strata_type: 'apartment'} and confirm the strata rows show"
     }
   ],
   "post_merge": {
     "db_reset": "No",
-    "secrets": "No — reuses ANTHROPIC_API_KEY already on Railway",
+    "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — to preview: set BRIEF_LLM_OVERLAY_ENABLED=true on Railway and NEXT_PUBLIC_BRIEF_LLM_OVERLAY_ENABLED=true on a Vercel preview env, then run a brief and pick an intent chip"
+    "manual_verify": "No"
   }
 }
