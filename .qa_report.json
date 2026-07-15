@@ -1,123 +1,103 @@
 {
-  "tier": "standard",
-  "justification": "Polish pass on the flag-gated (default OFF) overlay engine and UI: narrative sentence templates, grouped flow, footnoted citations, deterministic plan remaps, and manifest formatting. No DB access; overlay remains additive-only and dark in production; silent wrong output matters (standard), nothing mutates stored data (not critical).",
-  "commit_hash": "d44ef9f5",
+  "tier": "critical",
+  "justification": "Fixes two live-reproduced silent data corruptions serving WRONG risk numbers to users today (#745 D1+D2): a fake 100% satellite flood frequency on dry lots firing a false user-facing flood constraint, and a storm initial-loss parameter mislabelled as the 1% AEP rainfall depth. Both fixes are fail-closed; critical tier because these are user-facing hazard figures.",
+  "commit_hash": "75f3db5b",
   "files": [
-    "services/brief_manifest.py",
-    "services/brief_templates.py",
-    "services/brief_narration.py",
-    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "tests/test_brief_manifest.py",
-    "tests/test_brief_narration.py"
+    "services/flood_truth.py",
+    "services/portal_constraints.py",
+    "tests/test_flood_wofs_band_order.py",
+    "tests/test_flood_queries.py",
+    "tests/test_portal_constraints.py"
   ],
   "pre_impl": {
-    "existing_data": "Renders the same manifest entries as #742; parses back ONLY our own k=v record format authored in brief_manifest._summarise_record \u2014 deterministic round-trip, no model output parsing.",
-    "assumption_mismatch": "Records missing expected keys (dev_type, control_type, comparable_count) fall back to the generic sentence rather than raising; unknown sources deslug via fallback.",
-    "new_vs_existing": "Call-time rendering only, behind the same dual flags; older flat-lines responses still render via the UI compatibility branch."
+    "existing_data": "Reads the DEA WOfS WCS GeoTIFF and the ARR Data Hub JSON live per request; no stored rows change. Downstream consumers (risk level, compound constraints, brief Climate section) already handle None as unavailable.",
+    "assumption_mismatch": "If DEA stops naming a band 'frequency' or ARR never serves an IFD layer, both functions return None and the UI shows checked-unavailable \u2014 missing beats known-wrong (repo Data Integrity rule).",
+    "new_vs_existing": "Applies to every future flood/climate fetch; no backfill exists because neither value is persisted.",
+    "external_source_error": "API failures already returned None; this change extends fail-closed to WRONG-SHAPED successes (unstable band order, absent IFD layer).",
+    "frontend_type": "No frontend type changes required \u2014 the existing checked-unavailable render states already cover None for both the WOfS line and extreme_rainfall.",
+    "user_failure_mode": "Instead of a false 100% flood signal or a fabricated 6.8mm rainfall figure, users see the flood satellite line and extreme-rainfall line as checked-but-unavailable until sources behave/are replaced."
   },
   "functions": [
     {
-      "name": "normalize_plan",
-      "file_line": "services/brief_narration.py:143",
-      "input": "a schema-valid CompositionPlan plus its manifest before validation",
-      "output": "plan with deterministic template remaps applied and logged",
-      "if_none": "computed-source fields under fact templates become T_CAPACITY_RESULT and X ids under any fact template become T_FINDING \u2014 no model retry needed"
+      "name": "_wofs_frequency_from_bands",
+      "file_line": "services/flood_truth.py:853",
+      "input": "band description names and per-band pixel values from the WCS GeoTIFF",
+      "output": "the 0-1 frequency from the band NAMED frequency, or None fail-closed",
+      "if_none": "no band named frequency, nodata, NaN, or any value outside [0,1] returns None \u2014 never a positional read, never a clamp"
     },
     {
-      "name": "render_plan",
-      "file_line": "services/brief_narration.py:400",
-      "input": "validated plan, manifest, optional deterministic caution note",
-      "output": "RenderedOverlay with grouped narrative, flat lines, and footnotes",
-      "if_none": "fact plans get headline empty string so the first sentence is never duplicated in header and body; standalone headlines render their authored text"
+      "name": "_query_dea_wofs",
+      "file_line": "services/flood_truth.py:891",
+      "input": "lat/lng sampled against the DEA WOfS multi-year composite via WCS",
+      "output": "dea_wofs_frequency_pct 0-100 or None on any failure or wrong shape",
+      "if_none": "downstream risk scoring and compound constraints treat None as no satellite signal \u2014 the false flood constraint cannot fire from a band-order artifact"
     },
     {
-      "name": "assign_footnotes",
-      "file_line": "services/brief_templates.py:614",
-      "input": "rendered lines plus the manifest they cite",
-      "output": "numbered footnotes deduped per unique source, date and confidence",
-      "if_none": "lines citing X findings (no source) simply carry no footnote marker"
-    },
-    {
-      "name": "assemble_groups",
-      "file_line": "services/brief_templates.py:647",
-      "input": "rendered lines in plan (relevance) order",
-      "output": "groups in fixed narrative order with authored sub-headers",
-      "if_none": "unknown template ids bucket into the context group rather than vanishing"
-    },
-    {
-      "name": "_eligibility_sentence",
-      "file_line": "services/brief_templates.py:453",
-      "input": "one flattened SEPP standard row in our own k=v record format",
-      "output": "an authored sentence naming the form, lot-standard outcome, and form caps",
-      "if_none": "a row without dev_type falls back to the generic labelled value line"
-    },
-    {
-      "name": "_fmt_leaf_value",
-      "file_line": "services/brief_manifest.py:466",
-      "input": "manifest path plus a scalar value at emit time",
-      "output": "deterministic currency formatting for money leaves, else None",
-      "if_none": "non-money or sub-$100 values return None and render through the generic path with digits untouched"
+      "name": "fetch_arr_ifd",
+      "file_line": "services/portal_constraints.py:565",
+      "input": "lat/lng queried against the ARR Data Hub JSON layers",
+      "output": "IFD table dict ONLY when a layer keyed as IFD exists, else None",
+      "if_none": "BurstIL (storm initial loss) is never consumed as rainfall depth; the brief marks extreme_rainfall unavailable until a genuine BOM IFD source is wired (sourcing decision tracked in #745)"
     }
   ],
   "values": [
     {
-      "value": "unit sibling (<field>_units) during the manifest walk",
-      "read_at": "services/brief_manifest.py:415",
+      "value": "band descriptions tuple on the rasterio dataset",
+      "read_at": "services/flood_truth.py:907",
       "nullable": "yes",
-      "guard_at": "services/brief_manifest.py:415",
-      "if_missing": "no unit suffix appended; value renders exactly as before"
+      "guard_at": "services/flood_truth.py:875",
+      "if_missing": "empty or unnamed descriptions return None \u2014 no positional fallback"
     },
     {
-      "value": "confidence qualifier on estimated/stale entries",
-      "read_at": "services/brief_templates.py:293",
+      "value": "layers dict keys in the ARR response",
+      "read_at": "services/portal_constraints.py:596",
       "nullable": "yes",
-      "guard_at": "services/brief_templates.py:293",
-      "if_missing": "authoritative/extracted render clean with footnote-only provenance; estimated and stale ALWAYS carry the inline qualifier so footnotes cannot launder confidence"
+      "guard_at": "services/portal_constraints.py:600",
+      "if_missing": "no IFD-keyed layer means None; BurstIL presence alone never produces a value"
     }
   ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "First sentence duplicated as headline and body line (observed on the live preview overlay)",
-      "what_happens": "Reader sees the identical zoning sentence twice at the top of the card",
+      "scenario": "DEA WCS returns bands in a swapped order so positional band 3 is a count, shown as 100% flood frequency on a dry lot",
+      "what_happens": "Users saw a false 'satellite flood evidence detected' warning; risk level forced to elevated (live-reproduced at Concord AND rural Dubbo)",
       "mitigated": true,
-      "how": "services/brief_narration.py render_plan \u2014 fact plans set headline to empty; only standalone decline/clarify templates render a headline",
-      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_fact_plan_headline_empty_no_duplication"
+      "how": "services/flood_truth.py \u2014 band selected by name from ds.descriptions; live-verified post-fix: Concord 0.04%, Dubbo 0.0%, Parramatta River 0.5%",
+      "repro": "pytest tests/test_flood_wofs_band_order.py::TestWofsBandSelection::test_concord_swapped_order_returns_true_frequency_not_100"
     },
     {
-      "scenario": "Capacity-engine outputs dressed as Planning control by the model (observed live)",
-      "what_happens": "A computed setback reads as THE statutory control \u2014 a liability-relevant mislabel",
+      "scenario": "A frequency-band value above 1.0 gets clamped into a plausible percentage instead of failing",
+      "what_happens": "The clamp masked the band-identity bug for months by converting counts into fake percentages",
       "mitigated": true,
-      "how": "normalize_plan remaps fact templates citing computed sources to T_CAPACITY_RESULT deterministically, no retry",
-      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_computed_source_remapped_from_control_template"
+      "how": "services/flood_truth.py \u2014 out-of-range values return None with a warning; old clamp tests inverted to pin fail-closed",
+      "repro": "pytest tests/test_flood_queries.py::TestQueryDeaWofs::test_count_magnitude_value_fails_closed"
     },
     {
-      "scenario": "A verified finding cited under a fact template renders its raw severity=\u2026 payload (observed live)",
-      "what_happens": "Internal record syntax shown to the reader with doubled punctuation",
+      "scenario": "ARR Data Hub serves BurstIL storm initial loss and the code labels it as the 1% AEP 60-min rainfall depth",
+      "what_happens": "Users saw 6.8mm where Sydney's true design rainfall is ~90-100mm, under a fabricated 'BOM IFD' source label",
       "mitigated": true,
-      "how": "normalize_plan routes any X id to T_FINDING which strips the severity prefix into tone",
-      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_finding_renders_description_with_tone"
+      "how": "services/portal_constraints.py \u2014 only a layer keyed as IFD is served; BurstIL-only payloads return None (live endpoint shape pinned in test)",
+      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_burstil_only_payload_returns_none"
     },
     {
-      "scenario": "The secondary-dwelling standard row truncated mid-key at 200 chars (observed live: max_tot\u2026)",
-      "what_happens": "The single most decision-relevant row for a granny-flat reader loses its trailing standards",
+      "scenario": "A future genuine IFD layer appears but the code keeps failing closed or mixes tables",
+      "what_happens": "Real data would be discarded, or worse, BurstIL preferred over IFD when both exist",
       "mitigated": true,
-      "how": "services/brief_manifest.py MAX_FLATTENED_RECORD_CHARS=420 for flattened decision-critical rows",
-      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_sepp_record_renders_as_sentence"
+      "how": "IFD-keyed layer is served with the 1% 60-min cell selected from IT (96.3), never BurstIL's 6.8 in the same payload",
+      "repro": "pytest tests/test_flood_wofs_band_order.py::TestArrIfdFailClosed::test_genuine_ifd_layer_is_served_with_sane_magnitude"
     },
     {
-      "scenario": "Identical provenance repeated inline four times per sentence drowns the facts",
-      "what_happens": "Unreadable output and the estimated-confidence qualifier gets lost in the noise",
+      "scenario": "Downstream risk scoring still treats a None WOfS frequency as zero-then-elevated via the effective_pct fallback chain",
+      "what_happens": "A failed satellite read could still contribute to risk level or the satellite-flood compound constraint",
       "mitigated": true,
-      "how": "assign_footnotes dedupes per (source, date, confidence) while _confidence_qualifier keeps estimated/stale INLINE \u2014 footnotes cannot launder confidence",
-      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_footnotes_dedupe_identical_provenance and ::test_estimated_confidence_stays_inline"
+      "how": "flood_truth risk chain reads dea_wofs_frequency_pct or 0.0 so None contributes nothing, and compound_constraints requires flood_wofs_pct is not None AND > 2.0 \u2014 pinned by the full suite (2,939 passed) with the new None paths",
+      "repro": "pytest tests/test_flood_queries.py tests/test_flood_truth.py -q plus tests/test_flood_wofs_band_order.py"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes \u2014 refresh the preview branch and re-check the overlay reads as grouped prose with footnote chips"
+    "manual_verify": "Yes \u2014 regenerate the Concord brief after Railway deploy: WOfS line reads ~0.04% (or unavailable), the false flood compound constraint is gone, and extreme_rainfall shows checked-unavailable until a real IFD source is chosen"
   }
 }
