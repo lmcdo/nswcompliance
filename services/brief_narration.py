@@ -38,9 +38,13 @@ from services.brief_manifest import (
     check_intent_compatibility,
 )
 from services.brief_templates import (
+    AUTHORITATIVE_FACT_TEMPLATES,
+    COMPUTED_SOURCES,
     TEMPLATES,
     RenderedLine,
     RenderedOverlay,
+    assemble_groups,
+    assign_footnotes,
     capabilities_block,
     render_line,
 )
@@ -134,6 +138,31 @@ def plan_tool_schema() -> dict:
             "required": ["headline_template", "items", "declined"],
         },
     }
+
+
+def normalize_plan(plan: CompositionPlan, manifest: BriefManifest) -> CompositionPlan:
+    """Deterministic corrections that don't need a model retry.
+
+    Live finding (polish audit): the model dressed capacity-engine outputs as
+    "Planning control" — a computed setback is not THE control. Any
+    authoritative-fact template citing a computed-source field is remapped to
+    T_CAPACITY_RESULT here, in code.
+    """
+    by_id = {e.id: e for e in manifest.entries}
+    for item in plan.items:
+        if item.template in AUTHORITATIVE_FACT_TEMPLATES and len(item.fields) == 1:
+            entry = by_id.get(item.fields[0])
+            if entry is not None and entry.source in COMPUTED_SOURCES:
+                logger.info("normalize_plan: %s on computed source %s → "
+                            "T_CAPACITY_RESULT", item.template, entry.source)
+                item.template = "T_CAPACITY_RESULT"
+        # A verified finding cited under any fact template renders its raw
+        # 'severity=…' payload (observed live) — findings have ONE renderer.
+        if (item.template != "T_FINDING" and len(item.fields) == 1
+                and item.fields[0].startswith("X")):
+            logger.info("normalize_plan: X id under %s → T_FINDING", item.template)
+            item.template = "T_FINDING"
+    return plan
 
 
 def validate_plan(plan: CompositionPlan, manifest: BriefManifest) -> list[str]:
@@ -321,6 +350,7 @@ def select_composition(
         except ValidationError as exc:
             last_errors = [f"schema: {exc.errors()[:3]}"]
         else:
+            plan = normalize_plan(plan, manifest)
             last_errors = validate_plan(plan, manifest)
             if not last_errors:
                 return plan
@@ -389,15 +419,24 @@ def render_plan(plan: CompositionPlan, manifest: BriefManifest,
             continue
         seen_bodies.add(key)
         lines.append(line)
-    headline = render_line(
-        template_id=plan.headline_template, manifest=manifest,
-        field_ids=[], gap_id=None, options=plan.clarify_intents or None,
-    ) if plan.headline_template in ("T_SCOPE_DECLINE", "T_CLARIFY", "T_NOT_COVERED") \
-        else None
-    headline_text = headline.text if headline else (
-        lines[0].text if lines else "")
-    return RenderedOverlay(headline=headline_text, lines=lines,
-                           declined=plan.declined, caution=caution)
+
+    # Headline: ONLY standalone templates render one (they explain a decline /
+    # clarify). Fact plans get headline="" — the UI's own header covers it.
+    # (Live polish finding: using lines[0] as headline duplicated the first
+    # sentence in header AND body.)
+    if plan.headline_template in ("T_SCOPE_DECLINE", "T_CLARIFY", "T_NOT_COVERED"):
+        headline_text = render_line(
+            template_id=plan.headline_template, manifest=manifest,
+            field_ids=[], gap_id=None, options=plan.clarify_intents or None,
+        ).text
+    else:
+        headline_text = ""
+
+    footnotes = assign_footnotes(lines, manifest)
+    groups = assemble_groups(lines)
+    return RenderedOverlay(headline=headline_text, groups=groups, lines=lines,
+                           footnotes=footnotes, declined=plan.declined,
+                           caution=caution)
 
 
 def _incompatible_overlay(reason: str, manifest: BriefManifest) -> RenderedOverlay:

@@ -354,7 +354,8 @@ class TestWalker:
         assert "market_context.comparables" in paths
         assert paths.index("market_context") < paths.index("market_context.comparables")
         inner = next(e for e in m.entries if e.path == "market_context.comparables")
-        assert "median_value=1690000" in inner.value_text
+        # money leaves get deterministic $-formatting (digits preserved)
+        assert "median_value=$1,690,000" in inner.value_text
 
 
 # ---------------------------------------------------------------------------

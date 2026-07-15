@@ -141,7 +141,7 @@ class TestGapNeverRendersAsFact:
         gap_line = overlay.lines[1].text
         assert "Not checked" in gap_line
         assert "ConnectionError" in gap_line
-        assert "postgis_overlays" in gap_line  # the fallback source
+        assert "NSW planning overlays" in gap_line  # the fallback source, display form
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +430,8 @@ class TestTemplates:
         assert overlay.lines[0].liability_flags == ["approved"]
 
     def test_label_for_path_humanizes(self):
-        assert label_for_path("planning_controls.fsr") == "floor space ratio (FSR)"
+        assert label_for_path("planning_controls.fsr") == "floor space ratio"
+        assert label_for_path("constraint_arithmetic.setback_front_m") == "the front setback"
         assert label_for_path("sepp_housing[3]") == "SEPP housing #3"
 
     def test_standalone_texts_have_no_unbound_slots(self):
@@ -438,3 +439,123 @@ class TestTemplates:
             # only {options} may appear; a stray slot would KeyError at render
             assert not [s for s in ("{value}", "{label}", "{source}")
                         if s in text], tid
+
+
+# ---------------------------------------------------------------------------
+# Narrative polish (v2 renderer): groups, footnotes, headline, remap
+# ---------------------------------------------------------------------------
+
+
+class TestNarrativePolish:
+    def test_fact_plan_headline_empty_no_duplication(self, manifest):
+        # Live polish finding: lines[0] used as headline rendered the first
+        # sentence twice (header AND body).
+        zone = ids(manifest)["planning_controls.zone"]
+        plan = make_plan({"template": "T_ZONE_CONTEXT", "fields": [zone]})
+        overlay = render_plan(plan, manifest)
+        assert overlay.headline == ""
+        assert len(overlay.lines) == 1
+
+    def test_computed_source_remapped_from_control_template(self, brief, manifest):
+        # A capacity-engine output dressed as "Planning control" must be
+        # remapped deterministically, without a model retry.
+        brief2 = dict(brief)
+        brief2["constraint_arithmetic"] = df(
+            {"lep_envelope_gfa_m2": 243.4}, confidence="derived",
+            source="constraint_arithmetic_engine")
+        from services.brief_manifest import build_manifest as _bm
+        m2 = _bm(brief2)
+        gfa_id = next(e.id for e in m2.entries
+                      if e.path == "constraint_arithmetic.lep_envelope_gfa_m2")
+        good = {"headline_template": "T_ZONE_CONTEXT",
+                "items": [{"template": "T_CONTROL_VALUE", "fields": [gfa_id]}],
+                "declined": False}
+        client = FakeClient([good])
+        plan = select_composition(m2, persona="homeowner", client=client)
+        assert plan.items[0].template == "T_CAPACITY_RESULT"
+        overlay = render_plan(plan, m2)
+        assert "Computed from the planning controls" in overlay.lines[0].text
+        assert "maximum floor area under the LEP envelope" in overlay.lines[0].text
+
+    def test_zone_sentence_reads_as_prose(self, manifest):
+        m = ids(manifest)
+        plan = make_plan({"template": "T_ZONE_CONTEXT",
+                          "fields": [m["planning_controls.zone"],
+                                     m["planning_controls.height"]]})
+        overlay = render_plan(plan, manifest)
+        text = overlay.lines[0].text
+        assert text.startswith("This lot is zoned R3")
+        assert "a height limit of 8.5" in text
+        # provenance moved to footnotes, not inline
+        assert "planning_portal" not in text
+        assert overlay.lines[0].footnotes == [1]
+        assert overlay.footnotes[0].source == "NSW Planning Portal"
+        assert overlay.footnotes[0].as_at == "14 Jul 2026"
+
+    def test_footnotes_dedupe_identical_provenance(self, manifest):
+        m = ids(manifest)
+        plan = make_plan(
+            {"template": "T_ZONE_CONTEXT", "fields": [m["planning_controls.zone"]]},
+            {"template": "T_CONTROL_VALUE", "fields": [m["planning_controls.height"]]},
+        )
+        overlay = render_plan(plan, manifest)
+        # same (source, as_at, confidence) → ONE footnote shared by both lines
+        assert len(overlay.footnotes) == 1
+        assert all(line.footnotes == [1] for line in overlay.lines)
+
+    def test_groups_ordered_with_authored_headers(self, manifest):
+        m = ids(manifest)
+        gap_id = next(e.id for e in manifest.entries if e.id.startswith("G"))
+        x_id = next(e.id for e in manifest.entries if e.id.startswith("X"))
+        plan = make_plan(
+            {"template": "T_FINDING", "fields": [x_id]},
+            {"template": "T_ZONE_CONTEXT", "fields": [m["planning_controls.zone"]]},
+            {"template": "T_GAP_ROUTE", "fields": [], "gap": gap_id},
+        )
+        overlay = render_plan(plan, manifest)
+        keys = [g.key for g in overlay.groups]
+        # deterministic narrative order regardless of plan order
+        assert keys == ["planning", "cautions"]
+        cautions = overlay.groups[1]
+        assert cautions.header == "Worth checking"
+        assert len(cautions.lines) == 2  # finding + gap together
+
+    def test_finding_renders_description_with_tone(self, manifest):
+        x_id = next(e.id for e in manifest.entries if e.id.startswith("X"))
+        plan = make_plan({"template": "T_FINDING", "fields": [x_id]})
+        overlay = render_plan(plan, manifest)
+        line = overlay.lines[0]
+        assert line.tone == "warning"
+        assert line.text.startswith("Lot area within 10%")
+        assert "severity=" not in line.text
+
+    def test_sepp_record_renders_as_sentence(self, brief):
+        from services.brief_manifest import build_manifest as _bm
+        brief2 = dict(brief)
+        brief2["sepp_housing"] = df(
+            [{"dev_type": "secondary_dwelling", "eligible": True,
+              "min_lot_area_m2": 450.0, "min_lot_width_m": 12.0,
+              "max_gfa_m2": 60.0, "max_height_m": 3.8}],
+            source="housing_sepp_standards")
+        m = _bm(brief2)
+        sepp_id = next(e.id for e in m.entries
+                       if e.path == "sepp_housing[0]")
+        plan = make_plan({"template": "T_ELIGIBILITY", "fields": [sepp_id]})
+        overlay = render_plan(plan, m)
+        text = overlay.lines[0].text
+        assert text.startswith("Secondary dwelling under SEPP (Housing) 2021")
+        assert "meeting the lot standard" in text
+        assert "minimum lot area 450.0 m²" in text
+        assert "dev_type=" not in text  # no raw record dump
+
+    def test_estimated_confidence_stays_inline(self, brief):
+        brief2 = dict(brief)
+        brief2["neighbourhood"] = {"shadow_overlap": df(
+            "22.2", confidence="estimated", source="shadow_detector")}
+        from services.brief_manifest import build_manifest as _bm
+        m = _bm(brief2)
+        sid = next(e.id for e in m.entries if "shadow_overlap" in e.path)
+        plan = make_plan({"template": "T_NEARBY_ACTIVITY", "fields": [sid]})
+        overlay = render_plan(plan, m)
+        # the qualifier must be IN the sentence, not only in the footnote
+        assert "(satellite-estimated)" in overlay.lines[0].text

@@ -289,7 +289,7 @@ function SectionCard({ section, data, satelliteRan = false }: { section: string;
     : null;
 
   return (
-    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
+    <div id={`brief-section-${section.replace('.', '-')}`} className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
       <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">{meta.label}</h3>
@@ -3086,7 +3086,7 @@ function IntelligenceBriefInner() {
           {/* Section cards — stacked full-width, one per row, in stream order.
               Wide cards let each card's internal key-value grid run 3-4 columns;
               the old 3-column bento starved field-heavy sections into towers. */}
-          <div className="flex flex-col gap-4">
+          <div id="brief-dossier" className="flex flex-col gap-4">
             {sectionEvents.map((event, i) => {
               const section = event.data.section;
               // Development Capacity renders via the dedicated card (carries its
