@@ -1,9 +1,11 @@
 {
   "tier": "minor",
-  "justification": "Display-only copy fix on one brief card: the Title & Ownership card repeated 'not strata' across three rows and leaked the internal field name 'Plan Label'. No data, engine, or API changes; freehold lots now get one prose sentence and strata lots get properly labelled rows.",
-  "commit_hash": "d44ef9f5",
+  "justification": "Title & Ownership card fix extended with the legal title identifiers: the cadastre query already fetched lotnumber but detect_strata dropped it; sectionnumber added to outFields (live-verified against the SIX cadastre layer). Lot/section now flow detect_strata -> StrataInfo -> card. Freehold lots render one sentence with the full legal reference (Lot 1, DP963483); strata lots gain a Lot-in-the-scheme row. Display + passthrough only; no engine logic changed.",
+  "commit_hash": "8baa8118",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx"
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "scripts/generate_conveyancing_report.py",
+    "services/intelligence_brief.py"
   ],
   "pre_impl": {
     "existing_data": "Renders the existing strata DataField already streamed to the page; no new data touched.",
@@ -17,6 +19,13 @@
       "input": "the strata DataField value dict already held by the page",
       "output": "one prose sentence for freehold lots or labelled rows for strata lots",
       "if_none": "null plan label simply omits the plan sentence; unknown scheme type falls back to the humanised enum value"
+    },
+    {
+      "name": "get_cadastral_info",
+      "file_line": "scripts/generate_conveyancing_report.py:340",
+      "input": "lat/lng point queried against the NSW SIX cadastre lot layer",
+      "output": "cadastre dict now including lot_number and section_number identifiers",
+      "if_none": "missing attributes pass through as None and the UI simply omits them from the legal reference"
     }
   ],
   "values": [],
@@ -28,6 +37,13 @@
       "mitigated": true,
       "how": "StrataDisplay treats EITHER signal as strata (is_strata true OR a non-not_strata type) so the detail view wins on contradiction",
       "repro": "render brief with strata value {is_strata: false, strata_type: 'apartment'} and confirm the strata rows show"
+    },
+    {
+      "scenario": "Cadastre returns lotnumber for the neighbouring buffer lot and the card shows the wrong legal reference",
+      "what_happens": "A conveyancer could quote the neighbour's Lot/Plan on a contract search",
+      "mitigated": true,
+      "how": "identifiers ride the SAME cadastre feature detect_strata already selected (containment-first logic unchanged); no new query, no new matching",
+      "repro": "existing detect_strata containment tests; identifiers are read from the identical feature dict"
     }
   ],
   "post_merge": {

@@ -337,17 +337,28 @@ function StrataDisplay({ data }: { data: Record<string, unknown> }) {
   const strataType = typeof data.strata_type === 'string' ? data.strata_type : '';
   const planLabel = typeof data.plan_label === 'string' && data.plan_label ? data.plan_label : null;
   const strataPlan = typeof data.strata_plan === 'string' && data.strata_plan ? data.strata_plan : null;
+  const lotNumber = data.lot_number != null && data.lot_number !== '' ? String(data.lot_number) : null;
+  const sectionNumber = data.section_number != null && data.section_number !== '' ? String(data.section_number) : null;
   // Treat as strata when EITHER signal says so (a contradictory record must
   // not hide the strata detail).
   const isStrata = data.is_strata === true || (strataType !== '' && strataType !== 'not_strata');
+
+  // "Lot 5, Section 2, DP900454" — the legal title reference used on
+  // contracts and 10.7 certificates.
+  const legalRef = planLabel
+    ? [lotNumber && `Lot ${lotNumber}`, sectionNumber && `Section ${sectionNumber}`, planLabel]
+        .filter(Boolean)
+        .join(', ')
+    : null;
 
   if (!isStrata) {
     // A freehold house needs one sentence, not four rows repeating "not strata".
     return (
       <p className="text-sm text-slate-900">
         Freehold title — this lot is not part of a strata scheme.
-        {planLabel && (
-          <> The lot is registered on plan <span className="font-medium">{planLabel}</span> in the NSW cadastre.</>
+        {legalRef && (
+          <> The legal title reference from the NSW cadastre is{' '}
+          <span className="font-medium">{legalRef}</span>.</>
         )}
       </p>
     );
@@ -359,6 +370,10 @@ function StrataDisplay({ data }: { data: Record<string, unknown> }) {
   ];
   const plan = strataPlan ?? planLabel;
   if (plan) rows.push({ label: 'Strata plan number', value: plan });
+  if (lotNumber) {
+    rows.push({ label: 'Lot in the scheme', value: `Lot ${lotNumber}`,
+                hint: 'This property’s own lot within the strata plan (NSW cadastre).' });
+  }
   if (data.lot_total != null) {
     rows.push({ label: 'Lots in the scheme', value: formatValue(data.lot_total),
                 hint: 'Number of lots in the strata scheme (NSW Strata Hub).' });
