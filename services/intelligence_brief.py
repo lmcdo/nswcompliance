@@ -379,6 +379,10 @@ class StrataInfo(BaseModel):
     strata_type: StrataType
     strata_plan: Optional[str] = None
     plan_label: Optional[str] = None
+    # Legal title identifiers from the NSW cadastre — "Lot 5 DP900454" is the
+    # reference conveyancers and contracts use; the plan number alone is half an ID.
+    lot_number: Optional[str] = None
+    section_number: Optional[str] = None
     source: Optional[str] = None
     lot_area_m2: Optional[float] = None
     # StrataHub supplementary detail (display only — never drives the
@@ -3552,6 +3556,10 @@ def _generate_brief_sse(
             strata_type=strata_type,
             strata_plan=strata_raw.get("strata_plan"),
             plan_label=strata_raw.get("plan_label"),
+            lot_number=(str(strata_raw.get("lot_number"))
+                        if strata_raw.get("lot_number") is not None else None),
+            section_number=(str(strata_raw.get("section_number"))
+                            if strata_raw.get("section_number") is not None else None),
             source=strata_raw.get("source"),
             lot_area_m2=lot_area_m2,
             lot_total=strata_raw.get("lot_total"),
