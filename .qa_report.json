@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New LLM overlay layer: flag-gated default OFF, additive-only (any failure returns None, base brief untouched), no DB writes. It authors user-visible sentence templates and calls the Anthropic API, so silent wrong output matters (standard); it cannot corrupt stored data or break the existing brief (not critical).",
-  "commit_hash": "4e363247",
+  "commit_hash": "77e6e7f4",
   "files": ["services/brief_templates.py", "services/brief_narration.py", "tests/test_brief_narration.py"],
   "pre_impl": {
     "existing_data": "Consumes BriefManifest from services/brief_manifest.py (merged #738) and brief dumps from the pipeline; calls the Anthropic Messages API; reads no database.",

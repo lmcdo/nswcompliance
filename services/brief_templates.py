@@ -175,7 +175,9 @@ _LABEL_OVERRIDES = {
 
 def label_for_path(path: str) -> str:
     """Humanize a manifest path: 'planning_controls.height' → 'height'."""
-    leaf = path.split(".")[-1]
+    if not path or not path.strip():
+        return ""
+    leaf = path.strip().split(".")[-1]
     leaf = re.sub(r"\[(\d+)\]", r" #\1", leaf)
     words = [
         _LABEL_OVERRIDES.get(w.lower(), w)
