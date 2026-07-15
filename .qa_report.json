@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Thin wiring PR: one FastAPI endpoint over the already-QA'd #742 engine, a Next.js proxy route, and flag-gated UI components that render nothing until BOTH env flags are on. No DB access, no change to any existing behaviour while dark; silent wrong output at the endpoint boundary matters (standard), nothing can corrupt data (not critical).",
-  "commit_hash": "cebed60f",
+  "commit_hash": "7de380ff",
   "files": [
     "services/brief_overlay_api.py",
     "services/compliance_api_server.py",
