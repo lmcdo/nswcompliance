@@ -83,8 +83,19 @@ EXPAND_STRUCT_PATHS: frozenset[str] = frozenset({
 # the Stage-1 selection miss, and 80 fields at these caps stays ~2-4K tokens.
 MAX_SCALAR_CHARS = 160
 MAX_RECORD_SUMMARY_CHARS = 200
+# Flattened decision-critical rows (SEPP standards, DCP controls) get a wider
+# budget: the live overlay clipped the secondary-dwelling standard mid-key
+# ("max_tot…") at 200 chars — the one row a granny-flat reader most needs.
+MAX_FLATTENED_RECORD_CHARS = 420
 MAX_INLINE_LIST_CHARS = 600
 MAX_UNFLATTENED_RECORDS = 8  # per-record summaries shown before "+N more"
+
+# Path leaves whose numeric values are dollar amounts — rendered with $ and
+# thousands separators. Deterministic formatting, not paraphrase: digits are
+# preserved exactly.
+CURRENCY_LEAF_TOKENS: tuple[str, ...] = (
+    "land_value", "subject_value", "median_value", "mean_value", "price", "cost",
+)
 
 QUERIED_EMPTY_MARKER = "— (queried, no result)"
 
@@ -422,20 +433,28 @@ def _walk(
     fields: list[dict],
     gaps: list[dict],
     warnings: list[str],
+    unit: Optional[str] = None,
 ) -> None:
     if _path_excluded(path):
         return
 
     if _is_datafield(node):
-        _emit_datafield(node, path, fields, gaps, warnings)
+        _emit_datafield(node, path, fields, gaps, warnings, unit=unit)
         return
 
     if isinstance(node, dict):
+        # Sibling "<field>_units" scalars decorate their field's value, the
+        # same merge the brief page does — "8.5" must read "8.5 m".
+        unit_for: dict[str, str] = {
+            k[:-6]: v for k, v in node.items()
+            if k.endswith("_units") and isinstance(v, str) and v
+        }
         for key, child in node.items():
-            if _path_excluded(key):
+            if _path_excluded(key) or key.endswith("_units"):
                 continue
             if isinstance(child, (dict, list)):
-                _walk(child, f"{path}.{key}", fields, gaps, warnings)
+                _walk(child, f"{path}.{key}", fields, gaps, warnings,
+                      unit=unit_for.get(key))
         return
 
     if isinstance(node, list):
@@ -444,12 +463,26 @@ def _walk(
                 _walk(child, f"{path}[{i}]", fields, gaps, warnings)
 
 
+def _fmt_leaf_value(path: str, value: Any) -> Optional[str]:
+    """Path-aware deterministic formatting: currency and unit suffixes.
+
+    Returns None when no special formatting applies (caller falls back to the
+    generic renderer). Digits are never altered — only presentation.
+    """
+    leaf = path.rsplit(".", 1)[-1].lower()
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if any(tok in leaf for tok in CURRENCY_LEAF_TOKENS) and abs(value) >= 100:
+            return f"${value:,.0f}"
+    return None
+
+
 def _emit_datafield(
     node: dict,
     path: str,
     fields: list[dict],
     gaps: list[dict],
     warnings: list[str],
+    unit: Optional[str] = None,
 ) -> None:
     value = node.get("value")
     reason = node.get("reason")
@@ -510,14 +543,19 @@ def _emit_datafield(
         for i, record in enumerate(value):
             fields.append({
                 "path": f"{path}[{i}]",
-                "value_text": _summarise_record(record)
+                "value_text": _summarise_record(record, limit=MAX_FLATTENED_RECORD_CHARS)
                 if isinstance(record, dict) else _render_scalar(record),
                 **provenance,
             })
         return
 
+    formatted = _fmt_leaf_value(path, value)
+    if formatted is None:
+        formatted = _render_value(value)
+        if unit and not isinstance(value, (dict, list)) and value is not None:
+            formatted = f"{formatted} {unit}"
     fields.append({
-        "path": path, "value_text": _render_value(value), **provenance,
+        "path": path, "value_text": formatted, **provenance,
     })
 
     # Structured values may hold nested DataFields (e.g. detail objects) —
@@ -573,18 +611,18 @@ def _render_scalar(value: Any) -> str:
     return _clip(str(value), MAX_SCALAR_CHARS)
 
 
-def _summarise_record(record: Any) -> str:
+def _summarise_record(record: Any, limit: int = MAX_RECORD_SUMMARY_CHARS) -> str:
     """Compact one record into 'k=v; …' over its scalar entries."""
     if not isinstance(record, dict):
         return _render_scalar(record)
     parts = [
-        f"{k}={_render_scalar(v)}"
+        f"{k}={_fmt_leaf_value(k, v) or _render_scalar(v)}"
         for k, v in record.items()
         if v is not None and not isinstance(v, (dict, list)) and not _path_excluded(k)
     ]
     if not parts:
         return "{no scalar detail}"
-    return _clip("; ".join(parts), MAX_RECORD_SUMMARY_CHARS)
+    return _clip("; ".join(parts), limit)
 
 
 def _render_value(value: Any) -> str:

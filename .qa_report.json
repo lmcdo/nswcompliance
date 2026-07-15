@@ -1,55 +1,123 @@
 {
-  "tier": "minor",
-  "justification": "Title & Ownership card fix extended with the legal title identifiers: the cadastre query already fetched lotnumber but detect_strata dropped it; sectionnumber added to outFields (live-verified against the SIX cadastre layer). Lot/section now flow detect_strata -> StrataInfo -> card. Freehold lots render one sentence with the full legal reference (Lot 1, DP963483); strata lots gain a Lot-in-the-scheme row. Display + passthrough only; no engine logic changed.",
-  "commit_hash": "8baa8118",
+  "tier": "standard",
+  "justification": "Polish pass on the flag-gated (default OFF) overlay engine and UI: narrative sentence templates, grouped flow, footnoted citations, deterministic plan remaps, and manifest formatting. No DB access; overlay remains additive-only and dark in production; silent wrong output matters (standard), nothing mutates stored data (not critical).",
+  "commit_hash": "d44ef9f5",
   "files": [
+    "services/brief_manifest.py",
+    "services/brief_templates.py",
+    "services/brief_narration.py",
+    "frontend-nextjs/components/reports/BriefIntentOverlay.tsx",
     "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "scripts/generate_conveyancing_report.py",
-    "services/intelligence_brief.py"
+    "tests/test_brief_manifest.py",
+    "tests/test_brief_narration.py"
   ],
   "pre_impl": {
-    "existing_data": "Renders the existing strata DataField already streamed to the page; no new data touched.",
-    "assumption_mismatch": "A contradictory record (is_strata false but strata_type set) renders the STRATA detail view so information is never hidden.",
-    "new_vs_existing": "Pure render change applied at view time; nothing stored."
+    "existing_data": "Renders the same manifest entries as #742; parses back ONLY our own k=v record format authored in brief_manifest._summarise_record \u2014 deterministic round-trip, no model output parsing.",
+    "assumption_mismatch": "Records missing expected keys (dev_type, control_type, comparable_count) fall back to the generic sentence rather than raising; unknown sources deslug via fallback.",
+    "new_vs_existing": "Call-time rendering only, behind the same dual flags; older flat-lines responses still render via the UI compatibility branch."
   },
   "functions": [
     {
-      "name": "StrataDisplay",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:327",
-      "input": "the strata DataField value dict already held by the page",
-      "output": "one prose sentence for freehold lots or labelled rows for strata lots",
-      "if_none": "null plan label simply omits the plan sentence; unknown scheme type falls back to the humanised enum value"
+      "name": "normalize_plan",
+      "file_line": "services/brief_narration.py:143",
+      "input": "a schema-valid CompositionPlan plus its manifest before validation",
+      "output": "plan with deterministic template remaps applied and logged",
+      "if_none": "computed-source fields under fact templates become T_CAPACITY_RESULT and X ids under any fact template become T_FINDING \u2014 no model retry needed"
     },
     {
-      "name": "get_cadastral_info",
-      "file_line": "scripts/generate_conveyancing_report.py:340",
-      "input": "lat/lng point queried against the NSW SIX cadastre lot layer",
-      "output": "cadastre dict now including lot_number and section_number identifiers",
-      "if_none": "missing attributes pass through as None and the UI simply omits them from the legal reference"
+      "name": "render_plan",
+      "file_line": "services/brief_narration.py:400",
+      "input": "validated plan, manifest, optional deterministic caution note",
+      "output": "RenderedOverlay with grouped narrative, flat lines, and footnotes",
+      "if_none": "fact plans get headline empty string so the first sentence is never duplicated in header and body; standalone headlines render their authored text"
+    },
+    {
+      "name": "assign_footnotes",
+      "file_line": "services/brief_templates.py:614",
+      "input": "rendered lines plus the manifest they cite",
+      "output": "numbered footnotes deduped per unique source, date and confidence",
+      "if_none": "lines citing X findings (no source) simply carry no footnote marker"
+    },
+    {
+      "name": "assemble_groups",
+      "file_line": "services/brief_templates.py:647",
+      "input": "rendered lines in plan (relevance) order",
+      "output": "groups in fixed narrative order with authored sub-headers",
+      "if_none": "unknown template ids bucket into the context group rather than vanishing"
+    },
+    {
+      "name": "_eligibility_sentence",
+      "file_line": "services/brief_templates.py:453",
+      "input": "one flattened SEPP standard row in our own k=v record format",
+      "output": "an authored sentence naming the form, lot-standard outcome, and form caps",
+      "if_none": "a row without dev_type falls back to the generic labelled value line"
+    },
+    {
+      "name": "_fmt_leaf_value",
+      "file_line": "services/brief_manifest.py:466",
+      "input": "manifest path plus a scalar value at emit time",
+      "output": "deterministic currency formatting for money leaves, else None",
+      "if_none": "non-money or sub-$100 values return None and render through the generic path with digits untouched"
     }
   ],
-  "values": [],
+  "values": [
+    {
+      "value": "unit sibling (<field>_units) during the manifest walk",
+      "read_at": "services/brief_manifest.py:415",
+      "nullable": "yes",
+      "guard_at": "services/brief_manifest.py:415",
+      "if_missing": "no unit suffix appended; value renders exactly as before"
+    },
+    {
+      "value": "confidence qualifier on estimated/stale entries",
+      "read_at": "services/brief_templates.py:293",
+      "nullable": "yes",
+      "guard_at": "services/brief_templates.py:293",
+      "if_missing": "authoritative/extracted render clean with footnote-only provenance; estimated and stale ALWAYS carry the inline qualifier so footnotes cannot launder confidence"
+    }
+  ],
   "queries": [],
   "break_it": [
     {
-      "scenario": "Contradictory upstream record says is_strata false while strata_type says apartment, and the freehold sentence hides the strata signal",
-      "what_happens": "A buyer could read a strata-flagged unit as clean freehold title in the ownership card",
+      "scenario": "First sentence duplicated as headline and body line (observed on the live preview overlay)",
+      "what_happens": "Reader sees the identical zoning sentence twice at the top of the card",
       "mitigated": true,
-      "how": "StrataDisplay treats EITHER signal as strata (is_strata true OR a non-not_strata type) so the detail view wins on contradiction",
-      "repro": "render brief with strata value {is_strata: false, strata_type: 'apartment'} and confirm the strata rows show"
+      "how": "services/brief_narration.py render_plan \u2014 fact plans set headline to empty; only standalone decline/clarify templates render a headline",
+      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_fact_plan_headline_empty_no_duplication"
     },
     {
-      "scenario": "Cadastre returns lotnumber for the neighbouring buffer lot and the card shows the wrong legal reference",
-      "what_happens": "A conveyancer could quote the neighbour's Lot/Plan on a contract search",
+      "scenario": "Capacity-engine outputs dressed as Planning control by the model (observed live)",
+      "what_happens": "A computed setback reads as THE statutory control \u2014 a liability-relevant mislabel",
       "mitigated": true,
-      "how": "identifiers ride the SAME cadastre feature detect_strata already selected (containment-first logic unchanged); no new query, no new matching",
-      "repro": "existing detect_strata containment tests; identifiers are read from the identical feature dict"
+      "how": "normalize_plan remaps fact templates citing computed sources to T_CAPACITY_RESULT deterministically, no retry",
+      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_computed_source_remapped_from_control_template"
+    },
+    {
+      "scenario": "A verified finding cited under a fact template renders its raw severity=\u2026 payload (observed live)",
+      "what_happens": "Internal record syntax shown to the reader with doubled punctuation",
+      "mitigated": true,
+      "how": "normalize_plan routes any X id to T_FINDING which strips the severity prefix into tone",
+      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_finding_renders_description_with_tone"
+    },
+    {
+      "scenario": "The secondary-dwelling standard row truncated mid-key at 200 chars (observed live: max_tot\u2026)",
+      "what_happens": "The single most decision-relevant row for a granny-flat reader loses its trailing standards",
+      "mitigated": true,
+      "how": "services/brief_manifest.py MAX_FLATTENED_RECORD_CHARS=420 for flattened decision-critical rows",
+      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_sepp_record_renders_as_sentence"
+    },
+    {
+      "scenario": "Identical provenance repeated inline four times per sentence drowns the facts",
+      "what_happens": "Unreadable output and the estimated-confidence qualifier gets lost in the noise",
+      "mitigated": true,
+      "how": "assign_footnotes dedupes per (source, date, confidence) while _confidence_qualifier keeps estimated/stale INLINE \u2014 footnotes cannot launder confidence",
+      "repro": "pytest tests/test_brief_narration.py::TestNarrativePolish::test_footnotes_dedupe_identical_provenance and ::test_estimated_confidence_stays_inline"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "No"
+    "manual_verify": "Yes \u2014 refresh the preview branch and re-check the overlay reads as grouped prose with footnote chips"
   }
 }

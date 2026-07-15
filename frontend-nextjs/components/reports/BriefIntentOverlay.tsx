@@ -27,12 +27,30 @@ interface OverlayLine {
   template_id: string;
   text: string;
   citation_ids: string[];
+  citation_paths: string[];
+  footnotes: number[];
+  tone: 'fact' | 'warning' | 'info';
   liability_flags: string[];
+}
+
+interface OverlayGroup {
+  key: string;
+  header: string;
+  lines: OverlayLine[];
+}
+
+interface OverlayFootnote {
+  marker: number;
+  source: string;
+  as_at: string | null;
+  confidence: string | null;
 }
 
 export interface BriefOverlay {
   headline: string;
+  groups: OverlayGroup[];
   lines: OverlayLine[];
+  footnotes: OverlayFootnote[];
   declined: boolean;
   caution: string | null;
 }
@@ -166,7 +184,11 @@ export function BriefOverlayCard({
 
   if (state.status !== 'done' || !state.overlay) return null;
 
-  const { headline, lines, declined, caution } = state.overlay;
+  const { headline, groups, lines, footnotes, declined, caution } = state.overlay;
+  // Older engine responses (pre-polish) carry only flat lines — render them
+  // as a single unlabelled group so the two shapes never diverge visually.
+  const renderGroups: OverlayGroup[] =
+    groups && groups.length > 0 ? groups : [{ key: 'all', header: '', lines: lines ?? [] }];
 
   return (
     <div
@@ -180,36 +202,84 @@ export function BriefOverlayCard({
         <p className="text-xs uppercase tracking-wide text-slate-400">
           {declined ? 'About this question' : 'For your plan'}
         </p>
-        <p className="text-sm font-medium text-slate-900 mt-1">{headline}</p>
+        {headline && <p className="text-sm font-medium text-slate-900 mt-1">{headline}</p>}
         {caution && (
           <p className="text-xs text-amber-700 mt-1.5 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
             {caution}
           </p>
         )}
       </div>
-      <ul className="space-y-2">
-        {lines.map((line, i) => (
-          <li key={`${line.template_id}-${i}`} className="text-sm text-slate-700 flex gap-2">
-            <span aria-hidden className="text-teal-500 mt-0.5">
-              &#9642;
+      {renderGroups.map((group) => (
+        <div key={group.key}>
+          {group.header && (
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              {group.header}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            {group.lines.map((line, i) => (
+              <p
+                key={`${line.template_id}-${i}`}
+                className={
+                  line.tone === 'warning'
+                    ? 'text-sm text-amber-800'
+                    : 'text-sm text-slate-700'
+                }
+              >
+                {line.text}
+                {line.footnotes.map((mark) => {
+                  const fn = footnotes.find((f) => f.marker === mark);
+                  return (
+                    <sup key={mark}>
+                      <button
+                        type="button"
+                        className="ml-0.5 text-[10px] text-teal-600 hover:text-teal-800"
+                        title={
+                          fn
+                            ? `${fn.source}${fn.as_at ? ` · as at ${fn.as_at}` : ''}${fn.confidence ? ` · ${fn.confidence}` : ''} — click to open the full card`
+                            : 'source'
+                        }
+                        onClick={() => scrollToCitation(line.citation_paths)}
+                      >
+                        {mark}
+                      </button>
+                    </sup>
+                  );
+                })}
+              </p>
+            ))}
+          </div>
+        </div>
+      ))}
+      {footnotes.length > 0 && (
+        <p className="text-[11px] text-slate-400 border-t border-slate-100 pt-2">
+          {footnotes.map((fn) => (
+            <span key={fn.marker} className="mr-3 inline-block">
+              <sup>{fn.marker}</sup> {fn.source}
+              {fn.as_at ? ` · ${fn.as_at}` : ''}
             </span>
-            <span>
-              {line.text}
-              {line.citation_ids.length > 0 && (
-                <span className="ml-1.5 text-[10px] text-slate-400 align-middle">
-                  [{line.citation_ids.join(', ')}]
-                </span>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </p>
+      )}
       <p className="text-[11px] text-slate-400">
-        Facts selected from this brief&apos;s own data — every line carries its source.
-        Full details in the sections below.
+        Facts selected from this brief&apos;s own data — every sentence carries its
+        source. Full details in the section cards below.
       </p>
     </div>
   );
+}
+
+/**
+ * Jump to the section card a citation belongs to: the first path segment of a
+ * cited manifest entry is the section key, matching the id anchors the brief
+ * page puts on each SectionCard (id="brief-section-<key>").
+ */
+function scrollToCitation(citationPaths: string[]) {
+  const seg = citationPaths[0]?.split('.')[0]?.replace(/\[\d+\]$/, '');
+  const target =
+    (seg && document.getElementById(`brief-section-${seg}`)) ||
+    document.getElementById('brief-dossier');
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---------------------------------------------------------------------------
