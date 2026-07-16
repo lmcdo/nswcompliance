@@ -1,61 +1,76 @@
 {
  "tier": "standard",
- "justification": "The golden-fixture capture for SEPP housing eligibility measured lot width from the raw cadastral frontage while the live brief measures it battleaxe-aware, so the captured fixture disagreed with the brief on flag lots and asserted a stale 'width unconfirmed' outcome. This is regulatory-facing eligibility representation, so the capture must mirror the brief and the test must assert the corrected battleaxe resolution across metro/regional and dataset-gap cases.",
- "commit_hash": "5a3a70bf",
+ "justification": "This batch changes regulatory-adjacent user-facing claims on three surfaces: the bushfire compliance fields stop asserting a blanket RFS referral and 10/50 clearing entitlement that the statute makes conditional, the SEPP context and capacity cards stop describing conservation and rural zones as centre or business zones, and the brief's gap labels stop describing a failed lookup as intentional scope. Wrong wording here is a silent liability defect on a compliance product, so each change carries a guard test that pins the corrected sentence or the three-state semantics.",
+ "commit_hash": "ed85ff66",
  "files": [
-  "scripts/capture_brief_golden_fixtures.py",
-  "tests/test_brief_golden_fixtures.py",
-  "tests/fixtures/brief_golden/housing_sepp_eligibility_bowral.json"
+  "services/bushfire_prescreen.py",
+  "services/terrain_analysis.py",
+  "services/brief_templates.py",
+  "frontend-nextjs/lib/regulatory-constants.ts",
+  "frontend-nextjs/components/reports/SeppContextCard.tsx",
+  "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+  "frontend-nextjs/components/tools/BushfireResultCard.tsx",
+  "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+  "frontend-nextjs/app/api/reports/bushfire/generate/route.ts",
+  "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+  "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts",
+  "frontend-nextjs/__tests__/components/compliance/ConstraintArithmeticCard-zone-copy.test.tsx",
+  "frontend-nextjs/__tests__/components/reports/SeppContextCard.test.tsx",
+  "frontend-nextjs/__tests__/lib/zone-family.test.ts",
+  "tests/test_bushfire_prescreen.py",
+  "tests/test_terrain_analysis.py",
+  "tests/test_brief_narration.py"
  ],
  "pre_impl": {
-  "existing_data": "The brief already resolves the developable head width for a battleaxe lot via eligibility_lot_width (added in #720) and feeds it to evaluate_eligibility, but the fixture capture still passed dims.frontage_m, which is the null access-handle width on a flag lot, so the captured Bowral fixture kept the pre-#720 unconfirmed result.",
-  "assumption_mismatch": "Confirmed against the live production intelligence-brief stream for 38 Park Road Bowral: lot_width_m came back 70.09 m and secondary_dwelling eligible true, while the committed fixture said width unconfirmed and secondary_dwelling ineligible, proving the capture had diverged from the brief.",
-  "new_vs_existing": "No new capability; the capture reuses the same eligibility_lot_width helper the brief uses, and the null-width conservative contract stays covered by existing unit tests in test_housing_sepp_eligibility.py rather than by this regenerated real-lot fixture."
+  "existing_data": "A live brief for 20 Patanga Street Kincumber showed the defects on deployed main: the C4 Environmental Living lot rendered centre-zone shop-top housing copy, the bushfire card asserted RFS referral required Yes while listing triggers that contradict it, the Valuer General land value fetch miss rendered as Not part of this brief, and the plan overlay printed raw key equals value strings for the bushfire and lot-dimension composites.",
+  "assumption_mismatch": "The bushfire service derived both rfs_referral_required and clearing_10_50_entitled directly from is_bushfire_prone, but referral under the Rural Fires Act attaches only to trigger developments and the 10/50 scheme follows the RFS entitlement area map, so bushfire-prone alone cannot answer either question.",
+  "new_vs_existing": "Reuses the existing three-state None convention already used across the compliance payload rather than adding new fields beyond one rfs_referral_note string; the zone-family switch extends the existing regulatory-constants helpers instead of adding a permitted-use table; the record-dump guard extends the existing brief_templates sentence builders and its import-time liability audit."
  },
  "functions": [
   {
-   "name": "capture_housing_sepp_bowral",
-   "file_line": "scripts/capture_brief_golden_fixtures.py:142",
-   "input": "no arguments; fetches the Bowral lot geometry, valuation, and computes lot dimensions from live NSW sources",
-   "output": "writes the housing SEPP eligibility golden fixture using the battleaxe-aware head width that the brief itself passes to the engine",
-   "if_none": "when geometry or dimensions are missing eligibility_lot_width returns None and the engine falls back to its conservative unconfirmed path unchanged"
+   "name": "_build_compliance",
+   "file_line": "services/bushfire_prescreen.py:360",
+   "input": "the RFS mapping result for a lot including is_bushfire_prone and the estimated BAL band plus any intersecting overlays and the zone",
+   "output": "a compliance object whose referral and 10/50 fields are None with conditional wording and the trigger list when the land is bushfire prone, and definitive False only when the land is not prone",
+   "if_none": "when the RFS lookup itself failed every compliance field stays None so no surface can render a definitive referral or clearing claim from an unknown mapping state"
   }
  ],
  "values": [
   {
-   "value": "eligibility_lot_width(dims)",
-   "read_at": "capture_housing_sepp_bowral now derives the width from lot dimensions exactly as the brief does before calling evaluate_eligibility",
-   "if_missing": "a None width flows into the engine and yields a conservative unconfirmed and ineligible row rather than a false eligible result"
+   "value": "compliance.rfs_referral_required and compliance.clearing_10_50_entitled",
+   "read_at": "BushfireResultCard and the bushfire PDF template read both fields when rendering the development implications block for a prone lot",
+   "if_missing": "a null or undefined value renders the conditional wording with the trigger list and the entitlement-area-map note rather than a definitive Yes or No claim"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A future edit reverts the capture width source back to the raw cadastral frontage while the brief keeps the battleaxe-aware width",
-   "what_happens": "the fixture would again show width unconfirmed on a flag lot while the live brief marks it eligible, silently re-diverging the golden capture from production",
+   "scenario": "A bushfire-prone lot renders the compliance block in the PDF where the referral field arrives as undefined rather than null after JSON round-tripping",
+   "what_happens": "a strict triple-equals null check would fall through to the boolean branch and print No for a lot where referral is genuinely proposal-dependent",
    "mitigated": true,
-   "how": "the reframed test asserts no form reports width-unconfirmed on this resolvable battleaxe lot and that secondary_dwelling and dual_occupancy are eligible, so a frontage revert fails the test",
-   "repro": "change the capture width back to dims.frontage_m, regenerate, and run the Bowral golden test"
+   "how": "the PDF template uses a loose double-equals null comparison that catches both null and undefined and prints the proposal-dependent wording",
+   "repro": "render bushfire-report with compliance rfs_referral_required undefined and confirm the output reads Depends on the proposal rather than No"
   },
   {
-   "scenario": "A genuinely widthless lot arrives where the geometry cannot yield any developable width at all",
-   "what_happens": "an eager eligible result would over-report buildability on a lot whose width was never measured",
+   "scenario": "A brief runs on a conservation or rural zone such as C4 Environmental Living or RU2 and reaches the SEPP context and dwelling-yield copy",
+   "what_happens": "the previous binary residential-or-not switch described every non-residential zone as a centre or business zone delivering shop-top housing, which is false outside the centres zones",
    "mitigated": true,
-   "how": "eligibility_lot_width returns None and the engine keeps its conservative unconfirmed-ineligible path, which the unit tests in test_housing_sepp_eligibility.py continue to assert",
-   "repro": "run test_missing_width_is_unconfirmed_but_still_conservatively_ineligible in the eligibility unit suite"
+   "how": "zoneFamily classifies residential rural conservation centres and other separately and the shop-top sentence renders only for the centres family while other families point at the LEP land-use table",
+   "repro": "render SeppContextCard with zone C4 and confirm the copy names a conservation zone and never contains shop-top housing"
   },
   {
-   "scenario": "A form whose standard is absent from the dataset, such as manor_house, is mislabelled as eligible or as a measured failure",
-   "what_happens": "a dataset gap would masquerade as a confirmed regulatory outcome and mislead the reader on that form",
+   "scenario": "An overlay sentence template receives a composite record value that serialises to key equals value pairs joined by semicolons",
+   "what_happens": "the raw internal string such as is_bushfire_prone equals True with category and BAL fields would render verbatim in the reader-facing plan overlay",
    "mitigated": true,
-   "how": "the reframed test requires every unconfirmed row to stay ineligible and to carry a dataset reason, separating a dataset gap from a width gap",
-   "repro": "inspect the manor_house row in the regenerated fixture and confirm unconfirmed true, eligible false, reason mentions dataset"
+   "how": "looks_like_record_dump detects record-shaped values in every generic sentence builder and renders the section-card reference instead while the bushfire and lot-dimension composites get authored sentences",
+   "repro": "call the overlay sentence builder with a record-shaped value and confirm the output is the section reference sentence with no equals signs"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Fixture regenerated from the live production brief for 38 Park Road Bowral (secondary_dwelling and dual_occupancy eligible, width 70.09 m); 19 golden-fixture tests and 27 eligibility unit tests pass. Local re-capture via the script needs DATABASE_URL, which is absent in this environment; the capture-script fix is verified by reading, the values by the live stream. Known follow-up: evaluate_eligibility does not test a minimum access-way width for battleaxe lots — needs the exact SEPP clause sourced before adding, per the no-hardcode rule."
+  "manual_verify": "Re-run the Kincumber brief on the preview and confirm the SEPP card describes a conservation zone with no shop-top sentence, the bushfire card shows the conditional referral and 10/50 wording with triggers, the land value gap reads Unavailable with a retry instruction, and the plan overlay contains no key equals value strings; full pytest and jest suites plus tsc ran clean in the worktree before push."
  }
 }

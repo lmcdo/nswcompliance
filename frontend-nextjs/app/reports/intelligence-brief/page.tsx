@@ -10,6 +10,7 @@ import AerialTile from '@/components/reports/AerialTile';
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
 import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
 import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
+import { SeppContextCard } from '@/components/reports/SeppContextCard';
 
 // Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
 // flag AND the Railway-side BRIEF_LLM_OVERLAY_ENABLED must be on for anything
@@ -196,7 +197,16 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
       tone: 'pending',
     };
   }
-  if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
+  // No reason recorded on a field this brief's sections DO promise (e.g. the VG
+  // land value when the valuation lookup returned nothing) — that's a retrieval
+  // miss, not an out-of-scope field. Say so, and route to a retry.
+  if (!r) {
+    return {
+      label: 'Unavailable',
+      detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+      tone: 'error',
+    };
+  }
   // Only a genuine resolution failure ("No prop_id resolved") is the user's
   // address problem. A bare "could not ..." from any backend layer used to land
   // here too, so a council we simply haven't onboarded (e.g. Wingecarribee DCP)
@@ -218,12 +228,14 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
     return {
       label: 'None here',
-      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property. For a constrained site that's good news.`,
+      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property.`,
       tone: 'clear',
     };
   }
+  // The ONLY branch that may say "not part of this brief": the layer was
+  // genuinely not requested (an opt-in that wasn't ticked).
   if (r.includes('not requested')) {
-    return { label: 'Not run', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
+    return { label: 'Not included', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
   }
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
     return {
@@ -232,7 +244,13 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
       tone: 'error',
     };
   }
-  return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
+  // Unrecognised reason on a promised field — a retrieval miss, never "not part
+  // of this brief" (the section header promised it).
+  return {
+    label: 'Unavailable',
+    detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+    tone: 'error',
+  };
 }
 
 const UNAVAILABLE_TONE_STYLES: Record<UnavailableTone, string> = {
@@ -1838,56 +1856,9 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
   );
 }
 
-// When the Housing-SEPP residential forms don't apply, don't say "doesn't apply" —
-// explain WHY with the lot's real zone + instrument, and what it means for housing
-// on this land. A "no" carrying context is the product's value.
-function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
-  const zoneLabel = ctx.zone
-    ? `${ctx.zone}${ctx.zoneFull ? ` (${ctx.zoneFull})` : ''}`
-    : 'this zone';
-  const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
-  const residential = isResidentialZone(ctx.zone);
-  return (
-    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
-      <div className="px-5 py-4 border-b border-slate-100">
-        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
-      </div>
-      <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
-        {residential ? (
-          <p>
-            This lot sits in <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
-            {ctx.legislationUrl
-              ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
-              : instrument}. It&apos;s a residential zone, but the Low &amp; Mid-Rise Housing standards
-            (terraces, townhouses, manor houses and residential flats) couldn&apos;t be loaded for
-            it — re-run the brief, or check the standards directly in the instrument above.
-          </p>
-        ) : (
-          <>
-            <p>
-              This lot is zoned <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
-              {ctx.legislationUrl
-                ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
-                : instrument} — not a residential zone.
-            </p>
-            <p>
-              The Low &amp; Mid-Rise Housing reforms (terraces, townhouses, manor houses, residential
-              flats) reach only the residential zones <span className="font-medium">R1–R4</span>, so they
-              don&apos;t apply here. On a centre/business zone like this, housing is delivered through the
-              zone&apos;s own permitted uses — typically <span className="font-medium">shop-top housing</span>{' '}
-              above ground-floor retail — rather than the low-and-mid-rise pathway.
-            </p>
-            <p className="text-slate-500">
-              See the land use table in the instrument above for what this specific lot permits, and the
-              Development Capacity card for the buildable envelope.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// The "why the SEPP forms don't reach this lot" explainer lives in
+// components/reports/SeppContextCard.tsx (zone-family aware copy — a
+// conservation or rural lot is never described as shop-top territory).
 
 // Granny Flat — decoupled to the working async pipeline. The brief fires the same
 // gated /api/satellite/granny-flat route the standalone tool uses (which gates on
@@ -2489,6 +2460,9 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
                 <div>
                   <span className="font-medium">{formatKey(g.field.replace(/^satellite\./, ''))}</span>
                   <span className="text-slate-500"> — {describeUnavailable(g.reason, g.field).detail}</span>
+                  {/* Literal space before the link — ml-2 is visual only, so without
+                      it the copy-pasted text ran the sentence into "…retry.Verify". */}
+                  {g.verify_url && ' '}
                   {g.verify_url && (
                     <a
                       href={g.verify_url}
@@ -2524,7 +2498,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
 
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
-  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
+  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General).' },
   { label: 'Calculated', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. Calculated from data, not measured on site.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },

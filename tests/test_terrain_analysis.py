@@ -926,3 +926,34 @@ class TestCentralCropBounds:
         # 200px over a 200m box (buffer 100) -> cell 1m -> 90m window is 91px
         r0, r1, c0, c1 = _central_crop_bounds(200, 200, buffer_m=100.0, window_m=90.0)
         assert (r1 - r0) == 91 and (c1 - c0) == 91
+
+
+# ---------------------------------------------------------------------------
+# Static-claims guard — interpretation prose stays in a factual register
+# (pattern follows tests/test_conveyancing_truth.py source-scan guards)
+# ---------------------------------------------------------------------------
+
+
+class TestNoAdvisoryLanguageInSource:
+    """The terrain interpretation module must state facts and references, never
+    advice. A reintroduced advisory verb is a liability regression (#751 batch:
+    'should be checked against AS 2890.1', 'geotechnical investigation is
+    essential', 'supports compliance', …)."""
+
+    FORBIDDEN_WORD_PATTERNS = [
+        r"\bshould\b",
+        r"\bessential\b",
+        r"\brecommend\w*\b",
+    ]
+
+    def test_terrain_source_contains_no_advisory_verbs(self):
+        import re as _re
+        from pathlib import Path as _Path
+        src_path = _Path(__file__).parent.parent / "services" / "terrain_analysis.py"
+        src = src_path.read_text(encoding="utf-8")
+        for pat in self.FORBIDDEN_WORD_PATTERNS:
+            hits = _re.findall(pat, src, flags=_re.IGNORECASE)
+            assert not hits, (
+                f"Advisory language reintroduced into terrain_analysis.py: "
+                f"{pat!r} matched {hits[:5]}"
+            )

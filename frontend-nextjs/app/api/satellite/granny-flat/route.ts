@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
         {
           ineligible: true,
           error:
-            'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
+            'SEPP (Housing) 2021 ch 3 pt 1 applies to secondary dwellings on land in a residential zone (R1–R5 or an equivalent zone) where a dwelling house is permissible. This lot’s zone is outside those zones, so the SEPP pathway does not apply here. A council LEP can separately permit secondary dwellings — check the zone’s land-use table in the LEP.',
           evidence: NSW_ZONE_NAMES[zone] ? `${zone} — ${NSW_ZONE_NAMES[zone]}` : zone,
           evidence_label: 'NSW Planning Portal — land zoning',
         },
