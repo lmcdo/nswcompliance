@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
     compliance: {
       state_legislation: (compliance.state_legislation as string | null) ?? null,
       rfs_referral_required: compliance.rfs_referral_required != null ? Boolean(compliance.rfs_referral_required) : null,
+      rfs_referral_note: (compliance.rfs_referral_note as string | null) ?? null,
       rfs_referral_triggers: Array.isArray(compliance.rfs_referral_triggers) ? (compliance.rfs_referral_triggers as string[]) : null,
       cdc_pathway_available: compliance.cdc_pathway_available != null ? Boolean(compliance.cdc_pathway_available) : null,
       clearing_10_50_entitled: compliance.clearing_10_50_entitled != null ? Boolean(compliance.clearing_10_50_entitled) : null,

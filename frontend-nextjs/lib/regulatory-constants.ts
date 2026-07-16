@@ -281,6 +281,33 @@ export function isResidentialZone(zone: string): boolean {
 }
 
 /**
+ * Standard Instrument zone families, for copy that must not assume every
+ * non-residential zone is a centres/business zone (a C4 lot is not "shop-top
+ * housing" country).
+ *
+ * - residential: R1–R5 and RU5 Village (the zones the dwelling model covers)
+ * - rural: RU1–RU4, RU6
+ * - conservation: C1–C4 (Standard Instrument environment/conservation zones)
+ * - centres: E1/E2 (employment-scheme centres), B1–B7, MU1 — shop-top territory
+ * - other: waterway, special purpose, recreation, industrial (E3–E5, IN, W, SP, RE), unknown
+ */
+export type ZoneFamily = 'residential' | 'rural' | 'conservation' | 'centres' | 'other';
+
+/**
+ * Helper function: Classify a zone code into its Standard Instrument family.
+ * Accepts either a bare code ("C4") or a labelled zone ("C4 Environmental Living").
+ */
+export function zoneFamily(zone: string): ZoneFamily {
+  const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+  if ((NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[]).includes(zoneCode)) return 'residential';
+  if (/^R\d/.test(zoneCode)) return 'residential';
+  if (/^RU\d/.test(zoneCode)) return 'rural';
+  if (/^C[1-4]$/.test(zoneCode)) return 'conservation';
+  if (/^(E1|E2|B\d|MU\d?)$/.test(zoneCode)) return 'centres';
+  return 'other';
+}
+
+/**
  * Helper function: Check if zone permits apartment development
  */
 export function isApartmentZone(zone: string): boolean {

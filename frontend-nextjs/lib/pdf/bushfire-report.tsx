@@ -30,6 +30,7 @@ interface CrossOverlay {
 interface BushfireCompliance {
   state_legislation: string | null;
   rfs_referral_required: boolean | null;
+  rfs_referral_note?: string | null;
   rfs_referral_triggers: string[] | null;
   cdc_pathway_available: boolean | null;
   clearing_10_50_entitled: boolean | null;
@@ -287,9 +288,9 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
             <Text style={s.sectionTitle}>Development implications</Text>
             <View style={s.statGrid}>
               <View style={s.statCard}>
-                <Text style={s.statLabel}>RFS referral required</Text>
+                <Text style={s.statLabel}>RFS referral</Text>
                 <Text style={[s.statValue, { fontSize: 10, color: c.rfs_referral_required ? RED : c.rfs_referral_required === false ? GREEN : GRAY_500 }]}>
-                  {c.rfs_referral_required === null ? 'Unknown' : c.rfs_referral_required ? 'Yes - s4.14 EP&A Act' : 'No'}
+                  {c.rfs_referral_required === null ? 'Depends on the proposal - see s4.14 triggers' : c.rfs_referral_required ? 'Yes - s4.14 EP&A Act' : 'No'}
                 </Text>
               </View>
               <View style={s.statCard}>
@@ -300,14 +301,24 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
               </View>
             </View>
 
-            {/* 10/50 clearing — free */}
-            {c.clearing_10_50_entitled !== null && (
+            {/* RFS referral conditional note — the three-state answer explained */}
+            {c.rfs_referral_required === null && c.rfs_referral_note && (
+              <View style={{ backgroundColor: GRAY_100, borderRadius: 4, padding: 10, marginBottom: 12 }}>
+                <Text style={{ fontSize: 8.5, color: GRAY_700 }}>{c.rfs_referral_note}</Text>
+              </View>
+            )}
+
+            {/* 10/50 clearing — free. A null entitlement on prone land means it
+                depends on the RFS 10/50 entitlement area map (conditional text). */}
+            {(c.clearing_10_50_entitled !== null || c.clearing_10_50_exceptions) && (
               <View style={{ backgroundColor: GRAY_100, borderRadius: 4, padding: 10, marginBottom: 12 }}>
                 <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
                   10/50 vegetation clearing
                 </Text>
                 <Text style={{ fontSize: 8.5, color: GRAY_700 }}>
-                  {c.clearing_10_50_entitled ? 'Entitlement applies' : 'Does not apply'}
+                  {c.clearing_10_50_entitled === null
+                    ? 'Depends on the RFS 10/50 entitlement area map'
+                    : c.clearing_10_50_entitled ? 'Entitlement applies' : 'Does not apply'}
                   {c.clearing_10_50_exceptions ? ` - ${c.clearing_10_50_exceptions}` : ''}
                 </Text>
               </View>
