@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import {
   Droplets, Flame, FileCheck, Building2, Radar, Sun, Moon, Satellite,
-  ShieldCheck, Map, BarChart3, Thermometer, ArrowRight, Search,
+  ShieldCheck, Map, BarChart3, Thermometer, ArrowRight,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
+import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
 
 /* ------------------------------------------------------------------ */
 /*  Tool card data                                                     */
@@ -197,17 +198,9 @@ export default function HomePage() {
             for any NSW address. Free instant checks. Professional reports from $39.
           </p>
 
-          {/* Search-bar CTA */}
-          <TrackedLink
-            href="/reports"
-            page="home"
-            cta="hero_search"
-            className="group flex items-center gap-3 w-full max-w-lg mx-auto bg-slate-900/80 border border-slate-700/50 rounded-xl px-5 py-4 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 transition-all mb-10"
-          >
-            <Search className="w-5 h-5 text-slate-500 group-hover:text-teal-400 transition-colors" />
-            <span className="text-slate-500 text-left">Enter any NSW address...</span>
-            <ArrowRight className="w-4 h-4 text-slate-600 ml-auto group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
-          </TrackedLink>
+          {/* Search-bar — a real, typeable address search that carries the
+              address into the reports hub (each tool card threads it through). */}
+          <HeroAddressSearch />
 
           {/* Tool pills */}
           <div className="flex flex-wrap justify-center gap-2">

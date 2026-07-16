@@ -1,111 +1,70 @@
 {
  "tier": "standard",
- "justification": "New offline analysis lane (not a production/serving path): a read-only exporter of regulatory_provisions and an offline near-duplicate/contradiction audit over the exported corpus, wrapping enjalot/latent-scope for classifier-QA and canonicalisation. Standard tier because it opens a new DB read path and handles the full provisions corpus, but it writes nothing back to the database, serves no user-facing output, and its artifacts are git-ignored. The whole lane can run egress-free via the TF-IDF embedder.",
- "commit_hash": "000136c2",
+ "justification": "The homepage hero is the primary entry point and the reports hub routes every satellite tool; a regression here silently strands visitors on a hub with no address carried through, so it warrants defensive tests and three-state param handling, though it touches no database and no regulatory data.",
+ "commit_hash": "affbe6fd",
  "files": [
-  "scripts/latent_scope_export.py",
-  "scripts/latent_scope_dup_audit.py",
-  "requirements-latentscope.txt",
-  "docs/latent_scope_runbook.md",
-  ".gitignore",
-  ".qa_report.json",
-  ".claude/DATA_QUALITY_TRACKER.md"
+  "frontend-nextjs/components/marketing/HeroAddressSearch.tsx",
+  "frontend-nextjs/app/page.tsx",
+  "frontend-nextjs/app/reports/page.tsx",
+  "frontend-nextjs/__tests__/components/marketing/HeroAddressSearch.test.tsx",
+  "frontend-nextjs/__tests__/app/reports-hub-address.test.tsx"
  ],
  "pre_impl": {
-  "existing_data": "No prior semantic/corpus-level QA tool exists. The prior-art guard flagged frontend provisions APIs (app/api/provisions/*), NumericChecker/numericCompliance (per-property value-vs-control), and the extraction-time markdown parser — all per-record serving/extraction, none a corpus-wide export or dedup audit. Reuse not viable; documented in each script's prior-art-checked line. DB connection reuses services/db_config.get_connection (the established read path); is_current usage mirrors services/shadow_detector.py.",
-  "assumption_mismatch": "Seeded by a POC that ran the real latent-scope pipeline on 452 Marrickville DCP chunks with a local TF-IDF embedder (Hugging Face egress was policy-blocked). This PR is the committed tooling so it can run against the real 46,585-row table where DB env is set; DATABASE_URL/DB_* are not reachable from the authoring environment.",
-  "new_vs_existing": "New analysis-lane capability, deliberately isolated: heavy deps (torch/umap/hdbscan) pinned to a separate venv via requirements-latentscope.txt, never venv_linux. No production code imports these scripts."
+  "existing_data": "The hero box was a TrackedLink dressed as an input; grepped for existing hero-search islands and found only HomeHero which routes to /property in a light theme and the reports LandingHero card, neither routing to the hub with the address, so a thin client wrapper over the shared AddressAutocomplete primitive was the right reuse.",
+  "assumption_mismatch": "Confirmed each report tool page already reads params.address, flood checks hasAddress and granny-flat already links to itself with an encoded address, so carrying the address into the hub genuinely pre-fills and auto-runs the chosen tool rather than being purely cosmetic.",
+  "new_vs_existing": "New client island reuses AddressAutocomplete and trackFunnelCta; the reports hub becomes an async server component reading searchParams; no new data source, no backend call, and no database schema is touched by this change."
  },
  "functions": [
   {
-   "name": "_build_query",
-   "file_line": "scripts/latent_scope_export.py:65",
-   "input": "council filter list, actionable_only flag, current_only flag, min_chars int, optional row limit",
-   "output": "a parameterised read-only SELECT string plus its bound params list, ready for cursor.execute",
-   "if_none": "no councils means all councils; current_only False exports stale rows too (is_current still selected as a column)"
+   "name": "HeroAddressSearch",
+   "file_line": "frontend-nextjs/components/marketing/HeroAddressSearch.tsx:21",
+   "input": "no props; local state holds the typed NSW address string entered in the input",
+   "output": "renders a real address input that pushes /reports with the encoded address on submit or suggestion select",
+   "if_none": "an empty or whitespace-only address short-circuits inside go so no navigation and no funnel event fire"
   },
   {
-   "name": "fetch_provisions",
-   "file_line": "scripts/latent_scope_export.py:120",
-   "input": "the same filter arguments, used to build and run the query",
-   "output": "a tuple of column names and fetched provision rows read from regulatory_provisions",
-   "if_none": "connection is pinned READ ONLY before any statement so a stray write raises instead of mutating the database"
-  },
-  {
-   "name": "write_output",
-   "file_line": "scripts/latent_scope_export.py:153",
-   "input": "column names, fetched rows, target output path, and the desired format string",
-   "output": "the path actually written, as parquet or CSV, with the parent directory created",
-   "if_none": "if parquet is requested but pyarrow is unavailable it falls back to CSV rather than hard-failing the export"
-  },
-  {
-   "name": "numeric_tokens",
-   "file_line": "scripts/latent_scope_dup_audit.py:66",
-   "input": "a single provision text string to scan for planning numbers",
-   "output": "a frozenset of normalised value-plus-unit tokens such as 4.5m or 20percent",
-   "if_none": "text with no recognised number+unit yields an empty set, which suppresses the numeric_mismatch contradiction flag"
-  },
-  {
-   "name": "find_pairs",
-   "file_line": "scripts/latent_scope_dup_audit.py:125",
-   "input": "a matrix of L2-normalised embedding vectors, a minimum cosine threshold, and a neighbour count",
-   "output": "deduplicated (i, j, cosine) pairs at or above the threshold, sorted by descending similarity",
-   "if_none": "uses a cosine k-nearest-neighbour search rather than a full N-by-N matrix so it scales to the whole 46k-row table"
-  },
-  {
-   "name": "build_worklist",
-   "file_line": "scripts/latent_scope_dup_audit.py:170",
-   "input": "the exported dataframe, the candidate pairs, and a cross-scope-only toggle",
-   "output": "a ranked dataframe of pairs with contradiction rows (differing numeric standards) sorted to the top",
-   "if_none": "same-council same-precinct pairs are dropped unless --include-same-scope is passed; empty input yields an empty worklist"
+   "name": "ReportsLanding",
+   "file_line": "frontend-nextjs/app/reports/page.tsx:81",
+   "input": "awaited searchParams whose optional address key arrives from the homepage hero search box",
+   "output": "tool grid whose card hrefs carry the encoded address plus an active-address banner when an address is present",
+   "if_none": "a missing or non-string address yields an empty suffix so the hub renders bare tool links and hides the banner"
   }
  ],
  "values": [
   {
-   "value": "provision_text",
-   "read_at": "regulatory_provisions SELECT in _build_query",
-   "if_missing": "Filtered out at query time (provision_text IS NOT NULL AND length(btrim()) >= min_chars); audit also drops NaN text before embedding"
-  },
-  {
-   "value": "is_current",
-   "read_at": "exported column; optional WHERE is_current = TRUE via --current-only",
-   "if_missing": "Column is exported, not force-filtered, so stale rows are visible to the QA pass rather than silently dropped; --current-only restricts to live rows when wanted"
+   "value": "searchParams.address",
+   "read_at": "ReportsLanding server component awaits searchParams then narrows the optional address key",
+   "if_missing": "the typeof guard treats undefined or an array param as no address, so the hub falls back to plain tool links"
   }
  ],
- "queries": [
-  {
-   "purpose": "Read-only bulk export of provisions for offline latent-scope analysis; no writeback path exists in the lane",
-   "file_line": "scripts/latent_scope_export.py:109",
-   "where_clause": "provision_text IS NOT NULL AND length(btrim(provision_text)) >= %s, plus optional is_current = TRUE, v2_is_actionable = TRUE, and lower(source_council) = ANY(%s); executed under conn.set_session(readonly=True) so no INSERT/UPDATE/DELETE can run. Verified live: table has 65 cols / 53,716 rows, source_council holds lowercase slugs"
-  }
- ],
+ "queries": [],
  "break_it": [
   {
-   "scenario": "Export silently drops superseded provisions, so a QA pass never sees stale data",
-   "what_happens": "Mislabelled/stale rows would be invisible — the opposite of the tool's purpose",
+   "scenario": "A visitor pastes an address containing commas and spaces then clicks a tool card expecting that exact property to load",
+   "what_happens": "an unencoded address would break the query string so the downstream tool geocodes a truncated or empty value",
    "mitigated": true,
-   "how": "is_current is exported as a column (not force-filtered); colour-by is_current on the map surfaces stale rows. --current-only is opt-in, off by default",
-   "repro": "python scripts/latent_scope_export.py --limit 100 then inspect the is_current column in the parquet"
+   "how": "the address is passed through encodeURIComponent in both the hero push and the hub href suffix, so commas and spaces survive as escape sequences",
+   "repro": "type 14 Hunter St, Lewisham NSW in the hero, submit, then click Flood Risk Check and inspect the resulting reports flood address URL"
   },
   {
-   "scenario": "numeric_mismatch flag fires on incidental number differences and floods the worklist with false contradictions",
-   "what_happens": "Analyst wastes time on non-contradictions",
+   "scenario": "A crafted link supplies the address key twice so searchParams.address arrives as an array instead of a plain string",
+   "what_happens": "serialising that array into the href would emit a comma-joined value and mislead every downstream tool page",
    "mitigated": true,
-   "how": "mismatch only fires when both provisions carry numeric tokens AND their token sets differ, AND the pair is already above the cosine threshold (near-identical wording); value+unit tokens are normalised (4.50 -> 4.5, metres/m -> m). It is explicitly a review candidate, never an assertion",
-   "repro": "synthetic test: '4.5 metres' vs '3 metres' setback pair flags True; identical biodiversity boilerplate flags False"
+   "how": "ReportsLanding only accepts a string via typeof narrowing so an array falls through to the empty suffix and the plain hub renders",
+   "repro": "open the reports hub with the address supplied twice and confirm the tool card hrefs contain no address query at all"
   },
   {
-   "scenario": "sentence-transformers unavailable (HF egress blocked or dep missing) hard-fails the audit",
-   "what_happens": "Audit crashes with an import error",
+   "scenario": "The Google Maps Places script has not finished initialising when a visitor starts typing into the hero address box",
+   "what_happens": "with no autocomplete dropdown a link-only box would leave the visitor stuck, which is exactly the fake-input bug being fixed",
    "mitigated": true,
-   "how": "--embedder tfidf is fully offline (sklearn only); the sentence-transformers path raises a clear SystemExit pointing at the tfidf fallback and requirements file",
-   "repro": "run with --embedder tfidf on a machine with no network"
+   "how": "the box is a genuine text field inside a form with a submit arrow, so typing and pressing the arrow routes even when no suggestion list has appeared",
+   "repro": "block maps.googleapis.com in the browser, type an address into the hero, and confirm the arrow button still navigates to the reports hub"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Done against production (read-only): scripts/latent_scope_export.py --council marrickville --actionable-only exported 7,577 provisions; scripts/latent_scope_dup_audit.py --embedder tfidf --min-cosine 0.92 --include-same-scope produced 8,261 candidate pairs (1,093 numeric_mismatch) into dup_worklist.csv. Remaining USER step: triage the worklist (top rows include chunking-artifact parking tables) and optionally run the full cross-council corpus."
+  "manual_verify": "Reproduced the original bug on the preview where clicking the homepage hero box navigated to the reports hub with no address; after the fix tsc is clean and six new jest tests plus the full frontend suite pass, with a final visual check on the Vercel preview once this branch deploys."
  }
 }
