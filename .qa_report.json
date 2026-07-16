@@ -1,61 +1,45 @@
 {
- "tier": "standard",
- "justification": "The golden-fixture capture for SEPP housing eligibility measured lot width from the raw cadastral frontage while the live brief measures it battleaxe-aware, so the captured fixture disagreed with the brief on flag lots and asserted a stale 'width unconfirmed' outcome. This is regulatory-facing eligibility representation, so the capture must mirror the brief and the test must assert the corrected battleaxe resolution across metro/regional and dataset-gap cases.",
- "commit_hash": "5a3a70bf",
+ "tier": "minor",
+ "justification": "This changes how the free upzoning tool frames its regulatory eligibility result to the public. No logic, data, or query changes — but it alters user-facing planning communication on a compliance surface, so the wording must stay defensible: lead with what the mapped standards permit, phrase clearances as clearances, and keep the subject-to-a-DA caveat present exactly once rather than removed.",
+ "commit_hash": "8895221a",
  "files": [
-  "scripts/capture_brief_golden_fixtures.py",
-  "tests/test_brief_golden_fixtures.py",
-  "tests/fixtures/brief_golden/housing_sepp_eligibility_bowral.json"
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "The brief already resolves the developable head width for a battleaxe lot via eligibility_lot_width (added in #720) and feeds it to evaluate_eligibility, but the fixture capture still passed dims.frontage_m, which is the null access-handle width on a flag lot, so the captured Bowral fixture kept the pre-#720 unconfirmed result.",
-  "assumption_mismatch": "Confirmed against the live production intelligence-brief stream for 38 Park Road Bowral: lot_width_m came back 70.09 m and secondary_dwelling eligible true, while the committed fixture said width unconfirmed and secondary_dwelling ineligible, proving the capture had diverged from the brief.",
-  "new_vs_existing": "No new capability; the capture reuses the same eligibility_lot_width helper the brief uses, and the null-width conservative contract stays covered by existing unit tests in test_housing_sepp_eligibility.py rather than by this regenerated real-lot fixture."
+  "existing_data": "The tool already returns per-form eligibility with source clauses and a green tick, but every status chip read as absence (not mapped here) and every eligible reason repeated the subject-to-a-DA parenthetical, so a confident cited result read as a hedge.",
+  "assumption_mismatch": "Verified live on 38 Park Road Bowral that duplex and secondary dwelling both return eligible with cited clauses, yet the surrounding copy undersold them; the fix is presentation only, the underlying eligibility is unchanged.",
+  "new_vs_existing": "Copy-only edit to the existing page; reuses the same result object, formLabel helper and CheckCircle2 icon; no new component, engine call, or data source is introduced."
  },
- "functions": [
-  {
-   "name": "capture_housing_sepp_bowral",
-   "file_line": "scripts/capture_brief_golden_fixtures.py:142",
-   "input": "no arguments; fetches the Bowral lot geometry, valuation, and computes lot dimensions from live NSW sources",
-   "output": "writes the housing SEPP eligibility golden fixture using the battleaxe-aware head width that the brief itself passes to the engine",
-   "if_none": "when geometry or dimensions are missing eligibility_lot_width returns None and the engine falls back to its conservative unconfirmed path unchanged"
-  }
- ],
- "values": [
-  {
-   "value": "eligibility_lot_width(dims)",
-   "read_at": "capture_housing_sepp_bowral now derives the width from lot dimensions exactly as the brief does before calling evaluate_eligibility",
-   "if_missing": "a None width flows into the engine and yields a conservative unconfirmed and ineligible row rather than a false eligible result"
-  }
- ],
+ "functions": [],
+ "values": [],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A future edit reverts the capture width source back to the raw cadastral frontage while the brief keeps the battleaxe-aware width",
-   "what_happens": "the fixture would again show width unconfirmed on a flag lot while the live brief marks it eligible, silently re-diverging the golden capture from production",
+   "scenario": "A lot returns no eligible forms at all so the new lead-in summary would have nothing to name",
+   "what_happens": "an empty summary banner would render a bare or broken sentence claiming buildability where there is none",
    "mitigated": true,
-   "how": "the reframed test asserts no form reports width-unconfirmed on this resolvable battleaxe lot and that secondary_dwelling and dual_occupancy are eligible, so a frontage revert fails the test",
-   "repro": "change the capture width back to dims.frontage_m, regenerate, and run the Bowral golden test"
+   "how": "the summary block renders only when eligibleForms.length is greater than zero, so a no-eligible-forms result skips it and falls through to the per-form list",
+   "repro": "run the tool on a non-residential or fully ineligible lot and confirm no green summary banner appears"
   },
   {
-   "scenario": "A genuinely widthless lot arrives where the geometry cannot yield any developable width at all",
-   "what_happens": "an eager eligible result would over-report buildability on a lot whose width was never measured",
+   "scenario": "The stripped subject-to-a-DA caveat disappears entirely, leaving the result reading as an approval rather than a screen",
+   "what_happens": "removing the caveat everywhere would overstate the result as a decision instead of an indicative mapped-standards check",
    "mitigated": true,
-   "how": "eligibility_lot_width returns None and the engine keeps its conservative unconfirmed-ineligible path, which the unit tests in test_housing_sepp_eligibility.py continue to assert",
-   "repro": "run test_missing_width_is_unconfirmed_but_still_conservatively_ineligible in the eligibility unit suite"
+   "how": "the parenthetical is stripped only from the eligible per-row reason; the section note above the list and the new summary line both still state with consent through a development application",
+   "repro": "inspect an eligible card and confirm the caveat is absent inline but present in the section note and summary"
   },
   {
-   "scenario": "A form whose standard is absent from the dataset, such as manor_house, is mislabelled as eligible or as a measured failure",
-   "what_happens": "a dataset gap would masquerade as a confirmed regulatory outcome and mislead the reader on that form",
+   "scenario": "A clearance chip such as heritage or dual-occupancy prohibition is mislabelled so a real constraint reads as clear",
+   "what_happens": "a genuinely heritage-listed or dual-occ-prohibited lot shown as clear would understate a real planning constraint",
    "mitigated": true,
-   "how": "the reframed test requires every unconfirmed row to stay ineligible and to carry a dataset reason, separating a dataset gap from a width gap",
-   "repro": "inspect the manor_house row in the regenerated fixture and confirm unconfirmed true, eligible false, reason mentions dataset"
+   "how": "the chips branch on the same boolean gates as before; only the false-branch wording changed from not mapped to an explicit no-constraint clearance, and the true branch still shows the constraint",
+   "repro": "run a heritage-listed lot and confirm the chip reads Heritage listed, not No heritage listing"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Fixture regenerated from the live production brief for 38 Park Road Bowral (secondary_dwelling and dual_occupancy eligible, width 70.09 m); 19 golden-fixture tests and 27 eligibility unit tests pass. Local re-capture via the script needs DATABASE_URL, which is absent in this environment; the capture-script fix is verified by reading, the values by the live stream. Known follow-up: evaluate_eligibility does not test a minimum access-way width for battleaxe lots — needs the exact SEPP clause sourced before adding, per the no-hardcode rule."
+  "manual_verify": "tsc clean and the frontend jest suite passes; copy change verified against the live Bowral result which returns duplex and secondary dwelling eligible with cited clauses. Note surfaced separately: the tool 404s on the apex plotdetect.com.au (info-site project) and is only reachable on canibuildit.com.au and verify.plotdetect.com.au — a domain-placement task, not part of this copy change."
  }
 }
