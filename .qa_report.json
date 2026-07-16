@@ -1,61 +1,61 @@
 {
  "tier": "standard",
- "justification": "This changes which zones trigger the Apartment Design Guide panel on the SEPP tab — a regulatory-permissibility gate that was showing on lots where apartments are not permitted. Wrong here means either a false regulatory panel (over-showing) or hiding ADG where it genuinely applies (under-showing), both user-facing on a compliance surface, so it needs unit coverage across metro/regional and fail-closed handling of missing inputs.",
- "commit_hash": "a2aa23e2",
+ "justification": "The golden-fixture capture for SEPP housing eligibility measured lot width from the raw cadastral frontage while the live brief measures it battleaxe-aware, so the captured fixture disagreed with the brief on flag lots and asserted a stale 'width unconfirmed' outcome. This is regulatory-facing eligibility representation, so the capture must mirror the brief and the test must assert the corrected battleaxe resolution across metro/regional and dataset-gap cases.",
+ "commit_hash": "5a3a70bf",
  "files": [
-  "frontend-nextjs/lib/regulatory-constants.ts",
-  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
-  "frontend-nextjs/__tests__/lib/permitsApartmentDevelopment.test.ts"
+  "scripts/capture_brief_golden_fixtures.py",
+  "tests/test_brief_golden_fixtures.py",
+  "tests/fixtures/brief_golden/housing_sepp_eligibility_bowral.json"
  ],
  "pre_impl": {
-  "existing_data": "The SEPP tab already computes LMR applicability correctly via isLMRApplicable and shows Housing SEPP LMR as not applicable for regional R3, but the ADG section used a separate flat APARTMENT_PERMITTING zone list (including R1/R2/R3) that ignored the LGA, so it contradicted the LMR determination on the same page.",
-  "assumption_mismatch": "Verified live on 38 Park Road Bowral: zone R3, LGA Wingecarribee, the page shows Low and Mid-Rise Reforms not applicable yet still renders the Apartment Design Guide panel, confirming the ADG gate and the LMR gate disagree for the same property.",
-  "new_vs_existing": "Reuses the existing isLMREligibleZone and isLMRStage2Region helpers rather than adding a new hardcoded permitted-use table; the new permitsApartmentDevelopment helper narrows R1 to R3 to Stage-2 regions while leaving R4 and business or mixed-use zones unchanged."
+  "existing_data": "The brief already resolves the developable head width for a battleaxe lot via eligibility_lot_width (added in #720) and feeds it to evaluate_eligibility, but the fixture capture still passed dims.frontage_m, which is the null access-handle width on a flag lot, so the captured Bowral fixture kept the pre-#720 unconfirmed result.",
+  "assumption_mismatch": "Confirmed against the live production intelligence-brief stream for 38 Park Road Bowral: lot_width_m came back 70.09 m and secondary_dwelling eligible true, while the committed fixture said width unconfirmed and secondary_dwelling ineligible, proving the capture had diverged from the brief.",
+  "new_vs_existing": "No new capability; the capture reuses the same eligibility_lot_width helper the brief uses, and the null-width conservative contract stays covered by existing unit tests in test_housing_sepp_eligibility.py rather than by this regenerated real-lot fixture."
  },
  "functions": [
   {
-   "name": "permitsApartmentDevelopment",
-   "file_line": "frontend-nextjs/lib/regulatory-constants.ts:383",
-   "input": "a zone string such as R3: Medium Density Residential and an LGA name from the planning portal constraints",
-   "output": "true only when an apartment or residential flat building is permissible, so the ADG panel and requirement fetch are gated on real permissibility",
-   "if_none": "an unknown or empty LGA on an R1 to R3 zone fails closed and returns false rather than showing the ADG on an unverifiable lot"
+   "name": "capture_housing_sepp_bowral",
+   "file_line": "scripts/capture_brief_golden_fixtures.py:142",
+   "input": "no arguments; fetches the Bowral lot geometry, valuation, and computes lot dimensions from live NSW sources",
+   "output": "writes the housing SEPP eligibility golden fixture using the battleaxe-aware head width that the brief itself passes to the engine",
+   "if_none": "when geometry or dimensions are missing eligibility_lot_width returns None and the engine falls back to its conservative unconfirmed path unchanged"
   }
  ],
  "values": [
   {
-   "value": "propertyData.constraints.zone and propertyData.constraints.lga",
-   "read_at": "StateLevelControls loadADGRequirements and the showADGSection gate both read the zone and LGA from portal constraints",
-   "if_missing": "empty zone or LGA resolves to a non-permitting result so neither the ADG fetch nor the ADG panel renders for that property"
+   "value": "eligibility_lot_width(dims)",
+   "read_at": "capture_housing_sepp_bowral now derives the width from lot dimensions exactly as the brief does before calling evaluate_eligibility",
+   "if_missing": "a None width flows into the engine and yields a conservative unconfirmed and ineligible row rather than a false eligible result"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A property arrives with a valid R3 zone but a missing or blank LGA name from the portal constraints response",
-   "what_happens": "isLMRStage2Region matches every region for an empty string because every string contains the empty substring, so the ADG panel would show on an unverifiable lot",
+   "scenario": "A future edit reverts the capture width source back to the raw cadastral frontage while the brief keeps the battleaxe-aware width",
+   "what_happens": "the fixture would again show width unconfirmed on a flag lot while the live brief marks it eligible, silently re-diverging the golden capture from production",
    "mitigated": true,
-   "how": "permitsApartmentDevelopment fails closed and returns false when the LGA is empty for an R1 to R3 zone before consulting the region check",
-   "repro": "call permitsApartmentDevelopment with zone R3 and an empty LGA and confirm it returns false rather than true"
+   "how": "the reframed test asserts no form reports width-unconfirmed on this resolvable battleaxe lot and that secondary_dwelling and dual_occupancy are eligible, so a frontage revert fails the test",
+   "repro": "change the capture width back to dims.frontage_m, regenerate, and run the Bowral golden test"
   },
   {
-   "scenario": "A genuine metropolitan medium-density R3 lot inside a designated Stage-2 region opens the SEPP tab expecting apartment guidance",
-   "what_happens": "over-tightening the gate to exclude all R3 would wrongly hide the Apartment Design Guide where mid-rise apartments are actually permitted",
+   "scenario": "A genuinely widthless lot arrives where the geometry cannot yield any developable width at all",
+   "what_happens": "an eager eligible result would over-report buildability on a lot whose width was never measured",
    "mitigated": true,
-   "how": "R1 to R3 still qualify when isLMREligibleZone and isLMRStage2Region both hold, so metro Inner West style R3 keeps showing the panel",
-   "repro": "call permitsApartmentDevelopment with zone R3 and LGA Inner West and confirm it returns true"
+   "how": "eligibility_lot_width returns None and the engine keeps its conservative unconfirmed-ineligible path, which the unit tests in test_housing_sepp_eligibility.py continue to assert",
+   "repro": "run test_missing_width_is_unconfirmed_but_still_conservatively_ineligible in the eligibility unit suite"
   },
   {
-   "scenario": "A high-density R4 lot sits in a regional LGA that is outside every Stage-2 designated region",
-   "what_happens": "gating apartments purely on LMR would wrongly hide ADG on R4 land where the Standard Instrument already permits residential flat buildings",
+   "scenario": "A form whose standard is absent from the dataset, such as manor_house, is mislabelled as eligible or as a measured failure",
+   "what_happens": "a dataset gap would masquerade as a confirmed regulatory outcome and mislead the reader on that form",
    "mitigated": true,
-   "how": "R4 and business or mixed-use zones are not in the LMR-dependent list, so they return true regardless of region",
-   "repro": "call permitsApartmentDevelopment with zone R4 and LGA Wingecarribee and confirm it returns true"
+   "how": "the reframed test requires every unconfirmed row to stay ineligible and to carry a dataset reason, separating a dataset gap from a width gap",
+   "repro": "inspect the manor_house row in the regenerated fixture and confirm unconfirmed true, eligible false, reason mentions dataset"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Reproduced on the preview that 38 Park Road Bowral R3 no longer renders the Apartment Design Guide panel and instead shows the not-applicable card, while a metro R3 and any R4 still show it; eight unit tests cover regional R3, metro R3, regional R2, Stage-2 R2, R4 anywhere, mixed-use zones, non-apartment zones, and empty input."
+  "manual_verify": "Fixture regenerated from the live production brief for 38 Park Road Bowral (secondary_dwelling and dual_occupancy eligible, width 70.09 m); 19 golden-fixture tests and 27 eligibility unit tests pass. Local re-capture via the script needs DATABASE_URL, which is absent in this environment; the capture-script fix is verified by reading, the values by the live stream. Known follow-up: evaluate_eligibility does not test a minimum access-way width for battleaxe lots — needs the exact SEPP clause sourced before adding, per the no-hardcode rule."
  }
 }
