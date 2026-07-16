@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "The capacity engine drives the user-facing yield (GFA and dwellings) on the Verify and Brief surfaces. Two defects made it return null or wrong yield for DCP-only councils: it read height from the LEP only and ignored the structured DCP max_height, and the landscaping step subtracted the required open space from an already coverage-capped footprint, driving it to zero. Both are silent-wrong-number risks on a compliance surface, so they need golden coverage and explicit provenance for a DCP-sourced height.",
- "commit_hash": "8895221a",
+ "commit_hash": "a082d298",
  "files": [
   "services/constraint_arithmetic.py",
   "tests/test_constraint_arithmetic.py",
