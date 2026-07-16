@@ -1,61 +1,76 @@
 {
  "tier": "standard",
- "justification": "This changes which zones trigger the Apartment Design Guide panel on the SEPP tab — a regulatory-permissibility gate that was showing on lots where apartments are not permitted. Wrong here means either a false regulatory panel (over-showing) or hiding ADG where it genuinely applies (under-showing), both user-facing on a compliance surface, so it needs unit coverage across metro/regional and fail-closed handling of missing inputs.",
- "commit_hash": "b5ce5327",
+ "justification": "This batch changes regulatory-adjacent user-facing claims on three surfaces: the bushfire compliance fields stop asserting a blanket RFS referral and 10/50 clearing entitlement that the statute makes conditional, the SEPP context and capacity cards stop describing conservation and rural zones as centre or business zones, and the brief's gap labels stop describing a failed lookup as intentional scope. Wrong wording here is a silent liability defect on a compliance product, so each change carries a guard test that pins the corrected sentence or the three-state semantics.",
+ "commit_hash": "ed85ff66",
  "files": [
+  "services/bushfire_prescreen.py",
+  "services/terrain_analysis.py",
+  "services/brief_templates.py",
   "frontend-nextjs/lib/regulatory-constants.ts",
-  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
-  "frontend-nextjs/__tests__/lib/permitsApartmentDevelopment.test.ts"
+  "frontend-nextjs/components/reports/SeppContextCard.tsx",
+  "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+  "frontend-nextjs/components/tools/BushfireResultCard.tsx",
+  "frontend-nextjs/lib/pdf/bushfire-report.tsx",
+  "frontend-nextjs/app/api/reports/bushfire/generate/route.ts",
+  "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+  "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts",
+  "frontend-nextjs/__tests__/components/compliance/ConstraintArithmeticCard-zone-copy.test.tsx",
+  "frontend-nextjs/__tests__/components/reports/SeppContextCard.test.tsx",
+  "frontend-nextjs/__tests__/lib/zone-family.test.ts",
+  "tests/test_bushfire_prescreen.py",
+  "tests/test_terrain_analysis.py",
+  "tests/test_brief_narration.py"
  ],
  "pre_impl": {
-  "existing_data": "The SEPP tab already computes LMR applicability correctly via isLMRApplicable and shows Housing SEPP LMR as not applicable for regional R3, but the ADG section used a separate flat APARTMENT_PERMITTING zone list (including R1/R2/R3) that ignored the LGA, so it contradicted the LMR determination on the same page.",
-  "assumption_mismatch": "Verified live on 38 Park Road Bowral: zone R3, LGA Wingecarribee, the page shows Low and Mid-Rise Reforms not applicable yet still renders the Apartment Design Guide panel, confirming the ADG gate and the LMR gate disagree for the same property.",
-  "new_vs_existing": "Reuses the existing isLMREligibleZone and isLMRStage2Region helpers rather than adding a new hardcoded permitted-use table; the new permitsApartmentDevelopment helper narrows R1 to R3 to Stage-2 regions while leaving R4 and business or mixed-use zones unchanged."
+  "existing_data": "A live brief for 20 Patanga Street Kincumber showed the defects on deployed main: the C4 Environmental Living lot rendered centre-zone shop-top housing copy, the bushfire card asserted RFS referral required Yes while listing triggers that contradict it, the Valuer General land value fetch miss rendered as Not part of this brief, and the plan overlay printed raw key equals value strings for the bushfire and lot-dimension composites.",
+  "assumption_mismatch": "The bushfire service derived both rfs_referral_required and clearing_10_50_entitled directly from is_bushfire_prone, but referral under the Rural Fires Act attaches only to trigger developments and the 10/50 scheme follows the RFS entitlement area map, so bushfire-prone alone cannot answer either question.",
+  "new_vs_existing": "Reuses the existing three-state None convention already used across the compliance payload rather than adding new fields beyond one rfs_referral_note string; the zone-family switch extends the existing regulatory-constants helpers instead of adding a permitted-use table; the record-dump guard extends the existing brief_templates sentence builders and its import-time liability audit."
  },
  "functions": [
   {
-   "name": "permitsApartmentDevelopment",
-   "file_line": "frontend-nextjs/lib/regulatory-constants.ts:383",
-   "input": "a zone string such as R3: Medium Density Residential and an LGA name from the planning portal constraints",
-   "output": "true only when an apartment or residential flat building is permissible, so the ADG panel and requirement fetch are gated on real permissibility",
-   "if_none": "an unknown or empty LGA on an R1 to R3 zone fails closed and returns false rather than showing the ADG on an unverifiable lot"
+   "name": "_build_compliance",
+   "file_line": "services/bushfire_prescreen.py:360",
+   "input": "the RFS mapping result for a lot including is_bushfire_prone and the estimated BAL band plus any intersecting overlays and the zone",
+   "output": "a compliance object whose referral and 10/50 fields are None with conditional wording and the trigger list when the land is bushfire prone, and definitive False only when the land is not prone",
+   "if_none": "when the RFS lookup itself failed every compliance field stays None so no surface can render a definitive referral or clearing claim from an unknown mapping state"
   }
  ],
  "values": [
   {
-   "value": "propertyData.constraints.zone and propertyData.constraints.lga",
-   "read_at": "StateLevelControls loadADGRequirements and the showADGSection gate both read the zone and LGA from portal constraints",
-   "if_missing": "empty zone or LGA resolves to a non-permitting result so neither the ADG fetch nor the ADG panel renders for that property"
+   "value": "compliance.rfs_referral_required and compliance.clearing_10_50_entitled",
+   "read_at": "BushfireResultCard and the bushfire PDF template read both fields when rendering the development implications block for a prone lot",
+   "if_missing": "a null or undefined value renders the conditional wording with the trigger list and the entitlement-area-map note rather than a definitive Yes or No claim"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A property arrives with a valid R3 zone but a missing or blank LGA name from the portal constraints response",
-   "what_happens": "isLMRStage2Region matches every region for an empty string because every string contains the empty substring, so the ADG panel would show on an unverifiable lot",
+   "scenario": "A bushfire-prone lot renders the compliance block in the PDF where the referral field arrives as undefined rather than null after JSON round-tripping",
+   "what_happens": "a strict triple-equals null check would fall through to the boolean branch and print No for a lot where referral is genuinely proposal-dependent",
    "mitigated": true,
-   "how": "permitsApartmentDevelopment fails closed and returns false when the LGA is empty for an R1 to R3 zone before consulting the region check",
-   "repro": "call permitsApartmentDevelopment with zone R3 and an empty LGA and confirm it returns false rather than true"
+   "how": "the PDF template uses a loose double-equals null comparison that catches both null and undefined and prints the proposal-dependent wording",
+   "repro": "render bushfire-report with compliance rfs_referral_required undefined and confirm the output reads Depends on the proposal rather than No"
   },
   {
-   "scenario": "A genuine metropolitan medium-density R3 lot inside a designated Stage-2 region opens the SEPP tab expecting apartment guidance",
-   "what_happens": "over-tightening the gate to exclude all R3 would wrongly hide the Apartment Design Guide where mid-rise apartments are actually permitted",
+   "scenario": "A brief runs on a conservation or rural zone such as C4 Environmental Living or RU2 and reaches the SEPP context and dwelling-yield copy",
+   "what_happens": "the previous binary residential-or-not switch described every non-residential zone as a centre or business zone delivering shop-top housing, which is false outside the centres zones",
    "mitigated": true,
-   "how": "R1 to R3 still qualify when isLMREligibleZone and isLMRStage2Region both hold, so metro Inner West style R3 keeps showing the panel",
-   "repro": "call permitsApartmentDevelopment with zone R3 and LGA Inner West and confirm it returns true"
+   "how": "zoneFamily classifies residential rural conservation centres and other separately and the shop-top sentence renders only for the centres family while other families point at the LEP land-use table",
+   "repro": "render SeppContextCard with zone C4 and confirm the copy names a conservation zone and never contains shop-top housing"
   },
   {
-   "scenario": "A high-density R4 lot sits in a regional LGA that is outside every Stage-2 designated region",
-   "what_happens": "gating apartments purely on LMR would wrongly hide ADG on R4 land where the Standard Instrument already permits residential flat buildings",
+   "scenario": "An overlay sentence template receives a composite record value that serialises to key equals value pairs joined by semicolons",
+   "what_happens": "the raw internal string such as is_bushfire_prone equals True with category and BAL fields would render verbatim in the reader-facing plan overlay",
    "mitigated": true,
-   "how": "R4 and business or mixed-use zones are not in the LMR-dependent list, so they return true regardless of region",
-   "repro": "call permitsApartmentDevelopment with zone R4 and LGA Wingecarribee and confirm it returns true"
+   "how": "looks_like_record_dump detects record-shaped values in every generic sentence builder and renders the section-card reference instead while the bushfire and lot-dimension composites get authored sentences",
+   "repro": "call the overlay sentence builder with a record-shaped value and confirm the output is the section reference sentence with no equals signs"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Reproduced on the preview that 38 Park Road Bowral R3 no longer renders the Apartment Design Guide panel and instead shows the not-applicable card, while a metro R3 and any R4 still show it; eight unit tests cover regional R3, metro R3, regional R2, Stage-2 R2, R4 anywhere, mixed-use zones, non-apartment zones, and empty input."
+  "manual_verify": "Re-run the Kincumber brief on the preview and confirm the SEPP card describes a conservation zone with no shop-top sentence, the bushfire card shows the conditional referral and 10/50 wording with triggers, the land value gap reads Unavailable with a retry instruction, and the plan overlay contains no key equals value strings; full pytest and jest suites plus tsc ran clean in the worktree before push."
  }
 }

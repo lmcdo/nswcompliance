@@ -290,7 +290,7 @@ export function BushfireReportDocument({ data }: { data: BushfireReportData }) {
               <View style={s.statCard}>
                 <Text style={s.statLabel}>RFS referral</Text>
                 <Text style={[s.statValue, { fontSize: 10, color: c.rfs_referral_required ? RED : c.rfs_referral_required === false ? GREEN : GRAY_500 }]}>
-                  {c.rfs_referral_required === null ? 'Depends on the proposal - see s4.14 triggers' : c.rfs_referral_required ? 'Yes - s4.14 EP&A Act' : 'No'}
+                  {c.rfs_referral_required == null ? 'Depends on the proposal - see s4.14 triggers' : c.rfs_referral_required ? 'Yes - s4.14 EP&A Act' : 'No'}
                 </Text>
               </View>
               <View style={s.statCard}>
