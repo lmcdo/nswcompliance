@@ -1,76 +1,68 @@
 {
  "tier": "standard",
- "justification": "This batch changes regulatory-adjacent user-facing claims on three surfaces: the bushfire compliance fields stop asserting a blanket RFS referral and 10/50 clearing entitlement that the statute makes conditional, the SEPP context and capacity cards stop describing conservation and rural zones as centre or business zones, and the brief's gap labels stop describing a failed lookup as intentional scope. Wrong wording here is a silent liability defect on a compliance product, so each change carries a guard test that pins the corrected sentence or the three-state semantics.",
- "commit_hash": "ed85ff66",
+ "justification": "The brief runs the full flood, bushfire and shadow pipelines and then discarded most of each result at the Pydantic contract layer, so the flagship product understated what its own engines computed — a live Kincumber run returned a moderate flood screening signal and a recorded 2022 Copernicus flood extent that the page rendered as effectively clear. Widening the contracts is regulatory-adjacent user-facing surface, so every new field keeps three-state semantics and every new sentence carries mapped-extent register wording pinned by tests.",
+ "commit_hash": "10095a12",
  "files": [
-  "services/bushfire_prescreen.py",
-  "services/terrain_analysis.py",
-  "services/brief_templates.py",
-  "frontend-nextjs/lib/regulatory-constants.ts",
-  "frontend-nextjs/components/reports/SeppContextCard.tsx",
-  "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-  "frontend-nextjs/components/tools/BushfireResultCard.tsx",
-  "frontend-nextjs/lib/pdf/bushfire-report.tsx",
-  "frontend-nextjs/app/api/reports/bushfire/generate/route.ts",
-  "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+  "services/intelligence_brief.py",
+  "services/constraint_models.py",
+  "scripts/generate_conveyancing_report.py",
   "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-  "frontend-nextjs/__tests__/app/brief-copy-guards.test.ts",
-  "frontend-nextjs/__tests__/components/compliance/ConstraintArithmeticCard-zone-copy.test.tsx",
-  "frontend-nextjs/__tests__/components/reports/SeppContextCard.test.tsx",
-  "frontend-nextjs/__tests__/lib/zone-family.test.ts",
-  "tests/test_bushfire_prescreen.py",
-  "tests/test_terrain_analysis.py",
-  "tests/test_brief_narration.py"
+  "frontend-nextjs/app/reports/intelligence-brief/satellite-copy.ts",
+  "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
+  "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
+  "tests/test_brief_satellite_field_mapping.py",
+  "tests/test_brief_contracts.py",
+  "tests/test_brief_contract_drift.py"
  ],
  "pre_impl": {
-  "existing_data": "A live brief for 20 Patanga Street Kincumber showed the defects on deployed main: the C4 Environmental Living lot rendered centre-zone shop-top housing copy, the bushfire card asserted RFS referral required Yes while listing triggers that contradict it, the Valuer General land value fetch miss rendered as Not part of this brief, and the plan overlay printed raw key equals value strings for the bushfire and lot-dimension composites.",
-  "assumption_mismatch": "The bushfire service derived both rfs_referral_required and clearing_10_50_entitled directly from is_bushfire_prone, but referral under the Rural Fires Act attaches only to trigger developments and the 10/50 scheme follows the RFS entitlement area map, so bushfire-prone alone cannot answer either question.",
-  "new_vs_existing": "Reuses the existing three-state None convention already used across the compliance payload rather than adding new fields beyond one rfs_referral_note string; the zone-family switch extends the existing regulatory-constants helpers instead of adding a permitted-use table; the record-dump guard extends the existing brief_templates sentence builders and its import-time liability audit."
+  "existing_data": "A live full-pipeline run for 20 Patanga Street Kincumber captured on 2026-07-16 showed the flood service returning a moderate screening signal with a Copernicus EMSR567 flood extent intersecting the lot, the bushfire service returning BAL cost guidance and clearing wording, and the shadow service returning five scenarios with low confidence — while the brief card rendered roughly five flood values and one shadow line.",
+  "assumption_mismatch": "The narrowing was in the FloodServiceOutput and BushfireServiceOutput whitelists and the shadow render, not in the pipelines — the compute was already paid on every satellite brief run and the fields were discarded between the service return and the card.",
+  "new_vs_existing": "Follows the terrain card pattern that already passes the service model through wholesale; extends the existing SectionData render registries and the existing field-coverage ratchet baseline additively rather than forking a new card style or a parallel contract."
  },
  "functions": [
   {
-   "name": "_build_compliance",
-   "file_line": "services/bushfire_prescreen.py:360",
-   "input": "the RFS mapping result for a lot including is_bushfire_prone and the estimated BAL band plus any intersecting overlays and the zone",
-   "output": "a compliance object whose referral and 10/50 fields are None with conditional wording and the trigger list when the land is bushfire prone, and definitive False only when the land is not prone",
-   "if_none": "when the RFS lookup itself failed every compliance field stays None so no surface can render a definitive referral or clearing claim from an unknown mapping state"
+   "name": "_build_flood_detail",
+   "file_line": "services/intelligence_brief.py:2235",
+   "input": "the raw dict returned by the flood service including the screening signal, per-source evidence fields and the Copernicus activation list",
+   "output": "a FloodDetail carrying all twenty-three mapped fields with None for anything the service did not return, so the card can render exactly what the engine computed",
+   "if_none": "a missing or refused flood payload builds no detail and the section renders its existing unavailable state rather than a partial or invented result"
   }
  ],
  "values": [
   {
-   "value": "compliance.rfs_referral_required and compliance.clearing_10_50_entitled",
-   "read_at": "BushfireResultCard and the bushfire PDF template read both fields when rendering the development implications block for a prone lot",
-   "if_missing": "a null or undefined value renders the conditional wording with the trigger list and the entitlement-area-map note rather than a definitive Yes or No claim"
+   "value": "flood detail ems_flood_detected with ems_activations and flood_signal",
+   "read_at": "the flood card headline and the Copernicus sentence built by floodSignalLine and emsLine in satellite-copy.ts",
+   "if_missing": "a None detection renders neither the mapped-extent sentence nor a clear claim, and a None signal renders no headline — three-state is preserved end to end"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A bushfire-prone lot renders the compliance block in the PDF where the referral field arrives as undefined rather than null after JSON round-tripping",
-   "what_happens": "a strict triple-equals null check would fall through to the boolean branch and print No for a lot where referral is genuinely proposal-dependent",
+   "scenario": "The flood service returns a payload where Copernicus data was unavailable so ems_flood_detected is None rather than False",
+   "what_happens": "a boolean-minded render would print the no-extent-recorded sentence and turn a source outage into a clear claim",
    "mitigated": true,
-   "how": "the PDF template uses a loose double-equals null comparison that catches both null and undefined and prints the proposal-dependent wording",
-   "repro": "render bushfire-report with compliance rfs_referral_required undefined and confirm the output reads Depends on the proposal rather than No"
+   "how": "the EMS sentence renders only when the value is strictly true or strictly false and a None stays silent, pinned by the sparse-output mapping test",
+   "repro": "build the flood detail from a payload with ems_flood_detected None and confirm the card output contains no Copernicus sentence"
   },
   {
-   "scenario": "A brief runs on a conservation or rural zone such as C4 Environmental Living or RU2 and reaches the SEPP context and dwelling-yield copy",
-   "what_happens": "the previous binary residential-or-not switch described every non-residential zone as a centre or business zone delivering shop-top housing, which is false outside the centres zones",
+   "scenario": "A shadow run computed at the standard two-storey fallback height with low confidence renders the ADG solar access line",
+   "what_happens": "without the caveat the line reads as a definitive guideline result even though the height was assumed rather than mapped",
    "mitigated": true,
-   "how": "zoneFamily classifies residential rural conservation centres and other separately and the shop-top sentence renders only for the centres family while other families point at the LEP land-use table",
-   "repro": "render SeppContextCard with zone C4 and confirm the copy names a conservation zone and never contains shop-top housing"
+   "how": "ShadowDetailDisplay appends the computed-at-standard-height low-confidence caveat whenever height_source is default or confidence is low, and the construction-change note wins over the boolean so a Sentinel-2 timeout never reads as a clear",
+   "repro": "render ShadowDetailDisplay with the Kincumber fixture and confirm the caveat text appears beside the ADG line"
   },
   {
-   "scenario": "An overlay sentence template receives a composite record value that serialises to key equals value pairs joined by semicolons",
-   "what_happens": "the raw internal string such as is_bushfire_prone equals True with category and BAL fields would render verbatim in the reader-facing plan overlay",
+   "scenario": "A cached bushfire row written before this widening flows into the widened contract on a later brief run",
+   "what_happens": "the new compliance keys are absent from the stored payload and a strict reader could crash or invent defaults",
    "mitigated": true,
-   "how": "looks_like_record_dump detects record-shaped values in every generic sentence builder and renders the section-card reference instead while the bushfire and lot-dimension composites get authored sentences",
-   "repro": "call the overlay sentence builder with a record-shaped value and confirm the output is the section reference sentence with no equals signs"
+   "how": "every widened field is Optional with a None default so old rows validate and render as not-available, with the contract-drift tripwire logging the missing keys for observability",
+   "repro": "validate a pre-widening bushfire payload against BushfireServiceOutput and confirm it parses with the new fields None"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Re-run the Kincumber brief on the preview and confirm the SEPP card describes a conservation zone with no shop-top sentence, the bushfire card shows the conditional referral and 10/50 wording with triggers, the land value gap reads Unavailable with a retry instruction, and the plan overlay contains no key equals value strings; full pytest and jest suites plus tsc ran clean in the worktree before push."
+  "manual_verify": "Re-run the Kincumber brief with satellite on after deploy and confirm the flood card shows the moderate screening signal and the 2022 Copernicus mapped-extent sentence, the bushfire card shows the BAL typical-cost row with the assessor directory link and the conditional 10/50 wording, the shadow block shows all five scenario rows with the standard-height caveat, and the solar card shows pitch and azimuth."
  }
 }
