@@ -308,15 +308,31 @@ def compute_constraint_arithmetic(
     result.lep_height_m = lep_height_m
     result.lep_fsr = lep_fsr
 
+    # Height envelope base. Regional LEPs (e.g. Wingecarribee) often map no
+    # height and set built form through the DCP instead. When the LEP has no
+    # height, fall back to the structured DCP max_height so the height envelope
+    # can still be computed — otherwise the whole yield collapses to null on
+    # every DCP-only council. lep_height_m stays None (the LEP genuinely has
+    # none); the DCP source is recorded as a caveat below.
+    dcp_height_m: Optional[float] = None
     if lep_height_m is None:
-        gaps.append("LEP height limit not available — cannot compute height envelope")
+        dcp_height_m = _get_dcp_value(dcp_controls, "max_height", dev_type, prefer_max=True)
+    base_height_m = lep_height_m if lep_height_m is not None else dcp_height_m
+
+    if base_height_m is None:
+        gaps.append("Height limit not available from the LEP or the DCP — cannot compute height envelope")
+    elif lep_height_m is None:
+        gaps.append(
+            f"Height taken from the council DCP ({dcp_height_m:g}m) — the LEP maps no height "
+            "for this lot. Verify the control that applies against the DCP."
+        )
     if lep_fsr is None:
         gaps.append("LEP FSR not available — cannot compute FSR envelope")
 
     # -----------------------------------------------------------------------
     # Step 1: Apply SEPP overrides (before envelope calculation)
     # -----------------------------------------------------------------------
-    effective_height_m = lep_height_m
+    effective_height_m = base_height_m
     effective_fsr = lep_fsr
     applied_overrides: list[SeppLepOverride] = []
 
@@ -502,7 +518,14 @@ def compute_constraint_arithmetic(
 
     if landscape_reduction_m2 > 0:
         result.landscaping_reduction_m2 = round(landscape_reduction_m2, 1)
-        new_footprint = max(0.0, buildable_footprint - landscape_reduction_m2)
+        # Landscaping / deep soil requires that share of the LOT to stay open, so
+        # it caps the footprint at (lot area − required open space). It must NOT
+        # be subtracted from the already setback- and site-coverage-reduced
+        # footprint: on a lot where site coverage is 25% and landscaping is 75%
+        # of the SAME lot, the two describe one constraint (built + open = lot),
+        # and subtracting drove the footprint to 0. Cap, don't subtract.
+        landscape_footprint_cap = max(0.0, lot_area_m2 - landscape_reduction_m2)
+        new_footprint = min(buildable_footprint, landscape_footprint_cap)
         steps.append(ConstraintStep(
             constraint=ConstraintType.DCP_LANDSCAPING,
             phase="dcp",
@@ -510,8 +533,10 @@ def compute_constraint_arithmetic(
             footprint_m2=round(new_footprint, 1),
             reduction_m2=round(landscape_reduction_m2, 1),
             note=(
-                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 -- "
-                f"footprint {buildable_footprint:.1f}m2 -> {new_footprint:.1f}m2"
+                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 open -- "
+                f"caps footprint at lot {lot_area_m2:.0f}m2 - {landscape_reduction_m2:.1f}m2 "
+                f"= {landscape_footprint_cap:.1f}m2; footprint {buildable_footprint:.1f}m2 "
+                f"-> {new_footprint:.1f}m2"
             ),
         ))
         buildable_footprint = new_footprint
