@@ -40,7 +40,9 @@ describe('intelligence-brief page — unavailable-label classifier copy', () => 
 
   it('the confidence legend no longer instructs readers to treat values as fact', () => {
     expect(PAGE_SRC).not.toContain('treat as fact');
-    expect(PAGE_SRC).toContain('sourced directly from the official register');
+    expect(PAGE_SRC).toContain(
+      'Taken directly from an official government source (the LEP, the cadastre, the Valuer General).',
+    );
   });
 
   it('the Data Gaps verify link is separated from the sentence by a space', () => {
