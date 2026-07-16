@@ -357,3 +357,39 @@ export function isLMRApplicable(zone: string, lga: string): boolean {
 
   return false;
 }
+
+/**
+ * Low/medium residential zones where a residential flat building (apartments) is
+ * permitted ONLY via the Stage-2 LMR mid-rise reforms (designated regions) — not
+ * under the base Standard Instrument. Stage-1 LMR in these zones is dual-occupancy
+ * only, which does NOT engage the Apartment Design Guide.
+ */
+const LMR_DEPENDENT_APARTMENT_ZONES = ['R1', 'R2', 'R3'] as const;
+
+/**
+ * Whether apartment / residential-flat-building development — and therefore the
+ * Apartment Design Guide (SEPP Housing 2021 Part 4 / former SEPP 65) — can apply at
+ * this address, based on zone and LGA rather than a blanket zone list.
+ *
+ * - R4 and business / mixed-use / centre zones permit apartments or shop-top housing
+ *   under the Standard Instrument, so they qualify anywhere.
+ * - R1–R3 qualify only where Stage-2 LMR applies (an eligible zone inside a designated
+ *   region). This stops every regional R2/R3 lot (e.g. Bowral/Wingecarribee) from being
+ *   treated as apartment-permitting when the mid-rise reforms do not reach it.
+ *
+ * Permissibility is LGA-dependent; this is a screening gate, not a substitute for the
+ * LEP land-use table.
+ */
+export function permitsApartmentDevelopment(zone: string, lga: string): boolean {
+  const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+  if (!(NSW_STANDARD_ZONES.APARTMENT_PERMITTING as readonly string[]).includes(zoneCode)) {
+    return false;
+  }
+  if ((LMR_DEPENDENT_APARTMENT_ZONES as readonly string[]).includes(zoneCode)) {
+    // Stage-2 applicability is LGA-scoped; without a known LGA we cannot confirm the
+    // designated region, so fail closed rather than showing the ADG on an unknown lot.
+    if (!lga.trim()) return false;
+    return isLMREligibleZone(zone) && isLMRStage2Region(lga);
+  }
+  return true;
+}

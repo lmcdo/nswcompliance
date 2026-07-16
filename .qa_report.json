@@ -1,70 +1,61 @@
 {
  "tier": "standard",
- "justification": "The homepage hero is the primary entry point and the reports hub routes every satellite tool; a regression here silently strands visitors on a hub with no address carried through, so it warrants defensive tests and three-state param handling, though it touches no database and no regulatory data.",
- "commit_hash": "8ab85945",
+ "justification": "This changes which zones trigger the Apartment Design Guide panel on the SEPP tab — a regulatory-permissibility gate that was showing on lots where apartments are not permitted. Wrong here means either a false regulatory panel (over-showing) or hiding ADG where it genuinely applies (under-showing), both user-facing on a compliance surface, so it needs unit coverage across metro/regional and fail-closed handling of missing inputs.",
+ "commit_hash": "a2aa23e2",
  "files": [
-  "frontend-nextjs/components/marketing/HeroAddressSearch.tsx",
-  "frontend-nextjs/app/page.tsx",
-  "frontend-nextjs/app/reports/page.tsx",
-  "frontend-nextjs/__tests__/components/marketing/HeroAddressSearch.test.tsx",
-  "frontend-nextjs/__tests__/app/reports-hub-address.test.tsx"
+  "frontend-nextjs/lib/regulatory-constants.ts",
+  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+  "frontend-nextjs/__tests__/lib/permitsApartmentDevelopment.test.ts"
  ],
  "pre_impl": {
-  "existing_data": "The hero box was a TrackedLink dressed as an input; grepped for existing hero-search islands and found only HomeHero which routes to /property in a light theme and the reports LandingHero card, neither routing to the hub with the address, so a thin client wrapper over the shared AddressAutocomplete primitive was the right reuse.",
-  "assumption_mismatch": "Confirmed each report tool page already reads params.address, flood checks hasAddress and granny-flat already links to itself with an encoded address, so carrying the address into the hub genuinely pre-fills and auto-runs the chosen tool rather than being purely cosmetic.",
-  "new_vs_existing": "New client island reuses AddressAutocomplete and trackFunnelCta; the reports hub becomes an async server component reading searchParams; no new data source, no backend call, and no database schema is touched by this change."
+  "existing_data": "The SEPP tab already computes LMR applicability correctly via isLMRApplicable and shows Housing SEPP LMR as not applicable for regional R3, but the ADG section used a separate flat APARTMENT_PERMITTING zone list (including R1/R2/R3) that ignored the LGA, so it contradicted the LMR determination on the same page.",
+  "assumption_mismatch": "Verified live on 38 Park Road Bowral: zone R3, LGA Wingecarribee, the page shows Low and Mid-Rise Reforms not applicable yet still renders the Apartment Design Guide panel, confirming the ADG gate and the LMR gate disagree for the same property.",
+  "new_vs_existing": "Reuses the existing isLMREligibleZone and isLMRStage2Region helpers rather than adding a new hardcoded permitted-use table; the new permitsApartmentDevelopment helper narrows R1 to R3 to Stage-2 regions while leaving R4 and business or mixed-use zones unchanged."
  },
  "functions": [
   {
-   "name": "HeroAddressSearch",
-   "file_line": "frontend-nextjs/components/marketing/HeroAddressSearch.tsx:21",
-   "input": "no props; local state holds the typed NSW address string entered in the input",
-   "output": "renders a real address input that pushes /reports with the encoded address on submit or suggestion select",
-   "if_none": "an empty or whitespace-only address short-circuits inside go so no navigation and no funnel event fire"
-  },
-  {
-   "name": "ReportsLanding",
-   "file_line": "frontend-nextjs/app/reports/page.tsx:81",
-   "input": "awaited searchParams whose optional address key arrives from the homepage hero search box",
-   "output": "tool grid whose card hrefs carry the encoded address plus an active-address banner when an address is present",
-   "if_none": "a missing or non-string address yields an empty suffix so the hub renders bare tool links and hides the banner"
+   "name": "permitsApartmentDevelopment",
+   "file_line": "frontend-nextjs/lib/regulatory-constants.ts:383",
+   "input": "a zone string such as R3: Medium Density Residential and an LGA name from the planning portal constraints",
+   "output": "true only when an apartment or residential flat building is permissible, so the ADG panel and requirement fetch are gated on real permissibility",
+   "if_none": "an unknown or empty LGA on an R1 to R3 zone fails closed and returns false rather than showing the ADG on an unverifiable lot"
   }
  ],
  "values": [
   {
-   "value": "searchParams.address",
-   "read_at": "ReportsLanding server component awaits searchParams then narrows the optional address key",
-   "if_missing": "the typeof guard treats undefined or an array param as no address, so the hub falls back to plain tool links"
+   "value": "propertyData.constraints.zone and propertyData.constraints.lga",
+   "read_at": "StateLevelControls loadADGRequirements and the showADGSection gate both read the zone and LGA from portal constraints",
+   "if_missing": "empty zone or LGA resolves to a non-permitting result so neither the ADG fetch nor the ADG panel renders for that property"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A visitor pastes an address containing commas and spaces then clicks a tool card expecting that exact property to load",
-   "what_happens": "an unencoded address would break the query string so the downstream tool geocodes a truncated or empty value",
+   "scenario": "A property arrives with a valid R3 zone but a missing or blank LGA name from the portal constraints response",
+   "what_happens": "isLMRStage2Region matches every region for an empty string because every string contains the empty substring, so the ADG panel would show on an unverifiable lot",
    "mitigated": true,
-   "how": "the address is passed through encodeURIComponent in both the hero push and the hub href suffix, so commas and spaces survive as escape sequences",
-   "repro": "type 14 Hunter St, Lewisham NSW in the hero, submit, then click Flood Risk Check and inspect the resulting reports flood address URL"
+   "how": "permitsApartmentDevelopment fails closed and returns false when the LGA is empty for an R1 to R3 zone before consulting the region check",
+   "repro": "call permitsApartmentDevelopment with zone R3 and an empty LGA and confirm it returns false rather than true"
   },
   {
-   "scenario": "A crafted link supplies the address key twice so searchParams.address arrives as an array instead of a plain string",
-   "what_happens": "serialising that array into the href would emit a comma-joined value and mislead every downstream tool page",
+   "scenario": "A genuine metropolitan medium-density R3 lot inside a designated Stage-2 region opens the SEPP tab expecting apartment guidance",
+   "what_happens": "over-tightening the gate to exclude all R3 would wrongly hide the Apartment Design Guide where mid-rise apartments are actually permitted",
    "mitigated": true,
-   "how": "ReportsLanding only accepts a string via typeof narrowing so an array falls through to the empty suffix and the plain hub renders",
-   "repro": "open the reports hub with the address supplied twice and confirm the tool card hrefs contain no address query at all"
+   "how": "R1 to R3 still qualify when isLMREligibleZone and isLMRStage2Region both hold, so metro Inner West style R3 keeps showing the panel",
+   "repro": "call permitsApartmentDevelopment with zone R3 and LGA Inner West and confirm it returns true"
   },
   {
-   "scenario": "The Google Maps Places script has not finished initialising when a visitor starts typing into the hero address box",
-   "what_happens": "with no autocomplete dropdown a link-only box would leave the visitor stuck, which is exactly the fake-input bug being fixed",
+   "scenario": "A high-density R4 lot sits in a regional LGA that is outside every Stage-2 designated region",
+   "what_happens": "gating apartments purely on LMR would wrongly hide ADG on R4 land where the Standard Instrument already permits residential flat buildings",
    "mitigated": true,
-   "how": "the box is a genuine text field inside a form with a submit arrow, so typing and pressing the arrow routes even when no suggestion list has appeared",
-   "repro": "block maps.googleapis.com in the browser, type an address into the hero, and confirm the arrow button still navigates to the reports hub"
+   "how": "R4 and business or mixed-use zones are not in the LMR-dependent list, so they return true regardless of region",
+   "repro": "call permitsApartmentDevelopment with zone R4 and LGA Wingecarribee and confirm it returns true"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Reproduced the original bug on the preview where clicking the homepage hero box navigated to the reports hub with no address; after the fix tsc is clean and six new jest tests plus the full frontend suite pass, with a final visual check on the Vercel preview once this branch deploys."
+  "manual_verify": "Reproduced on the preview that 38 Park Road Bowral R3 no longer renders the Apartment Design Guide panel and instead shows the not-applicable card, while a metro R3 and any R4 still show it; eight unit tests cover regional R3, metro R3, regional R2, Stage-2 R2, R4 anywhere, mixed-use zones, non-apartment zones, and empty input."
  }
 }
