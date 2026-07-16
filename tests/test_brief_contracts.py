@@ -21,11 +21,28 @@ from services.intelligence_brief import (
 # real output and this set diverges -> caught. Here we lock the brief's contract
 # to exactly this expected set so it can't silently drift.
 EXPECTED_FLOOD_KEYS = {
+    "flood_signal",
     "epi_flood_class",
     "epi_flood_label",
+    "ems_flood_detected",
+    "ems_activations",
+    "sar_flood_detected",
+    "sar_confidence",
+    "sar_analysis_date",
+    "ses_in_flood_planning_area",
+    "ses_flood_class",
+    "ses_study_name",
     "jrc_water_occurrence_pct",
+    "jrc_data_year",
     "dea_wofs_frequency_pct",
+    "bom_gauge_name",
     "bom_gauge_distance_km",
+    "bom_last_major_flood_date",
+    "bom_last_major_flood_peak_m",
+    "bom_flood_history",
+    "in_100yr_flood_zone",
+    "ground_elevation_m_ahd",
+    "s1_gap_warning",
     "flood_studies",
 }
 
@@ -82,9 +99,14 @@ def test_flood_old_renamed_key_does_not_populate():
 EXPECTED_BUSHFIRE_KEYS = {
     "is_bushfire_prone",
     "designation_category",
+    "designation_source",
     "estimated_bal_band",
     "designation_guideline",
     "fire_signal",
+    "bal_assessment_likely_required",
+    "bal_formal_assessment_cost_range",
+    "bal_assessor_directory_url",
+    "data_currency",
     "compliance",
 }
 
@@ -124,7 +146,12 @@ def test_bushfire_genuine_empty_preserved():
 
 # --- Increment 3: shadow ---------------------------------------------------
 
-EXPECTED_SHADOW_KEYS = {"height_m", "height_source", "adg_compliant", "worst_case_scenario", "scenarios"}
+EXPECTED_SHADOW_KEYS = {
+    "height_m", "height_source", "adg_compliant", "worst_case_scenario", "scenarios",
+    # Run-level passthrough: envelope confidence (merged in by get_shadow_risk)
+    # + Sentinel-2 construction change detection.
+    "confidence", "construction_change_detected", "construction_change_note",
+}
 
 
 def test_shadow_contract_fields_are_the_expected_service_keys():

@@ -1897,7 +1897,10 @@ def get_shadow_risk(
     Call the Railway shadow pipeline.
     height_m: pass the LEP height already fetched from Planning Portal so
     Railway doesn't need to re-query (avoids spatial_overlays coverage gaps).
-    Returns the `outputs` dict on success, None if Railway unreachable or call fails.
+    Returns the `outputs` dict on success (with the envelope's run-level
+    `confidence` merged in — the outputs dict itself carries no confidence key,
+    and downstream consumers render run confidence from this merged value),
+    None if Railway unreachable or call fails.
     Graceful degradation — shadow section is omitted rather than crashing the report.
     """
     api_url = os.environ.get("PYTHON_API_URL", "http://localhost:8000")
@@ -1913,7 +1916,14 @@ def get_shadow_risk(
     try:
         r = requests.post(f"{api_url}/pipeline/shadow", json=payload, timeout=60)
         r.raise_for_status()
-        return r.json().get("outputs")
+        # prior-art-checked: this IS the existing shadow fetcher being extended
+        # in place (no new data source) — it previously discarded the envelope's
+        # run-level confidence; merging it here is the minimal passthrough.
+        body = r.json()
+        outputs = body.get("outputs")
+        if isinstance(outputs, dict) and "confidence" not in outputs:
+            return {**outputs, "confidence": body.get("confidence")}
+        return outputs
     except Exception as e:
         print(f"  [warn] Shadow pipeline unavailable — section will be omitted: {e}")
         return None
