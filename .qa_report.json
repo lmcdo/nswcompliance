@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "This changes which zones trigger the Apartment Design Guide panel on the SEPP tab — a regulatory-permissibility gate that was showing on lots where apartments are not permitted. Wrong here means either a false regulatory panel (over-showing) or hiding ADG where it genuinely applies (under-showing), both user-facing on a compliance surface, so it needs unit coverage across metro/regional and fail-closed handling of missing inputs.",
- "commit_hash": "f4132e9e",
+ "commit_hash": "a2aa23e2",
  "files": [
   "frontend-nextjs/lib/regulatory-constants.ts",
   "frontend-nextjs/components/compliance/StateLevelControls.tsx",
