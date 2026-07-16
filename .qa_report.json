@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "The homepage hero is the primary entry point and the reports hub routes every satellite tool; a regression here silently strands visitors on a hub with no address carried through, so it warrants defensive tests and three-state param handling, though it touches no database and no regulatory data.",
- "commit_hash": "affbe6fd",
+ "commit_hash": "8ab85945",
  "files": [
   "frontend-nextjs/components/marketing/HeroAddressSearch.tsx",
   "frontend-nextjs/app/page.tsx",
