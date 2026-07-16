@@ -28,9 +28,12 @@ from services.constraint_arithmetic import (
     STOREY_HEIGHT_M,
     ConstraintArithmeticResult,
     ConstraintType,
+    _dcp_value_conflict,
     _estimate_lot_dimensions,
     _get_dcp_value,
     _identify_binding_constraint,
+    _lot_band_match,
+    _resolve_lot_band,
     _is_apartment_type,
     _parse_numeric,
     compute_constraint_arithmetic,
@@ -760,3 +763,114 @@ class TestNoDcpEnvelope:
         # Three-state: unknown capacity is NULL, never a fabricated 0.
         assert result.realistic_gfa_m2 is None
         assert result.lep_envelope_gfa_m2 is None
+
+
+# ===========================================================================
+# Lot-size band resolution (Bowral regression: front pool 4.5/6.5/15 must
+# resolve to ONE band, not a conservative-max + conflict note)
+# ===========================================================================
+
+def _wing_front_controls() -> list[DCPControl]:
+    """The real Wingecarribee C2.6 front-setback tiers (verbatim conditions)."""
+    return [
+        DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=4.5, unit="m",
+                   condition="lot less than 900m2; exclusive of garage setbacks; in general, subject to site assessment"),
+        DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=6.5, unit="m",
+                   condition="lot between 900m2 and 1500m2; exclusive of garage setbacks; subject to site assessment"),
+        DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=15.0, unit="m",
+                   condition="lot over 1500m2; exclusive of garage setbacks; subject to site assessment"),
+    ]
+
+
+class TestLotBandMatch:
+    def test_less_than(self):
+        assert _lot_band_match("lot less than 900m2", 600) is True
+        assert _lot_band_match("lot less than 900m2", 900) is False
+
+    def test_between_inclusive(self):
+        assert _lot_band_match("lot between 900m2 and 1500m2", 900) is True
+        assert _lot_band_match("lot between 900m2 and 1500m2", 1500) is True
+        assert _lot_band_match("lot between 900m2 and 1500m2", 1501) is False
+
+    def test_over_exclusive(self):
+        assert _lot_band_match("lot over 1500m2", 1500) is False
+        assert _lot_band_match("lot over 1500m2", 4096) is True
+
+    def test_lot_size_variant_and_commas(self):
+        assert _lot_band_match("Lot size less than 2,000m2 — minimum POS 35%", 1800) is True
+
+    def test_near_miss_does_not_parse(self):
+        # A range written without the band keywords must NOT be guessed at.
+        assert _lot_band_match("lots 600-900m2; building height", 700) is None
+
+    def test_no_condition(self):
+        assert _lot_band_match(None, 700) is None
+        assert _lot_band_match("subject to site assessment", 700) is None
+
+
+class TestBandResolution:
+    def test_bowral_lot_resolves_to_over_band(self):
+        # 38 Park Rd Bowral (4,189 m2): the ONLY applicable tier is over-1500.
+        assert _get_dcp_value(_wing_front_controls(), "front_setback", "dwelling_house",
+                              lot_area_m2=4189) == 15.0
+
+    def test_small_lot_resolves_to_lowest_band(self):
+        assert _get_dcp_value(_wing_front_controls(), "front_setback", "dwelling_house",
+                              lot_area_m2=600) == 4.5
+
+    def test_resolved_band_is_not_a_conflict(self):
+        assert _dcp_value_conflict(_wing_front_controls(), "front_setback", "dwelling_house",
+                                   lot_area_m2=4189) is None
+
+    def test_unknown_area_stays_conservative(self):
+        # No lot area -> cannot resolve -> conservative max, and the values
+        # still surface as a conflict for the gap note.
+        assert _get_dcp_value(_wing_front_controls(), "front_setback", "dwelling_house") == 15.0
+        assert _dcp_value_conflict(_wing_front_controls(), "front_setback", "dwelling_house") == [4.5, 6.5, 15.0]
+
+    def test_unbanded_candidate_blocks_resolution(self):
+        # One general (unbanded) row in the pool -> a partial parse could drop
+        # it silently, so resolution must refuse and keep the conservative max.
+        controls = _wing_front_controls() + [
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=6.0, unit="m",
+                       condition="corner lots"),
+        ]
+        assert _resolve_lot_band(controls, 4189) is None
+        assert _get_dcp_value(controls, "front_setback", "dwelling_house", lot_area_m2=4189) == 15.0
+
+    def test_two_matching_bands_blocks_resolution(self):
+        controls = [
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=4.5,
+                       condition="lot less than 900m2"),
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=6.0,
+                       condition="lot less than 1500m2"),
+        ]
+        assert _resolve_lot_band(controls, 600) is None
+
+    def test_dev_type_pool_not_polluted(self):
+        # Medium-density rows must not enter the dwelling_house selection even
+        # when their values are larger (the original Bowral pool regression).
+        controls = _wing_front_controls() + [
+            DCPControl(control_type="front_setback", dev_type="multi_dwelling_housing",
+                       value_min=8.0, unit="m", condition=None),
+        ]
+        assert _get_dcp_value(controls, "front_setback", "dwelling_house", lot_area_m2=4189) == 15.0
+        assert _get_dcp_value(controls, "front_setback", "multi_dwelling_housing") == 8.0
+
+
+class TestBattleaxeDimensions:
+    def test_head_dimensions_used(self):
+        # 38 Park Rd Bowral: head 43.1m wide, 3,710 m2 -> depth = area / width.
+        dims = LotDimensions(area_m2=4189, frontage_m=None, depth_m=None,
+                             lot_type="battleaxe",
+                             battleaxe_access_way_width_m=3.05,
+                             battleaxe_main_lot_width_m=43.1,
+                             battleaxe_main_lot_area_m2=3710)
+        f, d = _estimate_lot_dimensions(dims, 4189)
+        assert f == 43.1
+        assert abs(f * d - 3710) < 0.1  # envelope = HEAD area, not whole lot
+
+    def test_battleaxe_without_head_falls_back(self):
+        dims = LotDimensions(area_m2=4189, lot_type="battleaxe")
+        f, d = _estimate_lot_dimensions(dims, 4189)
+        assert abs(f * d - 4189) < 0.1

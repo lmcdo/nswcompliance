@@ -705,6 +705,16 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
 function stripDimArea(key: string, value: unknown): unknown {
   if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
   const obj = value as Record<string, unknown>;
+  // Battleaxe (flag) lot: the handle/head breakdown IS the measurement — say so
+  // instead of the irregular-shape apology (the eligibility figures next to this
+  // field use the head width, so the two must agree).
+  if (obj.lot_type === 'battleaxe' && typeof obj.battleaxe_main_lot_width_m === 'number') {
+    const handle = typeof obj.battleaxe_access_way_width_m === 'number'
+      ? `${obj.battleaxe_access_way_width_m} m access handle, ` : '';
+    const headArea = typeof obj.battleaxe_main_lot_area_m2 === 'number'
+      ? ` (~${Math.round(obj.battleaxe_main_lot_area_m2)} m² main lot)` : '';
+    return `Battleaxe (flag) lot — ${handle}${obj.battleaxe_main_lot_width_m} m wide main lot${headArea}`;
+  }
   // Irregular polygon (fills <60% of its bounding box): frontage/depth are null
   // BY MEASUREMENT, not by failure — "Frontage: —, Depth: —" reads as broken.
   if (obj.irregular === true && obj.frontage_m == null && obj.depth_m == null) {
