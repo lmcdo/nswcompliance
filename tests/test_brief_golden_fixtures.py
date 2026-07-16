@@ -139,21 +139,37 @@ def test_real_eligibility_output_parses_with_citations():
     assert any(p.source_clause for p in parsed)
 
 
-def test_bowral_width_gaps_are_unconfirmed_not_failed_standards():
-    # Regional worst-case capture: irregular lot → width unmeasurable. Every
-    # row that failed on a MISSING input must carry unconfirmed=True (the UI
-    # renders "Unconfirmed"), while staying conservatively ineligible.
+def test_bowral_battleaxe_resolves_head_width_not_unconfirmed():
+    # 38 Park Rd Bowral is a battleaxe (flag) lot: the cadastral frontage is the
+    # access handle, so the raw width is null. eligibility_lot_width resolves the
+    # developable HEAD width (~70 m), which the brief — and now this capture — feed
+    # to the engine. The width-gated forms must therefore be ELIGIBLE on their
+    # measured width, NOT mislabelled "width unconfirmed" (the pre-#720 regression
+    # this fixture used to encode, which made the brief disagree with itself).
     rows = _load("housing_sepp_eligibility_bowral")
     parsed = [HousingSeppFormOutput.model_validate(r) for r in rows]
-    gap_rows = [p for p in parsed if p.reason and "unconfirmed" in p.reason.lower()]
-    assert gap_rows, "capture must include width-unconfirmed rows (frontage unmeasurable)"
-    for p in gap_rows:
-        assert p.eligible is False   # the conservative outcome stands
-        assert p.unconfirmed is True  # but it is labelled a data gap
-    # rows that failed a MEASURED standard or a gate are never mislabelled
+    by_type = {p.development_type: p for p in parsed}
+
+    for dt in ("secondary_dwelling", "dual_occupancy"):
+        p = by_type[dt]
+        assert p.eligible is True, f"{dt} must be eligible on the resolved head width"
+        assert p.unconfirmed is False
+        assert "unconfirmed" not in (p.reason or "").lower()
+
+    # No form may fail on a MISSING lot width now that the head width resolves.
     for p in parsed:
-        if p.eligible is False and not (p.reason and ("unconfirmed" in p.reason.lower() or "dataset" in p.reason.lower())):
-            assert p.unconfirmed is not True
+        assert not (p.reason and "width unconfirmed" in p.reason.lower()), (
+            f"{p.development_type} still reports width-unconfirmed on a resolvable "
+            "battleaxe lot — the capture and the brief have diverged again"
+        )
+
+    # A form whose STANDARD is absent from the dataset (e.g. manor_house) may still
+    # be conservatively unconfirmed — that is a dataset gap, not a width gap, and it
+    # must stay ineligible and labelled.
+    for p in parsed:
+        if p.unconfirmed:
+            assert p.eligible is False
+            assert "dataset" in (p.reason or "").lower()
 
 
 # ── LEP land-use rows ────────────────────────────────────────────────────────

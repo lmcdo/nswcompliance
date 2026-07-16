@@ -1,145 +1,150 @@
 {
-  "service": "housing_sepp_eligibility_bowral",
-  "captured_at": "2026-07-05",
-  "inputs": {
-    "address": "38 Park Road, Bowral",
-    "prop_id": 1119594,
-    "zone": "R3",
-    "lat": -34.48808008784197,
-    "lng": 150.4300027008631,
-    "lot_area_m2": 4096.0,
-    "lot_width_m": null,
-    "lot_irregular": true
+ "service": "housing_sepp_eligibility_bowral",
+ "captured_at": "2026-07-16",
+ "source": "regenerated from the live production intelligence-brief stream (battleaxe-aware width per #720); local re-capture needs DATABASE_URL",
+ "inputs": {
+  "address": "38 Park Road, Bowral",
+  "prop_id": 1119594,
+  "zone": "R3",
+  "lat": -34.48808008784197,
+  "lng": 150.4300027008631,
+  "lot_area_m2": 4189.0,
+  "lot_width_m": 70.09,
+  "lot_irregular": true,
+  "lot_type": "battleaxe",
+  "battleaxe_main_lot_width_m": 70.09,
+  "battleaxe_main_lot_area_m2": 3710.0,
+  "battleaxe_access_way_width_m": 16.31
+ },
+ "output": [
+  {
+   "development_type": "secondary_dwelling",
+   "eligible": true,
+   "reason": "Meets the applicable Housing SEPP standards (subject to a development application)",
+   "requires_lmr_area": false,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": 450.0,
+   "min_lot_width_m": 12.0,
+   "source_clause": "Schedule 1, Part 2",
+   "source_document": "State Environmental Planning Policy (Housing) 2021",
+   "legislation_url": "https://legislation.nsw.gov.au/view/html/inforce/current/e\r\n  pi-2021-0714#sch.1",
+   "effective_date": "2021-11-29"
   },
-  "output": [
-    {
-      "development_type": "secondary_dwelling",
-      "eligible": false,
-      "reason": "Lot width unconfirmed (minimum 12 m)",
-      "requires_lmr_area": false,
-      "unconfirmed": true,
-      "applicable_zones": [
-        "R1",
-        "R2",
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": 450.0,
-      "min_lot_width_m": 12.0,
-      "source_clause": "Schedule 1, Part 2",
-      "source_document": "State Environmental Planning Policy (Housing) 2021",
-      "legislation_url": "https://legislation.nsw.gov.au/view/html/inforce/current/e\r\n  pi-2021-0714#sch.1",
-      "effective_date": "2021-11-29"
-    },
-    {
-      "development_type": "dual_occupancy",
-      "eligible": false,
-      "reason": "Lot width unconfirmed (minimum 12 m)",
-      "requires_lmr_area": false,
-      "unconfirmed": true,
-      "applicable_zones": [
-        "R1",
-        "R2",
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": 450.0,
-      "min_lot_width_m": 12.0,
-      "source_clause": "169(3)(d)",
-      "source_document": "SEPP (Housing) 2021",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2024-07-01"
-    },
-    {
-      "development_type": "multi_dwelling",
-      "eligible": false,
-      "reason": "Lot width unconfirmed (minimum 12 m)",
-      "requires_lmr_area": true,
-      "unconfirmed": true,
-      "applicable_zones": [
-        "R1",
-        "R2",
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": 600.0,
-      "min_lot_width_m": 12.0,
-      "source_clause": "172(2)(a)",
-      "source_document": "SEPP (Housing) 2021 - LMR Amendment",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2025-02-28"
-    },
-    {
-      "development_type": "terraces",
-      "eligible": false,
-      "reason": "Lot width unconfirmed (minimum 18 m)",
-      "requires_lmr_area": true,
-      "unconfirmed": true,
-      "applicable_zones": [
-        "R1",
-        "R2",
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": 500.0,
-      "min_lot_width_m": 18.0,
-      "source_clause": "172(3)(b)",
-      "source_document": "SEPP (Housing) 2021 - LMR Amendment",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2025-02-28"
-    },
-    {
-      "development_type": "residential_flat_r3r4_inner",
-      "eligible": false,
-      "reason": "Not in a Transport Oriented Development catchment",
-      "requires_lmr_area": true,
-      "unconfirmed": false,
-      "applicable_zones": [
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": null,
-      "min_lot_width_m": null,
-      "source_clause": "175",
-      "source_document": "SEPP (Housing) 2021 - LMR Amendment",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2025-02-28"
-    },
-    {
-      "development_type": "residential_flat_r3r4_outer",
-      "eligible": false,
-      "reason": "Not in a Transport Oriented Development catchment",
-      "requires_lmr_area": true,
-      "unconfirmed": false,
-      "applicable_zones": [
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": null,
-      "min_lot_width_m": null,
-      "source_clause": "176",
-      "source_document": "SEPP (Housing) 2021 - LMR Amendment",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2025-02-28"
-    },
-    {
-      "development_type": "manor_house",
-      "eligible": false,
-      "reason": "Lot standard for this form is not in the dataset (treated conservatively)",
-      "requires_lmr_area": false,
-      "unconfirmed": true,
-      "applicable_zones": [
-        "R1",
-        "R2",
-        "R3",
-        "R4"
-      ],
-      "min_lot_size_m2": null,
-      "min_lot_width_m": null,
-      "source_clause": "108(2)(a)",
-      "source_document": "SEPP (Housing) 2021",
-      "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
-      "effective_date": "2024-07-01"
-    }
-  ]
+  {
+   "development_type": "dual_occupancy",
+   "eligible": true,
+   "reason": "Meets the applicable Housing SEPP standards (subject to a development application)",
+   "requires_lmr_area": false,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": 450.0,
+   "min_lot_width_m": 12.0,
+   "source_clause": "169(3)(d)",
+   "source_document": "SEPP (Housing) 2021",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2024-07-01"
+  },
+  {
+   "development_type": "multi_dwelling",
+   "eligible": false,
+   "reason": "Not in a Low and Mid-Rise reform area (or area unconfirmed)",
+   "requires_lmr_area": true,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": 600.0,
+   "min_lot_width_m": 12.0,
+   "source_clause": "172(2)(a)",
+   "source_document": "SEPP (Housing) 2021 - LMR Amendment",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2025-02-28"
+  },
+  {
+   "development_type": "terraces",
+   "eligible": false,
+   "reason": "Not in a Low and Mid-Rise reform area (or area unconfirmed)",
+   "requires_lmr_area": true,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": 500.0,
+   "min_lot_width_m": 18.0,
+   "source_clause": "172(3)(b)",
+   "source_document": "SEPP (Housing) 2021 - LMR Amendment",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2025-02-28"
+  },
+  {
+   "development_type": "residential_flat_r3r4_inner",
+   "eligible": false,
+   "reason": "Not in a Low and Mid-Rise reform area (or area unconfirmed)",
+   "requires_lmr_area": true,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": null,
+   "min_lot_width_m": null,
+   "source_clause": "175",
+   "source_document": "SEPP (Housing) 2021 - LMR Amendment",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2025-02-28"
+  },
+  {
+   "development_type": "residential_flat_r3r4_outer",
+   "eligible": false,
+   "reason": "Not in a Low and Mid-Rise reform area (or area unconfirmed)",
+   "requires_lmr_area": true,
+   "unconfirmed": false,
+   "applicable_zones": [
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": null,
+   "min_lot_width_m": null,
+   "source_clause": "176",
+   "source_document": "SEPP (Housing) 2021 - LMR Amendment",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2025-02-28"
+  },
+  {
+   "development_type": "manor_house",
+   "eligible": false,
+   "reason": "Lot standard for this form is not in the dataset (treated conservatively)",
+   "requires_lmr_area": false,
+   "unconfirmed": true,
+   "applicable_zones": [
+    "R1",
+    "R2",
+    "R3",
+    "R4"
+   ],
+   "min_lot_size_m2": null,
+   "min_lot_width_m": null,
+   "source_clause": "108(2)(a)",
+   "source_document": "SEPP (Housing) 2021",
+   "legislation_url": "https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714",
+   "effective_date": "2024-07-01"
+  }
+ ]
 }
