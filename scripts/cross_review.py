@@ -40,6 +40,16 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CHECKLIST_PATH = _REPO_ROOT / ".claude" / "rules" / "pre-pr-review.md"
 _DEFAULT_MODEL = "gpt-5.6-sol"  # alias "gpt-5.6" also routes here
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+_UNKNOWN_SEVERITY_RANK = -1  # sort/gate unknown severities as MORE severe than high
+
+
+def severity_rank(sev: object) -> int:
+    """Rank a severity for sorting and gating; unknown = most severe (fail-safe).
+
+    An out-of-vocab severity (e.g. the model emits "critical") must never gate
+    *less* strictly than "low", so it maps ahead of "high" rather than behind.
+    """
+    return _SEVERITY_ORDER.get(str(sev).strip().lower(), _UNKNOWN_SEVERITY_RANK)
 
 
 def _candidate_env_paths() -> list[Path]:
@@ -184,10 +194,11 @@ def call_model(messages: list[dict], model: str, api_key: str) -> dict:
 
     client = openai.OpenAI(api_key=api_key)
     try:
+        # gpt-5.6 reasoning models only accept the default temperature, so it is
+        # omitted rather than pinned. Determinism comes from the strict rubric.
         response = client.chat.completions.create(
             model=model,
             messages=messages,
-            temperature=0.0,
             response_format={"type": "json_object"},
         )
     except Exception as exc:  # network / auth / model-name errors
@@ -205,27 +216,34 @@ def call_model(messages: list[dict], model: str, api_key: str) -> dict:
     except json.JSONDecodeError as exc:
         sys.exit(f"Model did not return valid JSON: {exc}\nRaw:\n{content[:1000]}")
 
-    findings = data.get("findings", []) if isinstance(data, dict) else []
-    if not isinstance(findings, list):
-        findings = []
-    return {"findings": findings, "usage": getattr(response, "usage", None), "model": model}
+    # A malformed response (no `findings` list) is NOT a clean review — treat it as
+    # a hard error rather than silently reporting "no defects". Only a present,
+    # list-typed `findings` (possibly empty) counts as a real result.
+    if not isinstance(data, dict) or not isinstance(data.get("findings"), list):
+        sys.exit(
+            "Model response lacked a valid 'findings' list — cannot distinguish a "
+            f"clean review from a broken one. Raw:\n{content[:1000]}"
+        )
+    return {"findings": data["findings"], "usage": getattr(response, "usage", None), "model": model}
 
 
 def rank(findings: list[dict]) -> list[dict]:
     return sorted(
         findings,
         key=lambda f: (
-            _SEVERITY_ORDER.get(str(f.get("severity", "low")).lower(), 3),
+            severity_rank(f.get("severity", "low")),
             -float(f.get("confidence", 0) or 0),
         ),
     )
 
 
 def render(findings: list[dict], model: str) -> None:
+    # ASCII-only output: findings text is force-UTF-8 (see main()), but keeping the
+    # tool's own literals ASCII avoids any console-codec surprises across platforms.
     if not findings:
-        print(f"\n✓ {model} found no defects in the reviewed diff.\n")
+        print(f"\n[OK] {model} found no defects in the reviewed diff.\n")
         return
-    print(f"\n{model} — {len(findings)} finding(s), most severe first:\n")
+    print(f"\n{model} - {len(findings)} finding(s), most severe first:\n")
     for i, f in enumerate(findings, 1):
         sev = str(f.get("severity", "?")).upper()
         loc = f.get("file", "?")
@@ -233,7 +251,7 @@ def render(findings: list[dict], model: str) -> None:
             loc += f":{f['line']}"
         conf = f.get("confidence")
         conf_s = f" (confidence {conf})" if conf is not None else ""
-        print(f"{i}. [{sev}] {f.get('category', 'other')} — {loc}{conf_s}")
+        print(f"{i}. [{sev}] {f.get('category', 'other')} - {loc}{conf_s}")
         print(f"   {f.get('issue', '').strip()}")
         if f.get("failure_scenario"):
             print(f"   Scenario: {f['failure_scenario'].strip()}")
@@ -244,6 +262,14 @@ def render(findings: list[dict], model: str) -> None:
 
 
 def main() -> None:
+    # Findings text can contain arbitrary Unicode; the default Windows console
+    # codec (cp1252) raises UnicodeEncodeError on it. Force UTF-8 output.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     parser = argparse.ArgumentParser(description=__doc__)
     src = parser.add_mutually_exclusive_group()
     src.add_argument("--pr", type=int, help="Review a GitHub PR by number (via gh pr diff).")
@@ -267,7 +293,7 @@ def main() -> None:
 
     if args.fail_on:
         threshold = _SEVERITY_ORDER[args.fail_on]
-        worst = min((_SEVERITY_ORDER.get(str(f.get("severity", "low")).lower(), 3) for f in findings), default=3)
+        worst = min((severity_rank(f.get("severity", "low")) for f in findings), default=99)
         if worst <= threshold:
             sys.exit(2)
 
