@@ -1,5 +1,6 @@
 {
- "status": "trivial",
- "timestamp": "2026-07-07T17:46:53.576789",
- "reason": "robust fix for council-name->ePlanning-API mismatch: fix wrong canonical map entry (canada bay) + replace hardcoded resolver with API-vocabulary probe validation; no new DB queries, pure fix on already-QA-gated feature"
+  "status": "passed",
+  "timestamp": "2026-07-17T11:00:00+10:00",
+  "target": "issues 762 (report_id clobber in property_reports writes), 752 (granny confirm step in brief card), 753 (per-run data sources list)",
+  "findings_summary": "762 root cause documented in issue with prod row evidence (shared report_id + ON CONFLICT(id) DO UPDATE clobbers product rows; fix at brief layer with per-service uuid5 ids + cache sentinel-key guard; standalone flows poll by report_id so service-layer id derivation must not change); 752 unblocked by merged #748 three-state detect contract, reuses gated /api/satellite/granny-flat action confirm; 753 static union list in brief page replaced by dedupe over sources actually attached to populated DataFields; no schema changes, no bulk DB ops (poisoned-row cleanup SQL drafted but NOT run without user approval)"
 }

@@ -1,42 +1,42 @@
 # Core API
-fastapi==0.116.1
-uvicorn==0.35.0
-pydantic==2.11.7
-psycopg2-binary==2.9.10
-python-dotenv==1.1.1
-requests==2.32.5
+fastapi==0.139.0
+uvicorn==0.51.0
+pydantic==2.13.4
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+requests==2.34.2
 httpx==0.28.1
-anthropic==0.49.0
-boto3==1.38.0
-supabase==2.15.3
+anthropic==0.116.0
+boto3==1.43.48
+supabase==2.31.0
 
 # Shadow Detector + shadow_model.py
-geopandas==1.0.1
+geopandas==1.1.4
 pybdshadow==0.3.5
-shapely==2.1.1
+shapely==2.1.2
 
 # sentinel2.py (Shadow, Threat Radar)
-numpy==2.1.3
-pystac-client==0.8.3
-rasterio==1.4.3
+numpy==2.5.1
+pystac-client==0.9.0
+rasterio==1.5.0
 
 # Flood Truth — Sentinel-1 via Planetary Computer + BOM XML parsing
 planetary-computer==1.0.0
-xmltodict==0.14.2
+xmltodict==1.0.4
 
 # Climate risk raster — NARCliM NetCDF sampling
-netCDF4==1.7.2
+netCDF4==1.7.4
 
 # Whitebox — DEM/terrain/hydrology analysis (484 tools, MIT, Rust binary)
 # Watershed delineation, pluvial flood susceptibility, shadow/solar from DSM, slope/aspect
 whitebox
 
 # Conveyancing PDF generation
-reportlab==4.4.3
+reportlab==5.0.0
 
 # nsw_imagery.py (Granny Flat aerial tiles)
-Pillow==11.3.0
-opencv-python-headless==4.10.0.84
+Pillow==12.3.0
+opencv-python-headless==5.0.0.93
 
 # Pre-DA Site History — Tessera embeddings + Wayback SSIM
 geotessera

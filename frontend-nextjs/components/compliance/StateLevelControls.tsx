@@ -24,7 +24,7 @@ import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
-import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable } from '@/lib/regulatory-constants';
+import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable, permitsApartmentDevelopment } from '@/lib/regulatory-constants';
 import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { battleaxeAwareLotWidth } from '@/lib/geometry/effective-lot-width';
@@ -143,11 +143,15 @@ export function StateLevelControls({
   // Use LGA-specific SEPP mapping if provided, otherwise use NSW default
   const SEPP_MAPPING = lgaConfig?.sepp?.sepp_id_mapping || DEFAULT_SEPP_MAPPING;
 
-  // Load ADG requirements when zone permits apartment development.
-  // ADG applies statewide to RFBs under SEPP Housing 2021 — gate on zone, not dev type.
+  // Load ADG requirements only where an apartment / residential flat building is
+  // actually permitted — R4 and business/mixed-use zones under the Standard Instrument,
+  // or R1–R3 where the Stage-2 LMR mid-rise reforms reach the LGA. R1–R3 outside a
+  // designated region (e.g. regional R3 in Wingecarribee) do not engage the ADG.
   const loadADGRequirements = useCallback(async () => {
-    const zoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-    if (!(NSW_PLANNING_CONSTANTS.ZONES.APARTMENT_PERMITTING as readonly string[]).includes(zoneCode)) {
+    if (!permitsApartmentDevelopment(
+      propertyData?.constraints?.zone || '',
+      propertyData?.constraints?.lga || '',
+    )) {
       setAdgRequirements([]);
       return;
     }
@@ -525,9 +529,14 @@ export function StateLevelControls({
     sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
   );
   
-  // ADG applies to any zone that permits apartment development — gate on zone, not dev type
-  const adgZoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  const showADGSection = (NSW_PLANNING_CONSTANTS.ZONES.APARTMENT_PERMITTING as readonly string[]).includes(adgZoneCode) || adgRequirements.length > 0;
+  // Show ADG only where an apartment / RFB is permissible: R4 + business/mixed-use zones
+  // under the Standard Instrument, or R1–R3 where Stage-2 LMR reaches the LGA. The old
+  // gate used a flat zone list that treated every R1/R2/R3 lot as apartment-permitting,
+  // so it wrongly showed the ADG panel on regional low/medium-density lots (e.g. R3 Bowral)
+  // even where the Housing SEPP LMR reforms are correctly reported as not applicable.
+  const showADGSection =
+    permitsApartmentDevelopment(propertyData?.constraints?.zone || '', lga || '') ||
+    adgRequirements.length > 0;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(

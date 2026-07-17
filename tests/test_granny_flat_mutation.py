@@ -924,21 +924,77 @@ class TestDetectStructuresEndpoint:
         # Should be valid base64
         base64.b64decode(resp.tile_b64)
 
-    def test_samgeo_runtime_error_adds_warning(self, monkeypatch):
-        """When MODAL_STRUCTURES_URL not set, RuntimeError → warning, no crash."""
+    def test_samgeo_not_configured_adds_warning_and_marks_failed(self, monkeypatch):
+        """#745 D4: missing MODAL_STRUCTURES_URL → unavailable warning AND a
+        three-state failure (count None, detection_failed) — never a confident 0."""
         _stub_detect_all(monkeypatch)
-        monkeypatch.setattr(gf, "_detect_structures_samgeo", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("no URL")))
+        monkeypatch.setattr(gf, "_detect_structures_samgeo",
+                            lambda *a, **kw: (_ for _ in ()).throw(
+                                RuntimeError("MODAL_STRUCTURES_URL not configured")))
         req = self._make_req()
         resp = gf.detect_structures(req)
         assert any("unavailable" in w.lower() for w in resp.warnings)
-        assert resp.samgeo_structure_count == 0
+        assert resp.samgeo_structure_count is None
+        assert resp.detection_failed is True
+
+    def test_modal_call_failure_is_unknown_not_zero(self, monkeypatch):
+        """#745 D4 (the live bug): a detection-call failure must read as
+        UNKNOWN, never as '0 existing buildings' on a lot with a house."""
+        _stub_detect_all(monkeypatch)
+        monkeypatch.setattr(gf, "_detect_structures_samgeo",
+                            lambda *a, **kw: (_ for _ in ()).throw(
+                                RuntimeError("structure detection call failed: 500")))
+        req = self._make_req()
+        resp = gf.detect_structures(req)
+        assert any("unknown, not zero" in w for w in resp.warnings)
+        assert resp.samgeo_structure_count is None
+        assert resp.detection_failed is True
+        assert resp.detected_structures == []
 
     def test_samgeo_generic_error_adds_warning(self, monkeypatch):
         _stub_detect_all(monkeypatch)
         monkeypatch.setattr(gf, "_detect_structures_samgeo", lambda *a, **kw: (_ for _ in ()).throw(ValueError("bad")))
         req = self._make_req()
         resp = gf.detect_structures(req)
-        assert any("failed" in w.lower() for w in resp.warnings)
+        assert any("did not complete" in w for w in resp.warnings)
+        assert resp.samgeo_structure_count is None
+        assert resp.detection_failed is True
+
+    def test_inner_modal_http_failure_raises_not_empty_list(self, monkeypatch):
+        """#745 D4 root cause: the INNER Modal call boundary must raise on
+        failure, never return [] (the old swallow made failure identical to
+        genuine zero). Mocks requests.post inside _detect_structures_samgeo."""
+        import requests as _requests
+        import services.granny_flat as _gf
+        monkeypatch.setenv("MODAL_STRUCTURES_URL", "https://modal.example/detect")
+        # the function does `import requests as _req` locally — patch the module attr
+        monkeypatch.setattr(_requests, "post",
+                            lambda *a, **kw: (_ for _ in ()).throw(
+                                Exception("connection reset")))
+        import tempfile, os
+        fd, tile = tempfile.mkstemp(suffix=".png"); os.close(fd)
+        with open(tile, "wb") as f:
+            f.write(bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A]))
+        import pytest as _pytest
+        with _pytest.raises(RuntimeError, match="structure detection call failed"):
+            _gf._detect_structures_samgeo(tile, {"xmin": 0, "ymin": 0, "xmax": 1, "ymax": 1}, None)
+
+    def test_genuine_zero_detection_is_zero_not_failed(self, monkeypatch):
+        """Successful detection finding nothing → count 0, NOT failed."""
+        _stub_detect_all(monkeypatch)
+        monkeypatch.setattr(gf, "_detect_structures_samgeo", lambda *a, **kw: [])
+        req = self._make_req()
+        resp = gf.detect_structures(req)
+        assert resp.samgeo_structure_count == 0
+        assert resp.detection_failed is False
+
+    def test_detect_prefers_caller_lot_area(self, monkeypatch):
+        """#745 D3: the brief's reconciled lot area wins over the shoelace."""
+        _stub_detect_all(monkeypatch)
+        req = self._make_req()
+        req = req.model_copy(update={"lot_area_m2": 486.9})
+        resp = gf.detect_structures(req)
+        assert resp.lot_area_m2 == 486.9
 
     def test_prop_id_sanitised(self, monkeypatch):
         """Path traversal characters in prop_id should be stripped."""

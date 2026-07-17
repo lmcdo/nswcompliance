@@ -105,23 +105,23 @@ ROWS = [
         "height of a dwelling house shall not exceed one (1) storey with additional rooms permissible "
         "within the roof spaces of buildings",
         "part-c-s2/C2.9.2(b)", 196),
-    row("dwelling_house", "landscaped_area_min", 35, None, "%",
+    row("dwelling_house", "landscaping_min", 35, None, "%",
         "lot less than 2000m2; or 90m2, whichever is the greater",
         "C2.13.2(a) Table C2.2: Lot size less than 2,000m2 — minimum Private Landscaped Open Space 35% of "
         "the site area or 90m2, whichever is the greater",
         "part-c-s2/C2.13.2(a)-Table-C2.2", 200),
-    row("dwelling_house", "landscaped_area_min", 50, None, "%",
+    row("dwelling_house", "landscaping_min", 50, None, "%",
         "lot less than 2000m2 on a site which is an Item of Heritage or located within a Heritage "
         "Conservation Area",
         "C2.13.2(a) Table C2.2: Less than 2,000m2 on a site which is an Item of Heritage or located within "
         "a Heritage Conservation Area — minimum Private Landscaped Open Space 50% of the site area",
         "part-c-s2/C2.13.2(a)-Table-C2.2", 200),
-    row("dwelling_house", "landscaped_area_min", 50, None, "%",
+    row("dwelling_house", "landscaping_min", 50, None, "%",
         "lot between 2000m2 and 4000m2",
         "C2.13.2(a) Table C2.2: Lot size between 2,000m2 and 4,000m2 — minimum Private Landscaped Open "
         "Space 50% of the site area",
         "part-c-s2/C2.13.2(a)-Table-C2.2", 200),
-    row("dwelling_house", "landscaped_area_min", 75, None, "%",
+    row("dwelling_house", "landscaping_min", 75, None, "%",
         "lot over 4000m2",
         "C2.13.2(a) Table C2.2: Lot size over 4,000m2 — minimum Private Landscaped Open Space 75% of the "
         "site area",

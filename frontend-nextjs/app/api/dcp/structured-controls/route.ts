@@ -54,9 +54,12 @@ const CONTROL_CATEGORIES: Record<string, { label: string; order: number }> = {
   max_site_coverage: { label: 'Site Coverage', order: 3 },
   max_height: { label: 'Height', order: 4 },
   landscaping_min: { label: 'Landscaping & Canopy', order: 5 },
+  landscaped_area_min: { label: 'Landscaping & Canopy', order: 5 },
+  front_setback_landscaping: { label: 'Landscaping & Canopy', order: 5 },
   deep_soil_min: { label: 'Landscaping & Canopy', order: 5 },
   tree_canopy_min: { label: 'Landscaping & Canopy', order: 5 },
   communal_open_space_min: { label: 'Open Space', order: 6 },
+  communal_open_space: { label: 'Open Space', order: 6 },
   private_open_space: { label: 'Open Space', order: 6 },
   solar_access_hours: { label: 'Solar & Amenity', order: 7 },
   privacy_separation: { label: 'Privacy', order: 8 },
@@ -77,9 +80,12 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   max_site_coverage: 'Maximum site coverage',
   max_height: 'Maximum height',
   landscaping_min: 'Minimum landscaped area',
+  landscaped_area_min: 'Minimum landscaped area',
+  front_setback_landscaping: 'Front setback landscaping',
   deep_soil_min: 'Minimum deep soil zone',
   tree_canopy_min: 'Tree canopy coverage',
   communal_open_space_min: 'Communal open space',
+  communal_open_space: 'Communal open space',
   private_open_space: 'Private open space',
   solar_access_hours: 'Solar access (hours)',
   privacy_separation: 'Privacy separation',
@@ -87,12 +93,28 @@ const CONTROL_TYPE_LABELS: Record<string, string> = {
   dwelling_size_min: 'Minimum dwelling size',
 };
 
+// Control types whose single value is a CEILING (a maximum, rendered "≤"),
+// not a floor. Everything else is a minimum ("≥"). A max control stores its
+// ceiling in value_min, so without this the UI would render e.g. a 65% maximum
+// site coverage as "≥ 65%" — the inverse of the actual control. Keep in sync
+// with any control_type whose label begins "Maximum".
+const MAXIMUM_CONTROL_TYPES = new Set<string>([
+  'max_site_coverage',
+  'max_height',
+  'fencing_height_max',
+  'driveway_gradient',
+]);
+
+/** Whether a control's single value is a maximum (ceiling) or a minimum (floor). */
+export type ControlDirection = 'min' | 'max';
+
 /** Data status for a control row — drives distinct UI treatment */
 export type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
 
 export interface StructuredControl {
   control_type: string;
   control_label: string;
+  direction: ControlDirection;
   value_min: number | null;
   value_max: number | null;
   unit: string | null;
@@ -221,9 +243,20 @@ export async function GET(request: NextRequest) {
         dataStatus = 'not_applicable';
       }
 
+      const controlLabel = CONTROL_TYPE_LABELS[row.control_type] || row.control_type;
+      // Ceiling if the type is a known maximum OR its label reads "Maximum …" —
+      // the label backstop catches a future max_* type whose author updated the
+      // label map but forgot MAXIMUM_CONTROL_TYPES. No minimum control is labelled
+      // "Maximum", so this never mis-flags a floor.
+      const direction: ControlDirection =
+        MAXIMUM_CONTROL_TYPES.has(row.control_type) || /^Maximum\b/.test(controlLabel)
+          ? 'max'
+          : 'min';
+
       categoryMap.get(catKey)!.controls.push({
         control_type: row.control_type,
-        control_label: CONTROL_TYPE_LABELS[row.control_type] || row.control_type,
+        control_label: controlLabel,
+        direction,
         value_min: valueMin,
         value_max: valueMax,
         unit: row.unit,

@@ -13,10 +13,13 @@ import useSWR from 'swr';
 import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home, AlertCircle, MinusCircle } from 'lucide-react';
 
 type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
+type ControlDirection = 'min' | 'max';
 
 interface StructuredControl {
   control_type: string;
   control_label: string;
+  // 'max' → the value is a ceiling (render "≤"); 'min'/absent → a floor ("≥").
+  direction?: ControlDirection;
   value_min: number | null;
   value_max: number | null;
   unit: string | null;
@@ -82,15 +85,20 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Dwelling Size': 'border-rose-200 bg-rose-50',
 };
 
-function formatValue(control: StructuredControl): string {
-  const { value_min, value_max, unit } = control;
+export function formatValue(control: StructuredControl): string {
+  const { value_min, value_max, unit, direction } = control;
   const unitStr = unit ? ` ${unit}` : '';
 
   if (value_min !== null && value_max !== null) {
     if (value_min === value_max) return `${value_min}${unitStr}`;
     return `${value_min}–${value_max}${unitStr}`;
   }
-  if (value_min !== null) return `≥ ${value_min}${unitStr}`;
+  // A maximum control (e.g. max site coverage, max height) stores its ceiling
+  // in value_min. Render it "≤" — rendering "≥" would state the inverse of the
+  // control, a wrong regulatory result on a compliance surface.
+  if (value_min !== null) {
+    return `${direction === 'max' ? '≤' : '≥'} ${value_min}${unitStr}`;
+  }
   if (value_max !== null) return `≤ ${value_max}${unitStr}`;
   return '—';
 }

@@ -324,7 +324,7 @@ def _query_cadastre_lots(lat: float, lng: float, buffer_m: int = 0) -> list[dict
         "geometryType": "esriGeometryPoint",
         "inSR": "4283",
         "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
+        "outFields": "plannumber,planlabel,lotnumber,sectionnumber,classsubtype,hasstratum",
         "returnGeometry": "false",
         "f": "json",
     }
@@ -395,6 +395,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": True,
                 "plan_label": plan,
                 "lot_number": sp_lots[0].get("lotnumber"),
+                "section_number": sp_lots[0].get("sectionnumber"),
                 "containment": containment,
             }
 
@@ -408,6 +409,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
                 "parent_has_strata": parent_strata,
                 "plan_label": primary.get("planlabel"),
                 "lot_number": primary.get("lotnumber"),
+                "section_number": primary.get("sectionnumber"),
                 "containment": containment,
             }
     except Exception as e:
@@ -420,6 +422,7 @@ def get_cadastral_info(lat: float, lng: float) -> dict:
         "parent_has_strata": False,
         "plan_label": None,
         "lot_number": None,
+        "section_number": None,
         "containment": False,
     }
 
@@ -467,6 +470,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
         # SP/CP lot only within the fallback buffer (point contained in no lot):
@@ -481,6 +486,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                     "source": "cadastre+address",
                     "parent_has_strata": True,
                     "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
                 }
             return {
                 "is_strata": False,
@@ -489,6 +496,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
         # Combined: parent has strata AND address looks like a unit
@@ -500,6 +509,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre+address",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
         # Parent has strata but no unit prefix — whole-building query by planner
@@ -511,6 +522,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": True,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
         # Torrens cadastre result + unit prefix — portal stripped the unit, address wins
@@ -522,6 +535,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre+address",
                 "parent_has_strata": False,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
         # Torrens, no unit prefix — confirmed Torrens title
@@ -533,6 +548,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
                 "source": "cadastre",
                 "parent_has_strata": False,
                 "plan_label": cad["plan_label"],
+                "lot_number": cad.get("lot_number"),
+                "section_number": cad.get("section_number"),
             }
 
     # Fallback: address heuristic only — could be strata or company title
@@ -543,6 +560,8 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
         "source": "address_heuristic",
         "parent_has_strata": False,
         "plan_label": None,
+        "lot_number": None,
+        "section_number": None,
     }
 
 
@@ -1873,12 +1892,21 @@ def get_shadow_risk(
     lat: float,
     lng: float,
     height_m: Optional[float] = None,
+    report_id: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Call the Railway shadow pipeline.
     height_m: pass the LEP height already fetched from Planning Portal so
     Railway doesn't need to re-query (avoids spatial_overlays coverage gaps).
-    Returns the `outputs` dict on success, None if Railway unreachable or call fails.
+    report_id: caller-supplied id for the row written by the shadow service
+    (the brief passes a per-product derived id, issue #762); defaults to a
+    fresh uuid4 for CLI/standalone callers.
+    prior-art-checked: no new capability — this IS the existing shadow fetcher
+    gaining an optional passthrough parameter; no new data source or surface.
+    Returns the `outputs` dict on success (with the envelope's run-level
+    `confidence` merged in — the outputs dict itself carries no confidence key,
+    and downstream consumers render run confidence from this merged value),
+    None if Railway unreachable or call fails.
     Graceful degradation — shadow section is omitted rather than crashing the report.
     """
     api_url = os.environ.get("PYTHON_API_URL", "http://localhost:8000")
@@ -1887,14 +1915,21 @@ def get_shadow_risk(
         "prop_id": str(prop_id),
         "lat": lat,
         "lng": lng,
-        "report_id": str(uuid.uuid4()),
+        "report_id": report_id or str(uuid.uuid4()),
     }
     if height_m:
         payload["height_m"] = height_m
     try:
         r = requests.post(f"{api_url}/pipeline/shadow", json=payload, timeout=60)
         r.raise_for_status()
-        return r.json().get("outputs")
+        # prior-art-checked: this IS the existing shadow fetcher being extended
+        # in place (no new data source) — it previously discarded the envelope's
+        # run-level confidence; merging it here is the minimal passthrough.
+        body = r.json()
+        outputs = body.get("outputs")
+        if isinstance(outputs, dict) and "confidence" not in outputs:
+            return {**outputs, "confidence": body.get("confidence")}
+        return outputs
     except Exception as e:
         print(f"  [warn] Shadow pipeline unavailable — section will be omitted: {e}")
         return None

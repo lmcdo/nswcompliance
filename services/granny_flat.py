@@ -263,6 +263,10 @@ class GrannyFlatDetectRequest(BaseModel):
     lat: float
     lng: float
     lot_geometry: Optional[dict] = None  # EPSG:3857 rings from NSW Planning Portal
+    # #745 D3: the brief's VG-reconciled lot area. When supplied it is used
+    # verbatim (single source of truth across the report); the geometry
+    # shoelace below is only a fallback — mirrors GrannyFlatConfirmRequest.
+    lot_area_m2: Optional[float] = None
     report_id: Optional[str] = None      # pre-allocated UUID; when set, writes detect result to DB for async polling
 
 
@@ -284,7 +288,9 @@ class GrannyFlatDetectResponse(BaseModel):
     sepp_eligible: bool
     sepp_ineligible_reason: Optional[str]
     detected_structures: list[DetectedStructure]
-    samgeo_structure_count: int         # number detected by AI (used for confidence later)
+    # None = detection FAILED (three-state, #745 D4); 0 = genuinely none found.
+    samgeo_structure_count: Optional[int]
+    detection_failed: bool = False
     samgeo_validated: bool
     confirmation_required: bool
     tile_licence: str
@@ -440,8 +446,11 @@ def _detect_structures_samgeo(
         resp.raise_for_status()
         result = resp.json()
     except Exception as e:
+        # #745 D4: a Modal HTTP failure must NOT be byte-identical to a
+        # genuine zero-structure result — re-raise so the caller records a
+        # real warning and marks detection failed (three-state contract).
         logger.error(f"Modal detect-structures failed: {e}")
-        return []
+        raise RuntimeError(f"structure detection call failed: {e}") from e
 
     raw_structures = result.get("structures", [])
     if not raw_structures:
@@ -726,7 +735,10 @@ def detect_structures(req: GrannyFlatDetectRequest):
         from nsw_imagery import fetch_tile_to_file
 
     lot_geometry = req.lot_geometry or _fetch_lot_geometry(req.prop_id)
-    lot_area_m2 = _compute_lot_area_m2(lot_geometry) if lot_geometry else None
+    # #745 D3: prefer the caller's reconciled lot area (one figure per brief);
+    # compute from geometry only when the caller has none.
+    lot_area_m2 = req.lot_area_m2 if req.lot_area_m2 is not None else (
+        _compute_lot_area_m2(lot_geometry) if lot_geometry else None)
 
     # Load SEPP standards from DB (with fallback)
     _detect_conn = None
@@ -803,6 +815,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
 
     detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
+    detection_failed = False
     if SAMGEO_VALIDATED:
         try:
             raw = _detect_structures_samgeo(tile_path, bbox, lot_geometry)
@@ -818,15 +831,24 @@ def detect_structures(req: GrannyFlatDetectRequest):
             if detected_structures:
                 largest = max(range(len(detected_structures)), key=lambda i: detected_structures[i].area_m2 or 0)
                 detected_structures[largest].is_main_dwelling = True
-        except RuntimeError:
-            detect_warnings.append(
-                "Aerial structure detection unavailable (MODAL_STRUCTURES_URL not configured). "
-                "Enter structure count manually."
-            )
+        except RuntimeError as e:
+            detection_failed = True
+            if "not configured" in str(e):
+                detect_warnings.append(
+                    "Aerial structure detection unavailable (MODAL_STRUCTURES_URL not configured). "
+                    "Enter structure count manually."
+                )
+            else:
+                detect_warnings.append(
+                    "Aerial structure detection did not complete — the building "
+                    "count is unknown, not zero. Enter the structure count manually."
+                )
         except Exception as e:
             logger.error(f"samgeo detection failed: {e}")
+            detection_failed = True
             detect_warnings.append(
-                "Aerial structure detection failed — enter structure count manually."
+                "Aerial structure detection did not complete — the building "
+                "count is unknown, not zero. Enter the structure count manually."
             )
 
     # Annotate tile with lot boundary + structure boxes, then encode as base64.
@@ -891,7 +913,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
         sepp_eligible=sepp_eligible,
         sepp_ineligible_reason=sepp_ineligible_reason,
         detected_structures=detected_structures,
-        samgeo_structure_count=len(detected_structures),
+        samgeo_structure_count=None if detection_failed else len(detected_structures),
+        detection_failed=detection_failed,
         samgeo_validated=SAMGEO_VALIDATED,
         confirmation_required=True,
         tile_licence=licence,
