@@ -22,6 +22,7 @@ import re
 import sys
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
@@ -1881,10 +1882,12 @@ def _fetch_refusal_stats(lga_name: str) -> Optional[dict]:
 
 def _fetch_shadow(
     address: str, prop_id: int, lat: float, lng: float,
-    height_m: Optional[float],
+    height_m: Optional[float], report_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Shadow pipeline via Railway."""
-    return get_shadow_risk(address, prop_id, lat, lng, height_m=height_m)
+    return get_shadow_risk(
+        address, prop_id, lat, lng, height_m=height_m, report_id=report_id,
+    )
 
 
 def _fetch_dcp_controls(
@@ -2090,6 +2093,25 @@ from services.lot_dimensions import (
 # ---------------------------------------------------------------------------
 # Satellite fetchers — Stage 4a
 # ---------------------------------------------------------------------------
+
+
+def _derive_service_report_id(parent_report_id: str, product: str) -> str:
+    """Deterministic per-product report id for satellite writes (issue #762).
+
+    flood/bushfire/shadow each upsert into ``property_reports`` with
+    ``ON CONFLICT (id) DO UPDATE SET outputs`` — handing every service the
+    brief's single parent report_id let the last writer overwrite the first
+    writer's ``outputs`` while the row kept the first writer's ``product``
+    label (e.g. rows tagged ``product='bushfire'`` carrying flood or shadow
+    fields, which then poisoned the bushfire cache read).
+
+    ``uuid5(parent, product)`` keeps one stable row per product per brief run
+    (re-runs of the same brief upsert the same derived id) while guaranteeing
+    distinct rows across products. The parent report_id itself is unchanged —
+    standalone tool flows still poll ``property_reports`` by the id the
+    frontend allocated, and the services' own id handling is untouched.
+    """
+    return str(uuid.uuid5(uuid.UUID(parent_report_id), product))
 
 
 def _fetch_bushfire(
@@ -3577,12 +3599,12 @@ def _generate_brief_sse(
         if req.include_satellite:
             f_bushfire = pool.submit(
                 _safe_call,
-                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, _derive_service_report_id(report_id, "bushfire")),
                 "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
             )
             f_flood_sat = pool.submit(
                 _safe_call,
-                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, _derive_service_report_id(report_id, "flood")),
                 "flood_truth", ConfidenceLevel.ESTIMATED,
             )
             f_climate = pool.submit(
@@ -3733,7 +3755,7 @@ def _generate_brief_sse(
         )
         f_shadow = pool.submit(
             _safe_call,
-            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m),
+            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m, _derive_service_report_id(report_id, "shadow")),
             "shadow_detector", ConfidenceLevel.DERIVED,
         )
         f_dcp = pool.submit(
