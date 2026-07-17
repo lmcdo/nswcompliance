@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Fixes three confirmed silent-wrong-result defects from the #745 audit that are user-facing today: a legit-empty coastal check rendered as a data gap, a granny-flat card showing a confident zero-buildings count when detection actually FAILED (the classic silent false negative), and two different lot areas served in one brief. All fixes follow the DataField three-state contract; critical because these shape user decisions on hazards and eligibility.",
-  "commit_hash": "75f3db5b",
+  "commit_hash": "5e8a00e9",
   "files": [
     "services/intelligence_brief.py",
     "services/granny_flat.py",
@@ -22,7 +22,7 @@
   "functions": [
     {
       "name": "_build_environmental",
-      "file_line": "services/intelligence_brief.py:2811",
+      "file_line": "services/intelligence_brief.py:2910",
       "input": "portal controls plus overlay query results and failure flags",
       "output": "the EnvironmentalConstraints model whose coastal_hazards field now honours the three-state DataField contract on legit-empty results",
       "if_none": "zero coastal layers on a SUCCESSFUL query keeps the overlay success confidence with reason None; only a genuine overlay failure is NOT_AVAILABLE with reason"
