@@ -525,7 +525,19 @@ class BushfireDetail(BaseModel):
     cross_overlays: Optional[list[dict]] = None  # flood, heritage, zone intersections
     rfs_referral_required: Optional[bool] = None
     rfs_referral_triggers: Optional[list[str]] = None
+    rfs_referral_note: Optional[str] = None  # conditional wording alongside the triggers
     cdc_pathway_available: Optional[bool] = None
+    # Pass-through parity (PR-B): guidance/context the service already emits.
+    designation_source: Optional[str] = None
+    bal_assessment_likely_required: Optional[bool] = None
+    bal_formal_assessment_cost_range: Optional[str] = None  # guidance "typical range"
+    bal_assessor_directory_url: Optional[str] = None
+    clearing_10_50_entitled: Optional[bool] = None  # None on prone land = depends on RFS 10/50 map
+    clearing_10_50_exceptions: Optional[str] = None
+    estimated_consultant_costs: Optional[str] = None
+    state_legislation: Optional[str] = None
+    legislation_url: Optional[str] = None
+    data_currency: Optional[str] = None
     confidence: Optional[str] = None
 
 
@@ -536,7 +548,13 @@ class _BushfireCompliance(BaseModel):
     cross_overlays: Optional[list[dict]] = None
     rfs_referral_required: Optional[bool] = None
     rfs_referral_triggers: Optional[list[str]] = None
+    rfs_referral_note: Optional[str] = None
     cdc_pathway_available: Optional[bool] = None
+    clearing_10_50_entitled: Optional[bool] = None
+    clearing_10_50_exceptions: Optional[str] = None
+    estimated_consultant_costs: Optional[str] = None
+    state_legislation: Optional[str] = None
+    legislation_url: Optional[str] = None
 
 
 class BushfireServiceOutput(BaseModel):
@@ -549,20 +567,47 @@ class BushfireServiceOutput(BaseModel):
     model_config = ConfigDict(extra="ignore")
     is_bushfire_prone: Optional[bool] = None
     designation_category: Optional[str] = None
+    designation_source: Optional[str] = None
     estimated_bal_band: Optional[str] = None
     designation_guideline: Optional[str] = None
     fire_signal: Optional[str] = None
+    bal_assessment_likely_required: Optional[bool] = None
+    bal_formal_assessment_cost_range: Optional[str] = None
+    bal_assessor_directory_url: Optional[str] = None
+    data_currency: Optional[str] = None
     compliance: Optional[_BushfireCompliance] = None
 
 
 class FloodDetail(BaseModel):
     """Multi-source flood analysis beyond statutory EPI flag."""
 
+    # The engine's computed screening signal (validated enum in flood_truth) —
+    # rendered as the card's headline line, never a bare verdict.
+    flood_signal: Optional[str] = None  # none/low/moderate/elevated/unavailable
     epi_flood: Optional[bool] = None
     epi_flood_label: Optional[str] = None  # EPI flood class label (human-readable)
+    # Copernicus EMS — PostGIS point-in-polygon vs ingested activation footprints.
+    # Three-state: None = not checked / table unavailable; False = checked, no
+    # mapped extent here; True = mapped flood extent intersected this location.
+    ems_flood_detected: Optional[bool] = None
+    ems_activations: Optional[list[dict]] = None  # {activation_id, event_name, event_date, flood_type}
+    sar_flood_detected: Optional[bool] = None
+    sar_confidence: Optional[str] = None
+    sar_analysis_date: Optional[str] = None
+    ses_in_flood_planning_area: Optional[bool] = None
+    ses_flood_class: Optional[str] = None
+    ses_study_name: Optional[str] = None
     jrc_occurrence_pct: Optional[float] = None  # JRC 1984-2021
+    jrc_data_year: Optional[int] = None
     wofs_frequency_pct: Optional[float] = None  # DEA WOfS
+    bom_gauge_name: Optional[str] = None
     bom_gauge_distance_km: Optional[float] = None
+    bom_last_major_flood_date: Optional[str] = None
+    bom_last_major_flood_peak_m: Optional[float] = None
+    bom_flood_history: Optional[list[dict]] = None  # {date, peak_m, ari_category}
+    in_100yr_flood_zone: Optional[bool] = None
+    ground_elevation_m_ahd: Optional[float] = None
+    s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
     confidence: Optional[str] = None
 
@@ -574,16 +619,33 @@ class FloodServiceOutput(BaseModel):
     consumes. _build_flood_detail reads typed attributes off it, so a typo or a
     renamed key is a static/type error here instead of a silent null in the card
     (the jrc_occurrence_pct vs jrc_water_occurrence_pct class). Extra keys the
-    service emits (jrc_data_year, refused, etc.) are ignored; values stay
-    nullable so a genuine empty reading is preserved.
+    service emits (refused, hawkesbury_* backward-compat, etc.) are ignored;
+    values stay nullable so a genuine empty reading is preserved.
     """
 
     model_config = ConfigDict(extra="ignore")
+    flood_signal: Optional[str] = None
     epi_flood_class: Optional[str] = None
     epi_flood_label: Optional[str] = None
+    ems_flood_detected: Optional[bool] = None
+    ems_activations: Optional[list[dict]] = None
+    sar_flood_detected: Optional[bool] = None
+    sar_confidence: Optional[str] = None
+    sar_analysis_date: Optional[str] = None
+    ses_in_flood_planning_area: Optional[bool] = None
+    ses_flood_class: Optional[str] = None
+    ses_study_name: Optional[str] = None
     jrc_water_occurrence_pct: Optional[float] = None
+    jrc_data_year: Optional[int] = None
     dea_wofs_frequency_pct: Optional[float] = None
+    bom_gauge_name: Optional[str] = None
     bom_gauge_distance_km: Optional[float] = None
+    bom_last_major_flood_date: Optional[str] = None
+    bom_last_major_flood_peak_m: Optional[float] = None
+    bom_flood_history: Optional[list[dict]] = None
+    in_100yr_flood_zone: Optional[bool] = None
+    ground_elevation_m_ahd: Optional[float] = None
+    s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
 
 
@@ -612,6 +674,11 @@ class ShadowServiceOutput(BaseModel):
     adg_compliant: Optional[bool] = None
     worst_case_scenario: Optional[str] = None
     scenarios: list[ShadowScenarioOutput] = []
+    # Run-level passthrough (PR-B): the envelope confidence is merged into the
+    # outputs dict by get_shadow_risk; Sentinel-2 change detection rides along.
+    confidence: Optional[str] = None
+    construction_change_detected: Optional[bool] = None
+    construction_change_note: Optional[str] = None
 
 
 class StrataCoreOutput(BaseModel):
@@ -2139,16 +2206,28 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
         return None
     _warn_on_drift(BushfireServiceOutput, bushfire_raw.get("outputs"), "bushfire")
     out = BushfireServiceOutput.model_validate(bushfire_raw.get("outputs") or {})
+    comp = out.compliance
     return BushfireDetail(
         is_bushfire_prone=out.is_bushfire_prone,
         category=out.designation_category,
         bal_estimate=out.estimated_bal_band,
         vegetation_type=out.designation_guideline,
         fire_signal=out.fire_signal,
-        cross_overlays=(out.compliance.cross_overlays if out.compliance else None),
-        rfs_referral_required=(out.compliance.rfs_referral_required if out.compliance else None),
-        rfs_referral_triggers=(out.compliance.rfs_referral_triggers if out.compliance else None),
-        cdc_pathway_available=(out.compliance.cdc_pathway_available if out.compliance else None),
+        designation_source=out.designation_source,
+        bal_assessment_likely_required=out.bal_assessment_likely_required,
+        bal_formal_assessment_cost_range=out.bal_formal_assessment_cost_range,
+        bal_assessor_directory_url=out.bal_assessor_directory_url,
+        data_currency=out.data_currency,
+        cross_overlays=(comp.cross_overlays if comp else None),
+        rfs_referral_required=(comp.rfs_referral_required if comp else None),
+        rfs_referral_triggers=(comp.rfs_referral_triggers if comp else None),
+        rfs_referral_note=(comp.rfs_referral_note if comp else None),
+        cdc_pathway_available=(comp.cdc_pathway_available if comp else None),
+        clearing_10_50_entitled=(comp.clearing_10_50_entitled if comp else None),
+        clearing_10_50_exceptions=(comp.clearing_10_50_exceptions if comp else None),
+        estimated_consultant_costs=(comp.estimated_consultant_costs if comp else None),
+        state_legislation=(comp.state_legislation if comp else None),
+        legislation_url=(comp.legislation_url if comp else None),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -2166,12 +2245,29 @@ def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
     out = FloodServiceOutput.model_validate(flood_raw.get("outputs") or {})
     epi_class = out.epi_flood_class
     return FloodDetail(
+        flood_signal=out.flood_signal,
         # None = not assessed; False = checked, not in a flood class; True = flood class present
         epi_flood=(None if epi_class is None else epi_class != "none"),
         epi_flood_label=out.epi_flood_label,
+        ems_flood_detected=out.ems_flood_detected,
+        ems_activations=out.ems_activations,
+        sar_flood_detected=out.sar_flood_detected,
+        sar_confidence=out.sar_confidence,
+        sar_analysis_date=out.sar_analysis_date,
+        ses_in_flood_planning_area=out.ses_in_flood_planning_area,
+        ses_flood_class=out.ses_flood_class,
+        ses_study_name=out.ses_study_name,
         jrc_occurrence_pct=out.jrc_water_occurrence_pct,
+        jrc_data_year=out.jrc_data_year,
         wofs_frequency_pct=out.dea_wofs_frequency_pct,
+        bom_gauge_name=out.bom_gauge_name,
         bom_gauge_distance_km=out.bom_gauge_distance_km,
+        bom_last_major_flood_date=out.bom_last_major_flood_date,
+        bom_last_major_flood_peak_m=out.bom_last_major_flood_peak_m,
+        bom_flood_history=out.bom_flood_history,
+        in_100yr_flood_zone=out.in_100yr_flood_zone,
+        ground_elevation_m_ahd=out.ground_elevation_m_ahd,
+        s1_gap_warning=out.s1_gap_warning,
         flood_studies=out.flood_studies,
         confidence=flood_raw.get("confidence"),
     )
@@ -2207,6 +2303,9 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
         adg_compliant=out.adg_compliant,
         scenarios=scenarios,
         worst_case_scenario=out.worst_case_scenario,
+        confidence=out.confidence,
+        construction_change_detected=out.construction_change_detected,
+        construction_change_note=out.construction_change_note,
     )
 
 

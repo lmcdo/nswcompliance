@@ -110,6 +110,11 @@ class ShadowResult(BaseModel):
     adg_compliant: Optional[bool] = None
     scenarios: list[ShadowScenario] = []
     worst_case_scenario: Optional[str] = None
+    # Run-level confidence from the shadow service ("low" when the height fell
+    # back to the two-storey default) + Sentinel-2 change-detection passthrough.
+    confidence: Optional[str] = None
+    construction_change_detected: Optional[bool] = None
+    construction_change_note: Optional[str] = None
     temporal_caveat: str = (
         "Shadow analysis reflects current height controls only. "
         "Does not account for approved or pending development applications "

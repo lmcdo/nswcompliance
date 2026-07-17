@@ -415,8 +415,25 @@ class TestTemplates:
         assert scan_liability("zone R3; height 8.5m") == []
 
     def test_data_passthrough_flags_logged_not_dropped(self, manifest, brief):
-        # A DA status of "Approved" is factual source data — the line must
-        # render, with the hit recorded on liability_flags.
+        # A DA status of "approved" is factual source data — the line must
+        # render, with the hit recorded on liability_flags. (Scalar value: a
+        # dict here would serialise to 'k=v; …' and the record-dump guard
+        # now routes those to the section card instead of rendering raw.)
+        brief2 = dict(brief)
+        brief2["neighbourhood"] = {
+            "da_outcomes": df("4 approved of 5 determined",
+                              source="da_tracking_mapserver"),
+        }
+        m2 = build_manifest(brief2)
+        da_id = ids(m2)["neighbourhood.da_outcomes"]
+        plan = make_plan({"template": "T_NEARBY_ACTIVITY", "fields": [da_id]})
+        overlay = render_plan(plan, m2)
+        assert "approved" in overlay.lines[0].text
+        assert overlay.lines[0].liability_flags == ["approved"]
+
+    def test_record_shaped_value_never_renders_raw(self, manifest, brief):
+        # A composite that reaches a generic template as 'k=v; …' must render
+        # as the section-card reference, never the raw dump.
         brief2 = dict(brief)
         brief2["neighbourhood"] = {
             "da_outcomes": df({"total": 5, "status_note": "4 approved"},
@@ -426,8 +443,9 @@ class TestTemplates:
         da_id = ids(m2)["neighbourhood.da_outcomes"]
         plan = make_plan({"template": "T_NEARBY_ACTIVITY", "fields": [da_id]})
         overlay = render_plan(plan, m2)
-        assert "approved" in overlay.lines[0].text
-        assert overlay.lines[0].liability_flags == ["approved"]
+        assert "total=" not in overlay.lines[0].text
+        assert "status_note=" not in overlay.lines[0].text
+        assert "section card below" in overlay.lines[0].text
 
     def test_label_for_path_humanizes(self):
         assert label_for_path("planning_controls.fsr") == "floor space ratio"
@@ -559,3 +577,69 @@ class TestNarrativePolish:
         overlay = render_plan(plan, m)
         # the qualifier must be IN the sentence, not only in the footnote
         assert "(satellite-estimated)" in overlay.lines[0].text
+
+
+# ---------------------------------------------------------------------------
+# Composite records — authored sentences, never raw 'k=v; …' dumps (#751 batch)
+# ---------------------------------------------------------------------------
+
+
+class TestCompositeRecordSentences:
+    def _manifest_with(self, brief, section, key, value, source="postgis_overlays"):
+        from services.brief_manifest import build_manifest as _bm
+        brief2 = dict(brief)
+        brief2[section] = {key: df(value, source=source)}
+        return _bm(brief2)
+
+    def test_bushfire_composite_renders_sentence(self, brief):
+        m = self._manifest_with(brief, "environmental_constraints", "bushfire", {
+            "is_bushfire_prone": True, "category": "Vegetation Buffer",
+            "bal_estimate": "BAL-12.5",
+        })
+        bid = next(e.id for e in m.entries
+                   if e.path == "environmental_constraints.bushfire")
+        plan = make_plan({"template": "T_CONSTRAINT_FLAG", "fields": [bid]})
+        overlay = render_plan(plan, m)
+        text = overlay.lines[0].text
+        assert "This lot is mapped bush fire prone" in text
+        assert "Vegetation Buffer" in text
+        assert "indicative BAL-12.5" in text
+        assert "is_bushfire_prone=" not in text
+
+    def test_bushfire_not_prone_composite(self, brief):
+        m = self._manifest_with(brief, "environmental_constraints", "bushfire", {
+            "is_bushfire_prone": False,
+        })
+        bid = next(e.id for e in m.entries
+                   if e.path == "environmental_constraints.bushfire")
+        plan = make_plan({"template": "T_CONSTRAINT_FLAG", "fields": [bid]})
+        overlay = render_plan(plan, m)
+        text = overlay.lines[0].text
+        assert "does not list this lot as bush fire prone" in text
+        assert "=" not in text
+
+    def test_lot_dimensions_composite_renders_sentence(self, brief):
+        m = self._manifest_with(brief, "planning_controls", "lot_dimensions", {
+            "area_m2": 8467.2, "frontage_m": 71.3, "depth_m": 121.0,
+        }, source="nsw_spatial_services")
+        did = next(e.id for e in m.entries
+                   if e.path == "planning_controls.lot_dimensions")
+        plan = make_plan({"template": "T_CONTROL_VALUE", "fields": [did]})
+        overlay = render_plan(plan, m)
+        text = overlay.lines[0].text
+        assert "The lot is" in text
+        assert "×" in text
+        assert "area_m2=" not in text
+        assert "frontage_m=" not in text
+
+    def test_unknown_record_shape_refuses_raw_render(self, brief):
+        m = self._manifest_with(brief, "neighbourhood", "strata_detail", {
+            "lottotal": 12, "plan_label": "SP12345",
+        }, source="cadastre_strata")
+        sid = next(e.id for e in m.entries
+                   if e.path == "neighbourhood.strata_detail")
+        plan = make_plan({"template": "T_NEARBY_ACTIVITY", "fields": [sid]})
+        overlay = render_plan(plan, m)
+        text = overlay.lines[0].text
+        assert "lottotal=" not in text
+        assert "section card below" in text

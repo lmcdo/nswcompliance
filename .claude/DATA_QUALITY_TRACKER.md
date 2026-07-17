@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2026-01-24
-**Session:** DCP Extraction QA Test Framework
+**Last Updated:** 2026-07-15
+**Session:** latent-scope analysis lane — corpus QA
 
 ---
 
@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
@@ -38,6 +39,106 @@
 | DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
 | DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
 | DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-29: Doubled-character OCR corruption in provision_text
+
+**Status:** 🟡 Partially fixed 2026-07-15 — 845 header lines stripped in DB; 22 scrambled-body rows remain for re-extraction
+**Found:** 2026-07-15 (surfaced by the latent-scope duplicate-audit lane)
+**Priority:** P1 (>2% threshold breached for affected councils; City of Sydney ~97% of live actionable rules)
+
+**Problem:** In affected provisions every character of the extracted text is
+doubled, e.g. `SSPPEECCIIFFIICC SSIITTEESS`, `KKuu--rriinngg--ggaaii`,
+`DDeevveellooppmmeenntt`. The `provision_text` is effectively unreadable — the
+field customer-facing reports and the capacity/compliance engines read from.
+
+**How it was found:** The cross-council duplicate audit
+(`scripts/latent_scope_dup_audit.py`) returned false "contradiction" pairs
+because TF-IDF was matching this garbled boilerplate rather than rule meaning.
+Investigating the noise revealed the systematic corruption.
+
+**Scope (live DB, full `regulatory_provisions`, 53,716 rows, 2026-07-15):**
+854 corrupted rows total (1.6% overall), concentrated by council:
+
+| Council | Corrupted | Live (`is_current`) |
+|---|---|---|
+| city_of_sydney | 684 | 644 |
+| ku_ring_gai | 98 | 14 |
+| campbelltown | 37 | 37 |
+| ashfield | 27 | 0 (not served) |
+| northern_beaches | 3 | 3 |
+| (NULL council) | 5 | 5 |
+
+**Detection query (read-only; regenerates the full ID list any time):**
+```sql
+SELECT id, source_council, is_current, v2_is_actionable
+FROM regulatory_provisions
+WHERE provision_text ~ '([A-Za-z])\1([A-Za-z])\2([A-Za-z])\3'
+ORDER BY source_council NULLS LAST, id;
+```
+Snapshot of all 854 IDs + snippets: `data/latent_scope/ocr_corruption_worklist.csv` (git-ignored, local).
+
+**Root cause (suspected):** the PDF→text extraction step for these documents
+(City of Sydney DCP 2012 in particular) doubled every glyph — likely a specific
+extractor/font path, not a content problem. Needs confirming against the source
+extractor before re-running.
+
+**Impact / urgency (traced 2026-07-15):**
+- **SERVED customer-facing: YES, but confined to the DCP provisions display panel.**
+  City of Sydney is configured and reachable (`frontend-nextjs/lib/council-config.ts:191`,
+  no disable gate). `app/api/provisions/for-property/route.ts` selects `provision_text`,
+  filters `is_current = TRUE` and `document_id ILIKE '%Sydney_DCP%'` (route.ts:548,846,873),
+  and `components/compliance/PageGroupedProvisions.tsx` renders it raw. So a CoS address
+  lookup shows the 644 live doubled-character rows in the provisions list.
+- **Existing sanitisation does NOT help:** `stripOcrHeaderPrefix` (route.ts:125) is a
+  Marrickville-only page-header regex — a no-op for CoS; it does not touch doubled chars.
+- **NOT affected:** capacity/constraint engine (reads `dcp_setback_controls`, where CoS is
+  clean — 0/27 corrupted source_text, 0 controls linked to a corrupted provision),
+  intelligence brief, and conveyancing (none read `regulatory_provisions`).
+- **Net severity:** a user-facing *display* defect in the provisions panel, NOT a
+  wrong-number / liability defect. Computed numbers and verdicts for CoS remain correct.
+  Business open question: actual CoS lookup traffic (config is live, but CoS is not a
+  beachhead council).
+
+**Fix applied 2026-07-15 (production read+transform+write):**
+- Stripped the doubled-glyph header lines from `provision_text` for **845 rows** via a
+  guarded transactional UPDATE — per-id, `WHERE id=%s AND provision_text=<backup value>`
+  (optimistic-concurrency guard), never blanking a row, `statement_timeout=30s`.
+- Verified: City of Sydney sample (id 95298) now renders clean; detection count dropped
+  854 → 57 still matching the pattern, of which **35 are legitimate doubled-letter words**
+  (e.g. the suburb "Woolloomooloo") — false positives, no action.
+- **Backup / rollback source:** `data/latent_scope/ocr_fix_backup.json` (all 854 pre-fix rows,
+  `{id, council, before}`). To roll back, UPDATE each id back to its `before` value.
+
+**Remaining — 22 rows need SOURCE re-extraction (NOT strip-fixable):**
+Their body text is doubled *and* scrambled (e.g. `PPrirmimaarryy` = "Primary"), which is not
+losslessly reversible. Split: city_of_sydney 7, ku_ring_gai 10, campbelltown 4, (null) 1.
+Worklist: `data/latent_scope/reextraction_worklist.csv`. Regenerate any time with the
+detection query above (then exclude legitimate doubled-letter words).
+
+**Root cause identified 2026-07-15 (investigated for re-extraction):** the source PDFs carry a
+DUPLICATED text layer. pymupdf on the local Campbelltown Part 3 PDF returns each line twice
+("Each dwelling shall have a minimum of / Each dwelling shall have a minimum of"); the original
+extractor concatenated the overlapping copies, producing the char-interleaved scramble. A clean
+re-extraction must therefore: (a) DEDUPLICATE the doubled text layer during extraction,
+(b) re-chunk by clause, (c) re-map pages (DB `pdf_page` does not align with the PDF page index —
+DB page 21 pointed at a different clause than the PDF's page 21). This is a pipeline job, not an
+in-place fix: the char-interleaved DB text is not losslessly reversible, and blind page-dumping
+would merge clauses (unsafe for legal text). City of Sydney section-6 source PDF is not local
+(only sections 3-4 are present in `data/dcps/`) → must be re-downloaded first. Deferred to the
+enrichment pipeline; scrambled bodies are already reduced (headers stripped in the 2026-07-15 pass).
+
+**UI exposure + mitigation 2026-07-15:** Of the 22, only 7 were customer-visible (provisions panel
+filters `is_current AND v2_is_actionable`); the other 15 sit in the DB unused. None have a
+`pdf_page_image_url`, so there is no figure image to fall back on — only the OCR'd text. The 2
+genuinely-unreadable ones (ids 95802, 95807 — City of Sydney section-6 figure/site-plan pages,
+e.g. Cahill Expressway / Herald Square public-domain plans, which appear only for those specific
+sites) were set `v2_is_actionable=false` to remove the text-soup from display (backup:
+`data/latent_scope/actionable_flag_backup.json`; reversible). They are figure legends — the
+enforceable setback controls live in separate text provisions / `dcp_setback_controls`, so nothing
+enforceable was hidden. The remaining 5 shown rows (4 Campbelltown, 1 Ku-ring-gai) are
+readable-but-untidy and left in place pending re-extraction.
 
 ---
 
