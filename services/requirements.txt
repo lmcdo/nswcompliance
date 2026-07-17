@@ -22,7 +22,7 @@ rasterio==1.5.0
 
 # Flood Truth — Sentinel-1 via Planetary Computer + BOM XML parsing
 planetary-computer==1.0.0
-xmltodict==0.14.2
+xmltodict==1.0.4
 
 # Climate risk raster — NARCliM NetCDF sampling
 netCDF4==1.7.4
@@ -32,11 +32,11 @@ netCDF4==1.7.4
 whitebox
 
 # Conveyancing PDF generation
-reportlab==4.4.3
+reportlab==5.0.0
 
 # nsw_imagery.py (Granny Flat aerial tiles)
-Pillow==11.3.0
-opencv-python-headless==4.10.0.84
+Pillow==12.3.0
+opencv-python-headless==5.0.0.93
 
 # Pre-DA Site History — Tessera embeddings + Wayback SSIM
 geotessera
