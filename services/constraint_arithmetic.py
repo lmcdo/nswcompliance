@@ -279,7 +279,13 @@ def _dcp_value_conflict(
     flagged for verification rather than presented as a single certain figure.
     """
     matches = _matching_controls(controls, control_type, dev_type)
-    if _resolve_lot_band(matches, lot_area_m2) is not None:
+    banded = _resolve_lot_band(matches, lot_area_m2)
+    # Suppress the conflict ONLY when the applicable band actually SUPPLIES the
+    # value. If a band resolved but its value_min is absent, _get_dcp_value fell
+    # through to a conservative value borrowed from NON-applicable bands (line
+    # 194) — surface that so the borrowed figure is flagged for verification, not
+    # read as this band's own certain control.
+    if banded is not None and banded.value_min is not None:
         return None  # the band resolved which control applies — not a conflict
     vals = sorted({c.value_min for c in matches if c.value_min is not None})
     return vals if len(vals) > 1 else None

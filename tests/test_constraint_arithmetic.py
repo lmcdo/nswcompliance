@@ -921,6 +921,29 @@ class TestBandResolution:
         assert _dcp_value_conflict(_wing_front_controls(), "front_setback", "dwelling_house",
                                    lot_area_m2=4189) is None
 
+    def test_resolved_band_missing_value_surfaces_conflict(self):
+        # Regression: a lot resolves to the <900 band, but that band's row has NO
+        # value_min (an extraction gap). _get_dcp_value falls back to the
+        # conservative max across the OTHER (non-applicable) bands, so the
+        # borrowed figure MUST be flagged for verification - previously the
+        # conflict was suppressed simply because a band resolved, serving a
+        # cross-band value with no warning.
+        controls = [
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=None,
+                       unit="m", condition="lot less than 900m2"),
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=6.5,
+                       unit="m", condition="lot between 900m2 and 1500m2"),
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=15.0,
+                       unit="m", condition="lot over 1500m2"),
+        ]
+        # 600 m2 resolves to the <900 band, which lacks a value.
+        assert _resolve_lot_band(controls, 600) is not None
+        # Conservative fallback value stands (fail-safe: largest = smallest envelope).
+        assert _get_dcp_value(controls, "front_setback", "dwelling_house", lot_area_m2=600) == 15.0
+        # ...but the gap now surfaces instead of being silently suppressed.
+        assert _dcp_value_conflict(controls, "front_setback", "dwelling_house",
+                                   lot_area_m2=600) == [6.5, 15.0]
+
     def test_unknown_area_stays_conservative(self):
         # No lot area -> cannot resolve -> conservative max, and the values
         # still surface as a conflict for the gap note.
