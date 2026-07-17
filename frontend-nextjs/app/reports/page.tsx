@@ -74,7 +74,18 @@ const TOOLS = [
   },
 ];
 
-export default function ReportsLanding() {
+interface Props {
+  searchParams: Promise<{ address?: string | string[] }>;
+}
+
+export default async function ReportsLanding({ searchParams }: Props) {
+  // An address arrives from the homepage hero search (?address=). Thread it into
+  // every tool card so the chosen tool auto-runs on that address instead of the
+  // visitor having to re-type it. Empty/malformed param = the plain hub.
+  const params = await searchParams;
+  const address = typeof params.address === 'string' ? params.address.trim() : '';
+  const hrefSuffix = address ? `?address=${encodeURIComponent(address)}` : '';
+
   return (
     <div className="space-y-12">
       {/* Header */}
@@ -87,12 +98,18 @@ export default function ReportsLanding() {
         </p>
       </div>
 
+      {address && (
+        <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          Showing tools for <span className="font-medium text-teal-900">{address}</span>. Pick a check below and your address carries through.
+        </div>
+      )}
+
       {/* Tool grid — all equal */}
       <div className="grid gap-4 sm:grid-cols-2">
         {TOOLS.map(({ href, title, tagline, description, badge }) => (
           <Link
             key={href}
-            href={href}
+            href={`${href}${hrefSuffix}`}
             className="group block bg-white rounded-xl border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-all"
           >
             <div className="flex items-start justify-between gap-2 mb-2">

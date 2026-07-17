@@ -195,6 +195,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { address, action = 'detect', notification_email } = body;
+  // #745 D3: the brief's VG-reconciled lot area — forwarded so the detect
+  // pipeline uses the SAME figure as every other card (single source of truth).
+  const lotAreaM2: number | null =
+    typeof (body as { lot_area_m2?: unknown }).lot_area_m2 === 'number'
+      ? ((body as { lot_area_m2: number }).lot_area_m2)
+      : null;
   if (!address?.trim()) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
@@ -309,7 +315,7 @@ export async function POST(request: NextRequest) {
         {
           ineligible: true,
           error:
-            'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
+            'SEPP (Housing) 2021 ch 3 pt 1 applies to secondary dwellings on land in a residential zone (R1–R5 or an equivalent zone) where a dwelling house is permissible. This lot’s zone is outside those zones, so the SEPP pathway does not apply here. A council LEP can separately permit secondary dwellings — check the zone’s land-use table in the LEP.',
           evidence: NSW_ZONE_NAMES[zone] ? `${zone} — ${NSW_ZONE_NAMES[zone]}` : zone,
           evidence_label: 'NSW Planning Portal — land zoning',
         },
@@ -352,7 +358,7 @@ export async function POST(request: NextRequest) {
         detectResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/detect`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry }),
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
           signal: AbortSignal.timeout(180_000),
         });
       } catch (err) {
@@ -381,7 +387,7 @@ export async function POST(request: NextRequest) {
           lng,
           prop_id,
           report_id: jobId,
-          extra_body: { lot_geometry: lotGeometry },
+          extra_body: { lot_geometry: lotGeometry, ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) },
           ...(notification_email ? { notification_email } : {}),
         },
       }),
@@ -433,9 +439,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Shoelace on EPSG:3857 rings with Mercator cos²(lat) correction
-    let lot_area_m2: number | null = null;
-    if (lotGeometry?.rings?.[0]) {
+    // #745 D3 / #752: a caller-supplied reconciled lot_area_m2 (the brief's
+    // single lot-area figure, already used by detect) takes precedence so the
+    // confirm calculation runs on the SAME figure as every other brief card.
+    // Fallback: shoelace on EPSG:3857 rings with Mercator cos²(lat) correction.
+    let lot_area_m2: number | null = lotAreaM2;
+    if (lot_area_m2 == null && lotGeometry?.rings?.[0]) {
       const ring: [number, number][] = lotGeometry.rings[0];
       let area = 0;
       for (let i = 0; i < ring.length; i++) {

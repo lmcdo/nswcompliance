@@ -259,6 +259,11 @@ def fetch_dcp_setbacks(
 
         entry = {
             "type":         base_label,
+            # The real development form — WITHOUT this, the capacity engine's
+            # dev_type filter defaults every row to dwelling_house and pools
+            # townhouse/flat setbacks into the dwelling envelope (Bowral brief
+            # regression: front pool (4.5, 6.5, 8, 15) mixed two forms).
+            "dev_type":     dev_type,
             "control_type": control_kind,
             "semantic_type": ctrl_type,
             "requirement":  requirement,

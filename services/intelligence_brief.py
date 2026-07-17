@@ -22,6 +22,7 @@ import re
 import sys
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
@@ -379,6 +380,10 @@ class StrataInfo(BaseModel):
     strata_type: StrataType
     strata_plan: Optional[str] = None
     plan_label: Optional[str] = None
+    # Legal title identifiers from the NSW cadastre — "Lot 5 DP900454" is the
+    # reference conveyancers and contracts use; the plan number alone is half an ID.
+    lot_number: Optional[str] = None
+    section_number: Optional[str] = None
     source: Optional[str] = None
     lot_area_m2: Optional[float] = None
     # StrataHub supplementary detail (display only — never drives the
@@ -521,7 +526,19 @@ class BushfireDetail(BaseModel):
     cross_overlays: Optional[list[dict]] = None  # flood, heritage, zone intersections
     rfs_referral_required: Optional[bool] = None
     rfs_referral_triggers: Optional[list[str]] = None
+    rfs_referral_note: Optional[str] = None  # conditional wording alongside the triggers
     cdc_pathway_available: Optional[bool] = None
+    # Pass-through parity (PR-B): guidance/context the service already emits.
+    designation_source: Optional[str] = None
+    bal_assessment_likely_required: Optional[bool] = None
+    bal_formal_assessment_cost_range: Optional[str] = None  # guidance "typical range"
+    bal_assessor_directory_url: Optional[str] = None
+    clearing_10_50_entitled: Optional[bool] = None  # None on prone land = depends on RFS 10/50 map
+    clearing_10_50_exceptions: Optional[str] = None
+    estimated_consultant_costs: Optional[str] = None
+    state_legislation: Optional[str] = None
+    legislation_url: Optional[str] = None
+    data_currency: Optional[str] = None
     confidence: Optional[str] = None
 
 
@@ -532,7 +549,13 @@ class _BushfireCompliance(BaseModel):
     cross_overlays: Optional[list[dict]] = None
     rfs_referral_required: Optional[bool] = None
     rfs_referral_triggers: Optional[list[str]] = None
+    rfs_referral_note: Optional[str] = None
     cdc_pathway_available: Optional[bool] = None
+    clearing_10_50_entitled: Optional[bool] = None
+    clearing_10_50_exceptions: Optional[str] = None
+    estimated_consultant_costs: Optional[str] = None
+    state_legislation: Optional[str] = None
+    legislation_url: Optional[str] = None
 
 
 class BushfireServiceOutput(BaseModel):
@@ -545,20 +568,47 @@ class BushfireServiceOutput(BaseModel):
     model_config = ConfigDict(extra="ignore")
     is_bushfire_prone: Optional[bool] = None
     designation_category: Optional[str] = None
+    designation_source: Optional[str] = None
     estimated_bal_band: Optional[str] = None
     designation_guideline: Optional[str] = None
     fire_signal: Optional[str] = None
+    bal_assessment_likely_required: Optional[bool] = None
+    bal_formal_assessment_cost_range: Optional[str] = None
+    bal_assessor_directory_url: Optional[str] = None
+    data_currency: Optional[str] = None
     compliance: Optional[_BushfireCompliance] = None
 
 
 class FloodDetail(BaseModel):
     """Multi-source flood analysis beyond statutory EPI flag."""
 
+    # The engine's computed screening signal (validated enum in flood_truth) —
+    # rendered as the card's headline line, never a bare verdict.
+    flood_signal: Optional[str] = None  # none/low/moderate/elevated/unavailable
     epi_flood: Optional[bool] = None
     epi_flood_label: Optional[str] = None  # EPI flood class label (human-readable)
+    # Copernicus EMS — PostGIS point-in-polygon vs ingested activation footprints.
+    # Three-state: None = not checked / table unavailable; False = checked, no
+    # mapped extent here; True = mapped flood extent intersected this location.
+    ems_flood_detected: Optional[bool] = None
+    ems_activations: Optional[list[dict]] = None  # {activation_id, event_name, event_date, flood_type}
+    sar_flood_detected: Optional[bool] = None
+    sar_confidence: Optional[str] = None
+    sar_analysis_date: Optional[str] = None
+    ses_in_flood_planning_area: Optional[bool] = None
+    ses_flood_class: Optional[str] = None
+    ses_study_name: Optional[str] = None
     jrc_occurrence_pct: Optional[float] = None  # JRC 1984-2021
+    jrc_data_year: Optional[int] = None
     wofs_frequency_pct: Optional[float] = None  # DEA WOfS
+    bom_gauge_name: Optional[str] = None
     bom_gauge_distance_km: Optional[float] = None
+    bom_last_major_flood_date: Optional[str] = None
+    bom_last_major_flood_peak_m: Optional[float] = None
+    bom_flood_history: Optional[list[dict]] = None  # {date, peak_m, ari_category}
+    in_100yr_flood_zone: Optional[bool] = None
+    ground_elevation_m_ahd: Optional[float] = None
+    s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
     confidence: Optional[str] = None
 
@@ -570,16 +620,33 @@ class FloodServiceOutput(BaseModel):
     consumes. _build_flood_detail reads typed attributes off it, so a typo or a
     renamed key is a static/type error here instead of a silent null in the card
     (the jrc_occurrence_pct vs jrc_water_occurrence_pct class). Extra keys the
-    service emits (jrc_data_year, refused, etc.) are ignored; values stay
-    nullable so a genuine empty reading is preserved.
+    service emits (refused, hawkesbury_* backward-compat, etc.) are ignored;
+    values stay nullable so a genuine empty reading is preserved.
     """
 
     model_config = ConfigDict(extra="ignore")
+    flood_signal: Optional[str] = None
     epi_flood_class: Optional[str] = None
     epi_flood_label: Optional[str] = None
+    ems_flood_detected: Optional[bool] = None
+    ems_activations: Optional[list[dict]] = None
+    sar_flood_detected: Optional[bool] = None
+    sar_confidence: Optional[str] = None
+    sar_analysis_date: Optional[str] = None
+    ses_in_flood_planning_area: Optional[bool] = None
+    ses_flood_class: Optional[str] = None
+    ses_study_name: Optional[str] = None
     jrc_water_occurrence_pct: Optional[float] = None
+    jrc_data_year: Optional[int] = None
     dea_wofs_frequency_pct: Optional[float] = None
+    bom_gauge_name: Optional[str] = None
     bom_gauge_distance_km: Optional[float] = None
+    bom_last_major_flood_date: Optional[str] = None
+    bom_last_major_flood_peak_m: Optional[float] = None
+    bom_flood_history: Optional[list[dict]] = None
+    in_100yr_flood_zone: Optional[bool] = None
+    ground_elevation_m_ahd: Optional[float] = None
+    s1_gap_warning: Optional[str] = None
     flood_studies: Optional[list[dict]] = None
 
 
@@ -608,6 +675,11 @@ class ShadowServiceOutput(BaseModel):
     adg_compliant: Optional[bool] = None
     worst_case_scenario: Optional[str] = None
     scenarios: list[ShadowScenarioOutput] = []
+    # Run-level passthrough (PR-B): the envelope confidence is merged into the
+    # outputs dict by get_shadow_risk; Sentinel-2 change detection rides along.
+    confidence: Optional[str] = None
+    construction_change_detected: Optional[bool] = None
+    construction_change_note: Optional[str] = None
 
 
 class StrataCoreOutput(BaseModel):
@@ -1810,10 +1882,12 @@ def _fetch_refusal_stats(lga_name: str) -> Optional[dict]:
 
 def _fetch_shadow(
     address: str, prop_id: int, lat: float, lng: float,
-    height_m: Optional[float],
+    height_m: Optional[float], report_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Shadow pipeline via Railway."""
-    return get_shadow_risk(address, prop_id, lat, lng, height_m=height_m)
+    return get_shadow_risk(
+        address, prop_id, lat, lng, height_m=height_m, report_id=report_id,
+    )
 
 
 def _fetch_dcp_controls(
@@ -2021,6 +2095,25 @@ from services.lot_dimensions import (
 # ---------------------------------------------------------------------------
 
 
+def _derive_service_report_id(parent_report_id: str, product: str) -> str:
+    """Deterministic per-product report id for satellite writes (issue #762).
+
+    flood/bushfire/shadow each upsert into ``property_reports`` with
+    ``ON CONFLICT (id) DO UPDATE SET outputs`` — handing every service the
+    brief's single parent report_id let the last writer overwrite the first
+    writer's ``outputs`` while the row kept the first writer's ``product``
+    label (e.g. rows tagged ``product='bushfire'`` carrying flood or shadow
+    fields, which then poisoned the bushfire cache read).
+
+    ``uuid5(parent, product)`` keeps one stable row per product per brief run
+    (re-runs of the same brief upsert the same derived id) while guaranteeing
+    distinct rows across products. The parent report_id itself is unchanged —
+    standalone tool flows still poll ``property_reports`` by the id the
+    frontend allocated, and the services' own id handling is untouched.
+    """
+    return str(uuid.uuid5(uuid.UUID(parent_report_id), product))
+
+
 def _fetch_bushfire(
     address: str, lat: float, lng: float,
     prop_id: Optional[str], report_id: str,
@@ -2135,16 +2228,28 @@ def _build_bushfire_detail(bushfire_raw: Optional[dict]) -> Optional[BushfireDet
         return None
     _warn_on_drift(BushfireServiceOutput, bushfire_raw.get("outputs"), "bushfire")
     out = BushfireServiceOutput.model_validate(bushfire_raw.get("outputs") or {})
+    comp = out.compliance
     return BushfireDetail(
         is_bushfire_prone=out.is_bushfire_prone,
         category=out.designation_category,
         bal_estimate=out.estimated_bal_band,
         vegetation_type=out.designation_guideline,
         fire_signal=out.fire_signal,
-        cross_overlays=(out.compliance.cross_overlays if out.compliance else None),
-        rfs_referral_required=(out.compliance.rfs_referral_required if out.compliance else None),
-        rfs_referral_triggers=(out.compliance.rfs_referral_triggers if out.compliance else None),
-        cdc_pathway_available=(out.compliance.cdc_pathway_available if out.compliance else None),
+        designation_source=out.designation_source,
+        bal_assessment_likely_required=out.bal_assessment_likely_required,
+        bal_formal_assessment_cost_range=out.bal_formal_assessment_cost_range,
+        bal_assessor_directory_url=out.bal_assessor_directory_url,
+        data_currency=out.data_currency,
+        cross_overlays=(comp.cross_overlays if comp else None),
+        rfs_referral_required=(comp.rfs_referral_required if comp else None),
+        rfs_referral_triggers=(comp.rfs_referral_triggers if comp else None),
+        rfs_referral_note=(comp.rfs_referral_note if comp else None),
+        cdc_pathway_available=(comp.cdc_pathway_available if comp else None),
+        clearing_10_50_entitled=(comp.clearing_10_50_entitled if comp else None),
+        clearing_10_50_exceptions=(comp.clearing_10_50_exceptions if comp else None),
+        estimated_consultant_costs=(comp.estimated_consultant_costs if comp else None),
+        state_legislation=(comp.state_legislation if comp else None),
+        legislation_url=(comp.legislation_url if comp else None),
         confidence=bushfire_raw.get("confidence"),
     )
 
@@ -2162,12 +2267,29 @@ def _build_flood_detail(flood_raw: Optional[dict]) -> Optional[FloodDetail]:
     out = FloodServiceOutput.model_validate(flood_raw.get("outputs") or {})
     epi_class = out.epi_flood_class
     return FloodDetail(
+        flood_signal=out.flood_signal,
         # None = not assessed; False = checked, not in a flood class; True = flood class present
         epi_flood=(None if epi_class is None else epi_class != "none"),
         epi_flood_label=out.epi_flood_label,
+        ems_flood_detected=out.ems_flood_detected,
+        ems_activations=out.ems_activations,
+        sar_flood_detected=out.sar_flood_detected,
+        sar_confidence=out.sar_confidence,
+        sar_analysis_date=out.sar_analysis_date,
+        ses_in_flood_planning_area=out.ses_in_flood_planning_area,
+        ses_flood_class=out.ses_flood_class,
+        ses_study_name=out.ses_study_name,
         jrc_occurrence_pct=out.jrc_water_occurrence_pct,
+        jrc_data_year=out.jrc_data_year,
         wofs_frequency_pct=out.dea_wofs_frequency_pct,
+        bom_gauge_name=out.bom_gauge_name,
         bom_gauge_distance_km=out.bom_gauge_distance_km,
+        bom_last_major_flood_date=out.bom_last_major_flood_date,
+        bom_last_major_flood_peak_m=out.bom_last_major_flood_peak_m,
+        bom_flood_history=out.bom_flood_history,
+        in_100yr_flood_zone=out.in_100yr_flood_zone,
+        ground_elevation_m_ahd=out.ground_elevation_m_ahd,
+        s1_gap_warning=out.s1_gap_warning,
         flood_studies=out.flood_studies,
         confidence=flood_raw.get("confidence"),
     )
@@ -2203,6 +2325,9 @@ def _build_shadow_result(shadow_result: Optional[dict]) -> Optional[ShadowResult
         adg_compliant=out.adg_compliant,
         scenarios=scenarios,
         worst_case_scenario=out.worst_case_scenario,
+        confidence=out.confidence,
+        construction_change_detected=out.construction_change_detected,
+        construction_change_note=out.construction_change_note,
     )
 
 
@@ -2359,8 +2484,13 @@ def _build_granny_flat_detail(granny_flat_raw: Optional[dict]) -> Optional[Grann
 
 
 def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDetail]:
-    """Extract PreDAHistoryDetail from raw pre-DA output."""
-    if not pre_da_raw:
+    """Extract PreDAHistoryDetail from raw pre-DA output.
+
+    A refused run (fail-closed coverage/empty-timeline gate, issue #751) carries
+    no timeline — treat it as no detail; the refusal reason is surfaced on the
+    DataField by ``_pre_da_reason``.
+    """
+    if not pre_da_raw or pre_da_raw.get("refused"):
         return None
     return PreDAHistoryDetail(
         timeline=pre_da_raw.get("timeline"),
@@ -2368,6 +2498,15 @@ def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDet
         council=pre_da_raw.get("council"),
         data_quality_note=pre_da_raw.get("data_quality_note"),
     )
+
+
+def _pre_da_reason(pre_da_raw: Optional[dict]) -> str:
+    """Reason for an absent pre-DA detail: a refused run carries its own
+    reason (legit-empty, e.g. no published satellite coverage); anything else
+    is the generic not-requested/failed state."""
+    if pre_da_raw and pre_da_raw.get("refused") and pre_da_raw.get("reason"):
+        return str(pre_da_raw.get("reason"))
+    return "Pre-DA history not requested or failed"
 
 
 def _fetch_terrain(lat: float, lng: float) -> dict:
@@ -2448,7 +2587,7 @@ def _build_satellite_data(
             confidence=ConfidenceLevel.ESTIMATED if pre_da_detail else ConfidenceLevel.NOT_AVAILABLE,
             source="pre_da_history",
             as_at=today,
-            reason=None if pre_da_detail else "Pre-DA history not requested or failed",
+            reason=None if pre_da_detail else _pre_da_reason(pre_da_raw),
         ),
         terrain=DataField(
             value=terrain_detail,
@@ -3026,11 +3165,15 @@ def _build_environmental(
             reason="Overlay query did not complete" if overlays_failed else None,
         ),
         coastal_hazards=DataField(
+            # #745 D5: "queried, zero coastal layers" is a checked-CLEAR result,
+            # not a data gap. Legit-empty = value None + NO reason, keeping the
+            # overlay-auth badge (same contract as nearest_features above).
+            # NOT_AVAILABLE + reason is reserved for an actual fetch failure.
             value=coastal_layers if coastal_layers else None,
-            confidence=auth if coastal_layers else ConfidenceLevel.NOT_AVAILABLE,
+            confidence=overlay_auth,
             source="sepp_resilience_hazards",
             as_at=today,
-            reason=None if coastal_layers else "No coastal hazard overlays at this location",
+            reason="Overlay query did not complete" if overlays_failed else None,
         ),
         mine_subsidence=DataField(
             value=None if mine_failed else (mine_subsidence_raw.get("in_district", False) if mine_subsidence_raw else False),
@@ -3456,12 +3599,12 @@ def _generate_brief_sse(
         if req.include_satellite:
             f_bushfire = pool.submit(
                 _safe_call,
-                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                lambda: _fetch_bushfire(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, _derive_service_report_id(report_id, "bushfire")),
                 "bushfire_prescreen", ConfidenceLevel.AUTHORITATIVE,
             )
             f_flood_sat = pool.submit(
                 _safe_call,
-                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, report_id),
+                lambda: _fetch_flood(req.address, lat, lng, str(resolved_prop_id) if resolved_prop_id else None, _derive_service_report_id(report_id, "flood")),
                 "flood_truth", ConfidenceLevel.ESTIMATED,
             )
             f_climate = pool.submit(
@@ -3552,6 +3695,10 @@ def _generate_brief_sse(
             strata_type=strata_type,
             strata_plan=strata_raw.get("strata_plan"),
             plan_label=strata_raw.get("plan_label"),
+            lot_number=(str(strata_raw.get("lot_number"))
+                        if strata_raw.get("lot_number") is not None else None),
+            section_number=(str(strata_raw.get("section_number"))
+                            if strata_raw.get("section_number") is not None else None),
             source=strata_raw.get("source"),
             lot_area_m2=lot_area_m2,
             lot_total=strata_raw.get("lot_total"),
@@ -3608,7 +3755,7 @@ def _generate_brief_sse(
         )
         f_shadow = pool.submit(
             _safe_call,
-            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m),
+            lambda: _fetch_shadow(req.address, resolved_prop_id or 0, lat, lng, height_m, _derive_service_report_id(report_id, "shadow")),
             "shadow_detector", ConfidenceLevel.DERIVED,
         )
         f_dcp = pool.submit(
@@ -4007,12 +4154,19 @@ def _generate_brief_sse(
         )
     else:
         contributions_raw = contributions_df.value
+        # #745 D5: propagate the fetch's OWN confidence/reason. A successful
+        # query with zero contributions plans is legit-empty (authoritative,
+        # no reason) — only a genuine fetch failure is NOT_AVAILABLE+reason.
+        contributions_failed = (
+            contributions_df.confidence == ConfidenceLevel.NOT_AVAILABLE
+        )
         contributions_field = DataField(
             value=contributions_raw,
-            confidence=ConfidenceLevel.AUTHORITATIVE if contributions_raw else ConfidenceLevel.NOT_AVAILABLE,
+            confidence=ConfidenceLevel.NOT_AVAILABLE if contributions_failed
+            else ConfidenceLevel.AUTHORITATIVE,
             source="planning_portal_cp",
             as_at=today,
-            reason=None if contributions_raw else "No contributions plans found for this property",
+            reason=contributions_df.reason if contributions_failed else None,
         )
         brief = DevelopmentBrief(
             address=req.address, lat=lat, lng=lng,

@@ -25,10 +25,11 @@ Response contract (must match frontend BushfireResult):
     "fire_signal": "none" | "low" | "moderate" | "elevated" | "unavailable",
     "compliance": {
       "state_legislation": str | null,
-      "rfs_referral_required": bool | null,
-      "rfs_referral_triggers": list[str] | null,
+      "rfs_referral_required": bool | null,   # null on prone land = depends on the proposal (see triggers/note)
+      "rfs_referral_note": str | null,        # conditional wording rendered alongside the triggers
+      "rfs_referral_triggers": list[str] | null,  # always populated when bushfire prone
       "cdc_pathway_available": bool | null,
-      "clearing_10_50_entitled": bool | null,
+      "clearing_10_50_entitled": bool | null,  # null on prone land = depends on the RFS 10/50 entitlement area map
       "clearing_10_50_exceptions": str | null,
       "cross_overlays": list[dict] | null,
       "estimated_consultant_costs": str | null,
@@ -86,6 +87,7 @@ _DEFAULT_OUTPUTS: dict = {
     "compliance": {
         "state_legislation": None,
         "rfs_referral_required": None,
+        "rfs_referral_note": None,
         "rfs_referral_triggers": None,
         "cdc_pathway_available": None,
         "clearing_10_50_entitled": None,
@@ -364,8 +366,19 @@ def _build_compliance(
     is_prone = rfs_result.get("is_bushfire_prone")
     bal_band = rfs_result.get("estimated_bal_band")
 
-    # RFS referral required if bushfire prone (s4.14 EP&A Act)
-    rfs_referral_required = is_prone if is_prone is not None else None
+    # RFS referral (s100B Rural Fires Act, via s4.14 EP&A Act context): a standard
+    # dwelling DA on bush fire prone land is assessed by the COUNCIL against
+    # Planning for Bush Fire Protection — formal RFS referral applies only to the
+    # trigger developments (subdivision, Special Fire Protection Purpose). Without
+    # a specific proposal the answer is unknown, so a prone lot carries None (three-
+    # state) plus the trigger list and a conditional note — never a blanket True.
+    rfs_referral_required = False if is_prone is False else None
+    rfs_referral_note = (
+        "Referral to the NSW Rural Fire Service applies only if the proposal "
+        "matches a trigger below. Other development on bush fire prone land is "
+        "assessed by the council against Planning for Bush Fire Protection."
+        if is_prone else None
+    )
 
     # CDC pathway: available if estimated BAL <= 29 for some dev types under Codes SEPP
     # BAL-40 or BAL-FZ -> DA pathway mandatory
@@ -373,20 +386,28 @@ def _build_compliance(
     if bal_band is not None:
         cdc_available = bal_band not in ("BAL-40 to BAL-FZ",)
 
-    # 10/50 vegetation clearing entitlement — applies to bushfire prone land
-    clearing_entitled = is_prone if is_prone is not None else None
+    # 10/50 vegetation clearing: the entitlement follows the RFS 10/50 entitlement-
+    # area map, not bare BFPL status — a prone lot is unknown (None) until checked
+    # against that map, so the exceptions text carries the conditional wording.
+    clearing_entitled = False if is_prone is False else None
     # Exceptions depend on what overlays actually intersect the property
     has_heritage = any(o.get("type") == "heritage" for o in cross_overlays)
     clearing_exceptions = None
-    if clearing_entitled:
+    if is_prone:
         if has_heritage:
             clearing_exceptions = (
-                "Heritage conservation area detected — 10/50 clearing entitlements "
-                "may be restricted. Check with council before clearing."
+                "Whether the 10/50 vegetation clearing scheme applies here depends "
+                "on the RFS 10/50 entitlement area map — check the address in the "
+                "RFS online 10/50 tool. A heritage conservation area intersects "
+                "this property, which can restrict 10/50 clearing — check with "
+                "council before clearing. Entitlements do not apply within "
+                "threatened species habitat or 40m of a waterway."
             )
         else:
             clearing_exceptions = (
-                "Standard 10/50 entitlements apply. Does not apply within "
+                "Whether the 10/50 vegetation clearing scheme applies here depends "
+                "on the RFS 10/50 entitlement area map — check the address in the "
+                "RFS online 10/50 tool. Entitlements do not apply within "
                 "threatened species habitat or 40m of a waterway."
             )
 
@@ -397,7 +418,8 @@ def _build_compliance(
             if is_prone else None
         ),
         "rfs_referral_required": rfs_referral_required,
-        "rfs_referral_triggers": _S414_TRIGGERS if rfs_referral_required else None,
+        "rfs_referral_note": rfs_referral_note,
+        "rfs_referral_triggers": _S414_TRIGGERS if is_prone else None,
         "cdc_pathway_available": cdc_available,
         "clearing_10_50_entitled": clearing_entitled,
         "clearing_10_50_exceptions": clearing_exceptions,
@@ -425,6 +447,29 @@ def _build_data_sources(rfs_result: dict, cross_overlays: list) -> list:
 # ---------------------------------------------------------------------------
 # DB write
 # ---------------------------------------------------------------------------
+
+# Sentinel key that every genuine bushfire outputs blob carries (present even
+# when its value is None). Rows written before the #762 fix can hold flood or
+# shadow outputs under product='bushfire' — the shared-report_id clobber —
+# and serving one renders an all-null bushfire section with
+# fire_signal='unavailable'. Any cached row missing this key is skipped.
+_CACHE_SENTINEL_KEYS = ("is_bushfire_prone",)
+
+
+def _first_valid_cached_row(rows):
+    """Return the newest cached row whose outputs are bushfire-shaped.
+
+    Defence in depth for issue #762: a row whose ``outputs`` lacks every
+    sentinel key is poisoned (another product's outputs clobbered it) and is
+    skipped, falling through to the next row or to live compute. Never serve
+    a poisoned row.
+    """
+    for row in rows or []:
+        outputs = row.get("outputs") if isinstance(row, dict) else None
+        if isinstance(outputs, dict) and any(k in outputs for k in _CACHE_SENTINEL_KEYS):
+            return row
+    return None
+
 
 def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs, confidence, data_sources):
     sql = """
@@ -481,10 +526,15 @@ def run_bushfire(req: BushfireRequest):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
-            cached = cur.fetchone()
+            # #762 (prior-art-checked: same cache read being hardened in
+            # place, no new source): newest row can be poisoned — another
+            # product's outputs clobbered under product='bushfire' — so skip
+            # rows missing the bushfire sentinel key instead of blindly
+            # serving the newest.
+            cached = _first_valid_cached_row(cur.fetchall())
         if cached:
             raw = cached["outputs"] or {}
             # Merge with defaults so cached blobs from older code versions still have all fields

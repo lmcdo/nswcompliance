@@ -624,7 +624,7 @@
     "effective_fsr": null,
     "effective_height_m": null,
     "gaps": [
-      "LEP height limit not available \u2014 cannot compute height envelope",
+      "Height limit not available from the LEP or the DCP \u2014 cannot compute height envelope",
       "LEP FSR not available \u2014 cannot compute FSR envelope",
       "No DCP setback controls available \u2014 footprint not reduced"
     ],
@@ -722,7 +722,7 @@
     "effective_fsr": 0.5,
     "effective_height_m": null,
     "gaps": [
-      "LEP height limit not available \u2014 cannot compute height envelope",
+      "Height limit not available from the LEP or the DCP \u2014 cannot compute height envelope",
       "No DCP setback controls available \u2014 footprint not reduced"
     ],
     "landscaping_reduction_m2": null,

@@ -4,41 +4,69 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend-nextjs"
     schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "security"
-    commit-message:
-      prefix: "chore(deps)"
-    groups:
-      # Group minor/patch updates to reduce PR noise
-      minor-and-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  # Python dependencies (if using requirements.txt or pyproject.toml)
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "monthly"
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "security"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # typescript 7 (native-compiler line) ships no JS compiler API — Next cannot
+      # resolve tsconfig paths through it — and it peer-conflicts with
+      # @typescript-eslint 8. Staged-majors plan + evidence: issue #770.
+      # Revisit when Next and typescript-eslint support TS7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # One PR for all minor/patch bumps — the safe batch.
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # One PR for all majors too — breaking bumps land together for a
+      # deliberate review pass, not one noisy PR each.
+      majors:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+
+  # Python dependencies (requirements*.txt)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      majors:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"

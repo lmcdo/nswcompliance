@@ -283,17 +283,17 @@ export default function UpzoningCheckPage() {
               Mapped status for this lot (live NSW planning layers)
             </p>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className={`px-2.5 py-1 rounded-full border ${result.gates.in_tod ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                TOD precinct: {result.gates.in_tod ? 'yes' : 'not mapped here'}
+              <span className={`px-2.5 py-1 rounded-full border ${result.gates.in_tod ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                {result.gates.in_tod ? 'In a TOD precinct' : 'Not in a TOD precinct'}
               </span>
-              <span className={`px-2.5 py-1 rounded-full border ${result.gates.in_lmr_area ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                Low and Mid-Rise reform area: {result.gates.in_lmr_area ? 'yes' : 'not established'}
+              <span className={`px-2.5 py-1 rounded-full border ${result.gates.in_lmr_area ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                {result.gates.in_lmr_area ? 'In a Low & Mid-Rise reform area' : 'Not a Low & Mid-Rise reform area'}
               </span>
-              <span className={`px-2.5 py-1 rounded-full border ${result.gates.dual_occ_prohibited ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                Dual-occupancy prohibition: {result.gates.dual_occ_prohibited ? 'mapped on this lot' : 'not mapped here'}
+              <span className={`px-2.5 py-1 rounded-full border ${result.gates.dual_occ_prohibited ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                {result.gates.dual_occ_prohibited ? 'Dual occupancy prohibited on this lot' : 'No dual-occupancy prohibition'}
               </span>
-              <span className={`px-2.5 py-1 rounded-full border ${result.heritage.flag ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
-                Heritage: {result.heritage.flag ? 'mapped on this lot' : 'not mapped here'}
+              <span className={`px-2.5 py-1 rounded-full border ${result.heritage.flag ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                {result.heritage.flag ? 'Heritage listed' : 'No heritage listing'}
               </span>
             </div>
           </div>
@@ -351,6 +351,25 @@ export default function UpzoningCheckPage() {
           {/* Forms */}
           {result.status === 'ok' && (
             <>
+              {/* Lead with the confident answer: name the forms that meet the mapped
+                  standards up front, so the result reads as a finding, not a hedge.
+                  The "with consent / subject to a DA" caveat lives once, below. */}
+              {eligibleForms.length > 0 && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900">
+                      On this block you can apply to build:{' '}
+                      {eligibleForms.map((f) => formLabel(f.development_type)).join(', ')}
+                    </p>
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Each meets the mapped Housing SEPP standards for this lot — with consent,
+                      through a development application. Detail and source clauses below.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl border border-gray-200 p-5">
                 <h3 className="text-sm font-semibold text-gray-900 mb-1">
                   Housing types checked against mapped standards
@@ -375,7 +394,12 @@ export default function UpzoningCheckPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-900">{formLabel(f.development_type)}</p>
                           <p className={`text-xs mt-1 ${f.eligible ? 'text-green-700' : f.unconfirmed ? 'text-amber-700' : 'text-gray-600'}`}>
-                            {f.reason}
+                            {/* Drop the inline "(subject to a development application)" on the
+                                eligible cards — the section note above states it once, and
+                                repeating it per row is what made a clear "meets" read as a hedge. */}
+                            {f.eligible
+                              ? f.reason.replace(/\s*\(subject to a development application\)/i, '')
+                              : f.reason}
                           </p>
                           {/* A "no" on the reform pathway is NOT "cannot build" — the
                               council's own plan may permit this type via a standard DA.

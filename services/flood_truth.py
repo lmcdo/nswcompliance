@@ -850,6 +850,42 @@ def _query_compound_risk_layers(lat: float, lng: float) -> dict:
 _WOFS_HARD_TIMEOUT = 60  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
 
 
+def _wofs_frequency_from_bands(
+    descriptions: list, values: list
+) -> Optional[float]:
+    """Select the WOfS frequency (0.0-1.0) from a GetCoverage response by
+    band NAME, never by position.
+
+    Audit finding 2026-07-15 (issue #745 D1, live-reproduced at 9 NSW points):
+    the DEA WCS returns the three measurement bands (count_wet, count_clear,
+    frequency) in an UNSTABLE order that varies by location — at Concord and
+    at a bone-dry Dubbo paddock, positional band 3 was count_clear (~635),
+    which the old >1.0 clamp converted into a fake 100% flood frequency and a
+    false user-facing flood constraint.
+
+    Fail-closed rules: no band named "frequency" → None (no positional
+    fallback); value outside [0, 1], nodata, or NaN → None. A frequency can
+    never legitimately exceed 1.0 — clamping masks band-identity bugs.
+    """
+    band_idx = next(
+        (i for i, d in enumerate(descriptions)
+         if isinstance(d, str) and d.strip().lower() == "frequency"),
+        None,
+    )
+    if band_idx is None or band_idx >= len(values):
+        logger.warning(
+            "DEA WOfS: no band named 'frequency' in response "
+            "(descriptions=%s) — failing closed", descriptions)
+        return None
+    raw = values[band_idx]
+    if raw == -999.0 or math.isnan(raw) or raw < 0.0 or raw > 1.0:
+        logger.warning(
+            "DEA WOfS: frequency band value %r outside [0,1] — failing closed",
+            raw)
+        return None
+    return raw
+
+
 def _query_dea_wofs(lat: float, lng: float) -> dict:
     """
     Sample DEA Water Observations (WOfS) multi-year composite via WCS.
@@ -875,19 +911,12 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
         if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
             return {"dea_wofs_frequency_pct": None}
         with rasterio.open(io.BytesIO(r.content)) as ds:
-            # Band order: 1=count_wet, 2=count_clear, 3=frequency (0.0–1.0)
-            if ds.count >= 3:
-                raw = float(ds.read(3)[0, 0])
-            else:
-                raw = float(ds.read(1)[0, 0])  # single-band fallback
-        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            descriptions = list(ds.descriptions or [])
+            values = [float(ds.read(i + 1)[0, 0]) for i in range(ds.count)]
+        raw = _wofs_frequency_from_bands(descriptions, values)
+        if raw is None:
             return {"dea_wofs_frequency_pct": None}
-        # frequency band is 0.0–1.0; guard against already-percentage values
-        if raw > 1.0:
-            pct = min(raw, 100.0)
-        else:
-            pct = raw * 100.0
-        return {"dea_wofs_frequency_pct": round(pct, 2)}
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
 
     try:
         with ThreadPoolExecutor(max_workers=1) as inner:
@@ -1468,6 +1497,27 @@ def _s1b_gap_affected(start: date, end: date) -> bool:
     return start <= S1B_GAP_END and end >= S1B_GAP_START
 
 
+# Sentinel keys that genuine flood outputs carry (any one suffices). Rows
+# written before the #762 fix can hold bushfire or shadow outputs under
+# product='flood' — the shared-report_id clobber. A cached row missing every
+# sentinel key is poisoned and must be skipped, never served.
+_CACHE_SENTINEL_KEYS = ("epi_flood_class", "flood_signal")
+
+
+def _first_valid_cached_row(rows):
+    """Return the newest cached row whose outputs are flood-shaped.
+
+    Defence in depth for issue #762 (prior-art-checked: hardening of this
+    module's own existing cache read, no new source): skip poisoned rows and
+    fall through to the next row or to live compute.
+    """
+    for row in rows or []:
+        outputs = row.get("outputs") if isinstance(row, dict) else None
+        if isinstance(outputs, dict) and any(k in outputs for k in _CACHE_SENTINEL_KEYS):
+            return row
+    return None
+
+
 def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs):
     confidence   = _compute_confidence(internal_outputs)
     data_sources = _build_data_sources(internal_outputs)
@@ -1599,10 +1649,14 @@ def run_flood(req: FloodRequest):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
-            cached = cur.fetchone()
+            # #762 (prior-art-checked: same cache read hardened in place, no
+            # new source): skip poisoned rows — another product's outputs
+            # clobbered under product='flood' — instead of blindly serving
+            # the newest.
+            cached = _first_valid_cached_row(cur.fetchall())
         if cached:
             # Write a row for the new report_id so PDF generation can find it
             _write_report(

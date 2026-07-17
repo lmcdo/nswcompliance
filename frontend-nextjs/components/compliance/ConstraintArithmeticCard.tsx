@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, ChevronDown, ChevronUp, AlertTriangle, TrendingDown } from 'lucide-react';
+import { zoneFamily } from '@/lib/regulatory-constants';
 
 // ---------------------------------------------------------------------------
 // Types matching Python ConstraintArithmeticResult
@@ -415,12 +416,16 @@ export function ConstraintArithmeticCard({
             </div>
           )}
 
-          {/* Non-residential zone — dwelling yield/setbacks aren't modelled; explain, don't assert. */}
+          {/* Non-residential zone — dwelling yield/setbacks aren't modelled; explain, don't
+              assert. Copy branches by zone FAMILY: "shop-top housing above retail" is true
+              on a centres/business zone and wrong on a conservation or rural one. */}
           {!zoneModelled && (
             <div className="bg-white border border-amber-200 rounded-lg p-3 col-span-2">
               <div className="text-xs font-medium text-amber-700 mb-1">Dwelling yield</div>
               <div className="text-sm text-gray-700 leading-snug">
-                Not modelled for {zone || 'this zone'} — a non-residential zone. Housing here is delivered through the zone&rsquo;s permitted uses (e.g. shop-top housing above retail), not a detached dwelling. The GFA envelope above still applies; see the land use table for the permitted forms.
+                {zoneFamily(zone || '') === 'centres'
+                  ? <>Not modelled for {zone || 'this zone'} — a non-residential zone. Housing here is delivered through the zone&rsquo;s permitted uses (e.g. shop-top housing above retail), not a detached dwelling. The GFA envelope above still applies; see the land use table for the permitted forms.</>
+                  : <>Dwelling yield is not modelled for {zone || 'this zone'} — outside the residential zones the permitted housing forms are set by the zone&rsquo;s land-use table, and yield modelling assumes a residential development form. The GFA envelope above still applies.</>}
               </div>
             </div>
           )}

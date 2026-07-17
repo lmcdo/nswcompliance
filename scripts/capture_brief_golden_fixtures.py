@@ -147,7 +147,11 @@ def capture_housing_sepp_bowral() -> None:
 
     from generate_conveyancing_report import get_valuation
     from services.housing_sepp_eligibility import evaluate_eligibility
-    from services.lot_dimensions import calculate_lot_dimensions, fetch_lot_geometry
+    from services.lot_dimensions import (
+        calculate_lot_dimensions,
+        eligibility_lot_width,
+        fetch_lot_geometry,
+    )
     from services.vg_comparables import _webmercator_to_wgs84
 
     geom = fetch_lot_geometry(str(BOWRAL["prop_id"]))
@@ -158,12 +162,20 @@ def capture_housing_sepp_bowral() -> None:
     lat, lng = _webmercator_to_wgs84(cx, cy)
     val = get_valuation(BOWRAL["prop_id"])
     lot_area = val.get("lot_area_m2")
-    width = dims.frontage_m if dims else None
+    # Mirror the brief exactly: SEPP width tests use the battleaxe-aware developable
+    # HEAD width (eligibility_lot_width), NOT the raw cadastral frontage — which on a
+    # flag lot is the access handle and comes back null. Using frontage_m here made
+    # the capture disagree with the brief after #720 (38 Park Rd read "unconfirmed"
+    # in the fixture while the live brief resolved 70 m and marked it eligible).
+    width = eligibility_lot_width(dims)
     results = evaluate_eligibility(BOWRAL["zone"], lot_area, width, lat, lng)
     _write("housing_sepp_eligibility_bowral",
            {**BOWRAL, "lat": lat, "lng": lng, "lot_area_m2": lot_area,
             "lot_width_m": width,
-            "lot_irregular": dims.irregular if dims else None},
+            "lot_irregular": dims.irregular if dims else None,
+            "lot_type": dims.lot_type if dims else None,
+            "battleaxe_main_lot_width_m": dims.battleaxe_main_lot_width_m if dims else None,
+            "battleaxe_access_way_width_m": dims.battleaxe_access_way_width_m if dims else None},
            [asdict(r) for r in results])
 
 
