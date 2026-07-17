@@ -448,6 +448,29 @@ def _build_data_sources(rfs_result: dict, cross_overlays: list) -> list:
 # DB write
 # ---------------------------------------------------------------------------
 
+# Sentinel key that every genuine bushfire outputs blob carries (present even
+# when its value is None). Rows written before the #762 fix can hold flood or
+# shadow outputs under product='bushfire' — the shared-report_id clobber —
+# and serving one renders an all-null bushfire section with
+# fire_signal='unavailable'. Any cached row missing this key is skipped.
+_CACHE_SENTINEL_KEYS = ("is_bushfire_prone",)
+
+
+def _first_valid_cached_row(rows):
+    """Return the newest cached row whose outputs are bushfire-shaped.
+
+    Defence in depth for issue #762: a row whose ``outputs`` lacks every
+    sentinel key is poisoned (another product's outputs clobbered it) and is
+    skipped, falling through to the next row or to live compute. Never serve
+    a poisoned row.
+    """
+    for row in rows or []:
+        outputs = row.get("outputs") if isinstance(row, dict) else None
+        if isinstance(outputs, dict) and any(k in outputs for k in _CACHE_SENTINEL_KEYS):
+            return row
+    return None
+
+
 def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs, confidence, data_sources):
     sql = """
         INSERT INTO property_reports
@@ -503,10 +526,15 @@ def run_bushfire(req: BushfireRequest):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
-            cached = cur.fetchone()
+            # #762 (prior-art-checked: same cache read being hardened in
+            # place, no new source): newest row can be poisoned — another
+            # product's outputs clobbered under product='bushfire' — so skip
+            # rows missing the bushfire sentinel key instead of blindly
+            # serving the newest.
+            cached = _first_valid_cached_row(cur.fetchall())
         if cached:
             raw = cached["outputs"] or {}
             # Merge with defaults so cached blobs from older code versions still have all fields
