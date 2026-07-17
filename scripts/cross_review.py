@@ -266,7 +266,9 @@ def call_model(messages: list[dict], model: str, api_key: str) -> dict:
 
 
 def _safe_confidence(value: object) -> float:
-    """Coerce a finding's confidence to a float; unparseable -> 0.0 (never crash)."""
+    """Coerce a finding's confidence to a float; None/unparseable -> 0.0 (never crash)."""
+    if value is None:
+        return 0.0
     try:
         return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -276,11 +278,12 @@ def _safe_confidence(value: object) -> float:
 def rank(findings: list[dict]) -> list[dict]:
     # A missing severity uses the unknown (most-severe) rank, NOT "low" - an
     # omitted severity must never let a real finding slip past --fail-on.
+    # _safe_confidence handles a present-but-None confidence, so no .get default.
     return sorted(
         findings,
         key=lambda f: (
             severity_rank(f.get("severity")),
-            -_safe_confidence(f.get("confidence", 0)),
+            -_safe_confidence(f.get("confidence")),
         ),
     )
 
@@ -317,6 +320,8 @@ def render(findings: list[dict], model: str) -> None:
 
 def _positive_int(raw: str) -> int:
     """argparse type: a PR number must be a positive integer (rejects 0/negatives)."""
+    if raw is None:
+        raise argparse.ArgumentTypeError("PR number is required")
     value = int(raw)
     if value <= 0:
         raise argparse.ArgumentTypeError(f"must be a positive PR number, got {value}")

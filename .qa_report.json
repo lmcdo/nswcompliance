@@ -49,7 +49,7 @@
   },
   {
    "name": "rank",
-   "file_line": "scripts/cross_review.py:276",
+   "file_line": "scripts/cross_review.py:278",
    "input": "the list of finding dicts",
    "output": "the same findings sorted most-severe-first, then by descending confidence",
    "if_none": "missing severity uses the fail-safe unknown rank; unparseable confidence coerces to 0.0 via _safe_confidence rather than raising"
@@ -93,7 +93,7 @@
  ],
  "post_merge": {
   "db_reset": "No",
-  "secrets": "Yes",
+  "secrets": "This PR REMOVES a leaked secret: scripts/openai_semantic_processor.py had a live sk-proj- OpenAI key hardcoded at module level; it is replaced with an os.environ read that raises if unset. The exposed key MUST be rotated/revoked at platform.openai.com because it remains in git history; rotation is a manual user action outside this diff. cross_review.py never hardcodes a key - it reads OPENAI_API_KEY from env or a repo .env.",
   "other_repo": "No",
   "manual_verify": "Ran live against gpt-5.6-sol: self-review across 3 passes surfaced+fixed real defects (silent no-defects, fail-open gate, prompt-injection, checklist-tampering, unicode crash); a run on PR #725 returned 3 verified-real findings (cross-band setback fallback with suppressed conflict; battleaxe 0-value mislabel; area/width-as-depth overclaim), zero false positives. SECRET ACTION REQUIRED: the OpenAI key formerly hardcoded at scripts/openai_semantic_processor.py must be ROTATED/REVOKED at platform.openai.com - it remains in git history. A stale OPENAI_API_KEY shell export shadowing .env should also be cleared from the user's shell profile."
  }
