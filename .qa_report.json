@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Fixes a silent-wrong-data defect in the capacity engine's DCP setback handling, found by the gpt-5.6-sol cross-review tool. When a lot resolves to a specific lot-size band but that band's row lacks value_min (an extraction gap), _get_dcp_value borrows a conservative value from NON-applicable bands while _dcp_value_conflict suppressed the verification warning - so a cross-band setback figure was served as a single certain control with no gap note. The fix keeps the conservative (fail-safe, never over-reporting) number but surfaces the gap only when the resolved band actually supplied its value. Regulatory-value handling on a compliance product, hence standard tier; the change is narrow and pinned by a regression test.",
- "commit_hash": "PENDING",
+ "commit_hash": "de73b104",
  "files": [
   "services/constraint_arithmetic.py",
   "tests/test_constraint_arithmetic.py"
