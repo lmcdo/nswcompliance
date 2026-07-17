@@ -279,7 +279,13 @@ def _dcp_value_conflict(
     flagged for verification rather than presented as a single certain figure.
     """
     matches = _matching_controls(controls, control_type, dev_type)
-    if _resolve_lot_band(matches, lot_area_m2) is not None:
+    banded = _resolve_lot_band(matches, lot_area_m2)
+    # Suppress the conflict ONLY when the applicable band actually SUPPLIES the
+    # value. If a band resolved but its value_min is absent, _get_dcp_value fell
+    # through to a conservative value borrowed from NON-applicable bands (line
+    # 194) — surface that so the borrowed figure is flagged for verification, not
+    # read as this band's own certain control.
+    if banded is not None and banded.value_min is not None:
         return None  # the band resolved which control applies — not a conflict
     vals = sorted({c.value_min for c in matches if c.value_min is not None})
     return vals if len(vals) > 1 else None
@@ -330,6 +336,42 @@ def _dcp_controls_from_setback_rows(
     return controls
 
 
+def _has_battleaxe_head(lot_dims: Optional[LotDimensions]) -> bool:
+    """True iff this is a battleaxe lot carrying a usable measured head.
+
+    Requires BOTH head width and head area to be finite positive numbers. Shared
+    by :func:`_estimate_lot_dimensions` and the provenance labelling in
+    :func:`compute_constraint_arithmetic` so the two can never disagree: a 0 /
+    negative / non-finite / missing measurement means "no usable head" in both
+    places, rather than one falling back to the whole-lot estimate while the
+    other still claims the envelope was measured on the head. Positive finite
+    width also guards the area / width division (inf width would yield 0 depth).
+
+    ``LotDimensions`` declares these fields ``Optional[float]``, so pydantic
+    coerces any incoming numeric (e.g. a Decimal from a NUMERIC column) to float
+    at the model boundary — the float check below is safe on every validated
+    path. Constructing via ``model_construct`` would bypass that coercion; no
+    code does, and doing so would need this predicate revisited.
+    """
+    if not lot_dims or getattr(lot_dims, "lot_type", None) != "battleaxe":
+        return False
+    width = getattr(lot_dims, "battleaxe_main_lot_width_m", None)
+    area = getattr(lot_dims, "battleaxe_main_lot_area_m2", None)
+    return (
+        _is_positive_measure(width) and _is_positive_measure(area)
+    )
+
+
+def _is_positive_measure(value: object) -> bool:
+    """True iff ``value`` is a finite, strictly positive number (not a bool)."""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+    )
+
+
 def _estimate_lot_dimensions(
     lot_dims: Optional[LotDimensions],
     lot_area_m2: float,
@@ -342,12 +384,10 @@ def _estimate_lot_dimensions(
     # lot — head width x (head area / head width). More conservative than the
     # whole-lot estimate (head area < lot area) and far more accurate than the
     # 1:2.5 fallback these lots previously hit (frontage_m is None on them).
-    if (
-        lot_dims
-        and getattr(lot_dims, "lot_type", None) == "battleaxe"
-        and lot_dims.battleaxe_main_lot_width_m
-        and lot_dims.battleaxe_main_lot_area_m2
-    ):
+    # NOTE: depth here is DERIVED (area / width), i.e. the head is assumed
+    # rectangular — it is not a measured front-to-rear depth. The caller labels
+    # it as an estimate accordingly.
+    if _has_battleaxe_head(lot_dims):
         width = lot_dims.battleaxe_main_lot_width_m
         return (width, lot_dims.battleaxe_main_lot_area_m2 / width)
     if lot_dims and lot_dims.frontage_m and lot_dims.depth_m:
@@ -540,13 +580,11 @@ def compute_constraint_arithmetic(
     # Step 4: DCP setback erosion → buildable footprint
     # -----------------------------------------------------------------------
     frontage_m, depth_m = _estimate_lot_dimensions(lot_dimensions, lot_area_m2)
-    is_battleaxe_measured = (
-        lot_dimensions is not None
-        and getattr(lot_dimensions, "lot_type", None) == "battleaxe"
-        and lot_dimensions.battleaxe_main_lot_width_m is not None
-        and lot_dimensions.battleaxe_main_lot_area_m2 is not None
-    )
-    has_dimensions = is_battleaxe_measured or (
+    # Same predicate _estimate_lot_dimensions used, so the label can never claim a
+    # head-based envelope while the dimensions actually came from the whole-lot
+    # fallback (they previously disagreed on a 0 measurement).
+    has_battleaxe_head = _has_battleaxe_head(lot_dimensions)
+    has_dimensions = has_battleaxe_head or (
         lot_dimensions is not None
         and lot_dimensions.frontage_m is not None
         and lot_dimensions.depth_m is not None
@@ -583,10 +621,15 @@ def compute_constraint_arithmetic(
         buildable_footprint = buildable_width * buildable_depth
         result.buildable_footprint_m2 = round(buildable_footprint, 1)
 
-        if is_battleaxe_measured:
+        if has_battleaxe_head:
+            # Depth is DERIVED (head area / head width), not a measured
+            # front-to-rear dimension — say so rather than implying the head was
+            # surveyed, since an irregular head's true depth will differ.
             gaps.append(
-                "Battleaxe (flag) lot — envelope computed on the developable "
-                "main lot, excluding the access handle"
+                "Battleaxe (flag) lot — envelope estimated on the developable "
+                "main lot (head area / width, head assumed rectangular), "
+                "excluding the access handle. Verify against the head's actual "
+                "dimensions."
             )
         elif not has_dimensions:
             gaps.append(

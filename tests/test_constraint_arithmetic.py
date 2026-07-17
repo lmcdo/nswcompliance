@@ -31,6 +31,7 @@ from services.constraint_arithmetic import (
     _dcp_height_metres,
     _dcp_value_conflict,
     _estimate_lot_dimensions,
+    _has_battleaxe_head,
     _get_dcp_value,
     _identify_binding_constraint,
     _lot_band_match,
@@ -921,6 +922,29 @@ class TestBandResolution:
         assert _dcp_value_conflict(_wing_front_controls(), "front_setback", "dwelling_house",
                                    lot_area_m2=4189) is None
 
+    def test_resolved_band_missing_value_surfaces_conflict(self):
+        # Regression: a lot resolves to the <900 band, but that band's row has NO
+        # value_min (an extraction gap). _get_dcp_value falls back to the
+        # conservative max across the OTHER (non-applicable) bands, so the
+        # borrowed figure MUST be flagged for verification - previously the
+        # conflict was suppressed simply because a band resolved, serving a
+        # cross-band value with no warning.
+        controls = [
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=None,
+                       unit="m", condition="lot less than 900m2"),
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=6.5,
+                       unit="m", condition="lot between 900m2 and 1500m2"),
+            DCPControl(control_type="front_setback", dev_type="dwelling_house", value_min=15.0,
+                       unit="m", condition="lot over 1500m2"),
+        ]
+        # 600 m2 resolves to the <900 band, which lacks a value.
+        assert _resolve_lot_band(controls, 600) is not None
+        # Conservative fallback value stands (fail-safe: largest = smallest envelope).
+        assert _get_dcp_value(controls, "front_setback", "dwelling_house", lot_area_m2=600) == 15.0
+        # ...but the gap now surfaces instead of being silently suppressed.
+        assert _dcp_value_conflict(controls, "front_setback", "dwelling_house",
+                                   lot_area_m2=600) == [6.5, 15.0]
+
     def test_unknown_area_stays_conservative(self):
         # No lot area -> cannot resolve -> conservative max, and the values
         # still surface as a conflict for the gap note.
@@ -973,3 +997,64 @@ class TestBattleaxeDimensions:
         dims = LotDimensions(area_m2=4189, lot_type="battleaxe")
         f, d = _estimate_lot_dimensions(dims, 4189)
         assert abs(f * d - 4189) < 0.1
+
+    def test_head_predicate_agrees_with_estimation(self):
+        # Regression: the provenance label and the dimension estimation must use
+        # the SAME predicate. They previously disagreed on a 0 measurement -
+        # estimation fell back to the whole lot while the label still claimed the
+        # envelope was computed on the head.
+        inf, nan = float("inf"), float("nan")
+        for width, area in ((0, 3710), (43.1, 0), (0, 0), (-43.1, 3710), (43.1, -1),
+                            (inf, 3710), (43.1, inf), (nan, 3710), (43.1, nan)):
+            dims = LotDimensions(area_m2=4189, lot_type="battleaxe",
+                                 battleaxe_main_lot_width_m=width,
+                                 battleaxe_main_lot_area_m2=area)
+            assert _has_battleaxe_head(dims) is False, (width, area)
+            # ...and estimation agrees: falls back to the WHOLE lot, not the head.
+            f, d = _estimate_lot_dimensions(dims, 4189)
+            assert abs(f * d - 4189) < 0.1, (width, area)
+
+    def test_head_predicate_true_only_for_positive_pair(self):
+        dims = LotDimensions(area_m2=4189, lot_type="battleaxe",
+                             battleaxe_main_lot_width_m=43.1,
+                             battleaxe_main_lot_area_m2=3710)
+        assert _has_battleaxe_head(dims) is True
+        # Non-battleaxe lots never count as having a head.
+        assert _has_battleaxe_head(LotDimensions(area_m2=600, frontage_m=15, depth_m=40)) is False
+        assert _has_battleaxe_head(None) is False
+
+    def test_zero_width_head_does_not_claim_measured_envelope(self):
+        # End-to-end: a 0-width head must NOT produce the head-based provenance
+        # note, because the dimensions actually came from the 1:2.5 fallback.
+        result = compute_constraint_arithmetic(
+            lot_area_m2=4189,
+            dev_type="dwelling_house",
+            lep_height_str="9",
+            lep_fsr_str="0.5:1",
+            lot_dimensions=LotDimensions(area_m2=4189, lot_type="battleaxe",
+                                         battleaxe_main_lot_width_m=0,
+                                         battleaxe_main_lot_area_m2=3710),
+            dcp_controls=[_make_dcp("front_setback", 6.0), _make_dcp("rear_setback", 6.0),
+                          _make_dcp("side_setback", 1.5)],
+        )
+        assert not any("main lot" in g for g in result.gaps), result.gaps
+        assert any("1:2.5" in g for g in result.gaps), result.gaps
+
+    def test_head_envelope_note_is_an_estimate_not_a_measurement(self):
+        # The depth is derived (area / width), so the note must not imply the head
+        # was surveyed - it states the rectangular assumption and asks to verify.
+        result = compute_constraint_arithmetic(
+            lot_area_m2=4189,
+            dev_type="dwelling_house",
+            lep_height_str="9",
+            lep_fsr_str="0.5:1",
+            lot_dimensions=LotDimensions(area_m2=4189, lot_type="battleaxe",
+                                         battleaxe_main_lot_width_m=43.1,
+                                         battleaxe_main_lot_area_m2=3710),
+            dcp_controls=[_make_dcp("front_setback", 6.0), _make_dcp("rear_setback", 6.0),
+                          _make_dcp("side_setback", 1.5)],
+        )
+        note = next(g for g in result.gaps if "main lot" in g)
+        assert "estimated" in note
+        assert "assumed rectangular" in note
+        assert "computed on" not in note  # the old overclaiming wording

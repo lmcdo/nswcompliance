@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-15",
-  "target": "latent_scope_export.py + latent_scope_dup_audit.py — align column names to live regulatory_provisions schema and make --council case-insensitive",
-  "findings_summary": "Live information_schema: regulatory_provisions has 65 cols / 53,716 rows (DB_SCHEMA.md stale at 51/46,585). former_council and source_ref DO NOT EXIST; real cols are source_council (lowercase slugs: marrickville/ashfield/woollahra/ku_ring_gai; 19,733 NULL), ref_number, source_chapter_key. actionable=39,829, current=34,922. Council filter must be case-insensitive (lower(source_council)). All other v2_* / is_current / pdf_page_image_url columns confirmed present. Canonical view lacks v2_* cols — base table is correct."
+  "timestamp": "2026-07-17",
+  "target": "services/constraint_arithmetic.py battleaxe provenance - fix two findings from Sol's review of PR #725: (2) is_battleaxe_measured (is-not-None) disagrees with _estimate_lot_dimensions (truthiness) at a 0 measurement, mislabelling a whole-lot estimate as measured; (3) area/width labelled as measured depth despite assuming a rectangular head.",
+  "findings_summary": "No DB/query change (in-memory LotDimensions). Root cause of #2 is two independent guards on the same fields; fix = single _has_battleaxe_head() predicate (positive width AND area) used by both. #3 = provenance overclaim; fix = reword gap note to 'estimated ... head assumed rectangular ... verify'. Existing TestBattleaxeDimensions covers the happy path; add 0-value and negative-value regression tests."
 }
