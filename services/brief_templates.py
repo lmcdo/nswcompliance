@@ -332,6 +332,66 @@ def _dev_type_label(raw: str) -> str:
     return words[:1].upper() + words[1:] if words else raw
 
 
+# A value_text still in our 'k=v; …' record format must never reach the overlay
+# verbatim (the live overlay printed "is_bushfire_prone=True; category=…" raw).
+_RECORD_DUMP_RE = re.compile(r"^\s*[A-Za-z_]\w*=")
+
+
+def looks_like_record_dump(value_text: str) -> bool:
+    """True when a value serialises as key=value pairs rather than prose."""
+    return bool(value_text) and bool(_RECORD_DUMP_RE.match(value_text))
+
+
+def _composite_sentence(e: ManifestEntry) -> Optional[str]:
+    """Authored sentences for known composite records (bushfire, lot dimensions).
+
+    Returns None when the record is not a known composite — callers then fall
+    back to the section-card reference, never the raw dump.
+    """
+    if not looks_like_record_dump(e.value_text):
+        return None
+    rec = parse_record_text(e.value_text)
+    if not rec:
+        return None
+    if "is_bushfire_prone" in rec:
+        prone = rec.get("is_bushfire_prone")
+        if prone == "True":
+            category = rec.get("category") or rec.get("designation_category")
+            bal = rec.get("bal_estimate") or rec.get("estimated_bal_band")
+            detail_bits = [b for b in (
+                category, f"indicative {bal}" if bal else None,
+            ) if b]
+            detail = f" ({', '.join(detail_bits)})" if detail_bits else ""
+            return f"This lot is mapped bush fire prone{detail}."
+        if prone == "False":
+            return "The RFS mapping does not list this lot as bush fire prone."
+        return None
+    if rec.get("frontage_m") and rec.get("depth_m"):
+        area = rec.get("area_m2") or rec.get("lot_area_m2")
+        if area:
+            return (f"The lot is {area} m², about {rec['frontage_m']} m × "
+                    f"{rec['depth_m']} m.")
+        return f"The lot is about {rec['frontage_m']} m × {rec['depth_m']} m."
+    return None
+
+
+def _card_reference(e: ManifestEntry) -> str:
+    """Refusal line for a record-shaped value with no authored composite."""
+    return (f"The full {label_for_path(e.path)} detail is in its "
+            f"section card below.")
+
+
+def _guard_record_dump(e: ManifestEntry, fallback: str) -> str:
+    """Composite sentence if known, section-card reference if record-shaped,
+    otherwise the caller's own sentence."""
+    comp = _composite_sentence(e)
+    if comp:
+        return comp
+    if looks_like_record_dump(e.value_text):
+        return _card_reference(e)
+    return fallback
+
+
 # ---------------------------------------------------------------------------
 # Sentence builders — every authored fragment is liability-scanned at import.
 # ---------------------------------------------------------------------------
@@ -363,6 +423,7 @@ def _zone_sentence(entries: list[ManifestEntry]) -> str:
         if by_leaf.get("zone_epi"):
             head += f" under the {by_leaf['zone_epi'].value_text}"
     extras: list[str] = []
+    trailing: list[str] = []  # composite records render as their own sentence
     for leaf, e in by_leaf.items():
         if leaf in ("zone", "zone_full", "zone_epi"):
             continue
@@ -372,15 +433,22 @@ def _zone_sentence(entries: list[ManifestEntry]) -> str:
             extras.append(f"a floor space ratio of {e.value_text}")
         elif leaf == "lot_size":
             extras.append(f"a minimum lot size of {e.value_text}")
+        elif looks_like_record_dump(e.value_text):
+            # A composite record (lot dimensions, bushfire) must never be
+            # inlined as "a … of k=v; k=v" — it gets an authored sentence or
+            # a section-card reference of its own.
+            trailing.append(_composite_sentence(e) or _card_reference(e))
         else:
             extras.append(f"a {label_for_path(e.path)} of {e.value_text}")
     if head and extras:
-        return f"{head}, with {_join_and(extras)}."
-    if head:
-        return f"{head}."
-    if extras:
-        return f"The mapped controls set {_join_and(extras)}."
-    return ""
+        head_sentence = f"{head}, with {_join_and(extras)}."
+    elif head:
+        head_sentence = f"{head}."
+    elif extras:
+        head_sentence = f"The mapped controls set {_join_and(extras)}."
+    else:
+        head_sentence = ""
+    return " ".join(s for s in [head_sentence, *trailing] if s)
 
 
 def _dcp_control_sentence(e: ManifestEntry) -> Optional[str]:
@@ -409,13 +477,17 @@ def _control_sentence(e: ManifestEntry) -> str:
         dcp = _dcp_control_sentence(e)
         if dcp:
             return dcp
-    return (f"The {label_for_path(e.path)} for this lot is "
-            f"{e.value_text}{_confidence_qualifier(e.confidence)}.")
+    return _guard_record_dump(e, (
+        f"The {label_for_path(e.path)} for this lot is "
+        f"{e.value_text}{_confidence_qualifier(e.confidence)}."
+    ))
 
 
 def _capacity_sentence(e: ManifestEntry) -> str:
-    return (f"Computed from the planning controls, "
-            f"{label_for_path(e.path)} works out to {e.value_text}.")
+    return _guard_record_dump(e, (
+        f"Computed from the planning controls, "
+        f"{label_for_path(e.path)} works out to {e.value_text}."
+    ))
 
 
 _FALSY_VALUE_TEXTS = frozenset({"False", "No", "—", "None", "none"})
@@ -446,15 +518,18 @@ def _constraint_sentence(e: ManifestEntry) -> str:
     if e.value_text == "True":
         return (f"A {label_for_path(e.path)} designation is recorded — "
                 f"see the full card below.")
-    return (f"{label_for_path(e.path).capitalize()}: "
-            f"{e.value_text}{_confidence_qualifier(e.confidence)}.")
+    return _guard_record_dump(e, (
+        f"{label_for_path(e.path).capitalize()}: "
+        f"{e.value_text}{_confidence_qualifier(e.confidence)}."
+    ))
 
 
 def _eligibility_sentence(e: ManifestEntry) -> str:
     rec = parse_record_text(e.value_text)
     dev = rec.get("dev_type")
     if not dev:
-        return f"{label_for_path(e.path).capitalize()}: {e.value_text}."
+        return _guard_record_dump(
+            e, f"{label_for_path(e.path).capitalize()}: {e.value_text}.")
     label = _dev_type_label(dev)
     standards: list[str] = []
     if rec.get("min_lot_area_m2"):
@@ -494,6 +569,10 @@ def _finding_line(e: ManifestEntry) -> tuple[str, str]:
     if m:
         sev = m.group(1)
         text = m.group(2).strip() or e.value_text
+    if looks_like_record_dump(text):
+        # A record-shaped remainder (e.g. a summarised override dict) never
+        # renders raw — point at the section card instead.
+        text = _card_reference(e)
     return text, ("warning" if sev == "warning" else "info")
 
 
@@ -521,8 +600,10 @@ def _activity_sentence(e: ManifestEntry) -> str:
                     if leaf == "nearby_das" else "recorded sales nearby")
             return (f"There are {m.group(1)} {noun} — the full list is in "
                     f"the section card below.")
-    return (f"Recorded {label_for_path(e.path)}: "
-            f"{e.value_text}{_confidence_qualifier(e.confidence)}.")
+    return _guard_record_dump(e, (
+        f"Recorded {label_for_path(e.path)}: "
+        f"{e.value_text}{_confidence_qualifier(e.confidence)}."
+    ))
 
 
 def render_gap_line(entry: ManifestEntry) -> str:
@@ -685,6 +766,11 @@ _AUTHORED_FRAGMENTS = [
     "source recorded",
     "Mapped planning overlays on this lot:",
     "(satellite-estimated) (data past its currency window)",
+    # Composite-record sentences + the record-dump refusal line
+    "This lot is mapped bush fire prone (, indicative ) "
+    "The RFS mapping does not list this lot as bush fire prone.",
+    "The lot is m², about m × m. The lot is about m × m.",
+    "The full detail is in its section card below.",
 ]
 
 

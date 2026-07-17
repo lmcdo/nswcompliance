@@ -167,13 +167,21 @@ class TestBuildComplianceProne:
         assert "s4.14" in c["state_legislation"]
         assert "Rural Fires Act" in c["state_legislation"]
 
-    def test_rfs_referral_required(self):
+    def test_rfs_referral_unknown_without_a_proposal(self):
+        """Prone land alone never yields a blanket True — referral (s100B Rural
+        Fires Act) attaches to the proposal type, so without one it's None."""
         c = _build_compliance(_prone_rfs(), [], "R2")
-        assert c["rfs_referral_required"] is True
+        assert c["rfs_referral_required"] is None
 
-    def test_rfs_triggers_present(self):
+    def test_rfs_triggers_always_populated_when_prone(self):
         c = _build_compliance(_prone_rfs(), [], "R2")
         assert c["rfs_referral_triggers"] == _S414_TRIGGERS
+
+    def test_rfs_referral_note_present_when_prone(self):
+        c = _build_compliance(_prone_rfs(), [], "R2")
+        assert c["rfs_referral_note"] is not None
+        assert "only if the proposal matches a trigger" in c["rfs_referral_note"]
+        assert "Planning for Bush Fire Protection" in c["rfs_referral_note"]
 
     def test_cdc_available_bal_29(self):
         c = _build_compliance(_prone_rfs(bal="BAL-29"), [], "R2")
@@ -187,22 +195,27 @@ class TestBuildComplianceProne:
         c = _build_compliance(_prone_rfs(bal="BAL-12.5"), [], "R2")
         assert c["cdc_pathway_available"] is True
 
-    def test_clearing_entitled_when_prone(self):
+    def test_clearing_unknown_when_prone(self):
+        """10/50 follows the RFS entitlement-area map, not bare BFPL status —
+        a prone lot is None (unknown) until that map is checked."""
         c = _build_compliance(_prone_rfs(), [], "R2")
-        assert c["clearing_10_50_entitled"] is True
+        assert c["clearing_10_50_entitled"] is None
 
-    def test_clearing_standard_no_heritage(self):
-        """No heritage overlay → standard 10/50 entitlements text."""
+    def test_clearing_conditional_wording_no_heritage(self):
+        """No heritage overlay → conditional entitlement-area wording."""
         c = _build_compliance(_prone_rfs(), [], "R2")
-        assert "Standard 10/50" in c["clearing_10_50_exceptions"]
-        assert "Heritage" not in c["clearing_10_50_exceptions"]
+        assert "RFS 10/50 entitlement area map" in c["clearing_10_50_exceptions"]
+        assert "RFS online 10/50 tool" in c["clearing_10_50_exceptions"]
+        assert "threatened species habitat" in c["clearing_10_50_exceptions"]
+        assert "heritage" not in c["clearing_10_50_exceptions"].lower()
 
     def test_clearing_heritage_exception(self):
-        """Heritage overlay present → heritage restriction warning."""
+        """Heritage overlay present → conditional wording plus heritage restriction."""
         heritage = [{"type": "heritage", "value": "Heritage Conservation Area", "source": "spatial_overlays"}]
         c = _build_compliance(_prone_rfs(), heritage, "R2")
-        assert "Heritage" in c["clearing_10_50_exceptions"]
-        assert "restricted" in c["clearing_10_50_exceptions"].lower()
+        assert "RFS 10/50 entitlement area map" in c["clearing_10_50_exceptions"]
+        assert "heritage" in c["clearing_10_50_exceptions"].lower()
+        assert "restrict" in c["clearing_10_50_exceptions"].lower()
 
     def test_zone_passed_through(self):
         c = _build_compliance(_prone_rfs(), [], "R2")
@@ -240,6 +253,10 @@ class TestBuildComplianceNotProne:
         c = _build_compliance(_not_prone_rfs(), [], "R2")
         assert c["rfs_referral_required"] is False
 
+    def test_rfs_referral_note_null(self):
+        c = _build_compliance(_not_prone_rfs(), [], "R2")
+        assert c["rfs_referral_note"] is None
+
     def test_triggers_null(self):
         c = _build_compliance(_not_prone_rfs(), [], "R2")
         assert c["rfs_referral_triggers"] is None
@@ -265,6 +282,11 @@ class TestBuildComplianceUnknown:
     def test_rfs_referral_null(self):
         c = _build_compliance(_rfs_result(), [], "R2")
         assert c["rfs_referral_required"] is None
+
+    def test_rfs_note_and_triggers_null_when_unknown(self):
+        c = _build_compliance(_rfs_result(), [], "R2")
+        assert c["rfs_referral_note"] is None
+        assert c["rfs_referral_triggers"] is None
 
     def test_cdc_null_when_bal_unknown(self):
         c = _build_compliance(_rfs_result(), [], "R2")

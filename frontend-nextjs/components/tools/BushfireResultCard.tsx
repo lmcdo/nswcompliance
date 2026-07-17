@@ -5,6 +5,7 @@ import { DATA_PROVENANCE } from '@/lib/disclaimers'
 interface BushfireCompliance {
   state_legislation: string | null
   rfs_referral_required: boolean | null
+  rfs_referral_note?: string | null
   rfs_referral_triggers: string[] | null
   cdc_pathway_available: boolean | null
   clearing_10_50_entitled: boolean | null
@@ -55,7 +56,7 @@ const FIRE_SIGNAL_META: Record<string, { label: string; sublabel: string; badge:
   },
   moderate: {
     label: 'Bushfire prone — moderate category',
-    sublabel: 'This property is mapped in a moderate bushfire designation category. Bushfire-rated construction under AS 3959 applies, and RFS must be consulted on any new development.',
+    sublabel: 'This property is mapped in a moderate bushfire designation category. Bushfire-rated construction under AS 3959 applies, and a Rural Fire Service referral applies to trigger developments such as subdivision or special fire protection purposes.',
     badge: 'bg-orange-100 text-orange-800',
   },
   elevated: {
@@ -127,7 +128,9 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
     })
   }
 
-  // RFS referral
+  // RFS referral — three-state. On bushfire prone land the answer depends on
+  // the proposal (null), so render the conditional note + the s4.14 triggers
+  // rather than a bare Yes/No.
   if (c?.rfs_referral_required === true) {
     findings.push({
       label: 'RFS referral (s4.14 EP&A Act)',
@@ -141,6 +144,18 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
       value: 'Not required',
       detail: 'No Rural Fire Service consultation needed for development at this property.',
       severity: 'green',
+    })
+  } else if (o.is_bushfire_prone === true) {
+    const note = c?.rfs_referral_note
+      ?? 'Referral to the NSW Rural Fire Service applies only if the proposal matches a trigger below. Other development on bush fire prone land is assessed by the council against Planning for Bush Fire Protection.'
+    const triggers = c?.rfs_referral_triggers?.length
+      ? ` Triggers: ${c.rfs_referral_triggers.join('; ')}.`
+      : ''
+    findings.push({
+      label: 'RFS referral (s4.14 EP&A Act)',
+      value: 'Depends on the proposal',
+      detail: `${note}${triggers}`,
+      severity: 'amber',
     })
   }
 
@@ -161,7 +176,9 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
     })
   }
 
-  // 10/50 clearing
+  // 10/50 clearing — three-state. On bushfire prone land the entitlement
+  // depends on the RFS 10/50 entitlement area map (null), so render the
+  // conditional wording rather than a bare Yes.
   if (c?.clearing_10_50_entitled === true) {
     findings.push({
       label: '10/50 vegetation clearing',
@@ -176,6 +193,14 @@ export function BushfireResultCard({ result }: { result: BushfireResult }) {
       detail: c?.clearing_10_50_exceptions
         ? `Clearing entitlement is excluded at this site. ${c.clearing_10_50_exceptions}`
         : 'The 10/50 clearing entitlement does not apply to this property. You\'ll need separate approval to clear vegetation near the dwelling.',
+      severity: 'amber',
+    })
+  } else if (o.is_bushfire_prone === true) {
+    findings.push({
+      label: '10/50 vegetation clearing',
+      value: 'Depends on the RFS entitlement area map',
+      detail: c?.clearing_10_50_exceptions
+        ?? 'Whether the 10/50 vegetation clearing scheme applies here depends on the RFS 10/50 entitlement area map — check the address in the RFS online 10/50 tool. Entitlements do not apply within threatened species habitat or 40m of a waterway.',
       severity: 'amber',
     })
   }

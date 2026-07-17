@@ -173,8 +173,8 @@ class TerrainInterpretation(BaseModel):
         "footprint so they reflect the building pad, not the neighbourhood. Slope uses the "
         "Horn (1981) finite-difference method. Landform classification uses the Jasiewicz & Stepinski "
         "(2013) geomorphon algorithm. Daylight fraction computed via annual solar position "
-        "modelling (sunrise–sunset, AEST UTC+10). All values are indicative — site-specific "
-        "survey data should be used for detailed design."
+        "modelling (sunrise–sunset, AEST UTC+10). All values are indicative — detailed "
+        "design works from site-specific survey data."
     )
     disclaimer: str = (
         "This analysis is derived from a 5m resolution DEM which cannot resolve features "
@@ -493,7 +493,8 @@ _LANDFORM_NARRATIVES: dict[str, str] = {
         "Geomorphon classification identifies this site as level terrain (flat landform). "
         "Surface water drains as sheet flow, predominantly towards the {drain}. "
         "Drainage design can follow standard practices. Foundation conditions are "
-        "typically uniform, though fill and reactive clay soils should still be investigated."
+        "typically uniform, though fill and reactive clay soils are not resolved by the "
+        "DEM — a geotechnical investigation identifies them."
     ),
     "footslope": (
         "This site occupies a footslope position — the transition zone where slope gradient "
@@ -512,8 +513,8 @@ _LANDFORM_NARRATIVES: dict[str, str] = {
     "slope": (
         "This site occupies a mid-slope position with drainage flowing predominantly towards "
         "the {drain}. Cross-slope drainage interception will be required upslope of any "
-        "building footprint to redirect overland flow. Building orientation should consider "
-        "the cross-fall to minimise cut-and-fill asymmetry."
+        "building footprint to redirect overland flow. Cross-fall relative to building "
+        "orientation drives the cut-and-fill asymmetry."
     ),
     "spur": (
         "This site is located on a convex spur — a projecting ridgeline with drainage diverging "
@@ -531,7 +532,7 @@ _LANDFORM_NARRATIVES: dict[str, str] = {
     "peak": (
         "This site is at a topographic high point (peak landform). Drainage is radially divergent "
         "with no upslope catchment contributing flow. The site will be fully exposed to prevailing "
-        "winds — wind classification per AS 4055 should be carefully assessed. Soil depth is "
+        "winds — AS 4055 wind classification is the relevant check for this exposure. Soil depth is "
         "typically minimal at peak positions."
     ),
     "hollow": (
@@ -546,9 +547,9 @@ _LANDFORM_NARRATIVES: dict[str, str] = {
         "This site is located on a valley floor — the lowest topographic position in the local "
         "terrain. Drainage from surrounding slopes converges through this position, flowing "
         "towards the {drain}. Valley floor sites have the highest exposure to concentrated "
-        "overland flow and potential inundation. Floor levels should be set with appropriate "
-        "freeboard above any identified flood planning level. Soils are typically alluvial with "
-        "variable bearing capacity — geotechnical investigation is essential."
+        "overland flow and potential inundation. Floor levels relative to any identified "
+        "flood planning level are the relevant check. Soils are typically alluvial with "
+        "variable bearing capacity — the ground conditions a geotechnical investigation resolves."
     ),
     "pit": (
         "This site is located in a closed topographic depression (pit). Surface water drains "
@@ -584,9 +585,10 @@ def _interpret_gradient(d: dict) -> TerrainFinding:
             f"Mean slope of {mean}\u00b0 with a maximum of {mx}\u00b0 indicates a moderately "
             "grading site. Some cut-and-fill earthworks are likely, and retaining walls may "
             "be required depending on building footprint orientation. Driveway and access "
-            "grades should be checked against AS 2890.1 (max 1:4 for residential, 1:5 "
-            "desirable). Council may require a geotechnical report for slopes exceeding "
-            "local DCP thresholds (commonly 15\u201320% / 8.5\u201311.3\u00b0)."
+            "grades: AS 2890.1 sets 1:4 as the residential maximum (1:5 desirable). "
+            "Slopes exceeding common local DCP thresholds "
+            "(15\u201320% / 8.5\u201311.3\u00b0) trigger geotechnical report "
+            "requirements at some councils."
         )
         action = "Geotechnical report may be required — verify against council DCP slope threshold"
         cost = "$3,000\u2013$8,000 (geotechnical investigation if required by council DCP)"
@@ -596,11 +598,12 @@ def _interpret_gradient(d: dict) -> TerrainFinding:
         narr = (
             f"Mean slope of {mean}\u00b0 is moderate, but localised grades reach {mx}\u00b0. "
             "This suggests an undulating site with steep embankments or escarpment edges. "
-            "Building envelopes should avoid the steepest zones. Geotechnical investigation "
-            "is recommended to assess stability of any cut faces, and council is likely to "
+            "Where the steepest zones fall relative to the building envelope determines "
+            "the earthworks. Stability of any cut faces is the question a geotechnical "
+            "investigation resolves, and council is likely to "
             "require a slope analysis diagram with the DA."
         )
-        action = "Geotechnical investigation recommended — localised steep zones present"
+        action = "Localised steep zones present — a geotechnical investigation resolves cut-face stability"
         cost = "$3,000\u2013$8,000 (geotechnical investigation)"
     elif mx < 25:
         sev = TerrainSeverity.RED
@@ -667,7 +670,7 @@ def _interpret_landform(d: dict) -> TerrainFinding:
             "$3,000\u2013$8,000 (geotechnical investigation)"
         )
     elif lf in ("footslope", "shoulder"):
-        action = "Geotechnical investigation recommended — variable soil profile"
+        action = "Variable soil profile — the condition a geotechnical investigation resolves"
         cost = "$3,000\u2013$8,000 (geotechnical investigation)"
 
     return TerrainFinding(
@@ -707,9 +710,9 @@ def _interpret_aspect(d: dict) -> TerrainFinding:
             f"The site has a {aspect_dir} aspect ({aspect_deg}\u00b0) at a mean slope of "
             f"{slope_mean}\u00b0. Northern orientation is the most favourable for solar access "
             "in the Southern Hemisphere. Living areas and private open space oriented towards "
-            f"the {aspect_dir} will receive direct winter sun without terrain obstruction. "
-            "This orientation supports compliance with ADG Objective 4A (solar access) and "
-            "improves BASIX thermal comfort scores."
+            f"the {aspect_dir} will receive direct winter sun without terrain obstruction — "
+            "the orientation ADG Objective 4A (solar access) measures, and the input "
+            "BASIX thermal comfort scoring rewards."
         )
     elif aspect_dir in ("E", "W"):
         sev = TerrainSeverity.AMBER
@@ -786,8 +789,8 @@ def _interpret_solar(d: dict) -> TerrainFinding:
             f"({frac:.3f} fraction), indicating moderate terrain shadowing. Surrounding ridgelines, "
             "hillsides, or escarpments partially obstruct the solar path during morning or afternoon "
             "hours, or during winter when solar elevation is low. The 2-hour mid-winter ADG "
-            "requirement should be verified with a detailed shadow analysis that includes terrain. "
-            f"Photovoltaic yield estimates should apply a terrain shading derating of approximately "
+            "requirement is testable with a detailed shadow analysis that includes terrain. "
+            f"The terrain shading derating on photovoltaic yield is approximately "
             f"{derate:.0f}%."
         )
     elif frac >= 0.60:
@@ -840,8 +843,8 @@ def _interpret_elevation(d: dict) -> TerrainFinding:
             f"Elevation ranges from {elev_min}m to {elev_max}m AHD across the analysis area "
             f"({elev_range}m total variation). This minimal grade change indicates a site "
             "suitable for single-level slab-on-ground construction. Stormwater grades can be "
-            "achieved with standard falls (1:100 minimum). The elevation should be compared "
-            "against any applicable flood planning level (FPL) for the area."
+            "achieved with standard falls (1:100 minimum). The comparison datum for this "
+            "elevation is any applicable flood planning level (FPL) for the area."
         )
         action = None
         cost = None
@@ -852,8 +855,9 @@ def _interpret_elevation(d: dict) -> TerrainFinding:
             f"Elevation ranges from {elev_min}m to {elev_max}m AHD ({elev_range}m variation) "
             f"in a {lf} position. The low-lying landform combined with moderate grade change "
             "suggests a site that transitions into a drainage concentration zone. Floor levels "
-            f"should be set with appropriate freeboard. The minimum site elevation of {elev_min}m "
-            "AHD is the critical datum for flood planning level comparison."
+            "relative to any identified flood planning level are the relevant check. The "
+            f"minimum site elevation of {elev_min}m "
+            "AHD is the critical datum for that comparison."
         )
         action = "Verify minimum elevation against applicable flood planning level"
         cost = None
@@ -864,11 +868,11 @@ def _interpret_elevation(d: dict) -> TerrainFinding:
             f"Elevation ranges from {elev_min}m to {elev_max}m AHD ({elev_range}m variation). "
             "This grade change will likely require split-level design, stepped footings, or "
             "localised retaining walls. Earthworks volume depends on building footprint "
-            "orientation relative to the contours. A contour survey at 0.5m intervals is "
-            "recommended to optimise building placement and minimise cut-and-fill imbalance. "
+            "orientation relative to the contours. A contour survey at 0.5m intervals is the "
+            "input that resolves building placement and cut-and-fill balance. "
             "Retaining walls exceeding 600mm height require engineering design under AS 4678."
         )
-        action = "Contour survey recommended for design development"
+        action = "Contour survey — the input design development works from"
         cost = "$2,000\u2013$5,000 (contour survey by registered surveyor)"
     else:
         sev = TerrainSeverity.RED
@@ -923,12 +927,12 @@ def _interpret_ruggedness(d: dict) -> TerrainFinding:
             f"Terrain ruggedness index of {rug}\u00b0 indicates moderate surface variability. "
             "The site has a mix of gradients — some areas are relatively flat while others are "
             "steeper, or the surface undulates. This may indicate benched terrain, rock outcrops "
-            "interspersed with soil, or natural terracing. Foundation design should account for "
-            "variable bearing conditions. A detailed contour survey will reveal whether the "
+            "interspersed with soil, or natural terracing. Variable bearing conditions are "
+            "typical of this surface profile. A detailed contour survey resolves whether the "
             "variability is gradual undulation or abrupt changes (e.g. sandstone shelf edges "
             "common in Sydney Basin geology)."
         )
-        action = "Contour survey recommended — variable bearing conditions likely"
+        action = "Variable bearing conditions likely — a contour survey resolves them"
         cost = "$2,000\u2013$5,000 (contour survey by registered surveyor)"
     else:
         sev = TerrainSeverity.RED
@@ -939,10 +943,11 @@ def _interpret_ruggedness(d: dict) -> TerrainFinding:
             "escarpment edges, gullies, or highly dissected terrain. This substantially constrains "
             "building footprint placement and increases construction costs. Individual foundation "
             "elements may need different bearing conditions. Access road and driveway grades may "
-            "be difficult to achieve within AS 2890.1 limits. A comprehensive geotechnical "
-            "investigation with multiple test locations across the site is recommended."
+            "be difficult to achieve within AS 2890.1 limits. This level of variability is "
+            "what a geotechnical investigation with multiple test locations across the "
+            "site resolves."
         )
-        action = "Comprehensive geotechnical investigation required — multiple test locations"
+        action = "Geotechnical investigation with multiple test locations — high surface complexity"
         cost = "$5,000\u2013$15,000 (geotechnical investigation with multiple boreholes/test pits)"
 
     return TerrainFinding(

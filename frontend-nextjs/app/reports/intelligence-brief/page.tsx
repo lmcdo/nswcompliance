@@ -10,6 +10,9 @@ import AerialTile from '@/components/reports/AerialTile';
 import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2';
 import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
 import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
+import { SeppContextCard } from '@/components/reports/SeppContextCard';
+import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
+import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 
 // Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
 // flag AND the Railway-side BRIEF_LLM_OVERLAY_ENABLED must be on for anything
@@ -196,7 +199,16 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
       tone: 'pending',
     };
   }
-  if (!r) return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
+  // No reason recorded on a field this brief's sections DO promise (e.g. the VG
+  // land value when the valuation lookup returned nothing) — that's a retrieval
+  // miss, not an out-of-scope field. Say so, and route to a retry.
+  if (!r) {
+    return {
+      label: 'Unavailable',
+      detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+      tone: 'error',
+    };
+  }
   // Only a genuine resolution failure ("No prop_id resolved") is the user's
   // address problem. A bare "could not ..." from any backend layer used to land
   // here too, so a council we simply haven't onboarded (e.g. Wingecarribee DCP)
@@ -218,12 +230,14 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
   if (r.startsWith('no ') || r.includes('none found') || r.includes('at this location')) {
     return {
       label: 'None here',
-      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property. For a constrained site that's good news.`,
+      detail: `Checked${what ? ` for ${what}` : ''} — none recorded at this property.`,
       tone: 'clear',
     };
   }
+  // The ONLY branch that may say "not part of this brief": the layer was
+  // genuinely not requested (an opt-in that wasn't ticked).
   if (r.includes('not requested')) {
-    return { label: 'Not run', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
+    return { label: 'Not included', detail: 'An optional add-on, not part of this brief.', tone: 'neutral' };
   }
   if (r.includes('fail') || r.includes('unavailable') || r.includes('error') || r.includes('timeout') || r.includes('timed out')) {
     return {
@@ -232,7 +246,13 @@ function describeUnavailable(reason?: string | null, section?: string, satellite
       tone: 'error',
     };
   }
-  return { label: 'Not included', detail: 'Not part of this brief.', tone: 'neutral' };
+  // Unrecognised reason on a promised field — a retrieval miss, never "not part
+  // of this brief" (the section header promised it).
+  return {
+    label: 'Unavailable',
+    detail: 'This field could not be retrieved on this run — run the brief again to retry.',
+    tone: 'error',
+  };
 }
 
 const UNAVAILABLE_TONE_STYLES: Record<UnavailableTone, string> = {
@@ -660,6 +680,184 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
           );
         }
 
+        // ── Satellite pass-through rows (parity PR-B). FloodDetail/BushfireDetail
+        // emit plain values (no DataField wrapper). Composite rows below fold
+        // their companion fields (SATELLITE_FOLDED_KEYS) so nothing renders twice;
+        // nulls are hidden by HIDE_WHEN_NULL_KEYS (three-state: None = not
+        // checked, never a fabricated reading).
+        if (section === 'satellite.flood') {
+          if (SATELLITE_FOLDED_KEYS.has(key)) return null;
+          if (key === 'flood_signal' && typeof val === 'string') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <dd className="text-sm font-medium text-slate-900">{floodSignalLine(val)}</dd>
+              </div>
+            );
+          }
+          if (key === 'ems_flood_detected' && typeof val === 'boolean') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {emsLine(val, data.ems_activations as EmsActivation[] | null)}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'sar_flood_detected' && typeof val === 'boolean') {
+            const sarConf = data.sar_confidence;
+            const sarDate = data.sar_analysis_date;
+            const extras = [
+              typeof sarConf === 'string' && sarConf ? `confidence ${sarConf}` : null,
+              typeof sarDate === 'string' && sarDate ? `analysed ${sarDate}` : null,
+            ].filter(Boolean).join(', ');
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {val
+                    ? 'Surface-water signal detected on the analysed radar passes'
+                    : 'No surface-water signal on the analysed radar passes'}
+                  {extras ? <span className="text-slate-500"> ({extras})</span> : null}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'ses_in_flood_planning_area' && typeof val === 'boolean') {
+            const sesClass = data.ses_flood_class;
+            const sesStudy = data.ses_study_name;
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {val ? (
+                    <>
+                      Yes — within a mapped flood-study extent
+                      {typeof sesClass === 'string' && sesClass ? ` (${formatValue(sesClass)})` : ''}
+                      {typeof sesStudy === 'string' && sesStudy ? (
+                        <span className="text-slate-500"> — study: {formatValue(sesStudy)}</span>
+                      ) : null}
+                    </>
+                  ) : (
+                    'No — not within a council flood-study extent held in our dataset'
+                  )}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'bom_gauge_distance_km' && typeof val === 'number') {
+            const gauge = data.bom_gauge_name;
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {formatValue(val)} km
+                  {typeof gauge === 'string' && gauge ? <span className="text-slate-500"> — {gauge}</span> : null}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'bom_last_major_flood_date' && typeof val === 'string') {
+            const peak = data.bom_last_major_flood_peak_m;
+            return (
+              <div key={key} className="flex flex-col">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {val}
+                  {typeof peak === 'number' ? <span className="text-slate-500"> — peak {formatValue(peak)} m</span> : null}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'bom_flood_history' && Array.isArray(val)) {
+            if (val.length === 0) return null;
+            const history = val as Array<{ date?: string; peak_m?: number | null; ari_category?: string | null }>;
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="mt-0.5">
+                  <ul className="text-sm text-slate-900 space-y-0.5">
+                    {history.map((h, i) => (
+                      <li key={i}>
+                        {h.date ?? '—'}
+                        {h.peak_m != null ? <span className="text-slate-500"> — peak {formatValue(h.peak_m)} m</span> : null}
+                        {h.ari_category ? <span className="text-slate-500"> ({formatValue(h.ari_category)})</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'in_100yr_flood_zone' && typeof val === 'boolean') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {val
+                    ? 'Yes — at least one source in this run maps this location within a 1% AEP extent'
+                    : 'No — no source in this run maps this location within a 1% AEP extent'}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 's1_gap_warning' && typeof val === 'string') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-[11px] text-slate-400 leading-snug mt-0.5">{val}</dd>
+              </div>
+            );
+          }
+        }
+        if (section === 'satellite.bushfire') {
+          if (SATELLITE_FOLDED_KEYS.has(key)) return null;
+          if (key === 'bal_formal_assessment_cost_range' && typeof val === 'string') {
+            const dir = data.bal_assessor_directory_url;
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">
+                  {val} <span className="text-slate-500">— typical range for a formal BAL assessment, not a quote.</span>
+                  {typeof dir === 'string' && /^https?:\/\//i.test(dir) ? (
+                    <>
+                      {' '}
+                      <a href={dir} target="_blank" rel="noopener noreferrer"
+                         className="text-teal-600 hover:text-teal-800 underline font-medium">
+                        Find a BAL assessor (NSW RFS directory) ↗
+                      </a>
+                    </>
+                  ) : null}
+                </dd>
+              </div>
+            );
+          }
+          if (key === 'rfs_referral_note' && typeof val === 'string') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">{val}</dd>
+              </div>
+            );
+          }
+          if (key === 'clearing_10_50_exceptions' && typeof val === 'string') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">{val}</dd>
+              </div>
+            );
+          }
+          if ((key === 'estimated_consultant_costs' || key === 'state_legislation') && typeof val === 'string') {
+            return (
+              <div key={key} className="flex flex-col col-span-full">
+                <FieldLabel fieldKey={key} />
+                <dd className="text-sm text-slate-900 mt-0.5">{val}</dd>
+              </div>
+            );
+          }
+        }
+
         // Flood raster/remote reads return 0 for a genuine "no water" and null only
         // when the read FAILED — so a null here means "couldn't retrieve", not zero.
         // Say that plainly rather than showing an ambiguous dash.
@@ -687,6 +885,16 @@ function SectionData({ data, section, satelliteRan = false }: { data: Record<str
 function stripDimArea(key: string, value: unknown): unknown {
   if (key !== 'lot_dimensions' || !value || typeof value !== 'object' || Array.isArray(value)) return value;
   const obj = value as Record<string, unknown>;
+  // Battleaxe (flag) lot: the handle/head breakdown IS the measurement — say so
+  // instead of the irregular-shape apology (the eligibility figures next to this
+  // field use the head width, so the two must agree).
+  if (obj.lot_type === 'battleaxe' && typeof obj.battleaxe_main_lot_width_m === 'number') {
+    const handle = typeof obj.battleaxe_access_way_width_m === 'number'
+      ? `${obj.battleaxe_access_way_width_m} m access handle, ` : '';
+    const headArea = typeof obj.battleaxe_main_lot_area_m2 === 'number'
+      ? ` (~${Math.round(obj.battleaxe_main_lot_area_m2)} m² main lot)` : '';
+    return `Battleaxe (flag) lot — ${handle}${obj.battleaxe_main_lot_width_m} m wide main lot${headArea}`;
+  }
   // Irregular polygon (fills <60% of its bounding box): frontage/depth are null
   // BY MEASUREMENT, not by failure — "Frontage: —, Depth: —" reads as broken.
   if (obj.irregular === true && obj.frontage_m == null && obj.depth_m == null) {
@@ -714,6 +922,22 @@ function valueWithUnit(key: string, raw: unknown, unit?: string): string {
 const FIELD_LABEL_OVERRIDES: Record<string, string> = {
   coastal_land_application: 'Coastal Management Area',
   coastal_hazards: 'Coastal Management Area',
+  // Flood pass-through rows (PR-B) — plain-English labels for composite rows.
+  ems_flood_detected: 'Copernicus emergency mapping',
+  sar_flood_detected: 'Radar flood detection (Sentinel-1)',
+  ses_in_flood_planning_area: 'Council flood study extent',
+  bom_gauge_distance_km: 'Nearest BoM river gauge',
+  bom_last_major_flood_date: 'Last major flood at the gauge',
+  bom_flood_history: 'Major floods recorded at the gauge',
+  in_100yr_flood_zone: '1% AEP (1-in-100-year) mapping',
+  ground_elevation_m_ahd: 'Ground elevation (m AHD)',
+  s1_gap_warning: 'Radar coverage note',
+  jrc_data_year: 'JRC dataset year',
+  // Bushfire pass-through rows (PR-B).
+  bal_formal_assessment_cost_range: 'Formal BAL assessment cost',
+  rfs_referral_note: 'RFS referral',
+  clearing_10_50_exceptions: '10/50 vegetation clearing',
+  estimated_consultant_costs: 'Consultant costs (guidance)',
 };
 
 function formatKey(key: string): string {
@@ -776,6 +1000,27 @@ const FIELD_HINTS: Record<string, string> = {
     'Applications near this lot that reached a determination, with their recorded results (NSW planning application tracking).',
   da_refusal_stats:
     'Counts of determined applications across the council area and the share refused, for the data window stated in the sentence.',
+  // Flood pass-through rows (PR-B).
+  ems_flood_detected:
+    'Whether a Copernicus Emergency Management Service flood-extent map intersected this location during a recorded activation.',
+  sar_flood_detected:
+    'Sentinel-1 radar change detection against a dry-season baseline at this location.',
+  ses_in_flood_planning_area:
+    'Whether the lot falls within a council or SES flood-study extent held in our dataset.',
+  in_100yr_flood_zone:
+    'Whether any source in this run (EPI layer, council study, flood-study raster) maps this location within a 1% annual exceedance probability extent.',
+  ground_elevation_m_ahd:
+    'Ground elevation from the NSW 5 m elevation model, in metres above the Australian Height Datum.',
+  jrc_data_year:
+    'Version year of the JRC surface-water dataset behind the occurrence figure.',
+  // Bushfire pass-through rows (PR-B).
+  bal_formal_assessment_cost_range:
+    'Guidance figure — a typical range for engaging a practitioner, not a quote.',
+  estimated_consultant_costs:
+    'Guidance ranges for bushfire consultants where the pathway calls for them — not quotes.',
+  bal_assessment_likely_required:
+    'Whether the RFS mapping category typically triggers a formal BAL assessment at application stage.',
+  data_currency: 'Date the RFS mapping was queried for this brief.',
 };
 
 // Field label + an optional one-line description underneath.
@@ -815,8 +1060,31 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'lot_total', 'dwelling_type', 'registration_date',
   // Bushfire pathway detail — only meaningful on bushfire-prone lots.
   'rfs_referral_required', 'rfs_referral_triggers', 'cdc_pathway_available', 'cross_overlays',
+  // Bushfire pass-through guidance (PR-B) — null = not applicable on this lot
+  // or not produced this run; the prone/not-prone rows already answer.
+  'designation_source', 'bal_assessment_likely_required', 'bal_formal_assessment_cost_range',
+  'bal_assessor_directory_url', 'rfs_referral_note', 'clearing_10_50_entitled',
+  'clearing_10_50_exceptions', 'estimated_consultant_costs', 'state_legislation',
+  'legislation_url', 'data_currency',
+  // Flood pass-through (PR-B) — three-state: null = that source was not
+  // checked/available this run (never a fabricated clear reading).
+  'flood_signal', 'ems_flood_detected', 'ems_activations', 'sar_flood_detected',
+  'sar_confidence', 'sar_analysis_date', 'ses_in_flood_planning_area',
+  'ses_flood_class', 'ses_study_name', 'bom_gauge_name', 'bom_last_major_flood_date',
+  'bom_last_major_flood_peak_m', 'bom_flood_history', 'in_100yr_flood_zone',
+  'ground_elevation_m_ahd', 's1_gap_warning', 'jrc_data_year',
   // LGA determination stats — null means the layer holds none for this council.
   'da_refusal_stats',
+]);
+
+// Satellite fields folded into a neighbouring composite row (rendered inside
+// that row's sentence) — never rendered as their own grid cell.
+const SATELLITE_FOLDED_KEYS = new Set([
+  // flood
+  'ems_activations', 'ses_flood_class', 'ses_study_name', 'bom_gauge_name',
+  'sar_confidence', 'sar_analysis_date', 'bom_last_major_flood_peak_m',
+  // bushfire
+  'bal_assessor_directory_url',
 ]);
 
 // LEP principal development standards that legitimately have no mapped layer on
@@ -877,68 +1145,9 @@ function HeritageList({ items }: { items: string[] }) {
   );
 }
 
-interface ShadowScenario { date_label?: string; time_label?: string; shadow_length_m?: number | null; overlap_pct?: number | null; }
-interface ShadowData {
-  height_m?: number | null; height_source?: string | null; adg_compliant?: boolean | null;
-  scenarios?: ShadowScenario[]; worst_case_scenario?: string | null; temporal_caveat?: string | null;
-}
-
-// Clean a worst-case scenario label for display. The backend labels already
-// embed "ADG worst case" and often both a 12-hour and 24-hour time (e.g.
-// "ADG worst case 9am Jun 21 09:00"); the UI already prefixes "Worst case (…)",
-// so strip the duplicated prefix and the redundant 24-hour time.
-function cleanScenarioLabel(date?: string, time?: string): string {
-  let s = [date, time].filter(Boolean).join(' ').trim();
-  s = s.replace(/^(adg\s+)?worst\s+case\s+/i, '');
-  // If a 12-hour time (9am) is present, drop a redundant HH:MM 24-hour token.
-  if (/\b\d{1,2}\s*(am|pm)\b/i.test(s)) {
-    s = s.replace(/\s*\b\d{1,2}:\d{2}\b/g, '');
-  }
-  return s.replace(/\s{2,}/g, ' ').trim();
-}
-
-// The shadow field is a nested object — render the overshadowing summary
-// (height, solar-access compliance, worst-case shadow), not a bare "6 fields".
-function ShadowDisplay({ data }: { data: ShadowData }) {
-  const worst = (data.scenarios || []).find((s) => `${s.date_label} ${s.time_label}`.trim() === (data.worst_case_scenario || '').trim())
-    || (data.scenarios || [])[0];
-  return (
-    <div className="text-sm text-slate-900 space-y-1.5">
-      {data.height_m != null && (
-        <div>
-          Building height used: <span className="font-medium">{data.height_m} m</span>
-          <span className="text-slate-500">
-            {data.height_source === 'default'
-              // The 9 m fallback (shadow_detector DEFAULT_HEIGHT_M) — say WHY it
-              // was used, not the internal slug.
-              ? ' — no LEP height limit is mapped for this lot, so the analysis uses a standard two-storey height'
-              : data.height_source
-                ? ' — the LEP height limit mapped for this lot'
-                : ''}
-          </span>
-        </div>
-      )}
-      {data.adg_compliant != null && (
-        <div>
-          ADG solar access:{' '}
-          <span className={cn('inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ring-1',
-            data.adg_compliant ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-amber-200')}>
-            {data.adg_compliant ? 'meets the 3-hour guideline' : 'below the 3-hour guideline'}
-          </span>
-        </div>
-      )}
-      {worst && (worst.shadow_length_m != null || worst.overlap_pct != null) && (
-        <div className="text-slate-700">
-          Worst case ({cleanScenarioLabel(worst.date_label, worst.time_label)}):{' '}
-          {worst.shadow_length_m != null ? `${worst.shadow_length_m} m shadow` : ''}
-          {worst.shadow_length_m != null && worst.overlap_pct != null ? ', ' : ''}
-          {worst.overlap_pct != null ? `${worst.overlap_pct}% overlap on neighbours` : ''}
-        </div>
-      )}
-      {data.temporal_caveat && <div className="text-[11px] text-slate-400 leading-snug mt-1">{data.temporal_caveat}</div>}
-    </div>
-  );
-}
+// Shadow display (summary + full scenario table) lives in
+// components/reports/ShadowDetailDisplay so the table is render-testable;
+// imported at the top of this file.
 
 interface OverlayItem { layer_type?: string; value?: unknown; instrument?: string | null; lga?: string | null; }
 
@@ -1838,56 +2047,9 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
   );
 }
 
-// When the Housing-SEPP residential forms don't apply, don't say "doesn't apply" —
-// explain WHY with the lot's real zone + instrument, and what it means for housing
-// on this land. A "no" carrying context is the product's value.
-function SeppContextCard({ ctx }: { ctx: PlanningContext }) {
-  const zoneLabel = ctx.zone
-    ? `${ctx.zone}${ctx.zoneFull ? ` (${ctx.zoneFull})` : ''}`
-    : 'this zone';
-  const instrument = ctx.zoneEpi || 'the Local Environmental Plan';
-  const residential = isResidentialZone(ctx.zone);
-  return (
-    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
-      <div className="px-5 py-4 border-b border-slate-100">
-        <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Housing SEPP — Low &amp; Mid-Rise</h3>
-        <p className="text-xs text-slate-500 mt-0.5">Denser housing forms the policy permits, and whether they reach this lot</p>
-      </div>
-      <div className="px-5 py-4 text-sm text-slate-700 leading-relaxed space-y-2">
-        {residential ? (
-          <p>
-            This lot sits in <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
-            {ctx.legislationUrl
-              ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
-              : instrument}. It&apos;s a residential zone, but the Low &amp; Mid-Rise Housing standards
-            (terraces, townhouses, manor houses and residential flats) couldn&apos;t be loaded for
-            it — re-run the brief, or check the standards directly in the instrument above.
-          </p>
-        ) : (
-          <>
-            <p>
-              This lot is zoned <span className="font-medium text-slate-900">{zoneLabel}</span> under{' '}
-              {ctx.legislationUrl
-                ? <a href={ctx.legislationUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 underline [overflow-wrap:anywhere]">{instrument}</a>
-                : instrument} — not a residential zone.
-            </p>
-            <p>
-              The Low &amp; Mid-Rise Housing reforms (terraces, townhouses, manor houses, residential
-              flats) reach only the residential zones <span className="font-medium">R1–R4</span>, so they
-              don&apos;t apply here. On a centre/business zone like this, housing is delivered through the
-              zone&apos;s own permitted uses — typically <span className="font-medium">shop-top housing</span>{' '}
-              above ground-floor retail — rather than the low-and-mid-rise pathway.
-            </p>
-            <p className="text-slate-500">
-              See the land use table in the instrument above for what this specific lot permits, and the
-              Development Capacity card for the buildable envelope.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+// The "why the SEPP forms don't reach this lot" explainer lives in
+// components/reports/SeppContextCard.tsx (zone-family aware copy — a
+// conservation or rural lot is never described as shop-top territory).
 
 // Granny Flat — decoupled to the working async pipeline. The brief fires the same
 // gated /api/satellite/granny-flat route the standalone tool uses (which gates on
@@ -2014,6 +2176,13 @@ interface SolarOutputs {
   max_panels?: number; max_panel_area_m2?: number; annual_kwh_estimate?: number;
   sunshine_hours_per_year?: number; roof_area_m2?: number; is_heritage?: boolean;
   imagery_date?: string; coverage_available?: boolean;
+  best_pitch_deg?: number; best_azimuth_deg?: number; is_commercial_scale?: boolean;
+}
+
+// Compass bearing (0=N, 90=E, 180=S, 270=W) -> 8-wind direction word.
+function compassDirection(deg: number): string {
+  const dirs = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+  return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 }
 // null = not fetched yet (renders the loading shell while active)
 type SolarState =
@@ -2098,7 +2267,18 @@ function SolarBriefCard({ address, active }: { address?: string; active: boolean
         {o.roof_area_m2 != null && (
           <div><dt className="text-xs text-slate-500">Roof area (clipped to lot)</dt><dd className="text-slate-900 tabular-nums">{Math.round(o.roof_area_m2).toLocaleString()} m²</dd></div>
         )}
+        {o.best_pitch_deg != null && o.best_azimuth_deg != null && (
+          <div>
+            <dt className="text-xs text-slate-500">Best roof segment</dt>
+            <dd className="text-slate-900 tabular-nums">
+              pitch {o.best_pitch_deg}°, facing {compassDirection(o.best_azimuth_deg)} ({Math.round(o.best_azimuth_deg)}°)
+            </dd>
+          </div>
+        )}
       </dl>
+      {o.is_commercial_scale && (
+        <p className="mt-2 text-xs text-slate-500">Usable roof area exceeds 500 m² — this source classifies the roof as commercial-scale.</p>
+      )}
       {o.is_heritage && (
         <p className="mt-2 text-xs text-amber-700">A heritage listing applies at this property — panel placement can be restricted; check with the council.</p>
       )}
@@ -2489,6 +2669,9 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
                 <div>
                   <span className="font-medium">{formatKey(g.field.replace(/^satellite\./, ''))}</span>
                   <span className="text-slate-500"> — {describeUnavailable(g.reason, g.field).detail}</span>
+                  {/* Literal space before the link — ml-2 is visual only, so without
+                      it the copy-pasted text ran the sentence into "…retry.Verify". */}
+                  {g.verify_url && ' '}
                   {g.verify_url && (
                     <a
                       href={g.verify_url}
@@ -2524,7 +2707,7 @@ function CompleteSummary({ data, hiddenGapFields }: { data: BriefComplete; hidde
 
 // Plain-English definitions of the confidence labels stamped on each figure.
 const CONFIDENCE_LEGEND: { label: string; color: string; meaning: string }[] = [
-  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General) — treat as fact.' },
+  { label: 'Authoritative', color: 'text-emerald-600', meaning: 'Taken directly from an official government source (the LEP, the cadastre, the Valuer General).' },
   { label: 'Calculated', color: 'text-amber-600', meaning: 'An exact calculation on satellite, statistical or climate-model data — the method and source are stated with each figure. Calculated from data, not measured on site.' },
   { label: 'Derived', color: 'text-blue-600', meaning: 'Computed by us from authoritative inputs (e.g. the buildable GFA from the FSR × lot area).' },
   { label: 'Extracted', color: 'text-purple-600', meaning: 'Pulled from a source document (e.g. a DCP clause) by our extraction pipeline.' },
