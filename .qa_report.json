@@ -1,129 +1,133 @@
 {
-  "tier": "critical",
-  "justification": "Fixes a confirmed silent-wrong-result defect (issue #751): the premium pre-DA pipeline serves a 130s HTTP-200 report with every timeline year no_data when Tessera tile coverage is absent at the location — a hollow paid artifact that would be a refund case. Registry-verified live for 20 Patanga St Kincumber (only 2024 published, zero consecutive pairs). Critical because the failure is invisible to the buyer at purchase time.",
-  "commit_hash": "792a55a0",
+  "tier": "standard",
+  "justification": "Fixes the confirmed silent-wrong-data defect in issue #762: the brief handed one shared report_id to flood, bushfire and shadow, and each service's ON CONFLICT (id) DO UPDATE upsert let the last writer clobber the first writer's outputs while the row kept the first product label — the bushfire cache then served flood or shadow outputs merged over all-null defaults, and every re-run re-poisoned the newest row.",
+  "commit_hash": "8eddce07",
   "files": [
-    "services/pre_da_history.py",
     "services/intelligence_brief.py",
-    "tests/test_preda_failclosed.py"
+    "services/bushfire_prescreen.py",
+    "services/flood_truth.py",
+    "scripts/generate_conveyancing_report.py",
+    "tests/test_report_clobber_762.py",
+    "tests/test_flood_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "No stored rows change shape; refused runs write NO pre_da_history_reports row in the direct flow and mark the pre-allocated async row status='error' via the existing _mark_error path — no new status value, no migration.",
-    "assumption_mismatch": "Callers that treated every 200 as a complete report now receive {refused: true, reason, reason_code} — the same contract flood_truth already uses, and the only current callers are the brief premium fetch (updated in this PR) and direct API use.",
-    "new_vs_existing": "Applies to every future run; no persisted artifact needs backfill (hollow historical rows keep status='complete' but the product has no UI path yet).",
-    "external_source_error": "A failure of the registry pre-flight itself is NOT treated as a coverage gap — the run proceeds and the all-no_data backstop still fails it closed; only confirmed no-coverage refuses early.",
-    "frontend_type": "No frontend change: premium stays UI-dark; the async poll already renders status='error' as a failure, never as a complete report.",
-    "user_failure_mode": "A buyer at an uncovered location now gets an immediate, reason-coded refusal instead of paying 130s of compute for a report whose every year reads 'Satellite data unavailable'."
+    "existing_data": "No stored row changes shape and no migration runs; already-poisoned property_reports rows stay in place but the new sentinel-key cache guard skips them at read time, and a separate approval-gated cleanup DELETE is drafted in the PR body without being executed.",
+    "assumption_mismatch": "Standalone tool flows poll property_reports by the exact report_id the frontend allocated, so id derivation deliberately happens only at the brief's fetch call sites — the services' own _write_report id handling is untouched and standalone semantics are preserved.",
+    "new_vs_existing": "Applies to every future brief run through distinct per-product uuid5 row ids, and to all historical poisoned rows already in property_reports through the cache guard, which skips them at read time rather than backfilling anything."
   },
   "functions": [
     {
-      "name": "check_tessera_coverage",
-      "file_line": "services/pre_da_history.py:419",
-      "input": "a constructed GeoTessera client, the lot centroid lat/lon, and the ordered list of timeline years to probe",
-      "output": "set of years whose published registry has a tile intersecting the lot + neighbourhood sample bounds (registry manifest only, no tile downloads)",
-      "if_none": "an empty set means no year is covered — the caller refuses before the heavy run"
+      "name": "_derive_service_report_id",
+      "file_line": "services/intelligence_brief.py:2098",
+      "input": "the brief's parent report_id as a uuid4 string plus the satellite product name being fetched",
+      "output": "a deterministic uuid5 string, stable per parent-product pair and distinct across products, used as the property_reports row id",
+      "if_none": "a non-UUID parent raises ValueError inside the pool-submitted lambda, which _safe_call converts to a NOT_AVAILABLE DataField for that section"
     },
     {
-      "name": "_consecutive_covered_pairs",
-      "file_line": "services/pre_da_history.py:406",
-      "input": "the set of registry-covered years plus the ordered YEARS list the timeline is computed over",
-      "output": "count of (N-1, N) pairs where both years are covered — the number of computable timeline points",
-      "if_none": "zero pairs (e.g. the live Kincumber case: only 2024 published) triggers the pre-flight refusal"
+      "name": "_first_valid_cached_row",
+      "file_line": "services/bushfire_prescreen.py:459",
+      "input": "the list of candidate cached rows returned newest-first by the bushfire product and address SELECT",
+      "output": "the newest row whose outputs dict contains the is_bushfire_prone sentinel key, meaning genuinely bushfire-shaped outputs",
+      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_bushfire falls through to live compute"
     },
     {
-      "name": "_build_refusal",
-      "file_line": "services/pre_da_history.py:1057",
-      "input": "request, coordinates, council, reason code + prose, covered years",
-      "output": "flood_truth-style refused dict (refused=true, reason_code, reason, covered_years) after marking any pre-allocated async row errored",
-      "if_none": "report_id None makes _mark_error a no-op; the direct caller still gets the refused body"
+      "name": "_first_valid_cached_row",
+      "file_line": "services/flood_truth.py:1507",
+      "input": "the list of candidate cached rows returned newest-first by the flood product and address SELECT",
+      "output": "the newest row whose outputs contain epi_flood_class or flood_signal, meaning genuinely flood-shaped outputs",
+      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_flood falls through to live source queries"
     },
     {
-      "name": "_run_pre_da_history_inner",
-      "file_line": "services/pre_da_history.py:1104",
-      "input": "the validated PreDAHistoryRequest carrying address, optional lot area, and optional pre-allocated report row id",
-      "output": "completed report dict, or a refused dict from the coverage pre-flight (before the ~130s run) or the all-no_data backstop (after annotation, before the DB write)",
-      "if_none": "a pre-flight exception logs and proceeds — refusal only on confirmed no-coverage or a confirmed empty timeline"
-    },
-    {
-      "name": "_pre_da_reason",
-      "file_line": "services/intelligence_brief.py:2481",
-      "input": "the raw pre-DA pipeline payload dict, a refused dict, or None when premium was not requested",
-      "output": "the refusal's own prose reason when refused, else the generic not-requested/failed string",
-      "if_none": "None or non-refused payloads keep the pre-change generic reason exactly"
+      "name": "get_shadow_risk",
+      "file_line": "scripts/generate_conveyancing_report.py:1889",
+      "input": "address, prop_id, coordinates, optional LEP height, and now an optional caller-supplied report_id for the row the shadow service writes",
+      "output": "the shadow pipeline outputs dict with run-level confidence merged in, or None when the Railway endpoint is unreachable",
+      "if_none": "report_id None keeps the previous behaviour exactly, allocating a fresh uuid4 per call for CLI and conveyancing callers"
     }
   ],
   "values": [
     {
-      "value": "covered_years from the registry pre-flight",
-      "read_at": "services/pre_da_history.py:1164",
+      "value": "outputs field of each candidate cached property_reports row",
+      "read_at": "services/bushfire_prescreen.py:468",
       "nullable": "yes",
-      "guard_at": "services/pre_da_history.py:1164",
-      "if_missing": "None (check failed) skips the pre-flight refusal entirely; the backstop still guards the output"
+      "guard_at": "services/bushfire_prescreen.py:469",
+      "if_missing": "a row with null or non-dict outputs is skipped like a poisoned row and the scan falls through to the next candidate"
     },
     {
-      "value": "timeline entry level in the backstop gate",
-      "read_at": "services/pre_da_history.py:1284",
-      "nullable": "no",
-      "guard_at": "services/pre_da_history.py:1284",
-      "if_missing": "annotate_timeline always emits a level for every year; any non-no_data entry lets the report complete"
+      "value": "cached row selected by the flood sentinel guard before serving",
+      "read_at": "services/flood_truth.py:1659",
+      "nullable": "yes",
+      "guard_at": "services/flood_truth.py:1660",
+      "if_missing": "None means no valid cached row exists, so the cached branch is skipped entirely and the live source queries run"
     },
     {
-      "value": "pre_da_raw.refused on the brief side",
-      "read_at": "services/intelligence_brief.py:2471",
+      "value": "report_id parameter threaded into the shadow request payload",
+      "read_at": "scripts/generate_conveyancing_report.py:1918",
       "nullable": "yes",
-      "guard_at": "services/intelligence_brief.py:2471",
-      "if_missing": "absent key reads falsy so successful payloads build the detail exactly as before"
+      "guard_at": "scripts/generate_conveyancing_report.py:1918",
+      "if_missing": "the or-fallback allocates a fresh uuid4 so standalone and CLI callers keep their pre-change row-per-run behaviour"
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "bushfire cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
+      "file_line": "services/bushfire_prescreen.py:527",
+      "where_clause": "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5"
+    },
+    {
+      "purpose": "flood cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
+      "file_line": "services/flood_truth.py:1650",
+      "where_clause": "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "Location with a single published year (live Kincumber case) purchases a premium report",
-      "what_happens": "Pre-change: 130s run, HTTP 200, all years 'Satellite data unavailable', report stored as complete",
+      "scenario": "Two satellite services finish a brief run back-to-back with the same parent report_id, as in the live Kincumber contamination",
+      "what_happens": "Pre-change the second upsert overwrote the first row's outputs while the row kept the first product label, silently serving cross-product data",
       "mitigated": true,
-      "how": "pre-flight counts zero consecutive covered pairs and refuses before any sampling; heavy sampler asserted-not-called in test",
-      "repro": "pytest tests/test_preda_failclosed.py::TestPreflightRefusal::test_zero_pairs_refuses_before_sampling"
+      "how": "uuid5 of parent and product gives each service its own row id, so the captured INSERT params for bushfire and flood carry distinct ids",
+      "repro": "pytest tests/test_report_clobber_762.py::TestWriteReportDistinctRows::test_two_products_same_parent_write_two_distinct_row_ids"
     },
     {
-      "scenario": "Registry says covered but tile downloads fail on the container — sampling yields NaN everywhere",
-      "what_happens": "Pre-flight passes, so without a backstop the hollow report would still be served and stored",
+      "scenario": "The newest bushfire row for an address is already poisoned with flood outputs from the pre-fix era",
+      "what_happens": "Pre-change the cache merged the flood blob over bushfire defaults and served an all-null section with fire_signal unavailable",
       "mitigated": true,
-      "how": "all-no_data timeline returns a refused dict before the DB write (DB access asserted-not-reached in test)",
-      "repro": "pytest tests/test_preda_failclosed.py::TestBackstopGate::test_all_no_data_timeline_refuses_not_completes"
+      "how": "the sentinel guard skips rows lacking is_bushfire_prone and serves the older genuine row, with flood keys asserted absent from the response",
+      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_poisoned_newest_row_never_served"
     },
     {
-      "scenario": "The registry manifest fetch itself errors (network) at a location that HAS coverage",
-      "what_happens": "Naive fail-closed would refuse good locations whenever the registry hiccups",
+      "scenario": "Every cached row for the address is poisoned so no genuine bushfire outputs exist in the table at all",
+      "what_happens": "Serving any candidate would render wrong data, and a naive newest-row read has nothing valid left to return",
       "mitigated": true,
-      "how": "pre-flight exceptions log and proceed to sampling; only the output gate can refuse then",
-      "repro": "pytest tests/test_preda_failclosed.py::TestBackstopGate::test_preflight_failure_proceeds_then_backstop_refuses"
+      "how": "the guard returns None which turns the cache branch into a miss, falling through to live RFS BFPL compute instead of serving poison",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_all_rows_poisoned_returns_none_for_live_compute"
     },
     {
-      "scenario": "Sparse-but-viable coverage (one consecutive pair) gets over-blocked by the new gates",
-      "what_happens": "Legitimate partial reports would be refused, shrinking the product's coverage area",
+      "scenario": "A genuine unknown bushfire result stores is_bushfire_prone as null and an over-strict guard treats it as poisoned",
+      "what_happens": "Over-aggressive filtering would discard legitimate cached unknowns and force needless live recompute on every subsequent request",
       "mitigated": true,
-      "how": "MIN_CONSECUTIVE_COVERED_PAIRS=1 — one computable pair completes with the uncovered years honestly marked no_data",
-      "repro": "pytest tests/test_preda_failclosed.py::TestPartialCoverageCompletes::test_one_consecutive_pair_produces_report"
+      "how": "the guard tests key presence rather than value truthiness, so a null-valued sentinel key still marks the row as bushfire-shaped",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_sentinel_key_with_null_value_still_accepted"
     },
     {
-      "scenario": "Async Trigger.dev flow: refusal leaves the pre-allocated row 'pending' and the frontend polls forever",
-      "what_happens": "The poll would hang with no terminal state",
+      "scenario": "A future edit reverts the cache SELECT back to LIMIT 1 while leaving the guard function itself in place",
+      "what_happens": "A poisoned newest row would hide the healthy older row again because the guard would only ever see one candidate",
       "mitigated": true,
-      "how": "_build_refusal calls _mark_error first — row goes status='error' with the refusal prose as error_msg",
-      "repro": "pytest tests/test_preda_failclosed.py::TestPreflightRefusal::test_refusal_marks_async_row_errored"
+      "how": "a test asserts the executed SELECT contains no LIMIT 1 and keeps the run_date descending order, failing on that regression",
+      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_cache_select_fetches_multiple_candidates"
     },
     {
-      "scenario": "Brief premium section renders the refusal as a crash instead of a reason-coded legit-empty",
-      "what_happens": "Users would see a generic failure with no explanation of the coverage gap",
+      "scenario": "Someone reroutes a brief call site back to passing the raw parent report_id into a satellite fetch",
+      "what_happens": "The clobber would silently return for that product pair while every test touching only the derivation helper kept passing",
       "mitigated": true,
-      "how": "_build_pre_da_detail returns None on refused and _pre_da_reason threads the refusal prose onto the NOT_AVAILABLE DataField",
-      "repro": "pytest tests/test_preda_failclosed.py::TestBriefReasonThreading::test_refusal_reason_reaches_datafield"
+      "how": "source-level tests assert all three call sites pass the derivation helper and that the old raw-report_id call strings are gone",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBriefCallSitesUseDerivedIds"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — POST /pipeline/pre-da-history for 20 PATANGA STREET KINCUMBER 2251 on deployed Railway: response arrives in seconds (not ~130s) with refused=true, reason_code=satellite_coverage_unavailable, covered_years=[2024]"
+    "manual_verify": "Yes — re-run the Kincumber brief for 20 PATANGA STREET KINCUMBER 2251 on the deployed service and confirm the bushfire section renders real RFS fields, then run the approval-gated cleanup DELETEs from the PR body if the remaining counts warrant it"
   }
 }
