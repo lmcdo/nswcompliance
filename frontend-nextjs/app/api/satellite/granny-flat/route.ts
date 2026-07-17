@@ -439,9 +439,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Shoelace on EPSG:3857 rings with Mercator cos²(lat) correction
-    let lot_area_m2: number | null = null;
-    if (lotGeometry?.rings?.[0]) {
+    // #745 D3 / #752: a caller-supplied reconciled lot_area_m2 (the brief's
+    // single lot-area figure, already used by detect) takes precedence so the
+    // confirm calculation runs on the SAME figure as every other brief card.
+    // Fallback: shoelace on EPSG:3857 rings with Mercator cos²(lat) correction.
+    let lot_area_m2: number | null = lotAreaM2;
+    if (lot_area_m2 == null && lotGeometry?.rings?.[0]) {
       const ring: [number, number][] = lotGeometry.rings[0];
       let area = 0;
       for (let i = 0; i < ring.length; i++) {
