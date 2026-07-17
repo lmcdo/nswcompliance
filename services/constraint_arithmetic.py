@@ -252,6 +252,8 @@ def _dcp_height_metres(
     unconditioned = [c for c in matches if not (c.condition or "").strip()]
     chosen = min(unconditioned or matches, key=_cap)
     raw = _cap(chosen)
+    if raw is None:  # guaranteed non-None by the filter above; guard defensively
+        return None, False
     unit = (chosen.unit or "").strip().lower()
 
     if "storey" in unit:
