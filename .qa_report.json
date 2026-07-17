@@ -1,61 +1,33 @@
 {
- "tier": "standard",
- "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses. ADDED: the How It Works page documented 9 tools but omitted the Intelligence Brief entirely (the brief's own footer links to this page) - an Intelligence Brief section added with sources/cadence/limitations matching the product's actual data sources and liability posture (computed ceiling not approval, absence-is-not-clearance).",
- "commit_hash": "262c91a8",
+ "tier": "minor",
+ "justification": "Single-file runtime guard: strips OCR doubled-glyph running-header lines (SSeeccttiioonn 11 style) from provision text at read time in the for-property route. Complements the DQ-29 DB cleanup (845 headers already stripped in data); this catches the ~20 deferred rows and any future ingest with the same artifact. Conservative filter: only drops lines where collapsing consecutive duplicate letters shrinks the letter count by over 30 percent, and the existing never-blank-a-provision fallback is preserved.",
+ "commit_hash": "PLACEHOLDER",
  "files": [
-  "frontend-nextjs/app/reports/layout.tsx",
-  "frontend-nextjs/components/marketing/SiteNav.tsx",
-  "frontend-nextjs/app/sitemap.ts",
-  "frontend-nextjs/app/layout.tsx",
-  "frontend-nextjs/app/tools/zoning-check/page.tsx",
-  "frontend-nextjs/app/how-it-works/page.tsx"
+  "frontend-nextjs/app/api/provisions/for-property/route.ts"
  ],
- "pre_impl": {
-  "existing_data": "The Option B domain architecture memory (project-domain-architecture-2026-06, confirmed live 2026-07-04) defines the split this PR aligns to: plotdetect.com.au = info-site project, canibuildit = this app's consumer domain, pro subdomains = this app's pro doors. The deslug formatter already existed on the upzoning page and is duplicated as a two-line local helper per the established page-local pattern.",
-  "assumption_mismatch": "The sitemap/metadataBase misdirection was discovered while investigating the user's domain complaint: both predate the Option B split and were never repointed - verified live that plotdetect.com.au/tools/upzoning-check 404s while canibuildit serves it, so the sitemap was actively advertising dead URLs to search engines.",
-  "new_vs_existing": "No new capability: two href changes, two base-URL constants, one two-line formatter reuse. Deliberately NOT changed: the middleware host-routing (correct per Option B), the footer platform links, and any per-host canonical scheme (single consumer canonical is the simplest correct step; per-host canonicals for the pro subdomains can follow if pro-page SEO ever matters)."
- },
- "functions": "N/A - presentational and configuration changes only; the only added code is a two-line label formatter copied from the upzoning page.",
- "values": [
-  {
-   "value": "sitemap base URL",
-   "read_at": "app/sitemap.ts emitted URLs (Google Search Console ingestion)",
-   "if_missing": "Constant, cannot be missing; the defect was it being the WRONG constant - now the domain that actually serves the routes"
-  },
-  {
-   "value": "metadataBase",
-   "read_at": "Next.js canonical/OG URL resolution in app/layout.tsx",
-   "if_missing": "Next falls back to the deploy URL; explicitly set to the consumer domain so all four serving domains canonicalise to one home"
-  }
- ],
- "queries": "N/A - no database access in this change.",
+ "functions": "N/A - one pure helper (stripDoubledOcrLines) wired into the existing stripOcrHeaderPrefix; no signature changes.",
+ "values": "N/A - no DB or API values read; pure string transformation on already-fetched provision text.",
+ "queries": "N/A - no query changes; transformation applies after fetch.",
  "break_it": [
   {
-   "scenario": "The logo link change strands pro users (brief/verify) on the consumer-agnostic info site with no way back to their product",
-   "what_happens": "A pro user clicking the logo mid-workflow loses their place in the product",
+   "scenario": "A legitimate provision line that naturally contains tripled letters (e.g. a lot reference like IIII or a word with a doubled-letter run) gets dropped, silently losing regulatory text.",
+   "what_happens": "A real line of provision text disappears from the rendered provision body.",
    "mitigated": true,
-   "how": "the info site is the brand home with navigation to every product door (its whole purpose under Option B); in-app navigation tabs remain unchanged next to the logo, so the logo is the only element that exits - standard brand-home convention",
-   "repro": "load brief.plotdetect.com.au - the report tabs still navigate in-app; only the wordmark exits"
+   "how": "Two-stage test: the line must match a three-pair doubled-glyph run AND collapsing consecutive duplicates must shrink its letters by over 30 percent - a normal English line with an incidental doubled fragment survives the ratio test; verified against the corpus where garbled lines are ~1.6 percent of characters and 0 rows retain doubling after removal.",
+   "repro": "Pass a line like 'The committee will assess all applications' (doubled letters but low collapse ratio) through stripDoubledOcrLines and confirm it is kept; pass 'SSeeccttiioonn 11 IINNTTRROO' and confirm it is dropped."
   },
   {
-   "scenario": "Repointing the sitemap de-indexes pages Google already indexed under plotdetect.com.au",
-   "what_happens": "Temporary ranking churn on any accidentally-indexed app URLs",
+   "scenario": "The cleanup strips every line of a wholly-garbled provision, blanking regulatory text entirely.",
+   "what_happens": "A provision would render empty instead of garbled.",
    "mitigated": true,
-   "how": "those URLs 404 today (verified live), so nothing real is lost - Google currently holds dead entries; the new sitemap points at URLs that return 200 on the domain that serves them, strictly better than advertising 404s",
-   "repro": "curl plotdetect.com.au/tools/upzoning-check returns 404; same path on www.canibuildit.com.au returns 200"
-  },
-  {
-   "scenario": "deslug mangles a slug that encodes meaningful punctuation (e.g. the catch-all land-use entry)",
-   "what_happens": "A legal-table entry renders with altered meaning",
-   "mitigated": true,
-   "how": "deslug only replaces underscores with spaces and capitalises the first letter - no word changes; the catch-all renders as the legislation's own wording",
-   "repro": "deslug('any_other_development_not_specified_in_item_2_or_4') in the page code"
+   "how": "The existing 'cleaned || text' fallback in stripOcrHeaderPrefix is unchanged - if cleaning empties the text, the original is returned, so a provision is never blanked.",
+   "repro": "Feed a text consisting only of doubled-glyph lines and confirm the function returns the original text rather than an empty string."
   }
  ],
  "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Yes - after Vercel deploy: (1) logo on brief.plotdetect.com.au and canibuildit tools pages lands on plotdetect.com.au; (2) view-source canonical on /tools/upzoning-check shows www.canibuildit.com.au; (3) zoning-check chips read 'Multi dwelling housing' not slugs. Then resubmit the sitemap in Search Console."
+  "db_reset": "Not required - runtime transformation only, no data changes.",
+  "secrets": "No secrets involved in this change.",
+  "other_repo": "No other repository is affected by this change.",
+  "manual_verify": "Yes - load a City of Sydney DCP provision that previously showed doubled-glyph headers via /api/provisions/for-property and confirm headers are gone while body text is intact."
  }
 }
