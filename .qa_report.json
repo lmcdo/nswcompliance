@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Completes the display-name rename on the app side: every remaining product-name use of Verify becomes Site Controls across nav CTAs, footer, the four persona pages, and pricing (including the Site Controls Pro tier name and its mailto subject). Verb uses of verify (verify current version, verification) are deliberately untouched, as are code identifiers, routes, the verify. subdomain, and VerifyOpsBot.",
- "commit_hash": "PLACEHOLDER",
+ "commit_hash": "605bf9c5",
  "files": [
   "frontend-nextjs/components/marketing/HomeNav.tsx",
   "frontend-nextjs/components/marketing/SiteNav.tsx",
