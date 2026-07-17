@@ -42,6 +42,20 @@
    "mitigated": true,
    "how": "_dcp_value_conflict now suppresses the gap note only when the resolved band's value_min is present; a resolved-but-missing-value band surfaces the differing values so the borrowed conservative figure is flagged. The number stays conservative (fail-safe, never over-reports capacity).",
    "repro": "tests/test_constraint_arithmetic.py::TestBandResolution::test_resolved_band_missing_value_surfaces_conflict - 600 m2 lot, <900 band value_min=None -> value 15.0 (conservative) AND conflict [6.5, 15.0] surfaced"
+  },
+  {
+   "scenario": "The fix over-corrects and now flags a FALSE conflict on a cleanly-resolved band (band resolves AND supplies its own value)",
+   "what_happens": "A spurious 'differing values / verify' gap note on every banded lot would erode trust in the note and bury real gaps",
+   "mitigated": true,
+   "how": "_dcp_value_conflict returns None as soon as the resolved band's value_min is present, so a clean single-band resolution is still not a conflict - only a resolved-but-missing-value band surfaces one",
+   "repro": "tests/test_constraint_arithmetic.py::TestBandResolution::test_resolved_band_is_not_a_conflict - 4189 m2 resolves to the over-1500 band (value 15.0 present) -> conflict is None"
+  },
+  {
+   "scenario": "Only ONE distinct value exists across bands (or a single control), and the resolved band lacks it - should not manufacture a conflict from a single value",
+   "what_happens": "A 'conflict' listing one value is meaningless noise",
+   "mitigated": true,
+   "how": "the len(vals) > 1 guard is retained: the gap note fires only when >=2 distinct value_min exist to choose between; a single-value pool returns None",
+   "repro": "distinct value_min set of size 1 -> _dcp_value_conflict returns None (guard unchanged); no-band multi-value case still surfaces via test_unknown_area_stays_conservative"
   }
  ],
  "post_merge": {
