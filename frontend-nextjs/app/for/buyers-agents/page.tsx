@@ -76,7 +76,7 @@ const WORKFLOW_SECTIONS = [
         icon: ShieldCheck,
         iconColor: 'text-teal-600',
         iconBg: 'bg-teal-500/10',
-        title: 'Verify — Planning Controls',
+        title: 'Site Controls — Planning Provisions',
         question: 'What are the zone, FSR, height, heritage, and SEPP requirements?',
         answer:
           'Zone permissibility, floor space ratio, height of buildings, minimum lot size, heritage status, all spatial overlays, and every applicable SEPP requirement — for any NSW address. Full DCP provisions for Inner West, structured numeric controls for 28 councils.',
@@ -220,7 +220,7 @@ export default function BuyersAgentsPage() {
               href="/assessment"
               className="inline-flex items-center gap-2 px-6 py-3 text-slate-300 text-sm font-medium rounded-xl border border-slate-700 hover:border-slate-600 hover:text-white transition-all"
             >
-              Open Verify
+              Open Site Controls
             </Link>
           </div>
         </div>
@@ -299,7 +299,7 @@ export default function BuyersAgentsPage() {
               <p className="text-sm text-slate-400 mt-1">Instant checks</p>
               <p className="text-xs text-slate-500 mt-3">
                 Flood, bushfire, granny flat, conveyancing, threat radar, climate risk,
-                Verify planning controls, Scout map, Validate DA analytics.
+                Site Controls planning data, Scout map, Validate DA analytics.
               </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">

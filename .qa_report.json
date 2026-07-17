@@ -1,33 +1,52 @@
 {
- "tier": "minor",
- "justification": "Single-file runtime guard: strips OCR doubled-glyph running-header lines (SSeeccttiioonn 11 style) from provision text at read time in the for-property route. Complements the DQ-29 DB cleanup (845 headers already stripped in data); this catches the ~20 deferred rows and any future ingest with the same artifact. Conservative filter: only drops lines where collapsing consecutive duplicate letters shrinks the letter count by over 30 percent, and the existing never-blank-a-provision fallback is preserved.",
- "commit_hash": "93657085",
+ "tier": "standard",
+ "justification": "Completes the display-name rename on the app side: every remaining product-name use of Verify becomes Site Controls across nav CTAs, footer, the four persona pages, and pricing (including the Site Controls Pro tier name and its mailto subject). Verb uses of verify (verify current version, verification) are deliberately untouched, as are code identifiers, routes, the verify. subdomain, and VerifyOpsBot.",
+ "commit_hash": "605bf9c5",
  "files": [
-  "frontend-nextjs/app/api/provisions/for-property/route.ts"
+  "frontend-nextjs/components/marketing/HomeNav.tsx",
+  "frontend-nextjs/components/marketing/SiteNav.tsx",
+  "frontend-nextjs/components/marketing/SiteFooter.tsx",
+  "frontend-nextjs/app/for/builders/page.tsx",
+  "frontend-nextjs/app/for/buyers-agents/page.tsx",
+  "frontend-nextjs/app/for/councils/page.tsx",
+  "frontend-nextjs/app/for/planners/page.tsx",
+  "frontend-nextjs/app/pricing/page.tsx"
  ],
- "functions": "N/A - one pure helper (stripDoubledOcrLines) wired into the existing stripOcrHeaderPrefix; no signature changes.",
- "values": "N/A - no DB or API values read; pure string transformation on already-fetched provision text.",
- "queries": "N/A - no query changes; transformation applies after fetch.",
+ "pre_impl": {
+  "existing_data": "Follows the shipped naming decision (Site Report / Topic Reports / Site Controls) already live via website PR 13 and app PR 782; this pass covers the surfaces those PRs scoped out: nav CTAs, footer, persona pages, and pricing tier names.",
+  "assumption_mismatch": "Grep-audited the distinction between the product name and the verb before editing: ProvisionVersionBadge staleness copy (Verify current version) and all verification wording are verbs and stay; VerifyRegistrationPrompt and VerifyOpsBot are code identifiers and stay.",
+  "new_vs_existing": "No new capability: string replacements in eight existing files. Deliberately unchanged: routes, the verify. subdomain, analytics event names, and the assessment workbench internals which carry no standalone product-brand strings beyond what nav and footer supplied."
+ },
+ "functions": "N/A - display-string replacements only; no function added, changed, or removed.",
+ "values": "N/A - no DB or API values involved; static JSX strings, one mailto subject, and metadata text only.",
+ "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "A legitimate provision line that naturally contains tripled letters (e.g. a lot reference like IIII or a word with a doubled-letter run) gets dropped, silently losing regulatory text.",
-   "what_happens": "A real line of provision text disappears from the rendered provision body.",
+   "scenario": "The renamed mailto subject breaks the trial-request funnel because inbound emails no longer match an inbox filter set up for the old subject line.",
+   "what_happens": "Trial requests arrive under a new subject and could skip an existing filter or label.",
    "mitigated": true,
-   "how": "Two-stage test: the line must match a three-pair doubled-glyph run AND collapsing consecutive duplicates must shrink its letters by over 30 percent - a normal English line with an incidental doubled fragment survives the ratio test; verified against the corpus where garbled lines are ~1.6 percent of characters and 0 rows retain doubling after removal.",
-   "repro": "Pass a line like 'The committee will assess all applications' (doubled letters but low collapse ratio) through stripDoubledOcrLines and confirm it is kept; pass 'SSeeccttiioonn 11 IINNTTRROO' and confirm it is dropped."
+   "how": "The address is unchanged and the subject remains a plain trial request; any filter keyed on the old phrase needs a one-time update, called out in the PR body as a post-merge note.",
+   "repro": "Click the 14-day trial link on /pricing and confirm the draft opens addressed to hello@plotdetect.com.au with the Site Controls Pro subject."
   },
   {
-   "scenario": "The cleanup strips every line of a wholly-garbled provision, blanking regulatory text entirely.",
-   "what_happens": "A provision would render empty instead of garbled.",
+   "scenario": "A verb use of verify is accidentally renamed, producing nonsense like Site Controls current version at NSW Legislation.",
+   "what_happens": "A sentence stops making sense and the staleness guidance becomes confusing.",
    "mitigated": true,
-   "how": "The existing 'cleaned || text' fallback in stripOcrHeaderPrefix is unchanged - if cleaning empties the text, the original is returned, so a provision is never blanked.",
-   "repro": "Feed a text consisting only of doubled-glyph lines and confirm the function returns the original text rather than an empty string."
+   "how": "Replacements were explicit per-string pairs, never a blanket word swap; post-patch grep over the touched directories shows zero remaining product-name hits and the verb instances intact.",
+   "repro": "grep -rn 'Verify current' frontend-nextjs/components/compliance/ProvisionVersionBadge.tsx still returns the untouched verb usage."
+  },
+  {
+   "scenario": "The pricing tier renames desynchronise from Stripe product names or PostHog funnels that reference Verify Pro.",
+   "what_happens": "Dashboards or checkout labels show a different tier name than the site.",
+   "mitigated": true,
+   "how": "Payments are disabled pre-incorporation so no live Stripe product references the tier; analytics event names were not renamed by design, so existing funnels keep matching; only display strings changed.",
+   "repro": "Search the diff for posthog or stripe: no occurrences; the only functional string changed is the mailto subject."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - runtime transformation only, no data changes.",
-  "secrets": "No secrets involved in this change.",
-  "other_repo": "No other repository is affected by this change.",
-  "manual_verify": "Yes - load a City of Sydney DCP provision that previously showed doubled-glyph headers via /api/provisions/for-property and confirm headers are gone while body text is intact."
+  "db_reset": "Not required - no database or schema changes.",
+  "secrets": "No secrets involved - display copy and one mailto subject.",
+  "other_repo": "Completes the naming set with website PR 13 and app PR 782; no deploy coupling.",
+  "manual_verify": "Yes - on the Vercel preview: nav and footer read Site Controls, /pricing shows Site Controls Pro everywhere including the comparison table and FAQ, the four /for pages read Site Controls, and the trial mailto opens with the new subject. Update any inbox filter keyed on the old Verify Pro subject."
  }
 }
