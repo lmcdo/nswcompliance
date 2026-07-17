@@ -217,6 +217,52 @@ def _matching_controls(
     return [c for c in controls if c.control_type == control_type and c.dev_type == "dwelling_house"]
 
 
+# A building height limit below one storey (~3m) is a mis-extraction (e.g. a fence
+# or landscaping height, or a mistyped value like Canada Bay's 0.9m), never a real
+# maximum building height — reject it rather than compute a nonsense envelope.
+_MIN_PLAUSIBLE_BUILDING_HEIGHT_M = 3.0
+
+
+def _dcp_height_metres(
+    controls: list[DCPControl],
+    dev_type: str,
+) -> tuple[Optional[float], bool]:
+    """The DCP max building height as METRES, unit-aware. Returns (height_m, was_storeys).
+
+    Unlike LEP height (always metres), DCP height is commonly expressed in STOREYS
+    (e.g. Wingecarribee "two (2) storeys"). Convert storeys→metres via STOREY_HEIGHT_M
+    so the downstream storey calc recovers the right count. Selection rules:
+      * prefer UNCONDITIONED controls — a conditioned row (e.g. "within a Heritage
+        Conservation Area") is an exception that applies only when its condition
+        holds, which this pure function cannot evaluate, so it defaults to the
+        general control (Wingecarribee: the 2-storey general, not the 1-storey HCA);
+      * among the chosen pool take the smallest cap (fail-safe, never over-reports);
+      * reject a metre value below one storey as a mis-extraction.
+    """
+    matches = [
+        c for c in _matching_controls(controls, "max_height", dev_type)
+        if c.value_min is not None or c.value_max is not None
+    ]
+    if not matches:
+        return None, False
+
+    def _cap(c: DCPControl) -> float:
+        return c.value_max if c.value_max is not None else c.value_min
+
+    unconditioned = [c for c in matches if not (c.condition or "").strip()]
+    chosen = min(unconditioned or matches, key=_cap)
+    raw = _cap(chosen)
+    unit = (chosen.unit or "").strip().lower()
+
+    if "storey" in unit:
+        storeys = int(raw)
+        return (storeys * STOREY_HEIGHT_M, True) if storeys >= 1 else (None, False)
+    # metres (or unspecified): reject an implausibly small building height
+    if raw < _MIN_PLAUSIBLE_BUILDING_HEIGHT_M:
+        return None, False
+    return float(raw), False
+
+
 def _dcp_value_conflict(
     controls: list[DCPControl],
     control_type: str,
@@ -394,15 +440,20 @@ def compute_constraint_arithmetic(
     # every DCP-only council. lep_height_m stays None (the LEP genuinely has
     # none); the DCP source is recorded as a caveat below.
     dcp_height_m: Optional[float] = None
+    dcp_height_was_storeys = False
     if lep_height_m is None:
-        dcp_height_m = _get_dcp_value(dcp_controls, "max_height", dev_type, prefer_max=True)
+        dcp_height_m, dcp_height_was_storeys = _dcp_height_metres(dcp_controls, dev_type)
     base_height_m = lep_height_m if lep_height_m is not None else dcp_height_m
 
     if base_height_m is None:
         gaps.append("Height limit not available from the LEP or the DCP — cannot compute height envelope")
     elif lep_height_m is None:
+        _dcp_src = (
+            f"{dcp_height_m / STOREY_HEIGHT_M:.0f} storeys"
+            if dcp_height_was_storeys else f"{dcp_height_m:g}m"
+        )
         gaps.append(
-            f"Height taken from the council DCP ({dcp_height_m:g}m) — the LEP maps no height "
+            f"Height taken from the council DCP ({_dcp_src}) — the LEP maps no height "
             "for this lot. Verify the control that applies against the DCP."
         )
     if lep_fsr is None:

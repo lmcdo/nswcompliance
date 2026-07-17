@@ -1,45 +1,60 @@
 {
- "tier": "minor",
- "justification": "This changes how the free upzoning tool frames its regulatory eligibility result to the public. No logic, data, or query changes — but it alters user-facing planning communication on a compliance surface, so the wording must stay defensible: lead with what the mapped standards permit, phrase clearances as clearances, and keep the subject-to-a-DA caveat present exactly once rather than removed.",
- "commit_hash": "07501f2f",
+ "tier": "standard",
+ "justification": "Follow-up to the DCP-height fallback (#758): live testing on 38 Park Road Bowral showed the fallback read Wingecarribee's DCP height of two storeys as two metres and picked the Heritage-Conservation-Area exception, yielding one storey. That turned the user-facing yield from null into a confident wrong number on a compliance surface, so the height fallback must be unit-aware and reject mis-extractions.",
+ "commit_hash": "9163c404",
  "files": [
-  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
+  "services/constraint_arithmetic.py",
+  "tests/test_constraint_arithmetic.py"
  ],
  "pre_impl": {
-  "existing_data": "The tool already returns per-form eligibility with source clauses and a green tick, but every status chip read as absence (not mapped here) and every eligible reason repeated the subject-to-a-DA parenthetical, so a confident cited result read as a hedge.",
-  "assumption_mismatch": "Verified live on 38 Park Road Bowral that duplex and secondary dwelling both return eligible with cited clauses, yet the surrounding copy undersold them; the fix is presentation only, the underlying eligibility is unchanged.",
-  "new_vs_existing": "Copy-only edit to the existing page; reuses the same result object, formLabel helper and CheckCircle2 icon; no new component, engine call, or data source is introduced."
+  "existing_data": "Live /api/dcp/structured-controls shows Wingecarribee max_height stored as two rows in STOREYS — a general two-storey control and a one-storey control conditioned on a Heritage Conservation Area — not metres like the LEP height the engine assumed.",
+  "assumption_mismatch": "The merged #758 fallback used _get_dcp_value which returns a bare float, so it lost the storeys unit and, via prefer_max, chose the smallest cap which was the HCA one-storey exception; the live brief showed effective height one metre and one storey for Bowral.",
+  "new_vs_existing": "Adds a small _dcp_height_metres helper reusing the existing _matching_controls; no new data source. Converts storeys to metres via the existing STOREY_HEIGHT_M, prefers unconditioned controls, and rejects a metre height below one storey."
  },
- "functions": [],
- "values": [],
+ "functions": [
+  {
+   "name": "_dcp_height_metres",
+   "file_line": "services/constraint_arithmetic.py:226",
+   "input": "the DCP controls list and the development type being assessed for this lot",
+   "output": "the DCP maximum building height in metres plus a flag for whether the source value was expressed in storeys",
+   "if_none": "no usable max_height control, or an implausibly small metre value, returns None so the height envelope is skipped rather than computed from a mis-extraction"
+  }
+ ],
+ "values": [
+  {
+   "value": "DCP max_height value and unit",
+   "read_at": "_dcp_height_metres reads the chosen control's value and unit before the height envelope is computed",
+   "if_missing": "a missing or sub-storey height returns None and the engine records the height as unavailable instead of guessing a storey count"
+  }
+ ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A lot returns no eligible forms at all so the new lead-in summary would have nothing to name",
-   "what_happens": "an empty summary banner would render a bare or broken sentence claiming buildability where there is none",
+   "scenario": "A council expresses its DCP maximum height in storeys, as Wingecarribee does with two storeys, rather than in metres",
+   "what_happens": "reading the storey count as metres gives a fraction of one storey and a nonsense envelope, the confident-wrong number the live Bowral brief showed",
    "mitigated": true,
-   "how": "the summary block renders only when eligibleForms.length is greater than zero, so a no-eligible-forms result skips it and falls through to the per-form list",
-   "repro": "run the tool on a non-residential or fully ineligible lot and confirm no green summary banner appears"
+   "how": "the helper detects the storeys unit and converts to metres via STOREY_HEIGHT_M so the downstream storey calc recovers the correct count",
+   "repro": "call _dcp_height_metres with a two-storey control and confirm it returns six metres flagged as storeys, and the engine reports two storeys"
   },
   {
-   "scenario": "The stripped subject-to-a-DA caveat disappears entirely, leaving the result reading as an approval rather than a screen",
-   "what_happens": "removing the caveat everywhere would overstate the result as a decision instead of an indicative mapped-standards check",
+   "scenario": "A council has both a general height and a stricter Heritage-Conservation-Area-only height control for the same development type",
+   "what_happens": "picking the smallest cap applies the HCA one-storey limit to an ordinary non-heritage lot and under-reports the envelope",
    "mitigated": true,
-   "how": "the parenthetical is stripped only from the eligible per-row reason; the section note above the list and the new summary line both still state with consent through a development application",
-   "repro": "inspect an eligible card and confirm the caveat is absent inline but present in the section note and summary"
+   "how": "the helper prefers controls with no condition, so the general control applies by default and the conditioned HCA exception is not used blind",
+   "repro": "pass a general two-storey and an HCA-conditioned one-storey control and confirm the general two-storey is chosen"
   },
   {
-   "scenario": "A clearance chip such as heritage or dual-occupancy prohibition is mislabelled so a real constraint reads as clear",
-   "what_happens": "a genuinely heritage-listed or dual-occ-prohibited lot shown as clear would understate a real planning constraint",
+   "scenario": "A DCP height is mis-extracted as a sub-storey value such as Canada Bay's zero point nine metres",
+   "what_happens": "computing an envelope from a fence-height-sized value produces a misleading one-storey building limit",
    "mitigated": true,
-   "how": "the chips branch on the same boolean gates as before; only the false-branch wording changed from not mapped to an explicit no-constraint clearance, and the true branch still shows the constraint",
-   "repro": "run a heritage-listed lot and confirm the chip reads Heritage listed, not No heritage listing"
+   "how": "a metre value below the one-storey plausibility floor is rejected and the height envelope is left unavailable rather than computed",
+   "repro": "call _dcp_height_metres with a zero point nine metre height and confirm it returns None"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "tsc clean and the frontend jest suite passes; copy change verified against the live Bowral result which returns duplex and secondary dwelling eligible with cited clauses. Note surfaced separately: the tool 404s on the apex plotdetect.com.au (info-site project) and is only reachable on canibuildit.com.au and verify.plotdetect.com.au — a domain-placement task, not part of this copy change."
+  "manual_verify": "225 capacity and constraint tests pass including the new TestDcpHeightUnits class; helper simulated live against Wingecarribee's real two rows returning six metres, and against Canada Bay's mistype returning None. Live re-verification on the Bowral brief needs the Railway deploy after merge."
  }
 }
