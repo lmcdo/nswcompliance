@@ -13,6 +13,7 @@ import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/compon
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
+import { collectSources } from './provenance';
 
 // Brief LLM overlay (flag-gated, default OFF; #742 engine). Both this build-time
 // flag AND the Railway-side BRIEF_LLM_OVERLAY_ENABLED must be on for anything
@@ -1666,61 +1667,9 @@ function ProjectedFindings({ rows }: { rows: ProjectedRow[] }) {
   );
 }
 
-// Internal source slugs -> the real-world data source, so the brief can list
-// "every figure traced to its source" honestly at the bottom.
-const SOURCE_LABELS: Record<string, string> = {
-  postgis_overlays: 'NSW planning overlays (PostGIS)',
-  live_protection_overlay: 'NSW Planning Portal — Protection layers',
-  planning_portal_protection: 'NSW Planning Portal — Protection layers',
-  cadastre_strata: 'NSW cadastre (strata/lot)',
-  postgis_heritage: 'NSW heritage (PostGIS)',
-  anef_zones: 'ANEF aircraft-noise contours',
-  planning_portal: 'NSW Planning Portal',
-  bushfire_prescreen: 'NSW RFS Bushfire Prone Land map',
-  flood_truth: 'Flood screening (JRC / WOfS / BoM)',
-  housing_sepp_standards: 'SEPP (Housing) 2021 standards',
-  constraint_arithmetic_engine: 'Computed — constraint engine',
-  terrain_analysis: 'Computed — 5 m DEM terrain',
-  granny_flat_detect: 'Satellite imagery + structure detection',
-  vg_valuation: 'NSW Valuer General',
-  nsw_spatial_services: 'NSW Spatial Services',
-  epa_contaminated_sites: 'NSW EPA contaminated-land register',
-};
-
-function humanizeSource(slug: string): string {
-  if (slug in SOURCE_LABELS) return SOURCE_LABELS[slug];
-  return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// Walk the streamed sections and collect every distinct data source + any
-// legislation/source URL, so the brief footer can list provenance.
-function collectSources(sections: { data: { data: unknown } }[]): {
-  sources: { label: string; asAt?: string }[];
-  links: { label: string; url: string }[];
-} {
-  const srcMap = new Map<string, string | undefined>();
-  const linkMap = new Map<string, string>();
-  const walk = (v: unknown) => {
-    if (!v || typeof v !== 'object') return;
-    if (Array.isArray(v)) { v.forEach(walk); return; }
-    const o = v as Record<string, unknown>;
-    if (typeof o.source === 'string' && o.source && !srcMap.has(o.source)) {
-      srcMap.set(o.source, typeof o.as_at === 'string' ? o.as_at : undefined);
-    }
-    for (const [k, val] of Object.entries(o)) {
-      if (/url$/i.test(k) && typeof val === 'string' && val.startsWith('http')) {
-        if (!linkMap.has(val)) linkMap.set(val, formatKey(k.replace(/_url$/i, '')) || 'Source');
-      }
-      walk(val);
-    }
-  };
-  sections.forEach((s) => walk(s.data.data));
-  return {
-    sources: [...srcMap.entries()].map(([s, asAt]) => ({ label: humanizeSource(s), asAt }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-    links: [...linkMap.entries()].map(([url, label]) => ({ label, url })),
-  };
-}
+// Data-source provenance for the footer lives in ./provenance (pure, unit-
+// tested): per-run derivation — a source is listed only when a populated
+// DataField cites it — with case-insensitive label dedupe and latest as-at.
 
 // Cross-section planning context, so a "doesn't apply" card can explain WHY using
 // the lot's real zone, instrument and lot size — not a curt one-liner.
@@ -3384,7 +3333,7 @@ function IntelligenceBriefInner() {
           {/* Data sources + confidence legend — built from the section cards, so it
               shows even when the stream's final 'complete' event is dropped. */}
           {state === 'complete' && sectionEvents.length > 0 && (
-            <DataSourcesCard provenance={collectSources(sectionEvents)} />
+            <DataSourcesCard provenance={collectSources(sectionEvents, formatKey)} />
           )}
         </div>
       )}
