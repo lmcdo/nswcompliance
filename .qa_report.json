@@ -1,61 +1,45 @@
 {
- "tier": "standard",
- "justification": "The capacity engine drives the user-facing yield (GFA and dwellings) on the Verify and Brief surfaces. Two defects made it return null or wrong yield for DCP-only councils: it read height from the LEP only and ignored the structured DCP max_height, and the landscaping step subtracted the required open space from an already coverage-capped footprint, driving it to zero. Both are silent-wrong-number risks on a compliance surface, so they need golden coverage and explicit provenance for a DCP-sourced height.",
- "commit_hash": "a082d298",
+ "tier": "minor",
+ "justification": "This changes how the free upzoning tool frames its regulatory eligibility result to the public. No logic, data, or query changes — but it alters user-facing planning communication on a compliance surface, so the wording must stay defensible: lead with what the mapped standards permit, phrase clearances as clearances, and keep the subject-to-a-DA caveat present exactly once rather than removed.",
+ "commit_hash": "07501f2f",
  "files": [
-  "services/constraint_arithmetic.py",
-  "tests/test_constraint_arithmetic.py",
-  "tests/golden/capacity_golden.json"
+  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "The structured DCP already carries max_height for 8 of 28 councils (including Wingecarribee) and max_site_coverage and landscaping_min for most, verified live via /api/dcp/structured-controls; the engine consumed setbacks, site coverage and landscaping from the DCP but took height only from the LEP planning-controls field.",
-  "assumption_mismatch": "Confirmed against the live production brief for 38 Park Road Bowral: lep_height and lep_fsr both null and realistic_gfa null at low confidence, while the council DCP publishes a max_height — proving the yield collapsed from a wiring gap, not only absent data.",
-  "new_vs_existing": "No new capability; reuses the existing _get_dcp_value helper to read the DCP max_height as a fallback and keeps lep_height_m honest as None, and corrects the landscaping step to cap the footprint at lot-minus-open-space rather than subtracting from the reduced footprint."
+  "existing_data": "The tool already returns per-form eligibility with source clauses and a green tick, but every status chip read as absence (not mapped here) and every eligible reason repeated the subject-to-a-DA parenthetical, so a confident cited result read as a hedge.",
+  "assumption_mismatch": "Verified live on 38 Park Road Bowral that duplex and secondary dwelling both return eligible with cited clauses, yet the surrounding copy undersold them; the fix is presentation only, the underlying eligibility is unchanged.",
+  "new_vs_existing": "Copy-only edit to the existing page; reuses the same result object, formLabel helper and CheckCircle2 icon; no new component, engine call, or data source is introduced."
  },
- "functions": [
-  {
-   "name": "compute_constraint_arithmetic",
-   "file_line": "services/constraint_arithmetic.py:355",
-   "input": "lot area, dev type, optional LEP height and FSR strings, DCP controls, SEPP standards and overrides, and shadow result",
-   "output": "a constraint-arithmetic result whose height envelope now falls back to the DCP max_height and whose footprint is capped rather than zeroed by landscaping",
-   "if_none": "when neither the LEP nor the DCP supplies a height, the height envelope stays unavailable and a single explicit gap records that both sources were empty"
-  }
- ],
- "values": [
-  {
-   "value": "DCP max_height via _get_dcp_value prefer_max",
-   "read_at": "compute_constraint_arithmetic seeds the envelope height from the DCP only when the LEP maps no height for this lot",
-   "if_missing": "a None DCP height leaves the base height None and the height envelope is skipped with a recorded gap rather than a guessed value"
-  }
- ],
+ "functions": [],
+ "values": [],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A regional lot has no LEP height or FSR but the council DCP publishes a max_height, as on the Bowral flag lot",
-   "what_happens": "the pre-fix engine read only the LEP height, found none, and returned a null yield for the whole DCP-only council",
+   "scenario": "A lot returns no eligible forms at all so the new lead-in summary would have nothing to name",
+   "what_happens": "an empty summary banner would render a bare or broken sentence claiming buildability where there is none",
    "mitigated": true,
-   "how": "the engine now falls back to the structured DCP max_height, computes storeys, and records that the height was taken from the DCP for verification",
-   "repro": "run the new TestDcpHeightFallbackRegional case with lep_height None and a DCP max_height and confirm storeys and a non-null GFA"
+   "how": "the summary block renders only when eligibleForms.length is greater than zero, so a no-eligible-forms result skips it and falls through to the per-form list",
+   "repro": "run the tool on a non-residential or fully ineligible lot and confirm no green summary banner appears"
   },
   {
-   "scenario": "A lot has a 25 percent site-coverage cap and a 75 percent landscaping requirement describing the same lot partition",
-   "what_happens": "subtracting the 3072 square metre landscaping from the already coverage-capped 1024 square metre footprint drove the buildable footprint to zero and the yield to nothing",
+   "scenario": "The stripped subject-to-a-DA caveat disappears entirely, leaving the result reading as an approval rather than a screen",
+   "what_happens": "removing the caveat everywhere would overstate the result as a decision instead of an indicative mapped-standards check",
    "mitigated": true,
-   "how": "landscaping now caps the footprint at lot area minus required open space and takes the minimum with the current footprint, so a build and its landscaping that both fit are not double-counted",
-   "repro": "assert the landscaping step footprint stays 1024 square metres on the 4096 square metre Bowral-style lot rather than collapsing to zero"
+   "how": "the parenthetical is stripped only from the eligible per-row reason; the section note above the list and the new summary line both still state with consent through a development application",
+   "repro": "inspect an eligible card and confirm the caveat is absent inline but present in the section note and summary"
   },
   {
-   "scenario": "A DCP-sourced height is presented to the reader as though it were the LEP height",
-   "what_happens": "an unlabelled fallback would misstate the provenance of the height a planner is relying on for the envelope",
+   "scenario": "A clearance chip such as heritage or dual-occupancy prohibition is mislabelled so a real constraint reads as clear",
+   "what_happens": "a genuinely heritage-listed or dual-occ-prohibited lot shown as clear would understate a real planning constraint",
    "mitigated": true,
-   "how": "lep_height_m stays None because the LEP genuinely has none, and a gap explicitly states the height was taken from the council DCP and should be verified against it",
-   "repro": "check that lep_height_m is None and a gap contains taken from the council DCP after the fallback fires"
+   "how": "the chips branch on the same boolean gates as before; only the false-branch wording changed from not mapped to an explicit no-constraint clearance, and the true branch still shows the constraint",
+   "repro": "run a heritage-listed lot and confirm the chip reads Heritage listed, not No heritage listing"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "205 capacity and constraint tests pass including the new regional fallback class; the two capacity golden scenarios changed only the height-gap wording (no numeric drift, diff eyeballed) and the Inner West golden corrected the landscaping double-count from 360 to 450. Live re-verification against the Bowral brief needs the Railway deploy after merge; the DCP height value itself is data-quality, not this change."
+  "manual_verify": "tsc clean and the frontend jest suite passes; copy change verified against the live Bowral result which returns duplex and secondary dwelling eligible with cited clauses. Note surfaced separately: the tool 404s on the apex plotdetect.com.au (info-site project) and is only reachable on canibuildit.com.au and verify.plotdetect.com.au — a domain-placement task, not part of this copy change."
  }
 }
