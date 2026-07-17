@@ -185,7 +185,7 @@ const PERSONAS = [
   },
   {
     title: 'Builders & Planners',
-    description: 'Compliance checking with Verify. Free embed program for your website.',
+    description: 'Check the source controls with Site Controls. Free embed program for your website.',
     href: '/for/builders',
     cta: 'Embed program',
   },
@@ -346,7 +346,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2 mb-4">
               <ShieldCheck className="w-5 h-5 text-teal-600" />
               <span className="text-xs font-semibold uppercase tracking-widest text-teal-600">
-                Verify — Compliance Engine
+                Site Controls — the source rules
               </span>
             </div>
             <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">
@@ -397,7 +397,7 @@ export default function HomePage() {
                 cta="verify_section_try_free"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
               >
-                Try Verify — free
+                Open Site Controls — free
                 <ArrowRight className="w-4 h-4" />
               </TrackedLink>
               <Link
