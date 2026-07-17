@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Display-string rename across four marketing surfaces: the brief page H1/CTA and its metadata titles become Site Report, the how-it-works listing follows, and the homepage workbench band renames Verify to Site Controls. Companion to the info-site rename (lmcdo/website PR 13) so both surfaces present the same product names. No routes, data paths, engine logic, or subdomains change.",
- "commit_hash": "PLACEHOLDER",
+ "commit_hash": "bfa9bcf1",
  "files": [
   "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
   "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
