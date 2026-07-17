@@ -1,133 +1,120 @@
 {
   "tier": "standard",
-  "justification": "Fixes the confirmed silent-wrong-data defect in issue #762: the brief handed one shared report_id to flood, bushfire and shadow, and each service's ON CONFLICT (id) DO UPDATE upsert let the last writer clobber the first writer's outputs while the row kept the first product label — the bushfire cache then served flood or shadow outputs merged over all-null defaults, and every re-run re-poisoned the newest row.",
-  "commit_hash": "8eddce07",
+  "justification": "Issue #752: the brief's Secondary Dwelling card only ever fired action:'detect', so the yield outputs (max_floor_area_m2, estimated_weekly_rent_aud, rental_yield_annual_pct, assumed_build_cost_aud) were structurally absent from the brief. This wires the human structure-selection + explicit calculate step into the card against the existing gated route. Standard, not critical: purely additive UI flow behind an explicit click, no schema change, no bulk data operation — but user-facing money figures make silent-wrong-result modes worth adversarial coverage.",
+  "commit_hash": "63f6df49",
   "files": [
-    "services/intelligence_brief.py",
-    "services/bushfire_prescreen.py",
-    "services/flood_truth.py",
-    "scripts/generate_conveyancing_report.py",
-    "tests/test_report_clobber_762.py",
-    "tests/test_flood_truth.py"
+    "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/__tests__/components/reports/GrannyFlatBriefCard.test.tsx"
   ],
   "pre_impl": {
-    "existing_data": "No stored row changes shape and no migration runs; already-poisoned property_reports rows stay in place but the new sentinel-key cache guard skips them at read time, and a separate approval-gated cleanup DELETE is drafted in the PR body without being executed.",
-    "assumption_mismatch": "Standalone tool flows poll property_reports by the exact report_id the frontend allocated, so id derivation deliberately happens only at the brief's fetch call sites — the services' own _write_report id handling is untouched and standalone semantics are preserved.",
-    "new_vs_existing": "Applies to every future brief run through distinct per-product uuid5 row ids, and to all historical poisoned rows already in property_reports through the cache guard, which skips them at read time rather than backfilling anything."
+    "existing_data": "No stored rows change shape: detect still pre-allocates the same granny_flat_reports row, and the calculate step still writes through the existing Python /pipeline/granny-flat/confirm path; the card extraction moves JSX out of page.tsx verbatim for the detect states.",
+    "assumption_mismatch": "The #748 three-state detect contract is load-bearing: samgeo_structure_count can be null with detection_failed true, so the selection step is gated on a successful detect (detection_failed false AND sepp_eligible AND detect_id present) — a failed scan renders unknown-not-zero and offers no calculate button.",
+    "new_vs_existing": "Applies to every future brief run with satellite on; nothing to backfill because past briefs never stored the calculate output. The standalone tool's flow is untouched — it still omits lot_area_m2 from the body, so the route's new caller-supplied-area preference changes nothing for it."
   },
   "functions": [
     {
-      "name": "_derive_service_report_id",
-      "file_line": "services/intelligence_brief.py:2098",
-      "input": "the brief's parent report_id as a uuid4 string plus the satellite product name being fetched",
-      "output": "a deterministic uuid5 string, stable per parent-product pair and distinct across products, used as the property_reports row id",
-      "if_none": "a non-UUID parent raises ValueError inside the pool-submitted lambda, which _safe_call converts to a NOT_AVAILABLE DataField for that section"
+      "name": "GrannyFlatBriefCard",
+      "file_line": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:151",
+      "input": "address, active flag, and the brief's reconciled lotAreaM2 prop (#745 D3 single lot-area figure)",
+      "output": "the Secondary Dwelling card through detect states plus the new selection affordance, yield block, or visible calculate error",
+      "if_none": "inactive or missing address renders the Not-run shell and fires no network call at all"
     },
     {
-      "name": "_first_valid_cached_row",
-      "file_line": "services/bushfire_prescreen.py:459",
-      "input": "the list of candidate cached rows returned newest-first by the bushfire product and address SELECT",
-      "output": "the newest row whose outputs dict contains the is_bushfire_prone sentinel key, meaning genuinely bushfire-shaped outputs",
-      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_bushfire falls through to live compute"
+      "name": "runConfirm",
+      "file_line": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:217",
+      "input": "the successful detect result plus the user's structure deselections and the existing-secondary-dwelling answer",
+      "output": "POST action:'confirm' mirroring the standalone tool's request shape (detect_id, confirmed_structure_count, echoed samgeo count, postcode, main dwelling area, reconciled lot area)",
+      "if_none": "missing address or detect_id returns early without any request; a non-ok response sets a visible error state and renders no figures"
     },
     {
-      "name": "_first_valid_cached_row",
-      "file_line": "services/flood_truth.py:1507",
-      "input": "the list of candidate cached rows returned newest-first by the flood product and address SELECT",
-      "output": "the newest row whose outputs contain epi_flood_class or flood_signal, meaning genuinely flood-shaped outputs",
-      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_flood falls through to live source queries"
-    },
-    {
-      "name": "get_shadow_risk",
-      "file_line": "scripts/generate_conveyancing_report.py:1889",
-      "input": "address, prop_id, coordinates, optional LEP height, and now an optional caller-supplied report_id for the row the shadow service writes",
-      "output": "the shadow pipeline outputs dict with run-level confidence merged in, or None when the Railway endpoint is unreachable",
-      "if_none": "report_id None keeps the previous behaviour exactly, allocating a fresh uuid4 per call for CLI and conveyancing callers"
+      "name": "YieldBlock",
+      "file_line": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:100",
+      "input": "the calculate response's nullable money fields plus confidence and confidence_reason",
+      "output": "the four labelled indicative-yield rows with confidence_reason surfaced verbatim",
+      "if_none": "any null money field renders the words Not available — a null is never coerced to a zero figure"
     }
   ],
   "values": [
     {
-      "value": "outputs field of each candidate cached property_reports row",
-      "read_at": "services/bushfire_prescreen.py:468",
+      "value": "detect_id from the polled detect outputs",
+      "read_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:187",
       "nullable": "yes",
-      "guard_at": "services/bushfire_prescreen.py:469",
-      "if_missing": "a row with null or non-dict outputs is skipped like a poisoned row and the scan falls through to the next candidate"
+      "guard_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:265",
+      "if_missing": "canCalculate stays false, so the card keeps the old advisory footer and never offers a calculate button it cannot honour"
     },
     {
-      "value": "cached row selected by the flood sentinel guard before serving",
-      "read_at": "services/flood_truth.py:1659",
+      "value": "samgeo_structure_count echoed into the calculate body",
+      "read_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:188",
       "nullable": "yes",
-      "guard_at": "services/flood_truth.py:1660",
-      "if_missing": "None means no valid cached row exists, so the cached branch is skipped entirely and the live source queries run"
+      "guard_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:233",
+      "if_missing": "null is sent explicitly (never 0), matching the #748 unknown-is-not-zero contract the Python confidence logic keys off"
     },
     {
-      "value": "report_id parameter threaded into the shadow request payload",
-      "read_at": "scripts/generate_conveyancing_report.py:1918",
+      "value": "caller-supplied lot_area_m2 in the route's calculate branch",
+      "read_at": "frontend-nextjs/app/api/satellite/granny-flat/route.ts:446",
       "nullable": "yes",
-      "guard_at": "scripts/generate_conveyancing_report.py:1918",
-      "if_missing": "the or-fallback allocates a fresh uuid4 so standalone and CLI callers keep their pre-change row-per-run behaviour"
+      "guard_at": "frontend-nextjs/app/api/satellite/granny-flat/route.ts:447",
+      "if_missing": "falls back to the existing shoelace computation from lot geometry, so the standalone tool's behaviour is byte-identical"
+    },
+    {
+      "value": "estimated_weekly_rent_aud / rental_yield_annual_pct / assumed_build_cost_aud in the yield block",
+      "read_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:107",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx:107",
+      "if_missing": "each row independently renders Not available; a not-buildable response also gets an explicit could-not-be-computed sentence"
     }
   ],
-  "queries": [
-    {
-      "purpose": "bushfire cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
-      "file_line": "services/bushfire_prescreen.py:527",
-      "where_clause": "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5"
-    },
-    {
-      "purpose": "flood cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
-      "file_line": "services/flood_truth.py:1650",
-      "where_clause": "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5"
-    }
-  ],
+  "queries": [],
   "break_it": [
     {
-      "scenario": "Two satellite services finish a brief run back-to-back with the same parent report_id, as in the live Kincumber contamination",
-      "what_happens": "Pre-change the second upsert overwrote the first row's outputs while the row kept the first product label, silently serving cross-product data",
+      "scenario": "Detection fails on the GPU (#748 three-state: samgeo_structure_count null, detection_failed true) yet the lot is SEPP-eligible",
+      "what_happens": "A naive card would offer the calculate button against an unknown building count and produce a yield from garbage",
       "mitigated": true,
-      "how": "uuid5 of parent and product gives each service its own row id, so the captured INSERT params for bushfire and flood carry distinct ids",
-      "repro": "pytest tests/test_report_clobber_762.py::TestWriteReportDistinctRows::test_two_products_same_parent_write_two_distinct_row_ids"
+      "how": "canCalculate requires detection_failed false; the card renders the unknown-not-zero copy and no selection affordance",
+      "repro": "npx jest GrannyFlatBriefCard -t 'renders the unknown-not-zero copy and no selection affordance'"
     },
     {
-      "scenario": "The newest bushfire row for an address is already poisoned with flood outputs from the pre-fix era",
-      "what_happens": "Pre-change the cache merged the flood blob over bushfire defaults and served an all-null section with fire_signal unavailable",
+      "scenario": "The calculate endpoint returns 502 (Python rent service down) after the user clicks the button",
+      "what_happens": "Without an error state the card could render an empty yield block or zeroed dollar figures",
       "mitigated": true,
-      "how": "the sentinel guard skips rows lacking is_bushfire_prone and serves the older genuine row, with flood keys asserted absent from the response",
-      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_poisoned_newest_row_never_served"
+      "how": "non-ok responses set a role=alert error with the response message, keep the retry button, and render no yield block",
+      "repro": "npx jest GrannyFlatBriefCard -t 'renders a visible error with the response message and no yield figures'"
     },
     {
-      "scenario": "Every cached row for the address is poisoned so no genuine bushfire outputs exist in the table at all",
-      "what_happens": "Serving any candidate would render wrong data, and a naive newest-row read has nothing valid left to return",
+      "scenario": "Calculate succeeds but the lot is not buildable — rent, yield and build cost come back null",
+      "what_happens": "Coercing nulls through Math.round or template strings would show $0/wk and 0% p.a., a silent wrong money figure",
       "mitigated": true,
-      "how": "the guard returns None which turns the cache branch into a miss, falling through to live RFS BFPL compute instead of serving poison",
-      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_all_rows_poisoned_returns_none_for_live_compute"
+      "how": "every money row null-checks independently and renders the words Not available; tests assert no $0 and no 0% strings",
+      "repro": "npx jest GrannyFlatBriefCard -t 'renders \"Not available\" for null money fields'"
     },
     {
-      "scenario": "A genuine unknown bushfire result stores is_bushfire_prone as null and an over-strict guard treats it as poisoned",
-      "what_happens": "Over-aggressive filtering would discard legitimate cached unknowns and force needless live recompute on every subsequent request",
+      "scenario": "A re-render, polling race, or stray effect fires the calculate call without the user clicking",
+      "what_happens": "The mandatory human-selection step would be bypassed and GPU-derived figures served unreviewed",
       "mitigated": true,
-      "how": "the guard tests key presence rather than value truthiness, so a null-valued sentinel key still marks the row as bushfire-shaped",
-      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_sentinel_key_with_null_value_still_accepted"
+      "how": "the request runs only from the button's onClick handler and is re-entry guarded while submitting; a test advances timers 10s post-detect and asserts zero calculate requests",
+      "repro": "npx jest GrannyFlatBriefCard -t 'never fires the confirm action without an explicit click'"
     },
     {
-      "scenario": "A future edit reverts the cache SELECT back to LIMIT 1 while leaving the guard function itself in place",
-      "what_happens": "A poisoned newest row would hide the healthy older row again because the guard would only ever see one candidate",
+      "scenario": "The brief passes its reconciled lot area but the route's calculate branch recomputes shoelace area from geometry",
+      "what_happens": "The yield would be computed on a different lot area than every other brief card displays (#745 D3 regression)",
       "mitigated": true,
-      "how": "a test asserts the executed SELECT contains no LIMIT 1 and keeps the run_date descending order, failing on that regression",
-      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_cache_select_fetches_multiple_candidates"
+      "how": "the route's calculate branch now prefers the caller-supplied lot_area_m2 and only falls back to shoelace when absent; the request-shape test pins lot_area_m2 in the body",
+      "repro": "npx jest GrannyFlatBriefCard -t 'sends the standalone tool request shape'"
     },
     {
-      "scenario": "Someone reroutes a brief call site back to passing the raw parent report_id into a satellite fetch",
-      "what_happens": "The clobber would silently return for that product pair while every test touching only the derivation helper kept passing",
+      "scenario": "User deselects a structure that the aerial view shows is not on the lot, then calculates the yield",
+      "what_happens": "If selections were ignored the confirmed_structure_count would silently echo the AI count, defeating the human step",
       "mitigated": true,
-      "how": "source-level tests assert all three call sites pass the derivation helper and that the old raw-report_id call strings are gone",
-      "repro": "pytest tests/test_report_clobber_762.py::TestBriefCallSitesUseDerivedIds"
+      "how": "confirmed_structure_count is derived from the live selection state (2 detected, shed deselected sends 1), asserted against the captured request body",
+      "repro": "npx jest GrannyFlatBriefCard -t 'sends the standalone tool request shape'"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — re-run the Kincumber brief for 20 PATANGA STREET KINCUMBER 2251 on the deployed service and confirm the bushfire section renders real RFS fields, then run the approval-gated cleanup DELETEs from the PR body if the remaining counts warrant it"
+    "manual_verify": "Yes — run a brief with satellite on for a SEPP-eligible address (e.g. 14 Stanley St Concord), click through the selection step on the Secondary Dwelling card, and compare the yield figures against the standalone /reports/granny-flat run for the same address"
   }
 }
