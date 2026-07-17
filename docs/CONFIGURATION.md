@@ -138,3 +138,7 @@ These must be set under repo Settings → Secrets and variables → Actions:
 
 - Cross-references: no flag needed — DB enrichment feature, UI renders what's resolved
 - New LGA onboarded: add its slug to `NEXT_PUBLIC_ENABLED_LGAS` in Vercel for the preview branch, then run the LGA onboarding checklist above
+
+### Granny flat structure detection
+
+- `MODAL_STRUCTURES_URL` — Modal GPU endpoint for LangSAM structure detection. When unset or unreachable, the Secondary Dwelling card reports the building count as UNKNOWN (three-state, #745 D4) — never a confident zero.

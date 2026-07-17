@@ -185,3 +185,37 @@ def test_lint_allows_scalar_default(tmp_path):
             return n
     """)
     assert code == 0
+
+
+# ---------------------------------------------------------------------------
+# #745 D5 — legit-empty must never masquerade as a data gap
+# ---------------------------------------------------------------------------
+
+
+def test_coastal_legit_empty_is_not_a_gap():
+    """A SUCCESSFUL overlay query with zero coastal layers is checked-CLEAR:
+    it must keep a success confidence, carry NO reason, and never appear in
+    collect_gaps (the live Concord brief showed it under Data Gaps)."""
+    from services.intelligence_brief import ConfidenceLevel, collect_gaps
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None,
+                               overlays_failed=False, controls_failed=False)
+    ch = env.coastal_hazards
+    assert ch.value is None  # no coastal layers at this fixture location
+    assert ch.confidence != ConfidenceLevel.NOT_AVAILABLE
+    assert ch.reason is None
+
+    class _Stub:
+        environmental_constraints = env
+    gaps = [g for g in collect_gaps(_Stub()) if "coastal" in g.field.lower()]
+    assert gaps == []
+
+
+def test_coastal_overlay_failure_is_still_a_gap():
+    """The other side of the contract: a FAILED overlay query must remain
+    NOT_AVAILABLE with a reason — fail-closed is not weakened."""
+    from services.intelligence_brief import ConfidenceLevel
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None,
+                               overlays_failed=True, controls_failed=False)
+    ch = env.coastal_hazards
+    assert ch.confidence == ConfidenceLevel.NOT_AVAILABLE
+    assert ch.reason is not None

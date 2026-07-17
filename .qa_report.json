@@ -1,79 +1,112 @@
 {
- "tier": "standard",
- "justification": "Fixes the two remaining findings from Sol's cross-review of PR #725, both provenance defects in the capacity engine's battleaxe handling. (a) _estimate_lot_dimensions guarded the head measurements by truthiness while the label guarded them by is-not-None, so a 0 measurement made the engine estimate from the WHOLE lot yet still tell the user the envelope was computed on the developable main lot - a silent wrong provenance claim on a liability-sensitive number. (b) the head depth is derived (area / width, i.e. head assumed rectangular) but was labelled as computed/measured, overclaiming precision. Regulatory-adjacent user-facing text plus capacity arithmetic, hence standard tier; the change is narrow and pinned by regression tests.",
- "commit_hash": "4c5bb03b",
- "files": [
-  "services/constraint_arithmetic.py",
-  "tests/test_constraint_arithmetic.py"
- ],
- "pre_impl": {
-  "existing_data": "Two independent guards on the same LotDimensions fields: _estimate_lot_dimensions used truthiness (0 -> falls back to the 1:2.5 whole-lot estimate) and compute_constraint_arithmetic's is_battleaxe_measured used is-not-None (0 -> True). They diverge at exactly 0/negative. No DB or query change - LotDimensions is in-memory, populated upstream.",
-  "assumption_mismatch": "LotDimensions declares the battleaxe fields Optional[float], so pydantic coerces incoming numerics (e.g. a Decimal from a NUMERIC column) to float at the model boundary - verified live: LotDimensions(battleaxe_main_lot_width_m=Decimal('43.1')) yields a float and the predicate returns True. Only model_construct() would bypass that, and nothing in services/ uses it. Non-finite floats (inf) WOULD pass a naive >0 check and yield a 0 depth, so finiteness is checked.",
-  "new_vs_existing": "No new capability - a correctness/labelling fix. Single _has_battleaxe_head() predicate now shared by both call sites so they cannot drift apart again."
- },
- "functions": [
-  {
-   "name": "_has_battleaxe_head",
-   "file_line": "services/constraint_arithmetic.py:339",
-   "input": "the optional LotDimensions carrying lot_type and the head measurements",
-   "output": "True only for a battleaxe lot whose head width AND head area are finite positive numbers",
-   "if_none": "None / 0 / negative / non-finite / non-battleaxe all return False, so the caller estimates from the whole lot AND labels it as such - the two can no longer disagree"
+  "tier": "critical",
+  "justification": "Fixes three confirmed silent-wrong-result defects from the #745 audit that are user-facing today: a legit-empty coastal check rendered as a data gap, a granny-flat card showing a confident zero-buildings count when detection actually FAILED (the classic silent false negative), and two different lot areas served in one brief. All fixes follow the DataField three-state contract; critical because these shape user decisions on hazards and eligibility.",
+  "commit_hash": "5e8a00e9",
+  "files": [
+    "services/intelligence_brief.py",
+    "services/granny_flat.py",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "tests/test_brief_failclosed.py",
+    "tests/test_granny_flat_mutation.py",
+    "docs/CONFIGURATION.md"
+  ],
+  "pre_impl": {
+    "existing_data": "No stored data changes: DataField construction and the detect request/response schema change at call time only; older clients omitting lot_area_m2/detection_failed keep working (both optional with safe defaults).",
+    "assumption_mismatch": "A caller not sending lot_area_m2 falls back to the geometry shoelace exactly as before; a response without detection_failed reads as false in the UI, matching pre-change rendering for successful detections.",
+    "new_vs_existing": "Applies to every future brief/detect run; nothing persisted needs migration.",
+    "external_source_error": "Modal HTTP failure now RAISES at the call boundary and surfaces as detection_failed with a warning \u2014 never byte-identical to a genuine zero.",
+    "frontend_type": "GfState result variant gains detectionFailed and detectionWarnings optional fields; GrannyFlatCard gains an optional lotAreaM2 prop \u2014 tsc 0 errors, jest 768 passed.",
+    "user_failure_mode": "Coastal checked-clear shows as a clear check (not a gap); failed building scans read count unknown-not-zero; every card in one brief cites one lot area."
   },
-  {
-   "name": "_is_positive_measure",
-   "file_line": "services/constraint_arithmetic.py:365",
-   "input": "a single candidate measurement value of unknown type",
-   "output": "True iff it is a finite, strictly positive, non-bool number",
-   "if_none": "None, bools, NaN, +/-inf, 0 and negatives all return False rather than being treated as a usable measurement"
-  },
-  {
-   "name": "_estimate_lot_dimensions",
-   "file_line": "services/constraint_arithmetic.py:375",
-   "input": "the optional LotDimensions and the lot area in square metres",
-   "output": "a (frontage_m, depth_m) pair; for a battleaxe head it is (head width, head area / head width)",
-   "if_none": "without a usable head it falls through to frontage/depth, then the 1:2.5 area estimate; the head depth it returns is DERIVED, not measured, and the caller's gap note now says so"
+  "functions": [
+    {
+      "name": "_build_environmental",
+      "file_line": "services/intelligence_brief.py:2910",
+      "input": "portal controls plus overlay query results and failure flags",
+      "output": "the EnvironmentalConstraints model whose coastal_hazards field now honours the three-state DataField contract on legit-empty results",
+      "if_none": "zero coastal layers on a SUCCESSFUL query keeps the overlay success confidence with reason None; only a genuine overlay failure is NOT_AVAILABLE with reason"
+    },
+    {
+      "name": "detect_structures",
+      "file_line": "services/granny_flat.py:728",
+      "input": "GrannyFlatDetectRequest, now optionally carrying the reconciled brief lot_area_m2",
+      "output": "a GrannyFlatDetectResponse carrying the three-state samgeo_structure_count together with the new detection_failed flag and warnings",
+      "if_none": "caller-supplied lot area wins over the geometry shoelace; detection failure yields count None plus detection_failed True plus a warning that the count is unknown, not zero"
+    },
+    {
+      "name": "_detect_structures_samgeo",
+      "file_line": "services/granny_flat.py:412",
+      "input": "aerial tile path, tile bbox, and optional lot geometry sent to the Modal endpoint",
+      "output": "structure list on success; raises RuntimeError on any call failure",
+      "if_none": "the old blanket except returned an empty list making failure byte-identical to genuine zero \u2014 now the caller records the failure distinctly"
+    }
+  ],
+  "values": [
+    {
+      "value": "coastal_layers on a successful overlay query",
+      "read_at": "services/intelligence_brief.py:3037",
+      "nullable": "yes",
+      "guard_at": "services/intelligence_brief.py:3038",
+      "if_missing": "value None with overlay success confidence and reason None \u2014 collect_gaps never lists it"
+    },
+    {
+      "value": "req.lot_area_m2 on the detect request",
+      "read_at": "services/granny_flat.py:757",
+      "nullable": "yes",
+      "guard_at": "services/granny_flat.py:757",
+      "if_missing": "geometry shoelace fallback used, identical to pre-change behaviour"
+    },
+    {
+      "value": "detection_failed / warnings on the detect response",
+      "read_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1922",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:1990",
+      "if_missing": "absent flag reads false so successful detections render exactly as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Successful coastal overlay query with zero layers rendered under Data Gaps with good-news copy on the live Concord brief",
+      "what_happens": "A checked-clear result reads as missing data, contradicting the report's own gap semantics",
+      "mitigated": true,
+      "how": "services/intelligence_brief.py coastal_hazards keeps overlay_auth confidence with reason None on legit-empty; collect_gaps exclusion pinned in test",
+      "repro": "pytest tests/test_brief_failclosed.py::test_coastal_legit_empty_is_not_a_gap"
+    },
+    {
+      "scenario": "Contributions lookup succeeding with zero plans coded as NOT_AVAILABLE plus reason, the same contract violation as coastal",
+      "what_happens": "A legit-empty contributions result would surface as a data gap in the development brief",
+      "mitigated": true,
+      "how": "contributions_field now propagates the fetch's own confidence and reason; only a real failure is NOT_AVAILABLE",
+      "repro": "pytest tests/test_brief_failclosed.py plus the brief contract suites in the full run"
+    },
+    {
+      "scenario": "Modal detection endpoint fails and the card shows zero existing buildings detected on a lot with a house (live Concord brief)",
+      "what_happens": "Users read a confident zero where the truth is unknown \u2014 the worst silent false negative in the report",
+      "mitigated": true,
+      "how": "inner call boundary raises; endpoint marks detection_failed with count None; card renders unknown-not-zero and never the count line",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_modal_call_failure_is_unknown_not_zero and ::test_inner_modal_http_failure_raises_not_empty_list"
+    },
+    {
+      "scenario": "A genuine zero-structure detection gets misread as a failure after the three-state change",
+      "what_happens": "Real empty lots would lose their legitimate zero count and show a false unavailable state",
+      "mitigated": true,
+      "how": "successful empty detection keeps count 0 with detection_failed False \u2014 pinned in its own test",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_genuine_zero_detection_is_zero_not_failed"
+    },
+    {
+      "scenario": "Two different lot areas rendered in one brief (487 vs 505 on the live Concord run)",
+      "what_happens": "SEPP eligibility text and the granny-flat card disagree about the lot size, undermining trust in every number",
+      "mitigated": true,
+      "how": "detect request accepts the reconciled brief lot_area_m2 preferred over the shoelace; the page passes planningCtx.lotAreaM2 through route.ts in both dev-direct and Trigger paths",
+      "repro": "pytest tests/test_granny_flat_mutation.py::TestDetectStructuresEndpoint::test_detect_prefers_caller_lot_area"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes \u2014 regenerate the Concord brief: coastal no longer under Data Gaps; the Secondary Dwelling card shows one lot area matching the rest of the brief, or the unknown-not-zero wording when Modal is down"
   }
- ],
- "values": [
-  {
-   "value": "LotDimensions.battleaxe_main_lot_width_m",
-   "read_at": "_has_battleaxe_head, then _estimate_lot_dimensions as the divisor for head depth",
-   "if_missing": "treated as no usable head -> whole-lot 1:2.5 estimate AND the estimated-from-area gap note; a 0/inf width can no longer reach the division"
-  },
-  {
-   "value": "LotDimensions.battleaxe_main_lot_area_m2",
-   "read_at": "_has_battleaxe_head, then _estimate_lot_dimensions as the head area",
-   "if_missing": "treated as no usable head -> whole-lot fallback with the matching note, never a head-based provenance claim"
-  }
- ],
- "queries": [],
- "break_it": [
-  {
-   "scenario": "A battleaxe lot arrives with battleaxe_main_lot_width_m = 0 and a valid head area",
-   "what_happens": "Previously: _estimate_lot_dimensions fell back to the whole-lot 1:2.5 estimate, but is_battleaxe_measured stayed True, so the user was told 'envelope computed on the developable main lot, excluding the access handle' about a whole-lot guess - silent wrong provenance",
-   "mitigated": true,
-   "how": "both call sites now use the same _has_battleaxe_head predicate, which requires finite positive width AND area; a 0 means no head in both, so the output carries the 1:2.5 estimated-from-area note instead",
-   "repro": "tests::TestBattleaxeDimensions::test_zero_width_head_does_not_claim_measured_envelope - asserts no 'main lot' note and that the 1:2.5 note is present"
-  },
-  {
-   "scenario": "An irregular battleaxe head is described only by area and width, so depth is derived as area / width",
-   "what_happens": "The old note said the envelope was 'computed on the developable main lot', implying a surveyed head; a non-rectangular head's real depth differs, so the figure was presented with more precision than it has",
-   "mitigated": true,
-   "how": "the note now states the envelope is 'estimated' from head area / width with the head 'assumed rectangular' and asks the reader to verify against the head's actual dimensions; the arithmetic is unchanged (and stays conservative: head area < lot area)",
-   "repro": "tests::TestBattleaxeDimensions::test_head_envelope_note_is_an_estimate_not_a_measurement - asserts 'estimated' and 'assumed rectangular' present and the old 'computed on' wording gone"
-  },
-  {
-   "scenario": "A head measurement is non-finite (inf) or a bool, or a Decimal arrives from a NUMERIC column",
-   "what_happens": "An inf width passes a naive >0 check and makes area/width a 0 depth (0 footprint); a Decimal could be rejected by a strict float check and silently fall back to the whole lot",
-   "mitigated": true,
-   "how": "_is_positive_measure requires math.isfinite and excludes bools, so inf/NaN mean no head (whole-lot fallback WITH the matching note, not a false head claim). Decimal is a non-issue on every real path: the Optional[float] fields make pydantic coerce it to float at the model boundary - verified live - and nothing uses model_construct to bypass that; the docstring records this so the assumption is revisited if that changes",
-   "repro": "tests::TestBattleaxeDimensions::test_head_predicate_agrees_with_estimation covers 0/negative/inf/NaN pairs; a live check confirmed LotDimensions(battleaxe_main_lot_width_m=Decimal('43.1')) -> float -> predicate True"
-  }
- ],
- "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "python -m pytest tests/test_constraint_arithmetic.py tests/test_capacity_golden.py tests/test_capacity_range.py tests/test_constraint_phased_ledger.py tests/test_dwelling_form.py -> 160 passed. Ran scripts/cross_review.py (gpt-5.6-sol) on this diff: its single HIGH finding (Decimal rejected by the float check) was VERIFIED AS A FALSE POSITIVE - pydantic coerces Decimal to float on every validated path and no code uses model_construct - but its 'finite floats' kernel was adopted as the math.isfinite guard. Both fixed findings originate from Sol's review of PR #725 and were hand-verified against the source before this fix."
- }
 }
