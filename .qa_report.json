@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Follow-up to the DCP-height fallback (#758): live testing on 38 Park Road Bowral showed the fallback read Wingecarribee's DCP height of two storeys as two metres and picked the Heritage-Conservation-Area exception, yielding one storey. That turned the user-facing yield from null into a confident wrong number on a compliance surface, so the height fallback must be unit-aware and reject mis-extractions.",
- "commit_hash": "9163c404",
+ "commit_hash": "0ecaa2c2",
  "files": [
   "services/constraint_arithmetic.py",
   "tests/test_constraint_arithmetic.py"
