@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Single-file marketing-copy restructure of the canibuildit app homepage: hero adopts the five-questions one-engine frame, the 8 tool cards regroup under the question each answers, and public copy drops internal pipeline names (Granny Flat Yield Predictor, Neighbour Threat Radar, Pre-DA Site History, Shadow Risk Analyser, Rooftop Solar Yield) per the blog-content IP rule. No data path, DB, route, or engine logic changes; all hrefs unchanged.",
- "commit_hash": "c732802a",
+ "commit_hash": "9b311ade",
  "files": [
   "frontend-nextjs/app/page.tsx"
  ],
