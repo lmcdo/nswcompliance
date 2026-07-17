@@ -217,6 +217,54 @@ def _matching_controls(
     return [c for c in controls if c.control_type == control_type and c.dev_type == "dwelling_house"]
 
 
+# A building height limit below one storey (~3m) is a mis-extraction (e.g. a fence
+# or landscaping height, or a mistyped value like Canada Bay's 0.9m), never a real
+# maximum building height — reject it rather than compute a nonsense envelope.
+_MIN_PLAUSIBLE_BUILDING_HEIGHT_M = 3.0
+
+
+def _dcp_height_metres(
+    controls: list[DCPControl],
+    dev_type: str,
+) -> tuple[Optional[float], bool]:
+    """The DCP max building height as METRES, unit-aware. Returns (height_m, was_storeys).
+
+    Unlike LEP height (always metres), DCP height is commonly expressed in STOREYS
+    (e.g. Wingecarribee "two (2) storeys"). Convert storeys→metres via STOREY_HEIGHT_M
+    so the downstream storey calc recovers the right count. Selection rules:
+      * prefer UNCONDITIONED controls — a conditioned row (e.g. "within a Heritage
+        Conservation Area") is an exception that applies only when its condition
+        holds, which this pure function cannot evaluate, so it defaults to the
+        general control (Wingecarribee: the 2-storey general, not the 1-storey HCA);
+      * among the chosen pool take the smallest cap (fail-safe, never over-reports);
+      * reject a metre value below one storey as a mis-extraction.
+    """
+    matches = [
+        c for c in _matching_controls(controls, "max_height", dev_type)
+        if c.value_min is not None or c.value_max is not None
+    ]
+    if not matches:
+        return None, False
+
+    def _cap(c: DCPControl) -> float:
+        return c.value_max if c.value_max is not None else c.value_min
+
+    unconditioned = [c for c in matches if not (c.condition or "").strip()]
+    chosen = min(unconditioned or matches, key=_cap)
+    raw = _cap(chosen)
+    if raw is None:  # guaranteed non-None by the filter above; guard defensively
+        return None, False
+    unit = (chosen.unit or "").strip().lower()
+
+    if "storey" in unit:
+        storeys = int(raw)
+        return (storeys * STOREY_HEIGHT_M, True) if storeys >= 1 else (None, False)
+    # metres (or unspecified): reject an implausibly small building height
+    if raw < _MIN_PLAUSIBLE_BUILDING_HEIGHT_M:
+        return None, False
+    return float(raw), False
+
+
 def _dcp_value_conflict(
     controls: list[DCPControl],
     control_type: str,
@@ -387,15 +435,36 @@ def compute_constraint_arithmetic(
     result.lep_height_m = lep_height_m
     result.lep_fsr = lep_fsr
 
+    # Height envelope base. Regional LEPs (e.g. Wingecarribee) often map no
+    # height and set built form through the DCP instead. When the LEP has no
+    # height, fall back to the structured DCP max_height so the height envelope
+    # can still be computed — otherwise the whole yield collapses to null on
+    # every DCP-only council. lep_height_m stays None (the LEP genuinely has
+    # none); the DCP source is recorded as a caveat below.
+    dcp_height_m: Optional[float] = None
+    dcp_height_was_storeys = False
     if lep_height_m is None:
-        gaps.append("LEP height limit not available — cannot compute height envelope")
+        dcp_height_m, dcp_height_was_storeys = _dcp_height_metres(dcp_controls, dev_type)
+    base_height_m = lep_height_m if lep_height_m is not None else dcp_height_m
+
+    if base_height_m is None:
+        gaps.append("Height limit not available from the LEP or the DCP — cannot compute height envelope")
+    elif lep_height_m is None:
+        _dcp_src = (
+            f"{dcp_height_m / STOREY_HEIGHT_M:.0f} storeys"
+            if dcp_height_was_storeys else f"{dcp_height_m:g}m"
+        )
+        gaps.append(
+            f"Height taken from the council DCP ({_dcp_src}) — the LEP maps no height "
+            "for this lot. Verify the control that applies against the DCP."
+        )
     if lep_fsr is None:
         gaps.append("LEP FSR not available — cannot compute FSR envelope")
 
     # -----------------------------------------------------------------------
     # Step 1: Apply SEPP overrides (before envelope calculation)
     # -----------------------------------------------------------------------
-    effective_height_m = lep_height_m
+    effective_height_m = base_height_m
     effective_fsr = lep_fsr
     applied_overrides: list[SeppLepOverride] = []
 
@@ -592,7 +661,14 @@ def compute_constraint_arithmetic(
 
     if landscape_reduction_m2 > 0:
         result.landscaping_reduction_m2 = round(landscape_reduction_m2, 1)
-        new_footprint = max(0.0, buildable_footprint - landscape_reduction_m2)
+        # Landscaping / deep soil requires that share of the LOT to stay open, so
+        # it caps the footprint at (lot area − required open space). It must NOT
+        # be subtracted from the already setback- and site-coverage-reduced
+        # footprint: on a lot where site coverage is 25% and landscaping is 75%
+        # of the SAME lot, the two describe one constraint (built + open = lot),
+        # and subtracting drove the footprint to 0. Cap, don't subtract.
+        landscape_footprint_cap = max(0.0, lot_area_m2 - landscape_reduction_m2)
+        new_footprint = min(buildable_footprint, landscape_footprint_cap)
         steps.append(ConstraintStep(
             constraint=ConstraintType.DCP_LANDSCAPING,
             phase="dcp",
@@ -600,8 +676,10 @@ def compute_constraint_arithmetic(
             footprint_m2=round(new_footprint, 1),
             reduction_m2=round(landscape_reduction_m2, 1),
             note=(
-                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 -- "
-                f"footprint {buildable_footprint:.1f}m2 -> {new_footprint:.1f}m2"
+                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 open -- "
+                f"caps footprint at lot {lot_area_m2:.0f}m2 - {landscape_reduction_m2:.1f}m2 "
+                f"= {landscape_footprint_cap:.1f}m2; footprint {buildable_footprint:.1f}m2 "
+                f"-> {new_footprint:.1f}m2"
             ),
         ))
         buildable_footprint = new_footprint

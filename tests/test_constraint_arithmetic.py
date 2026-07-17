@@ -28,6 +28,7 @@ from services.constraint_arithmetic import (
     STOREY_HEIGHT_M,
     ConstraintArithmeticResult,
     ConstraintType,
+    _dcp_height_metres,
     _dcp_value_conflict,
     _estimate_lot_dimensions,
     _get_dcp_value,
@@ -222,9 +223,13 @@ class TestGoldenInnerWest:
         assert self.result.lep_envelope_gfa_m2 == 450.0
 
     def test_dcp_adjusted_after_coverage_then_landscaping(self):
-        """Secondary figure: setbacks->coverage cap 300->landscaping 120, height
-        GFA 120*3=360; min(FSR 450, 360) = 360."""
-        assert self.result.dcp_adjusted_gfa_m2 == 360.0
+        """Secondary figure: setbacks->coverage cap 300. Landscaping (30%=180m2)
+        is an OPEN-SPACE requirement, not a further subtraction from the already
+        coverage-capped footprint: a 300m2 build + 180m2 landscaping = 480m2 fits
+        on the 600m2 lot, so the footprint stays 300 (cap = min(300, 600-180=420)).
+        Height GFA 300*3=900; min(FSR 450, 900) = 450. (The old 360 double-counted
+        landscaping against a footprint that already left room for it.)"""
+        assert self.result.dcp_adjusted_gfa_m2 == 450.0
 
     def test_realistic_gfa(self):
         # Headline = the clean LEP envelope (FSR-bound here).
@@ -248,6 +253,100 @@ class TestGoldenInnerWest:
 
     def test_steps_present(self):
         assert len(self.result.steps) >= 4
+
+
+class TestDcpHeightFallbackRegional:
+    """Regional / DCP-only councils (e.g. Wingecarribee) map no LEP height or
+    FSR, controlling built form through the DCP. The engine must fall back to
+    the structured DCP max_height so yield does not collapse to null — and the
+    landscaping requirement must cap the footprint, not double-subtract it.
+    Bowral-style flag lot: 4096m2, DCP 8.5m height, 25% coverage, 75% landscaping.
+    """
+
+    def setup_method(self):
+        controls = [
+            _make_dcp("max_height", 8.5),
+            _make_dcp("front_setback", 15.0),
+            _make_dcp("rear_setback", 10.0),
+            _make_dcp("side_setback", 3.5),
+            _make_dcp("max_site_coverage", 25.0),
+            _make_dcp("landscaping_min", 75.0),
+        ]
+        self.result = compute_constraint_arithmetic(
+            lot_area_m2=4096,
+            dev_type="dwelling_house",
+            lep_height_str=None,   # LEP maps no height
+            lep_fsr_str=None,      # and no FSR
+            dcp_controls=controls,
+        )
+
+    def test_lep_height_stays_none(self):
+        # We do not fake an LEP height — the LEP genuinely has none.
+        assert self.result.lep_height_m is None
+
+    def test_storeys_come_from_dcp_height(self):
+        # 8.5m DCP height / 3.0m per storey = 2 storeys — envelope now computable.
+        assert self.result.lep_max_storeys == 2
+
+    def test_dcp_height_provenance_is_surfaced(self):
+        assert any("taken from the council DCP" in g for g in self.result.gaps)
+
+    def test_landscaping_caps_not_zeroes_footprint(self):
+        # 25% coverage caps the working footprint to 1024m2; 75% landscaping
+        # (3072m2) is open space that fits alongside (1024 + 3072 = 4096), so the
+        # landscaping step caps at min(1024, 4096-3072)=1024. The old code
+        # subtracted 3072 from 1024 and drove the footprint to 0.
+        land_step = next(
+            s for s in self.result.steps
+            if s.constraint == ConstraintType.DCP_LANDSCAPING
+        )
+        assert land_step.footprint_m2 == 1024.0
+
+    def test_yield_is_now_computable(self):
+        # With a height envelope and a non-zero footprint, a GFA exists where the
+        # pre-fix engine returned null for every DCP-only council.
+        assert self.result.realistic_gfa_m2 is not None
+        assert self.result.realistic_gfa_m2 > 0
+
+
+class TestDcpHeightUnits:
+    """DCP height is unit-aware: commonly STOREYS, not metres (unlike the LEP).
+    Live catch on 38 Park Rd Bowral — Wingecarribee's "2 storeys" was read as 2m."""
+
+    def test_storeys_converted_to_metres(self):
+        # "2 storeys" -> 2 * 3.0m = 6m (round-trips to 2 storeys downstream).
+        ctrls = [_make_dcp("max_height", 2, unit="storeys")]
+        assert _dcp_height_metres(ctrls, "dwelling_house") == (6.0, True)
+
+    def test_prefers_general_over_hca_conditioned(self):
+        # A "within a Heritage Conservation Area" row is an exception; the general
+        # 2-storey control applies by default, not the 1-storey HCA one.
+        general = _make_dcp("max_height", 2, unit="storeys")
+        hca = DCPControl(control_type="max_height", dev_type="dwelling_house",
+                         value_min=1, unit="storeys",
+                         condition="within a Heritage Conservation Area")
+        assert _dcp_height_metres([general, hca], "dwelling_house") == (6.0, True)
+
+    def test_rejects_implausible_metre_height(self):
+        # A sub-storey "height" (Canada Bay's 0.9m mistype class) is a mis-extraction.
+        assert _dcp_height_metres([_make_dcp("max_height", 0.9, unit="m")], "dwelling_house") == (None, False)
+
+    def test_plausible_metre_height_kept(self):
+        assert _dcp_height_metres([_make_dcp("max_height", 8.5, unit="m")], "dwelling_house") == (8.5, False)
+
+    def test_engine_uses_storey_height_end_to_end(self):
+        # Wingecarribee-style: no LEP height, DCP "2 storeys" -> 2 storeys, not 1.
+        result = compute_constraint_arithmetic(
+            lot_area_m2=4096, dev_type="dwelling_house",
+            lep_height_str=None, lep_fsr_str=None,
+            dcp_controls=[
+                _make_dcp("max_height", 2, unit="storeys"),
+                _make_dcp("front_setback", 15.0), _make_dcp("side_setback", 3.5),
+                _make_dcp("max_site_coverage", 25.0, unit="%"),
+            ],
+        )
+        assert result.lep_max_storeys == 2
+        assert any("2 storeys" in g for g in result.gaps)
 
 
 # ===========================================================================
