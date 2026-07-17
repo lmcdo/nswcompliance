@@ -20,7 +20,7 @@ const FREE_TOOL_LINKS = [
 ];
 
 const PLATFORM_LINKS = [
-  { label: 'Verify (Compliance)', href: '/assessment' },
+  { label: 'Site Controls', href: '/assessment' },
   { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
   { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
   { label: 'Climate Risk', href: '/climate-risk' },

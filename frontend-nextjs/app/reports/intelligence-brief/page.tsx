@@ -2965,7 +2965,7 @@ function IntelligenceBriefInner() {
       {state !== 'idle' && (
         <div className="mb-8">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 mb-1.5">PlotDetect · Property Dossier</div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Intelligence Brief</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Site Report</h1>
           <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed">
             For a single NSW property: what the rules allow, what physically constrains the site,
             what environmental risk applies, what it&apos;s worth, and what&apos;s happening
@@ -3007,7 +3007,7 @@ function IntelligenceBriefInner() {
             disabled={!selectedAddress.trim()}
             className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Generate Intelligence Brief
+            Generate Site Report
           </button>
         </div>
       )}
