@@ -16,7 +16,7 @@
   {
    "name": "load_api_key",
    "file_line": "scripts/sol_common.py:55",
-   "input": "the repo root Path",
+   "input": "the repo root Path used to locate candidate .env files",
    "output": "the OpenAI key from the environment, else the first non-empty OPENAI_API_KEY across .env / .env.local / frontend-nextjs/.env.local (this checkout + main worktree)",
    "if_none": "exits with a clear message; an empty OPENAI_API_KEY= value or a whitespace-only env var is skipped so a valid later file still wins"
   },
