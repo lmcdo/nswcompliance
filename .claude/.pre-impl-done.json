@@ -1,6 +1,6 @@
 {
   "status": "passed",
   "timestamp": "2026-07-17",
-  "target": "scripts/sol_common.py + scripts/ask_sol.py + scripts/cross_review.py - Sol tooling: shared key/chat helpers, general ask tool, refactor cross_review to use them.",
-  "findings_summary": "No DB access at all - these scripts read git/files and call the OpenAI API only. Hardening from running cross_review on the new code: (1) empty API content should surface not print blank success, (2) ask_sol must mark file/stdin as untrusted data (prompt injection), (3) load_api_key must skip empty OPENAI_API_KEY values and fall through. Key resolution now also searches .env.local and frontend-nextjs/.env.local."
+  "target": "services/constraint_arithmetic.py battleaxe provenance - fix two findings from Sol's review of PR #725: (2) is_battleaxe_measured (is-not-None) disagrees with _estimate_lot_dimensions (truthiness) at a 0 measurement, mislabelling a whole-lot estimate as measured; (3) area/width labelled as measured depth despite assuming a rectangular head.",
+  "findings_summary": "No DB/query change (in-memory LotDimensions). Root cause of #2 is two independent guards on the same fields; fix = single _has_battleaxe_head() predicate (positive width AND area) used by both. #3 = provenance overclaim; fix = reword gap note to 'estimated ... head assumed rectangular ... verify'. Existing TestBattleaxeDimensions covers the happy path; add 0-value and negative-value regression tests."
 }
