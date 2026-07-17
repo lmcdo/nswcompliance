@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Single-file runtime guard: strips OCR doubled-glyph running-header lines (SSeeccttiioonn 11 style) from provision text at read time in the for-property route. Complements the DQ-29 DB cleanup (845 headers already stripped in data); this catches the ~20 deferred rows and any future ingest with the same artifact. Conservative filter: only drops lines where collapsing consecutive duplicate letters shrinks the letter count by over 30 percent, and the existing never-blank-a-provision fallback is preserved.",
- "commit_hash": "PLACEHOLDER",
+ "commit_hash": "93657085",
  "files": [
   "frontend-nextjs/app/api/provisions/for-property/route.ts"
  ],
