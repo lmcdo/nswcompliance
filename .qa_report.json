@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New offline developer tool (not a production/serving path): sends a git diff or GitHub PR diff to a non-Anthropic frontier model (gpt-5.6-sol) with this repo's pre-PR-review checklist and prints ranked review findings. Standard tier because it makes an external network call (OpenAI) and reads git state, but it touches no database, serves no user-facing output, imports into no production code, and writes only an optional local JSON report. Also removes a hardcoded (leaked) OpenAI key from scripts/openai_semantic_processor.py, replacing it with an env read.",
- "commit_hash": "PENDING",
+ "commit_hash": "73863d78",
  "files": [
   "scripts/cross_review.py",
   "scripts/openai_semantic_processor.py"
