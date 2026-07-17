@@ -1,45 +1,53 @@
 {
- "tier": "minor",
- "justification": "This changes how the free upzoning tool frames its regulatory eligibility result to the public. No logic, data, or query changes — but it alters user-facing planning communication on a compliance surface, so the wording must stay defensible: lead with what the mapped standards permit, phrase clearances as clearances, and keep the subject-to-a-DA caveat present exactly once rather than removed.",
- "commit_hash": "07501f2f",
+ "tier": "standard",
+ "justification": "Fixes a silent-wrong-data defect in the capacity engine's DCP setback handling, found by the gpt-5.6-sol cross-review tool. When a lot resolves to a specific lot-size band but that band's row lacks value_min (an extraction gap), _get_dcp_value borrows a conservative value from NON-applicable bands while _dcp_value_conflict suppressed the verification warning - so a cross-band setback figure was served as a single certain control with no gap note. The fix keeps the conservative (fail-safe, never over-reporting) number but surfaces the gap only when the resolved band actually supplied its value. Regulatory-value handling on a compliance product, hence standard tier; the change is narrow and pinned by a regression test.",
+ "commit_hash": "PENDING",
  "files": [
-  "frontend-nextjs/app/tools/upzoning-check/page.tsx"
+  "services/constraint_arithmetic.py",
+  "tests/test_constraint_arithmetic.py"
  ],
  "pre_impl": {
-  "existing_data": "The tool already returns per-form eligibility with source clauses and a green tick, but every status chip read as absence (not mapped here) and every eligible reason repeated the subject-to-a-DA parenthetical, so a confident cited result read as a hedge.",
-  "assumption_mismatch": "Verified live on 38 Park Road Bowral that duplex and secondary dwelling both return eligible with cited clauses, yet the surrounding copy undersold them; the fix is presentation only, the underlying eligibility is unchanged.",
-  "new_vs_existing": "Copy-only edit to the existing page; reuses the same result object, formLabel helper and CheckCircle2 icon; no new component, engine call, or data source is introduced."
+  "existing_data": "Traced the defect across _get_dcp_value (services/constraint_arithmetic.py:157) and _resolve_lot_band (line 137). _get_dcp_value line ~194 falls through to max(value_min across all matches) when the resolved band lacks its value. _dcp_value_conflict (line 220) is the only conflict/gap surface for setbacks (called for front/rear/side at the setback loop). No new data source; operates on an in-memory list[DCPControl].",
+  "assumption_mismatch": "The prior code assumed 'a band resolved' implies 'that band supplied the value', so it suppressed the conflict. That assumption breaks when the applicable band's value_min is None and a cross-band conservative fallback is used - the served figure then comes from a non-applicable band.",
+  "new_vs_existing": "No new capability - a correctness fix to existing conflict detection. No DB queries added; behaviour only changes for the band-resolved-but-missing-value case (previously suppressed, now surfaced), verified to leave the clean-resolution and no-band cases unchanged (136 constraint+capacity tests pass)."
  },
- "functions": [],
- "values": [],
+ "functions": [
+  {
+   "name": "_dcp_value_conflict",
+   "file_line": "services/constraint_arithmetic.py:220",
+   "input": "the DCPControl list, control_type, dev_type, and optional lot_area_m2",
+   "output": "the sorted distinct value_min values when _get_dcp_value had to choose (tiered/conflicting or cross-band fallback), else None",
+   "if_none": "returns None (no gap note) ONLY when a band resolved AND that band's value_min is present; a band that resolved but lacked value_min now surfaces the differing values instead of suppressing them"
+  },
+  {
+   "name": "_get_dcp_value",
+   "file_line": "services/constraint_arithmetic.py:157",
+   "input": "controls, control_type, dev_type, prefer_max flag, optional lot_area_m2",
+   "output": "the applicable DCP value; the resolved band's value when present, else the conservative most-restrictive across matches",
+   "if_none": "unchanged by this PR - when the resolved band lacks the value it still returns the conservative max(value_min); the fix pairs that fallback with a now-visible gap note"
+  }
+ ],
+ "values": [
+  {
+   "value": "DCPControl.value_min",
+   "read_at": "_dcp_value_conflict and _get_dcp_value",
+   "if_missing": "a resolved band whose value_min is None triggers the conservative cross-band fallback in _get_dcp_value AND (now) a surfaced conflict/gap note in _dcp_value_conflict, rather than a silent borrowed value"
+  }
+ ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "A lot returns no eligible forms at all so the new lead-in summary would have nothing to name",
-   "what_happens": "an empty summary banner would render a bare or broken sentence claiming buildability where there is none",
+   "scenario": "A lot resolves to one lot-size band, but that band's DCP row has value_min = None (extraction gap), while sibling bands carry differing values",
+   "what_happens": "Previously: _get_dcp_value returned a value from a non-applicable band and _dcp_value_conflict returned None, so the user saw a single certain setback with no verification warning - a silent cross-band wrong value",
    "mitigated": true,
-   "how": "the summary block renders only when eligibleForms.length is greater than zero, so a no-eligible-forms result skips it and falls through to the per-form list",
-   "repro": "run the tool on a non-residential or fully ineligible lot and confirm no green summary banner appears"
-  },
-  {
-   "scenario": "The stripped subject-to-a-DA caveat disappears entirely, leaving the result reading as an approval rather than a screen",
-   "what_happens": "removing the caveat everywhere would overstate the result as a decision instead of an indicative mapped-standards check",
-   "mitigated": true,
-   "how": "the parenthetical is stripped only from the eligible per-row reason; the section note above the list and the new summary line both still state with consent through a development application",
-   "repro": "inspect an eligible card and confirm the caveat is absent inline but present in the section note and summary"
-  },
-  {
-   "scenario": "A clearance chip such as heritage or dual-occupancy prohibition is mislabelled so a real constraint reads as clear",
-   "what_happens": "a genuinely heritage-listed or dual-occ-prohibited lot shown as clear would understate a real planning constraint",
-   "mitigated": true,
-   "how": "the chips branch on the same boolean gates as before; only the false-branch wording changed from not mapped to an explicit no-constraint clearance, and the true branch still shows the constraint",
-   "repro": "run a heritage-listed lot and confirm the chip reads Heritage listed, not No heritage listing"
+   "how": "_dcp_value_conflict now suppresses the gap note only when the resolved band's value_min is present; a resolved-but-missing-value band surfaces the differing values so the borrowed conservative figure is flagged. The number stays conservative (fail-safe, never over-reports capacity).",
+   "repro": "tests/test_constraint_arithmetic.py::TestBandResolution::test_resolved_band_missing_value_surfaces_conflict - 600 m2 lot, <900 band value_min=None -> value 15.0 (conservative) AND conflict [6.5, 15.0] surfaced"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "tsc clean and the frontend jest suite passes; copy change verified against the live Bowral result which returns duplex and secondary dwelling eligible with cited clauses. Note surfaced separately: the tool 404s on the apex plotdetect.com.au (info-site project) and is only reachable on canibuildit.com.au and verify.plotdetect.com.au — a domain-placement task, not part of this copy change."
+  "manual_verify": "python -m pytest tests/test_constraint_arithmetic.py tests/test_capacity_golden.py tests/test_capacity_range.py tests/test_constraint_phased_ledger.py -> 136 passed. New regression test proven to fail on the old logic (old conflict result None vs new [6.5, 15.0]). Bug originally surfaced by scripts/cross_review.py (gpt-5.6-sol) on PR #725, then verified by hand against the source."
  }
 }
