@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Polish of the offline Sol developer tooling (no production/serving path, no database). Factors the shared key-resolution and OpenAI call out of cross_review.py into scripts/sol_common.py, adds scripts/ask_sol.py (a general one-shot 'ask Sol' second-opinion tool), and broadens key discovery to .env / .env.local / frontend-nextjs/.env.local. Standard tier because it makes an external network call (OpenAI) and reads local files, but touches no DB, serves no user-facing output, and imports into no production code.",
- "commit_hash": "37e79f4f",
+ "commit_hash": "af5efa80",
  "files": [
   "scripts/sol_common.py",
   "scripts/ask_sol.py",
