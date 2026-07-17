@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Fixes the two remaining findings from Sol's cross-review of PR #725, both provenance defects in the capacity engine's battleaxe handling. (a) _estimate_lot_dimensions guarded the head measurements by truthiness while the label guarded them by is-not-None, so a 0 measurement made the engine estimate from the WHOLE lot yet still tell the user the envelope was computed on the developable main lot - a silent wrong provenance claim on a liability-sensitive number. (b) the head depth is derived (area / width, i.e. head assumed rectangular) but was labelled as computed/measured, overclaiming precision. Regulatory-adjacent user-facing text plus capacity arithmetic, hence standard tier; the change is narrow and pinned by regression tests.",
- "commit_hash": "PENDING",
+ "commit_hash": "4c5bb03b",
  "files": [
   "services/constraint_arithmetic.py",
   "tests/test_constraint_arithmetic.py"
