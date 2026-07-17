@@ -1,68 +1,61 @@
 {
  "tier": "standard",
- "justification": "The brief runs the full flood, bushfire and shadow pipelines and then discarded most of each result at the Pydantic contract layer, so the flagship product understated what its own engines computed — a live Kincumber run returned a moderate flood screening signal and a recorded 2022 Copernicus flood extent that the page rendered as effectively clear. Widening the contracts is regulatory-adjacent user-facing surface, so every new field keeps three-state semantics and every new sentence carries mapped-extent register wording pinned by tests.",
- "commit_hash": "10095a12",
+ "justification": "The capacity engine drives the user-facing yield (GFA and dwellings) on the Verify and Brief surfaces. Two defects made it return null or wrong yield for DCP-only councils: it read height from the LEP only and ignored the structured DCP max_height, and the landscaping step subtracted the required open space from an already coverage-capped footprint, driving it to zero. Both are silent-wrong-number risks on a compliance surface, so they need golden coverage and explicit provenance for a DCP-sourced height.",
+ "commit_hash": "a082d298",
  "files": [
-  "services/intelligence_brief.py",
-  "services/constraint_models.py",
-  "scripts/generate_conveyancing_report.py",
-  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-  "frontend-nextjs/app/reports/intelligence-brief/satellite-copy.ts",
-  "frontend-nextjs/components/reports/ShadowDetailDisplay.tsx",
-  "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
-  "tests/test_brief_satellite_field_mapping.py",
-  "tests/test_brief_contracts.py",
-  "tests/test_brief_contract_drift.py"
+  "services/constraint_arithmetic.py",
+  "tests/test_constraint_arithmetic.py",
+  "tests/golden/capacity_golden.json"
  ],
  "pre_impl": {
-  "existing_data": "A live full-pipeline run for 20 Patanga Street Kincumber captured on 2026-07-16 showed the flood service returning a moderate screening signal with a Copernicus EMSR567 flood extent intersecting the lot, the bushfire service returning BAL cost guidance and clearing wording, and the shadow service returning five scenarios with low confidence — while the brief card rendered roughly five flood values and one shadow line.",
-  "assumption_mismatch": "The narrowing was in the FloodServiceOutput and BushfireServiceOutput whitelists and the shadow render, not in the pipelines — the compute was already paid on every satellite brief run and the fields were discarded between the service return and the card.",
-  "new_vs_existing": "Follows the terrain card pattern that already passes the service model through wholesale; extends the existing SectionData render registries and the existing field-coverage ratchet baseline additively rather than forking a new card style or a parallel contract."
+  "existing_data": "The structured DCP already carries max_height for 8 of 28 councils (including Wingecarribee) and max_site_coverage and landscaping_min for most, verified live via /api/dcp/structured-controls; the engine consumed setbacks, site coverage and landscaping from the DCP but took height only from the LEP planning-controls field.",
+  "assumption_mismatch": "Confirmed against the live production brief for 38 Park Road Bowral: lep_height and lep_fsr both null and realistic_gfa null at low confidence, while the council DCP publishes a max_height — proving the yield collapsed from a wiring gap, not only absent data.",
+  "new_vs_existing": "No new capability; reuses the existing _get_dcp_value helper to read the DCP max_height as a fallback and keeps lep_height_m honest as None, and corrects the landscaping step to cap the footprint at lot-minus-open-space rather than subtracting from the reduced footprint."
  },
  "functions": [
   {
-   "name": "_build_flood_detail",
-   "file_line": "services/intelligence_brief.py:2235",
-   "input": "the raw dict returned by the flood service including the screening signal, per-source evidence fields and the Copernicus activation list",
-   "output": "a FloodDetail carrying all twenty-three mapped fields with None for anything the service did not return, so the card can render exactly what the engine computed",
-   "if_none": "a missing or refused flood payload builds no detail and the section renders its existing unavailable state rather than a partial or invented result"
+   "name": "compute_constraint_arithmetic",
+   "file_line": "services/constraint_arithmetic.py:355",
+   "input": "lot area, dev type, optional LEP height and FSR strings, DCP controls, SEPP standards and overrides, and shadow result",
+   "output": "a constraint-arithmetic result whose height envelope now falls back to the DCP max_height and whose footprint is capped rather than zeroed by landscaping",
+   "if_none": "when neither the LEP nor the DCP supplies a height, the height envelope stays unavailable and a single explicit gap records that both sources were empty"
   }
  ],
  "values": [
   {
-   "value": "flood detail ems_flood_detected with ems_activations and flood_signal",
-   "read_at": "the flood card headline and the Copernicus sentence built by floodSignalLine and emsLine in satellite-copy.ts",
-   "if_missing": "a None detection renders neither the mapped-extent sentence nor a clear claim, and a None signal renders no headline — three-state is preserved end to end"
+   "value": "DCP max_height via _get_dcp_value prefer_max",
+   "read_at": "compute_constraint_arithmetic seeds the envelope height from the DCP only when the LEP maps no height for this lot",
+   "if_missing": "a None DCP height leaves the base height None and the height envelope is skipped with a recorded gap rather than a guessed value"
   }
  ],
  "queries": [],
  "break_it": [
   {
-   "scenario": "The flood service returns a payload where Copernicus data was unavailable so ems_flood_detected is None rather than False",
-   "what_happens": "a boolean-minded render would print the no-extent-recorded sentence and turn a source outage into a clear claim",
+   "scenario": "A regional lot has no LEP height or FSR but the council DCP publishes a max_height, as on the Bowral flag lot",
+   "what_happens": "the pre-fix engine read only the LEP height, found none, and returned a null yield for the whole DCP-only council",
    "mitigated": true,
-   "how": "the EMS sentence renders only when the value is strictly true or strictly false and a None stays silent, pinned by the sparse-output mapping test",
-   "repro": "build the flood detail from a payload with ems_flood_detected None and confirm the card output contains no Copernicus sentence"
+   "how": "the engine now falls back to the structured DCP max_height, computes storeys, and records that the height was taken from the DCP for verification",
+   "repro": "run the new TestDcpHeightFallbackRegional case with lep_height None and a DCP max_height and confirm storeys and a non-null GFA"
   },
   {
-   "scenario": "A shadow run computed at the standard two-storey fallback height with low confidence renders the ADG solar access line",
-   "what_happens": "without the caveat the line reads as a definitive guideline result even though the height was assumed rather than mapped",
+   "scenario": "A lot has a 25 percent site-coverage cap and a 75 percent landscaping requirement describing the same lot partition",
+   "what_happens": "subtracting the 3072 square metre landscaping from the already coverage-capped 1024 square metre footprint drove the buildable footprint to zero and the yield to nothing",
    "mitigated": true,
-   "how": "ShadowDetailDisplay appends the computed-at-standard-height low-confidence caveat whenever height_source is default or confidence is low, and the construction-change note wins over the boolean so a Sentinel-2 timeout never reads as a clear",
-   "repro": "render ShadowDetailDisplay with the Kincumber fixture and confirm the caveat text appears beside the ADG line"
+   "how": "landscaping now caps the footprint at lot area minus required open space and takes the minimum with the current footprint, so a build and its landscaping that both fit are not double-counted",
+   "repro": "assert the landscaping step footprint stays 1024 square metres on the 4096 square metre Bowral-style lot rather than collapsing to zero"
   },
   {
-   "scenario": "A cached bushfire row written before this widening flows into the widened contract on a later brief run",
-   "what_happens": "the new compliance keys are absent from the stored payload and a strict reader could crash or invent defaults",
+   "scenario": "A DCP-sourced height is presented to the reader as though it were the LEP height",
+   "what_happens": "an unlabelled fallback would misstate the provenance of the height a planner is relying on for the envelope",
    "mitigated": true,
-   "how": "every widened field is Optional with a None default so old rows validate and render as not-available, with the contract-drift tripwire logging the missing keys for observability",
-   "repro": "validate a pre-widening bushfire payload against BushfireServiceOutput and confirm it parses with the new fields None"
+   "how": "lep_height_m stays None because the LEP genuinely has none, and a gap explicitly states the height was taken from the council DCP and should be verified against it",
+   "repro": "check that lep_height_m is None and a gap contains taken from the council DCP after the fallback fires"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "Re-run the Kincumber brief with satellite on after deploy and confirm the flood card shows the moderate screening signal and the 2022 Copernicus mapped-extent sentence, the bushfire card shows the BAL typical-cost row with the assessor directory link and the conditional 10/50 wording, the shadow block shows all five scenario rows with the standard-height caveat, and the solar card shows pitch and azimuth."
+  "manual_verify": "205 capacity and constraint tests pass including the new regional fallback class; the two capacity golden scenarios changed only the height-gap wording (no numeric drift, diff eyeballed) and the Inner West golden corrected the landscaping double-count from 360 to 450. Live re-verification against the Bowral brief needs the Railway deploy after merge; the DCP height value itself is data-quality, not this change."
  }
 }
