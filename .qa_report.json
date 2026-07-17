@@ -15,7 +15,7 @@
  "functions": [
   {
    "name": "compute_constraint_arithmetic",
-   "file_line": "services/constraint_arithmetic.py:276",
+   "file_line": "services/constraint_arithmetic.py:355",
    "input": "lot area, dev type, optional LEP height and FSR strings, DCP controls, SEPP standards and overrides, and shadow result",
    "output": "a constraint-arithmetic result whose height envelope now falls back to the DCP max_height and whose footprint is capped rather than zeroed by landscaping",
    "if_none": "when neither the LEP nor the DCP supplies a height, the height envelope stays unavailable and a single explicit gap records that both sources were empty"
