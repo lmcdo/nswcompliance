@@ -28,6 +28,7 @@ from services.constraint_arithmetic import (
     STOREY_HEIGHT_M,
     ConstraintArithmeticResult,
     ConstraintType,
+    _dcp_height_metres,
     _dcp_value_conflict,
     _estimate_lot_dimensions,
     _get_dcp_value,
@@ -306,6 +307,46 @@ class TestDcpHeightFallbackRegional:
         # pre-fix engine returned null for every DCP-only council.
         assert self.result.realistic_gfa_m2 is not None
         assert self.result.realistic_gfa_m2 > 0
+
+
+class TestDcpHeightUnits:
+    """DCP height is unit-aware: commonly STOREYS, not metres (unlike the LEP).
+    Live catch on 38 Park Rd Bowral — Wingecarribee's "2 storeys" was read as 2m."""
+
+    def test_storeys_converted_to_metres(self):
+        # "2 storeys" -> 2 * 3.0m = 6m (round-trips to 2 storeys downstream).
+        ctrls = [_make_dcp("max_height", 2, unit="storeys")]
+        assert _dcp_height_metres(ctrls, "dwelling_house") == (6.0, True)
+
+    def test_prefers_general_over_hca_conditioned(self):
+        # A "within a Heritage Conservation Area" row is an exception; the general
+        # 2-storey control applies by default, not the 1-storey HCA one.
+        general = _make_dcp("max_height", 2, unit="storeys")
+        hca = DCPControl(control_type="max_height", dev_type="dwelling_house",
+                         value_min=1, unit="storeys",
+                         condition="within a Heritage Conservation Area")
+        assert _dcp_height_metres([general, hca], "dwelling_house") == (6.0, True)
+
+    def test_rejects_implausible_metre_height(self):
+        # A sub-storey "height" (Canada Bay's 0.9m mistype class) is a mis-extraction.
+        assert _dcp_height_metres([_make_dcp("max_height", 0.9, unit="m")], "dwelling_house") == (None, False)
+
+    def test_plausible_metre_height_kept(self):
+        assert _dcp_height_metres([_make_dcp("max_height", 8.5, unit="m")], "dwelling_house") == (8.5, False)
+
+    def test_engine_uses_storey_height_end_to_end(self):
+        # Wingecarribee-style: no LEP height, DCP "2 storeys" -> 2 storeys, not 1.
+        result = compute_constraint_arithmetic(
+            lot_area_m2=4096, dev_type="dwelling_house",
+            lep_height_str=None, lep_fsr_str=None,
+            dcp_controls=[
+                _make_dcp("max_height", 2, unit="storeys"),
+                _make_dcp("front_setback", 15.0), _make_dcp("side_setback", 3.5),
+                _make_dcp("max_site_coverage", 25.0, unit="%"),
+            ],
+        )
+        assert result.lep_max_storeys == 2
+        assert any("2 storeys" in g for g in result.gaps)
 
 
 # ===========================================================================
