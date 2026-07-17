@@ -100,11 +100,66 @@ def _parse_numeric(val: Optional[str]) -> Optional[float]:
     return None
 
 
+_LOT_BAND_RE = __import__("re").compile(
+    r"lot\s+(?:size\s+)?(less than|between|over)\s+([\d,]+)\s*m2?"
+    r"(?:\s+and\s+([\d,]+)\s*m2?)?",
+    __import__("re").IGNORECASE,
+)
+
+
+def _lot_band_match(condition: Optional[str], lot_area_m2: float) -> Optional[bool]:
+    """Does a lot-size-band condition apply to this lot?
+
+    Parses ONLY the explicit "lot less than X m2 / between X and Y m2 / over
+    X m2" pattern (live DB survey 2026-07-14: 9/210 setback conditions carry it,
+    all with this exact phrasing; look-alikes such as "lots 600-900m2; building
+    height..." deliberately do not match). Returns True/False when the band
+    parses, None when the condition carries no parseable band — callers must
+    treat None as "cannot resolve" and keep the conservative path.
+    """
+    if not condition:
+        return None
+    m = _LOT_BAND_RE.search(condition)
+    if not m:
+        return None
+    kind = m.group(1).lower()
+    lo = float(m.group(2).replace(",", ""))
+    if kind == "less than":
+        return lot_area_m2 < lo
+    if kind == "over":
+        return lot_area_m2 > lo
+    hi = m.group(3)
+    if hi is None:
+        return None
+    return lo <= lot_area_m2 <= float(hi.replace(",", ""))
+
+
+def _resolve_lot_band(
+    matches: list[DCPControl],
+    lot_area_m2: Optional[float],
+) -> Optional[DCPControl]:
+    """The single control whose lot-size band contains the lot, if resolvable.
+
+    Resolution requires: a known lot area, EVERY candidate carrying a parseable
+    band (a partial parse could silently drop an unbanded general control), and
+    exactly one band matching. Anything else returns None and the caller keeps
+    the conservative most-restrictive choice.
+    """
+    if not lot_area_m2 or lot_area_m2 <= 0 or len(matches) < 2:
+        return None
+    verdicts = [_lot_band_match(c.condition, lot_area_m2) for c in matches]
+    if any(v is None for v in verdicts):
+        return None
+    winners = [c for c, v in zip(matches, verdicts) if v]
+    return winners[0] if len(winners) == 1 else None
+
+
 def _get_dcp_value(
     controls: list[DCPControl],
     control_type: str,
     dev_type: str,
     prefer_max: bool = False,
+    lot_area_m2: Optional[float] = None,
 ) -> Optional[float]:
     """Find the DCP control value for a given type and dev_type.
 
@@ -128,6 +183,15 @@ def _get_dcp_value(
     matches = _matching_controls(controls, control_type, dev_type)
     if not matches:
         return None
+    # Tiered lot-size bands: when every candidate carries a parseable band and
+    # exactly one contains this lot, that IS the control — not a conflict.
+    banded = _resolve_lot_band(matches, lot_area_m2)
+    if banded is not None:
+        if prefer_max and banded.value_max is not None:
+            return banded.value_max
+        if not prefer_max and banded.value_min is not None:
+            return banded.value_min
+        # banded row lacks the needed value field — fall through, conservative
     if prefer_max:
         caps = [c.value_max if c.value_max is not None else c.value_min for c in matches]
         caps = [v for v in caps if v is not None]
@@ -157,6 +221,7 @@ def _dcp_value_conflict(
     controls: list[DCPControl],
     control_type: str,
     dev_type: str,
+    lot_area_m2: Optional[float] = None,
 ) -> Optional[list[float]]:
     """Return the sorted distinct ``value_min`` values when more than one exists
     for the same (control_type, dev_type) — i.e. :func:`_get_dcp_value` had to
@@ -166,6 +231,8 @@ def _dcp_value_conflict(
     flagged for verification rather than presented as a single certain figure.
     """
     matches = _matching_controls(controls, control_type, dev_type)
+    if _resolve_lot_band(matches, lot_area_m2) is not None:
+        return None  # the band resolved which control applies — not a conflict
     vals = sorted({c.value_min for c in matches if c.value_min is not None})
     return vals if len(vals) > 1 else None
 
@@ -223,6 +290,18 @@ def _estimate_lot_dimensions(
 
     Estimation assumes a 1:2.5 frontage:depth ratio (typical suburban lot).
     """
+    # Battleaxe (flag) lot: the developable envelope is the HEAD, not the whole
+    # lot — head width x (head area / head width). More conservative than the
+    # whole-lot estimate (head area < lot area) and far more accurate than the
+    # 1:2.5 fallback these lots previously hit (frontage_m is None on them).
+    if (
+        lot_dims
+        and getattr(lot_dims, "lot_type", None) == "battleaxe"
+        and lot_dims.battleaxe_main_lot_width_m
+        and lot_dims.battleaxe_main_lot_area_m2
+    ):
+        width = lot_dims.battleaxe_main_lot_width_m
+        return (width, lot_dims.battleaxe_main_lot_area_m2 / width)
     if lot_dims and lot_dims.frontage_m and lot_dims.depth_m:
         return (lot_dims.frontage_m, lot_dims.depth_m)
     if lot_dims and lot_dims.frontage_m:
@@ -308,15 +387,31 @@ def compute_constraint_arithmetic(
     result.lep_height_m = lep_height_m
     result.lep_fsr = lep_fsr
 
+    # Height envelope base. Regional LEPs (e.g. Wingecarribee) often map no
+    # height and set built form through the DCP instead. When the LEP has no
+    # height, fall back to the structured DCP max_height so the height envelope
+    # can still be computed — otherwise the whole yield collapses to null on
+    # every DCP-only council. lep_height_m stays None (the LEP genuinely has
+    # none); the DCP source is recorded as a caveat below.
+    dcp_height_m: Optional[float] = None
     if lep_height_m is None:
-        gaps.append("LEP height limit not available — cannot compute height envelope")
+        dcp_height_m = _get_dcp_value(dcp_controls, "max_height", dev_type, prefer_max=True)
+    base_height_m = lep_height_m if lep_height_m is not None else dcp_height_m
+
+    if base_height_m is None:
+        gaps.append("Height limit not available from the LEP or the DCP — cannot compute height envelope")
+    elif lep_height_m is None:
+        gaps.append(
+            f"Height taken from the council DCP ({dcp_height_m:g}m) — the LEP maps no height "
+            "for this lot. Verify the control that applies against the DCP."
+        )
     if lep_fsr is None:
         gaps.append("LEP FSR not available — cannot compute FSR envelope")
 
     # -----------------------------------------------------------------------
     # Step 1: Apply SEPP overrides (before envelope calculation)
     # -----------------------------------------------------------------------
-    effective_height_m = lep_height_m
+    effective_height_m = base_height_m
     effective_fsr = lep_fsr
     applied_overrides: list[SeppLepOverride] = []
 
@@ -392,15 +487,21 @@ def compute_constraint_arithmetic(
     # Step 4: DCP setback erosion → buildable footprint
     # -----------------------------------------------------------------------
     frontage_m, depth_m = _estimate_lot_dimensions(lot_dimensions, lot_area_m2)
-    has_dimensions = (
+    is_battleaxe_measured = (
+        lot_dimensions is not None
+        and getattr(lot_dimensions, "lot_type", None) == "battleaxe"
+        and lot_dimensions.battleaxe_main_lot_width_m is not None
+        and lot_dimensions.battleaxe_main_lot_area_m2 is not None
+    )
+    has_dimensions = is_battleaxe_measured or (
         lot_dimensions is not None
         and lot_dimensions.frontage_m is not None
         and lot_dimensions.depth_m is not None
     )
 
-    front_setback = _get_dcp_value(dcp_controls, "front_setback", dev_type)
-    rear_setback = _get_dcp_value(dcp_controls, "rear_setback", dev_type)
-    side_setback = _get_dcp_value(dcp_controls, "side_setback", dev_type)
+    front_setback = _get_dcp_value(dcp_controls, "front_setback", dev_type, lot_area_m2=lot_area_m2)
+    rear_setback = _get_dcp_value(dcp_controls, "rear_setback", dev_type, lot_area_m2=lot_area_m2)
+    side_setback = _get_dcp_value(dcp_controls, "side_setback", dev_type, lot_area_m2=lot_area_m2)
 
     result.setback_front_m = front_setback
     result.setback_rear_m = rear_setback
@@ -411,7 +512,7 @@ def compute_constraint_arithmetic(
     # value above; surface the conflict so the chosen figure is flagged for
     # verification rather than read as a single certain control.
     for _ct, _label in (("front_setback", "front"), ("rear_setback", "rear"), ("side_setback", "side")):
-        _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type)
+        _conflict = _dcp_value_conflict(dcp_controls, _ct, dev_type, lot_area_m2=lot_area_m2)
         if _conflict:
             gaps.append(
                 f"DCP {_label} setback has {len(_conflict)} differing values "
@@ -429,7 +530,12 @@ def compute_constraint_arithmetic(
         buildable_footprint = buildable_width * buildable_depth
         result.buildable_footprint_m2 = round(buildable_footprint, 1)
 
-        if not has_dimensions:
+        if is_battleaxe_measured:
+            gaps.append(
+                "Battleaxe (flag) lot — envelope computed on the developable "
+                "main lot, excluding the access handle"
+            )
+        elif not has_dimensions:
             gaps.append(
                 "Lot dimensions estimated from area (1:2.5 ratio) — "
                 "actual setback erosion may differ"
@@ -502,7 +608,14 @@ def compute_constraint_arithmetic(
 
     if landscape_reduction_m2 > 0:
         result.landscaping_reduction_m2 = round(landscape_reduction_m2, 1)
-        new_footprint = max(0.0, buildable_footprint - landscape_reduction_m2)
+        # Landscaping / deep soil requires that share of the LOT to stay open, so
+        # it caps the footprint at (lot area − required open space). It must NOT
+        # be subtracted from the already setback- and site-coverage-reduced
+        # footprint: on a lot where site coverage is 25% and landscaping is 75%
+        # of the SAME lot, the two describe one constraint (built + open = lot),
+        # and subtracting drove the footprint to 0. Cap, don't subtract.
+        landscape_footprint_cap = max(0.0, lot_area_m2 - landscape_reduction_m2)
+        new_footprint = min(buildable_footprint, landscape_footprint_cap)
         steps.append(ConstraintStep(
             constraint=ConstraintType.DCP_LANDSCAPING,
             phase="dcp",
@@ -510,8 +623,10 @@ def compute_constraint_arithmetic(
             footprint_m2=round(new_footprint, 1),
             reduction_m2=round(landscape_reduction_m2, 1),
             note=(
-                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 -- "
-                f"footprint {buildable_footprint:.1f}m2 -> {new_footprint:.1f}m2"
+                f"Landscaping/deep soil requires {landscape_reduction_m2:.1f}m2 open -- "
+                f"caps footprint at lot {lot_area_m2:.0f}m2 - {landscape_reduction_m2:.1f}m2 "
+                f"= {landscape_footprint_cap:.1f}m2; footprint {buildable_footprint:.1f}m2 "
+                f"-> {new_footprint:.1f}m2"
             ),
         ))
         buildable_footprint = new_footprint

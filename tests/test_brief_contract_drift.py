@@ -17,13 +17,30 @@ import logging
 
 # A realistic, on-contract flood output (all contract keys present).
 _FLOOD_OK = {
+    "flood_signal": "low",
     "epi_flood_class": "1% AEP",
     "epi_flood_label": "Flood planning area",
+    "ems_flood_detected": False,
+    "ems_activations": [],
+    "sar_flood_detected": None,
+    "sar_confidence": None,
+    "sar_analysis_date": None,
+    "ses_in_flood_planning_area": False,
+    "ses_flood_class": None,
+    "ses_study_name": None,
     "jrc_water_occurrence_pct": 0.0,
+    "jrc_data_year": 2021,
     "dea_wofs_frequency_pct": 0.0,
+    "bom_gauge_name": "Example gauge",
     "bom_gauge_distance_km": 20.5,
+    "bom_last_major_flood_date": None,
+    "bom_last_major_flood_peak_m": None,
+    "bom_flood_history": [],
+    "in_100yr_flood_zone": True,
+    "ground_elevation_m_ahd": None,
+    "s1_gap_warning": None,
     "flood_studies": [],
-    "jrc_data_year": 2021,   # extra service key — informational, not drift
+    "data_currency": "unknown",   # extra service key — informational, not drift
 }
 
 
@@ -31,7 +48,7 @@ def test_no_drift_when_all_contract_keys_present():
     f = check_drift(FloodServiceOutput, _FLOOD_OK)
     assert f["drift"] is False
     assert f["missing"] == []
-    assert "jrc_data_year" in f["extra"]  # new key surfaced, but not drift
+    assert "data_currency" in f["extra"]  # new key surfaced, but not drift
 
 
 def test_drift_when_a_contract_key_is_renamed():

@@ -14,21 +14,37 @@
     "sources_unavailable"
   ],
   "BushfireDetail": [
+    "bal_assessment_likely_required",
+    "bal_assessor_directory_url",
     "bal_estimate",
+    "bal_formal_assessment_cost_range",
     "category",
     "cdc_pathway_available",
+    "clearing_10_50_entitled",
+    "clearing_10_50_exceptions",
     "confidence",
     "cross_overlays",
+    "data_currency",
+    "designation_source",
+    "estimated_consultant_costs",
     "fire_signal",
     "is_bushfire_prone",
+    "legislation_url",
+    "rfs_referral_note",
     "rfs_referral_required",
     "rfs_referral_triggers",
+    "state_legislation",
     "vegetation_type"
   ],
   "BushfireServiceOutput": [
+    "bal_assessment_likely_required",
+    "bal_assessor_directory_url",
+    "bal_formal_assessment_cost_range",
     "compliance",
+    "data_currency",
     "designation_category",
     "designation_guideline",
+    "designation_source",
     "estimated_bal_band",
     "fire_signal",
     "is_bushfire_prone"
@@ -252,21 +268,55 @@
     "value"
   ],
   "FloodDetail": [
+    "bom_flood_history",
     "bom_gauge_distance_km",
+    "bom_gauge_name",
+    "bom_last_major_flood_date",
+    "bom_last_major_flood_peak_m",
     "confidence",
+    "ems_activations",
+    "ems_flood_detected",
     "epi_flood",
     "epi_flood_label",
+    "flood_signal",
     "flood_studies",
+    "ground_elevation_m_ahd",
+    "in_100yr_flood_zone",
+    "jrc_data_year",
     "jrc_occurrence_pct",
+    "s1_gap_warning",
+    "sar_analysis_date",
+    "sar_confidence",
+    "sar_flood_detected",
+    "ses_flood_class",
+    "ses_in_flood_planning_area",
+    "ses_study_name",
     "wofs_frequency_pct"
   ],
   "FloodServiceOutput": [
+    "bom_flood_history",
     "bom_gauge_distance_km",
+    "bom_gauge_name",
+    "bom_last_major_flood_date",
+    "bom_last_major_flood_peak_m",
     "dea_wofs_frequency_pct",
+    "ems_activations",
+    "ems_flood_detected",
     "epi_flood_class",
     "epi_flood_label",
+    "flood_signal",
     "flood_studies",
-    "jrc_water_occurrence_pct"
+    "ground_elevation_m_ahd",
+    "in_100yr_flood_zone",
+    "jrc_data_year",
+    "jrc_water_occurrence_pct",
+    "s1_gap_warning",
+    "sar_analysis_date",
+    "sar_confidence",
+    "sar_flood_detected",
+    "ses_flood_class",
+    "ses_in_flood_planning_area",
+    "ses_study_name"
   ],
   "GapEntry": [
     "field",
@@ -297,7 +347,8 @@
     "reason",
     "requires_lmr_area",
     "source_clause",
-    "source_document"
+    "source_document",
+    "unconfirmed"
   ],
   "LepLandUseRow": [
     "development_type",
@@ -307,9 +358,15 @@
   ],
   "LotDimensions": [
     "area_m2",
+    "battleaxe_access_way_length_m",
+    "battleaxe_access_way_width_m",
+    "battleaxe_main_lot_area_m2",
+    "battleaxe_main_lot_width_m",
     "depth_m",
     "frontage_m",
-    "is_corner"
+    "irregular",
+    "is_corner",
+    "lot_type"
   ],
   "MarketContext": [
     "comparables",
@@ -434,6 +491,9 @@
   ],
   "ShadowResult": [
     "adg_compliant",
+    "confidence",
+    "construction_change_detected",
+    "construction_change_note",
     "height_m",
     "height_source",
     "scenarios",
@@ -458,6 +518,9 @@
   ],
   "ShadowServiceOutput": [
     "adg_compliant",
+    "confidence",
+    "construction_change_detected",
+    "construction_change_note",
     "height_m",
     "height_source",
     "scenarios",
@@ -477,9 +540,11 @@
     "dwelling_type",
     "is_strata",
     "lot_area_m2",
+    "lot_number",
     "lot_total",
     "plan_label",
     "registration_date",
+    "section_number",
     "source",
     "strata_plan",
     "strata_type"
@@ -520,8 +585,14 @@
   ],
   "_BushfireCompliance": [
     "cdc_pathway_available",
+    "clearing_10_50_entitled",
+    "clearing_10_50_exceptions",
     "cross_overlays",
+    "estimated_consultant_costs",
+    "legislation_url",
+    "rfs_referral_note",
     "rfs_referral_required",
-    "rfs_referral_triggers"
+    "rfs_referral_triggers",
+    "state_legislation"
   ]
 }
