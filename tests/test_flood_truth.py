@@ -849,6 +849,9 @@ def _stub_db(monkeypatch, cache_row=None):
         def execute(self, *a, **kw): pass
         def fetchone(self):
             return self._row
+        def fetchall(self):
+            # #762 guard reads candidate rows via fetchall
+            return [self._row] if self._row else []
         def __enter__(self): return self
         def __exit__(self, *a): pass
 

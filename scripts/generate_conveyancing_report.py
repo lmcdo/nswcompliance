@@ -1892,11 +1892,17 @@ def get_shadow_risk(
     lat: float,
     lng: float,
     height_m: Optional[float] = None,
+    report_id: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Call the Railway shadow pipeline.
     height_m: pass the LEP height already fetched from Planning Portal so
     Railway doesn't need to re-query (avoids spatial_overlays coverage gaps).
+    report_id: caller-supplied id for the row written by the shadow service
+    (the brief passes a per-product derived id, issue #762); defaults to a
+    fresh uuid4 for CLI/standalone callers.
+    prior-art-checked: no new capability — this IS the existing shadow fetcher
+    gaining an optional passthrough parameter; no new data source or surface.
     Returns the `outputs` dict on success (with the envelope's run-level
     `confidence` merged in — the outputs dict itself carries no confidence key,
     and downstream consumers render run confidence from this merged value),
@@ -1909,7 +1915,7 @@ def get_shadow_risk(
         "prop_id": str(prop_id),
         "lat": lat,
         "lng": lng,
-        "report_id": str(uuid.uuid4()),
+        "report_id": report_id or str(uuid.uuid4()),
     }
     if height_m:
         payload["height_m"] = height_m

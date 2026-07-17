@@ -1,109 +1,133 @@
 {
   "tier": "standard",
-  "justification": "Fixes issue #753: the Intelligence Brief 'Data sources' footer rendered a static union — it listed sources cited by null-valued DataFields (pipelines that did not run or returned nothing for the address, e.g. 'Plotdetect Dcp' on a non-onboarded council and 'Satellite imagery + structure detection' with no detection run) and rendered duplicate rows when two internal slugs map to the same real-world label ('NSW Planning Portal — Protection layers' twice). Frontend-only display logic; no backend, model or DB change, so Standard not Critical.",
-  "commit_hash": "728dc010",
+  "justification": "Fixes the confirmed silent-wrong-data defect in issue #762: the brief handed one shared report_id to flood, bushfire and shadow, and each service's ON CONFLICT (id) DO UPDATE upsert let the last writer clobber the first writer's outputs while the row kept the first product label — the bushfire cache then served flood or shadow outputs merged over all-null defaults, and every re-run re-poisoned the newest row.",
+  "commit_hash": "8eddce07",
   "files": [
-    "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/__tests__/app/brief-sources-per-run.test.ts",
-    ".claude/.pre-impl-done.json"
+    "services/intelligence_brief.py",
+    "services/bushfire_prescreen.py",
+    "services/flood_truth.py",
+    "scripts/generate_conveyancing_report.py",
+    "tests/test_report_clobber_762.py",
+    "tests/test_flood_truth.py"
   ],
   "pre_impl": {
-    "existing_data": "No stored data changes shape — the collector walks the already-streamed section events on the client; the DataField contract (value/source/as_at/confidence) is untouched and the backend emits exactly what it did before.",
-    "assumption_mismatch": "The old walker counted ANY object carrying a source string; the new gate requires a value key with a non-null value, so objects like climate manifest sources_unavailable entries ({source, reason}) no longer leak into the footer — that narrowing is the intended fix, and populated climate findings still qualify because they carry value + source.",
-    "new_vs_existing": "Applies to every brief render from now on, including replays of already-stored runs, because the list is derived at render time from the received sections — no backfill needed.",
-    "external_source_error": "A section that errored or returned not_available streams a DataField with value null; under the new gate its source simply stays off the footer instead of being advertised as a source that informed the brief.",
-    "frontend_type": "collectSources moved to a pure module with an injected link-label formatter; page.tsx passes its existing formatKey so link labels render byte-identical, and DataSourcesCard's props/JSX are unchanged so styling is preserved.",
-    "user_failure_mode": "A reader comparing the footer against the cards no longer sees sources the run never used — the prior state overstated provenance, which is a trust defect on a product whose pitch is every-figure-traced-to-its-source."
+    "existing_data": "No stored row changes shape and no migration runs; already-poisoned property_reports rows stay in place but the new sentinel-key cache guard skips them at read time, and a separate approval-gated cleanup DELETE is drafted in the PR body without being executed.",
+    "assumption_mismatch": "Standalone tool flows poll property_reports by the exact report_id the frontend allocated, so id derivation deliberately happens only at the brief's fetch call sites — the services' own _write_report id handling is untouched and standalone semantics are preserved.",
+    "new_vs_existing": "Applies to every future brief run through distinct per-product uuid5 row ids, and to all historical poisoned rows already in property_reports through the cache guard, which skips them at read time rather than backfilling anything."
   },
   "functions": [
     {
-      "name": "collectSources",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:51",
-      "input": "the streamed section events ({data:{data}} objects) plus an optional link-label formatter (page.tsx injects its formatKey)",
-      "output": "sorted per-run source rows {label, asAt} deduped case-insensitively on the normalised label with the latest as_at kept, plus the legislation/source URL links",
-      "if_none": "no populated fields yields empty sources; DataSourcesCard already returns null when both lists are empty, so the card disappears instead of rendering an empty shell"
+      "name": "_derive_service_report_id",
+      "file_line": "services/intelligence_brief.py:2098",
+      "input": "the brief's parent report_id as a uuid4 string plus the satellite product name being fetched",
+      "output": "a deterministic uuid5 string, stable per parent-product pair and distinct across products, used as the property_reports row id",
+      "if_none": "a non-UUID parent raises ValueError inside the pool-submitted lambda, which _safe_call converts to a NOT_AVAILABLE DataField for that section"
     },
     {
-      "name": "humanizeSource",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:33",
-      "input": "an internal source slug string from a DataField's source key",
-      "output": "the mapped real-world label from SOURCE_LABELS, or a title-cased fallback for unknown slugs",
-      "if_none": "unknown slugs never drop — the fallback formatter always returns a printable label"
+      "name": "_first_valid_cached_row",
+      "file_line": "services/bushfire_prescreen.py:459",
+      "input": "the list of candidate cached rows returned newest-first by the bushfire product and address SELECT",
+      "output": "the newest row whose outputs dict contains the is_bushfire_prone sentinel key, meaning genuinely bushfire-shaped outputs",
+      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_bushfire falls through to live compute"
     },
     {
-      "name": "defaultLinkLabel",
-      "file_line": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:44",
-      "input": "a *_url key stem when no formatter is injected (tests / future callers)",
-      "output": "a title-cased label for the link pill",
-      "if_none": "the || 'Source' guard at the call site keeps an empty stem from rendering a blank link label"
+      "name": "_first_valid_cached_row",
+      "file_line": "services/flood_truth.py:1507",
+      "input": "the list of candidate cached rows returned newest-first by the flood product and address SELECT",
+      "output": "the newest row whose outputs contain epi_flood_class or flood_signal, meaning genuinely flood-shaped outputs",
+      "if_none": "returns None when every candidate is poisoned or the list is empty, so run_flood falls through to live source queries"
+    },
+    {
+      "name": "get_shadow_risk",
+      "file_line": "scripts/generate_conveyancing_report.py:1889",
+      "input": "address, prop_id, coordinates, optional LEP height, and now an optional caller-supplied report_id for the row the shadow service writes",
+      "output": "the shadow pipeline outputs dict with run-level confidence merged in, or None when the Railway endpoint is unreachable",
+      "if_none": "report_id None keeps the previous behaviour exactly, allocating a fresh uuid4 per call for CLI and conveyancing callers"
     }
   ],
   "values": [
     {
-      "value": "o.value on each walked object (the populated-field gate)",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:70",
+      "value": "outputs field of each candidate cached property_reports row",
+      "read_at": "services/bushfire_prescreen.py:468",
       "nullable": "yes",
-      "guard_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:70",
-      "if_missing": "an absent value key or a null/undefined value means the citing field did not populate — the source is skipped, which is the fix itself; false and 0 still count via the != null check"
+      "guard_at": "services/bushfire_prescreen.py:469",
+      "if_missing": "a row with null or non-dict outputs is skipped like a poisoned row and the scan falls through to the next candidate"
     },
     {
-      "value": "o.as_at on a qualifying citation",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:73",
+      "value": "cached row selected by the flood sentinel guard before serving",
+      "read_at": "services/flood_truth.py:1659",
       "nullable": "yes",
-      "guard_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:73",
-      "if_missing": "non-string as_at becomes undefined; the merge only overwrites an existing stamp when the incoming one is a string and lexicographically later, so a null stamp never erases a real date"
+      "guard_at": "services/flood_truth.py:1660",
+      "if_missing": "None means no valid cached row exists, so the cached branch is skipped entirely and the live source queries run"
     },
     {
-      "value": "existing srcMap entry for a repeated label key",
-      "read_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:75",
+      "value": "report_id parameter threaded into the shadow request payload",
+      "read_at": "scripts/generate_conveyancing_report.py:1918",
       "nullable": "yes",
-      "guard_at": "frontend-nextjs/app/reports/intelligence-brief/provenance.ts:76",
-      "if_missing": "first sighting inserts the row; later sightings of the same lower-cased label only update the as-at, so two slugs for the same source can never produce two rows"
+      "guard_at": "scripts/generate_conveyancing_report.py:1918",
+      "if_missing": "the or-fallback allocates a fresh uuid4 so standalone and CLI callers keep their pre-change row-per-run behaviour"
     }
   ],
-  "queries": [],
+  "queries": [
+    {
+      "purpose": "bushfire cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
+      "file_line": "services/bushfire_prescreen.py:527",
+      "where_clause": "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 5"
+    },
+    {
+      "purpose": "flood cache lookup now fetches the five newest candidates so the sentinel guard can fall through past poisoned rows",
+      "file_line": "services/flood_truth.py:1650",
+      "where_clause": "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A brief where the DCP pipeline did not run (council not onboarded) still advertises 'Plotdetect Dcp' in the footer",
-      "what_happens": "Pre-change: the walker harvested the source slug off the null-valued DataField and listed it as a source that informed the brief",
+      "scenario": "Two satellite services finish a brief run back-to-back with the same parent report_id, as in the live Kincumber contamination",
+      "what_happens": "Pre-change the second upsert overwrote the first row's outputs while the row kept the first product label, silently serving cross-product data",
       "mitigated": true,
-      "how": "the gate requires a value key with a non-null value before a citation counts; a null-only source never reaches srcMap",
-      "repro": "npx jest --testPathPatterns=brief-sources-per-run -t 'excludes a source cited only by null-valued fields'"
+      "how": "uuid5 of parent and product gives each service its own row id, so the captured INSERT params for bushfire and flood carry distinct ids",
+      "repro": "pytest tests/test_report_clobber_762.py::TestWriteReportDistinctRows::test_two_products_same_parent_write_two_distinct_row_ids"
     },
     {
-      "scenario": "Two internal slugs (live_protection_overlay, planning_portal_protection) map to the same label and render 'NSW Planning Portal — Protection layers' twice",
-      "what_happens": "Pre-change: dedupe keyed on the raw slug, so the same real-world source appeared as duplicate rows",
+      "scenario": "The newest bushfire row for an address is already poisoned with flood outputs from the pre-fix era",
+      "what_happens": "Pre-change the cache merged the flood blob over bushfire defaults and served an all-null section with fire_signal unavailable",
       "mitigated": true,
-      "how": "srcMap keys on the lower-cased normalised label; the second slug merges into the first row and only bumps the as-at if later",
-      "repro": "npx jest --testPathPatterns=brief-sources-per-run -t 'collapses duplicate source labels to one entry, keeping the latest as-at'"
+      "how": "the sentinel guard skips rows lacking is_bushfire_prone and serves the older genuine row, with flood keys asserted absent from the response",
+      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_poisoned_newest_row_never_served"
     },
     {
-      "scenario": "The stricter gate over-prunes: a screening field whose real answer is false or 0 (e.g. an ANEF flag) loses its source from the footer",
-      "what_happens": "A naive truthiness check would treat legitimate negative results as not-populated and hide sources the run genuinely used",
+      "scenario": "Every cached row for the address is poisoned so no genuine bushfire outputs exist in the table at all",
+      "what_happens": "Serving any candidate would render wrong data, and a naive newest-row read has nothing valid left to return",
       "mitigated": true,
-      "how": "the gate is o.value != null (loose inequality), so false and 0 count as populated; only null/undefined/absent are excluded",
-      "repro": "npx jest --testPathPatterns=brief-sources-per-run -t 'a field with value false or 0 still counts as populated'"
+      "how": "the guard returns None which turns the cache branch into a miss, falling through to live RFS BFPL compute instead of serving poison",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_all_rows_poisoned_returns_none_for_live_compute"
     },
     {
-      "scenario": "Non-DataField objects that happen to carry a source key (climate manifest sources_unavailable rows) sneak onto the footer as sources",
-      "what_happens": "Pre-change: {source, reason} objects for datasets that were checked but had no coverage were listed as data sources of the brief",
+      "scenario": "A genuine unknown bushfire result stores is_bushfire_prone as null and an over-strict guard treats it as poisoned",
+      "what_happens": "Over-aggressive filtering would discard legitimate cached unknowns and force needless live recompute on every subsequent request",
       "mitigated": true,
-      "how": "objects without a value key never qualify; the climate wrapper DataField still contributes its own source when populated",
-      "repro": "npx jest --testPathPatterns=brief-sources-per-run -t 'an object carrying source but no value key is not a populated field'"
+      "how": "the guard tests key presence rather than value truthiness, so a null-valued sentinel key still marks the row as bushfire-shaped",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBushfireCacheGuard::test_sentinel_key_with_null_value_still_accepted"
     },
     {
-      "scenario": "Extracting the collector out of page.tsx changes link-label rendering because the module can no longer see formatKey and its override maps",
-      "what_happens": "Link pills under the source list would silently change wording for keys with FIELD_LABEL_OVERRIDES entries",
+      "scenario": "A future edit reverts the cache SELECT back to LIMIT 1 while leaving the guard function itself in place",
+      "what_happens": "A poisoned newest row would hide the healthy older row again because the guard would only ever see one candidate",
       "mitigated": true,
-      "how": "collectSources takes the formatter as a parameter and page.tsx injects the same formatKey it always used; the default formatter only serves tests",
-      "repro": "npx jest --testPathPatterns=brief-sources-per-run -t 'still collects legislation/source URLs as links' plus tsc --noEmit on page.tsx"
+      "how": "a test asserts the executed SELECT contains no LIMIT 1 and keeps the run_date descending order, failing on that regression",
+      "repro": "pytest tests/test_report_clobber_762.py::TestRunBushfireCachePathEndToEnd::test_cache_select_fetches_multiple_candidates"
+    },
+    {
+      "scenario": "Someone reroutes a brief call site back to passing the raw parent report_id into a satellite fetch",
+      "what_happens": "The clobber would silently return for that product pair while every test touching only the derivation helper kept passing",
+      "mitigated": true,
+      "how": "source-level tests assert all three call sites pass the derivation helper and that the old raw-report_id call strings are gone",
+      "repro": "pytest tests/test_report_clobber_762.py::TestBriefCallSitesUseDerivedIds"
     }
   ],
   "post_merge": {
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes — re-open the live Kincumber brief (20 Patanga St) and check the footer: no 'Plotdetect Dcp', no 'Satellite imagery + structure detection', and 'NSW Planning Portal — Protection layers' appears once"
+    "manual_verify": "Yes — re-run the Kincumber brief for 20 PATANGA STREET KINCUMBER 2251 on the deployed service and confirm the bushfire section renders real RFS fields, then run the approval-gated cleanup DELETEs from the PR body if the remaining counts warrant it"
   }
 }

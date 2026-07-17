@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-17T11:00:00+10:00",
-  "target": "issues 762 (report_id clobber in property_reports writes), 752 (granny confirm step in brief card), 753 (per-run data sources list)",
-  "findings_summary": "762 root cause documented in issue with prod row evidence (shared report_id + ON CONFLICT(id) DO UPDATE clobbers product rows; fix at brief layer with per-service uuid5 ids + cache sentinel-key guard; standalone flows poll by report_id so service-layer id derivation must not change); 752 unblocked by merged #748 three-state detect contract, reuses gated /api/satellite/granny-flat action confirm; 753 static union list in brief page replaced by dedupe over sources actually attached to populated DataFields; no schema changes, no bulk DB ops (poisoned-row cleanup SQL drafted but NOT run without user approval)"
+  "timestamp": "2026-07-17",
+  "target": "services/constraint_arithmetic.py battleaxe provenance - fix two findings from Sol's review of PR #725: (2) is_battleaxe_measured (is-not-None) disagrees with _estimate_lot_dimensions (truthiness) at a 0 measurement, mislabelling a whole-lot estimate as measured; (3) area/width labelled as measured depth despite assuming a rectangular head.",
+  "findings_summary": "No DB/query change (in-memory LotDimensions). Root cause of #2 is two independent guards on the same fields; fix = single _has_battleaxe_head() predicate (positive width AND area) used by both. #3 = provenance overclaim; fix = reword gap note to 'estimated ... head assumed rectangular ... verify'. Existing TestBattleaxeDimensions covers the happy path; add 0-value and negative-value regression tests."
 }
