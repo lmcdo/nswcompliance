@@ -14,7 +14,7 @@
  "functions": [
   {
    "name": "_dcp_value_conflict",
-   "file_line": "services/constraint_arithmetic.py:220",
+   "file_line": "services/constraint_arithmetic.py:268",
    "input": "the DCPControl list, control_type, dev_type, and optional lot_area_m2",
    "output": "the sorted distinct value_min values when _get_dcp_value had to choose (tiered/conflicting or cross-band fallback), else None",
    "if_none": "returns None (no gap note) ONLY when a band resolved AND that band's value_min is present; a band that resolved but lacked value_min now surfaces the differing values instead of suppressing them"
