@@ -1497,6 +1497,27 @@ def _s1b_gap_affected(start: date, end: date) -> bool:
     return start <= S1B_GAP_END and end >= S1B_GAP_START
 
 
+# Sentinel keys that genuine flood outputs carry (any one suffices). Rows
+# written before the #762 fix can hold bushfire or shadow outputs under
+# product='flood' — the shared-report_id clobber. A cached row missing every
+# sentinel key is poisoned and must be skipped, never served.
+_CACHE_SENTINEL_KEYS = ("epi_flood_class", "flood_signal")
+
+
+def _first_valid_cached_row(rows):
+    """Return the newest cached row whose outputs are flood-shaped.
+
+    Defence in depth for issue #762 (prior-art-checked: hardening of this
+    module's own existing cache read, no new source): skip poisoned rows and
+    fall through to the next row or to live compute.
+    """
+    for row in rows or []:
+        outputs = row.get("outputs") if isinstance(row, dict) else None
+        if isinstance(outputs, dict) and any(k in outputs for k in _CACHE_SENTINEL_KEYS):
+            return row
+    return None
+
+
 def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs):
     confidence   = _compute_confidence(internal_outputs)
     data_sources = _build_data_sources(internal_outputs)
@@ -1628,10 +1649,14 @@ def run_flood(req: FloodRequest):
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 "SELECT outputs, confidence, data_sources FROM property_reports "
-                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 5",
                 (req.address,)
             )
-            cached = cur.fetchone()
+            # #762 (prior-art-checked: same cache read hardened in place, no
+            # new source): skip poisoned rows — another product's outputs
+            # clobbered under product='flood' — instead of blindly serving
+            # the newest.
+            cached = _first_valid_cached_row(cur.fetchall())
         if cached:
             # Write a row for the new report_id so PDF generation can find it
             _write_report(

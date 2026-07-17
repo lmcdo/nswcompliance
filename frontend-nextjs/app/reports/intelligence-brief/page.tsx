@@ -11,6 +11,7 @@ import { ProductLandingV2 } from '@/components/reports/landing/ProductLandingV2'
 import { DAOutcomesDisplay, RefusalStatsSentence, type DAOutcomesPayload, type RefusalStatsRow } from '@/components/reports/DAOutcomes';
 import { BriefIntentBar, BriefOverlayCard, assembleBriefPayload } from '@/components/reports/BriefIntentOverlay';
 import { SeppContextCard } from '@/components/reports/SeppContextCard';
+import { GrannyFlatBriefCard } from '@/components/reports/GrannyFlatBriefCard';
 import { ShadowDisplay, type ShadowData } from '@/components/reports/ShadowDetailDisplay';
 import { floodSignalLine, emsLine, type EmsActivation } from './satellite-copy';
 import { collectSources } from './provenance';
@@ -2000,125 +2001,9 @@ function SeppHousingCard({ standards, eligibility, lotAreaM2, lotWidthM }: {
 // components/reports/SeppContextCard.tsx (zone-family aware copy — a
 // conservation or rural lot is never described as shop-top territory).
 
-// Granny Flat — decoupled to the working async pipeline. The brief fires the same
-// gated /api/satellite/granny-flat route the standalone tool uses (which gates on
-// SEPP cl 50/53 BEFORE the GPU scan, so an ineligible lot costs nothing), then polls
-// granny_flat_reports and renders a rich, cited card.
-type GfState =
-  | { kind: 'loading' }
-  | { kind: 'ineligible'; reason: string; evidence?: string }
-  | { kind: 'result'; count: number | null; detectionFailed?: boolean; detectionWarnings?: string[]; seppEligible: boolean; ineligibleReason?: string; lotAreaM2?: number; structures?: DetectedStructureRow[] }
-  | { kind: 'error'; message: string };
-
-function GrannyFlatCard({ address, active, lotAreaM2 }: { address?: string; active: boolean; lotAreaM2?: number | null }) {
-  const [state, setState] = useState<GfState | null>(null);
-  useEffect(() => {
-    if (!active || !address) { setState(null); return; }
-    let cancelled = false;
-    setState({ kind: 'loading' });
-
-    const poll = async (jobId: string) => {
-      for (let attempts = 0; !cancelled && attempts < 90; attempts++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        if (cancelled) return;
-        try {
-          const r = await fetch(`/api/satellite/granny-flat?jobId=${encodeURIComponent(jobId)}`);
-          const d = await r.json();
-          if (d.status === 'detected' || d.status === 'completed') {
-            const o = (d.data || {}) as Record<string, unknown>;
-            setState({
-              kind: 'result',
-              detectionFailed: !!o.detection_failed,
-              detectionWarnings: Array.isArray(o.warnings) ? (o.warnings as string[]) : [],
-              count: (o.confirmed_structure_count as number) ?? (o.samgeo_structure_count as number) ?? null,
-              seppEligible: !!o.sepp_eligible,
-              ineligibleReason: (o.sepp_ineligible_reason as string) || undefined,
-              lotAreaM2: (o.lot_area_m2 as number) || undefined,
-              structures: Array.isArray(o.detected_structures)
-                ? (o.detected_structures as DetectedStructureRow[])
-                : undefined,
-            });
-            return;
-          }
-          if (d.status === 'error') { setState({ kind: 'error', message: d.message || d.error || 'Detection failed — try again.' }); return; }
-        } catch { /* transient — keep polling */ }
-      }
-      if (!cancelled) setState({ kind: 'error', message: 'The building scan timed out — try running the brief again.' });
-    };
-
-    fetch('/api/satellite/granny-flat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, action: 'detect', ...(lotAreaM2 != null ? { lot_area_m2: lotAreaM2 } : {}) }),
-    })
-      .then(async (r) => {
-        const d = await r.json();
-        if (cancelled) return;
-        if (d.ineligible) { setState({ kind: 'ineligible', reason: d.error, evidence: d.evidence }); return; }
-        if (!r.ok || !d.jobId) { setState({ kind: 'error', message: d.error || 'Couldn’t start the building scan.' }); return; }
-        poll(d.jobId as string);
-      })
-      .catch(() => { if (!cancelled) setState({ kind: 'error', message: 'Couldn’t start the building scan.' }); });
-
-    return () => { cancelled = true; };
-    // lotAreaM2 intentionally in deps: a late-arriving reconciled area re-runs detect with the right figure
-  }, [active, address, lotAreaM2]);
-
-  const Shell = ({ badge, badgeClass, children }: { badge: string; badgeClass: string; children: ReactNode }) => (
-    <div className="relative bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_32px_-18px_rgba(15,23,42,0.18)] overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-500 before:via-teal-400/60 before:to-transparent">
-      <div className="px-5 py-4 border-b border-slate-200/70 bg-gradient-to-r from-slate-50/90 via-white to-white flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-slate-900 [text-wrap:balance]">Secondary Dwelling</h3>
-          <p className="text-xs text-slate-500 mt-0.5">Granny-flat feasibility — buildings on the lot + eligibility</p>
-        </div>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-slate-900/10 ${badgeClass}`}>{badge}</span>
-      </div>
-      <div className="px-5 py-4 text-sm leading-relaxed">{children}</div>
-    </div>
-  );
-
-  if (!active) return <Shell badge="Not run" badgeClass="bg-teal-50 text-teal-700"><span className="text-slate-500">Tick “Include satellite analysis” above and re-run to scan the lot’s buildings and check granny-flat eligibility.</span></Shell>;
-  if (!state || state.kind === 'loading') return <Shell badge="Analysing…" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500 animate-pulse">Scanning the aerial image for buildings and checking secondary-dwelling eligibility… (up to ~90s)</span></Shell>;
-  if (state.kind === 'ineligible') return (
-    <Shell badge="Not available here" badgeClass="bg-amber-50 text-amber-700">
-      <p className="text-slate-700">{state.reason}</p>
-      {state.evidence && <p className="text-slate-500 mt-1">{state.evidence}</p>}
-    </Shell>
-  );
-  if (state.kind === 'error') return <Shell badge="Couldn’t complete" badgeClass="bg-slate-100 text-slate-500"><span className="text-slate-500">{state.message}</span></Shell>;
-  return (
-    <Shell badge="Calculated" badgeClass="bg-amber-50 text-amber-800">
-      <p className="text-slate-900">
-        {state.detectionFailed
-          ? <>The building scan did not complete — the building count is <span className="font-medium">unknown, not zero</span>. Confirm the structure count in the Granny Flat tool before relying on it.</>
-          : state.count != null
-            ? <><span className="font-medium">{state.count}</span> existing building{state.count === 1 ? '' : 's'} detected on the lot from the aerial image.</>
-            : 'Building scan complete.'}
-      </p>
-      <p className="mt-1 text-slate-700">
-        {state.seppEligible
-          ? <>This lot <span className="font-medium">meets</span> the SEPP (Housing) 2021 secondary-dwelling lot standard{state.lotAreaM2 ? ` (lot ${Math.round(state.lotAreaM2)} m²)` : ''} — a granny flat is a permissible form, subject to the detailed controls.</>
-          : (state.ineligibleReason || 'This lot does not meet the SEPP secondary-dwelling lot standard.')}
-      </p>
-      {/* Detected structures — display only what the detection service
-          returned (AI-classified building type + measured footprint area). */}
-      {state.structures && state.structures.length > 0 && (
-        <ul className="mt-2 text-xs text-slate-500 space-y-0.5">
-          {state.structures.map((st, i) => (
-            <li key={`${st.matched_prompt ?? 'structure'}-${i}`} className="tabular-nums">
-              {formatKey(String(st.matched_prompt ?? 'structure'))}
-              {st.is_main_dwelling ? ' (main dwelling)' : ''}
-              {st.area_m2 != null ? ` — ~${Math.round(st.area_m2)} m² footprint` : ''}
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-2 text-xs text-slate-400">Confirm the detected building count in the Granny Flat tool before relying on the figure.</p>
-    </Shell>
-  );
-}
-
-// Detected structure row from the granny-flat detection service.
-interface DetectedStructureRow { matched_prompt?: string; area_m2?: number | null; is_main_dwelling?: boolean; }
+// Granny Flat — extracted to components/reports/GrannyFlatBriefCard.tsx (#752).
+// The card fires the gated async /api/satellite/granny-flat route itself (detect +
+// human structure-selection + explicit confirm/calculate — never automatic).
 
 // ---------------------------------------------------------------------------
 // Solar — fires the SAME rate-limited route the standalone solar tool uses
@@ -3080,7 +2965,7 @@ function IntelligenceBriefInner() {
       {state !== 'idle' && (
         <div className="mb-8">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700 mb-1.5">PlotDetect · Property Dossier</div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Intelligence Brief</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-slate-900">Site Report</h1>
           <p className="text-sm text-slate-500 mt-2 max-w-3xl leading-relaxed">
             For a single NSW property: what the rules allow, what physically constrains the site,
             what environmental risk applies, what it&apos;s worth, and what&apos;s happening
@@ -3122,7 +3007,7 @@ function IntelligenceBriefInner() {
             disabled={!selectedAddress.trim()}
             className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Generate Intelligence Brief
+            Generate Site Report
           </button>
         </div>
       )}
@@ -3236,7 +3121,7 @@ function IntelligenceBriefInner() {
               if (section === 'satellite.granny_flat') {
                 // Decoupled: the card fires the gated async route itself (gate +
                 // real Modal scan), rather than the brief's timed-out inline run.
-                card = <GrannyFlatCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} lotAreaM2={planningCtx.lotAreaM2 ?? null} />;
+                card = <GrannyFlatBriefCard address={metadataEvent?.data.address ?? selectedAddress} active={ranWithSatellite} lotAreaM2={planningCtx.lotAreaM2 ?? null} />;
               }
               if (section === 'constraint_arithmetic') {
                 const ca = (event.data.data?.value ?? null) as ConstraintArithmeticResult | null;

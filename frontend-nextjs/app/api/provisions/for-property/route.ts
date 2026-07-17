@@ -122,9 +122,37 @@ function normalizePrecinctId(precinctId: string): string {
  */
 const MARRICKVILLE_OCR_HEADER = /^PART \d+:\s+[^\n]+\n\d+\s*\n(?:\s*Marrickville[^\n]*\n)?(?:\s*\n)*/;
 
+/**
+ * Strip OCR "doubled-glyph" running-header lines (e.g. City of Sydney DCP 2012).
+ *
+ * Some council DCP PDFs were OCR'd with running page headers where every glyph
+ * is duplicated, e.g. "SSeeccttiioonn 11", "IINNTTRROODDUUCCTTIIOONN". These
+ * land as standalone header lines; the provision body is unaffected (verified:
+ * garbled lines are ~1.6% of characters and 0 rows retain doubling once removed).
+ * Drop any line genuinely dominated by the doubled-character pattern. Applied
+ * unconditionally — a no-op for councils without the artifact.
+ */
+const DOUBLED_GLYPH_RUN = /([A-Za-z])\1([A-Za-z])\2([A-Za-z])\3/;
+
+function stripDoubledOcrLines(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => {
+      if (!DOUBLED_GLYPH_RUN.test(line)) return true; // normal line — keep
+      // Only drop lines truly dominated by doubling, so a real line that merely
+      // contains a garbled fragment survives. Collapsing consecutive duplicate
+      // letters must shrink the line's letters by > 30%.
+      const letters = (line.match(/[A-Za-z]/g) || []).length;
+      const collapsed = (line.replace(/([A-Za-z])\1/g, '$1').match(/[A-Za-z]/g) || []).length;
+      return letters === 0 || (letters - collapsed) / letters < 0.3;
+    })
+    .join('\n');
+}
+
 function stripOcrHeaderPrefix(text: string | null): string | null {
   if (!text) return text;
-  const cleaned = text.replace(MARRICKVILLE_OCR_HEADER, '').trim();
+  let cleaned = text.replace(MARRICKVILLE_OCR_HEADER, '');
+  cleaned = stripDoubledOcrLines(cleaned).trim();
   return cleaned || text; // never blank out a provision
 }
 

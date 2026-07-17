@@ -25,7 +25,7 @@ export default function CouncilsPage() {
           Reduce non-compliant DA submissions before they reach your desk
         </h1>
         <p className="text-gray-500 text-lg max-w-xl">
-          PlotDetect Verify checks SEPP, LEP, and DCP provisions for any property
+          PlotDetect Site Controls checks SEPP, LEP, and DCP provisions for any property
           and development type — before the applicant lodges. Zero integration with
           your systems. No IT project. Embed as an iframe on your council website.
         </p>
@@ -41,7 +41,7 @@ export default function CouncilsPage() {
             },
             {
               title: 'Zero integration required',
-              description: 'Verify runs as an iframe embed. No API integration, no data export, no IT procurement process. Add one line of HTML to your pre-DA guidance page.',
+              description: 'Site Controls runs as an iframe embed. No API integration, no data export, no IT procurement process. Add one line of HTML to your pre-DA guidance page.',
             },
             {
               title: 'Privacy safe',
@@ -66,9 +66,9 @@ export default function CouncilsPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
-              { step: '1', title: 'Embed on your website', body: 'Add the Verify iframe to your pre-DA guidance page. No IT project, no procurement.' },
+              { step: '1', title: 'Embed on your website', body: 'Add the Site Controls iframe to your pre-DA guidance page. No IT project, no procurement.' },
               { step: '2', title: 'Applicant enters address', body: 'They get the relevant SEPP, LEP, and DCP provisions for their property and development type.' },
-              { step: '3', title: 'Better submissions arrive', body: 'Applicants who have checked Verify understand the constraints before they lodge.' },
+              { step: '3', title: 'Better submissions arrive', body: 'Applicants who have checked Site Controls understand the constraints before they lodge.' },
             ].map(({ step, title, body }) => (
               <div key={step} className="space-y-2">
                 <div className="w-8 h-8 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center">
@@ -89,7 +89,7 @@ export default function CouncilsPage() {
             Request a council demo
           </h2>
           <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-            See Verify running against your council area. We will show you exactly
+            See Site Controls running against your council area. We will show you exactly
             what applicants see — with your DCP provisions and planning controls.
           </p>
           <a

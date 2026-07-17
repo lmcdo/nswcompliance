@@ -11,6 +11,13 @@ updates:
       - "security"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # typescript 7 (native-compiler line) ships no JS compiler API — Next cannot
+      # resolve tsconfig paths through it — and it peer-conflicts with
+      # @typescript-eslint 8. Staged-majors plan + evidence: issue #770.
+      # Revisit when Next and typescript-eslint support TS7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       # One PR for all minor/patch bumps — the safe batch.
       minor-and-patch:
