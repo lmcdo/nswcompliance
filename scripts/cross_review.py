@@ -37,7 +37,6 @@ import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CHECKLIST_PATH = _REPO_ROOT / ".claude" / "rules" / "pre-pr-review.md"
 _DEFAULT_MODEL = "gpt-5.6-sol"  # alias "gpt-5.6" also routes here
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 _UNKNOWN_SEVERITY_RANK = -1  # sort/gate unknown severities as MORE severe than high
@@ -136,20 +135,42 @@ def get_diff(args: argparse.Namespace) -> str:
     return diff
 
 
-def load_checklist() -> str:
-    """Load the repo's pre-PR-review rubric, or a compact fallback if absent."""
-    if _CHECKLIST_PATH.exists():
-        return _CHECKLIST_PATH.read_text(encoding="utf-8", errors="ignore")
-    return (
-        "1. DB query filters — every SELECT has correct WHERE (is_active, council "
-        "scope, no missing filters).\n"
-        "2. Unguarded nulls — DB rows / API responses / optional fields null-checked.\n"
-        "3. Type assumptions — types match at every boundary (DB->API->component).\n"
-        "4. Silent failure modes — does failure surface visibly or serve wrong data "
-        "silently? Silent is always worse.\n"
-        "5. Liability language — user-facing text avoids safe/compliant/guaranteed/"
-        "recommend etc. unless it is a regulatory quotation."
+_CHECKLIST_REL = ".claude/rules/pre-pr-review.md"
+_FALLBACK_CHECKLIST = (
+    "1. DB query filters - every SELECT has correct WHERE (is_active, council "
+    "scope, no missing filters).\n"
+    "2. Unguarded nulls - DB rows / API responses / optional fields null-checked.\n"
+    "3. Type assumptions - types match at every boundary (DB->API->component).\n"
+    "4. Silent failure modes - does failure surface visibly or serve wrong data "
+    "silently? Silent is always worse.\n"
+    "5. Liability language - user-facing text avoids safe/compliant/guaranteed/"
+    "recommend etc. unless it is a regulatory quotation."
+)
+
+
+def load_checklist(base: str) -> str:
+    """Load the pre-PR rubric from the TRUSTED base ref, not the working tree.
+
+    The branch being reviewed must not be able to edit the checklist to neuter its
+    own reviewer, so the rubric is read from `git show {base}:...` rather than the
+    checkout. Falls back to a compact embedded copy (never the working-tree file)
+    with a visible warning if the base copy cannot be read.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "show", f"{base}:{_CHECKLIST_REL}"],
+            cwd=_REPO_ROOT, capture_output=True, text=True, timeout=15,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    print(
+        f"WARNING: could not read {_CHECKLIST_REL} from '{base}'; using the built-in "
+        "fallback checklist (working-tree copy is deliberately NOT trusted).",
+        file=sys.stderr,
     )
+    return _FALLBACK_CHECKLIST
 
 
 def build_messages(diff: str, checklist: str) -> list[dict]:
@@ -253,13 +274,21 @@ def _safe_confidence(value: object) -> float:
 
 
 def rank(findings: list[dict]) -> list[dict]:
+    # A missing severity uses the unknown (most-severe) rank, NOT "low" - an
+    # omitted severity must never let a real finding slip past --fail-on.
     return sorted(
         findings,
         key=lambda f: (
-            severity_rank(f.get("severity", "low")),
+            severity_rank(f.get("severity")),
             -_safe_confidence(f.get("confidence", 0)),
         ),
     )
+
+
+def _field(f: dict, key: str) -> str:
+    """A finding field as a stripped string; None/non-string coerced, never crashes."""
+    value = f.get(key)
+    return str(value).strip() if value is not None else ""
 
 
 def render(findings: list[dict], model: str) -> None:
@@ -277,11 +306,11 @@ def render(findings: list[dict], model: str) -> None:
         conf = f.get("confidence")
         conf_s = f" (confidence {conf})" if conf is not None else ""
         print(f"{i}. [{sev}] {f.get('category', 'other')} - {loc}{conf_s}")
-        print(f"   {f.get('issue', '').strip()}")
-        if f.get("failure_scenario"):
-            print(f"   Scenario: {f['failure_scenario'].strip()}")
-        if f.get("suggested_fix"):
-            print(f"   Fix: {f['suggested_fix'].strip()}")
+        print(f"   {_field(f, 'issue')}")
+        if _field(f, "failure_scenario"):
+            print(f"   Scenario: {_field(f, 'failure_scenario')}")
+        if _field(f, "suggested_fix"):
+            print(f"   Fix: {_field(f, 'suggested_fix')}")
         print()
     print("These are review candidates - verify each against the code before acting.\n")
 
@@ -316,7 +345,7 @@ def main() -> None:
 
     api_key = load_api_key()
     diff = get_diff(args)
-    result = call_model(build_messages(diff, load_checklist()), args.model, api_key)
+    result = call_model(build_messages(diff, load_checklist(args.base)), args.model, api_key)
     findings = rank(result["findings"])
     render(findings, args.model)
 
@@ -326,7 +355,8 @@ def main() -> None:
 
     if args.fail_on:
         threshold = _SEVERITY_ORDER[args.fail_on]
-        worst = min((severity_rank(f.get("severity", "low")) for f in findings), default=99)
+        # Missing severity -> unknown rank (most severe), so a gate never fails open.
+        worst = min((severity_rank(f.get("severity")) for f in findings), default=99)
         if worst <= threshold:
             sys.exit(2)
 
