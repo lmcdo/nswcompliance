@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "This changes how the free upzoning tool frames its regulatory eligibility result to the public. No logic, data, or query changes — but it alters user-facing planning communication on a compliance surface, so the wording must stay defensible: lead with what the mapped standards permit, phrase clearances as clearances, and keep the subject-to-a-DA caveat present exactly once rather than removed.",
- "commit_hash": "e29a466a",
+ "commit_hash": "07501f2f",
  "files": [
   "frontend-nextjs/app/tools/upzoning-check/page.tsx"
  ],
