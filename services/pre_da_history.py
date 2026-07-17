@@ -73,6 +73,11 @@ SIM_MODERATE = 0.70
 # Lot area below which we also run Wayback SSIM (Tessera resolution is poor)
 SMALL_LOT_THRESHOLD_M2 = 300
 
+# Fail-closed coverage gate (issue #751): the year-on-year similarity timeline
+# needs at least one (N-1, N) pair where BOTH years have a published Tessera
+# tile. Below this, every timeline entry is no_data and the report is hollow.
+MIN_CONSECUTIVE_COVERED_PAIRS = 1
+
 # Max pages to fetch from ePlanning per application type (50 records/page).
 # 10 pages = 500 DAs — covers all but the very largest councils.
 EPLANNING_MAX_PAGES = 10
@@ -396,6 +401,38 @@ def _nbhd_points(lat: float, lon: float) -> list[tuple[float, float]]:
 
 def sample_neighbourhood_embeddings(lat: float, lon: float) -> dict[int, np.ndarray | None]:
     return _sample_embeddings(_nbhd_points(lat, lon), YEARS)
+
+
+def _consecutive_covered_pairs(covered_years: set[int], years: list[int]) -> int:
+    """Count (N-1, N) pairs where BOTH years have published tile coverage.
+
+    The similarity timeline is year-on-year cosine similarity, so a year only
+    yields a data point when the previous year is covered too.
+    """
+    ordered = sorted(years)
+    return sum(
+        1 for i in range(1, len(ordered))
+        if ordered[i - 1] in covered_years and ordered[i] in covered_years
+    )
+
+
+def check_tessera_coverage(gt, lat: float, lon: float, years: list[int]) -> set[int]:
+    """Registry-only pre-flight: which years have a published Tessera tile
+    intersecting the lot + neighbourhood sample points.
+
+    Uses the registry manifest (no tile downloads). Sampling an uncovered tile
+    returns NaN rows silently, so this is the only way to distinguish "no
+    coverage published" from "download failed" before the heavy run.
+    """
+    pts = _lot_points(lat, lon) + _nbhd_points(lat, lon)
+    lons = [p[0] for p in pts]
+    lats = [p[1] for p in pts]
+    bounds = (min(lons), min(lats), max(lons), max(lats))
+    covered: set[int] = set()
+    for year in years:
+        if next(iter(gt.registry.iter_tiles_in_region(bounds, year)), None) is not None:
+            covered.add(year)
+    return covered
 
 
 def compute_similarity_timeline(
@@ -1017,6 +1054,35 @@ class PreDAHistoryRequest(BaseModel):
     report_id: Optional[str] = None      # Pre-allocated row UUID from Next.js (async flow)
 
 
+def _build_refusal(
+    req: "PreDAHistoryRequest",
+    lat: float,
+    lon: float,
+    council: str,
+    reason_code: str,
+    reason: str,
+    covered_years: Optional[set[int]],
+) -> dict:
+    """Fail-closed refusal (mirrors flood_truth's ``refused`` pattern).
+
+    Marks the pre-allocated async row as errored so the frontend poll surfaces
+    a failure instead of hanging or presenting an empty report as complete.
+    """
+    _mark_error(req.report_id, reason)
+    return {
+        "address": req.address,
+        "lat": lat,
+        "lon": lon,
+        "council": council,
+        "run_date": date.today().isoformat(),
+        "refused": True,
+        "reason_code": reason_code,
+        "reason": reason,
+        "covered_years": sorted(covered_years) if covered_years is not None else None,
+        "years_requested": YEARS,
+    }
+
+
 @router.post("/pre-da-history")
 def run_pre_da_history(req: PreDAHistoryRequest):
     """
@@ -1077,6 +1143,46 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
     ds_eplanning.query_params.update({"council": council})
     ds_heritage.query_params.update({"lat": lat, "lon": lon})
 
+    # --- Fail-closed pre-flight: published Tessera coverage (issue #751) ---
+    # Sampling an uncovered tile returns NaN rows with only a stderr warning,
+    # which collapses the whole timeline to no_data AFTER ~130s of work. The
+    # registry manifest knows coverage up front — refuse before the heavy run.
+    # A failure of the check itself is NOT a coverage gap: proceed, and the
+    # all-no_data backstop below still fails the run closed.
+    from geotessera import GeoTessera
+
+    gt = None
+    covered_years: Optional[set[int]] = None
+    try:
+        gt = GeoTessera()
+        covered_years = check_tessera_coverage(gt, lat, lon, YEARS)
+    except Exception as exc:
+        logger.warning(
+            f"Tessera coverage pre-flight failed ({exc}) — proceeding to sampling"
+        )
+
+    if covered_years is not None:
+        ds_tessera.query_params.update({"covered_years": sorted(covered_years)})
+        if _consecutive_covered_pairs(covered_years, YEARS) < MIN_CONSECUTIVE_COVERED_PAIRS:
+            ds_tessera.record_response(
+                {"covered_years": sorted(covered_years), "consecutive_pairs": 0},
+                features_returned=0,
+            )
+            logger.warning(
+                f"Pre-DA refused (no Tessera coverage): {req.address} "
+                f"covered_years={sorted(covered_years)}"
+            )
+            return _build_refusal(
+                req, lat, lon, council,
+                reason_code="satellite_coverage_unavailable",
+                reason=(
+                    "Satellite embedding coverage is not published for this "
+                    "location for two consecutive years, so the year-on-year "
+                    "change timeline cannot be computed. No report was generated."
+                ),
+                covered_years=covered_years,
+            )
+
     # --- Parallel pipeline ---
     # Tessera runs sequentially (single GeoTessera instance to avoid OOM from
     # duplicate tile caches). NDVI/NDBI, DA events, and heritage run in parallel
@@ -1103,8 +1209,8 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
         # between lot and neighbourhood to avoid duplicate tile downloads.
         # GC between passes to release numpy arrays from lot embeddings.
         import gc
-        from geotessera import GeoTessera
-        gt = GeoTessera()
+        if gt is None:  # pre-flight construction failed — surface the error here
+            gt = GeoTessera()
 
         lot_embs = _sample_embeddings_with_client(gt, _lot_points(lat, lon), YEARS)
         similarity_timeline = compute_similarity_timeline(lot_embs)
@@ -1171,6 +1277,21 @@ def _run_pre_da_history_inner(req: PreDAHistoryRequest):
     timeline = annotate_timeline(
         similarity_timeline, neighbourhood_sim_timeline, ndvi_ndbi_deltas, all_da, lat, lon
     )
+
+    # --- Backstop gate (issue #751): an all-no_data timeline is not a report ---
+    # Catches whatever the registry pre-flight could not see up front (tile
+    # download failures, NaN tiles, a pre-flight that errored and was skipped).
+    if timeline and all(entry.get("level") == "no_data" for entry in timeline):
+        return _build_refusal(
+            req, lat, lon, council,
+            reason_code="satellite_timeline_empty",
+            reason=(
+                "Satellite sampling returned no usable data for any year at "
+                "this location, so the change timeline cannot be computed. "
+                "No report was generated."
+            ),
+            covered_years=covered_years,
+        )
 
     result = {
         "address": req.address,

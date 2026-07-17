@@ -2462,8 +2462,13 @@ def _build_granny_flat_detail(granny_flat_raw: Optional[dict]) -> Optional[Grann
 
 
 def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDetail]:
-    """Extract PreDAHistoryDetail from raw pre-DA output."""
-    if not pre_da_raw:
+    """Extract PreDAHistoryDetail from raw pre-DA output.
+
+    A refused run (fail-closed coverage/empty-timeline gate, issue #751) carries
+    no timeline — treat it as no detail; the refusal reason is surfaced on the
+    DataField by ``_pre_da_reason``.
+    """
+    if not pre_da_raw or pre_da_raw.get("refused"):
         return None
     return PreDAHistoryDetail(
         timeline=pre_da_raw.get("timeline"),
@@ -2471,6 +2476,15 @@ def _build_pre_da_detail(pre_da_raw: Optional[dict]) -> Optional[PreDAHistoryDet
         council=pre_da_raw.get("council"),
         data_quality_note=pre_da_raw.get("data_quality_note"),
     )
+
+
+def _pre_da_reason(pre_da_raw: Optional[dict]) -> str:
+    """Reason for an absent pre-DA detail: a refused run carries its own
+    reason (legit-empty, e.g. no published satellite coverage); anything else
+    is the generic not-requested/failed state."""
+    if pre_da_raw and pre_da_raw.get("refused") and pre_da_raw.get("reason"):
+        return str(pre_da_raw.get("reason"))
+    return "Pre-DA history not requested or failed"
 
 
 def _fetch_terrain(lat: float, lng: float) -> dict:
@@ -2551,7 +2565,7 @@ def _build_satellite_data(
             confidence=ConfidenceLevel.ESTIMATED if pre_da_detail else ConfidenceLevel.NOT_AVAILABLE,
             source="pre_da_history",
             as_at=today,
-            reason=None if pre_da_detail else "Pre-DA history not requested or failed",
+            reason=None if pre_da_detail else _pre_da_reason(pre_da_raw),
         ),
         terrain=DataField(
             value=terrain_detail,
