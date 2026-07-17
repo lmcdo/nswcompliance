@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const TOOLS = [
   {
-    name: 'Intelligence Brief',
+    name: 'Site Report',
     href: '/reports/intelligence-brief',
     sources: [
       { name: 'NSW Planning Portal (layerintersect + lot APIs)', use: 'Zone, height, FSR, lot size, heritage and environmental overlays, plus the cadastral lot geometry' },

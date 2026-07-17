@@ -1,33 +1,48 @@
 {
- "tier": "minor",
- "justification": "Single-file marketing-copy restructure of the canibuildit app homepage: hero adopts the five-questions one-engine frame, the 8 tool cards regroup under the question each answers, and public copy drops internal pipeline names (Granny Flat Yield Predictor, Neighbour Threat Radar, Pre-DA Site History, Shadow Risk Analyser, Rooftop Solar Yield) per the blog-content IP rule. No data path, DB, route, or engine logic changes; all hrefs unchanged.",
- "commit_hash": "9b311ade",
+ "tier": "standard",
+ "justification": "Display-string rename across four marketing surfaces: the brief page H1/CTA and its metadata titles become Site Report, the how-it-works listing follows, and the homepage workbench band renames Verify to Site Controls. Companion to the info-site rename (lmcdo/website PR 13) so both surfaces present the same product names. No routes, data paths, engine logic, or subdomains change.",
+ "commit_hash": "bfa9bcf1",
  "files": [
+  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+  "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx",
   "frontend-nextjs/app/page.tsx"
  ],
- "functions": "N/A - presentational only; one new const QUESTIONS array and a regrouped render of the existing TOOLS list.",
- "values": "N/A - no DB or API values read; static marketing data arrays only.",
+ "pre_impl": {
+  "existing_data": "The naming decision comes from this session's grounded naming study (credit File/Report/Score, NSW conveyancing vernacular): Site Report / Topic Reports / Site Controls, with Verify retired as a tier label because it is a verb and sits on the internal banned-language list. The info-site half of the rename is already merged as lmcdo/website PR 13.",
+  "assumption_mismatch": "Verified before editing that the strings targeted are display copy only: the intelligence-brief route path, Trigger.dev task names, API routes, and the verify. subdomain host-routing are untouched, so nothing that machines match on changes.",
+  "new_vs_existing": "No new capability and no new components: pure string replacement inside four existing files. Deliberately NOT renamed: the in-app Verify workbench chrome under /assessment (a larger follow-up), code identifiers, PostHog event names, and blog articles which are historical artifacts."
+ },
+ "functions": "N/A - display-string replacements only; no function added, changed, or removed.",
+ "values": "N/A - no DB or API values involved; static JSX strings and metadata titles only.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "A TOOLS entry has a question key that matches no QUESTIONS group, so its card silently disappears from the homepage grid.",
-   "what_happens": "The tool becomes unreachable from the homepage grid until someone notices the card is missing.",
+   "scenario": "Search engines and existing backlinks lose ranking continuity because the page metadata titles changed from Intelligence Brief to Site Report.",
+   "what_happens": "SERP entries re-index under the new title and searches for the old name stop matching the page title.",
    "mitigated": true,
-   "how": "All 8 entries were given keys from the fixed 5-key set in the same edit and verified by grep (8 question: lines, 5 group keys); the set is closed and colocated in one file so a future mismatch is visible in the same diff that introduces it.",
-   "repro": "Change one tool's question value to a typo like 'stpo' and load the homepage - the card vanishes from every group."
+   "how": "URLs and routes are unchanged so all backlinks still resolve; the OG description retains the descriptive planning keywords; the old name survives on the info site engine sheet as a formerly-the-Intelligence-Brief recognition line during transition.",
+   "repro": "Fetch /reports/intelligence-brief after deploy and view source: the title tag reads Site Report while the URL and canonical are unchanged."
   },
   {
-   "scenario": "Renamed public titles break user recognition of previously bookmarked or advertised tool names.",
-   "what_happens": "A visitor looking for the old marketing name cannot find the matching card label.",
+   "scenario": "A returning user who knows the product as the Intelligence Brief lands on the renamed page and thinks they are in the wrong product.",
+   "what_happens": "Confusion or abandonment at the moment of arrival on the brief page.",
    "mitigated": true,
-   "how": "Routes and hrefs are unchanged - only display titles changed; the old names were internal pipeline names that the IP rule bars from public copy, so removal is required, and taglines still describe the same function.",
-   "repro": "Open /reports/threat-radar directly - the route still serves; only the homepage card label changed."
+   "how": "The route, layout, content, and generate flow are pixel-identical apart from the name; the plotdetect.com.au engine sheet that links here carries a formerly-the-Intelligence-Brief line, so the arriving user has just read the mapping.",
+   "repro": "Follow the Site Report tier card from the plotdetect homepage to the renamed page and confirm the recognition line precedes the transition."
+  },
+  {
+   "scenario": "A missed occurrence leaves mixed naming on one surface, e.g. the H1 says Site Report while a button still says Generate Intelligence Brief.",
+   "what_happens": "The page contradicts itself and undermines the rename it is meant to complete.",
+   "mitigated": true,
+   "how": "Grepped the four marketing surfaces for Intelligence Brief and standalone Verify after patching; remaining hits are a code comment in reports/page.tsx and the in-app workbench chrome, both deliberately out of scope and listed as follow-up.",
+   "repro": "Run grep -rn 'Intelligence Brief' over frontend-nextjs/app/reports/intelligence-brief and frontend-nextjs/app/page.tsx; only the provenance.ts internal comment remains."
   }
  ],
  "post_merge": {
   "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - static marketing copy only.",
-  "other_repo": "Pairs with lmcdo/website PR 12 (the plotdetect engine hero) but neither depends on the other to deploy.",
-  "manual_verify": "Yes - on the Vercel preview: homepage hero reads the five-questions headline, the 8 cards appear under 5 question groups, no internal pipeline names appear anywhere on the page, and each card still routes to its report."
+  "secrets": "No secrets involved - display copy only.",
+  "other_repo": "Pairs with lmcdo/website PR 13 (info-site rename); each deploys independently but the naming is only consistent once both are live.",
+  "manual_verify": "Yes - on the Vercel preview: /reports/intelligence-brief H1 and generate button read Site Report, the tab title reads Site Report, the homepage workbench band reads Site Controls, and /how-it-works lists Site Report."
  }
 }
