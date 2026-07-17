@@ -31,13 +31,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
+import sol_common
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_DEFAULT_MODEL = "gpt-5.6-sol"  # alias "gpt-5.6" also routes here
+_DEFAULT_MODEL = sol_common.DEFAULT_MODEL
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 _UNKNOWN_SEVERITY_RANK = -1  # sort/gate unknown severities as MORE severe than high
 
@@ -49,54 +51,6 @@ def severity_rank(sev: object) -> int:
     *less* strictly than "low", so it maps ahead of "high" rather than behind.
     """
     return _SEVERITY_ORDER.get(str(sev).strip().lower(), _UNKNOWN_SEVERITY_RANK)
-
-
-def _candidate_env_paths() -> list[Path]:
-    """.env locations to try: this checkout, and the main worktree's root.
-
-    .env is git-ignored, so a worktree checkout does not contain one — it lives in
-    the main checkout. `git --git-common-dir` points at <main>/.git, whose parent is
-    the main worktree root.
-    """
-    paths = [_REPO_ROOT / ".env"]
-    try:
-        common = subprocess.run(
-            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            cwd=_REPO_ROOT, capture_output=True, text=True, timeout=10,
-        )
-        if common.returncode == 0 and common.stdout.strip():
-            main_env = Path(common.stdout.strip()).parent / ".env"
-            if main_env not in paths:
-                paths.append(main_env)
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    return paths
-
-
-def load_api_key() -> str:
-    """Return the OpenAI key from env, falling back to a parse of a repo .env.
-
-    Raises SystemExit with a clear message if no key is found — never guesses.
-    """
-    key = os.environ.get("OPENAI_API_KEY")
-    if key:
-        return key.strip()
-
-    for env_path in _candidate_env_paths():
-        if not env_path.exists():
-            continue
-        for raw in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            name, _, value = line.partition("=")
-            if name.strip() == "OPENAI_API_KEY":
-                return value.strip().strip('"').strip("'")
-
-    sys.exit(
-        "No OPENAI_API_KEY found in the environment or a repo .env.\n"
-        "Set it before running: export OPENAI_API_KEY=sk-..."
-    )
 
 
 def get_diff(args: argparse.Namespace) -> str:
@@ -214,28 +168,8 @@ def build_messages(diff: str, checklist: str) -> list[dict]:
 
 
 def call_model(messages: list[dict], model: str, api_key: str) -> dict:
-    """Call the OpenAI Chat Completions API and parse the JSON findings object."""
-    try:
-        import openai  # already a repo dependency (see openai_semantic_processor.py)
-    except ImportError:
-        sys.exit(
-            "The `openai` package is not installed in this environment.\n"
-            "pip install openai  (or run from the env that has it)."
-        )
-
-    client = openai.OpenAI(api_key=api_key)
-    try:
-        # gpt-5.6 reasoning models only accept the default temperature, so it is
-        # omitted rather than pinned. Determinism comes from the strict rubric.
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            response_format={"type": "json_object"},
-        )
-    except Exception as exc:  # network / auth / model-name errors
-        sys.exit(f"OpenAI API call failed: {exc}")
-
-    content = (response.choices[0].message.content or "").strip()
+    """Call Sol and parse the JSON findings object (with strict validation)."""
+    content = sol_common.chat(messages, model, api_key, json_mode=True)
     if content.startswith("```"):
         content = content.split("```", 2)[1]
         if content.startswith("json"):
@@ -262,7 +196,7 @@ def call_model(messages: list[dict], model: str, api_key: str) -> dict:
             f"Model returned {len(bad)} finding(s) that are not JSON objects - "
             f"the response is malformed. Raw:\n{content[:1000]}"
         )
-    return {"findings": data["findings"], "usage": getattr(response, "usage", None), "model": model}
+    return {"findings": data["findings"], "model": model}
 
 
 def _safe_confidence(value: object) -> float:
@@ -331,11 +265,7 @@ def _positive_int(raw: str) -> int:
 def main() -> None:
     # Findings text can contain arbitrary Unicode; the default Windows console
     # codec (cp1252) raises UnicodeEncodeError on it. Force UTF-8 output.
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except (AttributeError, ValueError):
-            pass
+    sol_common.force_utf8_output()
 
     parser = argparse.ArgumentParser(description=__doc__)
     src = parser.add_mutually_exclusive_group()
@@ -348,7 +278,7 @@ def main() -> None:
     parser.add_argument("--fail-on", choices=["high", "medium", "low"], help="Exit non-zero if a finding at/above this severity exists.")
     args = parser.parse_args()
 
-    api_key = load_api_key()
+    api_key = sol_common.load_api_key(_REPO_ROOT)
     diff = get_diff(args)
     result = call_model(build_messages(diff, load_checklist(args.base)), args.model, api_key)
     findings = rank(result["findings"])
