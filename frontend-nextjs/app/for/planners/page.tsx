@@ -220,7 +220,7 @@ export default function PlannersPage() {
         <div className="max-w-3xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Pricing</h2>
           <p className="text-gray-500 text-sm mb-6">
-            Verify is in early access — open to use now while it&apos;s built out with the
+            Site Controls is in early access — open to use now while it&apos;s built out with the
             planners who use it.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -234,7 +234,7 @@ export default function PlannersPage() {
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-2xl font-bold text-gray-900">$49<span className="text-sm font-normal text-gray-400">/mo</span></p>
-              <p className="text-sm text-gray-500 mt-1">Verify Pro — planned</p>
+              <p className="text-sm text-gray-500 mt-1">Site Controls Pro — planned</p>
               <p className="text-xs text-gray-400 mt-2">
                 Unlimited lookups, DA Mode, annotation, SEE export — the paid plan
                 early-access pricing will be measured against.
@@ -242,7 +242,7 @@ export default function PlannersPage() {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-4">
-            At 3 sites/week, Verify Pro works out to ~$4 per site. One saved hour of manual
+            At 3 sites/week, Site Controls Pro works out to ~$4 per site. One saved hour of manual
             lookup covers the month.
           </p>
         </div>
@@ -260,7 +260,7 @@ export default function PlannersPage() {
           cta="bottom_open_verify"
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
         >
-          Open Verify <ArrowRight className="w-4 h-4" />
+          Open Site Controls <ArrowRight className="w-4 h-4" />
         </TrackedLink>
       </section>
 

@@ -1,48 +1,52 @@
 {
  "tier": "standard",
- "justification": "Display-string rename across four marketing surfaces: the brief page H1/CTA and its metadata titles become Site Report, the how-it-works listing follows, and the homepage workbench band renames Verify to Site Controls. Companion to the info-site rename (lmcdo/website PR 13) so both surfaces present the same product names. No routes, data paths, engine logic, or subdomains change.",
- "commit_hash": "bfa9bcf1",
+ "justification": "Completes the display-name rename on the app side: every remaining product-name use of Verify becomes Site Controls across nav CTAs, footer, the four persona pages, and pricing (including the Site Controls Pro tier name and its mailto subject). Verb uses of verify (verify current version, verification) are deliberately untouched, as are code identifiers, routes, the verify. subdomain, and VerifyOpsBot.",
+ "commit_hash": "PLACEHOLDER",
  "files": [
-  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-  "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
-  "frontend-nextjs/app/how-it-works/page.tsx",
-  "frontend-nextjs/app/page.tsx"
+  "frontend-nextjs/components/marketing/HomeNav.tsx",
+  "frontend-nextjs/components/marketing/SiteNav.tsx",
+  "frontend-nextjs/components/marketing/SiteFooter.tsx",
+  "frontend-nextjs/app/for/builders/page.tsx",
+  "frontend-nextjs/app/for/buyers-agents/page.tsx",
+  "frontend-nextjs/app/for/councils/page.tsx",
+  "frontend-nextjs/app/for/planners/page.tsx",
+  "frontend-nextjs/app/pricing/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "The naming decision comes from this session's grounded naming study (credit File/Report/Score, NSW conveyancing vernacular): Site Report / Topic Reports / Site Controls, with Verify retired as a tier label because it is a verb and sits on the internal banned-language list. The info-site half of the rename is already merged as lmcdo/website PR 13.",
-  "assumption_mismatch": "Verified before editing that the strings targeted are display copy only: the intelligence-brief route path, Trigger.dev task names, API routes, and the verify. subdomain host-routing are untouched, so nothing that machines match on changes.",
-  "new_vs_existing": "No new capability and no new components: pure string replacement inside four existing files. Deliberately NOT renamed: the in-app Verify workbench chrome under /assessment (a larger follow-up), code identifiers, PostHog event names, and blog articles which are historical artifacts."
+  "existing_data": "Follows the shipped naming decision (Site Report / Topic Reports / Site Controls) already live via website PR 13 and app PR 782; this pass covers the surfaces those PRs scoped out: nav CTAs, footer, persona pages, and pricing tier names.",
+  "assumption_mismatch": "Grep-audited the distinction between the product name and the verb before editing: ProvisionVersionBadge staleness copy (Verify current version) and all verification wording are verbs and stay; VerifyRegistrationPrompt and VerifyOpsBot are code identifiers and stay.",
+  "new_vs_existing": "No new capability: string replacements in eight existing files. Deliberately unchanged: routes, the verify. subdomain, analytics event names, and the assessment workbench internals which carry no standalone product-brand strings beyond what nav and footer supplied."
  },
  "functions": "N/A - display-string replacements only; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings and metadata titles only.",
+ "values": "N/A - no DB or API values involved; static JSX strings, one mailto subject, and metadata text only.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "Search engines and existing backlinks lose ranking continuity because the page metadata titles changed from Intelligence Brief to Site Report.",
-   "what_happens": "SERP entries re-index under the new title and searches for the old name stop matching the page title.",
+   "scenario": "The renamed mailto subject breaks the trial-request funnel because inbound emails no longer match an inbox filter set up for the old subject line.",
+   "what_happens": "Trial requests arrive under a new subject and could skip an existing filter or label.",
    "mitigated": true,
-   "how": "URLs and routes are unchanged so all backlinks still resolve; the OG description retains the descriptive planning keywords; the old name survives on the info site engine sheet as a formerly-the-Intelligence-Brief recognition line during transition.",
-   "repro": "Fetch /reports/intelligence-brief after deploy and view source: the title tag reads Site Report while the URL and canonical are unchanged."
+   "how": "The address is unchanged and the subject remains a plain trial request; any filter keyed on the old phrase needs a one-time update, called out in the PR body as a post-merge note.",
+   "repro": "Click the 14-day trial link on /pricing and confirm the draft opens addressed to hello@plotdetect.com.au with the Site Controls Pro subject."
   },
   {
-   "scenario": "A returning user who knows the product as the Intelligence Brief lands on the renamed page and thinks they are in the wrong product.",
-   "what_happens": "Confusion or abandonment at the moment of arrival on the brief page.",
+   "scenario": "A verb use of verify is accidentally renamed, producing nonsense like Site Controls current version at NSW Legislation.",
+   "what_happens": "A sentence stops making sense and the staleness guidance becomes confusing.",
    "mitigated": true,
-   "how": "The route, layout, content, and generate flow are pixel-identical apart from the name; the plotdetect.com.au engine sheet that links here carries a formerly-the-Intelligence-Brief line, so the arriving user has just read the mapping.",
-   "repro": "Follow the Site Report tier card from the plotdetect homepage to the renamed page and confirm the recognition line precedes the transition."
+   "how": "Replacements were explicit per-string pairs, never a blanket word swap; post-patch grep over the touched directories shows zero remaining product-name hits and the verb instances intact.",
+   "repro": "grep -rn 'Verify current' frontend-nextjs/components/compliance/ProvisionVersionBadge.tsx still returns the untouched verb usage."
   },
   {
-   "scenario": "A missed occurrence leaves mixed naming on one surface, e.g. the H1 says Site Report while a button still says Generate Intelligence Brief.",
-   "what_happens": "The page contradicts itself and undermines the rename it is meant to complete.",
+   "scenario": "The pricing tier renames desynchronise from Stripe product names or PostHog funnels that reference Verify Pro.",
+   "what_happens": "Dashboards or checkout labels show a different tier name than the site.",
    "mitigated": true,
-   "how": "Grepped the four marketing surfaces for Intelligence Brief and standalone Verify after patching; remaining hits are a code comment in reports/page.tsx and the in-app workbench chrome, both deliberately out of scope and listed as follow-up.",
-   "repro": "Run grep -rn 'Intelligence Brief' over frontend-nextjs/app/reports/intelligence-brief and frontend-nextjs/app/page.tsx; only the provenance.ts internal comment remains."
+   "how": "Payments are disabled pre-incorporation so no live Stripe product references the tier; analytics event names were not renamed by design, so existing funnels keep matching; only display strings changed.",
+   "repro": "Search the diff for posthog or stripe: no occurrences; the only functional string changed is the mailto subject."
   }
  ],
  "post_merge": {
   "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - display copy only.",
-  "other_repo": "Pairs with lmcdo/website PR 13 (info-site rename); each deploys independently but the naming is only consistent once both are live.",
-  "manual_verify": "Yes - on the Vercel preview: /reports/intelligence-brief H1 and generate button read Site Report, the tab title reads Site Report, the homepage workbench band reads Site Controls, and /how-it-works lists Site Report."
+  "secrets": "No secrets involved - display copy and one mailto subject.",
+  "other_repo": "Completes the naming set with website PR 13 and app PR 782; no deploy coupling.",
+  "manual_verify": "Yes - on the Vercel preview: nav and footer read Site Controls, /pricing shows Site Controls Pro everywhere including the comparison table and FAQ, the four /for pages read Site Controls, and the trial mailto opens with the new subject. Update any inbox filter keyed on the old Verify Pro subject."
  }
 }
