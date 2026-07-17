@@ -90,6 +90,17 @@ interface ConveyancingResult {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
+// Non-production unlock for the full paid PDF (DCP setbacks, shadow, bushfire,
+// ANEF, contributions, corridors, TOD capacity, structures history, NARCliM
+// climate, LEP clauses, full DA detail). Lets the team view the real report
+// output without Stripe checkout or a named ?access= grant. Production stays
+// gated by default so the paid deliverable is never given away publicly —
+// set NEXT_PUBLIC_CONVEYANCING_UNLOCK=1 only where the internal view is wanted
+// (e.g. a Vercel preview deployment).
+const PREVIEW_UNLOCK =
+  process.env.NODE_ENV === 'development' ||
+  process.env.NEXT_PUBLIC_CONVEYANCING_UNLOCK === '1';
+
 const FLAG_META: Record<string, { icon: string; bg: string; text: string }> = {
   ok:    { icon: '\u2713', bg: 'bg-green-50',  text: 'text-green-700' },
   warn:  { icon: '\u26A0', bg: 'bg-amber-50',  text: 'text-amber-700' },
@@ -238,10 +249,12 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
   );
   const seppOverlays = dedupeSeppOverlays(result?.outputs.sepp_overlays ?? []);
 
-  // A report is unlocked either by Stripe redirect (paidReportId) or by a
-  // validated named grant plus the free check's own report_id.
+  // A report is unlocked by Stripe redirect (paidReportId), a validated named
+  // grant, or the non-production PREVIEW_UNLOCK flag — the latter two both need
+  // the free check's own report_id to drive PDF generation.
   const unlockedReportId =
-    paidReportId ?? (accessGranted ? result?.report_id ?? null : null);
+    paidReportId ??
+    (accessGranted || PREVIEW_UNLOCK ? result?.report_id ?? null : null);
 
   return (
     <div className="mb-8">
