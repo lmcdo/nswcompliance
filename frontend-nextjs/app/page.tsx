@@ -15,6 +15,7 @@ const TOOLS = [
   {
     href: '/reports/flood',
     title: 'Flood Risk Check',
+    question: 'stop',
     tagline: 'How deep does it flood — not just whether it floods.',
     badge: 'Free + $49',
     icon: Droplets,
@@ -24,6 +25,7 @@ const TOOLS = [
   {
     href: '/reports/bushfire',
     title: 'Bushfire Pre-Screen',
+    question: 'stop',
     tagline: 'Bush Fire Prone Land status, BAL band estimate, and CDC pathway.',
     badge: 'Free + $39',
     icon: Flame,
@@ -33,6 +35,7 @@ const TOOLS = [
   {
     href: '/reports/conveyancing',
     title: 'Conveyancing Disclosure',
+    question: 'buy',
     tagline: 'LEP controls, overlays, heritage, SEPP — the planning check your conveyancer should do.',
     badge: 'Free + $49',
     icon: FileCheck,
@@ -41,8 +44,9 @@ const TOOLS = [
   },
   {
     href: '/reports/granny-flat',
-    title: 'Granny Flat Yield Predictor',
-    tagline: 'SEPP eligibility, satellite structure detection, and rental yield estimate.',
+    title: 'Granny Flat Check',
+    question: 'build',
+    tagline: 'SEPP eligibility, structure detection from imagery, and rental estimate.',
     badge: 'Free + $49',
     icon: Building2,
     iconColor: 'text-teal-600',
@@ -50,7 +54,8 @@ const TOOLS = [
   },
   {
     href: '/reports/threat-radar',
-    title: 'Neighbour Threat Radar',
+    title: 'Development Monitoring',
+    question: 'near',
     tagline: 'Every DA and CDC within 500m — with weekly email alerts for new lodgements.',
     badge: 'Free + $9/mo',
     icon: Radar,
@@ -59,7 +64,8 @@ const TOOLS = [
   },
   {
     href: '/reports/shadow',
-    title: 'Shadow Risk Analyser',
+    title: 'Overshadowing Check',
+    question: 'stop',
     tagline: 'Shadow modelled from the maximum-height building envelope on ADG solar access test dates.',
     badge: '$39',
     icon: Moon,
@@ -68,7 +74,8 @@ const TOOLS = [
   },
   {
     href: '/reports/solar-yield',
-    title: 'Rooftop Solar Yield',
+    title: 'Solar Potential',
+    question: 'worth',
     tagline: 'Roof geometry, orientation, and estimated annual generation from satellite and BoM data.',
     badge: '$39',
     icon: Sun,
@@ -77,13 +84,27 @@ const TOOLS = [
   },
   {
     href: '/reports/pre-da-history',
-    title: 'Pre-DA Site History',
+    title: 'Site History Check',
+    question: 'buy',
     tagline: 'Eight years of satellite change detection cross-referenced with DA records and heritage overlays.',
     badge: '$49',
     icon: Satellite,
     iconColor: 'text-indigo-600',
     iconBg: 'bg-indigo-500/10',
   },
+];
+
+/* ------------------------------------------------------------------ */
+/*  The five questions — the engine frame; checks group under the      */
+/*  question they answer (mirrors the PlotDetect engine sheet)         */
+/* ------------------------------------------------------------------ */
+
+const QUESTIONS = [
+  { key: 'build', label: 'What can you build here?', colour: '#E8837B' },
+  { key: 'stop', label: 'What could stop you?', colour: '#D98E2B' },
+  { key: 'buy', label: 'What are you actually buying?', colour: '#3B6FA0' },
+  { key: 'worth', label: "What's it worth?", colour: '#5E9C4E' },
+  { key: 'near', label: "What's happening around it?", colour: '#8A5FA8' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -157,7 +178,7 @@ const PERSONAS = [
   },
   {
     title: 'Buyers Agents',
-    description: 'Satellite hazard screening for shortlists. Threat Radar monitoring for your portfolio.',
+    description: 'Satellite hazard screening for shortlists. Development monitoring across your portfolio.',
     href: '/for/buyers-agents',
     cta: 'Professional tools',
   },
@@ -187,14 +208,16 @@ export default function HomePage() {
 
         <div className="relative px-6 pt-32 pb-24 max-w-3xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl font-bold leading-[1.08] text-white mb-6 tracking-tight">
-            Stop guessing.{' '}
+            Five questions decide a property.{' '}
             <span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
-              Start with the data.
+              Check yours free.
             </span>
           </h1>
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-            Flood depth, bushfire risk, planning controls, and climate projections
-            for any NSW address. Free instant checks. Professional reports from $39.
+            What can you build? What could stop you? What are you actually buying?
+            What&apos;s it worth? What&apos;s happening around it? Instant checks for any
+            NSW address — every figure from the source data, never a guess.
+            Free checks; detailed reports from $39.
           </p>
 
           {/* Search-bar CTA */}
@@ -229,6 +252,17 @@ export default function HomePage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
+
+          <p className="mt-8 text-xs text-slate-600">
+            Every check runs on the{' '}
+            <a
+              href="https://plotdetect.com.au"
+              className="text-slate-500 underline decoration-slate-700 underline-offset-2 hover:text-teal-400 transition-colors"
+            >
+              PlotDetect engine
+            </a>
+            {' '}— one address in, every figure traced to its source.
+          </p>
         </div>
       </section>
 
@@ -250,10 +284,11 @@ export default function HomePage() {
           <div className="flex items-end justify-between mb-10">
             <div>
               <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-                Property intelligence tools
+                Every check, grouped by your question
               </h2>
               <p className="text-slate-500 max-w-lg">
-                Free instant checks reveal risk. Professional reports resolve it. No account required.
+                Eight instant checks on one engine — find the question you&apos;re asking.
+                Free checks first; detailed reports resolve what they find. No account required.
               </p>
             </div>
             <Link
@@ -264,39 +299,46 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {TOOLS.map((tool, i) => {
-              const Icon = tool.icon;
-              const isWide = i === 0;
-              return (
-                <Link
-                  key={tool.href}
-                  href={tool.href}
-                  className={`group rounded-2xl border border-slate-200 p-6 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/5 transition-all ${
-                    isWide ? 'sm:col-span-2' : ''
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-xl ${tool.iconBg} flex items-center justify-center mb-4`}>
-                    <Icon className={`w-5 h-5 ${tool.iconColor}`} />
-                  </div>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <h3 className="font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">
-                      {tool.title}
-                    </h3>
-                    <span
-                      className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                        tool.badge.startsWith('Free')
-                          ? 'bg-teal-50 text-teal-700'
-                          : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {tool.badge}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-500 leading-relaxed">{tool.tagline}</p>
-                </Link>
-              );
-            })}
+          <div className="space-y-10">
+            {QUESTIONS.map(({ key, label, colour }) => (
+              <div key={key}>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <span className="w-3 h-3 border border-slate-900" style={{ background: colour }} />
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">{label}</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {TOOLS.filter((tool) => tool.question === key).map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <Link
+                        key={tool.href}
+                        href={tool.href}
+                        className="group rounded-2xl border border-slate-200 p-6 hover:border-teal-500/40 hover:shadow-lg hover:shadow-teal-500/5 transition-all"
+                      >
+                        <div className={`w-10 h-10 rounded-xl ${tool.iconBg} flex items-center justify-center mb-4`}>
+                          <Icon className={`w-5 h-5 ${tool.iconColor}`} />
+                        </div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <h4 className="font-semibold text-slate-900 group-hover:text-teal-700 transition-colors">
+                            {tool.title}
+                          </h4>
+                          <span
+                            className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                              tool.badge.startsWith('Free')
+                                ? 'bg-teal-50 text-teal-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {tool.badge}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-500 leading-relaxed">{tool.tagline}</p>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>

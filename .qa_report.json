@@ -1,61 +1,33 @@
 {
- "tier": "standard",
- "justification": "Domain/brand plumbing, no engine logic: (1) the PlotDetect logo on both app layouts linked to the app root, looping users back into the product instead of out to the info site (plotdetect.com.au is the brand home under the Option B domain split) - now an absolute link out; (2) the app's sitemap base and metadataBase pointed at plotdetect.com.au - the SEPARATE info-site project which 404s for app routes - so the sitemap advertised dead URLs and canonicals pointed cross-domain at 404s, undermining the SEO-beachhead tools; repointed to the app's consumer domain www.canibuildit.com.au; (3) the zoning-check permitted/prohibited chips rendered raw DB slugs (multi_dwelling_housing) since the case fix made them visible - now prettified with the same deslug formatter the upzoning panel uses. ADDED: the How It Works page documented 9 tools but omitted the Intelligence Brief entirely (the brief's own footer links to this page) - an Intelligence Brief section added with sources/cadence/limitations matching the product's actual data sources and liability posture (computed ceiling not approval, absence-is-not-clearance).",
- "commit_hash": "262c91a8",
+ "tier": "minor",
+ "justification": "Single-file marketing-copy restructure of the canibuildit app homepage: hero adopts the five-questions one-engine frame, the 8 tool cards regroup under the question each answers, and public copy drops internal pipeline names (Granny Flat Yield Predictor, Neighbour Threat Radar, Pre-DA Site History, Shadow Risk Analyser, Rooftop Solar Yield) per the blog-content IP rule. No data path, DB, route, or engine logic changes; all hrefs unchanged.",
+ "commit_hash": "c732802a",
  "files": [
-  "frontend-nextjs/app/reports/layout.tsx",
-  "frontend-nextjs/components/marketing/SiteNav.tsx",
-  "frontend-nextjs/app/sitemap.ts",
-  "frontend-nextjs/app/layout.tsx",
-  "frontend-nextjs/app/tools/zoning-check/page.tsx",
-  "frontend-nextjs/app/how-it-works/page.tsx"
+  "frontend-nextjs/app/page.tsx"
  ],
- "pre_impl": {
-  "existing_data": "The Option B domain architecture memory (project-domain-architecture-2026-06, confirmed live 2026-07-04) defines the split this PR aligns to: plotdetect.com.au = info-site project, canibuildit = this app's consumer domain, pro subdomains = this app's pro doors. The deslug formatter already existed on the upzoning page and is duplicated as a two-line local helper per the established page-local pattern.",
-  "assumption_mismatch": "The sitemap/metadataBase misdirection was discovered while investigating the user's domain complaint: both predate the Option B split and were never repointed - verified live that plotdetect.com.au/tools/upzoning-check 404s while canibuildit serves it, so the sitemap was actively advertising dead URLs to search engines.",
-  "new_vs_existing": "No new capability: two href changes, two base-URL constants, one two-line formatter reuse. Deliberately NOT changed: the middleware host-routing (correct per Option B), the footer platform links, and any per-host canonical scheme (single consumer canonical is the simplest correct step; per-host canonicals for the pro subdomains can follow if pro-page SEO ever matters)."
- },
- "functions": "N/A - presentational and configuration changes only; the only added code is a two-line label formatter copied from the upzoning page.",
- "values": [
-  {
-   "value": "sitemap base URL",
-   "read_at": "app/sitemap.ts emitted URLs (Google Search Console ingestion)",
-   "if_missing": "Constant, cannot be missing; the defect was it being the WRONG constant - now the domain that actually serves the routes"
-  },
-  {
-   "value": "metadataBase",
-   "read_at": "Next.js canonical/OG URL resolution in app/layout.tsx",
-   "if_missing": "Next falls back to the deploy URL; explicitly set to the consumer domain so all four serving domains canonicalise to one home"
-  }
- ],
+ "functions": "N/A - presentational only; one new const QUESTIONS array and a regrouped render of the existing TOOLS list.",
+ "values": "N/A - no DB or API values read; static marketing data arrays only.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "The logo link change strands pro users (brief/verify) on the consumer-agnostic info site with no way back to their product",
-   "what_happens": "A pro user clicking the logo mid-workflow loses their place in the product",
+   "scenario": "A TOOLS entry has a question key that matches no QUESTIONS group, so its card silently disappears from the homepage grid.",
+   "what_happens": "The tool becomes unreachable from the homepage grid until someone notices the card is missing.",
    "mitigated": true,
-   "how": "the info site is the brand home with navigation to every product door (its whole purpose under Option B); in-app navigation tabs remain unchanged next to the logo, so the logo is the only element that exits - standard brand-home convention",
-   "repro": "load brief.plotdetect.com.au - the report tabs still navigate in-app; only the wordmark exits"
+   "how": "All 8 entries were given keys from the fixed 5-key set in the same edit and verified by grep (8 question: lines, 5 group keys); the set is closed and colocated in one file so a future mismatch is visible in the same diff that introduces it.",
+   "repro": "Change one tool's question value to a typo like 'stpo' and load the homepage - the card vanishes from every group."
   },
   {
-   "scenario": "Repointing the sitemap de-indexes pages Google already indexed under plotdetect.com.au",
-   "what_happens": "Temporary ranking churn on any accidentally-indexed app URLs",
+   "scenario": "Renamed public titles break user recognition of previously bookmarked or advertised tool names.",
+   "what_happens": "A visitor looking for the old marketing name cannot find the matching card label.",
    "mitigated": true,
-   "how": "those URLs 404 today (verified live), so nothing real is lost - Google currently holds dead entries; the new sitemap points at URLs that return 200 on the domain that serves them, strictly better than advertising 404s",
-   "repro": "curl plotdetect.com.au/tools/upzoning-check returns 404; same path on www.canibuildit.com.au returns 200"
-  },
-  {
-   "scenario": "deslug mangles a slug that encodes meaningful punctuation (e.g. the catch-all land-use entry)",
-   "what_happens": "A legal-table entry renders with altered meaning",
-   "mitigated": true,
-   "how": "deslug only replaces underscores with spaces and capitalises the first letter - no word changes; the catch-all renders as the legislation's own wording",
-   "repro": "deslug('any_other_development_not_specified_in_item_2_or_4') in the page code"
+   "how": "Routes and hrefs are unchanged - only display titles changed; the old names were internal pipeline names that the IP rule bars from public copy, so removal is required, and taglines still describe the same function.",
+   "repro": "Open /reports/threat-radar directly - the route still serves; only the homepage card label changed."
   }
  ],
  "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Yes - after Vercel deploy: (1) logo on brief.plotdetect.com.au and canibuildit tools pages lands on plotdetect.com.au; (2) view-source canonical on /tools/upzoning-check shows www.canibuildit.com.au; (3) zoning-check chips read 'Multi dwelling housing' not slugs. Then resubmit the sitemap in Search Console."
+  "db_reset": "Not required - no database or schema changes.",
+  "secrets": "No secrets involved - static marketing copy only.",
+  "other_repo": "Pairs with lmcdo/website PR 12 (the plotdetect engine hero) but neither depends on the other to deploy.",
+  "manual_verify": "Yes - on the Vercel preview: homepage hero reads the five-questions headline, the 8 cards appear under 5 question groups, no internal pipeline names appear anywhere on the page, and each card still routes to its report."
  }
 }
