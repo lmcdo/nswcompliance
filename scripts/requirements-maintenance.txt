@@ -6,7 +6,7 @@ requests>=2.34.2
 python-dotenv>=1.2.2
 
 # security_scan.py
-semgrep>=1.60
+semgrep>=1.169.0
 
 # mutation_health.py (mutmut drives pytest over services/*)
 mutmut>=2.5,<3
