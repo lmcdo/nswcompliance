@@ -227,6 +227,9 @@ export function BriefOverlayCard({
                 }
               >
                 {line.text}
+                {/* Real space before markers so a sentence-final "0.6." never
+                    copies out as "0.6.1" when the sup digit flattens. */}
+                {line.footnotes.length > 0 && ' '}
                 {line.footnotes.map((mark) => {
                   const fn = footnotes.find((f) => f.marker === mark);
                   return (
