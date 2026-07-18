@@ -20,6 +20,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
+import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
 import { TrendingUp, ArrowRight, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
@@ -445,6 +446,12 @@ export default function UpzoningCheckPage() {
 
               {result.zone && result.lga_name && (
                 <LepLandUsePanel zone={result.zone} lga={result.lga_name} zoneEpi={result.zone_epi} />
+              )}
+
+              {/* Builder referral — ONLY on an eligible dual-occ result; the
+                  computed result above is never conditioned on this card. */}
+              {eligibleForms.some((f) => f.development_type.startsWith('dual_occupancy')) && (
+                <BuilderReferralCard address={result.address} lgaName={result.lga_name} />
               )}
 
               {/* CTA */}

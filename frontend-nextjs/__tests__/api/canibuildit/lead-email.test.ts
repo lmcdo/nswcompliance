@@ -85,6 +85,21 @@ describe('buildEmailContent', () => {
     });
   });
 
+  describe('dual-occ-referral', () => {
+    it('returns builder-introduction subject with address', () => {
+      const { subject } = buildEmailContent('dual-occ-referral', ADDR);
+      expect(subject).toMatch(/builder introduction/i);
+      expect(subject).toContain(ADDR);
+    });
+
+    it('body discloses the referral fee and consent scope', () => {
+      const { body } = buildEmailContent('dual-occ-referral', ADDR);
+      expect(body).toMatch(/referral fee/i);
+      expect(body).toMatch(/only for this introduction/i);
+      expect(body).toContain(ADDR);
+    });
+  });
+
   describe('default fallback', () => {
     it('unknown product falls back to granny-flat copy', () => {
       const unknown = buildEmailContent('unknown-product', ADDR);
