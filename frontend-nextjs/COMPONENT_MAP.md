@@ -179,6 +179,17 @@ PropertySearch → POST /api/upzoning (proxy, rate-limited)
 "not determinable" (never green); `status=unavailable` → visible outage box (an outage
 must never render as "nothing possible").
 
+### `/duplex-check` — Ads landing page (duplex verdict + builder referral)
+
+**Page Component:** `app/duplex-check/page.tsx` (client) + `layout.tsx` (metadata, noindex)
+
+Same engine + `/api/upzoning` proxy as the tool page, conversion-optimised shell:
+no SiteNav/SiteFooter (1:1 attention ratio), verdict banner as the hero,
+`BuilderReferralCard` directly under an eligible verdict, planning detail in a
+`<details>` accordion, one-line disclaimer. Shared types/labels in `lib/upzoning.ts`
+(also imported by the tool page). `tool_run` posthog event carries `source: 'ads_landing'`.
+SEO traffic keeps landing on `/tools/upzoning-check`; this route is noindexed.
+
 ---
 
 ## Reports - Intelligence Brief

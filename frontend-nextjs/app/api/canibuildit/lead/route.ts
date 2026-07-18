@@ -61,7 +61,7 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -244,6 +244,17 @@ export function buildEmailContent(product: string, address: string): { subject: 
           <p style="color: #999; font-size: 12px; line-height: 1.6;">
             PlotDetect may receive a referral fee from the builder. Your details are
             shared only for this introduction.
+          </p>`,
+      };
+    case 'lga-request':
+      return {
+        subject: 'Request noted — your council is on the list',
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your council request is noted.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            You asked for your council's development control plan numbers to
+            be loaded. Councils are added in order of demand — this request
+            counts toward that. We'll email you here when it's ready.
           </p>`,
       };
     case 'granny-flat':

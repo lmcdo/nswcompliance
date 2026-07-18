@@ -67,7 +67,7 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
   return (
     <div className="rounded-xl border-2 border-teal-500 bg-gradient-to-br from-teal-50 to-white p-5">
       <p className="text-base font-bold text-gray-900">
-        You can apply to build a duplex here. What would it actually cost?
+        So what would a duplex here actually cost to build?
       </p>
       <p className="text-sm text-gray-600 mt-1 mb-3">
         Have a free, no-pressure chat with a builder who does dual occupancies
