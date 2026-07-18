@@ -196,12 +196,15 @@ export default function DuplexCheckLanding() {
                 </summary>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-gray-500">
-                    How to read this: a ✓ means that housing type meets the
-                    mapped standards for this block. &quot;Not in a reform
-                    area&quot; means the 2025 bonus pathways don&apos;t apply
-                    here — the ordinary council application route still does.
-                    Where a government map can&apos;t confirm something, we say
-                    no rather than guess.
+                    How to read this: ✓ means you can apply to build that
+                    housing type here. In 2025 the government drew special
+                    zones near town centres and train stations where
+                    townhouses and small apartment blocks are newly allowed —
+                    &quot;not in a reform area&quot; means this block
+                    isn&apos;t inside one of those zones, so those new
+                    permissions don&apos;t cover it. You can still ask the
+                    council the ordinary way. Where the map isn&apos;t clear,
+                    we say no instead of guessing.
                   </p>
                   <p className="text-xs text-gray-500">
                     Zone {result.zone ?? 'not mapped'}
