@@ -227,5 +227,22 @@ else
   echo "node not available — skipping duplication ratchet."
 fi
 
+# ── [7] Advisory: GPT-5.6 Sol cross-review (non-blocking) ────────────────────
+# A different-model-family (OpenAI) second opinion on the pushed diff, scored
+# against .claude/rules/pre-pr-review.md. Findings are CANDIDATES to verify by
+# hand — Sol can be confidently wrong (it once returned a 0.91 HIGH that was a
+# false positive), so this NEVER blocks a push and is NOT a merge gate.
+# Runs automatically when source code changed and an OpenAI key is available
+# (OPENAI_API_KEY env or a repo .env / .env.local). Costs ~$0.30 + ~20s.
+# Disable:  export SOL_REVIEW=0    Force on:  export SOL_REVIEW=1 (default)
+if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$CHANGED_CODE" ] && [ -f scripts/cross_review.py ]; then
+  echo ""
+  echo "=== [7] Sol cross-review (advisory, non-blocking) ==="
+  # `|| true` guarantees a clean exit even on findings, missing key, or API error
+  # (set -e is active above) — a review outage must never stop a push.
+  python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
+  echo "(advisory only — verify each finding against the code; never a merge gate)"
+fi
+
 echo ""
 echo "All pre-push checks passed."
