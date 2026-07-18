@@ -19,6 +19,7 @@ import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
+import { DcpSnapshotCard } from '@/components/tools/DcpSnapshotCard';
 import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import {
   dualOccEligible,
@@ -180,6 +181,12 @@ export default function DuplexCheckLanding() {
                 address={result.address}
                 lgaName={result.lga_name}
               />
+            )}
+
+            {/* Covered council → the DCP numbers a DA is measured against;
+                uncovered → capture the request (extraction demand signal). */}
+            {eligible && result.lga_name && (
+              <DcpSnapshotCard lgaName={result.lga_name} />
             )}
 
             {/* Trust strip */}

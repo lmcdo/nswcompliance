@@ -100,6 +100,19 @@ describe('buildEmailContent', () => {
     });
   });
 
+  describe('lga-request', () => {
+    it('returns a request-noted subject', () => {
+      const { subject } = buildEmailContent('lga-request', ADDR);
+      expect(subject).toMatch(/request noted/i);
+    });
+
+    it('body explains demand-ordered loading without promising a date', () => {
+      const { body } = buildEmailContent('lga-request', ADDR);
+      expect(body).toMatch(/order of demand/i);
+      expect(body).not.toMatch(/\bweeks?\b|\bdays?\b|\bsoon\b/i);
+    });
+  });
+
   describe('default fallback', () => {
     it('unknown product falls back to granny-flat copy', () => {
       const unknown = buildEmailContent('unknown-product', ADDR);
