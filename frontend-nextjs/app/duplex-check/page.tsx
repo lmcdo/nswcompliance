@@ -193,7 +193,10 @@ export default function DuplexCheckLanding() {
             {/* Covered council → the DCP numbers a DA is measured against;
                 uncovered → capture the request (extraction demand signal). */}
             {eligible && result.lga_name && (
-              <DcpSnapshotCard lgaName={result.lga_name} />
+              <DcpSnapshotCard
+                lgaName={result.lga_name}
+                councilSlug={result.former_council}
+              />
             )}
 
             {/* Trust strip */}

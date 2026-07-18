@@ -34,6 +34,9 @@ export interface UpzoningResult {
   lot_width_m: number | null;
   lot_type: 'rectangular' | 'battleaxe' | 'irregular' | null;
   lga_name: string | null;
+  /** dcp_setback_controls slug (Inner West → its former council); optional so
+   *  responses from a backend without the field stay type-valid. */
+  former_council?: string | null;
   heritage: { flag: boolean; items: string[]; hca: string[] };
   gates: { in_lmr_area: boolean; in_tod: boolean; dual_occ_prohibited: boolean };
   status: 'ok' | 'not_residential' | 'unavailable';

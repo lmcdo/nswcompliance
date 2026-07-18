@@ -42,46 +42,75 @@ function controlValue(c: Control): string | null {
  * Uncovered council → capture the request so extraction demand is ranked by
  * real interest (interest_type 'lga-request' in canibuildit_leads).
  */
-export function DcpSnapshotCard({ lgaName }: { lgaName: string }) {
+export function DcpSnapshotCard({
+  lgaName,
+  councilSlug,
+}: {
+  lgaName: string;
+  /** dcp_setback_controls slug from the engine (former council for Inner
+   *  West); falls back to lgaName when the backend doesn't send one yet. */
+  councilSlug?: string | null;
+}) {
   const [categories, setCategories] = useState<Category[] | null>(null);
   const [covered, setCovered] = useState<boolean | null>(null);
+  const [general, setGeneral] = useState(false);
   const [email, setEmail] = useState('');
   const [requested, setRequested] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(
-      `/api/dcp/structured-controls?council=${encodeURIComponent(lgaName)}&dev_type=dual_occupancy`,
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+    const council = councilSlug || lgaName;
+
+    const fetchControls = async (devType: string): Promise<Category[]> => {
+      const r = await fetch(
+        `/api/dcp/structured-controls?council=${encodeURIComponent(council)}&dev_type=${devType}`,
+      );
+      if (!r.ok) throw new Error(String(r.status));
+      const data = await r.json();
+      if (!data?.has_controls) return [];
+      return (data.categories ?? [])
+        .map((cat: Category) => ({
+          ...cat,
+          controls: cat.controls.filter(
+            (c: Control) => c.data_status === 'numeric' && controlValue(c) !== null,
+          ),
+        }))
+        .filter((cat: Category) => cat.controls.length > 0);
+    };
+
+    (async () => {
+      try {
+        // Duplex-specific controls first; else the controls that apply to ALL
+        // residential development (universal_residential is definitionally
+        // applicable — never borrow another dev type's chapter).
+        let cats = await fetchControls('dual_occupancy');
+        let isGeneral = false;
+        if (cats.length === 0) {
+          cats = await fetchControls('universal_residential');
+          isGeneral = cats.length > 0;
+        }
         if (cancelled) return;
-        const cats: Category[] = (data?.categories ?? [])
-          .map((cat: Category) => ({
-            ...cat,
-            controls: cat.controls.filter(
-              (c) => c.data_status === 'numeric' && controlValue(c) !== null,
-            ),
-          }))
-          .filter((cat: Category) => cat.controls.length > 0);
-        const isCovered = Boolean(data?.has_controls) && cats.length > 0;
+        const isCovered = cats.length > 0;
         setCovered(isCovered);
+        setGeneral(isGeneral);
         setCategories(isCovered ? cats : null);
         posthog.capture('dcp_snapshot_view', {
           tool: 'duplex-check',
           lga: lgaName,
+          council,
           covered: isCovered,
+          general: isGeneral,
         });
-      })
-      .catch(() => {
+      } catch {
         // Fetch failure = unknown coverage. Render nothing — never an
         // uncovered pitch (which would be a wrong claim about our own data).
         if (!cancelled) setCovered(null);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [lgaName]);
+  }, [lgaName, councilSlug]);
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,8 +183,9 @@ export function DcpSnapshotCard({ lgaName }: { lgaName: string }) {
         What a DA here gets measured against
       </p>
       <p className="text-xs text-gray-500 mt-0.5 mb-2">
-        {lgaName}&apos;s own development control plan — extracted numbers,
-        each cited to its section.
+        {general
+          ? `${lgaName}'s development control plan — the controls that apply to all residential building on this block.`
+          : `${lgaName}'s own development control plan — extracted numbers for dual occupancies.`}
       </p>
       <div className="space-y-1">
         {categories!
