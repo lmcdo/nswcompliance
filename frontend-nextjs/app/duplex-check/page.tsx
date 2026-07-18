@@ -111,12 +111,17 @@ export default function DuplexCheckLanding() {
         {/* Status anchor — scrolled into view the moment a check starts */}
         <div ref={statusRef} className="scroll-mt-4" />
 
-        {/* Loading */}
+        {/* Loading — loud on purpose: a paid click must never wonder whether
+            anything is happening */}
         {loading && (
-          <section className="py-8 text-center">
-            <div className="animate-spin w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full mx-auto mb-3" />
-            <p className="text-sm text-gray-500">
-              Checking live NSW planning maps for your block...
+          <section className="py-10 text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full mx-auto mb-5" />
+            <p className="animate-pulse text-2xl sm:text-3xl font-extrabold text-teal-600">
+              Checking your block...
+            </p>
+            <p className="mt-2 text-sm text-gray-500">
+              Reading live NSW Government planning maps — zone, heritage and
+              lot standards.
             </p>
           </section>
         )}
