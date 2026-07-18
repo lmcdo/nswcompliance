@@ -61,7 +61,7 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -226,6 +226,24 @@ export function buildEmailContent(product: string, address: string): { subject: 
             Your DA activity check for <strong>${address}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/threat-radar" style="color: #0d9488;">canibuildit.com.au/reports/threat-radar</a>
             to monitor this address or check another.
+          </p>`,
+      };
+    case 'dual-occ-referral':
+      return {
+        subject: `Builder introduction request received — ${address}`,
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your request is in.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            You asked for an introduction to a builder who does dual occupancies,
+            for <strong>${address}</strong>. We'll email you to arrange it.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your upzoning result stays available — run it again any time at
+            <a href="https://plotdetect.com.au/tools/upzoning-check" style="color: #0d9488;">plotdetect.com.au/tools/upzoning-check</a>.
+          </p>
+          <p style="color: #999; font-size: 12px; line-height: 1.6;">
+            PlotDetect may receive a referral fee from the builder. Your details are
+            shared only for this introduction.
           </p>`,
       };
     case 'granny-flat':
