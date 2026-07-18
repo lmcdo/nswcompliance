@@ -234,12 +234,20 @@ export default function DuplexCheckLanding() {
                           {formLabel(f.development_type)}:
                         </span>{' '}
                         {plainReason(f)}
+                        {f.legislation_url && (
+                          <>
+                            {' '}
+                            <a
+                              href={f.legislation_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-teal-600/70 hover:text-teal-600 underline whitespace-nowrap"
+                            >
+                              official rule ↗
+                            </a>
+                          </>
+                        )}
                       </span>
-                      {f.source_clause && (
-                        <span className="flex-shrink-0 text-[10px] text-gray-300 mt-0.5">
-                          {f.source_clause}
-                        </span>
-                      )}
                     </div>
                   ))}
                   <p className="text-[11px] text-gray-400 pt-1">
