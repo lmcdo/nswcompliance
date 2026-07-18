@@ -106,7 +106,7 @@ export function DcpSnapshotCard({ lgaName }: { lgaName: string }) {
     setRequested(true);
   };
 
-  if (covered === null) return null;
+  if (covered == null) return null;
 
   if (!covered) {
     if (requested) {
