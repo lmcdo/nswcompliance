@@ -2398,9 +2398,17 @@ function LiveStatusPanel({
             {state === 'triggering' ? 'Starting...' : state === 'complete' ? 'Complete' : 'Generating brief'}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-slate-500 tabular-nums">{formatElapsed(elapsed)}</span>
-          <span className="font-medium text-slate-700 tabular-nums">{progress}%</span>
+        <div className="flex items-baseline gap-4">
+          <span className="text-sm text-slate-500 tabular-nums">{formatElapsed(elapsed)}</span>
+          <span
+            className={`tabular-nums ${
+              state === 'complete'
+                ? 'text-sm font-medium text-slate-700'
+                : 'text-lg font-semibold text-teal-600'
+            }`}
+          >
+            {progress}%
+          </span>
         </div>
       </div>
 
