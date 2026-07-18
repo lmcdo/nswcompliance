@@ -57,7 +57,7 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
     return (
       <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
         <p className="text-sm text-teal-800 font-medium">
-          Request received — we&apos;ll email you at {email} to arrange the
+          Done — your builder chat is being set up. Watch {email} for the
           introduction.
         </p>
       </div>
@@ -65,14 +65,14 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 p-5">
-      <p className="text-sm font-semibold text-gray-900">
-        Want an introduction to a builder who does dual occupancies
-        {lgaName ? ` in ${lgaName}` : ' in your area'}?
+    <div className="rounded-xl border-2 border-teal-500 bg-gradient-to-br from-teal-50 to-white p-5">
+      <p className="text-base font-bold text-gray-900">
+        You can apply to build a duplex here. What would it actually cost?
       </p>
-      <p className="text-xs text-gray-500 mt-1 mb-3">
-        We&apos;ll connect you by email. PlotDetect may receive a referral fee
-        from the builder.
+      <p className="text-sm text-gray-600 mt-1 mb-3">
+        Have a free, no-pressure chat with a builder who does dual occupancies
+        {lgaName ? ` in ${lgaName}` : ' in your area'} — real numbers, timelines,
+        and what&apos;s involved on a block like yours.
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="flex gap-2">
@@ -81,15 +81,15 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
+            placeholder="you@email.com"
             className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
           />
           <button
             type="submit"
             disabled={!consent}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Request an intro
+            Talk to a builder
           </button>
         </div>
         <label className="flex items-start gap-2 text-xs text-gray-500 cursor-pointer">
@@ -100,9 +100,8 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
             className="mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
           />
           <span>
-            I agree that PlotDetect may share my email address and this
-            property address with a builder for the purpose of this
-            introduction.
+            Share my email and this address with the builder so they can
+            contact me. PlotDetect may receive a referral fee.
           </span>
         </label>
       </form>
