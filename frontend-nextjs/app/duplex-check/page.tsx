@@ -14,7 +14,7 @@
  * → builder-chat capture (BuilderReferralCard) → collapsed detail for the few.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
@@ -30,6 +30,15 @@ export default function DuplexCheckLanding() {
   const [result, setResult] = useState<UpzoningResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+
+  // The spinner and the verdict must never sit below the fold unseen —
+  // "nothing happened" is the number-one paid-click killer.
+  useEffect(() => {
+    if (loading || result || error) {
+      statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [loading, result, error]);
 
   async function handleAddressSelect(address: string) {
     setLoading(true);
@@ -77,28 +86,29 @@ export default function DuplexCheckLanding() {
       </header>
 
       <div className="flex-1 w-full max-w-2xl mx-auto px-6 pb-16">
-        {/* Hero + address — the only ask on the page */}
-        <section className="pt-8 sm:pt-14 pb-6 text-center">
+        {/* Hero: headline → address box → supporting line. The input is the
+            page; everything else supports it. */}
+        <section className="pt-6 sm:pt-10 pb-6 text-center">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
             Can your block take a{' '}
             <span className="text-teal-600">duplex?</span>
           </h1>
-          <p className="mt-4 text-lg text-gray-600 max-w-lg mx-auto">
+          <div className="mt-6 bg-white rounded-2xl border-2 border-teal-500 shadow-lg p-5 text-left">
+            <PropertySearch onAddressSelect={handleAddressSelect} />
+          </div>
+          <p className="mt-3 text-base text-gray-600 max-w-lg mx-auto">
             Free 10-second check against the 2025 NSW housing reforms —
             straight from live NSW Government planning maps.
           </p>
-          <div className="mt-8 bg-white rounded-2xl border-2 border-teal-500 shadow-lg p-5 text-left">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Your address
-            </label>
-            <PropertySearch onAddressSelect={handleAddressSelect} />
-          </div>
           {!result && !loading && (
-            <p className="mt-4 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-gray-400">
               No signup. No cost. Your answer appears right here.
             </p>
           )}
         </section>
+
+        {/* Status anchor — scrolled into view the moment a check starts */}
+        <div ref={statusRef} className="scroll-mt-4" />
 
         {/* Loading */}
         {loading && (
@@ -185,6 +195,14 @@ export default function DuplexCheckLanding() {
                   See the full planning detail for this block
                 </summary>
                 <div className="mt-3 space-y-2">
+                  <p className="text-xs text-gray-500">
+                    How to read this: a ✓ means that housing type meets the
+                    mapped standards for this block. &quot;Not in a reform
+                    area&quot; means the 2025 bonus pathways don&apos;t apply
+                    here — the ordinary council application route still does.
+                    Where a government map can&apos;t confirm something, we say
+                    no rather than guess.
+                  </p>
                   <p className="text-xs text-gray-500">
                     Zone {result.zone ?? 'not mapped'}
                     {result.zone_full ? ` — ${result.zone_full}` : ''} · Lot{' '}
