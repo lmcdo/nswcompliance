@@ -397,6 +397,34 @@ def _guard_record_dump(e: ManifestEntry, fallback: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+# Machine tokens that reach a manifest value slot (observed live: the capacity
+# engine's binding_constraint enum rendered raw as "lep_fsr"). Exact-match map
+# first; any other lone snake_case token degrades to spaced words, never raw.
+MACHINE_VALUE_LABELS: dict[str, str] = {
+    "lep_height": "the LEP height limit",
+    "lep_fsr": "the LEP floor space ratio",
+    "dcp_setbacks": "the DCP setbacks",
+    "dcp_site_coverage": "the DCP site coverage control",
+    "dcp_landscaping": "the DCP landscaped area control",
+    "dcp_deep_soil": "the DCP deep soil control",
+    "shadow_access": "the DCP solar access control",
+    "parking": "the DCP parking control",
+    "lot_size": "the LEP minimum lot size",
+    "sepp_override": "the SEPP development standard",
+}
+
+_SNAKE_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+
+
+def humanise_value(text: str) -> str:
+    mapped = MACHINE_VALUE_LABELS.get(text)
+    if mapped:
+        return mapped
+    if _SNAKE_TOKEN_RE.fullmatch(text):
+        return text.replace("_", " ")
+    return text
+
+
 def _confidence_qualifier(conf: Optional[str]) -> str:
     """Inline qualifier for non-clean confidence — never footnoted away."""
     if conf == "estimated":
@@ -462,13 +490,20 @@ def _dcp_control_sentence(e: ManifestEntry) -> Optional[str]:
     unit = rec.get("unit") or ""
     parts = f"The council DCP sets {label}"
     if value:
-        parts += f" at {value}{unit if unit != '%' else '%'}"
+        if unit == "%":
+            parts += f" at {value}%"
+        elif unit:
+            parts += f" at {value} {unit}"
+        else:
+            parts += f" at {value}"
     if rec.get("dev_type"):
         parts += f" for a {rec['dev_type'].replace('_', ' ')}"
     if rec.get("condition"):
         parts += f" ({rec['condition']})"
     if rec.get("source_ref"):
-        parts += f" — clause {rec['source_ref']}"
+        ref = rec["source_ref"]
+        # "clause 4.1.2" reads right; "clause Table 1" does not.
+        parts += f" — clause {ref}" if ref[:1].isdigit() else f" — see {ref}"
     return parts + "."
 
 
@@ -479,14 +514,14 @@ def _control_sentence(e: ManifestEntry) -> str:
             return dcp
     return _guard_record_dump(e, (
         f"The {label_for_path(e.path)} for this lot is "
-        f"{e.value_text}{_confidence_qualifier(e.confidence)}."
+        f"{humanise_value(e.value_text)}{_confidence_qualifier(e.confidence)}."
     ))
 
 
 def _capacity_sentence(e: ManifestEntry) -> str:
     return _guard_record_dump(e, (
         f"Computed from the planning controls, "
-        f"{label_for_path(e.path)} works out to {e.value_text}."
+        f"{label_for_path(e.path)} works out to {humanise_value(e.value_text)}."
     ))
 
 
@@ -520,7 +555,7 @@ def _constraint_sentence(e: ManifestEntry) -> str:
                 f"see the full card below.")
     return _guard_record_dump(e, (
         f"{label_for_path(e.path).capitalize()}: "
-        f"{e.value_text}{_confidence_qualifier(e.confidence)}."
+        f"{humanise_value(e.value_text)}{_confidence_qualifier(e.confidence)}."
     ))
 
 
