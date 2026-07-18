@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Adversarial tests for BuilderReferralCard.
  * The dangerous failure modes: contact details passing WITHOUT consent, and
  * the referral payload losing the interest_type that separates
@@ -26,22 +26,22 @@ beforeEach(() => {
   mockCapture.mockClear();
 });
 
-describe('BuilderReferralCard — consent gating', () => {
+describe('BuilderReferralCard â€” consent gating', () => {
   it('submit button is disabled until consent is ticked', () => {
     render(<BuilderReferralCard address={ADDR} lgaName="Wingecarribee" />);
-    expect(screen.getByRole('button', { name: 'Request an intro' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Talk to a builder' })).toBeDisabled();
     fireEvent.click(screen.getByRole('checkbox'));
-    expect(screen.getByRole('button', { name: 'Request an intro' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Talk to a builder' })).toBeEnabled();
   });
 
   it('never calls the lead API without consent', () => {
     render(<BuilderReferralCard address={ADDR} lgaName="Wingecarribee" />);
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), {
+    fireEvent.change(screen.getByPlaceholderText('you@email.com'), {
       target: { value: 'owner@example.com' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: 'Request an intro' }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: 'Talk to a builder' }).closest('form')!);
     expect(mockFetch).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Request received/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/builder chat/)).not.toBeInTheDocument();
   });
 
   it('renders the referral-fee disclosure before submit', () => {
@@ -50,13 +50,13 @@ describe('BuilderReferralCard — consent gating', () => {
   });
 });
 
-describe('BuilderReferralCard — submit', () => {
+describe('BuilderReferralCard â€” submit', () => {
   function fillAndSubmit() {
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), {
+    fireEvent.change(screen.getByPlaceholderText('you@email.com'), {
       target: { value: 'owner@example.com' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: 'Request an intro' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Talk to a builder' }));
   }
 
   it('posts the referral interest_type with address, lga and eligible=true', async () => {
@@ -80,16 +80,16 @@ describe('BuilderReferralCard — submit', () => {
     render(<BuilderReferralCard address={ADDR} lgaName="Wingecarribee" />);
     fillAndSubmit();
     await waitFor(() =>
-      expect(screen.getByText(/Request received/)).toBeInTheDocument()
+      expect(screen.getByText(/builder chat/)).toBeInTheDocument()
     );
   });
 
-  it('still confirms when the API errors — capture must never block the result page', async () => {
+  it('still confirms when the API errors â€” capture must never block the result page', async () => {
     mockFetch.mockRejectedValueOnce(new Error('network down'));
     render(<BuilderReferralCard address={ADDR} lgaName="Wingecarribee" />);
     fillAndSubmit();
     await waitFor(() =>
-      expect(screen.getByText(/Request received/)).toBeInTheDocument()
+      expect(screen.getByText(/builder chat/)).toBeInTheDocument()
     );
   });
 
@@ -109,16 +109,16 @@ describe('BuilderReferralCard — submit', () => {
   });
 });
 
-describe('BuilderReferralCard — null LGA', () => {
+describe('BuilderReferralCard â€” null LGA', () => {
   it('renders generic area copy and posts null lga_name', async () => {
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
     render(<BuilderReferralCard address={ADDR} lgaName={null} />);
     expect(screen.getByText(/in your area/)).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('your@email.com'), {
+    fireEvent.change(screen.getByPlaceholderText('you@email.com'), {
       target: { value: 'owner@example.com' },
     });
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: 'Request an intro' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Talk to a builder' }));
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
     expect(JSON.parse(mockFetch.mock.calls[0][1].body).lga_name).toBeNull();
   });
