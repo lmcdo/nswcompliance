@@ -24,6 +24,7 @@ import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import {
   dualOccEligible,
   formLabel,
+  plainReason,
   type UpzoningResult,
 } from '@/lib/upzoning';
 
@@ -168,8 +169,9 @@ export default function DuplexCheckLanding() {
                   Not this block — it doesn&apos;t meet the duplex standard.
                 </p>
                 <p className="mt-1 text-sm text-gray-600">
-                  {dualOccForm?.reason ??
-                    'The mapped standards for a dual occupancy are not met here.'}
+                  {dualOccForm
+                    ? plainReason(dualOccForm)
+                    : 'The mapped standards for a dual occupancy are not met here.'}
                 </p>
                 <Link
                   href="/tools/upzoning-check"
@@ -208,19 +210,6 @@ export default function DuplexCheckLanding() {
                 </summary>
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-gray-500">
-                    How to read this: ✓ means you can apply to build that
-                    housing type here. In 2025 the government drew special
-                    zones near town centres and train stations where
-                    townhouses and small apartment blocks are newly allowed —
-                    &quot;not in a reform area&quot; means this block
-                    isn&apos;t inside one of those zones, so those new
-                    permissions don&apos;t cover it. You can still seek
-                    approval the standard way — a development application
-                    (DA) to the council, which decides against its own local
-                    rules. Where the map isn&apos;t clear, we say no instead
-                    of guessing.
-                  </p>
-                  <p className="text-xs text-gray-500">
                     Zone {result.zone ?? 'not mapped'}
                     {result.zone_full ? ` — ${result.zone_full}` : ''} · Lot{' '}
                     {result.lot_area_m2 != null
@@ -231,7 +220,7 @@ export default function DuplexCheckLanding() {
                   {result.forms.map((f) => (
                     <div
                       key={f.development_type}
-                      className="flex items-start gap-2 text-xs text-gray-600"
+                      className="flex items-start gap-2 text-xs"
                     >
                       {f.eligible ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -240,15 +229,26 @@ export default function DuplexCheckLanding() {
                       ) : (
                         <XCircle className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" />
                       )}
-                      <span>
+                      <span className="flex-1 text-gray-600">
                         <span className="font-medium text-gray-800">
                           {formLabel(f.development_type)}:
                         </span>{' '}
-                        {f.reason}
-                        {f.source_clause ? ` (${f.source_clause})` : ''}
+                        {plainReason(f)}
                       </span>
+                      {f.source_clause && (
+                        <span className="flex-shrink-0 text-[10px] text-gray-300 mt-0.5">
+                          {f.source_clause}
+                        </span>
+                      )}
                     </div>
                   ))}
+                  <p className="text-[11px] text-gray-400 pt-1">
+                    The 2025 reforms opened extra housing types in mapped zones
+                    near town centres and stations; outside those zones the
+                    standard council pathway (a development application) still
+                    applies. Where a government map isn&apos;t clear, we answer
+                    no — never maybe.
+                  </p>
                   <Link
                     href="/tools/upzoning-check"
                     className="inline-block text-xs text-teal-600 hover:text-teal-500 underline"

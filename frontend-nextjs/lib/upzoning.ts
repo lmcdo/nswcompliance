@@ -59,6 +59,58 @@ export function formLabel(devType: string): string {
   return FORM_LABELS[devType] ?? devType.replace(/_/g, ' ');
 }
 
+/**
+ * Display-layer translation of engine reason strings for consumer surfaces
+ * (the ads landing page). The engine string is the audit trail and is never
+ * modified — this maps it to a sentence a layperson can act on, and repairs
+ * the rounding collision where ":.0f" formatting makes "12 m is below the
+ * minimum 12 m" (the underlying value is fractionally under).
+ */
+export function plainReason(f: FormResult): string {
+  const r = f.reason;
+
+  if (f.eligible) {
+    return 'Meets the standards — you can apply to build this here.';
+  }
+
+  const area = r.match(/^Lot area ([\d.]+) m² is below the minimum ([\d.]+) m²/);
+  if (area) {
+    const [, got, min] = area;
+    return got === min
+      ? `The block is just under the ${min} m² minimum for this.`
+      : `The block is ${got} m² — this type needs at least ${min} m².`;
+  }
+
+  const width = r.match(/^Lot width ([\d.]+) m is below the minimum ([\d.]+) m/);
+  if (width) {
+    const [, got, min] = width;
+    return got === min
+      ? `The street frontage is just under the ${min} m minimum for this.`
+      : `The frontage is ${got} m — this type needs at least ${min} m.`;
+  }
+
+  if (r.startsWith('Not in a Low and Mid-Rise reform area')) {
+    return "Outside the special 2025 zones — this pathway doesn't apply here.";
+  }
+  if (r.startsWith('Excluded on heritage land')) {
+    return 'Heritage rules on this block switch off the 2025 pathways.';
+  }
+  if (r.startsWith('Not in a Transport Oriented Development')) {
+    return "Not near a designated station precinct — this pathway doesn't apply here.";
+  }
+  if (r.startsWith('Dual occupancy is prohibited')) {
+    return "The council's plan specifically prohibits dual occupancies on this lot.";
+  }
+  if (r.startsWith('Lot standard for this form is not in the dataset')) {
+    return 'No mapped standard for this type here — so we answer no rather than guess.';
+  }
+
+  // Unknown reason: show it, minus the internal hedge suffixes.
+  return r
+    .replace(/\s*\(or area unconfirmed\)/, '')
+    .replace(/\s*\(treated conservatively\)/, '');
+}
+
 export function dualOccEligible(result: UpzoningResult): boolean {
   return (
     result.status === 'ok' &&
