@@ -202,9 +202,11 @@ export default function DuplexCheckLanding() {
                     townhouses and small apartment blocks are newly allowed —
                     &quot;not in a reform area&quot; means this block
                     isn&apos;t inside one of those zones, so those new
-                    permissions don&apos;t cover it. You can still ask the
-                    council the ordinary way. Where the map isn&apos;t clear,
-                    we say no instead of guessing.
+                    permissions don&apos;t cover it. You can still seek
+                    approval the standard way — a development application
+                    (DA) to the council, which decides against its own local
+                    rules. Where the map isn&apos;t clear, we say no instead
+                    of guessing.
                   </p>
                   <p className="text-xs text-gray-500">
                     Zone {result.zone ?? 'not mapped'}
