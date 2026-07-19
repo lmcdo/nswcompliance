@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Duplex ads funnel polish: (1) env-gated Google Ads conversion tag (lib/gtag.ts, no-op until env vars set); (2) CRO/correctness fixes from the GPT-5.6 Sol audit — referral submit now checks res.ok and shows an error/retry instead of false success; the referral card renders on needs-checking results (new verdict prop) with copy that never implies eligibility; the ads landing gains the widget's stale-request guard; verdict headings reworded to the mapped-standard three-state language; the contradictory 'we answer no — never maybe' line replaced; faint legal text contrast raised; demo page no longer calls CTA clicks 'enquiries' or overclaims measurement. No DB/API/regulatory logic changed; the computed verdict is untouched.",
- "commit_hash": "41cfcbec",
+ "commit_hash": "32804df3",
  "files": [
   "frontend-nextjs/lib/gtag.ts",
   "frontend-nextjs/app/duplex-check/page.tsx",
@@ -55,11 +55,11 @@
    "repro": "In dev strict mode, mount /duplex-check and confirm only one gtag/js script tag is present in the head."
   },
   {
-   "scenario": "The referral lead POST returns a 4xx/5xx or the network fails, but the visitor is shown a success message and never follows up.",
-   "what_happens": "Previously the fetch was in a try/catch that swallowed errors, then setSubmitted(true) ran unconditionally — a failed submit read as 'your builder chat is being set up', silently losing the lead.",
+   "scenario": "The /api/canibuildit/lead endpoint rejects the referral submit — rate-limited at 3 submits/IP/10min (429), a bad email domain failing the MX check (400), or a lead-insert error (500) — but the visitor is told their builder chat is set up.",
+   "what_happens": "Previously the fetch sat in a try/catch that swallowed the rejection, then setSubmitted(true) ran unconditionally, so a rejected lead read as 'your builder chat is being set up' and the lead was silently lost.",
    "mitigated": true,
-   "how": "handleSubmit now throws on !res.ok, the catch sets status='error' and returns before the success state, and an inline retry message is shown; success ('done') is reached only after a 2xx.",
-   "repro": "Force /api/canibuildit/lead to 500 (or go offline), submit the form, and confirm the card shows 'Something went wrong sending that — please try again.' and NOT the thanks state."
+   "how": "handleSubmit now throws on !res.ok, the catch sets status='error' and returns before the success state, and an inline retry message is shown; the 'done' thanks state is reached only after a 2xx.",
+   "repro": "Submit the referral form four times fast to trip the 429 rate limit (or use an address with a non-MX email domain for the 400), and confirm the card shows 'Something went wrong sending that — please try again.' and NOT the thanks state."
   },
   {
    "scenario": "A visitor checks address A then quickly checks address B on the ads landing; A's slower response arrives last.",
