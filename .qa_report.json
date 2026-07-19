@@ -1,13 +1,14 @@
 {
  "tier": "standard",
  "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
- "commit_hash": "47f9a963",
+ "commit_hash": "cf872e91",
  "files": [
   "frontend-nextjs/lib/widget-partners.ts",
   "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
   "frontend-nextjs/app/embed/upzoning/page.tsx",
   "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
   "frontend-nextjs/__tests__/lib/widget-partners.test.ts",
+  "frontend-nextjs/app/duplex-check/page.tsx",
   "frontend-nextjs/COMPONENT_MAP.md"
  ],
  "pre_impl": {
@@ -43,10 +44,10 @@
   },
   {
    "scenario": "The dual-occupancy form comes back unconfirmed (a required government map gave no clear answer) and the headline says a definitive 'Not this block'.",
-   "what_happens": "Three-state semantics collapse to a false no — the exact silent-wrong-result class the QA framework exists for. (Note: app/duplex-check/page.tsx from #789 has this same collapse — follow-up filed in PR body.)",
+   "what_happens": "Three-state semantics collapse to a false no — the exact silent-wrong-result class the QA framework exists for. app/duplex-check/page.tsx from #789 had the identical collapse.",
    "mitigated": true,
-   "how": "Indeterminate branch renders 'Not determinable from the government maps' with the plain reason and no partner CTA (CTA spec: eligible results only).",
-   "repro": "Run an address whose dual-occ form returns unconfirmed=true — amber needs-a-closer-look card, not the grey no."
+   "how": "Indeterminate branch added in BOTH surfaces (DuplexCheckWidget and the /duplex-check ads page): renders 'Not determinable from the government maps' with the plain reason; no partner CTA and no referral card on indeterminate (CTA spec: eligible results only — the eligible && guards already enforce this).",
+   "repro": "Run an address whose dual-occ form returns unconfirmed=true on either surface — amber needs-a-closer-look card, not the grey no."
   },
   {
    "scenario": "The computed verdict bends toward the partner — e.g. an ineligible block renders softer or the CTA appears on a non-eligible result to farm enquiries.",

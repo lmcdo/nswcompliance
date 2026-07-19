@@ -90,12 +90,14 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
   }
 
   const eligible = result ? dualOccEligible(result) : false;
-  const dualOccForm = result?.forms.find((f) =>
-    f.development_type.startsWith('dual_occupancy'),
-  );
-  // "The maps couldn't answer" must never render as a definitive no — the
-  // engine's three-state semantics survive to the headline.
-  const indeterminate = !eligible && dualOccForm?.unconfirmed === true;
+  // ALL dual-occ variants (attached/detached), not .find()'s first match —
+  // a confirmed-ineligible first variant must not mask an unconfirmed later
+  // one. "The maps couldn't answer" must never render as a definitive no.
+  const dualOccForms =
+    result?.forms.filter((f) => f.development_type.startsWith('dual_occupancy')) ?? [];
+  const unconfirmedDualOcc = dualOccForms.find((f) => f.unconfirmed);
+  const dualOccForm = dualOccForms[0];
+  const indeterminate = !eligible && unconfirmedDualOcc !== undefined;
 
   return (
     <div className="w-full max-w-xl mx-auto">
@@ -166,8 +168,8 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
                 Not determinable from the government maps.
               </p>
               <p className="mt-1 text-xs text-gray-600">
-                {dualOccForm
-                  ? plainReason(dualOccForm)
+                {unconfirmedDualOcc
+                  ? plainReason(unconfirmedDualOcc)
                   : 'A required government map layer did not give a clear answer for this lot.'}{' '}
                 Where a map isn&apos;t clear we say so rather than guessing —
                 this one needs a closer look, not a no.

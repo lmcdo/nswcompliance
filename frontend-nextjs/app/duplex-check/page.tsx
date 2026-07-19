@@ -74,9 +74,17 @@ export default function DuplexCheckLanding() {
   }
 
   const eligible = result ? dualOccEligible(result) : false;
-  const dualOccForm = result?.forms.find((f) =>
-    f.development_type.startsWith('dual_occupancy'),
-  );
+  // ALL dual-occ variants (attached/detached), not .find()'s first match —
+  // a confirmed-ineligible first variant must not mask an unconfirmed later
+  // one. "The maps couldn't answer" must never render as a definitive no —
+  // the engine's three-state semantics survive to the headline (same fix as
+  // DuplexCheckWidget; found in PR #790 cross-review).
+  const dualOccForms = result
+    ? result.forms.filter((f) => f.development_type.startsWith('dual_occupancy'))
+    : [];
+  const unconfirmedDualOcc = dualOccForms.find((f) => f.unconfirmed);
+  const dualOccForm = dualOccForms[0];
+  const indeterminate = !eligible && unconfirmedDualOcc !== undefined;
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
@@ -161,6 +169,26 @@ export default function DuplexCheckLanding() {
                   That&apos;s a data outage, not an answer about your block —
                   try again in a minute.
                 </p>
+              </div>
+            ) : indeterminate ? (
+              <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-center">
+                <HelpCircle className="w-10 h-10 mx-auto mb-2 text-amber-500" />
+                <p className="text-xl font-bold text-gray-900">
+                  Not determinable from the government maps.
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {unconfirmedDualOcc
+                    ? plainReason(unconfirmedDualOcc)
+                    : 'A required government map layer did not give a clear answer for this lot.'}{' '}
+                  Where a map isn&apos;t clear we say so rather than guessing —
+                  this block needs a closer look, not a no.
+                </p>
+                <Link
+                  href="/tools/upzoning-check"
+                  className="mt-3 inline-block text-sm font-medium text-teal-600 hover:text-teal-500 underline"
+                >
+                  Open the full checker with the council land-use table
+                </Link>
               </div>
             ) : (
               <div className="rounded-2xl bg-gray-100 border border-gray-200 p-6 text-center">
