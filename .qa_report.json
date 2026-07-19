@@ -1,11 +1,13 @@
 {
  "tier": "standard",
- "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form and stores the qualification answers plus an express-consent audit. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The computed planning verdict is never touched; the card only renders below an eligible or needs-checking result.",
- "commit_hash": "27fa53c2",
+ "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form, stores the qualification answers + an express-consent audit, and adds an /internal/leads admin page (system of record) to read them. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The /internal/leads page is a read-only server component behind the same auth gate as the other /internal pages, reading via the server-only service role. The computed planning verdict is never touched.",
+ "commit_hash": "d79570c3",
  "files": [
   "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
   "frontend-nextjs/app/api/canibuildit/lead/route.ts",
-  "migrations/057_canibuildit_lead_qualification.sql"
+  "migrations/057_canibuildit_lead_qualification.sql",
+  "frontend-nextjs/app/internal/leads/page.tsx",
+  "frontend-nextjs/app/internal/page.tsx"
  ],
  "pre_impl": {
   "existing_data": "canibuildit_leads had id/email/address/eligible/created_at/lga_name/interest_type only (verified live). Migration 057 adds first_name, phone, qualification jsonb, consent jsonb — all nullable, so existing rows and the granny-flat/flood/etc. lead paths that reuse this route are unaffected.",
@@ -64,6 +66,13 @@
    "repro": "Complete the form skipping budget; confirm the row's qualification jsonb has budget:null and timeline/ownership/finance populated."
   },
   {
+   "scenario": "NEXT_PUBLIC_AUTH_ENABLED is not 'true' in production, so /internal/leads renders its auth gate as a no-op and exposes lead PII (name, email, phone, address, IP, consent) to anyone who guesses the URL.",
+   "what_happens": "The whole leads table (personal information) would be readable unauthenticated — a privacy breach, worse here than on the other /internal pages because this is raw consented PII.",
+   "mitigated": false,
+   "how": "The page uses the SAME gate as every other /internal page (redirect to /login when NEXT_PUBLIC_AUTH_ENABLED==='true'); it is not weaker, but it inherits the codebase-wide dependency on that flag being set in prod. It is noindex (not crawled) and unlinked publicly, but the URL is guessable. MUST verify the flag is 'true' in the Vercel prod env before/at merge; a follow-up should make /internal fail-closed regardless of the flag.",
+   "repro": "Set NEXT_PUBLIC_AUTH_ENABLED unset/false locally, visit /internal/leads, and confirm it renders without a login redirect — then confirm it IS gated with the flag set to 'true'."
+  },
+  {
    "scenario": "A bot posts to the lead endpoint with the honeypot filled or an invalid email domain.",
    "what_happens": "Junk leads would pollute the qualified-lead pipeline the builders pay for.",
    "mitigated": true,
@@ -74,7 +83,8 @@
  "post_merge": {
   "db_reset": "Not required. Migration 057 (additive nullable columns on canibuildit_leads) is already applied to production Supabase; no data change, no backfill.",
   "secrets": "No new secrets. Uses the existing server-only Supabase service-role credential already configured for this route.",
-  "other_repo": "None. Frontend + its API route only; the leads live in the same Supabase. A /internal/leads admin view to read these qualification/consent fields is scoped as a follow-up (ce-lead-qualifier-research-2026-07.md).",
+  "other_repo": "None. Frontend + its API route only; the leads live in the same Supabase. The /internal/leads admin view is now built (read-only); status/routing/HubSpot-sync remain scoped in ce-lead-qualifier-research-2026-07.md.",
+  "auth": "CRITICAL: /internal/leads shows raw lead PII behind the flag-based gate shared by all /internal pages. Confirm NEXT_PUBLIC_AUTH_ENABLED='true' in Vercel production BEFORE relying on it; otherwise the page is publicly readable. Follow-up: make /internal fail-closed independent of the flag.",
   "manual_verify": "Yes - on the preview: run an eligible address, tap through timeline/ownership/finance, skip budget, enter contact + tick consent, submit; confirm the success state and then that a canibuildit_leads row has the qualification and consent jsonb populated (incl. the exact consent wording and an IP). Also confirm the needs-checking result shows the same qualifier with 'specialist' wording."
  }
 }

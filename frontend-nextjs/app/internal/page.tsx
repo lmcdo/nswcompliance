@@ -75,6 +75,14 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    heading: 'Internal ops (owner only)',
+    items: [
+      { path: '/internal/leads', title: 'Leads — system of record', note: 'qualified duplex referrals + consent audit', status: 'live' },
+      { path: '/internal/setback-review', title: 'Setback value review', status: 'live' },
+      { path: '/internal/dcp-review', title: 'DCP review queue', status: 'live' },
+    ],
+  },
+  {
     heading: 'Dev / test (do not link publicly)',
     items: [
       { path: '/test', title: 'test', status: 'dev' },
