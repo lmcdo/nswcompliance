@@ -1,80 +1,63 @@
 {
  "tier": "standard",
- "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
- "commit_hash": "c414c9ff",
+ "justification": "Adds an env-gated Google Ads conversion tag to the /duplex-check ads funnel and a one-line copy correction on the builder demo page. The tag (lib/gtag.ts) injects gtag.js on the ads landing only and fires a lead conversion on BuilderReferralCard submit; it is a no-op until NEXT_PUBLIC_GOOGLE_ADS_ID and NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL are set, so the merge changes nothing live and the computed verdict path is untouched.",
+ "commit_hash": "192f3774",
  "files": [
-  "frontend-nextjs/lib/widget-partners.ts",
-  "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
-  "frontend-nextjs/app/embed/upzoning/page.tsx",
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
-  "frontend-nextjs/__tests__/lib/widget-partners.test.ts",
+  "frontend-nextjs/lib/gtag.ts",
   "frontend-nextjs/app/duplex-check/page.tsx",
-  "frontend-nextjs/COMPONENT_MAP.md"
+  "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
+  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "Reuses the /api/upzoning proxy, PropertySearch, and lib/upzoning verdict helpers exactly as app/duplex-check/page.tsx (merged same day, #789) does; follows the app/embed/<tool> pattern whose layout already handles domain logging and noindex. Partner sites/contact URLs were live-verified during outreach research on 2026-07-19 and mirror the HubSpot records created the same day.",
-  "assumption_mismatch": "Prior-art guard fired on the registry file and pointed at lib/sanitize.ts — inspected: it is DOMPurify HTML sanitisation for dangerouslySetInnerHTML and cannot validate URL protocols or whitelist a name pattern for query params, so the two purpose-built sanitizers were justified and the ack line records that reasoning.",
-  "new_vs_existing": "New: presentation registry, compact widget component, embed route, demo shell, tests. Deliberately NOT new: eligibility logic (services/upzoning_check.py untouched), BuilderReferralCard (excluded by design — the white-label enquiry belongs to the partner, not our referral pool), no per-partner API keys yet (pilot phase counts usage via posthog partner property; keys come with billing)."
+  "existing_data": "Site analytics is PostHog only (lib/analytics.ts); there was no Google tag installed. This adds a scoped Ads tag rather than a site-wide gtag, matching the plan's decision that conversion tracking is optional for the $100 test.",
+  "assumption_mismatch": "Confirmed the lead submit path posts to /api/canibuildit/lead with interest_type dual-occ-referral and that the success branch already sets submitted state; the conversion fires there, after the PostHog capture, so it counts a real submit not a click.",
+  "new_vs_existing": "New file lib/gtag.ts (two exported functions); the three edits are one import + one useEffect load call + one conversion call. No existing behaviour changed when the env vars are absent."
  },
  "functions": [
   {
-   "name": "getWidgetPartner",
-   "file_line": "frontend-nextjs/lib/widget-partners.ts:69",
-   "input": "the ref query param or demo route slug, untrusted, typed string | string[] | undefined because Next.js delivers repeated params as arrays",
-   "output": "the matching WidgetPartner config object from the in-repo registry of 20 verified builders — the ONLY source of branding and CTA (free-form params removed after the PR #790 cross-review found a brand-spoof pairing)",
-   "if_none": "returns null on unknown slug, empty, undefined, or array input — the embed renders unbranded with no CTA button, and the demo page calls notFound() so an invalid outreach link 404s instead of showing a broken brand"
+   "name": "loadGoogleAds",
+   "file_line": "frontend-nextjs/lib/gtag.ts:24",
+   "input": "no arguments; reads NEXT_PUBLIC_GOOGLE_ADS_ID at module load and window at call time",
+   "output": "void; injects gtag.js once and initialises the tag, or returns early doing nothing",
+   "if_none": "If ADS_ID is unset or window is undefined (SSR) it returns immediately, so no script loads and nothing breaks"
+  },
+  {
+   "name": "trackAdsConversion",
+   "file_line": "frontend-nextjs/lib/gtag.ts:52",
+   "input": "no arguments; reads ADS_ID, LEAD_LABEL and window.gtag at call time",
+   "output": "void; fires a gtag conversion event to ADS_ID/LEAD_LABEL, or returns early doing nothing",
+   "if_none": "If either env var is missing or gtag never loaded (window.gtag undefined) it returns without firing, so a lead submit is never blocked or errored"
   }
  ],
- "values": "N/A - no DB or API values are read by this change; the registry holds presentation values only (names, https URLs) and all planning data arrives from /api/upzoning at request time.",
- "queries": "N/A - no database access in this change.",
+ "values": "N/A - no DB or API values read or written; the only external values are two public env vars read at build time, both optional.",
+ "queries": "N/A - no database queries added or modified.",
  "break_it": [
   {
-   "scenario": "A third party pairs a registered builder's NAME with an attacker CTA — either via ref+cta or via the free-form params (?partner=Buildana&cta=https://phishing.example).",
-   "what_happens": "A real brand would launder a hostile enquiry link on an eligible verdict.",
+   "scenario": "The env vars are unset in production (the default at merge), and a user submits the referral form.",
+   "what_happens": "trackAdsConversion returns early (no ADS_ID/LEAD_LABEL); loadGoogleAds injected no script. The lead still posts and the success card still renders.",
    "mitigated": true,
-   "how": "Free-form partner/cta params were REMOVED after the cross-review flagged the pairing (name-vs-registry checks cannot close typosquats). Branding + CTA resolve only from the in-repo registry by exact ref slug; array refs are rejected. Registry test asserts every ctaUrl stays on the partner's own registrable domain.",
-   "repro": "Load /embed/upzoning?partner=Buildana&cta=https://evil.example — renders the unbranded checker, no CTA at all."
+   "how": "Both functions guard on the env vars and window before doing anything, and the conversion call sits after the fetch and PostHog capture, wrapped in the same synchronous flow that already set submitted state.",
+   "repro": "Load /duplex-check with no Ads env vars, submit an eligible-result referral, confirm no network call to googletagmanager.com and the 'builder chat is being set up' card shows."
   },
   {
-   "scenario": "A visitor checks address A, quickly checks address B, and A's slower response arrives last — the widget silently shows A's verdict under B's search.",
-   "what_happens": "A wrong verdict for the address on screen, worst on a negative verdict which does not repeat the address.",
+   "scenario": "gtag.js is blocked by an ad blocker or slow network, but the env vars are set, and the user submits.",
+   "what_happens": "window.gtag is undefined, so trackAdsConversion returns early without throwing; the lead is unaffected.",
    "mitigated": true,
-   "how": "Monotonic request-id guard in handleAddressSelect: only the latest selection's response may write result/error/loading state; stale responses return without touching state.",
-   "repro": "Throttle the network, run two rapid address selections — only the second's verdict renders."
+   "how": "trackAdsConversion checks window.gtag exists before calling it; a missing tag degrades to no conversion recorded, never a runtime error on the submit path.",
+   "repro": "Set the env vars, block googletagmanager.com in devtools, submit — the lead posts and no exception is thrown."
   },
   {
-   "scenario": "The dual-occupancy form comes back unconfirmed (a required government map gave no clear answer) and the headline says a definitive 'Not this block'.",
-   "what_happens": "Three-state semantics collapse to a false no — the exact silent-wrong-result class the QA framework exists for. app/duplex-check/page.tsx from #789 had the identical collapse.",
+   "scenario": "loadGoogleAds runs on every mount / React strict-mode double-invoke and double-injects the script or re-inits the tag.",
+   "what_happens": "Duplicate gtag.js scripts or duplicate config calls could inflate or duplicate conversions.",
    "mitigated": true,
-   "how": "Indeterminate branch added in BOTH surfaces (DuplexCheckWidget and the /duplex-check ads page): renders 'Not determinable from the government maps' with the plain reason; no partner CTA and no referral card on indeterminate (CTA spec: eligible results only — the eligible && guards already enforce this).",
-   "repro": "Run an address whose dual-occ form returns unconfirmed=true on either surface — amber needs-a-closer-look card, not the grey no."
-  },
-  {
-   "scenario": "The computed verdict bends toward the partner — e.g. an ineligible block renders softer, or the CTA language upgrades a maybe into an implied yes.",
-   "what_happens": "The neutrality rule that protects the InfoTrack/licensing trust asset would be broken.",
-   "mitigated": true,
-   "how": "Verdict rendering is a pure function of the API result and identical with or without partner props. CTA policy (user decision 2026-07-19): partner button on eligible ('Ask X about a duplex') AND indeterminate ('Ask X to take a closer look' — no eligibility implied), NEVER on clear-no/not_residential/unavailable. Clicks tagged verdict: eligible|indeterminate so lead types report separately.",
-   "repro": "Run a heritage-area address on any /widget-demo page: verdict is the same clear no as the public tool, no partner CTA. Run an unconfirmed address: maybe card + closer-look button."
-  },
-  {
-   "scenario": "javascript: or data: URL injected via the cta param executes in the visitor's browser from inside a builder's site.",
-   "what_happens": "XSS on a partner's domain — reputationally fatal.",
-   "mitigated": true,
-   "how": "sanitizeCtaUrl parses with new URL() and only https: survives; jest covers javascript:, data:, http:, garbage, and undefined.",
-   "repro": "npx jest --testPathPattern=widget-partners — sanitizeCtaUrl rejection cases."
-  },
-  {
-   "scenario": "Inside the iframe, posthog events are blocked by tracking prevention, so pilot usage reports undercount and the weekly per-builder report claims fewer checks than happened.",
-   "what_happens": "Under-reporting our own product's performance to the exact audience we are trying to convert.",
-   "mitigated": false,
-   "how": "Known limitation: client events may be dropped by ITP/adblock. The embed layout already logs an embed_request server-side per load (domain + tool), which gives a load-count floor. Per-partner server-side check counting lands with the API-key work; until then pilot reports must state counts are a floor, not an exact figure.",
-   "repro": "Load the embed with an adblocker: embed_request still logs server-side; tool_run may not."
+   "how": "A module-level `loaded` flag makes loadGoogleAds idempotent; the second call returns before appending a second script or re-configuring.",
+   "repro": "In dev strict mode, mount /duplex-check and confirm only one gtag/js script tag is present in the head."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved.",
-  "other_repo": "None. The outreach emails doc (~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md) carries the demo URLs — its send-gate flips once this deploys and links are click-tested.",
-  "manual_verify": "Yes - on the Vercel preview: (1) /widget-demo/buildana renders the mock-browser demo with Buildana's name and the CTA pointing at buildana.com.au/contact; (2) /widget-demo/unknown-slug 404s; (3) /embed/upzoning?ref=clover-homes runs a check end-to-end and the enquiry button opens the partner contact page in a new tab; (4) an ineligible address shows the same verdict as /duplex-check with no CTA."
+  "db_reset": "Not required - no schema or data changes.",
+  "secrets": "No secrets. NEXT_PUBLIC_GOOGLE_ADS_ID and NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL are public client IDs (safe to expose by design); set them in the Vercel project env when the Ads conversion action is created, to activate the tag.",
+  "other_repo": "No coupling; frontend-only, deployed via Vercel.",
+  "manual_verify": "Yes - after setting the two env vars on a preview: open /duplex-check, run an eligible address, submit the referral form, and confirm in Google Ads (or the Tag Assistant) that one 'conversion' event fires to ADS_ID/LEAD_LABEL. With env vars unset, confirm no googletagmanager request loads at all."
  }
 }
