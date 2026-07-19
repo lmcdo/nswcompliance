@@ -90,7 +90,11 @@ export function DcpSnapshotCard({
           isGeneral = cats.length > 0;
         }
         if (cancelled) return;
-        const isCovered = cats.length > 0;
+        // A single obscure control (e.g. just "solar access hours") reads as
+        // thin and undermines trust — below 3 numeric rows, offer the
+        // request capture instead of a sparse card.
+        const numericCount = cats.reduce((n, c) => n + c.controls.length, 0);
+        const isCovered = numericCount >= 3;
         setCovered(isCovered);
         setGeneral(isGeneral);
         setCategories(isCovered ? cats : null);
@@ -180,12 +184,12 @@ export function DcpSnapshotCard({
   return (
     <div className="rounded-xl border border-gray-200 p-4">
       <p className="text-sm font-semibold text-gray-900">
-        What a DA here gets measured against
+        {lgaName} council&apos;s rules for building here
       </p>
       <p className="text-xs text-gray-500 mt-0.5 mb-2">
         {general
-          ? `${lgaName}'s development control plan — the controls that apply to all residential building on this block.`
-          : `${lgaName}'s own development control plan — extracted numbers for dual occupancies.`}
+          ? `From the council's own planning rulebook — these apply to any residential building on this block.`
+          : `From the council's own planning rulebook — the numbers for dual occupancies.`}
       </p>
       <div className="space-y-1">
         {categories!
@@ -201,11 +205,6 @@ export function DcpSnapshotCard({
                 <span className="text-gray-700">{c.control_label}</span>
                 <span className="text-gray-900 font-medium tabular-nums whitespace-nowrap">
                   {v}
-                  {c.section_ref && (
-                    <span className="ml-1.5 text-[10px] font-normal text-gray-400">
-                      {c.section_ref}
-                    </span>
-                  )}
                 </span>
               </div>
             );
