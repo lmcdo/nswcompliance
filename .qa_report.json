@@ -1,34 +1,40 @@
 {
  "tier": "minor",
- "justification": "Notification-delivery fix for two interest-capture routes (DCP tab 'Notify me' and Verify registration). Two defects: (1) both sent from onboarding@resend.dev, Resend's test sender that only delivers to the account owner; (2) both sent to info@plotdetect.com.au while also sending from info@plotdetect.com.au — a self-domain send via an external relay that Google Workspace quarantines as spoofing (Resend shows 'delivered' but the mailbox never receives it, confirmed live). Switched the sender to the verified info@plotdetect.com.au domain, and routed the recipient to an off-domain NOTIFY_EMAIL (env-overridable, default lawrence.mcdonell@gmail.com) so From != To and Workspace accepts it. Guarded dcp-interest on RESEND_API_KEY for parity. No DB or data-path change.",
- "commit_hash": "8257609d",
+ "justification": "Removes the flaky magic-link login from /internal/leads and replaces it with a simple shared access key (INTERNAL_ACCESS_KEY via ?key=). The page holds customer PII, so it is deliberately NOT made fully public: the gate is fail-closed — if the env key is unset or the query key is wrong, the page returns notFound() and never renders the leads. One file; no change to the lead data path or the verdict engine.",
+ "commit_hash": "PENDING",
  "files": [
-  "frontend-nextjs/app/api/dcp-interest/route.ts",
-  "frontend-nextjs/app/api/verify-interest/route.ts"
+  "frontend-nextjs/app/internal/leads/page.tsx"
  ],
- "functions": "N/A - no functions added, changed, or removed; a string literal changed and an existing send call was wrapped in an env-var guard.",
- "values": "N/A - no DB or API values read or written by this change; the INSERT path and its parameters are untouched.",
- "queries": "N/A - no database queries added or modified.",
+ "functions": "N/A - swaps the auth guard at the top of the page component; no function added or changed in signature beyond adding the searchParams prop.",
+ "values": "N/A - reads one env var (INTERNAL_ACCESS_KEY) and one query param (key); no DB or external-API values drive a decision.",
+ "queries": "N/A - the existing lead SELECT is unchanged.",
  "break_it": [
   {
-   "scenario": "Notification still routed to an @plotdetect.com.au address, re-triggering the Google Workspace self-domain spoofing quarantine so the mailbox never receives it despite a 'delivered' status.",
-   "what_happens": "Resend reports delivered but the email is silently quarantined by Workspace; the operator never sees the registration alert.",
+   "scenario": "INTERNAL_ACCESS_KEY is not set in the environment (e.g. forgotten in Vercel) and someone opens /internal/leads.",
+   "what_happens": "With no key configured the page must not fall open and leak PII.",
    "mitigated": true,
-   "how": "Recipient moved off-domain to NOTIFY_EMAIL (default lawrence.mcdonell@gmail.com), so From (info@plotdetect.com.au) != To; a foreign-domain recipient only checks SPF/DKIM, which pass, as proven by canibuildit confirmations already landing at gmail.com. If NOTIFY_EMAIL is later set back to an @plotdetect.com.au address the bug returns, which the code comment warns against.",
-   "repro": "Submit the DCP tab 'Notify me' form on a preview with RESEND_API_KEY set and confirm a 'DCP interest' email lands in the NOTIFY_EMAIL Gmail inbox; contrast with the pre-fix info@ send that showed delivered but never arrived."
+   "how": "The gate is fail-closed: `if (!required || key !== required) notFound()` — an unset env var means `required` is falsy, so every request 404s and the leads never render. The old behaviour (open when a flag was unset) is gone.",
+   "repro": "Unset INTERNAL_ACCESS_KEY, visit /internal/leads and /internal/leads?key=anything, and confirm both 404 with no lead data in the response."
   },
   {
-   "scenario": "RESEND_API_KEY is unset in the environment, so constructing the Resend client throws and breaks the request.",
-   "what_happens": "Previously dcp-interest called new Resend(undefined) unconditionally; if the key is absent the send rejects. The registration still saves because the send is fire-and-forget, but the code path is fragile.",
+   "scenario": "Someone guesses the /internal/leads URL but does not know the access key.",
+   "what_happens": "Without the key they must not see any lead PII.",
    "mitigated": true,
-   "how": "dcp-interest is now wrapped in if (process.env.RESEND_API_KEY) like verify-interest, so the send is skipped cleanly when the key is absent and the INSERT/200 path is unaffected.",
-   "repro": "Unset RESEND_API_KEY locally, POST to /api/dcp-interest, and confirm the row inserts and the route returns 200 with no thrown error."
+   "how": "The query key must exactly equal INTERNAL_ACCESS_KEY; any mismatch calls notFound() before the admin client is created or any lead is fetched. The page is also noindex.",
+   "repro": "With INTERNAL_ACCESS_KEY set, visit /internal/leads without ?key and with a wrong ?key; confirm both 404, and the correct ?key renders the table."
+  },
+  {
+   "scenario": "The access key, being in the URL, leaks via browser history, referrer headers, or server logs.",
+   "what_happens": "A leaked key would let a holder read the leads until the key is rotated.",
+   "mitigated": true,
+   "how": "Accepted trade-off for a single-user internal tool that was previously blocked by broken magic-link auth; the key is a rotatable secret (change the env var to invalidate), the page is noindex, and it exposes read-only lead data, not account control. A cookie/session upgrade is a follow-up if the tool gains more users.",
+   "repro": "Rotate INTERNAL_ACCESS_KEY in the env and confirm the old ?key value now 404s."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data changes; dcp_interest and verify_interest tables and their INSERT paths are untouched.",
-  "secrets": "No new secrets; relies on the existing RESEND_API_KEY already configured for the six other email routes. Verify it is present in the frontend Vercel project env.",
-  "other_repo": "No coupling to other repos or deploys; frontend-only change deployed via Vercel.",
-  "manual_verify": "Yes - on the Vercel preview with RESEND_API_KEY set, submit the DCP tab 'Notify me' form for an unprocessed council and confirm a 'DCP interest' email arrives at info@plotdetect.com.au; repeat via the Verify registration prompt."
+  "db_reset": "Not required - no schema or data change.",
+  "secrets": "Add INTERNAL_ACCESS_KEY (a long random string) to the Vercel project env. Then open /internal/leads?key=<that value> and bookmark it — no login needed. Leave it unset and the page stays 404 (safe default).",
+  "other_repo": "None - frontend page only.",
+  "manual_verify": "Yes - after setting INTERNAL_ACCESS_KEY on the deploy: confirm /internal/leads?key=<value> shows the leads table, and that /internal/leads (no key) and a wrong key both 404."
  }
 }

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { notFound } from 'next/navigation';
 import { getAdminClient } from '@/lib/supabase/admin';
 
 export const metadata: Metadata = {
@@ -61,13 +60,18 @@ function fmtDate(iso: string): string {
   return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}Z`;
 }
 
-export default async function InternalLeadsPage() {
-  // Fail-closed: this page shows raw lead PII, so it ALWAYS requires a signed-in
-  // user — unlike the other /internal pages, it never renders open even when
-  // NEXT_PUBLIC_AUTH_ENABLED is unset. To view leads you must be logged in.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+export default async function InternalLeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ key?: string }>;
+}) {
+  // No login (the magic-link flow was flaky). Instead a simple shared access
+  // key. This page holds customer PII, so it is NOT made fully public — set
+  // INTERNAL_ACCESS_KEY in the env and open /internal/leads?key=<that value>.
+  // Fail-closed: if the key is unset or wrong, the page 404s and never leaks.
+  const required = process.env.INTERNAL_ACCESS_KEY;
+  const { key } = await searchParams;
+  if (!required || key !== required) notFound();
 
   const service = getAdminClient();
   const { data, error } = await service
