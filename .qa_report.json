@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form, stores the qualification answers + an express-consent audit, and adds an /internal/leads admin page (system of record) to read them. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The /internal/leads page is a read-only server component behind the same auth gate as the other /internal pages, reading via the server-only service role. The computed planning verdict is never touched.",
- "commit_hash": "634226c1",
+ "commit_hash": "30674002",
  "files": [
   "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
   "frontend-nextjs/app/api/canibuildit/lead/route.ts",
@@ -71,6 +71,13 @@
    "mitigated": true,
    "how": "Unlike the other /internal pages (gated only when NEXT_PUBLIC_AUTH_ENABLED==='true'), /internal/leads is fail-closed: it ALWAYS calls supabase.auth.getUser() and redirects unauthenticated visitors to /login, independent of any env flag. It is also noindex. Trade-off: viewing leads now requires being logged in.",
    "repro": "With NEXT_PUBLIC_AUTH_ENABLED unset and no session, visit /internal/leads and confirm it redirects to /login (does NOT render the table); confirm it renders once signed in."
+  },
+  {
+   "scenario": "The same homeowner submits the qualifier twice within a short window (double-tap of the final button, or a return visit for the same block) and the duplicate-lead guard fails to suppress it.",
+   "what_happens": "The builder would be shown / later billed for the same person twice, and they would receive two confirmation emails — the churn-inducing junk builders resent.",
+   "mitigated": true,
+   "how": "Before inserting, the route selects canibuildit_leads on the same email + address within the last 24h and, if a row exists, returns ok without re-inserting or re-emailing. The submit button is also disabled while status==='submitting' to stop a double POST. If the dedup SELECT itself errors it proceeds (accepted: fail-open on the guard is better than dropping a real lead), a rare edge that /internal/leads would surface as two near-identical rows to merge.",
+   "repro": "Submit the same email + address twice within 24h and confirm only one canibuildit_leads row exists and only one confirmation email is sent."
   },
   {
    "scenario": "A bot posts to the lead endpoint with the honeypot filled or an invalid email domain.",
