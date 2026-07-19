@@ -1,11 +1,12 @@
 {
  "tier": "standard",
- "justification": "Adds an env-gated Google Ads conversion tag to the /duplex-check ads funnel and a one-line copy correction on the builder demo page. The tag (lib/gtag.ts) injects gtag.js on the ads landing only and fires a lead conversion on BuilderReferralCard submit; it is a no-op until NEXT_PUBLIC_GOOGLE_ADS_ID and NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL are set, so the merge changes nothing live and the computed verdict path is untouched.",
- "commit_hash": "192f3774",
+ "justification": "Duplex ads funnel polish: (1) env-gated Google Ads conversion tag (lib/gtag.ts, no-op until env vars set); (2) CRO/correctness fixes from the GPT-5.6 Sol audit — referral submit now checks res.ok and shows an error/retry instead of false success; the referral card renders on needs-checking results (new verdict prop) with copy that never implies eligibility; the ads landing gains the widget's stale-request guard; verdict headings reworded to the mapped-standard three-state language; the contradictory 'we answer no — never maybe' line replaced; faint legal text contrast raised; demo page no longer calls CTA clicks 'enquiries' or overclaims measurement. No DB/API/regulatory logic changed; the computed verdict is untouched.",
+ "commit_hash": "41cfcbec",
  "files": [
   "frontend-nextjs/lib/gtag.ts",
   "frontend-nextjs/app/duplex-check/page.tsx",
   "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
+  "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
   "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
  ],
  "pre_impl": {
@@ -52,6 +53,27 @@
    "mitigated": true,
    "how": "A module-level `loaded` flag makes loadGoogleAds idempotent; the second call returns before appending a second script or re-configuring.",
    "repro": "In dev strict mode, mount /duplex-check and confirm only one gtag/js script tag is present in the head."
+  },
+  {
+   "scenario": "The referral lead POST returns a 4xx/5xx or the network fails, but the visitor is shown a success message and never follows up.",
+   "what_happens": "Previously the fetch was in a try/catch that swallowed errors, then setSubmitted(true) ran unconditionally — a failed submit read as 'your builder chat is being set up', silently losing the lead.",
+   "mitigated": true,
+   "how": "handleSubmit now throws on !res.ok, the catch sets status='error' and returns before the success state, and an inline retry message is shown; success ('done') is reached only after a 2xx.",
+   "repro": "Force /api/canibuildit/lead to 500 (or go offline), submit the form, and confirm the card shows 'Something went wrong sending that — please try again.' and NOT the thanks state."
+  },
+  {
+   "scenario": "A visitor checks address A then quickly checks address B on the ads landing; A's slower response arrives last.",
+   "what_happens": "Without a guard, A's result would overwrite B's and the page would show the verdict for the wrong address — acute on a per-address legal-info tool.",
+   "mitigated": true,
+   "how": "A requestIdRef counter tags each check; only the latest requestId may write result/error/loading state, so a stale response is dropped (mirrors DuplexCheckWidget).",
+   "repro": "Select two addresses in quick succession with the network throttled and confirm the displayed verdict matches the second (last-selected) address."
+  },
+  {
+   "scenario": "The needs-checking referral card is read as a promise that a builder will make an ineligible block eligible.",
+   "what_happens": "A user could infer the specialist overturns the map result — a liability/ACL overclaim.",
+   "mitigated": true,
+   "how": "The needs-checking copy states the automatic check couldn't answer and 'It doesn't change the result above'; the button says 'Ask a specialist to check this block', never 'confirm eligibility'. eligible flag is posted as false for this variant.",
+   "repro": "Trigger a needs-checking result, read the card, and confirm no wording implies the block will become eligible."
   }
  ],
  "post_merge": {

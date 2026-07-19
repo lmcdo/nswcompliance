@@ -122,7 +122,7 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
       <div className="bg-white rounded-xl border-2 border-teal-500 shadow-md p-4 text-left">
         <PropertySearch onAddressSelect={handleAddressSelect} />
       </div>
-      <p className="mt-2 text-center text-xs text-gray-400">
+      <p className="mt-2 text-center text-xs text-gray-500">
         Free 10-second check against the 2025 NSW housing reforms — live NSW
         Government planning maps.
       </p>
@@ -148,12 +148,12 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
             <div className="rounded-xl bg-emerald-600 text-white p-5 text-center">
               <CheckCircle2 className="w-8 h-8 mx-auto mb-2" />
               <p className="text-xl font-extrabold leading-tight">
-                Yes — you can apply to build a duplex here.
+                Yes — eligible for a duplex here.
               </p>
-              <p className="mt-1.5 text-emerald-100 text-xs">
+              <p className="mt-1.5 text-emerald-50 text-xs">
                 {result.address} meets the mapped Housing SEPP lot standards for
-                a dual occupancy — with consent, through a development
-                application.
+                a dual occupancy. Any duplex still needs council consent through
+                a development application.
               </p>
             </div>
           ) : result.status === 'unavailable' ? (
@@ -171,7 +171,7 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
             <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
               <HelpCircle className="w-7 h-7 mx-auto mb-1.5 text-amber-500" />
               <p className="text-base font-bold text-gray-900">
-                Maybe — the maps alone can&apos;t answer this one.
+                Needs checking — the maps alone can&apos;t answer this one.
               </p>
               <p className="mt-1 text-xs text-gray-600">
                 {unconfirmedDualOcc
@@ -215,7 +215,8 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
             <div className="rounded-xl bg-gray-100 border border-gray-200 p-5 text-center">
               <XCircle className="w-7 h-7 mx-auto mb-1.5 text-gray-400" />
               <p className="text-base font-bold text-gray-900">
-                Not this block — it doesn&apos;t meet the duplex standard.
+                Not eligible — this block doesn&apos;t meet the mapped duplex
+                standard.
               </p>
               <p className="mt-1 text-xs text-gray-600">
                 {dualOccForm
@@ -282,12 +283,12 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
             </details>
           )}
 
-          <p className="text-[10px] text-gray-400 leading-relaxed">
+          <p className="text-xs text-gray-500 leading-relaxed">
             Mapped planning data and extracted Housing SEPP standards with their
             source clauses — not planning advice. Development consent depends on
             a development application and site-specific assessment by the
-            consent authority. Where a government map isn&apos;t clear, the
-            answer is no — never maybe.
+            consent authority. We never read an unclear map as a yes — a block
+            the maps can&apos;t confirm shows as needs-checking or not eligible.
           </p>
         </div>
       )}
