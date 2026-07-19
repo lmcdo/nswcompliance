@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
- "commit_hash": "84b92123",
+ "commit_hash": "c414c9ff",
  "files": [
   "frontend-nextjs/lib/widget-partners.ts",
   "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
@@ -50,11 +50,11 @@
    "repro": "Run an address whose dual-occ form returns unconfirmed=true on either surface — amber needs-a-closer-look card, not the grey no."
   },
   {
-   "scenario": "The computed verdict bends toward the partner — e.g. an ineligible block renders softer or the CTA appears on a non-eligible result to farm enquiries.",
+   "scenario": "The computed verdict bends toward the partner — e.g. an ineligible block renders softer, or the CTA language upgrades a maybe into an implied yes.",
    "what_happens": "The neutrality rule that protects the InfoTrack/licensing trust asset would be broken.",
    "mitigated": true,
-   "how": "Verdict rendering is a pure function of the API result and identical with or without partner props; the CTA renders only under dualOccEligible(result) && ctaUrl. The component header documents the hard rule.",
-   "repro": "Run a heritage-area address on any /widget-demo page: verdict is the same 'Not this block' as the public tool, no partner CTA shown."
+   "how": "Verdict rendering is a pure function of the API result and identical with or without partner props. CTA policy (user decision 2026-07-19): partner button on eligible ('Ask X about a duplex') AND indeterminate ('Ask X to take a closer look' — no eligibility implied), NEVER on clear-no/not_residential/unavailable. Clicks tagged verdict: eligible|indeterminate so lead types report separately.",
+   "repro": "Run a heritage-area address on any /widget-demo page: verdict is the same clear no as the public tool, no partner CTA. Run an unconfirmed address: maybe card + closer-look button."
   },
   {
    "scenario": "javascript: or data: URL injected via the cta param executes in the visitor's browser from inside a builder's site.",

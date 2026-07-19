@@ -14,6 +14,12 @@
  * verdict helpers imported from lib/upzoning.ts; eligibility logic stays in
  * services/upzoning_check.py. The computed verdict is never conditioned on
  * partner presence (hard rule: the answer never bends toward a partner).
+ *
+ * CTA policy (user decision 2026-07-19): the partner button shows on
+ * ELIGIBLE ("Ask X about a duplex...") and INDETERMINATE ("Ask X to take a
+ * closer look") — never on a clear no, not_residential, or outage. Clicks
+ * are tagged with the verdict so yes-leads and maybe-leads report
+ * separately from day one.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -176,14 +182,34 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
                 This is not a no. It means an automatic map check isn&apos;t
                 enough here — this block needs a person to look at it.
               </p>
-              <a
-                href="https://verify.plotdetect.com.au/tools/upzoning-check"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-block text-xs font-medium text-teal-700 hover:text-teal-600 underline"
-              >
-                Run the full free check for this address
-              </a>
+              {ctaUrl ? (
+                <a
+                  href={ctaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() =>
+                    posthog.capture('widget_cta_click', {
+                      partner: refSlug ?? null,
+                      verdict: 'indeterminate',
+                    })
+                  }
+                  className="mt-3 flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+                >
+                  {partnerName
+                    ? `Ask ${partnerName} to take a closer look`
+                    : 'Ask a builder to take a closer look'}
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              ) : (
+                <a
+                  href="https://verify.plotdetect.com.au/tools/upzoning-check"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs font-medium text-teal-700 hover:text-teal-600 underline"
+                >
+                  Run the full free check for this address
+                </a>
+              )}
             </div>
           ) : (
             <div className="rounded-xl bg-gray-100 border border-gray-200 p-5 text-center">
@@ -207,7 +233,10 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
               target="_blank"
               rel="noopener noreferrer"
               onClick={() =>
-                posthog.capture('widget_cta_click', { partner: refSlug ?? null })
+                posthog.capture('widget_cta_click', {
+                  partner: refSlug ?? null,
+                  verdict: 'eligible',
+                })
               }
               className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
