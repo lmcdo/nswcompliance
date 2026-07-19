@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
- "commit_hash": "563d2a1f",
+ "commit_hash": "11e65bb2",
  "files": [
   "frontend-nextjs/lib/widget-partners.ts",
   "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
@@ -15,8 +15,30 @@
   "assumption_mismatch": "Prior-art guard fired on the registry file and pointed at lib/sanitize.ts — inspected: it is DOMPurify HTML sanitisation for dangerouslySetInnerHTML and cannot validate URL protocols or whitelist a name pattern for query params, so the two purpose-built sanitizers were justified and the ack line records that reasoning.",
   "new_vs_existing": "New: presentation registry, compact widget component, embed route, demo shell, tests. Deliberately NOT new: eligibility logic (services/upzoning_check.py untouched), BuilderReferralCard (excluded by design — the white-label enquiry belongs to the partner, not our referral pool), no per-partner API keys yet (pilot phase counts usage via posthog partner property; keys come with billing)."
  },
- "functions": "getWidgetPartner (slug lookup, null on miss), sanitizePartnerName (40-char whitelist pattern or null), sanitizeCtaUrl (https-only URL parse or null), DuplexCheckWidget (verdict render + partner CTA), two page components. No existing function modified.",
- "values": "Partner registry holds presentation values only (names, https URLs) — no regulatory data, no coordinates, no planning values hardcoded. All planning data arrives from /api/upzoning at request time.",
+ "functions": [
+  {
+   "name": "getWidgetPartner",
+   "file_line": "frontend-nextjs/lib/widget-partners.ts:58",
+   "input": "a slug string arriving from the demo route param or the embed ref query param, untrusted",
+   "output": "the matching WidgetPartner config object from the in-repo registry of 20 verified builders",
+   "if_none": "returns null on any unknown slug — the embed then renders unbranded with no CTA button, and the demo page calls notFound() so an invalid outreach link 404s instead of showing a broken brand"
+  },
+  {
+   "name": "sanitizePartnerName",
+   "file_line": "frontend-nextjs/lib/widget-partners.ts:67",
+   "input": "the free-form partner query param from an unregistered embed use, treated as hostile input",
+   "output": "a trimmed display name capped at 40 characters that matches the word/space/punctuation whitelist pattern",
+   "if_none": "returns null for markup, control characters, or empty input — the widget heading simply renders without a partner line, never echoing unsafe text"
+  },
+  {
+   "name": "sanitizeCtaUrl",
+   "file_line": "frontend-nextjs/lib/widget-partners.ts:77",
+   "input": "the free-form cta query param from an unregistered embed use, treated as hostile input",
+   "output": "a normalised https URL string safe to place in an anchor href on a partner site",
+   "if_none": "returns null for javascript:, data:, http:, or unparseable input — the enquiry button is simply not rendered, so there is no fallback link to a wrong destination"
+  }
+ ],
+ "values": "N/A - no DB or API values are read by this change; the registry holds presentation values only (names, https URLs) and all planning data arrives from /api/upzoning at request time.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
