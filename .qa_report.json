@@ -1,52 +1,34 @@
 {
- "tier": "standard",
- "justification": "Completes the display-name rename on the app side: every remaining product-name use of Verify becomes Site Controls across nav CTAs, footer, the four persona pages, and pricing (including the Site Controls Pro tier name and its mailto subject). Verb uses of verify (verify current version, verification) are deliberately untouched, as are code identifiers, routes, the verify. subdomain, and VerifyOpsBot.",
- "commit_hash": "605bf9c5",
+ "tier": "minor",
+ "justification": "Sender-address fix for two interest-capture routes (DCP tab 'Notify me' and Verify registration). Both sent notifications from onboarding@resend.dev, Resend's shared test sender that only delivers to the account owner; sends to info@plotdetect.com.au were rejected and swallowed by the fire-and-forget catch, so no alert email arrived. Switched both to the verified domain sender info@plotdetect.com.au already used by six other email routes, and guarded dcp-interest on RESEND_API_KEY for parity with verify-interest. No logic or data-path change.",
+ "commit_hash": "aae0aa1e",
  "files": [
-  "frontend-nextjs/components/marketing/HomeNav.tsx",
-  "frontend-nextjs/components/marketing/SiteNav.tsx",
-  "frontend-nextjs/components/marketing/SiteFooter.tsx",
-  "frontend-nextjs/app/for/builders/page.tsx",
-  "frontend-nextjs/app/for/buyers-agents/page.tsx",
-  "frontend-nextjs/app/for/councils/page.tsx",
-  "frontend-nextjs/app/for/planners/page.tsx",
-  "frontend-nextjs/app/pricing/page.tsx"
+  "frontend-nextjs/app/api/dcp-interest/route.ts",
+  "frontend-nextjs/app/api/verify-interest/route.ts"
  ],
- "pre_impl": {
-  "existing_data": "Follows the shipped naming decision (Site Report / Topic Reports / Site Controls) already live via website PR 13 and app PR 782; this pass covers the surfaces those PRs scoped out: nav CTAs, footer, persona pages, and pricing tier names.",
-  "assumption_mismatch": "Grep-audited the distinction between the product name and the verb before editing: ProvisionVersionBadge staleness copy (Verify current version) and all verification wording are verbs and stay; VerifyRegistrationPrompt and VerifyOpsBot are code identifiers and stay.",
-  "new_vs_existing": "No new capability: string replacements in eight existing files. Deliberately unchanged: routes, the verify. subdomain, analytics event names, and the assessment workbench internals which carry no standalone product-brand strings beyond what nav and footer supplied."
- },
- "functions": "N/A - display-string replacements only; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings, one mailto subject, and metadata text only.",
- "queries": "N/A - no database access in this change.",
+ "functions": "N/A - no functions added, changed, or removed; a string literal changed and an existing send call was wrapped in an env-var guard.",
+ "values": "N/A - no DB or API values read or written by this change; the INSERT path and its parameters are untouched.",
+ "queries": "N/A - no database queries added or modified.",
  "break_it": [
   {
-   "scenario": "The renamed mailto subject breaks the trial-request funnel because inbound emails no longer match an inbox filter set up for the old subject line.",
-   "what_happens": "Trial requests arrive under a new subject and could skip an existing filter or label.",
+   "scenario": "info@plotdetect.com.au is not actually a verified sender in the Resend account, so switching from the test sender still fails delivery.",
+   "what_happens": "The notification email is rejected again and the fire-and-forget catch logs it; the registration row still saves and the user still sees success.",
    "mitigated": true,
-   "how": "The address is unchanged and the subject remains a plain trial request; any filter keyed on the old phrase needs a one-time update, called out in the PR body as a post-merge note.",
-   "repro": "Click the 14-day trial link on /pricing and confirm the draft opens addressed to hello@plotdetect.com.au with the Site Controls Pro subject."
+   "how": "Six existing production routes (stripe/webhook, satellite/granny-flat, satellite/solar-coverage-interest, canibuildit/lead, threat-radar) already send from info@plotdetect.com.au / alerts@plotdetect.com.au successfully, proving the domain is verified in Resend.",
+   "repro": "Submit the DCP tab 'Notify me' form on a preview with RESEND_API_KEY set and confirm a notification lands in info@plotdetect.com.au; cross-check against a working stripe/granny-flat send from the same domain."
   },
   {
-   "scenario": "A verb use of verify is accidentally renamed, producing nonsense like Site Controls current version at NSW Legislation.",
-   "what_happens": "A sentence stops making sense and the staleness guidance becomes confusing.",
+   "scenario": "RESEND_API_KEY is unset in the environment, so constructing the Resend client throws and breaks the request.",
+   "what_happens": "Previously dcp-interest called new Resend(undefined) unconditionally; if the key is absent the send rejects. The registration still saves because the send is fire-and-forget, but the code path is fragile.",
    "mitigated": true,
-   "how": "Replacements were explicit per-string pairs, never a blanket word swap; post-patch grep over the touched directories shows zero remaining product-name hits and the verb instances intact.",
-   "repro": "grep -rn 'Verify current' frontend-nextjs/components/compliance/ProvisionVersionBadge.tsx still returns the untouched verb usage."
-  },
-  {
-   "scenario": "The pricing tier renames desynchronise from Stripe product names or PostHog funnels that reference Verify Pro.",
-   "what_happens": "Dashboards or checkout labels show a different tier name than the site.",
-   "mitigated": true,
-   "how": "Payments are disabled pre-incorporation so no live Stripe product references the tier; analytics event names were not renamed by design, so existing funnels keep matching; only display strings changed.",
-   "repro": "Search the diff for posthog or stripe: no occurrences; the only functional string changed is the mailto subject."
+   "how": "dcp-interest is now wrapped in if (process.env.RESEND_API_KEY) like verify-interest, so the send is skipped cleanly when the key is absent and the INSERT/200 path is unaffected.",
+   "repro": "Unset RESEND_API_KEY locally, POST to /api/dcp-interest, and confirm the row inserts and the route returns 200 with no thrown error."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - display copy and one mailto subject.",
-  "other_repo": "Completes the naming set with website PR 13 and app PR 782; no deploy coupling.",
-  "manual_verify": "Yes - on the Vercel preview: nav and footer read Site Controls, /pricing shows Site Controls Pro everywhere including the comparison table and FAQ, the four /for pages read Site Controls, and the trial mailto opens with the new subject. Update any inbox filter keyed on the old Verify Pro subject."
+  "db_reset": "Not required - no schema or data changes; dcp_interest and verify_interest tables and their INSERT paths are untouched.",
+  "secrets": "No new secrets; relies on the existing RESEND_API_KEY already configured for the six other email routes. Verify it is present in the frontend Vercel project env.",
+  "other_repo": "No coupling to other repos or deploys; frontend-only change deployed via Vercel.",
+  "manual_verify": "Yes - on the Vercel preview with RESEND_API_KEY set, submit the DCP tab 'Notify me' form for an unprocessed council and confirm a 'DCP interest' email arrives at info@plotdetect.com.au; repeat via the Verify registration prompt."
  }
 }
