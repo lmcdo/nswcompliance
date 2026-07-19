@@ -151,11 +151,14 @@ export default function DuplexCheckLanding() {
               <div className="rounded-2xl bg-emerald-600 text-white p-6 sm:p-8 text-center shadow-lg">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-3" />
                 <p className="text-2xl sm:text-3xl font-extrabold leading-tight">
-                  Yes — you can apply to build a duplex here.
+                  Yes — you can apply to build a duplex at
+                </p>
+                <p className="mt-1.5 text-lg sm:text-xl font-bold leading-snug">
+                  {result.address}
                 </p>
                 <p className="mt-2 text-emerald-100 text-sm">
-                  {result.address} meets the mapped Housing SEPP lot standards
-                  for a dual occupancy — with consent, through a development
+                  This block meets the mapped Housing SEPP lot standards for a
+                  dual occupancy — with consent, through a development
                   application.
                 </p>
               </div>
