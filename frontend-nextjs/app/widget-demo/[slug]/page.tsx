@@ -38,8 +38,8 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
           The {partner.name} duplex checker
         </h1>
         <p className="text-gray-600 mb-8 max-w-xl">
-          This is how the checker looks and works carrying {partner.name}&apos;s
-          name. Run any Sydney address — every check queries live NSW Government
+          This is how the checker will look on your site, carrying{' '}
+          {partner.name}&apos;s name. Run any Sydney address — every check queries live NSW Government
           planning maps, and an enquiry from an eligible result goes to{' '}
           {partner.name}&apos;s own contact page, nowhere else.
         </p>
@@ -78,8 +78,8 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
           {[
             ['Your visitor gets the answer', 'Address in, verdict out — checked against the 2025 NSW housing reforms on live government planning layers, the source clause named. The answer is never bent to flatter the result: an honest tool is what makes the enquiry worth having.'],
             ['The enquiry is yours', `Every enquiry button points at ${siteHost} — not a shared lead list, no middleman in the conversation.`],
-            ['Two kinds of enquiry', 'A YES visitor knows their block qualifies and is ready to talk. A MAYBE visitor is told the maps alone can’t answer and a person needs to look — that person is you. They can’t self-serve an answer and they haven’t shopped anyone yet; it’s a site-assessment conversation handed to you first.'],
-            ['You see the numbers', 'Checks run and enquiries clicked, split into yes-blocks and maybe-blocks, reported to you weekly during the pilot. Counted conservatively in the visitor’s browser — the real figure can only be higher, never lower.'],
+            ['Two kinds of enquiry', 'An ELIGIBLE visitor knows their block meets the mapped standard and is ready to talk. A NEEDS-CHECKING visitor is told the maps alone can’t answer and a person needs to look — that person is you. It’s a site-assessment conversation handed to you first.'],
+            ['You see the numbers', 'Checks run and enquiry-button clicks, split into eligible and needs-checking blocks, reported to you weekly during the pilot. Counted in the visitor’s browser, so it may undercount where analytics are blocked — never over. A click is an enquiry started, not yet a submitted form.'],
           ].map(([title, body]) => (
             <div key={title} className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-sm font-semibold text-gray-900 mb-1">{title}</p>
