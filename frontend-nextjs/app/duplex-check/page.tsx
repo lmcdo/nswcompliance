@@ -21,6 +21,7 @@ import { PropertySearch } from '@/components/property/PropertySearch';
 import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
 import { DcpSnapshotCard } from '@/components/tools/DcpSnapshotCard';
 import { loadGoogleAds } from '@/lib/gtag';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import {
   dualOccEligible,
@@ -248,6 +249,18 @@ export default function DuplexCheckLanding() {
               <DcpSnapshotCard
                 lgaName={result.lga_name}
                 councilSlug={result.former_council}
+              />
+            )}
+
+            {/* The keepable result — the one thing a search engine can't give
+                them. Both verdicts: everyone wants their own answer saved. */}
+            {result.status === 'ok' && (
+              <PostResultEmailStrip
+                address={result.address}
+                product="duplex-result"
+                eligible={eligible}
+                lgaName={result.lga_name}
+                copy="Email me this result — keep it, or forward it to your builder or agent"
               />
             )}
 

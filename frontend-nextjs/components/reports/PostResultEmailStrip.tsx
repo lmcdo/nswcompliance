@@ -6,6 +6,9 @@ interface Props {
   address: string;
   product: string; // passed as interest_type to lead API
   copy?: string;
+  /** Verdict context for result-style emails (null = not applicable). */
+  eligible?: boolean | null;
+  lgaName?: string | null;
 }
 
 /**
@@ -17,6 +20,8 @@ export function PostResultEmailStrip({
   address,
   product,
   copy = 'Get this result emailed to you',
+  eligible = null,
+  lgaName = null,
 }: Props) {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -31,7 +36,8 @@ export function PostResultEmailStrip({
         body: JSON.stringify({
           email: email.trim(),
           address,
-          eligible: null,
+          eligible,
+          ...(lgaName ? { lga_name: lgaName } : {}),
           interest_type: product,
         }),
       });
