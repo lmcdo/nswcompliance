@@ -1,85 +1,97 @@
 {
  "tier": "standard",
- "justification": "Duplex ads funnel polish: (1) env-gated Google Ads conversion tag (lib/gtag.ts, no-op until env vars set); (2) CRO/correctness fixes from the GPT-5.6 Sol audit — referral submit now checks res.ok and shows an error/retry instead of false success; the referral card renders on needs-checking results (new verdict prop) with copy that never implies eligibility; the ads landing gains the widget's stale-request guard; verdict headings reworded to the mapped-standard three-state language; the contradictory 'we answer no — never maybe' line replaced; faint legal text contrast raised; demo page no longer calls CTA clicks 'enquiries' or overclaims measurement. No DB/API/regulatory logic changed; the computed verdict is untouched.",
- "commit_hash": "32804df3",
+ "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form, stores the qualification answers + an express-consent audit, and adds an /internal/leads admin page (system of record) to read them. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The /internal/leads page is a read-only server component behind the same auth gate as the other /internal pages, reading via the server-only service role. The computed planning verdict is never touched.",
+ "commit_hash": "30674002",
  "files": [
-  "frontend-nextjs/lib/gtag.ts",
-  "frontend-nextjs/app/duplex-check/page.tsx",
   "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
-  "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+  "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+  "migrations/057_canibuildit_lead_qualification.sql",
+  "frontend-nextjs/app/internal/leads/page.tsx",
+  "frontend-nextjs/app/internal/page.tsx"
  ],
  "pre_impl": {
-  "existing_data": "Site analytics is PostHog only (lib/analytics.ts); there was no Google tag installed. This adds a scoped Ads tag rather than a site-wide gtag, matching the plan's decision that conversion tracking is optional for the $100 test.",
-  "assumption_mismatch": "Confirmed the lead submit path posts to /api/canibuildit/lead with interest_type dual-occ-referral and that the success branch already sets submitted state; the conversion fires there, after the PostHog capture, so it counts a real submit not a click.",
-  "new_vs_existing": "New file lib/gtag.ts (two exported functions); the three edits are one import + one useEffect load call + one conversion call. No existing behaviour changed when the env vars are absent."
+  "existing_data": "canibuildit_leads had id/email/address/eligible/created_at/lga_name/interest_type only (verified live). Migration 057 adds first_name, phone, qualification jsonb, consent jsonb — all nullable, so existing rows and the granny-flat/flood/etc. lead paths that reuse this route are unaffected.",
+  "assumption_mismatch": "Confirmed the route already rate-limits (3/IP/10min), MX-checks the email, and dedups on email+address within 24h; the qualifier rides those unchanged. Confirmed /privacy page exists for the consent link. Smoke-tested that the jsonb columns accept and return the qualification + consent shapes.",
+  "new_vs_existing": "Component is a full rewrite of BuilderReferralCard (same file, same single consumer: duplex-check page). Route changes are additive schema fields + additive insert keys. No new endpoint, no change to the verdict computation or to other tools' lead submissions."
  },
  "functions": [
   {
-   "name": "loadGoogleAds",
-   "file_line": "frontend-nextjs/lib/gtag.ts:24",
-   "input": "no arguments; reads NEXT_PUBLIC_GOOGLE_ADS_ID at module load and window at call time",
-   "output": "void; injects gtag.js once and initialises the tag, or returns early doing nothing",
-   "if_none": "If ADS_ID is unset or window is undefined (SSR) it returns immediately, so no script loads and nothing breaks"
+   "name": "submit",
+   "file_line": "frontend-nextjs/components/tools/BuilderReferralCard.tsx:118",
+   "input": "form submit event; reads email, first_name, phone, the four qualification answers, and the shareConsent flag from component state",
+   "output": "POSTs the lead to /api/canibuildit/lead; sets status to done only on res.ok, else error with an inline message",
+   "if_none": "If email or consent is missing it sets an inline error and returns without POSTing; if the POST is non-2xx or throws, it shows a retry error and never reaches the success state"
   },
   {
-   "name": "trackAdsConversion",
-   "file_line": "frontend-nextjs/lib/gtag.ts:52",
-   "input": "no arguments; reads ADS_ID, LEAD_LABEL and window.gtag at call time",
-   "output": "void; fires a gtag conversion event to ADS_ID/LEAD_LABEL, or returns early doing nothing",
-   "if_none": "If either env var is missing or gtag never loaded (window.gtag undefined) it returns without firing, so a lead submit is never blocked or errored"
+   "name": "pick",
+   "file_line": "frontend-nextjs/components/tools/BuilderReferralCard.tsx:96",
+   "input": "a question key and the selected option value",
+   "output": "records the answer, emits a referral_qualify_step event, and advances to the next screen",
+   "if_none": "Budget can be skipped via a Skip control, so a missing budget answer simply advances with budget left null; ownership/timeline/finance are answered by tapping"
   }
  ],
- "values": "N/A - no DB or API values read or written; the only external values are two public env vars read at build time, both optional.",
- "queries": "N/A - no database queries added or modified.",
+ "values": "N/A - no DB or external-API values are read to make a decision; the qualification answers are user-supplied option strings validated by a zod enum-length bound, and the consent IP is the server-derived request identifier.",
+ "queries": [
+  {
+   "purpose": "Duplicate-lead guard — skip insert + email if the same email+address submitted within 24h",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:127",
+   "where_clause": ".eq('email', cleanEmail).eq('address', cleanAddress ?? '').gte('created_at', since)"
+  },
+  {
+   "purpose": "Insert the qualified lead + consent audit into the leads system of record",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:154",
+   "where_clause": "N/A - INSERT (append-only lead row); consent/qualification set only when provided, never an UPDATE/DELETE"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "The env vars are unset in production (the default at merge), and a user submits the referral form.",
-   "what_happens": "trackAdsConversion returns early (no ADS_ID/LEAD_LABEL); loadGoogleAds injected no script. The lead still posts and the success card still renders.",
+   "scenario": "A homeowner completes the qualifier and consents, but the lead insert silently drops the consent audit, leaving no proof of what they agreed to.",
+   "what_happens": "Without a stored wording/version/IP/timestamp, a later privacy complaint can't be answered — OAIC puts the burden of proving consent on us.",
    "mitigated": true,
-   "how": "Both functions guard on the env vars and window before doing anything, and the conversion call sits after the fetch and PostHog capture, wrapped in the same synchronous flow that already set submitted state.",
-   "repro": "Load /duplex-check with no Ads env vars, submit an eligible-result referral, confirm no network call to googletagmanager.com and the 'builder chat is being set up' card shows."
+   "how": "The route builds a consent record ({version, exact wording, shared_with, server IP, captured_at}) whenever consent_version or consent_wording is present and writes it to the consent jsonb column; smoke-tested that it round-trips.",
+   "repro": "Submit the referral form with the consent box ticked, then SELECT consent FROM canibuildit_leads for that row and confirm the exact shown wording, version and IP are present."
   },
   {
-   "scenario": "gtag.js is blocked by an ad blocker or slow network, but the env vars are set, and the user submits.",
-   "what_happens": "window.gtag is undefined, so trackAdsConversion returns early without throwing; the lead is unaffected.",
+   "scenario": "The migration is not applied in an environment before the new code deploys there, so the insert references columns that don't exist.",
+   "what_happens": "Supabase would reject the insert; because the insert is in a non-blocking try/catch the lead would be lost silently.",
    "mitigated": true,
-   "how": "trackAdsConversion checks window.gtag exists before calling it; a missing tag degrades to no conversion recorded, never a runtime error on the submit path.",
-   "repro": "Set the env vars, block googletagmanager.com in devtools, submit — the lead posts and no exception is thrown."
+   "how": "Migration 057 is additive and idempotent (ADD COLUMN IF NOT EXISTS) and has been applied to the single production Supabase DB; the new insert keys are spread conditionally so a row still inserts even if a given qualification/consent value is absent.",
+   "repro": "On a DB without 057, POST a qualified lead and confirm the columns are missing; after applying 057, confirm the same POST stores qualification + consent."
   },
   {
-   "scenario": "loadGoogleAds runs on every mount / React strict-mode double-invoke and double-injects the script or re-inits the tag.",
-   "what_happens": "Duplicate gtag.js scripts or duplicate config calls could inflate or duplicate conversions.",
+   "scenario": "The trimmed 3-step qualifier collects only timeline + ownership; finance and budget are always sent null. The /internal/leads view or later reporting could assume all four qualifiers are present and break or mislabel.",
+   "what_happens": "A qualification object with finance/budget null could render empty/undefined chips or throw on a missing field.",
    "mitigated": true,
-   "how": "A module-level `loaded` flag makes loadGoogleAds idempotent; the second call returns before appending a second script or re-configuring.",
-   "repro": "In dev strict mode, mount /duplex-check and confirm only one gtag/js script tag is present in the head."
+   "how": "The qualification jsonb carries explicit nulls for finance/budget; the /internal/leads display maps each field through label() (returns null when absent) and .filter(Boolean), so only present qualifiers render; the zod schema marks every qualification field optional/nullable.",
+   "repro": "Submit a lead via the 3-step form; confirm qualification jsonb = {timeline, ownership, finance:null, budget:null} and /internal/leads shows only the timeline + ownership chips."
   },
   {
-   "scenario": "The /api/canibuildit/lead endpoint rejects the referral submit — rate-limited at 3 submits/IP/10min (429), a bad email domain failing the MX check (400), or a lead-insert error (500) — but the visitor is told their builder chat is set up.",
-   "what_happens": "Previously the fetch sat in a try/catch that swallowed the rejection, then setSubmitted(true) ran unconditionally, so a rejected lead read as 'your builder chat is being set up' and the lead was silently lost.",
+   "scenario": "Someone who is not signed in guesses the /internal/leads URL to read lead PII (name, email, phone, address, IP, consent).",
+   "what_happens": "If the page rendered open it would leak the whole leads table — a privacy breach worse than the other /internal pages because this is raw consented PII.",
    "mitigated": true,
-   "how": "handleSubmit now throws on !res.ok, the catch sets status='error' and returns before the success state, and an inline retry message is shown; the 'done' thanks state is reached only after a 2xx.",
-   "repro": "Submit the referral form four times fast to trip the 429 rate limit (or use an address with a non-MX email domain for the 400), and confirm the card shows 'Something went wrong sending that — please try again.' and NOT the thanks state."
+   "how": "Unlike the other /internal pages (gated only when NEXT_PUBLIC_AUTH_ENABLED==='true'), /internal/leads is fail-closed: it ALWAYS calls supabase.auth.getUser() and redirects unauthenticated visitors to /login, independent of any env flag. It is also noindex. Trade-off: viewing leads now requires being logged in.",
+   "repro": "With NEXT_PUBLIC_AUTH_ENABLED unset and no session, visit /internal/leads and confirm it redirects to /login (does NOT render the table); confirm it renders once signed in."
   },
   {
-   "scenario": "A visitor checks address A then quickly checks address B on the ads landing; A's slower response arrives last.",
-   "what_happens": "Without a guard, A's result would overwrite B's and the page would show the verdict for the wrong address — acute on a per-address legal-info tool.",
+   "scenario": "The same homeowner submits the qualifier twice within a short window (double-tap of the final button, or a return visit for the same block) and the duplicate-lead guard fails to suppress it.",
+   "what_happens": "The builder would be shown / later billed for the same person twice, and they would receive two confirmation emails — the churn-inducing junk builders resent.",
    "mitigated": true,
-   "how": "A requestIdRef counter tags each check; only the latest requestId may write result/error/loading state, so a stale response is dropped (mirrors DuplexCheckWidget).",
-   "repro": "Select two addresses in quick succession with the network throttled and confirm the displayed verdict matches the second (last-selected) address."
+   "how": "Before inserting, the route selects canibuildit_leads on the same email + address within the last 24h and, if a row exists, returns ok without re-inserting or re-emailing. The submit button is also disabled while status==='submitting' to stop a double POST. If the dedup SELECT itself errors it proceeds (accepted: fail-open on the guard is better than dropping a real lead), a rare edge that /internal/leads would surface as two near-identical rows to merge.",
+   "repro": "Submit the same email + address twice within 24h and confirm only one canibuildit_leads row exists and only one confirmation email is sent."
   },
   {
-   "scenario": "The needs-checking referral card is read as a promise that a builder will make an ineligible block eligible.",
-   "what_happens": "A user could infer the specialist overturns the map result — a liability/ACL overclaim.",
+   "scenario": "A bot posts to the lead endpoint with the honeypot filled or an invalid email domain.",
+   "what_happens": "Junk leads would pollute the qualified-lead pipeline the builders pay for.",
    "mitigated": true,
-   "how": "The needs-checking copy states the automatic check couldn't answer and 'It doesn't change the result above'; the button says 'Ask a specialist to check this block', never 'confirm eligibility'. eligible flag is posted as false for this variant.",
-   "repro": "Trigger a needs-checking result, read the card, and confirm no wording implies the block will become eligible."
+   "how": "Unchanged existing guards: the honeypot 'website' field returns a silent ok without inserting, the MX check rejects non-deliverable domains with a 400, and the per-IP rate limit caps submissions — the qualifier sits on top of these.",
+   "repro": "POST with website set to non-empty and confirm no row inserts; POST with an @nonexistentdomain.invalid email and confirm a 400."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data changes.",
-  "secrets": "No secrets. NEXT_PUBLIC_GOOGLE_ADS_ID and NEXT_PUBLIC_GOOGLE_ADS_LEAD_LABEL are public client IDs (safe to expose by design); set them in the Vercel project env when the Ads conversion action is created, to activate the tag.",
-  "other_repo": "No coupling; frontend-only, deployed via Vercel.",
-  "manual_verify": "Yes - after setting the two env vars on a preview: open /duplex-check, run an eligible address, submit the referral form, and confirm in Google Ads (or the Tag Assistant) that one 'conversion' event fires to ADS_ID/LEAD_LABEL. With env vars unset, confirm no googletagmanager request loads at all."
+  "db_reset": "Not required. Migration 057 (additive nullable columns on canibuildit_leads) is already applied to production Supabase; no data change, no backfill.",
+  "secrets": "No new secrets. Uses the existing server-only Supabase service-role credential already configured for this route.",
+  "other_repo": "None. Frontend + its API route only; the leads live in the same Supabase. The /internal/leads admin view is now built (read-only); status/routing/HubSpot-sync remain scoped in ce-lead-qualifier-research-2026-07.md.",
+  "auth": "/internal/leads is now fail-closed — it always requires a signed-in user (redirects to /login) regardless of NEXT_PUBLIC_AUTH_ENABLED, so the PII page can't render open. The other /internal pages (index, setback-review, dcp-review) still use the flag-based gate; rolling the same fail-closed pattern to them is a follow-up. To view leads you must be logged in.",
+  "manual_verify": "Yes - on the preview: run an eligible address, tap through timeline/ownership/finance, skip budget, enter contact + tick consent, submit; confirm the success state and then that a canibuildit_leads row has the qualification and consent jsonb populated (incl. the exact consent wording and an IP). Also confirm the needs-checking result shows the same qualifier with 'specialist' wording."
  }
 }
