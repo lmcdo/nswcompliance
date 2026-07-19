@@ -1,97 +1,34 @@
 {
- "tier": "standard",
- "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form, stores the qualification answers + an express-consent audit, and adds an /internal/leads admin page (system of record) to read them. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The /internal/leads page is a read-only server component behind the same auth gate as the other /internal pages, reading via the server-only service role. The computed planning verdict is never touched.",
- "commit_hash": "30674002",
+ "tier": "minor",
+ "justification": "Notification-delivery fix for two interest-capture routes (DCP tab 'Notify me' and Verify registration). Two defects: (1) both sent from onboarding@resend.dev, Resend's test sender that only delivers to the account owner; (2) both sent to info@plotdetect.com.au while also sending from info@plotdetect.com.au — a self-domain send via an external relay that Google Workspace quarantines as spoofing (Resend shows 'delivered' but the mailbox never receives it, confirmed live). Switched the sender to the verified info@plotdetect.com.au domain, and routed the recipient to an off-domain NOTIFY_EMAIL (env-overridable, default lawrence.mcdonell@gmail.com) so From != To and Workspace accepts it. Guarded dcp-interest on RESEND_API_KEY for parity. No DB or data-path change.",
+ "commit_hash": "8257609d",
  "files": [
-  "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
-  "frontend-nextjs/app/api/canibuildit/lead/route.ts",
-  "migrations/057_canibuildit_lead_qualification.sql",
-  "frontend-nextjs/app/internal/leads/page.tsx",
-  "frontend-nextjs/app/internal/page.tsx"
+  "frontend-nextjs/app/api/dcp-interest/route.ts",
+  "frontend-nextjs/app/api/verify-interest/route.ts"
  ],
- "pre_impl": {
-  "existing_data": "canibuildit_leads had id/email/address/eligible/created_at/lga_name/interest_type only (verified live). Migration 057 adds first_name, phone, qualification jsonb, consent jsonb — all nullable, so existing rows and the granny-flat/flood/etc. lead paths that reuse this route are unaffected.",
-  "assumption_mismatch": "Confirmed the route already rate-limits (3/IP/10min), MX-checks the email, and dedups on email+address within 24h; the qualifier rides those unchanged. Confirmed /privacy page exists for the consent link. Smoke-tested that the jsonb columns accept and return the qualification + consent shapes.",
-  "new_vs_existing": "Component is a full rewrite of BuilderReferralCard (same file, same single consumer: duplex-check page). Route changes are additive schema fields + additive insert keys. No new endpoint, no change to the verdict computation or to other tools' lead submissions."
- },
- "functions": [
-  {
-   "name": "submit",
-   "file_line": "frontend-nextjs/components/tools/BuilderReferralCard.tsx:118",
-   "input": "form submit event; reads email, first_name, phone, the four qualification answers, and the shareConsent flag from component state",
-   "output": "POSTs the lead to /api/canibuildit/lead; sets status to done only on res.ok, else error with an inline message",
-   "if_none": "If email or consent is missing it sets an inline error and returns without POSTing; if the POST is non-2xx or throws, it shows a retry error and never reaches the success state"
-  },
-  {
-   "name": "pick",
-   "file_line": "frontend-nextjs/components/tools/BuilderReferralCard.tsx:96",
-   "input": "a question key and the selected option value",
-   "output": "records the answer, emits a referral_qualify_step event, and advances to the next screen",
-   "if_none": "Budget can be skipped via a Skip control, so a missing budget answer simply advances with budget left null; ownership/timeline/finance are answered by tapping"
-  }
- ],
- "values": "N/A - no DB or external-API values are read to make a decision; the qualification answers are user-supplied option strings validated by a zod enum-length bound, and the consent IP is the server-derived request identifier.",
- "queries": [
-  {
-   "purpose": "Duplicate-lead guard — skip insert + email if the same email+address submitted within 24h",
-   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:127",
-   "where_clause": ".eq('email', cleanEmail).eq('address', cleanAddress ?? '').gte('created_at', since)"
-  },
-  {
-   "purpose": "Insert the qualified lead + consent audit into the leads system of record",
-   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:154",
-   "where_clause": "N/A - INSERT (append-only lead row); consent/qualification set only when provided, never an UPDATE/DELETE"
-  }
- ],
+ "functions": "N/A - no functions added, changed, or removed; a string literal changed and an existing send call was wrapped in an env-var guard.",
+ "values": "N/A - no DB or API values read or written by this change; the INSERT path and its parameters are untouched.",
+ "queries": "N/A - no database queries added or modified.",
  "break_it": [
   {
-   "scenario": "A homeowner completes the qualifier and consents, but the lead insert silently drops the consent audit, leaving no proof of what they agreed to.",
-   "what_happens": "Without a stored wording/version/IP/timestamp, a later privacy complaint can't be answered — OAIC puts the burden of proving consent on us.",
+   "scenario": "Notification still routed to an @plotdetect.com.au address, re-triggering the Google Workspace self-domain spoofing quarantine so the mailbox never receives it despite a 'delivered' status.",
+   "what_happens": "Resend reports delivered but the email is silently quarantined by Workspace; the operator never sees the registration alert.",
    "mitigated": true,
-   "how": "The route builds a consent record ({version, exact wording, shared_with, server IP, captured_at}) whenever consent_version or consent_wording is present and writes it to the consent jsonb column; smoke-tested that it round-trips.",
-   "repro": "Submit the referral form with the consent box ticked, then SELECT consent FROM canibuildit_leads for that row and confirm the exact shown wording, version and IP are present."
+   "how": "Recipient moved off-domain to NOTIFY_EMAIL (default lawrence.mcdonell@gmail.com), so From (info@plotdetect.com.au) != To; a foreign-domain recipient only checks SPF/DKIM, which pass, as proven by canibuildit confirmations already landing at gmail.com. If NOTIFY_EMAIL is later set back to an @plotdetect.com.au address the bug returns, which the code comment warns against.",
+   "repro": "Submit the DCP tab 'Notify me' form on a preview with RESEND_API_KEY set and confirm a 'DCP interest' email lands in the NOTIFY_EMAIL Gmail inbox; contrast with the pre-fix info@ send that showed delivered but never arrived."
   },
   {
-   "scenario": "The migration is not applied in an environment before the new code deploys there, so the insert references columns that don't exist.",
-   "what_happens": "Supabase would reject the insert; because the insert is in a non-blocking try/catch the lead would be lost silently.",
+   "scenario": "RESEND_API_KEY is unset in the environment, so constructing the Resend client throws and breaks the request.",
+   "what_happens": "Previously dcp-interest called new Resend(undefined) unconditionally; if the key is absent the send rejects. The registration still saves because the send is fire-and-forget, but the code path is fragile.",
    "mitigated": true,
-   "how": "Migration 057 is additive and idempotent (ADD COLUMN IF NOT EXISTS) and has been applied to the single production Supabase DB; the new insert keys are spread conditionally so a row still inserts even if a given qualification/consent value is absent.",
-   "repro": "On a DB without 057, POST a qualified lead and confirm the columns are missing; after applying 057, confirm the same POST stores qualification + consent."
-  },
-  {
-   "scenario": "The trimmed 3-step qualifier collects only timeline + ownership; finance and budget are always sent null. The /internal/leads view or later reporting could assume all four qualifiers are present and break or mislabel.",
-   "what_happens": "A qualification object with finance/budget null could render empty/undefined chips or throw on a missing field.",
-   "mitigated": true,
-   "how": "The qualification jsonb carries explicit nulls for finance/budget; the /internal/leads display maps each field through label() (returns null when absent) and .filter(Boolean), so only present qualifiers render; the zod schema marks every qualification field optional/nullable.",
-   "repro": "Submit a lead via the 3-step form; confirm qualification jsonb = {timeline, ownership, finance:null, budget:null} and /internal/leads shows only the timeline + ownership chips."
-  },
-  {
-   "scenario": "Someone who is not signed in guesses the /internal/leads URL to read lead PII (name, email, phone, address, IP, consent).",
-   "what_happens": "If the page rendered open it would leak the whole leads table — a privacy breach worse than the other /internal pages because this is raw consented PII.",
-   "mitigated": true,
-   "how": "Unlike the other /internal pages (gated only when NEXT_PUBLIC_AUTH_ENABLED==='true'), /internal/leads is fail-closed: it ALWAYS calls supabase.auth.getUser() and redirects unauthenticated visitors to /login, independent of any env flag. It is also noindex. Trade-off: viewing leads now requires being logged in.",
-   "repro": "With NEXT_PUBLIC_AUTH_ENABLED unset and no session, visit /internal/leads and confirm it redirects to /login (does NOT render the table); confirm it renders once signed in."
-  },
-  {
-   "scenario": "The same homeowner submits the qualifier twice within a short window (double-tap of the final button, or a return visit for the same block) and the duplicate-lead guard fails to suppress it.",
-   "what_happens": "The builder would be shown / later billed for the same person twice, and they would receive two confirmation emails — the churn-inducing junk builders resent.",
-   "mitigated": true,
-   "how": "Before inserting, the route selects canibuildit_leads on the same email + address within the last 24h and, if a row exists, returns ok without re-inserting or re-emailing. The submit button is also disabled while status==='submitting' to stop a double POST. If the dedup SELECT itself errors it proceeds (accepted: fail-open on the guard is better than dropping a real lead), a rare edge that /internal/leads would surface as two near-identical rows to merge.",
-   "repro": "Submit the same email + address twice within 24h and confirm only one canibuildit_leads row exists and only one confirmation email is sent."
-  },
-  {
-   "scenario": "A bot posts to the lead endpoint with the honeypot filled or an invalid email domain.",
-   "what_happens": "Junk leads would pollute the qualified-lead pipeline the builders pay for.",
-   "mitigated": true,
-   "how": "Unchanged existing guards: the honeypot 'website' field returns a silent ok without inserting, the MX check rejects non-deliverable domains with a 400, and the per-IP rate limit caps submissions — the qualifier sits on top of these.",
-   "repro": "POST with website set to non-empty and confirm no row inserts; POST with an @nonexistentdomain.invalid email and confirm a 400."
+   "how": "dcp-interest is now wrapped in if (process.env.RESEND_API_KEY) like verify-interest, so the send is skipped cleanly when the key is absent and the INSERT/200 path is unaffected.",
+   "repro": "Unset RESEND_API_KEY locally, POST to /api/dcp-interest, and confirm the row inserts and the route returns 200 with no thrown error."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required. Migration 057 (additive nullable columns on canibuildit_leads) is already applied to production Supabase; no data change, no backfill.",
-  "secrets": "No new secrets. Uses the existing server-only Supabase service-role credential already configured for this route.",
-  "other_repo": "None. Frontend + its API route only; the leads live in the same Supabase. The /internal/leads admin view is now built (read-only); status/routing/HubSpot-sync remain scoped in ce-lead-qualifier-research-2026-07.md.",
-  "auth": "/internal/leads is now fail-closed — it always requires a signed-in user (redirects to /login) regardless of NEXT_PUBLIC_AUTH_ENABLED, so the PII page can't render open. The other /internal pages (index, setback-review, dcp-review) still use the flag-based gate; rolling the same fail-closed pattern to them is a follow-up. To view leads you must be logged in.",
-  "manual_verify": "Yes - on the preview: run an eligible address, tap through timeline/ownership/finance, skip budget, enter contact + tick consent, submit; confirm the success state and then that a canibuildit_leads row has the qualification and consent jsonb populated (incl. the exact consent wording and an IP). Also confirm the needs-checking result shows the same qualifier with 'specialist' wording."
+  "db_reset": "Not required - no schema or data changes; dcp_interest and verify_interest tables and their INSERT paths are untouched.",
+  "secrets": "No new secrets; relies on the existing RESEND_API_KEY already configured for the six other email routes. Verify it is present in the frontend Vercel project env.",
+  "other_repo": "No coupling to other repos or deploys; frontend-only change deployed via Vercel.",
+  "manual_verify": "Yes - on the Vercel preview with RESEND_API_KEY set, submit the DCP tab 'Notify me' form for an unprocessed council and confirm a 'DCP interest' email arrives at info@plotdetect.com.au; repeat via the Verify registration prompt."
  }
 }
