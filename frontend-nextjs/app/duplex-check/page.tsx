@@ -174,20 +174,22 @@ export default function DuplexCheckLanding() {
               <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-center">
                 <HelpCircle className="w-10 h-10 mx-auto mb-2 text-amber-500" />
                 <p className="text-xl font-bold text-gray-900">
-                  Not determinable from the government maps.
+                  Maybe — the maps alone can&apos;t answer this one.
                 </p>
                 <p className="mt-1 text-sm text-gray-600">
                   {unconfirmedDualOcc
                     ? plainReason(unconfirmedDualOcc)
-                    : 'A required government map layer did not give a clear answer for this lot.'}{' '}
-                  Where a map isn&apos;t clear we say so rather than guessing —
-                  this block needs a closer look, not a no.
+                    : 'The government map data did not give a clear answer for this block.'}
+                </p>
+                <p className="mt-2 text-sm font-medium text-gray-700">
+                  This is not a no. It means an automatic map check isn&apos;t
+                  enough here — this block needs a person to look at it.
                 </p>
                 <Link
                   href="/tools/upzoning-check"
                   className="mt-3 inline-block text-sm font-medium text-teal-600 hover:text-teal-500 underline"
                 >
-                  Open the full checker with the council land-use table
+                  Run the full free check for this address
                 </Link>
               </div>
             ) : (

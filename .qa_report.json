@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
- "commit_hash": "cf872e91",
+ "commit_hash": "84b92123",
  "files": [
   "frontend-nextjs/lib/widget-partners.ts",
   "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",

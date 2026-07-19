@@ -165,15 +165,25 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
             <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
               <HelpCircle className="w-7 h-7 mx-auto mb-1.5 text-amber-500" />
               <p className="text-base font-bold text-gray-900">
-                Not determinable from the government maps.
+                Maybe — the maps alone can&apos;t answer this one.
               </p>
               <p className="mt-1 text-xs text-gray-600">
                 {unconfirmedDualOcc
                   ? plainReason(unconfirmedDualOcc)
-                  : 'A required government map layer did not give a clear answer for this lot.'}{' '}
-                Where a map isn&apos;t clear we say so rather than guessing —
-                this one needs a closer look, not a no.
+                  : 'The government map data did not give a clear answer for this block.'}
               </p>
+              <p className="mt-1.5 text-xs font-medium text-gray-700">
+                This is not a no. It means an automatic map check isn&apos;t
+                enough here — this block needs a person to look at it.
+              </p>
+              <a
+                href="https://verify.plotdetect.com.au/tools/upzoning-check"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-medium text-teal-700 hover:text-teal-600 underline"
+              >
+                Run the full free check for this address
+              </a>
             </div>
           ) : (
             <div className="rounded-xl bg-gray-100 border border-gray-200 p-5 text-center">
