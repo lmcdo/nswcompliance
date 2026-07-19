@@ -51,32 +51,19 @@ export const WIDGET_PARTNERS: WidgetPartner[] = [
   { slug: 'allcastle', name: 'Allcastle Homes', site: 'https://www.allcastlehomes.com.au', ctaUrl: 'https://www.allcastlehomes.com.au' },
 ];
 
-export function getWidgetPartner(slug: string): WidgetPartner | null {
+/**
+ * Branding resolves ONLY from this registry — there are deliberately no
+ * free-form partner/cta query params. Review finding (PR #790): free-form
+ * params let an attacker render a registered builder's NAME with an
+ * arbitrary https CTA (?partner=Buildana&cta=https://phishing.example);
+ * name-vs-registry checks don't close that (typosquats, casing, spacing).
+ * Adding a pilot partner = one registry entry in a PR — minutes, and every
+ * brand/CTA pairing stays repo-reviewed.
+ *
+ * Accepts string | string[] because Next.js delivers repeated query params
+ * as arrays; a repeated ref is rejected rather than silently picking one.
+ */
+export function getWidgetPartner(slug: string | string[] | undefined): WidgetPartner | null {
+  if (typeof slug !== 'string') return null;
   return WIDGET_PARTNERS.find((p) => p.slug === slug) ?? null;
-}
-
-/**
- * Free-form partner name from a query param → safe display string.
- * Registered partners (ref=<slug>) bypass this; it exists so an unregistered
- * pilot can try the embed with ?partner=Name without opening an XSS vector.
- */
-export function sanitizePartnerName(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim().slice(0, 40);
-  return /^[\w .&'()-]+$/.test(trimmed) ? trimmed : null;
-}
-
-/**
- * Free-form CTA URL from a query param → https URL or nothing.
- * Blocks javascript:/data:/http: — the enquiry button only ever points at a
- * real https page.
- */
-export function sanitizeCtaUrl(raw: string | undefined): string | null {
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-    return url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
 }

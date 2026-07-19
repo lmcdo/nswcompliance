@@ -63,12 +63,22 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
           </div>
         </div>
 
+        {/* Boundary caption — a skimming builder must never read the panels
+            below as part of what their customer sees */}
+        <p className="mt-3 text-center text-xs text-gray-500">
+          Everything inside the frame above is what your visitor sees on your
+          site. Everything below this line is for you only.
+        </p>
+
         {/* How it works on their site */}
-        <div className="mt-8 grid sm:grid-cols-3 gap-4">
+        <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
+          For you — how the pilot works
+        </h2>
+        <div className="mt-3 grid sm:grid-cols-3 gap-4">
           {[
             ['Your visitor gets the answer', 'Address in, verdict out — checked against the 2025 NSW housing reforms on live government planning layers, the source clause named.'],
             ['The enquiry is yours', `The button under an eligible result points at ${siteHost} — not a shared lead list, no middleman in the conversation.`],
-            ['You see the numbers', 'Checks run and enquiries clicked are counted per partner, reported to you weekly during the pilot.'],
+            ['You see the numbers', 'Checks run and enquiries clicked, reported to you weekly during the pilot. Counted conservatively in the visitor’s browser — the real figure can only be higher, never lower.'],
           ].map(([title, body]) => (
             <div key={title} className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-sm font-semibold text-gray-900 mb-1">{title}</p>

@@ -41,6 +41,10 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
+  // Guards the check-A-then-quickly-check-B race: only the latest selection's
+  // response may write state, else a slow first response silently replaces
+  // the verdict for the address the visitor is actually looking at.
+  const requestIdRef = useRef(0);
 
   // Inside a ~700px iframe the verdict can render off-screen — same
   // "nothing happened" failure the ads landing guards against.
@@ -51,6 +55,7 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
   }, [loading, result, error]);
 
   async function handleAddressSelect(address: string) {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     setResult(null);
@@ -60,11 +65,13 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address }),
       });
+      if (requestId !== requestIdRef.current) return;
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? 'Could not check that address');
       }
       const data: UpzoningResult = await res.json();
+      if (requestId !== requestIdRef.current) return;
       setResult(data);
       posthog.capture('tool_run', {
         tool: 'upzoning-check',
@@ -75,9 +82,10 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
         dual_occ_eligible: dualOccEligible(data),
       });
     } catch (e) {
+      if (requestId !== requestIdRef.current) return;
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }
 
@@ -85,6 +93,9 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
   const dualOccForm = result?.forms.find((f) =>
     f.development_type.startsWith('dual_occupancy'),
   );
+  // "The maps couldn't answer" must never render as a definitive no — the
+  // engine's three-state semantics survive to the headline.
+  const indeterminate = !eligible && dualOccForm?.unconfirmed === true;
 
   return (
     <div className="w-full max-w-xl mx-auto">
@@ -146,6 +157,20 @@ export function DuplexCheckWidget({ partnerName, ctaUrl, refSlug }: DuplexCheckW
               <p className="mt-1 text-xs text-gray-600">
                 That&apos;s a data outage, not an answer about your block — try
                 again in a minute.
+              </p>
+            </div>
+          ) : indeterminate ? (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
+              <HelpCircle className="w-7 h-7 mx-auto mb-1.5 text-amber-500" />
+              <p className="text-base font-bold text-gray-900">
+                Not determinable from the government maps.
+              </p>
+              <p className="mt-1 text-xs text-gray-600">
+                {dualOccForm
+                  ? plainReason(dualOccForm)
+                  : 'A required government map layer did not give a clear answer for this lot.'}{' '}
+                Where a map isn&apos;t clear we say so rather than guessing —
+                this one needs a closer look, not a no.
               </p>
             </div>
           ) : (

@@ -1,37 +1,30 @@
 import { DuplexCheckWidget } from '@/components/tools/DuplexCheckWidget';
-import {
-  getWidgetPartner,
-  sanitizeCtaUrl,
-  sanitizePartnerName,
-} from '@/lib/widget-partners';
+import { getWidgetPartner } from '@/lib/widget-partners';
 
 /**
  * /embed/upzoning — iframe-embeddable duplex eligibility checker.
  *
  * prior-art-checked: follows the existing app/embed/<tool>/page.tsx pattern
  * (layout.tsx handles domain logging + noindex); this is the upzoning tool's
- * embed, which did not exist. Partner branding resolves from the registry by
- * ?ref=<slug>; free-form ?partner=/?cta= params are accepted only through the
- * sanitizers and are IGNORED when ref matches a registered partner, so a
- * third party cannot iframe a registered brand with a swapped CTA target.
+ * embed, which did not exist. Branding resolves ONLY by ?ref=<slug> against
+ * the in-repo registry — free-form partner/cta params were removed after the
+ * PR #790 review found they allowed a registered builder's name to be paired
+ * with an arbitrary CTA URL. Unknown or missing ref renders the unbranded
+ * checker with no partner CTA.
  */
 export default function EmbedUpzoningPage({
   searchParams,
 }: {
-  searchParams: { ref?: string; partner?: string; cta?: string };
+  searchParams: { ref?: string | string[] };
 }) {
-  const registered = searchParams.ref ? getWidgetPartner(searchParams.ref) : null;
-  const partnerName = registered
-    ? registered.name
-    : sanitizePartnerName(searchParams.partner);
-  const ctaUrl = registered ? registered.ctaUrl : sanitizeCtaUrl(searchParams.cta);
+  const partner = getWidgetPartner(searchParams.ref);
 
   return (
     <div className="px-4 py-5">
       <DuplexCheckWidget
-        partnerName={partnerName}
-        ctaUrl={ctaUrl}
-        refSlug={registered?.slug ?? searchParams.ref ?? null}
+        partnerName={partner?.name ?? null}
+        ctaUrl={partner?.ctaUrl ?? null}
+        refSlug={partner?.slug ?? null}
       />
       <p className="mt-4 text-center text-xs text-gray-400">
         <a href="https://plotdetect.com.au" target="_blank" rel="noopener">

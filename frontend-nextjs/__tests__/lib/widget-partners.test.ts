@@ -1,17 +1,12 @@
 /**
- * Widget partner registry + embed param sanitizers.
+ * Widget partner registry.
  *
  * The registry drives outreach demo pages — a broken slug or a non-https CTA
  * silently breaks a builder's first impression, so the config itself is
- * tested. The sanitizers are the XSS/open-redirect boundary for the embed's
- * free-form query params.
+ * tested. Branding is registry-only (no free-form params — review finding,
+ * PR #790), so getWidgetPartner is the entire trust boundary.
  */
-import {
-  WIDGET_PARTNERS,
-  getWidgetPartner,
-  sanitizeCtaUrl,
-  sanitizePartnerName,
-} from '@/lib/widget-partners';
+import { WIDGET_PARTNERS, getWidgetPartner } from '@/lib/widget-partners';
 
 describe('WIDGET_PARTNERS registry', () => {
   it('holds all 20 outreach targets', () => {
@@ -59,38 +54,11 @@ describe('getWidgetPartner', () => {
   it('returns null for unknown slugs', () => {
     expect(getWidgetPartner('not-a-partner')).toBeNull();
     expect(getWidgetPartner('')).toBeNull();
-  });
-});
-
-describe('sanitizePartnerName', () => {
-  it('passes ordinary business names', () => {
-    expect(sanitizePartnerName('Clover Homes')).toBe('Clover Homes');
-    expect(sanitizePartnerName("O'Brien Building & Co (Syd)")).toBe("O'Brien Building & Co (Syd)");
+    expect(getWidgetPartner(undefined)).toBeNull();
   });
 
-  it('rejects markup and empty input', () => {
-    expect(sanitizePartnerName('<script>alert(1)</script>')).toBeNull();
-    expect(sanitizePartnerName(undefined)).toBeNull();
-    expect(sanitizePartnerName('')).toBeNull();
-  });
-
-  it('caps length at 40 characters before validating', () => {
-    const long = 'A'.repeat(60);
-    expect(sanitizePartnerName(long)).toBe('A'.repeat(40));
-  });
-});
-
-describe('sanitizeCtaUrl', () => {
-  it('passes https URLs', () => {
-    expect(sanitizeCtaUrl('https://example.com.au/contact/')).toBe('https://example.com.au/contact/');
-  });
-
-  it('rejects javascript:, data:, http:, and garbage', () => {
-    expect(sanitizeCtaUrl('javascript:alert(1)')).toBeNull();
-    // eslint-disable-next-line no-script-url
-    expect(sanitizeCtaUrl('data:text/html,<h1>x</h1>')).toBeNull();
-    expect(sanitizeCtaUrl('http://example.com')).toBeNull();
-    expect(sanitizeCtaUrl('not a url')).toBeNull();
-    expect(sanitizeCtaUrl(undefined)).toBeNull();
+  it('rejects a repeated ref param (array) instead of picking one', () => {
+    expect(getWidgetPartner(['buildana', 'clover-homes'])).toBeNull();
+    expect(getWidgetPartner(['buildana'])).toBeNull();
   });
 });
