@@ -1,52 +1,80 @@
 {
  "tier": "standard",
- "justification": "Completes the display-name rename on the app side: every remaining product-name use of Verify becomes Site Controls across nav CTAs, footer, the four persona pages, and pricing (including the Site Controls Pro tier name and its mailto subject). Verb uses of verify (verify current version, verification) are deliberately untouched, as are code identifiers, routes, the verify. subdomain, and VerifyOpsBot.",
- "commit_hash": "605bf9c5",
+ "justification": "White-label duplex checker: /embed/upzoning (iframe-embeddable, partner-branded) + /widget-demo/[slug] demo pages for the 20 builder outreach targets, driven by a partner registry with param sanitizers. Third surface over the existing upzoning engine; no planning logic added or changed.",
+ "commit_hash": "c414c9ff",
  "files": [
-  "frontend-nextjs/components/marketing/HomeNav.tsx",
-  "frontend-nextjs/components/marketing/SiteNav.tsx",
-  "frontend-nextjs/components/marketing/SiteFooter.tsx",
-  "frontend-nextjs/app/for/builders/page.tsx",
-  "frontend-nextjs/app/for/buyers-agents/page.tsx",
-  "frontend-nextjs/app/for/councils/page.tsx",
-  "frontend-nextjs/app/for/planners/page.tsx",
-  "frontend-nextjs/app/pricing/page.tsx"
+  "frontend-nextjs/lib/widget-partners.ts",
+  "frontend-nextjs/components/tools/DuplexCheckWidget.tsx",
+  "frontend-nextjs/app/embed/upzoning/page.tsx",
+  "frontend-nextjs/app/widget-demo/[slug]/page.tsx",
+  "frontend-nextjs/__tests__/lib/widget-partners.test.ts",
+  "frontend-nextjs/app/duplex-check/page.tsx",
+  "frontend-nextjs/COMPONENT_MAP.md"
  ],
  "pre_impl": {
-  "existing_data": "Follows the shipped naming decision (Site Report / Topic Reports / Site Controls) already live via website PR 13 and app PR 782; this pass covers the surfaces those PRs scoped out: nav CTAs, footer, persona pages, and pricing tier names.",
-  "assumption_mismatch": "Grep-audited the distinction between the product name and the verb before editing: ProvisionVersionBadge staleness copy (Verify current version) and all verification wording are verbs and stay; VerifyRegistrationPrompt and VerifyOpsBot are code identifiers and stay.",
-  "new_vs_existing": "No new capability: string replacements in eight existing files. Deliberately unchanged: routes, the verify. subdomain, analytics event names, and the assessment workbench internals which carry no standalone product-brand strings beyond what nav and footer supplied."
+  "existing_data": "Reuses the /api/upzoning proxy, PropertySearch, and lib/upzoning verdict helpers exactly as app/duplex-check/page.tsx (merged same day, #789) does; follows the app/embed/<tool> pattern whose layout already handles domain logging and noindex. Partner sites/contact URLs were live-verified during outreach research on 2026-07-19 and mirror the HubSpot records created the same day.",
+  "assumption_mismatch": "Prior-art guard fired on the registry file and pointed at lib/sanitize.ts — inspected: it is DOMPurify HTML sanitisation for dangerouslySetInnerHTML and cannot validate URL protocols or whitelist a name pattern for query params, so the two purpose-built sanitizers were justified and the ack line records that reasoning.",
+  "new_vs_existing": "New: presentation registry, compact widget component, embed route, demo shell, tests. Deliberately NOT new: eligibility logic (services/upzoning_check.py untouched), BuilderReferralCard (excluded by design — the white-label enquiry belongs to the partner, not our referral pool), no per-partner API keys yet (pilot phase counts usage via posthog partner property; keys come with billing)."
  },
- "functions": "N/A - display-string replacements only; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings, one mailto subject, and metadata text only.",
+ "functions": [
+  {
+   "name": "getWidgetPartner",
+   "file_line": "frontend-nextjs/lib/widget-partners.ts:69",
+   "input": "the ref query param or demo route slug, untrusted, typed string | string[] | undefined because Next.js delivers repeated params as arrays",
+   "output": "the matching WidgetPartner config object from the in-repo registry of 20 verified builders — the ONLY source of branding and CTA (free-form params removed after the PR #790 cross-review found a brand-spoof pairing)",
+   "if_none": "returns null on unknown slug, empty, undefined, or array input — the embed renders unbranded with no CTA button, and the demo page calls notFound() so an invalid outreach link 404s instead of showing a broken brand"
+  }
+ ],
+ "values": "N/A - no DB or API values are read by this change; the registry holds presentation values only (names, https URLs) and all planning data arrives from /api/upzoning at request time.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "The renamed mailto subject breaks the trial-request funnel because inbound emails no longer match an inbox filter set up for the old subject line.",
-   "what_happens": "Trial requests arrive under a new subject and could skip an existing filter or label.",
+   "scenario": "A third party pairs a registered builder's NAME with an attacker CTA — either via ref+cta or via the free-form params (?partner=Buildana&cta=https://phishing.example).",
+   "what_happens": "A real brand would launder a hostile enquiry link on an eligible verdict.",
    "mitigated": true,
-   "how": "The address is unchanged and the subject remains a plain trial request; any filter keyed on the old phrase needs a one-time update, called out in the PR body as a post-merge note.",
-   "repro": "Click the 14-day trial link on /pricing and confirm the draft opens addressed to hello@plotdetect.com.au with the Site Controls Pro subject."
+   "how": "Free-form partner/cta params were REMOVED after the cross-review flagged the pairing (name-vs-registry checks cannot close typosquats). Branding + CTA resolve only from the in-repo registry by exact ref slug; array refs are rejected. Registry test asserts every ctaUrl stays on the partner's own registrable domain.",
+   "repro": "Load /embed/upzoning?partner=Buildana&cta=https://evil.example — renders the unbranded checker, no CTA at all."
   },
   {
-   "scenario": "A verb use of verify is accidentally renamed, producing nonsense like Site Controls current version at NSW Legislation.",
-   "what_happens": "A sentence stops making sense and the staleness guidance becomes confusing.",
+   "scenario": "A visitor checks address A, quickly checks address B, and A's slower response arrives last — the widget silently shows A's verdict under B's search.",
+   "what_happens": "A wrong verdict for the address on screen, worst on a negative verdict which does not repeat the address.",
    "mitigated": true,
-   "how": "Replacements were explicit per-string pairs, never a blanket word swap; post-patch grep over the touched directories shows zero remaining product-name hits and the verb instances intact.",
-   "repro": "grep -rn 'Verify current' frontend-nextjs/components/compliance/ProvisionVersionBadge.tsx still returns the untouched verb usage."
+   "how": "Monotonic request-id guard in handleAddressSelect: only the latest selection's response may write result/error/loading state; stale responses return without touching state.",
+   "repro": "Throttle the network, run two rapid address selections — only the second's verdict renders."
   },
   {
-   "scenario": "The pricing tier renames desynchronise from Stripe product names or PostHog funnels that reference Verify Pro.",
-   "what_happens": "Dashboards or checkout labels show a different tier name than the site.",
+   "scenario": "The dual-occupancy form comes back unconfirmed (a required government map gave no clear answer) and the headline says a definitive 'Not this block'.",
+   "what_happens": "Three-state semantics collapse to a false no — the exact silent-wrong-result class the QA framework exists for. app/duplex-check/page.tsx from #789 had the identical collapse.",
    "mitigated": true,
-   "how": "Payments are disabled pre-incorporation so no live Stripe product references the tier; analytics event names were not renamed by design, so existing funnels keep matching; only display strings changed.",
-   "repro": "Search the diff for posthog or stripe: no occurrences; the only functional string changed is the mailto subject."
+   "how": "Indeterminate branch added in BOTH surfaces (DuplexCheckWidget and the /duplex-check ads page): renders 'Not determinable from the government maps' with the plain reason; no partner CTA and no referral card on indeterminate (CTA spec: eligible results only — the eligible && guards already enforce this).",
+   "repro": "Run an address whose dual-occ form returns unconfirmed=true on either surface — amber needs-a-closer-look card, not the grey no."
+  },
+  {
+   "scenario": "The computed verdict bends toward the partner — e.g. an ineligible block renders softer, or the CTA language upgrades a maybe into an implied yes.",
+   "what_happens": "The neutrality rule that protects the InfoTrack/licensing trust asset would be broken.",
+   "mitigated": true,
+   "how": "Verdict rendering is a pure function of the API result and identical with or without partner props. CTA policy (user decision 2026-07-19): partner button on eligible ('Ask X about a duplex') AND indeterminate ('Ask X to take a closer look' — no eligibility implied), NEVER on clear-no/not_residential/unavailable. Clicks tagged verdict: eligible|indeterminate so lead types report separately.",
+   "repro": "Run a heritage-area address on any /widget-demo page: verdict is the same clear no as the public tool, no partner CTA. Run an unconfirmed address: maybe card + closer-look button."
+  },
+  {
+   "scenario": "javascript: or data: URL injected via the cta param executes in the visitor's browser from inside a builder's site.",
+   "what_happens": "XSS on a partner's domain — reputationally fatal.",
+   "mitigated": true,
+   "how": "sanitizeCtaUrl parses with new URL() and only https: survives; jest covers javascript:, data:, http:, garbage, and undefined.",
+   "repro": "npx jest --testPathPattern=widget-partners — sanitizeCtaUrl rejection cases."
+  },
+  {
+   "scenario": "Inside the iframe, posthog events are blocked by tracking prevention, so pilot usage reports undercount and the weekly per-builder report claims fewer checks than happened.",
+   "what_happens": "Under-reporting our own product's performance to the exact audience we are trying to convert.",
+   "mitigated": false,
+   "how": "Known limitation: client events may be dropped by ITP/adblock. The embed layout already logs an embed_request server-side per load (domain + tool), which gives a load-count floor. Per-partner server-side check counting lands with the API-key work; until then pilot reports must state counts are a floor, not an exact figure.",
+   "repro": "Load the embed with an adblocker: embed_request still logs server-side; tool_run may not."
   }
  ],
  "post_merge": {
   "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - display copy and one mailto subject.",
-  "other_repo": "Completes the naming set with website PR 13 and app PR 782; no deploy coupling.",
-  "manual_verify": "Yes - on the Vercel preview: nav and footer read Site Controls, /pricing shows Site Controls Pro everywhere including the comparison table and FAQ, the four /for pages read Site Controls, and the trial mailto opens with the new subject. Update any inbox filter keyed on the old Verify Pro subject."
+  "secrets": "No secrets involved.",
+  "other_repo": "None. The outreach emails doc (~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md) carries the demo URLs — its send-gate flips once this deploys and links are click-tested.",
+  "manual_verify": "Yes - on the Vercel preview: (1) /widget-demo/buildana renders the mock-browser demo with Buildana's name and the CTA pointing at buildana.com.au/contact; (2) /widget-demo/unknown-slug 404s; (3) /embed/upzoning?ref=clover-homes runs a check end-to-end and the enquiry button opens the partner contact page in a new tab; (4) an ineligible address shows the same verdict as /duplex-check with no CTA."
  }
 }
