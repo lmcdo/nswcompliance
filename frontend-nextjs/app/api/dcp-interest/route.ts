@@ -26,13 +26,15 @@ export async function POST(request: NextRequest) {
     );
 
     // Notify info@plotdetect.com.au — fire and forget, don't fail the request
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    resend.emails.send({
-      from: 'PlotDetect <onboarding@resend.dev>',
-      to: 'info@plotdetect.com.au',
-      subject: `DCP interest: ${council_name}`,
-      text: `New DCP interest registration\n\nEmail: ${normalised}\nCouncil: ${council_name}\nAddress: ${address || '(not provided)'}`,
-    }).catch(err => console.error('[dcp-interest] resend error:', err));
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      resend.emails.send({
+        from: 'PlotDetect <info@plotdetect.com.au>',
+        to: 'info@plotdetect.com.au',
+        subject: `DCP interest: ${council_name}`,
+        text: `New DCP interest registration\n\nEmail: ${normalised}\nCouncil: ${council_name}\nAddress: ${address || '(not provided)'}`,
+      }).catch(err => console.error('[dcp-interest] resend error:', err));
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

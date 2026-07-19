@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       resend.emails.send({
-        from: 'PlotDetect <onboarding@resend.dev>',
+        from: 'PlotDetect <info@plotdetect.com.au>',
         to: 'info@plotdetect.com.au',
         subject: `Verify interest: ${safeRole || 'unknown role'} — ${council_name || 'no council'}`,
         text: `New Verify registration\n\nEmail: ${normalised}\nRole: ${safeRole || '(not provided)'}\nCouncil: ${council_name || '(not provided)'}\nAddress: ${address || '(not provided)'}\nSource: ${safeSource}`,
