@@ -1,7 +1,7 @@
 {
  "tier": "minor",
- "justification": "Sender-address fix for two interest-capture routes (DCP tab 'Notify me' and Verify registration). Both sent notifications from onboarding@resend.dev, Resend's shared test sender that only delivers to the account owner; sends to info@plotdetect.com.au were rejected and swallowed by the fire-and-forget catch, so no alert email arrived. Switched both to the verified domain sender info@plotdetect.com.au already used by six other email routes, and guarded dcp-interest on RESEND_API_KEY for parity with verify-interest. No logic or data-path change.",
- "commit_hash": "aae0aa1e",
+ "justification": "Notification-delivery fix for two interest-capture routes (DCP tab 'Notify me' and Verify registration). Two defects: (1) both sent from onboarding@resend.dev, Resend's test sender that only delivers to the account owner; (2) both sent to info@plotdetect.com.au while also sending from info@plotdetect.com.au — a self-domain send via an external relay that Google Workspace quarantines as spoofing (Resend shows 'delivered' but the mailbox never receives it, confirmed live). Switched the sender to the verified info@plotdetect.com.au domain, and routed the recipient to an off-domain NOTIFY_EMAIL (env-overridable, default lawrence.mcdonell@gmail.com) so From != To and Workspace accepts it. Guarded dcp-interest on RESEND_API_KEY for parity. No DB or data-path change.",
+ "commit_hash": "8257609d",
  "files": [
   "frontend-nextjs/app/api/dcp-interest/route.ts",
   "frontend-nextjs/app/api/verify-interest/route.ts"
@@ -11,11 +11,11 @@
  "queries": "N/A - no database queries added or modified.",
  "break_it": [
   {
-   "scenario": "info@plotdetect.com.au is not actually a verified sender in the Resend account, so switching from the test sender still fails delivery.",
-   "what_happens": "The notification email is rejected again and the fire-and-forget catch logs it; the registration row still saves and the user still sees success.",
+   "scenario": "Notification still routed to an @plotdetect.com.au address, re-triggering the Google Workspace self-domain spoofing quarantine so the mailbox never receives it despite a 'delivered' status.",
+   "what_happens": "Resend reports delivered but the email is silently quarantined by Workspace; the operator never sees the registration alert.",
    "mitigated": true,
-   "how": "Six existing production routes (stripe/webhook, satellite/granny-flat, satellite/solar-coverage-interest, canibuildit/lead, threat-radar) already send from info@plotdetect.com.au / alerts@plotdetect.com.au successfully, proving the domain is verified in Resend.",
-   "repro": "Submit the DCP tab 'Notify me' form on a preview with RESEND_API_KEY set and confirm a notification lands in info@plotdetect.com.au; cross-check against a working stripe/granny-flat send from the same domain."
+   "how": "Recipient moved off-domain to NOTIFY_EMAIL (default lawrence.mcdonell@gmail.com), so From (info@plotdetect.com.au) != To; a foreign-domain recipient only checks SPF/DKIM, which pass, as proven by canibuildit confirmations already landing at gmail.com. If NOTIFY_EMAIL is later set back to an @plotdetect.com.au address the bug returns, which the code comment warns against.",
+   "repro": "Submit the DCP tab 'Notify me' form on a preview with RESEND_API_KEY set and confirm a 'DCP interest' email lands in the NOTIFY_EMAIL Gmail inbox; contrast with the pre-fix info@ send that showed delivered but never arrived."
   },
   {
    "scenario": "RESEND_API_KEY is unset in the environment, so constructing the Resend client throws and breaks the request.",
