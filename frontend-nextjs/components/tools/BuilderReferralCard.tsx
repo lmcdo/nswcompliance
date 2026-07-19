@@ -226,7 +226,7 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
       {stepName === 'contact' && (
         <form onSubmit={submit} className="space-y-3">
           <p className="text-sm font-semibold text-gray-800">
-            Last step — where should the {recipient} reach you?
+            Last step — where can the {recipient} reach you?
           </p>
           <input
             type="text"
