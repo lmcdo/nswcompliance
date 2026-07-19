@@ -38,8 +38,8 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
           The {partner.name} duplex checker
         </h1>
         <p className="text-gray-600 mb-8 max-w-xl">
-          This is how the checker looks and works carrying {partner.name}&apos;s
-          name. Run any Sydney address — every check queries live NSW Government
+          This is how the checker will look on your site, carrying{' '}
+          {partner.name}&apos;s name. Run any Sydney address — every check queries live NSW Government
           planning maps, and an enquiry from an eligible result goes to{' '}
           {partner.name}&apos;s own contact page, nowhere else.
         </p>

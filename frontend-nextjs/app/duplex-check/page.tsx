@@ -20,6 +20,7 @@ import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
 import { DcpSnapshotCard } from '@/components/tools/DcpSnapshotCard';
+import { loadGoogleAds } from '@/lib/gtag';
 import { CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import {
   dualOccEligible,
@@ -33,6 +34,12 @@ export default function DuplexCheckLanding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const statusRef = useRef<HTMLDivElement>(null);
+
+  // Load the Google Ads tag on this ads landing only (no-op until the Ads env
+  // vars are set) so the $100 test can register lead conversions.
+  useEffect(() => {
+    loadGoogleAds();
+  }, []);
 
   // The spinner and the verdict must never sit below the fold unseen —
   // "nothing happened" is the number-one paid-click killer.

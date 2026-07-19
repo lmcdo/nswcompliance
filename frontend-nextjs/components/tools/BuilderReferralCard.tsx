@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import posthog from 'posthog-js';
+import { trackAdsConversion } from '@/lib/gtag';
 
 interface Props {
   address: string;
@@ -50,6 +51,8 @@ export function BuilderReferralCard({ address, lgaName }: Props) {
       tool: 'upzoning-check',
       lga: lgaName,
     });
+    // Google Ads lead conversion (no-op until the Ads env vars are set).
+    trackAdsConversion();
     setSubmitted(true);
   };
 
