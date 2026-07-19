@@ -65,10 +65,26 @@ const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 's
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
+  first_name: z.string().max(100, 'Name too long').optional().nullable(),
+  phone: z.string().max(40, 'Phone too long').optional().nullable(),
   address: z.string().min(5, 'Address too short').max(200, 'Address too long').optional().nullable(),
   eligible: z.boolean().optional().nullable(),
   lga_name: z.string().max(100, 'LGA name too long').optional().nullable(),
   interest_type: z.enum(INTEREST_TYPES).optional().nullable(),
+  // Multi-step qualifier answers — all optional (budget can be skipped).
+  qualification: z
+    .object({
+      timeline: z.string().max(40).optional().nullable(),
+      ownership: z.string().max(40).optional().nullable(),
+      finance: z.string().max(40).optional().nullable(),
+      budget: z.string().max(40).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
+  // Consent audit — the exact wording + version the user agreed to, stored so we
+  // can prove what a given person consented to (OAIC burden-of-proof).
+  consent_version: z.string().max(40).optional().nullable(),
+  consent_wording: z.string().max(1000).optional().nullable(),
   // Honeypot — bots fill this, humans don't. Must be present in form but hidden via CSS.
   // Accept any string (don't 400 bots — they'd retry with different payloads).
   // Silently discard after parsing if non-empty.
@@ -104,7 +120,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: firstError }, { status: 400 });
   }
 
-  const { email, address, eligible, lga_name, interest_type, website } = parsed.data;
+  const {
+    email, first_name, phone, address, eligible, lga_name, interest_type,
+    qualification, consent_version, consent_wording, website,
+  } = parsed.data;
 
   // --- 3. Honeypot check — silent success so bots don't know they're blocked ---
   if (website) {
@@ -143,12 +162,28 @@ export async function POST(req: NextRequest) {
   // --- 6. Store lead ---
   try {
     const supabase = getSupabase();
+    // Build the consent audit only when a consent statement was actually shown,
+    // capturing the exact wording/version + server-side IP + timestamp.
+    const consentRecord =
+      consent_version || consent_wording
+        ? {
+            version: consent_version ?? null,
+            wording: consent_wording ?? null,
+            shared_with: 'duplex-referral-partner',
+            ip,
+            captured_at: new Date().toISOString(),
+          }
+        : null;
     await supabase.from('canibuildit_leads').insert({
       email: cleanEmail,
       address: cleanAddress,
       eligible: eligible ?? null,
+      ...(first_name ? { first_name: first_name.trim() } : {}),
+      ...(phone ? { phone: phone.trim() } : {}),
       ...(lga_name ? { lga_name: lga_name.trim() } : {}),
       ...(interest_type ? { interest_type: interest_type.trim() } : {}),
+      ...(qualification ? { qualification } : {}),
+      ...(consentRecord ? { consent: consentRecord } : {}),
     });
   } catch {
     // Non-blocking — don't error the user if DB insert fails

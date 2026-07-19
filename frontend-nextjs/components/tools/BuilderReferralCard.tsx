@@ -1,9 +1,16 @@
 'use client';
 
-// Modelled on components/reports/PostResultEmailStrip.tsx (same lead API,
-// same self-contained state pattern); differs by the express consent checkbox
-// + referral-fee disclosure required before contact details may be shared
-// with a third party (Privacy Act / Spam Act consent basis).
+// Multi-step, qualify-first lead capture. Design is evidence-based (see
+// ~/.claude/plans/ce-lead-qualifier-research-2026-07.md):
+//   - Qualify BEFORE asking for contact details (CXL: +20% conversion, no
+//     quality loss) — foot-in-the-door / sunk-cost carries the user to the end.
+//   - One question per screen, tap-to-select buttons (no keyboard on mobile).
+//   - Budget is OPTIONAL with a "Not sure yet" escape (most conversion-damaging
+//     field; timeline + finance-readiness are the high-signal, low-threat ones).
+//   - Consent is UNBUNDLED, un-ticked, names the recipient, and is stored with
+//     its exact wording/version as an audit record (OAIC: the entity bears the
+//     burden of proving consent).
+// The computed verdict is never altered by this card; it renders below it.
 
 import { useEffect, useState } from 'react';
 import posthog from 'posthog-js';
@@ -18,134 +25,300 @@ interface Props {
   verdict?: Verdict;
 }
 
-/**
- * Referral capture shown under an eligible OR a needs-checking dual-occupancy
- * result. The computed result is never altered by this card; it renders below
- * it. Submissions post to the existing lead API with a distinct interest_type
- * so referral-consented rows are separable from plain email-me rows.
- *
- * The needs-checking variant must NOT imply that a builder review will make the
- * block eligible — it offers a person to look at a property-specific issue the
- * automated map check could not resolve.
- */
+interface Opt {
+  v: string;
+  l: string;
+}
+
+const TIMELINE: Opt[] = [
+  { v: 'asap', l: 'As soon as possible' },
+  { v: '1-3m', l: '1–3 months' },
+  { v: '3-6m', l: '3–6 months' },
+  { v: '6-12m', l: '6–12 months' },
+  { v: 'researching', l: '12+ months / just researching' },
+];
+const OWNERSHIP: Opt[] = [
+  { v: 'owner', l: 'I own it' },
+  { v: 'buying', l: 'I’m buying it' },
+  { v: 'other', l: 'Agent / someone else' },
+];
+const FINANCE: Opt[] = [
+  { v: 'sorted', l: 'Finance is sorted' },
+  { v: 'looking', l: 'Looking into it' },
+  { v: 'cash', l: 'Paying cash' },
+  { v: 'not-yet', l: 'Not yet' },
+];
+const BUDGET: Opt[] = [
+  { v: 'under-500k', l: 'Under $500k' },
+  { v: '500-750k', l: '$500k – $750k' },
+  { v: '750k-1m', l: '$750k – $1M' },
+  { v: '1-1.5m', l: '$1M – $1.5M' },
+  { v: '1.5m-plus', l: '$1.5M+' },
+  { v: 'unsure', l: 'Not sure yet' },
+];
+
+// Bump when the consent wording below changes — stored with each lead so we can
+// always show a regulator the exact statement a given person agreed to.
+const CONSENT_VERSION = '2026-07-19';
+
+const STEPS = ['timeline', 'ownership', 'finance', 'budget', 'contact'] as const;
+const TOTAL = STEPS.length;
+
 export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: Props) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
-  const [consent, setConsent] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [shareConsent, setShareConsent] = useState(false);
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     posthog.capture('referral_cta_view', { tool: 'upzoning-check', verdict });
   }, [verdict]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const recipient = verdict === 'eligible' ? 'duplex builder' : 'duplex specialist';
+  const shareWording =
+    `Share my name, contact details, this address and result with a ${recipient} ` +
+    `in my area so they can contact me about this property. PlotDetect may receive a referral fee.`;
+
+  const heading =
+    verdict === 'eligible'
+      ? 'Talk to a builder about what a duplex here would cost'
+      : 'Get a specialist to check this block properly';
+  const sub =
+    verdict === 'eligible'
+      ? `A few quick taps and we’ll line up a free, no-obligation chat with a ${recipient}${lgaName ? ` in ${lgaName}` : ''} about real numbers and next steps.`
+      : `The automatic check couldn’t give a clear answer. A few quick taps and a ${recipient}${lgaName ? ` in ${lgaName}` : ''} can look at the property-specific issue — no cost, no obligation. It doesn’t change the result above.`;
+
+  function pick(key: string, value: string) {
+    setAnswers((a) => ({ ...a, [key]: value }));
+    posthog.capture('referral_qualify_step', { step: STEPS[step], value, verdict });
+    setStep((s) => Math.min(s + 1, TOTAL - 1));
+  }
+
+  function goBack() {
+    setStatus('idle');
+    setErrorMsg(null);
+    setStep((s) => Math.max(s - 1, 0));
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (status === 'submitting') return;
-    if (!email.trim() || !consent) {
-      // Surface the gate instead of a dead disabled button.
+    if (!email.trim() || !shareConsent) {
+      setErrorMsg(
+        !shareConsent
+          ? 'Please tick the box so we can pass your details to the builder.'
+          : 'Please enter your email.',
+      );
       setStatus('error');
       return;
     }
     setStatus('submitting');
+    setErrorMsg(null);
     try {
       const res = await fetch('/api/canibuildit/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
+          first_name: firstName.trim() || null,
+          phone: phone.trim() || null,
           address,
           eligible: verdict === 'eligible',
           lga_name: lgaName,
           interest_type: 'dual-occ-referral',
+          qualification: {
+            timeline: answers.timeline ?? null,
+            ownership: answers.ownership ?? null,
+            finance: answers.finance ?? null,
+            budget: answers.budget ?? null,
+          },
+          consent_version: CONSENT_VERSION,
+          consent_wording: shareWording,
         }),
       });
-      // A non-2xx must NOT read as success — that silently loses the lead and
-      // tells the visitor they're sorted when they aren't.
+      // A non-2xx must NOT read as success — that silently loses the lead.
       if (!res.ok) throw new Error('request failed');
     } catch {
+      setErrorMsg('Something went wrong sending that — please try again.');
       setStatus('error');
       return;
     }
-    posthog.capture('referral_lead_submitted', { tool: 'upzoning-check', lga: lgaName, verdict });
-    // Google Ads lead conversion (no-op until the Ads env vars are set).
+    posthog.capture('referral_lead_submitted', {
+      tool: 'upzoning-check',
+      lga: lgaName,
+      verdict,
+      timeline: answers.timeline ?? null,
+      ownership: answers.ownership ?? null,
+    });
     trackAdsConversion();
     setStatus('done');
-  };
+  }
 
   if (status === 'done') {
     return (
       <div className="rounded-xl border border-teal-200 bg-teal-50 p-5">
         <p className="text-sm text-teal-800 font-medium">
-          Thanks — we&apos;ve got your request. We&apos;ll email {email} to
-          arrange the builder introduction.
+          Thanks{firstName ? `, ${firstName}` : ''} — we’ve got your request.
+          We’ll email {email} to arrange the {recipient} introduction.
         </p>
       </div>
     );
   }
 
-  const heading =
-    verdict === 'eligible'
-      ? 'So what would a duplex here actually cost to build?'
-      : 'Want a person to check this block properly?';
-  const sub =
-    verdict === 'eligible'
-      ? `Have a free chat with a builder who does dual occupancies${lgaName ? ` in ${lgaName}` : ' in your area'} — real numbers, timelines, and what's involved on a block like yours.`
-      : `The automatic map check couldn't give a clear answer here. A duplex specialist${lgaName ? ` in ${lgaName}` : ' in your area'} can look at the property-specific issue — no cost, no obligation. It doesn't change the result above.`;
-  const buttonLabel =
-    verdict === 'eligible' ? 'Ask about cost & next steps' : 'Ask a specialist to check this block';
+  const stepName = STEPS[step];
 
   return (
     <div className="rounded-xl border-2 border-teal-500 bg-gradient-to-br from-teal-50 to-white p-5">
-      <p className="text-base font-bold text-gray-900">{heading}</p>
-      <p className="text-sm text-gray-600 mt-1 mb-3">{sub}</p>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Consent sits ABOVE the button so the gate is understood before the
-            action, and the recipient/use is spelled out. */}
-        <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => {
-              setConsent(e.target.checked);
-              if (e.target.checked && status === 'error') setStatus('idle');
-            }}
-            className="mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-base font-bold text-gray-900">{heading}</p>
+        {step > 0 && (
+          <button
+            type="button"
+            onClick={goBack}
+            className="text-xs text-gray-500 hover:text-gray-700 flex-shrink-0 ml-3"
+          >
+            ← Back
+          </button>
+        )}
+      </div>
+      {step === 0 && <p className="text-sm text-gray-600 mt-1 mb-3">{sub}</p>}
+
+      {/* Progress */}
+      <div className="mt-2 mb-4">
+        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-teal-500 transition-all duration-300"
+            style={{ width: `${((step + 1) / TOTAL) * 100}%` }}
           />
-          <span>
-            Share my email, this address and result with a duplex builder so they
-            can contact me about this property. PlotDetect may receive a referral
-            fee.
-          </span>
-        </label>
-        {/* Fields stack on mobile so the input keeps full width and the button
-            never dominates before consent is read. */}
-        <div className="flex flex-col sm:flex-row gap-2">
+        </div>
+        <p className="mt-1 text-[11px] text-gray-500">Step {step + 1} of {TOTAL}</p>
+      </div>
+
+      {stepName === 'timeline' && (
+        <Question label="When are you thinking of building?" opts={TIMELINE} onPick={(v) => pick('timeline', v)} />
+      )}
+      {stepName === 'ownership' && (
+        <Question label="Do you own this property?" opts={OWNERSHIP} onPick={(v) => pick('ownership', v)} />
+      )}
+      {stepName === 'finance' && (
+        <Question label="Where are you up to with finance?" opts={FINANCE} onPick={(v) => pick('finance', v)} />
+      )}
+      {stepName === 'budget' && (
+        <div>
+          <p className="text-sm font-semibold text-gray-800 mb-2">
+            Rough build budget? <span className="font-normal text-gray-400">(optional)</span>
+          </p>
+          <OptGrid opts={BUDGET} onPick={(v) => pick('budget', v)} />
+          <button
+            type="button"
+            onClick={() => setStep((s) => Math.min(s + 1, TOTAL - 1))}
+            className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-700 underline"
+          >
+            Skip this
+          </button>
+        </div>
+      )}
+
+      {stepName === 'contact' && (
+        <form onSubmit={submit} className="space-y-3">
+          <p className="text-sm font-semibold text-gray-800">
+            Last step — where should the {recipient} reach you?
+          </p>
+          <input
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="First name"
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          />
           <input
             type="email"
             required
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              if (status === 'error') setStatus('idle');
+              if (status === 'error') { setStatus('idle'); setErrorMsg(null); }
             }}
             placeholder="you@email.com"
-            className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
           />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone (optional)"
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          />
+          {/* Unbundled, un-ticked, recipient named. Required to submit. */}
+          <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={shareConsent}
+              onChange={(e) => {
+                setShareConsent(e.target.checked);
+                if (e.target.checked && status === 'error') { setStatus('idle'); setErrorMsg(null); }
+              }}
+              className="mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span>{shareWording}</span>
+          </label>
           <button
             type="submit"
             disabled={status === 'submitting'}
-            className="px-5 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors whitespace-nowrap disabled:opacity-60"
+            className="w-full px-5 py-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
           >
-            {status === 'submitting' ? 'Sending…' : buttonLabel}
+            {status === 'submitting' ? 'Sending…' : `Request my ${recipient} intro`}
           </button>
-        </div>
-        {status === 'error' && (
-          <p className="text-xs text-red-600">
-            {!consent
-              ? 'Please tick the box above so we can pass your details to the builder.'
-              : 'Something went wrong sending that — please try again.'}
+          {status === 'error' && errorMsg && (
+            <p className="text-xs text-red-600">{errorMsg}</p>
+          )}
+          <p className="text-[11px] text-gray-400">
+            We only share your details after you tick the box above. See our{' '}
+            <a href="/privacy" className="underline hover:text-gray-600">privacy policy</a>.
           </p>
-        )}
-      </form>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Question({ label, opts, onPick }: { label: string; opts: Opt[]; onPick: (v: string) => void }) {
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-800 mb-2">{label}</p>
+      <div className="space-y-2">
+        {opts.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onPick(o.v)}
+            className="w-full text-left px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 hover:border-teal-500 hover:bg-teal-50 transition-colors"
+          >
+            {o.l}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OptGrid({ opts, onPick }: { opts: Opt[]; onPick: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {opts.map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          onClick={() => onPick(o.v)}
+          className="px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 hover:border-teal-500 hover:bg-teal-50 transition-colors"
+        >
+          {o.l}
+        </button>
+      ))}
     </div>
   );
 }
