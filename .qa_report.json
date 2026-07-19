@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Replaces the email-only builder referral capture with a multi-step qualify-first lead form, stores the qualification answers + an express-consent audit, and adds an /internal/leads admin page (system of record) to read them. Design is evidence-based (CXL qualify-first +20%, OAIC consent rules). Adds first_name/phone/qualification/consent to the canibuildit_leads insert and an additive nullable migration (057). The /internal/leads page is a read-only server component behind the same auth gate as the other /internal pages, reading via the server-only service role. The computed planning verdict is never touched.",
- "commit_hash": "d79570c3",
+ "commit_hash": "634226c1",
  "files": [
   "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
   "frontend-nextjs/app/api/canibuildit/lead/route.ts",
@@ -59,18 +59,18 @@
    "repro": "On a DB without 057, POST a qualified lead and confirm the columns are missing; after applying 057, confirm the same POST stores qualification + consent."
   },
   {
-   "scenario": "A user taps through timeline/ownership/finance, skips budget, and submits — a partial qualification.",
-   "what_happens": "budget is null while the other three are set; the lead must still store and count as a valid (if slightly-less-qualified) lead.",
+   "scenario": "The trimmed 3-step qualifier collects only timeline + ownership; finance and budget are always sent null. The /internal/leads view or later reporting could assume all four qualifiers are present and break or mislabel.",
+   "what_happens": "A qualification object with finance/budget null could render empty/undefined chips or throw on a missing field.",
    "mitigated": true,
-   "how": "Budget is explicitly optional (Skip control + 'Not sure yet'); the qualification object carries nulls for any unanswered field and the zod schema marks every qualification field optional/nullable.",
-   "repro": "Complete the form skipping budget; confirm the row's qualification jsonb has budget:null and timeline/ownership/finance populated."
+   "how": "The qualification jsonb carries explicit nulls for finance/budget; the /internal/leads display maps each field through label() (returns null when absent) and .filter(Boolean), so only present qualifiers render; the zod schema marks every qualification field optional/nullable.",
+   "repro": "Submit a lead via the 3-step form; confirm qualification jsonb = {timeline, ownership, finance:null, budget:null} and /internal/leads shows only the timeline + ownership chips."
   },
   {
-   "scenario": "NEXT_PUBLIC_AUTH_ENABLED is not 'true' in production, so /internal/leads renders its auth gate as a no-op and exposes lead PII (name, email, phone, address, IP, consent) to anyone who guesses the URL.",
-   "what_happens": "The whole leads table (personal information) would be readable unauthenticated — a privacy breach, worse here than on the other /internal pages because this is raw consented PII.",
-   "mitigated": false,
-   "how": "The page uses the SAME gate as every other /internal page (redirect to /login when NEXT_PUBLIC_AUTH_ENABLED==='true'); it is not weaker, but it inherits the codebase-wide dependency on that flag being set in prod. It is noindex (not crawled) and unlinked publicly, but the URL is guessable. MUST verify the flag is 'true' in the Vercel prod env before/at merge; a follow-up should make /internal fail-closed regardless of the flag.",
-   "repro": "Set NEXT_PUBLIC_AUTH_ENABLED unset/false locally, visit /internal/leads, and confirm it renders without a login redirect — then confirm it IS gated with the flag set to 'true'."
+   "scenario": "Someone who is not signed in guesses the /internal/leads URL to read lead PII (name, email, phone, address, IP, consent).",
+   "what_happens": "If the page rendered open it would leak the whole leads table — a privacy breach worse than the other /internal pages because this is raw consented PII.",
+   "mitigated": true,
+   "how": "Unlike the other /internal pages (gated only when NEXT_PUBLIC_AUTH_ENABLED==='true'), /internal/leads is fail-closed: it ALWAYS calls supabase.auth.getUser() and redirects unauthenticated visitors to /login, independent of any env flag. It is also noindex. Trade-off: viewing leads now requires being logged in.",
+   "repro": "With NEXT_PUBLIC_AUTH_ENABLED unset and no session, visit /internal/leads and confirm it redirects to /login (does NOT render the table); confirm it renders once signed in."
   },
   {
    "scenario": "A bot posts to the lead endpoint with the honeypot filled or an invalid email domain.",
@@ -84,7 +84,7 @@
   "db_reset": "Not required. Migration 057 (additive nullable columns on canibuildit_leads) is already applied to production Supabase; no data change, no backfill.",
   "secrets": "No new secrets. Uses the existing server-only Supabase service-role credential already configured for this route.",
   "other_repo": "None. Frontend + its API route only; the leads live in the same Supabase. The /internal/leads admin view is now built (read-only); status/routing/HubSpot-sync remain scoped in ce-lead-qualifier-research-2026-07.md.",
-  "auth": "CRITICAL: /internal/leads shows raw lead PII behind the flag-based gate shared by all /internal pages. Confirm NEXT_PUBLIC_AUTH_ENABLED='true' in Vercel production BEFORE relying on it; otherwise the page is publicly readable. Follow-up: make /internal fail-closed independent of the flag.",
+  "auth": "/internal/leads is now fail-closed — it always requires a signed-in user (redirects to /login) regardless of NEXT_PUBLIC_AUTH_ENABLED, so the PII page can't render open. The other /internal pages (index, setback-review, dcp-review) still use the flag-based gate; rolling the same fail-closed pattern to them is a follow-up. To view leads you must be logged in.",
   "manual_verify": "Yes - on the preview: run an eligible address, tap through timeline/ownership/finance, skip budget, enter contact + tick consent, submit; confirm the success state and then that a canibuildit_leads row has the qualification and consent jsonb populated (incl. the exact consent wording and an IP). Also confirm the needs-checking result shows the same qualifier with 'specialist' wording."
  }
 }

@@ -62,11 +62,12 @@ function fmtDate(iso: string): string {
 }
 
 export default async function InternalLeadsPage() {
-  if (process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true') {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
-  }
+  // Fail-closed: this page shows raw lead PII, so it ALWAYS requires a signed-in
+  // user — unlike the other /internal pages, it never renders open even when
+  // NEXT_PUBLIC_AUTH_ENABLED is unset. To view leads you must be logged in.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
   const service = getAdminClient();
   const { data, error } = await service

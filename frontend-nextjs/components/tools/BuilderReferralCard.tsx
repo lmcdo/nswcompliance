@@ -5,11 +5,11 @@
 //   - Qualify BEFORE asking for contact details (CXL: +20% conversion, no
 //     quality loss) — foot-in-the-door / sunk-cost carries the user to the end.
 //   - One question per screen, tap-to-select buttons (no keyboard on mobile).
-//   - Budget is OPTIONAL with a "Not sure yet" escape (most conversion-damaging
-//     field; timeline + finance-readiness are the high-signal, low-threat ones).
+//   - Kept deliberately SHORT (2 questions + contact): timeline is the strongest
+//     intent signal, ownership filters out renters/non-decision-makers. Finance
+//     and budget are add-backs once funnel data shows completion holds up.
 //   - Consent is UNBUNDLED, un-ticked, names the recipient, and is stored with
-//     its exact wording/version as an audit record (OAIC: the entity bears the
-//     burden of proving consent).
+//     its exact wording/version as an audit record (OAIC burden of proof).
 // The computed verdict is never altered by this card; it renders below it.
 
 import { useEffect, useState } from 'react';
@@ -42,26 +42,12 @@ const OWNERSHIP: Opt[] = [
   { v: 'buying', l: 'I’m buying it' },
   { v: 'other', l: 'Agent / someone else' },
 ];
-const FINANCE: Opt[] = [
-  { v: 'sorted', l: 'Finance is sorted' },
-  { v: 'looking', l: 'Looking into it' },
-  { v: 'cash', l: 'Paying cash' },
-  { v: 'not-yet', l: 'Not yet' },
-];
-const BUDGET: Opt[] = [
-  { v: 'under-500k', l: 'Under $500k' },
-  { v: '500-750k', l: '$500k – $750k' },
-  { v: '750k-1m', l: '$750k – $1M' },
-  { v: '1-1.5m', l: '$1M – $1.5M' },
-  { v: '1.5m-plus', l: '$1.5M+' },
-  { v: 'unsure', l: 'Not sure yet' },
-];
 
 // Bump when the consent wording below changes — stored with each lead so we can
 // always show a regulator the exact statement a given person agreed to.
 const CONSENT_VERSION = '2026-07-19';
 
-const STEPS = ['timeline', 'ownership', 'finance', 'budget', 'contact'] as const;
+const STEPS = ['timeline', 'ownership', 'contact'] as const;
 const TOTAL = STEPS.length;
 
 export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: Props) {
@@ -89,8 +75,8 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
       : 'Get a specialist to check this block properly';
   const sub =
     verdict === 'eligible'
-      ? `A few quick taps and we’ll line up a free, no-obligation chat with a ${recipient}${lgaName ? ` in ${lgaName}` : ''} about real numbers and next steps.`
-      : `The automatic check couldn’t give a clear answer. A few quick taps and a ${recipient}${lgaName ? ` in ${lgaName}` : ''} can look at the property-specific issue — no cost, no obligation. It doesn’t change the result above.`;
+      ? `A couple of quick taps and we’ll line up a free, no-obligation chat with a ${recipient}${lgaName ? ` in ${lgaName}` : ''} about real numbers and next steps.`
+      : `The automatic check couldn’t give a clear answer. A couple of quick taps and a ${recipient}${lgaName ? ` in ${lgaName}` : ''} can look at the property-specific issue — no cost, no obligation. It doesn’t change the result above.`;
 
   function pick(key: string, value: string) {
     setAnswers((a) => ({ ...a, [key]: value }));
@@ -133,8 +119,8 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
           qualification: {
             timeline: answers.timeline ?? null,
             ownership: answers.ownership ?? null,
-            finance: answers.finance ?? null,
-            budget: answers.budget ?? null,
+            finance: null,
+            budget: null,
           },
           consent_version: CONSENT_VERSION,
           consent_wording: shareWording,
@@ -203,24 +189,6 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
       )}
       {stepName === 'ownership' && (
         <Question label="Do you own this property?" opts={OWNERSHIP} onPick={(v) => pick('ownership', v)} />
-      )}
-      {stepName === 'finance' && (
-        <Question label="Where are you up to with finance?" opts={FINANCE} onPick={(v) => pick('finance', v)} />
-      )}
-      {stepName === 'budget' && (
-        <div>
-          <p className="text-sm font-semibold text-gray-800 mb-2">
-            Rough build budget? <span className="font-normal text-gray-400">(optional)</span>
-          </p>
-          <OptGrid opts={BUDGET} onPick={(v) => pick('budget', v)} />
-          <button
-            type="button"
-            onClick={() => setStep((s) => Math.min(s + 1, TOTAL - 1))}
-            className="mt-2 text-xs font-medium text-gray-500 hover:text-gray-700 underline"
-          >
-            Skip this
-          </button>
-        </div>
       )}
 
       {stepName === 'contact' && (
@@ -302,23 +270,6 @@ function Question({ label, opts, onPick }: { label: string; opts: Opt[]; onPick:
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-function OptGrid({ opts, onPick }: { opts: Opt[]; onPick: (v: string) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {opts.map((o) => (
-        <button
-          key={o.v}
-          type="button"
-          onClick={() => onPick(o.v)}
-          className="px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 hover:border-teal-500 hover:bg-teal-50 transition-colors"
-        >
-          {o.l}
-        </button>
-      ))}
     </div>
   );
 }
