@@ -1,40 +1,40 @@
 {
  "tier": "minor",
- "justification": "Removes the flaky magic-link login from /internal/leads and replaces it with a simple shared access key (INTERNAL_ACCESS_KEY via ?key=). The page holds customer PII, so it is deliberately NOT made fully public: the gate is fail-closed — if the env key is unset or the query key is wrong, the page returns notFound() and never renders the leads. One file; no change to the lead data path or the verdict engine.",
- "commit_hash": "PENDING",
+ "justification": "Test-only change: realigns the BuilderReferralCard suite with the multi-step qualifier the component already ships (timeline -> ownership -> contact) and adds regression guards for the false-success defect. No production code is touched, no DB or API path changes. Minor tier because the blast radius is the test suite itself - but the suite guards a lead-capture surface where a silently-failed submit loses a paying lead, so the assertions are written to fail loudly rather than merely exercise the component.",
+ "commit_hash": "bec24cfe",
  "files": [
-  "frontend-nextjs/app/internal/leads/page.tsx"
+  "frontend-nextjs/__tests__/components/tools/BuilderReferralCard.test.tsx"
  ],
- "functions": "N/A - swaps the auth guard at the top of the page component; no function added or changed in signature beyond adding the searchParams prop.",
- "values": "N/A - reads one env var (INTERNAL_ACCESS_KEY) and one query param (key); no DB or external-API values drive a decision.",
- "queries": "N/A - the existing lead SELECT is unchanged.",
+ "functions": "N/A - test file only. Adds two local helpers, advanceToContact() and fillContactAndSubmit(), that drive the 3 qualifier steps so each test starts from the contact form; no production function added or changed.",
+ "values": "N/A - no runtime values read. The suite asserts on the posted payload (email, address, eligible, lga_name, interest_type, qualification{timeline,ownership}, consent_wording) and on PostHog event properties.",
+ "queries": "N/A - no database access; the lead POST to /api/canibuildit/lead is mocked via global fetch.",
  "break_it": [
   {
-   "scenario": "INTERNAL_ACCESS_KEY is not set in the environment (e.g. forgotten in Vercel) and someone opens /internal/leads.",
-   "what_happens": "With no key configured the page must not fall open and leak PII.",
+   "scenario": "The component regresses to showing the success confirmation even when the lead POST fails (the original false-success defect), and the suite still passes.",
+   "what_happens": "A failed submit would be shown to the user as 'got your request', silently losing the lead with no retry prompt - the exact bug these tests exist to catch.",
    "mitigated": true,
-   "how": "The gate is fail-closed: `if (!required || key !== required) notFound()` — an unset env var means `required` is falsy, so every request 404s and the leads never render. The old behaviour (open when a flag was unset) is gone.",
-   "repro": "Unset INTERNAL_ACCESS_KEY, visit /internal/leads and /internal/leads?key=anything, and confirm both 404 with no lead data in the response."
+   "how": "Two separate tests cover both failure modes (non-ok response, and a rejected fetch). Each asserts BOTH that the error text renders AND that the confirmation is absent (queryByText(/got your request/) not in document), so a regression that renders both cannot pass.",
+   "repro": "Make the component call setSubmitted(true) in the catch/non-ok branch; both 'shows an error and NOT a confirmation' tests fail."
   },
   {
-   "scenario": "Someone guesses the /internal/leads URL but does not know the access key.",
-   "what_happens": "Without the key they must not see any lead PII.",
+   "scenario": "The consent-gating assertion matches the wrong element, so it passes without the error ever rendering.",
+   "what_happens": "The test would go green whether or not the consent error appears, silently losing the guard on submitting contact details without consent.",
    "mitigated": true,
-   "how": "The query key must exactly equal INTERNAL_ACCESS_KEY; any mismatch calls notFound() before the admin client is created or any lead is fetched. The page is also noindex.",
-   "repro": "With INTERNAL_ACCESS_KEY set, visit /internal/leads without ?key and with a wrong ?key; confirm both 404, and the correct ?key renders the table."
+   "how": "'tick the box' appears twice in the component - the consent error and the standing helper text under the checkbox - so getByText threw on ambiguity. The assertion now matches 'pass your details to the builder', which occurs only in the error string.",
+   "repro": "grep the component: 'tick the box' returns 2 hits, 'pass your details to the builder' returns 1 (the error). Revert the matcher and the test fails with 'found multiple elements'."
   },
   {
-   "scenario": "The access key, being in the URL, leaks via browser history, referrer headers, or server logs.",
-   "what_happens": "A leaked key would let a holder read the leads until the key is rotated.",
+   "scenario": "The qualifier answers are dropped from the payload but the submit test still passes on the remaining fields.",
+   "what_happens": "Leads would arrive without timeline/ownership qualification, degrading them to plain email-me rows and breaking builder routing, with no test failure.",
    "mitigated": true,
-   "how": "Accepted trade-off for a single-user internal tool that was previously blocked by broken magic-link auth; the key is a rotatable secret (change the env var to invalidate), the page is noindex, and it exposes read-only lead data, not account control. A cookie/session upgrade is a follow-up if the tool gains more users.",
-   "repro": "Rotate INTERNAL_ACCESS_KEY in the env and confirm the old ?key value now 404s."
+   "how": "The payload test asserts qualification toMatchObject({timeline:'asap', ownership:'owner'}) and consent_wording matching the referral-fee disclosure, in addition to the base fields; the event test asserts timeline/ownership/verdict on referral_lead_submitted.",
+   "repro": "Remove qualification from the POST body; 'posts the referral interest_type + qualification ...' fails."
   }
  ],
  "post_merge": {
   "db_reset": "Not required - no schema or data change.",
-  "secrets": "Add INTERNAL_ACCESS_KEY (a long random string) to the Vercel project env. Then open /internal/leads?key=<that value> and bookmark it — no login needed. Leave it unset and the page stays 404 (safe default).",
-  "other_repo": "None - frontend page only.",
-  "manual_verify": "Yes - after setting INTERNAL_ACCESS_KEY on the deploy: confirm /internal/leads?key=<value> shows the leads table, and that /internal/leads (no key) and a wrong key both 404."
+  "secrets": "None.",
+  "other_repo": "None - frontend test file only.",
+  "manual_verify": "Done: npx jest __tests__/components/tools/BuilderReferralCard.test.tsx -> 8/8 passed, including the previously-failing consent-gating test. Full frontend suite re-run clean: 68 suites / 904 tests passed."
  }
 }
