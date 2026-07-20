@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
- "commit_hash": "4e261a99",
+ "commit_hash": "f98416d1",
  "files": [
   "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
  ],
