@@ -1,9 +1,12 @@
 /**
- * White-label duplex-checker partner registry.
+ * White-label partner registry for the embeddable checks.
  *
- * Drives the branded demo pages (/widget-demo/[slug]) and the partner embed
- * (/embed/upzoning?ref=<slug>). Presentation config ONLY — no planning data,
- * no gate logic; every check runs through /api/upzoning like the public tool.
+ * Drives the branded demo page (/widget-demo/[slug]) and the partner embeds
+ * (/embed/<tool>?ref=<slug>) — the duplex checker plus the flood, granny-flat,
+ * overshadowing, solar and development-activity checks. Presentation config
+ * ONLY — no planning data, no gate logic; every check runs through its own
+ * public API exactly as the un-branded tool does, so branding can never bend a
+ * result.
  *
  * prior-art-checked: lib/sanitize.ts is DOMPurify HTML sanitisation for
  * dangerouslySetInnerHTML — it cannot validate a URL's protocol or whitelist
