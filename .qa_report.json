@@ -1,40 +1,45 @@
 {
  "tier": "minor",
- "justification": "Test-only change: realigns the BuilderReferralCard suite with the multi-step qualifier the component already ships (timeline -> ownership -> contact) and adds regression guards for the false-success defect. No production code is touched, no DB or API path changes. Minor tier because the blast radius is the test suite itself - but the suite guards a lead-capture surface where a silently-failed submit loses a paying lead, so the assertions are written to fail loudly rather than merely exercise the component.",
- "commit_hash": "bec24cfe",
+ "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
+ "commit_hash": "4e261a99",
  "files": [
-  "frontend-nextjs/__tests__/components/tools/BuilderReferralCard.test.tsx"
+  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
  ],
- "functions": "N/A - test file only. Adds two local helpers, advanceToContact() and fillContactAndSubmit(), that drive the 3 qualifier steps so each test starts from the contact form; no production function added or changed.",
- "values": "N/A - no runtime values read. The suite asserts on the posted payload (email, address, eligible, lga_name, interest_type, qualification{timeline,ownership}, consent_wording) and on PostHog event properties.",
- "queries": "N/A - no database access; the lead POST to /api/canibuildit/lead is mocked via global fetch.",
+ "pre_impl": {
+  "existing_data": "Grounded in two verified research passes on 2026-07-20: a workflow study of Sydney duplex builders (free same-day site assessment is universal; monetisation starts at tender; ~21 manual lookups per site) and a code audit of what the engine actually returns. Copy claims only capabilities the audit confirmed: per-address eligibility with clause/page citations, the unconfirmed three-state, per-council DCP controls.",
+  "assumption_mismatch": "The audit killed three angles that earlier copy drafts flirted with: suburb-level eligible-stock aggregates (bulk index still serves corrupt FSR-derived yields), refusal-pattern insight (DA layer frozen at 2023-04, no refusal reasons exist), and naming any binding control beyond FSR or height. None of those appear in this copy. The not-covered panel states the sewer/easement/covenant gap rather than letting a builder assume coverage.",
+  "new_vs_existing": "No new capability and no new claim: the three-bucket framing renames what the widget already renders (eligible / clear no / indeterminate). The council-variation panel invites the builder to test their own councils rather than asserting a comparison we would have to substantiate in copy."
+ },
+ "functions": "N/A - copy-only change; no function added, changed, or removed.",
+ "values": "N/A - no DB or API values involved; static JSX strings only.",
+ "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "The component regresses to showing the success confirmation even when the lead POST fails (the original false-success defect), and the suite still passes.",
-   "what_happens": "A failed submit would be shown to the user as 'got your request', silently losing the lead with no retry prompt - the exact bug these tests exist to catch.",
+   "scenario": "The 'sorts enquiries three ways' copy over-promises a triage the widget does not actually render, so a builder installs it and sees only yes/no.",
+   "what_happens": "The pitch's central claim visibly fails on their own site during the pilot.",
    "mitigated": true,
-   "how": "Two separate tests cover both failure modes (non-ok response, and a rejected fetch). Each asserts BOTH that the error text renders AND that the confirmation is absent (queryByText(/got your request/) not in document), so a regression that renders both cannot pass.",
-   "repro": "Make the component call setSubmitted(true) in the catch/non-ok branch; both 'shows an error and NOT a confirmation' tests fail."
+   "how": "The three buckets map exactly to states already shipped in DuplexCheckWidget: dualOccEligible true, clear no, and the indeterminate branch added in PR #790. No copy describes a state the component cannot render.",
+   "repro": "Run an eligible, an ineligible and an unconfirmed address on any /widget-demo page - three visually distinct cards."
   },
   {
-   "scenario": "The consent-gating assertion matches the wrong element, so it passes without the error ever rendering.",
-   "what_happens": "The test would go green whether or not the consent error appears, silently losing the guard on submitting contact details without consent.",
+   "scenario": "The 'cited to the clause and page' claim is stated for councils where page-level citation does not exist, so a builder checks a citation and finds nothing.",
+   "what_happens": "The credibility claim that carries the whole pitch fails on inspection.",
    "mitigated": true,
-   "how": "'tick the box' appears twice in the component - the consent error and the standing helper text under the checkbox - so getByText threw on ambiguity. The assertion now matches 'pass your details to the builder', which occurs only in the error string.",
-   "repro": "grep the component: 'tick the box' returns 2 hits, 'pass your details to the builder' returns 1 (the error). Revert the matcher and the test fails with 'found multiple elements'."
+   "how": "Audit confirmed the DCP control corpus is 100% cited to section_ref/pdf_page across the covered councils. Copy makes no coverage-count claim, so a builder outside the covered set sees fewer controls rather than a broken citation.",
+   "repro": "Run a covered-council address and follow a control back to its section reference."
   },
   {
-   "scenario": "The qualifier answers are dropped from the payload but the submit test still passes on the remaining fields.",
-   "what_happens": "Leads would arrive without timeline/ownership qualification, degrading them to plain email-me rows and breaking builder routing, with no test failure.",
+   "scenario": "A builder reads the council-variation panel as us asserting their published frontage minimums are wrong, and takes offence.",
+   "what_happens": "Relationship damage with a prospect at first contact.",
    "mitigated": true,
-   "how": "The payload test asserts qualification toMatchObject({timeline:'asap', ownership:'owner'}) and consent_wording matching the referral-fee disclosure, in addition to the base fields; the event test asserts timeline/ownership/verdict on referral_lead_submitted.",
-   "repro": "Remove qualification from the POST body; 'posts the referral interest_type + qualification ...' fails."
+   "how": "The panel states only that controls vary by council and invites them to test their own; it makes no comparison to the builder's own published figures. The demonstration-not-assertion rule lives in the outreach doc for use on calls, not in on-page copy.",
+   "repro": "Read the 'Council by council' panel - no second-person claim about their content."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data change.",
-  "secrets": "None.",
-  "other_repo": "None - frontend test file only.",
-  "manual_verify": "Done: npx jest __tests__/components/tools/BuilderReferralCard.test.tsx -> 8/8 passed, including the previously-failing consent-gating test. Full frontend suite re-run clean: 68 suites / 904 tests passed."
+  "db_reset": "Not required - no database or schema changes.",
+  "secrets": "No secrets involved - static copy.",
+  "other_repo": "None. Mirrors the reframe applied to ~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md the same day so email and demo page tell one story.",
+  "manual_verify": "Yes - on the preview: /widget-demo/buildana leads with the site-assessment reframe, six panels render below the boundary caption, and the not-covered panel is present and legible."
  }
 }

@@ -37,6 +37,13 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           The {partner.name} duplex checker
         </h1>
+        <p className="text-gray-600 mb-3 max-w-xl">
+          You already run a free site assessment on every enquiry — zone,
+          minimum lot size, frontage, heritage, overlays, checked by hand,
+          including on the blocks that were never going to work. This does the
+          regulatory half of that check in about ten seconds, on your own site,
+          before the enquiry reaches you.
+        </p>
         <p className="text-gray-600 mb-8 max-w-xl">
           This is how the checker will look on your site, carrying{' '}
           {partner.name}&apos;s name. Run any Sydney address — every check queries live NSW Government
@@ -76,10 +83,12 @@ export default function WidgetDemoPage({ params }: { params: { slug: string } })
         </h2>
         <div className="mt-3 grid sm:grid-cols-2 gap-4">
           {[
-            ['Your visitor gets the answer', 'Address in, verdict out — checked against the 2025 NSW housing reforms on live government planning layers, the source clause named. The answer is never bent to flatter the result: an honest tool is what makes the enquiry worth having.'],
+            ['It sorts enquiries three ways, not two', 'Blocks that meet the mapped standard. Blocks that plainly don’t — declined before anyone drives out. And NEEDS-CHECKING: the maps alone can’t settle it, so it needs a survey or a set of eyes. That third bucket is where your expertise is worth paying for, and it’s handed to you as a site-assessment conversation.'],
             ['The enquiry is yours', `Every enquiry button points at ${siteHost} — not a shared lead list, no middleman in the conversation.`],
-            ['Two kinds of enquiry', 'An ELIGIBLE visitor knows their block meets the mapped standard and is ready to talk. A NEEDS-CHECKING visitor is told the maps alone can’t answer and a person needs to look — that person is you. It’s a site-assessment conversation handed to you first.'],
+            ['Honest by design', 'Every figure is cited to the clause and page it came from, and where the mapping can’t answer, it says so instead of guessing. The result is never bent to flatter a block — that’s what makes an enquiry off the back of it worth having.'],
             ['You see the numbers', 'Checks run and enquiry-button clicks, split into eligible and needs-checking blocks, reported to you weekly during the pilot. Counted in the visitor’s browser, so it may undercount where analytics are blocked — never over. A click is an enquiry started, not yet a submitted form.'],
+            ['What it does not cover', 'Sewer mains, easements and title covenants are real duplex killers and this doesn’t touch them — it checks the planning layer, not the title or the services.'],
+            ['Council by council', 'Minimum frontage and lot size vary sharply between councils, and the checker reads each one’s own controls rather than a single rule of thumb. Try a block in a council you build in often.'],
           ].map(([title, body]) => (
             <div key={title} className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="text-sm font-semibold text-gray-900 mb-1">{title}</p>
