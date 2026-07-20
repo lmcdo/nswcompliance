@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Test-only change: realigns the BuilderReferralCard suite with the multi-step qualifier the component already ships (timeline -> ownership -> contact) and adds regression guards for the false-success defect. No production code is touched, no DB or API path changes. Minor tier because the blast radius is the test suite itself - but the suite guards a lead-capture surface where a silently-failed submit loses a paying lead, so the assertions are written to fail loudly rather than merely exercise the component.",
- "commit_hash": "cf851021",
+ "commit_hash": "bec24cfe",
  "files": [
   "frontend-nextjs/__tests__/components/tools/BuilderReferralCard.test.tsx"
  ],
