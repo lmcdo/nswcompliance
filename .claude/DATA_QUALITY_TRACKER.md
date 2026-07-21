@@ -11,6 +11,8 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-30: `lot_search_index` FSR corruption (SYM_CODE stored as FSR, 65 councils) — fixed 2026-06-17, **live-verified clear 2026-07-20** | ✅ Fixed + verified | P1 (was) |
+| DQ-31: `lot_search_index` capacity columns (`ca_*`) — recompute after the DQ-30 FSR repair never confirmed | ⏳ Unverified | P2 |
 | DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
@@ -1043,3 +1045,31 @@ if (numberMatches && numberMatches.length >= 2) {
 ```
 
 **Result:** Numbered lists now render as proper list items alongside roman numerals (i., ii.) and letters (a., b.)
+
+---
+
+## DQ-30: lot_search_index FSR corruption — FIXED + LIVE-VERIFIED
+
+**Detected:** 2026-06 · **Fixed:** 2026-06-17 · **Verified clear:** 2026-07-20 (production read-only query)
+
+**What it was.** The bulk lot index ingest stored the ArcGIS legend `SYM_CODE` in the FSR field instead of the ratio, producing impossible values (8, 74, 114) across ~65 councils. Bulk index served confident wrong FSR.
+
+**Fix applied (option B, 2026-06-17):** backup `spatial_overlays_fsr_backup_20260617` -> re-ingest fsr (34,279 rows) -> delete 1,685 stale -> NULL + reassign `lep_fsr` (1,000,312 lots) -> harness validated, 0% drift on 10 councils incl. Bayside (was 100% bad, max 114).
+
+**Live verification 2026-07-20:** 3,126,418 rows; 1,000,312 with `lep_fsr`; **0 corrupt**. 76 rows carry FSR > 10 and all are legitimate — `lot_search_index` max matches `spatial_overlays` (source) exactly per council (North Sydney 25.40, Parramatta 19.00, Lane Cove 17.10, Canada Bay 15.30, Willoughby 14.30, Sydney 11.54, Burwood 10.54) on E2 Commercial Centre / MU1 Mixed Use lots where such ratios are real controls.
+
+**Testing note for future audits:** `FSR > 10 = corrupt` is valid ONLY on suburban residential land. In E2/MU1/B4 zones it produces false positives. Corruption's real fingerprint is one junk value repeated thousands of times; genuine high ratios appear once or twice each.
+
+**Process failure worth remembering.** This was recorded only in plan files, never here. Two July plan notes kept asserting "still broken, ~26 councils corrupt" a month after the June repair, which blocked the press pitch and the Reddit OC post for no reason. Data-quality state belongs in this tracker; plans should link to it, not restate it. Corrected 2026-07-20 in `ce-outreach-comms-master-2026-07.md` and `biz-master-execution-calendar-2026-07.md`.
+
+**Remaining limit is coverage, not correctness:** 83 of 128 councils carry computed capacity. Scope cross-council claims to covered councils and state the gap.
+
+## DQ-31: lot_search_index capacity columns — recompute unconfirmed
+
+**Status:** ⏳ Unverified · **Priority:** P2
+
+The DQ-30 fix note flagged one open item: the derived `ca_*` capacity columns were computed from the pre-repair FSR and a recompute was never confirmed ("heavy; bulk index is a demoted discovery layer").
+
+**Not answerable by a naive query.** `ca_realistic_gfa_m2` is the LEP envelope, which takes the greater of the FSR envelope and the height envelope — so it legitimately exceeds `lot_area_m2 * lep_fsr` on low-ratio suburban lots (691,044 rows do, by design). A reconciliation test against FSR alone proves nothing.
+
+**To resolve:** re-run the capacity engine over a stratified sample (FSR-bound and height-bound lots, across covered councils) and diff against stored `ca_*` values. Until then treat cross-council *capacity* aggregates as unverified; per-address capacity is unaffected (it is computed live, not read from this table).
