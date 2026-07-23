@@ -73,6 +73,10 @@ Numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Des
 https://plotdetect.com.au/open-data
 Catalogue of 5 structured NSW planning datasets available on PlotDetect: secondary dwelling statistics (102 councils), regulatory definitions (465+), heritage conservation areas (2,039), SEPP Housing numeric standards (56), and DCP provisions (10,008 actionable). Includes record counts, currency dates, source citations, and data caveats.
 
+### Data Dictionary (per field)
+https://plotdetect.com.au/open-data/fields/{field-slug}
+Per-field documentation for the structured planning data PlotDetect serves. Each page states what the field is, the authoritative NSW Government source it is read from, its licence (CC-BY) and attribution, how current it is, and its limits. Fields: land-zone, height-of-building, floor-space-ratio, minimum-lot-size, flood-planning-area, bushfire-prone-land, heritage, lot-dimensions, land-value, development-permissibility.
+
 ### Free Tools
 https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
 https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker

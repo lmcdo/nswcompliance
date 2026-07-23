@@ -10,6 +10,7 @@ import { VERIFY_LGAS } from '@/lib/lga-data/verify-lgas'
 import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
 import { ARTICLES } from '@/lib/blog-articles'
+import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary'
 
 /**
  * Topic-clustered sitemaps for GEO (Generative Engine Optimization).
@@ -52,6 +53,12 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/glossary`,        priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/planning-standards`, priority: 0.85, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/open-data`,          priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
+        ...DATA_DICTIONARY_FIELDS.map(f => ({
+          url: `${base}/open-data/fields/${f.slug}`,
+          priority: 0.75,
+          changeFrequency: 'monthly' as const,
+          lastModified: now,
+        })),
         { url: `${base}/tools/zoning-check`,      priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/subdivision-check`, priority: 0.9,  changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/tools/upzoning-check`,    priority: 0.9,  changeFrequency: 'weekly', lastModified: now },

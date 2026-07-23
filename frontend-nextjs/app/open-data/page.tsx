@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { DatasetJsonLd } from '@/lib/json-ld';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
+import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary';
 
 export const metadata: Metadata = {
   title: 'NSW Planning Open Data — Datasets Available on PlotDetect',
@@ -237,6 +238,29 @@ export default function OpenDataPage() {
             )}
           </div>
         ))}
+      </div>
+
+      {/* Data dictionary */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 mb-10">
+        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+          Data dictionary
+        </h2>
+        <p className="text-sm text-slate-600 leading-relaxed mb-4">
+          Per-field documentation for the structured planning data PlotDetect
+          serves: what each field is, the authoritative source it is read from,
+          its licence and attribution, how current it is, and its limits.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DATA_DICTIONARY_FIELDS.map(f => (
+            <Link
+              key={f.slug}
+              href={`/open-data/fields/${f.slug}`}
+              className="inline-flex items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
+            >
+              {f.name}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Why no downloads */}
