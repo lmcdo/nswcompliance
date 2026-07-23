@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     title: 'NSW Planning Open Data — PlotDetect Datasets',
     description:
       'Structured planning data for New South Wales with source citations and legislative references.',
-    url: 'https://plotdetect.com.au/open-data',
-    siteName: 'plotdetect.com.au',
+    url: '/open-data',
+    siteName: 'PlotDetect',
     type: 'website',
   },
 };

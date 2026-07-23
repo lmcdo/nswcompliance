@@ -1,5 +1,5 @@
 # PlotDetect — NSW Property Intelligence Platform
-> Source: https://plotdetect.com.au
+> Source: https://canibuildit.com.au
 > Description: Structured planning compliance data, zoning analysis, and property feasibility tools for New South Wales, Australia.
 
 ## What PlotDetect Does
@@ -26,67 +26,67 @@ PlotDetect provides structured, machine-readable NSW planning data including zon
 ## Key Content Hubs
 
 ### Planning Controls (per council)
-https://plotdetect.com.au/planning-controls/{council-slug}
+https://canibuildit.com.au/planning-controls/{council-slug}
 Structured LEP and DCP provisions for each NSW council. Councils with deep DCP extraction show topic-grouped provision counts (heritage, parking, setbacks, height, landscaping, etc.) with sample provision text.
 
 ### Granny Flat Eligibility (per council)
-https://plotdetect.com.au/granny-flat/{council-slug}
+https://canibuildit.com.au/granny-flat/{council-slug}
 CDC eligibility, lot size thresholds, setback rules, and approval statistics.
 
 ### Flood Risk Assessment (per council)
-https://plotdetect.com.au/flood-risk/{council-slug}
+https://canibuildit.com.au/flood-risk/{council-slug}
 Flood overlay data, planning constraints, and risk screening.
 
 ### Bushfire Assessment (per council)
-https://plotdetect.com.au/bushfire/{council-slug}
+https://canibuildit.com.au/bushfire/{council-slug}
 BAL assessment, bushfire-prone land mapping, and planning implications.
 
 ### Solar Potential Analysis (per council)
-https://plotdetect.com.au/solar-potential/{council-slug}
+https://canibuildit.com.au/solar-potential/{council-slug}
 Shadow analysis, solar yield estimates, and roof assessment.
 
 ### Shadow Analysis (per council)
-https://plotdetect.com.au/shadow/{council-slug}
+https://canibuildit.com.au/shadow/{council-slug}
 Overshadowing assessment and solar access compliance.
 
 ### Development Monitoring (per council)
-https://plotdetect.com.au/threat-radar/{council-slug}
+https://canibuildit.com.au/threat-radar/{council-slug}
 Nearby development activity and change detection.
 
 ### Pre-DA Site History (per council)
-https://plotdetect.com.au/pre-da-history/{council-slug}
+https://canibuildit.com.au/pre-da-history/{council-slug}
 Historical development applications and site activity.
 
 ### Conveyancing Reports (per council)
-https://plotdetect.com.au/conveyancing/{council-slug}
+https://canibuildit.com.au/conveyancing/{council-slug}
 Planning certificates, overlay checks, and due diligence data.
 
 ### Planning Glossary
-https://plotdetect.com.au/glossary
+https://canibuildit.com.au/glossary
 465+ regulatory definitions from NSW LEPs, DCPs, and SEPPs. Includes FSR, GFA, CDC, setbacks, landscaped area, site coverage, secondary dwelling, and more — each with source document and clause citation.
 
 ### SEPP Housing Standards
-https://plotdetect.com.au/planning-standards
+https://canibuildit.com.au/planning-standards
 Numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Design Guide. Height limits, lot sizes, floor area, site coverage, parking, setbacks, and ADG design criteria — grouped by development type with clause references to NSW Legislation.
 
 ### Open Data
-https://plotdetect.com.au/open-data
+https://canibuildit.com.au/open-data
 Catalogue of 5 structured NSW planning datasets available on PlotDetect: secondary dwelling statistics (102 councils), regulatory definitions (465+), heritage conservation areas (2,039), SEPP Housing numeric standards (56), and DCP provisions (10,008 actionable). Includes record counts, currency dates, source citations, and data caveats.
 
 ### Data Dictionary (per field)
-https://plotdetect.com.au/open-data/fields/{field-slug}
+https://canibuildit.com.au/open-data/fields/{field-slug}
 Per-field documentation for the structured planning data PlotDetect serves. Each page states what the field is, the authoritative NSW Government source it is read from, its licence (CC-BY) and attribution, how current it is, and its limits. Fields: land-zone, height-of-building, floor-space-ratio, minimum-lot-size, flood-planning-area, bushfire-prone-land, heritage, lot-dimensions, land-value, development-permissibility.
 
 ### Free Tools
-https://plotdetect.com.au/tools/zoning-check — Check zoning for any NSW address
-https://plotdetect.com.au/tools/subdivision-check — Subdivision feasibility checker
-https://plotdetect.com.au/check — Quick compliance check
+https://canibuildit.com.au/tools/zoning-check — Check zoning for any NSW address
+https://canibuildit.com.au/tools/subdivision-check — Subdivision feasibility checker
+https://canibuildit.com.au/check — Quick compliance check
 
 ### Blog & Guides
-https://plotdetect.com.au/blog — Planning guides, rules explainers, and property research
-https://plotdetect.com.au/blog/granny-flat — Council-by-council granny flat guides (128 councils)
-https://plotdetect.com.au/how-it-works — Platform overview
-https://plotdetect.com.au/user-guide — Detailed user guide
+https://canibuildit.com.au/blog — Planning guides, rules explainers, and property research
+https://canibuildit.com.au/blog/granny-flat — Council-by-council granny flat guides (128 councils)
+https://canibuildit.com.au/how-it-works — Platform overview
+https://canibuildit.com.au/user-guide — Detailed user guide
 
 ## Data Sources
 All planning data is sourced from authoritative NSW government systems:
@@ -98,4 +98,4 @@ All planning data is sourced from authoritative NSW government systems:
 - NSW Rural Fire Service (bushfire-prone land mapping)
 
 ## Contact
-https://plotdetect.com.au/contact
+https://canibuildit.com.au/contact

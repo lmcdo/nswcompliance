@@ -24,8 +24,8 @@ export function generateMetadata({ params }: Props): Metadata {
     openGraph: {
       title: `${field.name} — NSW Planning Data Dictionary`,
       description: field.shortDefinition,
-      url: `https://plotdetect.com.au/open-data/fields/${field.slug}`,
-      siteName: 'plotdetect.com.au',
+      url: `/open-data/fields/${field.slug}`,
+      siteName: 'PlotDetect',
       type: 'article',
     },
   };

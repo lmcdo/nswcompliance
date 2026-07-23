@@ -33,8 +33,10 @@ export async function generateSitemaps() {
 export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
   // The app's canonical consumer domain (Option B). plotdetect.com.au is the
   // separate info-site project and 404s for app routes — advertising it here
-  // sent search engines to dead URLs.
-  const base = 'https://www.canibuildit.com.au'
+  // sent search engines to dead URLs. APEX, not www: the edge 307s every www
+  // URL to the apex, so www URLs in a sitemap register as "page with redirect"
+  // and never index (found 2026-07-23).
+  const base = 'https://canibuildit.com.au'
   const now = new Date()
 
   switch (id) {

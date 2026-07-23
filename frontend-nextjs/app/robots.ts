@@ -1,7 +1,11 @@
 import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://plotdetect.com.au'
+  // Hardcoded on purpose: NEXT_PUBLIC_SITE_URL is set to the plotdetect.com.au
+  // info site in production, which sent crawlers to a sitemap on a domain this
+  // app's content does not live on (found 2026-07-23 — zero pages indexed).
+  // The canonical content host is the canibuildit apex: www 307s to it.
+  const siteUrl = 'https://canibuildit.com.au'
 
   return {
     rules: [
@@ -47,6 +51,13 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/'],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    // /sitemap.xml is a route handler emitting a sitemap index over the eight
+    // generateSitemaps() cluster files at /sitemap/{0..7}.xml. Both the index
+    // and the cluster files are listed so crawlers that ignore index files
+    // still discover every cluster.
+    sitemap: [
+      `${siteUrl}/sitemap.xml`,
+      ...Array.from({ length: 8 }, (_, i) => `${siteUrl}/sitemap/${i}.xml`),
+    ],
   }
 }
