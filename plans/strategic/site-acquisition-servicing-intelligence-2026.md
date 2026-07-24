@@ -124,9 +124,10 @@ factor turns replicable planning data into a scarce signal worth a subscription.
   — extensible pattern for adding new spatial layers.
 
 ### Net-new — and this is the moat
-- **Sydney Water servicing-capacity zones.** No API today; capacity lives in the
-  **Growth Servicing Plan** (interactive map + IPART-registered DSPs). See de-risk
-  below.
+- **Sydney Water servicing-capacity zones.** CONFIRMED available as three static public
+  GeoJSON files (`GSP_WW.json` / `GSP_DW.json` / `GSP_AdditionalComments.json`) with
+  per-polygon stage, timeframe, DSP $/ET and constraint flags. Ingestible today. See
+  de-risk below.
 - **Gravity-drain-to-connection feasibility** (property-level) — reuses terrain fall,
   needs sewer-main geometry.
 - **Adjoining-lot amalgamation query** — data substrate exists; query is net-new
@@ -137,7 +138,7 @@ factor turns replicable planning data into a scarce signal worth a subscription.
 | Phase | Ships | Data | Effort |
 |---|---|---|---|
 | **0 — Radar v1** | Amalgamation finder + uplift + seller-likelihood + DA-approval odds, ranked across 171 catchments | **All data already held** | Weeks. Small. |
-| **1 — The moat** | Coarse "serviceable / constrained / deferred" flag per catchment | Growth Servicing Plan map endpoint | The differentiator |
+| **1 — The moat** | "serviceable / constrained / deferred" flag + timeframe + DSP $/ET per growth polygon | Ingest 2 public GeoJSON files (confirmed) | Days. The differentiator |
 | **2 — Deep feasibility** | Property-level gravity-drainage + sewer connection | Sydney Water asset data (may need partnership) | Harder; gated on access |
 
 Phase 0 is shippable almost entirely from assets already owned. Phase 1 makes it
@@ -145,23 +146,58 @@ un-copyable.
 
 ---
 
-## Moat De-risk — Growth Servicing Plan
+## Moat De-risk — Growth Servicing Plan — CONFIRMED (GREEN)
 
-Positive findings (secondary sources; Sydney Water host is egress-blocked in dev, open
-the PDF directly to confirm):
-- There is an **interactive Growth Servicing Plan map** searchable by address/suburb
-  for servicing timescales → almost certainly a **spatial backend (ArcGIS-style
-  endpoint)**, which fits the existing `ingest_spatial_overlays.py` ArcGIS pattern.
-  Phase 1 likely becomes "reverse-engineer the map endpoint," a technique already in
-  use — far cheaper than PDF parsing.
-- **IPART-registered Development Servicing Plans are listed publicly**; system-capacity
-  reports are organised by defined geographic units (water delivery system → supply
-  zone → wastewater system) — structured capacity data per area.
+Verified via a browser network capture (HAR) of the live map. The Growth Servicing Plan
+map is a Google Maps front-end that loads its entire servicing dataset from **three
+static GeoJSON files on the public Sydney Water CDN** — no login, no token, one GET each:
 
-Honest caveat: data is **richest for growth areas / designated precincts** (greenfield
-+ major infill) and thinner for one-off infill on established suburban lots. The
-beachhead (GPOP/Parramatta, SW Sydney) *are* growth areas, so the data is strongest
-exactly where to start.
+- `…/content/dam/sydneywater/applications/gsp/GSP_WW.json` — **wastewater**, 205 polygon
+  features (~3.3 MB)
+- `…/content/dam/sydneywater/applications/gsp/GSP_DW.json` — **drinking water**, 192
+  polygon features (~3.3 MB)
+- `…/content/dam/sydneywater/applications/gsp/GSP_AdditionalComments.json` — 4 features
+  (~57 KB)
+
+Each is a standard GeoJSON `FeatureCollection` with `Polygon` geometry — directly
+ingestible with the existing `scripts/ingest_spatial_overlays.py` pattern, then queried
+per-address by point-in-polygon against PostGIS. **Phase 1 collapses from "reverse-
+engineer an API" to "ingest two GeoJSON files."**
+
+Per-polygon properties give exactly the serviceability signal needed:
+
+| Field | Use | Example values |
+|---|---|---|
+| `Growth_Polygon_Name` | Area label | "Leppington North (Phase 1)" |
+| `Growth_Area` | Region grouping | "South West Growth Area" |
+| `SWC_Planning_Project_Stage` | **Servicing-readiness ladder** | Design & Deliver / Concept Planning / Strategic Planning / Option Planning / "Growth precinct boundary. No current project" |
+| `Indicative_Timeframe_by_Financial_Year(FY)` | **Timing** | "FY26", "No timeframe noted" |
+| `Special_Comments` | **Constraint flag** | "capacity and timescale constraints in this area…", "Under investigation by DPHI…", "None" |
+| `Indicative_DSP_Full_Prices_(per_ET)` | **Cost — actual $/ET** | $17,686.52, $888.41, $0 |
+| `GSP_Commentary` | Capacity narrative | "Trunk capacity in FY26 dependent upon…" |
+| `Development_Servicing_Plan_(DSP)_Area` | Named DSP area | "Nepean River", "North Head" |
+| `SWC_Unique_Identifier` | Join key | WW87, DW100 |
+
+Note: the **DSP dollar charge per ET is present** — the codebase audit had flagged
+DSP/s64 charge estimation as net-new/missing; this file supplies it directly for
+growth-area polygons.
+
+A "serviceable / constrained / deferred" flag is derivable from
+`SWC_Planning_Project_Stage` + `Special_Comments` + timeframe, per address, today.
+
+**Confirmed caveats:**
+- **Coverage = growth areas / designated precincts only** (205 WW + 192 DW polygons
+  over areas like the South West Growth Area, Illawarra, etc.), *not* every established
+  suburban lot. A LMR infill lot in an established suburb may fall outside every polygon
+  → return "unknown / not in a growth precinct" (still useful signal, but not a status).
+  The beachhead (GPOP/Parramatta, SW Sydney) *are* covered growth areas.
+- `Existing_Servicing_Information` for every feature just says "Refer to GSP2025-2030 PDF"
+  — some depth remains PDF-only, but the structured fields above are rich enough for a
+  first product.
+- Data is a dated snapshot (`GSP25_WW_Ext`); refresh annually.
+- **Terms of use:** the data carries a "guide only, no warranty, use at own risk"
+  disclaimer. Verify Sydney Water's data licensing / terms of use before ingesting and
+  redistributing commercially — a legal check, not a technical blocker.
 
 Sources:
 [Growth Servicing Plan & map](https://www.sydneywater.com.au/plumbing-building-developing/developing/growth-servicing-plan.html),
