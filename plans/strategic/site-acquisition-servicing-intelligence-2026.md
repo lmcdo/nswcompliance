@@ -186,18 +186,67 @@ A "serviceable / constrained / deferred" flag is derivable from
 `SWC_Planning_Project_Stage` + `Special_Comments` + timeframe, per address, today.
 
 **Confirmed caveats:**
-- **Coverage = growth areas / designated precincts only** (205 WW + 192 DW polygons
-  over areas like the South West Growth Area, Illawarra, etc.), *not* every established
-  suburban lot. A LMR infill lot in an established suburb may fall outside every polygon
-  → return "unknown / not in a growth precinct" (still useful signal, but not a status).
-  The beachhead (GPOP/Parramatta, SW Sydney) *are* covered growth areas.
+- **Coverage = named growth / renewal / investigation precincts only** — not a metro-wide
+  tile. The 205 WW / 192 DW polygons group under: Greater Macarthur, South West Growth
+  Area, Illawarra, Greater Parramatta to Olympic Park (GPOP), North West Growth Area,
+  Western Sydney Aerotropolis, **Sydenham to Bankstown**, Greater Penrith to Eastern
+  Creek, **Metro Northwest Priority Urban Renewal Corridor**, **Epping to St Leonards**,
+  Bays West, Liverpool, and a few small areas. Several of these are *established-area
+  renewal corridors* that overlap the LMR/TOD footprint heavily (Sydenham–Bankstown,
+  Epping–St Leonards, GPOP, Metro NW) — good. But **scattered R2/R3 infill in an ordinary
+  established suburb outside a named precinct returns no polygon** → "unknown / not in a
+  GSP precinct." (See established-suburb strategy below.)
+- `GSP_AdditionalComments.json` is just 4 features (one constrained call-out — the Picton
+  wastewater scheme, "not in GSP, capacity constraints"). Minor.
 - `Existing_Servicing_Information` for every feature just says "Refer to GSP2025-2030 PDF"
   — some depth remains PDF-only, but the structured fields above are rich enough for a
   first product.
 - Data is a dated snapshot (`GSP25_WW_Ext`); refresh annually.
-- **Terms of use:** the data carries a "guide only, no warranty, use at own risk"
-  disclaimer. Verify Sydney Water's data licensing / terms of use before ingesting and
-  redistributing commercially — a legal check, not a technical blocker.
+
+## Licensing — a real gate, resolve before commercialising
+
+- Sydney Water website content is **protected under the Copyright Act 1968 (Cth)**; a
+  Terms of Use page governs (`sydneywater.com.au/terms-of-use.html`). The GSP data does
+  **not** appear on SEED / data.nsw as an openly-licensed (CC-BY) download.
+- **Default assumption: proprietary / all-rights-reserved, not open data.** Ingesting for
+  internal analysis is one thing; **redistributing a derived per-address servicing status
+  commercially likely needs permission or a data-sharing agreement.**
+- Safer postures to weigh with a lawyer: (a) present derived status **with attribution +
+  link back** to Sydney Water's map rather than republishing the raw dataset; (b) request
+  a **data licence / reuse agreement** from Sydney Water's developer/data team; (c) get
+  written advice before launch. **This is the one gate to clear before building on it.**
+
+## Established-suburb strategy (filling the coverage gap)
+
+There is **no bulk public dataset** of established-area local reticulation capacity — it
+is resolved per-site via a **Section 73 Feasibility Application** lodged through an
+accredited **Water Servicing Coordinator (WSC)**, which returns a *Notice of
+Requirements*. Model serviceability in **three honest states** (never fabricate — per
+CLAUDE.md data-integrity rules):
+
+1. **In a GSP precinct** → rich status: stage + FY timeframe + DSP $/ET + constraint flag.
+2. **Established serviced suburb (no polygon)** → "existing network present; local capacity
+   determined by s73 feasibility" + PlotDetect proxies: terrain gravity-fall to street
+   (`terrain_analysis.py`), nearby DA servicing outcomes (`da_outcome.py`), DSP $/ET for
+   the catchment.
+3. **Constrained call-out** (AdditionalComments / "Projects in your area" / "under
+   investigation by DPHI") → explicit warning.
+
+**Turn the gap into product, not a hole:**
+- **s73 feasibility pack** — auto-generate a pre-filled feasibility application for the
+  site and route to a WSC. Monetise via WSC referral/partnership; the developer gets
+  exactly the answer the data can't give directly.
+- **Data flywheel** — capture the *Notice of Requirements / s73 outcomes* users receive
+  and accumulate them. Over time this becomes the **only proprietary dataset of actual
+  established-area servicing outcomes** — the established-suburb capacity signal neither
+  competitors nor Sydney Water's public map offer. This is the long-term moat that closes
+  the gap.
+
+### PDF — still to mine
+`GSP2025-2030.pdf` (Sydney Water host egress-blocked in dev; IPART mirror also 403) holds
+the `Existing_Servicing_Information` depth and any system-level capacity narrative not in
+the GeoJSON. Obtain the PDF directly and extract: per-system capacity tables, established-
+area narrative, and any constraint detail beyond the structured fields.
 
 Sources:
 [Growth Servicing Plan & map](https://www.sydneywater.com.au/plumbing-building-developing/developing/growth-servicing-plan.html),
