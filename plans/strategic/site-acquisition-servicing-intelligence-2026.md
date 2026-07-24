@@ -203,18 +203,21 @@ A "serviceable / constrained / deferred" flag is derivable from
   first product.
 - Data is a dated snapshot (`GSP25_WW_Ext`); refresh annually.
 
-## Licensing — a real gate, resolve before commercialising
+## Licensing — a real gate, resolve before commercialising — CONFIRMED
 
-- Sydney Water website content is **protected under the Copyright Act 1968 (Cth)**; a
-  Terms of Use page governs (`sydneywater.com.au/terms-of-use.html`). The GSP data does
-  **not** appear on SEED / data.nsw as an openly-licensed (CC-BY) download.
-- **Default assumption: proprietary / all-rights-reserved, not open data.** Ingesting for
-  internal analysis is one thing; **redistributing a derived per-address servicing status
-  commercially likely needs permission or a data-sharing agreement.**
+- The GSP2025-2030 PDF states **"© Sydney Water. All rights reserved"** (p35) plus a
+  "guide only, no warranty, use at own risk" disclaimer (p34). Website content is
+  protected under the **Copyright Act 1968 (Cth)** (Terms of Use:
+  `sydneywater.com.au/terms-of-use.html`). The GSP data does **not** appear on SEED /
+  data.nsw as an openly-licensed (CC-BY) download.
+- **Confirmed: proprietary / all-rights-reserved, NOT open data.** Ingesting for internal
+  analysis is one thing; **redistributing a derived per-address servicing status
+  commercially needs permission or a data-sharing agreement.**
 - Safer postures to weigh with a lawyer: (a) present derived status **with attribution +
   link back** to Sydney Water's map rather than republishing the raw dataset; (b) request
-  a **data licence / reuse agreement** from Sydney Water's developer/data team; (c) get
-  written advice before launch. **This is the one gate to clear before building on it.**
+  a **data licence / partnership**. The GSP names the contact: *Manager, Growth Analytics
+  and Strategic Partnerships* / `developerservices@sydneywater.com.au`. (c) Get written
+  advice before launch. **This is the one gate to clear before building on it.**
 
 ## Established-suburb strategy (filling the coverage gap)
 
@@ -242,11 +245,25 @@ CLAUDE.md data-integrity rules):
   competitors nor Sydney Water's public map offer. This is the long-term moat that closes
   the gap.
 
-### PDF — still to mine
-`GSP2025-2030.pdf` (Sydney Water host egress-blocked in dev; IPART mirror also 403) holds
-the `Existing_Servicing_Information` depth and any system-level capacity narrative not in
-the GeoJSON. Obtain the PDF directly and extract: per-system capacity tables, established-
-area narrative, and any constraint detail beyond the structured fields.
+### PDF — mined (35pp)
+Verdict: the **GeoJSON is the richer machine-readable source; the PDF adds no extra
+per-precinct data table** — it is a narrative + regional map book (6 regions × DW/WW map
+pages). What the PDF *does* add, and what to bake into the product:
+- **Legend semantics to interpret the GeoJSON correctly (p20):** dashed-line precincts =
+  "some trunk capacity exists (may be limited)"; no-dashed = "no current trunk capacity
+  (asset constraint, no trunk, or awaiting rezoning data)." Crucial caveat: **"trunk
+  infrastructure alone does not make a site service-ready"** — treatment/pump/main
+  upgrades + developer lead-in & reticulation mains are still required. So never render
+  "serviceable"; render "trunk capacity indicated — subject to s73 + reticulation." (Note:
+  the dashed "some vs no capacity" binary is a map-styling attribute; confirm whether it's
+  in the GeoJSON or must be derived from stage.)
+- **Funding-pathway model (p14):** three cases — (1) on gov land-release / in GSP → SW
+  funds & builds to GSP date; (2) accelerated 'no cost to government' → developer funds &
+  builds, reimbursed via s73; (3) not on program → developer funds, commercial agreement,
+  likely no reimbursement. Good per-site feature: tell the developer their funding path.
+- **Separate dataset pointer:** "Capacity within the network — system capacity reporting,
+  detailed by network catchment for water and wastewater" (p33 quick links) — a further
+  data source to mine for established-area capacity.
 
 Sources:
 [Growth Servicing Plan & map](https://www.sydneywater.com.au/plumbing-building-developing/developing/growth-servicing-plan.html),
