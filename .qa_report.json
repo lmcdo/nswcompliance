@@ -1,45 +1,106 @@
 {
- "tier": "minor",
- "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
- "commit_hash": "f98416d1",
- "files": [
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
- ],
- "pre_impl": {
-  "existing_data": "Grounded in two verified research passes on 2026-07-20: a workflow study of Sydney duplex builders (free same-day site assessment is universal; monetisation starts at tender; ~21 manual lookups per site) and a code audit of what the engine actually returns. Copy claims only capabilities the audit confirmed: per-address eligibility with clause/page citations, the unconfirmed three-state, per-council DCP controls.",
-  "assumption_mismatch": "The audit killed three angles that earlier copy drafts flirted with: suburb-level eligible-stock aggregates (bulk index still serves corrupt FSR-derived yields), refusal-pattern insight (DA layer frozen at 2023-04, no refusal reasons exist), and naming any binding control beyond FSR or height. None of those appear in this copy. The not-covered panel states the sewer/easement/covenant gap rather than letting a builder assume coverage.",
-  "new_vs_existing": "No new capability and no new claim: the three-bucket framing renames what the widget already renders (eligible / clear no / indeterminate). The council-variation panel invites the builder to test their own councils rather than asserting a comparison we would have to substantiate in copy."
- },
- "functions": "N/A - copy-only change; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings only.",
- "queries": "N/A - no database access in this change.",
- "break_it": [
-  {
-   "scenario": "The 'sorts enquiries three ways' copy over-promises a triage the widget does not actually render, so a builder installs it and sees only yes/no.",
-   "what_happens": "The pitch's central claim visibly fails on their own site during the pilot.",
-   "mitigated": true,
-   "how": "The three buckets map exactly to states already shipped in DuplexCheckWidget: dualOccEligible true, clear no, and the indeterminate branch added in PR #790. No copy describes a state the component cannot render.",
-   "repro": "Run an eligible, an ineligible and an unconfirmed address on any /widget-demo page - three visually distinct cards."
+  "tier": "standard",
+  "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
+  "commit_hash": "3b0c2cd1",
+  "files": [
+    "scripts/ingest_sydney_water_gsp.py",
+    "migrations/058_sydney_water_gsp_servicing.sql",
+    "tests/test_sydney_water_gsp_ingest.py"
+  ],
+  "pre_impl": {
+    "existing_data": "New standalone table sydney_water_gsp_servicing; reads no existing tables. spatial_overlays was inspected and rejected (no attributes column, bigint source_oid, instrument/LGA scope GSP polygons don't fit). Source = 3 public Sydney Water GeoJSON files (205 WW + 192 DW).",
+    "assumption_mismatch": "If the source schema drifts (field renamed/removed), transform() raises on missing SWC_Unique_Identifier and the dry-run integrity assertions (row count 397, valid status set, MULTIPOLYGON geometry, unique keys) fail loudly before any write. DSP price format change -> parse returns None (never a wrong number). Verified live: 0/397 invalid geometries.",
+    "new_vs_existing": "Insert-then-upsert on conflict (product, swc_id); an annual refresh updates in place. No existing rows in any other table are read or modified. Reversal is DROP TABLE sydney_water_gsp_servicing."
   },
-  {
-   "scenario": "The 'cited to the clause and page' claim is stated for councils where page-level citation does not exist, so a builder checks a citation and finds nothing.",
-   "what_happens": "The credibility claim that carries the whole pitch fails on inspection.",
-   "mitigated": true,
-   "how": "Audit confirmed the DCP control corpus is 100% cited to section_ref/pdf_page across the covered councils. Copy makes no coverage-count claim, so a builder outside the covered set sees fewer controls rather than a broken citation.",
-   "repro": "Run a covered-council address and follow a control back to its section reference."
-  },
-  {
-   "scenario": "A builder reads the council-variation panel as us asserting their published frontage minimums are wrong, and takes offence.",
-   "what_happens": "Relationship damage with a prospect at first contact.",
-   "mitigated": true,
-   "how": "The panel states only that controls vary by council and invites them to test their own; it makes no comparison to the builder's own published figures. The demonstration-not-assertion rule lives in the outreach doc for use on calls, not in on-page copy.",
-   "repro": "Read the 'Council by council' panel - no second-person claim about their content."
+  "functions": [
+    {
+      "name": "parse_dsp_price",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:64",
+      "input": "str | None - DSP price HTML blob from the GeoJSON property",
+      "output": "float | None -> dsp_price_per_et column",
+      "if_none": "None/empty/no-$ figure -> None (14+ rows legitimately carry no figure); $0 -> 0.0, never None"
+    },
+    {
+      "name": "derive_status",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:71",
+      "input": "stage str|None + special-comments str|None from source properties",
+      "output": "(status_code, constrained bool) -> status_code + constrained columns",
+      "if_none": "None stage -> UNKNOWN_STAGE; None special -> constrained False (narrow to the capacity phrase only)"
+    },
+    {
+      "name": "geom_to_multipolygon_wkt",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:82",
+      "input": "GeoJSON geometry dict, a Polygon feature from the source file",
+      "output": "MULTIPOLYGON WKT str -> ST_GeomFromText into geom(4326)",
+      "if_none": "empty/invalid-after-repair/non-polygon -> raises ValueError (fails the row loudly, never inserts junk geometry)"
+    },
+    {
+      "name": "clean",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:57",
+      "input": "str | None - raw source text",
+      "output": "str | None - HTML-stripped, trimmed",
+      "if_none": "None, empty string, or tags-only input all return None"
+    }
+  ],
+  "values": [
+    {
+      "value": "dsp_price_per_et",
+      "read_at": "scripts/ingest_sydney_water_gsp.py:138",
+      "nullable": "yes",
+      "guard_at": "scripts/ingest_sydney_water_gsp.py:64",
+      "if_missing": "NULL stored; reader shows 'DSP charge: see Sydney Water land-development page' rather than a fabricated figure"
+    },
+    {
+      "value": "special_comments",
+      "read_at": "scripts/ingest_sydney_water_gsp.py:132",
+      "nullable": "yes",
+      "guard_at": "scripts/ingest_sydney_water_gsp.py:132",
+      "if_missing": "NULL stored; DW file has no such key at all -> always NULL for DW (expected)"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Upsert 397 GSP polygons into the new table",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:205",
+      "where_clause": "ON CONFLICT (product, swc_id) DO UPDATE - no WHERE; full-set replace on refresh",
+      "if_zero": "N/A - insert path; a post-insert count != 397 raises and rolls back before commit",
+      "if_wrong": "Row-count gate (expected 397) inside the transaction rolls back on any mismatch"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A source row's DSP price shows '$0' and a naive parser treats 0 as falsy, storing NULL - the reader then hides a genuinely $0 (already-serviced) charge.",
+      "what_happens": "A user is told 'charge unavailable' when the real answer is $0 - understating serviceability readiness.",
+      "mitigated": true,
+      "how": "scripts/ingest_sydney_water_gsp.py:64 - parse_dsp_price returns float(0.0) for '$0', distinct from None. Covered by test_zero_is_valid_not_none and mutation 'price: $0 -> None' (KILLED).",
+      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestParseDspPrice::test_zero_is_valid_not_none"
+    },
+    {
+      "scenario": "The 'under investigation by DPHI' note (8 rows) is wrongly treated as a hard capacity constraint, flagging areas as constrained when they are only under study.",
+      "what_happens": "A developer is told a site is capacity-constrained when it is not - a false negative that could kill a viable deal.",
+      "mitigated": true,
+      "how": "scripts/ingest_sydney_water_gsp.py:71 - constrained matches only 'capacity and timescale constraints'; the DPHI note is preserved in special_comments but does not set the flag. Covered by test_dphi_note_is_not_constrained and mutation 'status: DPHI note wrongly flagged' (KILLED).",
+      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestDeriveStatus::test_dphi_note_is_not_constrained"
+    },
+    {
+      "scenario": "A self-intersecting source polygon is inserted as invalid geometry, so ST_Contains lookups silently miss or error for that area.",
+      "what_happens": "An address inside that precinct returns NOT_IN_PRECINCT (wrong) instead of its real servicing status.",
+      "mitigated": true,
+      "how": "scripts/ingest_sydney_water_gsp.py:82 - buffer(0) repair then coerce to MultiPolygon; unrepairable -> ValueError. Live check confirmed 0/397 invalid via ST_IsValid. Covered by test_invalid_bowtie_repaired_to_multipolygon.",
+      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestGeomToMultipolygonWkt::test_invalid_bowtie_repaired_to_multipolygon"
+    },
+    {
+      "scenario": "A network drop mid-batch commits a partial upsert of the GSP polygons, leaving the table with fewer than 397 rows, so addresses in the missing precincts silently return NOT_IN_PRECINCT.",
+      "what_happens": "A developer checking a covered growth-area site is wrongly told it is outside any servicing precinct - a silent wrong answer indistinguishable from the honest gap.",
+      "mitigated": true,
+      "how": "scripts/ingest_sydney_water_gsp.py:205 - the upsert runs inside a single transaction (autocommit off) and a post-insert count gate (expected 397) raises and rolls back on any mismatch, so the insert is all-or-nothing.",
+      "repro": "Interrupt the --apply run mid-batch, then SELECT count(*) FROM sydney_water_gsp_servicing (0, not partial); or inspect the count-gate + rollback path in apply()."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No - additive new table, reversible by DROP TABLE sydney_water_gsp_servicing.",
+    "secrets": "No - DB creds read from existing .env PG* vars; no new secrets.",
+    "other_repo": "No.",
+    "manual_verify": "No - migration 058 already applied to the live DB and verified (397 rows, live point-in-polygon returns Leppington WW+DW, outside point empty, 0 invalid geometries)."
   }
- ],
- "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - static copy.",
-  "other_repo": "None. Mirrors the reframe applied to ~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md the same day so email and demo page tell one story.",
-  "manual_verify": "Yes - on the preview: /widget-demo/buildana leads with the site-assessment reframe, six panels render below the boundary caption, and the not-covered panel is present and legible."
- }
 }
