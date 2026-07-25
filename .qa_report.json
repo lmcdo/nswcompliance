@@ -1,45 +1,107 @@
 {
- "tier": "minor",
- "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
- "commit_hash": "f98416d1",
+ "tier": "standard",
+ "justification": "New user-facing section in the paid conveyancing PDF backed by a new production-DB spatial query. Wrong wording carries misleading-conduct exposure (extent claims about a named property) and a silent DB failure could render as a false 'outside the mapped extent'. Not critical: read-only disclosure layer, no schema change, no write path, feature-flagged, and it does not feed the constraints tile or any verdict.",
+ "commit_hash": "66b57c83",
  "files": [
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+  "scripts/generate_conveyancing_report.py",
+  "services/conveyancing.py",
+  "scripts/ingest_coastal_inundation.py",
+  "tests/test_coastal_inundation.py"
  ],
  "pre_impl": {
-  "existing_data": "Grounded in two verified research passes on 2026-07-20: a workflow study of Sydney duplex builders (free same-day site assessment is universal; monetisation starts at tender; ~21 manual lookups per site) and a code audit of what the engine actually returns. Copy claims only capabilities the audit confirmed: per-address eligibility with clause/page citations, the unconfirmed three-state, per-council DCP controls.",
-  "assumption_mismatch": "The audit killed three angles that earlier copy drafts flirted with: suburb-level eligible-stock aggregates (bulk index still serves corrupt FSR-derived yields), refusal-pattern insight (DA layer frozen at 2023-04, no refusal reasons exist), and naming any binding control beyond FSR or height. None of those appear in this copy. The not-covered panel states the sewer/easement/covenant gap rather than letting a builder assume coverage.",
-  "new_vs_existing": "No new capability and no new claim: the three-bucket framing renames what the widget already renders (eligible / clear no / indeterminate). The council-variation panel invites the builder to test their own councils rather than asserting a comparison we would have to substantiate in copy."
+  "existing_data": "spatial_overlays rows with layer_type='coastal_inundation' — 1,415 polygons loaded 2026-07-09 by scripts/ingest_coastal_inundation.py (committed in this PR), instrument_key estuary_inund_2025_s370_y{2050|2100}_{f1..f4}, value_numeric = days/year, currency_date 2025-11-24. Checked live in this session: per-key counts sum to 1,415 and a cadastre-resolved lot (propid 6021043) intersects f4 for both years.",
+  "assumption_mismatch": "If instrument_key drifts from the loader's pattern or value_numeric is NULL, the row is skipped; if ALL intersecting rows are unparseable the fetcher returns failed (renders 'not assessed'), never a fabricated year or a false 'outside'. If the layer is ever deleted, every lot reads 'outside' — that is the one honest-but-wrong state; mitigated by the loader + count being committed alongside the renderer in this PR.",
+  "new_vs_existing": "Render-only change: applies to every PDF generated after deploy (service path fetches live per request; coastal is fetched in the PDF-exclusive stage, not stored in conveyancing_cache, so stale caches simply render without the section via the None default)."
  },
- "functions": "N/A - copy-only change; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings only.",
- "queries": "N/A - no database access in this change.",
+ "functions": [
+  {
+   "name": "get_coastal_inundation_live",
+   "file_line": "scripts/generate_conveyancing_report.py:2022",
+   "input": "lat/lng floats + optional lot_wkt string from resolve_address; DATABASE_URL env",
+   "output": "three-state dict: failed | outside(query_basis) | intersects(query_basis, years{year: {days_per_year, value}})",
+   "if_none": "missing DATABASE_URL or any DB error returns {'status': 'failed'} — renders 'not assessed', never an extent claim; missing lot_wkt falls back to the point query and tags query_basis='point' for the caveat"
+  },
+  {
+   "name": "build_coastal_inundation_lines",
+   "file_line": "scripts/generate_conveyancing_report.py:3307",
+   "input": "the fetcher dict (or None from stale callers) + report_date string",
+   "output": "render-state dict {render, state, rows, framing, scope_line, source_line, status_line, basis_note} consumed by generate_pdf",
+   "if_none": "None or unrecognised status returns render=False (section omitted — never a false claim); intersects with zero renderable years fails closed to the 'not assessed' line"
+  },
+  {
+   "name": "_coastal_year_row",
+   "file_line": "scripts/generate_conveyancing_report.py:3285",
+   "input": "year int + per-year tier dict {days_per_year, value} read from the DB row",
+   "output": "one factual sentence per year, or None",
+   "if_none": "missing days_per_year returns None (row dropped) — a figure is never composed; unparseable pct in value omits the parenthetical rather than inventing one"
+  },
+  {
+   "name": "_fetch_coastal",
+   "file_line": "services/conveyancing.py:647",
+   "input": "req.lat/req.lng + lot_wkt from the cached or re-run pipeline",
+   "output": "the fetcher dict passed to generate_pdf(coastal=...)",
+   "if_none": "any import/runtime exception returns {'status': 'failed'} so a broken deploy renders 'not assessed', not a crash or a false outside"
+  }
+ ],
+ "values": [
+  {
+   "value": "value_numeric (days/year per tier row)",
+   "read_at": "scripts/generate_conveyancing_report.py:2081",
+   "nullable": "yes",
+   "guard_at": "scripts/generate_conveyancing_report.py:2083",
+   "if_missing": "row skipped; if no row for a year survives, that year is absent from the section; if none survive at all the fetcher fails closed to 'not assessed'"
+  },
+  {
+   "value": "years dict keys after any JSON boundary",
+   "read_at": "scripts/generate_conveyancing_report.py:3350",
+   "nullable": "no",
+   "guard_at": "scripts/generate_conveyancing_report.py:3351",
+   "if_missing": "string keys from a JSON round-trip are int()-converted per row; tested in test_string_year_keys_tolerated"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "lot-polygon (preferred) or point intersection against the estuarine inundation layer",
+   "file_line": "scripts/generate_conveyancing_report.py:2052",
+   "where_clause": "WHERE layer_type = 'coastal_inundation' AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326)) — point variant uses ST_Point(lng, lat); layer_type scope is the correctness filter (statewide layer; spatial_overlays has no LGA/is_active column to filter on)",
+   "if_zero": "status='outside' — an honest checked non-intersection (97% of NSW lots)",
+   "if_wrong": "worst case is an extent claim for the wrong lot; guarded upstream by GATE-0 parcel resolution supplying lot_wkt, and the point-basis caveat names the weaker basis when the polygon was unavailable"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "The 'sorts enquiries three ways' copy over-promises a triage the widget does not actually render, so a builder installs it and sees only yes/no.",
-   "what_happens": "The pitch's central claim visibly fails on their own site during the pilot.",
+   "scenario": "DB down at generation time renders as 'outside the mapped extent' on a canal-estate lot — a false clear in a legal document.",
+   "what_happens": "Buyer reads an outside-extent claim that was never checked.",
    "mitigated": true,
-   "how": "The three buckets map exactly to states already shipped in DuplexCheckWidget: dualOccEligible true, clear no, and the indeterminate branch added in PR #790. No copy describes a state the component cannot render.",
-   "repro": "Run an eligible, an ineligible and an unconfirmed address on any /widget-demo page - three visually distinct cards."
+   "how": "scripts/generate_conveyancing_report.py:2046 — no DATABASE_URL and every exception path return status='failed', which build_coastal_inundation_lines renders as the 'not assessed' line with no extent claim; 'outside' is only reachable after a query that ran and returned zero rows. Tests: test_no_database_url_fails_not_outside, test_connect_error_fails_not_outside, test_failed_renders_not_assessed_without_extent_claim.",
+   "repro": "unset DATABASE_URL and call get_coastal_inundation_live(-33.5, 151.3) — returns failed; section renders 'not assessed'"
   },
   {
-   "scenario": "The 'cited to the clause and page' claim is stated for councils where page-level citation does not exist, so a builder checks a citation and finds nothing.",
-   "what_happens": "The credibility claim that carries the whole pitch fails on inspection.",
+   "scenario": "A malformed instrument_key or NULL value_numeric row poisons the year selection, inventing a year or frequency.",
+   "what_happens": "A fabricated figure appears in a conveyancer-facing disclosure.",
    "mitigated": true,
-   "how": "Audit confirmed the DCP control corpus is 100% cited to section_ref/pdf_page across the covered councils. Copy makes no coverage-count claim, so a builder outside the covered set sees fewer controls rather than a broken citation.",
-   "repro": "Run a covered-council address and follow a control back to its section reference."
+   "how": "scripts/generate_conveyancing_report.py:2083 — unparseable rows are skipped and never invent a year; all-unparseable falls to status='failed' (a data defect must not read as checked-outside). Figures are READ from the stored value/value_numeric, never composed. Tests: test_malformed_rows_skipped_all_malformed_fails_closed, test_malformed_row_does_not_poison_valid_year, test_year_figures_read_from_rows_never_composed.",
+   "repro": "pytest tests/test_coastal_inundation.py::TestCoastalFetcher"
   },
   {
-   "scenario": "A builder reads the council-variation panel as us asserting their published frontage minimums are wrong, and takes offence.",
-   "what_happens": "Relationship damage with a prospect at first contact.",
+   "scenario": "The section reads as general 'coastal' coverage, so a beachfront (open-surf, non-estuary) buyer treats 'outside the mapped extent' as an all-clear for coastal inundation.",
+   "what_happens": "Inclusion/omission trap — the report implies coverage the dataset does not have.",
    "mitigated": true,
-   "how": "The panel states only that controls vary by council and invites them to test their own; it makes no comparison to the builder's own published figures. The demonstration-not-assertion rule lives in the outreach doc for use on calls, not in on-page copy.",
-   "repro": "Read the 'Council by council' panel - no second-person claim about their content."
+   "how": "The scope sentence (estuarine only; does NOT cover open-coast/surf inundation or erosion, nor riverine flooding) rides with EVERY rendered extent claim — outside and intersects states both; the anchor term everywhere is 'estuarine tidal inundation'. Tests: test_every_extent_claim_scoped_estuarine, test_outside_carries_scope_and_source.",
+   "repro": "read either generated PDF: scope sentence present under the section in both the intersects (Louth Park) and outside (Bowral) states"
+  },
+  {
+   "scenario": "Point-based fallback (no lot polygon) misses an extent that clips only the lot edge, and the report presents the point check as a lot check.",
+   "what_happens": "Partial-lot intersections read as outside with no signal of the weaker basis.",
+   "mitigated": true,
+   "how": "query_basis is threaded from the fetcher and the point basis renders an explicit caveat naming that the lot polygon was unavailable and a lot-boundary check can differ. Test: test_point_basis_gets_caveat_note.",
+   "repro": "call get_coastal_inundation_live without lot_wkt — result carries query_basis='point'; builder emits the basis note"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - static copy.",
-  "other_repo": "None. Mirrors the reframe applied to ~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md the same day so email and demo page tell one story.",
-  "manual_verify": "Yes - on the preview: /widget-demo/buildana leads with the site-assessment reframe, six panels render below the boundary caption, and the not-covered panel is present and legible."
+  "db_reset": "No — read-only layer already live in spatial_overlays (loaded 2026-07-09).",
+  "secrets": "No — uses the existing DATABASE_URL.",
+  "other_repo": "No.",
+  "manual_verify": "Done pre-merge in this session: full CLI PDFs generated against production data for 314 Dagworth Road Louth Park (intersects, f4 182.5 d/yr both years, lot basis) and 38 Park Road Bowral (outside), with the rendered section text read back from both PDFs. Post-deploy: run one Railway /pipeline/conveyancing/pdf for an estuary address and check the section appears."
  }
 }

@@ -644,7 +644,23 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("contaminated land lookup failed: %s", e)
             return {"status": "failed"}
 
-    with ThreadPoolExecutor(max_workers=11) as executor:
+    def _fetch_coastal():
+        """Estuarine tidal inundation mapped-extent check — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report
+        .get_coastal_inundation_live (spatial_overlays coastal_inundation
+        layer, lot-polygon intersection with point fallback) — no new client.
+        {"status": "outside"} is a checked non-intersection; {"status":
+        "failed"} renders "not assessed", never an outside-extent claim.
+        """
+        try:
+            from generate_conveyancing_report import get_coastal_inundation_live
+            return get_coastal_inundation_live(req.lat, req.lng, lot_wkt=lot_wkt)
+        except Exception as e:
+            logger.warning("estuarine inundation lookup failed: %s", e)
+            return {"status": "failed"}
+
+    with ThreadPoolExecutor(max_workers=12) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
@@ -656,6 +672,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_future = executor.submit(_fetch_climate)
         mine_future = executor.submit(_fetch_mine_subsidence)
         contam_future = executor.submit(_fetch_contaminated)
+        coastal_future = executor.submit(_fetch_coastal)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
@@ -667,6 +684,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_result = climate_future.result()
         mine_subsidence_result = mine_future.result()
         contaminated_result = contam_future.result()
+        coastal_result = coastal_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -705,6 +723,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate=climate_result,
         mine_subsidence=mine_subsidence_result,
         contaminated=contaminated_result,
+        coastal=coastal_result,
     )
 
     # Upload to R2
