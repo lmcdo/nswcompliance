@@ -255,6 +255,40 @@ FLOOD_STUDIES: dict[str, dict] = {
         },
         "historical": {},
     },
+    "redbank": {
+        "name": "Redbank Creek Flood Study 2025",
+        "source": "Hawkesbury City Council",
+        "dir": os.environ.get(
+            "REDBANK_RASTER_DIR",
+            os.path.join(_FLOOD_STUDIES_BASE, "redbank"),
+        ),
+        "crs": "EPSG:7856",  # GDA2020 MGA56 — from shapefile .prj in same package (absent from .flt)
+        "nodata": -999.0,
+        "has_depth": True,
+        # Design grids are raw ESRI BIL float (.flt + .hdr sidecar) at 1 m resolution —
+        # published misnamed ".tif" on the flood portal. Historical grid is genuine GeoTIFF.
+        # Peak enveloped + filtered (source READ ME: depth>0.10m OR d>0.05 & V*d>0.025 OR V>2m/s).
+        # Each event carries 3–685 TUFLOW glitch cells (depth up to 1140 m, levels to -642 m AHD);
+        # valid ranges below reject those at sample time. Catchment terrain tops out ~187 m AHD.
+        "valid_depth_range": (0.0, 100.0),
+        "valid_level_range": (-10.0, 250.0),
+        "design": {
+            "20pct":   "design/RedbankCk_DES_20pcAEP_{type}_Max_ProcessedOutput.flt",
+            "10pct":   "design/RedbankCk_DES_10pcAEP_{type}_Max_ProcessedOutput.flt",
+            "5pct":    "design/RedbankCk_DES_5pcAEP_{type}_Max_ProcessedOutput.flt",
+            "2pct":    "design/RedbankCk_DES_2pcAEP_{type}_Max_ProcessedOutput.flt",
+            "1pct":    "design/RedbankCk_DES_1pcAEP_{type}_Max_ProcessedOutput.flt",
+            "0_5pct":  "design/RedbankCk_DES_1in200AEP_{type}_Max_ProcessedOutput.flt",
+            "0_2pct":  "design/RedbankCk_DES_1in500AEP_{type}_Max_ProcessedOutput.flt",
+            "0_1pct":  "design/RedbankCk_DES_1in1000AEP_{type}_Max_ProcessedOutput.flt",
+            "0_05pct": "design/RedbankCk_DES_1in2000AEP_{type}_Max_ProcessedOutput.flt",
+            "0_02pct": "design/RedbankCk_DES_1in5000AEP_{type}_Max_ProcessedOutput.flt",
+            "pmf":     "design/RedbankCk_DES_PMF_{type}_Max_ProcessedOutput.flt",
+        },
+        "historical": {
+            "2022": "historical/RedBank_DES_Hist_March2022_{type}_Max_ProcessedOutput.tif",
+        },
+    },
 }
 
 # Pre-build CRS transformers (WGS84 → study CRS) — one per unique CRS
@@ -273,6 +307,9 @@ _AEP_LABELS: dict[str, str] = {
     "1pct":  "1% AEP (1-in-100 yr)",
     "0_5pct": "0.5% AEP (1-in-200 yr)",
     "0_2pct": "0.2% AEP (1-in-500 yr)",
+    "0_1pct": "0.1% AEP (1-in-1000 yr)",
+    "0_05pct": "0.05% AEP (1-in-2000 yr)",
+    "0_02pct": "0.02% AEP (1-in-5000 yr)",
     "50pct": "50% AEP (1-in-2 yr)",
     "pmf":   "PMF (Probable Maximum Flood)",
 }
@@ -934,12 +971,21 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
 # Hawkesbury FRMSP 2025 raster sampling
 # ---------------------------------------------------------------------------
 
-def _sample_raster(path: str, x: float, y: float, nodata: float) -> Optional[float]:
+def _sample_raster(
+    path: str,
+    x: float,
+    y: float,
+    nodata: float,
+    valid_range: Optional[tuple[float, float]] = None,
+) -> Optional[float]:
     """Read a single pixel value from a raster at projected coordinates.
 
-    Returns None if file missing, point outside bounds, nodata, or error.
+    Windowed 1x1 read — never loads the full band (Redbank grids are 150 MB each).
+    valid_range rejects hydraulic-model glitch cells (e.g. depth 1140 m) as nodata.
+    Returns None if file missing, point outside bounds, nodata, implausible, or error.
     """
     import rasterio
+    import rasterio.windows
     if not os.path.exists(path):
         return None
     try:
@@ -950,8 +996,15 @@ def _sample_raster(path: str, x: float, y: float, nodata: float) -> Optional[flo
             row, col = ds.index(x, y)
             row = max(0, min(row, ds.height - 1))
             col = max(0, min(col, ds.width - 1))
-            val = float(ds.read(1)[row, col])
+            window = rasterio.windows.Window(col, row, 1, 1)
+            val = float(ds.read(1, window=window)[0, 0])
         if val == nodata or math.isnan(val):
+            return None
+        if valid_range is not None and not (valid_range[0] <= val <= valid_range[1]):
+            logger.warning(
+                f"Raster sample {os.path.basename(path)}: value {val} outside "
+                f"plausible range {valid_range} — model artifact, treating as nodata"
+            )
             return None
         return val
     except Exception as e:
@@ -985,16 +1038,26 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
         transformer = _STUDY_TRANSFORMERS[cfg["crs"]]
         x, y = transformer.transform(lng, lat)
 
-        # Bounds check using the 1pct design event as proxy (most studies have it)
-        proxy_aep = "1pct" if "1pct" in cfg["design"] else next(iter(cfg["design"]))
-        proxy_template = cfg["design"][proxy_aep]
-        # Resolve file path — Hawkesbury uses plain filenames, Tweed uses {type} templates
-        if "{type}" in proxy_template:
-            proxy_path = os.path.join(study_dir, proxy_template.format(type="d" if has_depth else "h"))
-        else:
-            proxy_path = os.path.join(study_dir, proxy_template)
+        # Bounds-check proxy: prefer the PMF grid — the maximal flood envelope.
+        # Event grids can differ in extent (Redbank's PMF grid extends ~86 m past
+        # its 1% grid); proxying on a smaller grid silently drops fringe points.
+        # Fall back to 1pct if the PMF file is absent on this host.
+        proxy_candidates = [k for k in ("pmf", "1pct") if k in cfg["design"]]  # noqa: bracket-access — internal FLOOD_STUDIES config
+        if not proxy_candidates:
+            proxy_candidates = [next(iter(cfg["design"]))]  # noqa: bracket-access — internal FLOOD_STUDIES config
+        proxy_path = None
+        for proxy_aep in proxy_candidates:
+            proxy_template = cfg["design"][proxy_aep]  # noqa: bracket-access — internal FLOOD_STUDIES config
+            # Resolve file path — Hawkesbury uses plain filenames, Tweed uses {type} templates
+            if "{type}" in proxy_template:
+                candidate = os.path.join(study_dir, proxy_template.format(type="d" if has_depth else "h"))
+            else:
+                candidate = os.path.join(study_dir, proxy_template)
+            if os.path.exists(candidate):
+                proxy_path = candidate
+                break
 
-        if not os.path.exists(proxy_path):
+        if proxy_path is None:
             logger.info(f"Flood study {study_key} rasters not present — skipping")
             continue
 
@@ -1008,6 +1071,9 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
             logger.warning(f"Flood study {study_key} bounds check: {e}")
             continue
 
+        depth_range = cfg.get("valid_depth_range")
+        level_range = cfg.get("valid_level_range")
+
         # Sample design events
         design_results: dict[str, dict] = {}
         for aep_key, template in cfg["design"].items():
@@ -1015,16 +1081,16 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
             if "{type}" in template:
                 if has_depth:
                     d_path = os.path.join(study_dir, template.format(type="d"))
-                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata)
+                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata, depth_range)
                     if entry["depth_m"] is not None:
                         entry["depth_m"] = round(max(0.0, entry["depth_m"]), 2)
                 h_path = os.path.join(study_dir, template.format(type="h"))
-                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata)
+                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata, level_range)
                 if entry["level_m_ahd"] is not None:
                     entry["level_m_ahd"] = round(entry["level_m_ahd"], 2)
             else:
                 # Hawkesbury-style: single file is water level (h)
-                val = _sample_raster(os.path.join(study_dir, template), x, y, nodata)
+                val = _sample_raster(os.path.join(study_dir, template), x, y, nodata, level_range)
                 if val is not None:
                     entry["level_m_ahd"] = round(val, 2)
 
@@ -1038,11 +1104,11 @@ def _query_flood_study_rasters(lat: float, lng: float) -> dict:
             if "{type}" in template:
                 if has_depth:
                     d_path = os.path.join(study_dir, template.format(type="d"))
-                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata)
+                    entry["depth_m"] = _sample_raster(d_path, x, y, nodata, depth_range)
                     if entry["depth_m"] is not None:
                         entry["depth_m"] = round(max(0.0, entry["depth_m"]), 2)
                 h_path = os.path.join(study_dir, template.format(type="h"))
-                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata)
+                entry["level_m_ahd"] = _sample_raster(h_path, x, y, nodata, level_range)
                 if entry["level_m_ahd"] is not None:
                     entry["level_m_ahd"] = round(entry["level_m_ahd"], 2)
             if entry["depth_m"] is not None or entry["level_m_ahd"] is not None:
