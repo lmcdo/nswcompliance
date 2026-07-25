@@ -12,6 +12,12 @@ from pathlib import Path
 
 import pytest
 
+# The ingest module imports shapely at top level. The pre-push suite runs under a
+# system python without native geo deps (conftest_mocks stubs psycopg2/requests/pyproj,
+# not shapely), so skip this file there — it runs under venv_linux and in CI where
+# shapely is installed. Mirrors the rasterio importorskip in test_flood_truth.
+pytest.importorskip("shapely")
+
 # Load the ingest module directly from scripts/ (no package __init__ there).
 _MOD_PATH = Path(__file__).resolve().parent.parent / "scripts" / "ingest_sydney_water_gsp.py"
 _spec = importlib.util.spec_from_file_location("gsp_ingest", _MOD_PATH)
