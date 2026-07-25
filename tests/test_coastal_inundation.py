@@ -55,8 +55,9 @@ _LIABILITY_RE = re.compile(
 
 
 class _FakeCursor:
-    def __init__(self, rows):
+    def __init__(self, rows, layer_present=True):
         self._rows = rows
+        self._layer_present = layer_present
         self.executed = []
 
     def execute(self, sql, params=None):
@@ -65,13 +66,17 @@ class _FakeCursor:
     def fetchall(self):
         return self._rows
 
+    def fetchone(self):
+        # Only the layer-presence probe calls fetchone.
+        return (1,) if self._layer_present else None
+
     def close(self):
         pass
 
 
 class _FakeConn:
-    def __init__(self, rows):
-        self.cursor_obj = _FakeCursor(rows)
+    def __init__(self, rows, layer_present=True):
+        self.cursor_obj = _FakeCursor(rows, layer_present=layer_present)
         self.closed = False
 
     def cursor(self):
@@ -81,8 +86,8 @@ class _FakeConn:
         self.closed = True
 
 
-def _install_fake_db(monkeypatch, rows):
-    conn = _FakeConn(rows)
+def _install_fake_db(monkeypatch, rows, layer_present=True):
+    conn = _FakeConn(rows, layer_present=layer_present)
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
     monkeypatch.setattr(gcr.psycopg2, "connect", lambda *_a, **_k: conn)
     return conn
@@ -106,12 +111,19 @@ class TestCoastalFetcher:
         monkeypatch.setattr(gcr.psycopg2, "connect", _boom)
         assert get_coastal_inundation_live(-33.5, 151.3)["status"] == "failed"
 
-    def test_no_rows_is_checked_outside(self, monkeypatch):
-        conn = _install_fake_db(monkeypatch, [])
+    def test_no_rows_is_checked_outside_only_after_presence_probe(self, monkeypatch):
+        conn = _install_fake_db(monkeypatch, [], layer_present=True)
         out = get_coastal_inundation_live(-33.71, 150.31)
         assert out["status"] == "outside"
         assert out["query_basis"] == "point"
+        assert len(conn.cursor_obj.executed) == 2   # intersection + presence probe
         assert conn.closed
+
+    def test_no_rows_with_layer_absent_fails_closed(self, monkeypatch):
+        # Deleted/never-loaded layer must read "not assessed", never a
+        # universal outside-the-extent all-clear (Sol finding 2).
+        _install_fake_db(monkeypatch, [], layer_present=False)
+        assert get_coastal_inundation_live(-33.71, 150.31)["status"] == "failed"
 
     def test_lot_wkt_uses_lot_polygon_basis(self, monkeypatch):
         conn = _install_fake_db(monkeypatch, [])
@@ -128,7 +140,19 @@ class TestCoastalFetcher:
         get_coastal_inundation_live(-33.5, 151.3)
         sql, params = conn.cursor_obj.executed[0]
         assert "ST_Point" in sql
-        assert params == (151.3, -33.5)
+        assert params == (gcr._COASTAL_IK_LIKE, 151.3, -33.5)
+
+    def test_query_scoped_to_2025_publication(self, monkeypatch):
+        # A later publication/scenario loaded under the same layer_type must
+        # never render under the 2025 SSP3-7.0 attribution (Sol finding 1).
+        conn = _install_fake_db(monkeypatch, [])
+        get_coastal_inundation_live(
+            -33.5, 151.3, lot_wkt="POLYGON((151.3 -33.5,151.31 -33.5,151.31 -33.51,151.3 -33.5))"
+        )
+        sql, params = conn.cursor_obj.executed[0]
+        assert "instrument_key LIKE" in sql
+        assert params[0].startswith(r"estuary\_inund\_2025\_s370")
+        assert params[0].endswith("%")
 
     def test_most_frequent_tier_selected_per_year(self, monkeypatch):
         _install_fake_db(monkeypatch, [_ROW_2050_F1, _ROW_2050_F4, _ROW_2100_F2])

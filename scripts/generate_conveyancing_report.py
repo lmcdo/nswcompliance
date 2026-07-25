@@ -2017,6 +2017,12 @@ def get_contaminated_live(lat: float, lng: float) -> dict:
 # instrument_key pattern written by scripts/ingest_coastal_inundation.py:
 # estuary_inund_2025_s370_y{2050|2100}_{f1..f4}
 _COASTAL_IK_RE = re.compile(r"_y(\d{4})_f\d$")
+# Exact publication/scenario this renderer's source line cites. The query is
+# scoped to it so a future load under the same layer_type (new publication or
+# scenario) can never be rendered under the 2025 SSP3-7.0 attribution.
+_COASTAL_INSTRUMENT_PREFIX = "estuary_inund_2025_s370_"
+# LIKE pattern with '_' escaped (it is a LIKE wildcard).
+_COASTAL_IK_LIKE = _COASTAL_INSTRUMENT_PREFIX.replace("_", r"\_") + "%"
 
 
 def get_coastal_inundation_live(
@@ -2050,30 +2056,48 @@ def get_coastal_inundation_live(
         cur = conn.cursor()
         if lot_wkt:
             cur.execute(
-                """
+                r"""
                 SELECT instrument_key, value, value_numeric
                 FROM spatial_overlays
                 WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
                   AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326))
                 """,
-                (lot_wkt,),
+                (_COASTAL_IK_LIKE, lot_wkt),
             )
             query_basis = "lot"
         else:
             cur.execute(
-                """
+                r"""
                 SELECT instrument_key, value, value_numeric
                 FROM spatial_overlays
                 WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
                   AND ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
                 """,
-                (lng, lat),
+                (_COASTAL_IK_LIKE, lng, lat),
             )
             query_basis = "point"
         rows = cur.fetchall()
-        cur.close()
         if not rows:
+            # Zero intersections is only a checked "outside" if the layer is
+            # actually present — a deleted/never-loaded layer must read as
+            # "not assessed", never a universal all-clear.
+            cur.execute(
+                r"""
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                LIMIT 1
+                """,
+                (_COASTAL_IK_LIKE,),
+            )
+            layer_present = cur.fetchone() is not None
+            cur.close()
+            if not layer_present:
+                return {"status": "failed"}
             return {"status": "outside", "query_basis": query_basis}
+        cur.close()
         years: dict[int, dict] = {}
         for instrument_key, value, value_numeric in rows:
             m = _COASTAL_IK_RE.search(instrument_key or "")

@@ -16,21 +16,21 @@
  "functions": [
   {
    "name": "get_coastal_inundation_live",
-   "file_line": "scripts/generate_conveyancing_report.py:2022",
+   "file_line": "scripts/generate_conveyancing_report.py:2028",
    "input": "lat/lng floats + optional lot_wkt string from resolve_address; DATABASE_URL env",
    "output": "three-state dict: failed | outside(query_basis) | intersects(query_basis, years{year: {days_per_year, value}})",
    "if_none": "missing DATABASE_URL or any DB error returns {'status': 'failed'} — renders 'not assessed', never an extent claim; missing lot_wkt falls back to the point query and tags query_basis='point' for the caveat"
   },
   {
    "name": "build_coastal_inundation_lines",
-   "file_line": "scripts/generate_conveyancing_report.py:3307",
+   "file_line": "scripts/generate_conveyancing_report.py:3333",
    "input": "the fetcher dict (or None from stale callers) + report_date string",
    "output": "render-state dict {render, state, rows, framing, scope_line, source_line, status_line, basis_note} consumed by generate_pdf",
    "if_none": "None or unrecognised status returns render=False (section omitted — never a false claim); intersects with zero renderable years fails closed to the 'not assessed' line"
   },
   {
    "name": "_coastal_year_row",
-   "file_line": "scripts/generate_conveyancing_report.py:3285",
+   "file_line": "scripts/generate_conveyancing_report.py:3311",
    "input": "year int + per-year tier dict {days_per_year, value} read from the DB row",
    "output": "one factual sentence per year, or None",
    "if_none": "missing days_per_year returns None (row dropped) — a figure is never composed; unparseable pct in value omits the parenthetical rather than inventing one"
@@ -46,25 +46,25 @@
  "values": [
   {
    "value": "value_numeric (days/year per tier row)",
-   "read_at": "scripts/generate_conveyancing_report.py:2081",
+   "read_at": "scripts/generate_conveyancing_report.py:2109",
    "nullable": "yes",
-   "guard_at": "scripts/generate_conveyancing_report.py:2083",
+   "guard_at": "scripts/generate_conveyancing_report.py:2106",
    "if_missing": "row skipped; if no row for a year survives, that year is absent from the section; if none survive at all the fetcher fails closed to 'not assessed'"
   },
   {
    "value": "years dict keys after any JSON boundary",
-   "read_at": "scripts/generate_conveyancing_report.py:3350",
+   "read_at": "scripts/generate_conveyancing_report.py:3380",
    "nullable": "no",
-   "guard_at": "scripts/generate_conveyancing_report.py:3351",
+   "guard_at": "scripts/generate_conveyancing_report.py:3381",
    "if_missing": "string keys from a JSON round-trip are int()-converted per row; tested in test_string_year_keys_tolerated"
   }
  ],
  "queries": [
   {
    "purpose": "lot-polygon (preferred) or point intersection against the estuarine inundation layer",
-   "file_line": "scripts/generate_conveyancing_report.py:2052",
-   "where_clause": "WHERE layer_type = 'coastal_inundation' AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326)) — point variant uses ST_Point(lng, lat); layer_type scope is the correctness filter (statewide layer; spatial_overlays has no LGA/is_active column to filter on)",
-   "if_zero": "status='outside' — an honest checked non-intersection (97% of NSW lots)",
+   "file_line": "scripts/generate_conveyancing_report.py:2058",
+   "where_clause": "WHERE layer_type = 'coastal_inundation' AND instrument_key LIKE 'estuary\\_inund\\_2025\\_s370\\_%' ESCAPE '' AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326)) — point variant uses ST_Point(lng, lat). The instrument-prefix filter pins the query to the exact 2025 SSP3-7.0 publication the source line cites, so a future load under the same layer_type cannot mix in.",
+   "if_zero": "layer-presence probe runs first: layer absent → status='failed' (never a universal false outside); layer present → status='outside', an honest checked non-intersection (97% of NSW lots)",
    "if_wrong": "worst case is an extent claim for the wrong lot; guarded upstream by GATE-0 parcel resolution supplying lot_wkt, and the point-basis caveat names the weaker basis when the polygon was unavailable"
   }
  ],
@@ -73,7 +73,7 @@
    "scenario": "DB down at generation time renders as 'outside the mapped extent' on a canal-estate lot — a false clear in a legal document.",
    "what_happens": "Buyer reads an outside-extent claim that was never checked.",
    "mitigated": true,
-   "how": "scripts/generate_conveyancing_report.py:2046 — no DATABASE_URL and every exception path return status='failed', which build_coastal_inundation_lines renders as the 'not assessed' line with no extent claim; 'outside' is only reachable after a query that ran and returned zero rows. Tests: test_no_database_url_fails_not_outside, test_connect_error_fails_not_outside, test_failed_renders_not_assessed_without_extent_claim.",
+   "how": "scripts/generate_conveyancing_report.py:2052 — no DATABASE_URL and every exception path return status='failed'; additionally a zero-hit result only becomes 'outside' after a layer-presence probe (scripts/generate_conveyancing_report.py:2086) — a deleted or never-loaded layer fails closed instead of reading as outside on every lot. Tests: test_no_database_url_fails_not_outside, test_connect_error_fails_not_outside, test_no_rows_with_layer_absent_fails_closed, test_failed_renders_not_assessed_without_extent_claim.",
    "repro": "unset DATABASE_URL and call get_coastal_inundation_live(-33.5, 151.3) — returns failed; section renders 'not assessed'"
   },
   {

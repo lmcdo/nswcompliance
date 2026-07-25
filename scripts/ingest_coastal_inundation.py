@@ -152,6 +152,21 @@ def live_load(frame: gpd.GeoDataFrame):
                     SET value = EXCLUDED.value, value_numeric = EXCLUDED.value_numeric,
                         currency_date = EXCLUDED.currency_date, geom = EXCLUDED.geom, synced_at = now()
             """))
+            # Remove rows a corrected re-load no longer carries — an upsert-only
+            # load would keep reporting an intersection against a polygon the
+            # source has withdrawn. The layer_type is wholly owned by this
+            # loader, so the scope is the full staged instrument set.
+            deleted = conn.execute(text(f"""
+                DELETE FROM spatial_overlays so
+                WHERE so.layer_type = '{LAYER_TYPE}'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM {STAGING} st
+                      WHERE st.instrument_key = so.instrument_key
+                        AND st.source_oid = so.source_oid
+                  )
+            """)).rowcount
+            if deleted:
+                print(f"removed {deleted} obsolete rows absent from this load")
             after = conn.execute(
                 text("SELECT count(*) FROM spatial_overlays WHERE layer_type=:lt"), {"lt": LAYER_TYPE}
             ).scalar()
