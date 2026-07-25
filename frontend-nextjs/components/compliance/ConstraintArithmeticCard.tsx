@@ -105,15 +105,23 @@ const YIELD_INPUTS: Array<{ label: string; has: (r: ConstraintArithmeticResult) 
   { label: 'SEPP standards', has: (r) => (r.sepp_overrides_applied?.length ?? 0) > 0 },
 ];
 
-function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; title: string } {
+function yieldInputsBadge(result: ConstraintArithmeticResult): { text: string; sentence: string } {
   const used = YIELD_INPUTS.filter((i) => i.has(result));
   const missing = YIELD_INPUTS.filter((i) => !i.has(result));
+  const joinLabels = (items: typeof YIELD_INPUTS) => {
+    const labels = items.map((i) => i.label);
+    return labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+      : labels[0];
+  };
   return {
     text: `Calculated from ${used.length} of ${YIELD_INPUTS.length} planning controls`,
-    title: [
-      used.length ? `In this calculation: ${used.map((i) => i.label).join(', ')}` : '',
-      missing.length ? `Not mapped for this lot: ${missing.map((i) => i.label).join(', ')}` : '',
-    ].filter(Boolean).join(' · '),
+    sentence: [
+      used.length ? `This estimate is computed from the ${joinLabels(used)}.` : '',
+      missing.length
+        ? `No ${joinLabels(missing)} ${missing.length > 1 ? 'are' : 'is'} mapped for this lot, so ${missing.length > 1 ? 'those controls' : 'that control'} could not narrow the estimate.`
+        : '',
+    ].filter(Boolean).join(' '),
   };
 }
 
@@ -295,11 +303,15 @@ export function ConstraintArithmeticCard({
           </div>
           <Badge
             className={CONFIDENCE_COLORS[result.confidence] || 'bg-gray-100 text-gray-800'}
-            title={inputsBadge.title}
           >
             {inputsBadge.text}
           </Badge>
         </div>
+        {inputsBadge.sentence && (
+          <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
+            {inputsBadge.sentence}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* The envelope could not be computed — name the exact missing control
