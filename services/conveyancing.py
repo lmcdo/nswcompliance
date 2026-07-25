@@ -614,7 +614,37 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("NARCliM projection lookup failed: %s", e)
             return {"state": "unavailable"}
 
-    with ThreadPoolExecutor(max_workers=9) as executor:
+    def _fetch_mine_subsidence():
+        """Mine subsidence district — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_mine_subsidence_live
+        (which wraps portal_constraints.fetch_mine_subsidence, the Site Report's
+        fetcher) — no new client. {"status": "empty"} is a checked clear;
+        {"status": "failed"} renders "Not assessed", never "Clear".
+        """
+        try:
+            from generate_conveyancing_report import get_mine_subsidence_live
+            return get_mine_subsidence_live(req.lat, req.lng)
+        except Exception as e:
+            logger.warning("mine subsidence lookup failed: %s", e)
+            return {"status": "failed"}
+
+    def _fetch_contaminated():
+        """EPA contaminated-land notified sites within 500 m — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_contaminated_live
+        (which wraps portal_constraints.fetch_contaminated_land, the Site
+        Report's fetcher). A failed lookup must never render as a clear
+        register on the one row conveyancers read for legal exposure.
+        """
+        try:
+            from generate_conveyancing_report import get_contaminated_live
+            return get_contaminated_live(req.lat, req.lng)
+        except Exception as e:
+            logger.warning("contaminated land lookup failed: %s", e)
+            return {"status": "failed"}
+
+    with ThreadPoolExecutor(max_workers=11) as executor:
         db_future = executor.submit(_fetch_db_data)
         shadow_future = executor.submit(_fetch_shadow)
         bushfire_future = executor.submit(_fetch_bushfire)
@@ -624,6 +654,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         tod_future = executor.submit(_fetch_tod)
         structures_future = executor.submit(_fetch_structures_records)
         climate_future = executor.submit(_fetch_climate)
+        mine_future = executor.submit(_fetch_mine_subsidence)
+        contam_future = executor.submit(_fetch_contaminated)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
         bushfire_live = bushfire_future.result()
@@ -633,6 +665,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         tod_result, capacity_result = tod_future.result()
         structures_records_result, structures_records_status = structures_future.result()
         climate_result = climate_future.result()
+        mine_subsidence_result = mine_future.result()
+        contaminated_result = contam_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
     # PostGIS HCA entries go into heritage_hca only (never reclassify portal items).
@@ -669,6 +703,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         structures_records=structures_records_result,
         structures_records_status=structures_records_status,
         climate=climate_result,
+        mine_subsidence=mine_subsidence_result,
+        contaminated=contaminated_result,
     )
 
     # Upload to R2
