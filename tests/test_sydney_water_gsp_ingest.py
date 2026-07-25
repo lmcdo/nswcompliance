@@ -140,6 +140,13 @@ class TestGeomToMultipolygonWkt:
         wkt = gsp.geom_to_multipolygon_wkt(BOWTIE)
         assert wkt.startswith("MULTIPOLYGON")
 
+    def test_invalid_bowtie_preserves_both_lobes(self):
+        # make_valid on a bow-tie yields two triangles; both must survive (buffer(0)
+        # could keep only one — silent footprint loss).
+        from shapely import wkt as shp_wkt
+        mp = shp_wkt.loads(gsp.geom_to_multipolygon_wkt(BOWTIE))
+        assert len(mp.geoms) == 2
+
     def test_empty_geometry_raises(self):
         empty = {"type": "Polygon", "coordinates": []}
         with pytest.raises(ValueError):

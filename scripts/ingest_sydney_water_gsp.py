@@ -33,7 +33,8 @@ from collections import Counter
 from pathlib import Path
 
 import requests
-from shapely.geometry import MultiPolygon, shape
+from shapely import make_valid
+from shapely.geometry import MultiPolygon, Polygon, shape
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "sydney_water_gsp"
@@ -79,21 +80,34 @@ def derive_status(stage: str | None, special: str | None) -> tuple[str, bool]:
     return base, constrained
 
 
+def _polygonal_parts(geom) -> list[Polygon]:
+    """Every Polygon component of a geometry, flattening MultiPolygon/GeometryCollection.
+
+    make_valid can return a GeometryCollection mixing polygons with stray lines/points;
+    we keep only the polygonal area and drop the degenerate bits.
+    """
+    if geom.is_empty:
+        return []
+    if isinstance(geom, Polygon):
+        return [geom]
+    parts: list[Polygon] = []
+    for g in getattr(geom, "geoms", []):
+        parts.extend(_polygonal_parts(g))
+    return parts
+
+
 def geom_to_multipolygon_wkt(geojson_geom: dict) -> str:
     geom = shape(geojson_geom)
-    if geom.is_empty:
-        raise ValueError("empty geometry")
-    # Repair FIRST (buffer(0) can collapse a MultiPolygon to a Polygon), then coerce
-    # the final result to MultiPolygon so the WKT type is always MULTIPOLYGON.
+    # Repair with make_valid (NOT buffer(0), which can silently discard a lobe of a
+    # multi-part polygon). Then keep ALL polygonal parts so no footprint is lost.
     if not geom.is_valid:
-        geom = geom.buffer(0)
-        if geom.is_empty or not geom.is_valid:
-            raise ValueError("invalid geometry after repair")
-    if geom.geom_type == "Polygon":
-        geom = MultiPolygon([geom])
-    elif geom.geom_type != "MultiPolygon":
-        raise ValueError(f"unexpected geometry type {geom.geom_type}")
-    return geom.wkt
+        geom = make_valid(geom)
+    parts = _polygonal_parts(geom)
+    # Single guard: empty input, a degenerate repair, or a non-polygonal geometry all
+    # land here as zero parts and fail loudly rather than storing junk.
+    if not parts:
+        raise ValueError(f"no polygonal geometry (got {geom.geom_type})")
+    return MultiPolygon(parts).wkt
 
 
 def download_if_missing() -> None:
@@ -150,6 +164,12 @@ def transform() -> list[dict]:
     return rows
 
 
+def _require(cond: bool, msg: str) -> None:
+    """Integrity guard that survives python -O (unlike assert)."""
+    if not cond:
+        raise RuntimeError(f"integrity check failed: {msg}")
+
+
 def summarize(rows: list[dict]) -> None:
     print(f"\nTransformed {len(rows)} rows total")
     for product in ("WW", "DW"):
@@ -159,13 +179,14 @@ def summarize(rows: list[dict]) -> None:
         priced = sum(r["dsp_price_per_et"] is not None for r in sub)
         print(f"  {product}: {len(sub)} rows · statuses={dict(statuses)} · "
               f"constrained={constrained} · with_price={priced}/{len(sub)}")
-    # Integrity assertions — fail loudly rather than ingest junk.
-    assert len(rows) == EXPECTED_ROWS, f"expected {EXPECTED_ROWS} rows, got {len(rows)}"
-    assert all(r["status_code"] in _VALID_STATUS for r in rows), "unexpected status_code"
-    assert all(r["swc_id"] for r in rows), "blank swc_id"
-    assert all(r["wkt"].startswith("MULTIPOLYGON") for r in rows), "geom not multipolygon"
+    # Integrity checks — explicit raises, NOT assert (assert is stripped under python -O,
+    # which would let bad data through silently).
+    _require(len(rows) == EXPECTED_ROWS, f"expected {EXPECTED_ROWS} rows, got {len(rows)}")
+    _require(all(r["status_code"] in _VALID_STATUS for r in rows), "unexpected status_code")
+    _require(all(r["swc_id"] for r in rows), "blank swc_id")
+    _require(all(r["wkt"].startswith("MULTIPOLYGON") for r in rows), "geom not multipolygon")
     keys = [(r["product"], r["swc_id"]) for r in rows]
-    assert len(keys) == len(set(keys)), "duplicate (product, swc_id)"
+    _require(len(keys) == len(set(keys)), "duplicate (product, swc_id)")
     unknown = [r["swc_id"] for r in rows if r["status_code"] == "UNKNOWN_STAGE"]
     if unknown:
         print(f"  [WARN] {len(unknown)} UNKNOWN_STAGE rows (unmapped stage): {unknown[:8]}")

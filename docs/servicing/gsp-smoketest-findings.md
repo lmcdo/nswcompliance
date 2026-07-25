@@ -39,7 +39,7 @@ Counts and field names match the strategy doc exactly (`plans/strategic/site-acq
 | `Concept` / `Option` / `Strategic Planning` | `PLANNED` | Servicing planned — timeframe indicative only |
 | `Growth precinct boundary. No current…` | `NO_CURRENT_PROJECT` | In a growth precinct but no current Sydney Water servicing project |
 | `Special_Comments` capacity note present | `CONSTRAINED` (overlay) | Capacity/timescale constraints flagged — … |
-| point in no polygon | `NOT_IN_PRECINCT` | Not in a GSP growth precinct — capacity confirmed only via a site-specific Section 73 feasibility |
+| point in no polygon | `NOT_IN_PRECINCT` | No GSP growth-precinct polygon at this location — contact Sydney Water for site-specific servicing requirements (Section 73 feasibility) |
 
 `NOT_IN_PRECINCT` is the established-suburb gap surfaced honestly — **not** a negative status.
 

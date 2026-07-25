@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "3b0c2cd1",
+  "commit_hash": "62ebb3a8",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
@@ -15,28 +15,28 @@
   "functions": [
     {
       "name": "parse_dsp_price",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:64",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:65",
       "input": "str | None - DSP price HTML blob from the GeoJSON property",
       "output": "float | None -> dsp_price_per_et column",
       "if_none": "None/empty/no-$ figure -> None (14+ rows legitimately carry no figure); $0 -> 0.0, never None"
     },
     {
       "name": "derive_status",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:71",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:72",
       "input": "stage str|None + special-comments str|None from source properties",
       "output": "(status_code, constrained bool) -> status_code + constrained columns",
       "if_none": "None stage -> UNKNOWN_STAGE; None special -> constrained False (narrow to the capacity phrase only)"
     },
     {
       "name": "geom_to_multipolygon_wkt",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:82",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:99",
       "input": "GeoJSON geometry dict, a Polygon feature from the source file",
       "output": "MULTIPOLYGON WKT str -> ST_GeomFromText into geom(4326)",
       "if_none": "empty/invalid-after-repair/non-polygon -> raises ValueError (fails the row loudly, never inserts junk geometry)"
     },
     {
       "name": "clean",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:57",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:58",
       "input": "str | None - raw source text",
       "output": "str | None - HTML-stripped, trimmed",
       "if_none": "None, empty string, or tags-only input all return None"
@@ -83,11 +83,11 @@
       "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestDeriveStatus::test_dphi_note_is_not_constrained"
     },
     {
-      "scenario": "A self-intersecting source polygon is inserted as invalid geometry, so ST_Contains lookups silently miss or error for that area.",
-      "what_happens": "An address inside that precinct returns NOT_IN_PRECINCT (wrong) instead of its real servicing status.",
+      "scenario": "A self-intersecting source polygon is repaired with buffer(0), which discards one lobe of a multi-part footprint, so ST_Contains lookups silently miss the dropped area.",
+      "what_happens": "An address inside the discarded lobe returns NOT_IN_PRECINCT (wrong) instead of its real servicing status.",
       "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:82 - buffer(0) repair then coerce to MultiPolygon; unrepairable -> ValueError. Live check confirmed 0/397 invalid via ST_IsValid. Covered by test_invalid_bowtie_repaired_to_multipolygon.",
-      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestGeomToMultipolygonWkt::test_invalid_bowtie_repaired_to_multipolygon"
+      "how": "scripts/ingest_sydney_water_gsp.py:99 - geom_to_multipolygon_wkt uses make_valid (not buffer(0)) then keeps ALL polygonal parts via _polygonal_parts, so no lobe is lost; zero parts -> ValueError. Live check confirmed 0/397 invalid via ST_IsValid. Covered by test_invalid_bowtie_preserves_both_lobes.",
+      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestGeomToMultipolygonWkt::test_invalid_bowtie_preserves_both_lobes"
     },
     {
       "scenario": "A network drop mid-batch commits a partial upsert of the GSP polygons, leaving the table with fewer than 397 rows, so addresses in the missing precincts silently return NOT_IN_PRECINCT.",
