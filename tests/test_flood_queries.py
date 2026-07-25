@@ -1239,7 +1239,8 @@ class TestSampleRaster:
         mock_ds.__enter__ = MagicMock(return_value=mock_ds)
         mock_ds.__exit__ = MagicMock(return_value=False)
         rasterio_mod = sys.modules.get("rasterio") or MagicMock()
-        rasterio_mod.open = lambda p: mock_ds
+        # setattr (not direct assignment) so the real module's open is restored
+        monkeypatch.setattr(rasterio_mod, "open", lambda p, *a, **kw: mock_ds, raising=False)
         monkeypatch.setitem(sys.modules, "rasterio", rasterio_mod)
         result = ft._sample_raster("/fake/path.tif", 100.0, 200.0, -999.0)
         assert result is None
@@ -1257,7 +1258,8 @@ class TestSampleRaster:
         mock_ds.__enter__ = MagicMock(return_value=mock_ds)
         mock_ds.__exit__ = MagicMock(return_value=False)
         rasterio_mod = sys.modules.get("rasterio") or MagicMock()
-        rasterio_mod.open = lambda p: mock_ds
+        # setattr (not direct assignment) so the real module's open is restored
+        monkeypatch.setattr(rasterio_mod, "open", lambda p, *a, **kw: mock_ds, raising=False)
         monkeypatch.setitem(sys.modules, "rasterio", rasterio_mod)
         return mock_ds
 
@@ -1279,7 +1281,11 @@ class TestSampleRaster:
     def test_rasterio_error_returns_none(self, monkeypatch):
         monkeypatch.setattr(os.path, "exists", lambda p: True)
         rasterio_mod = sys.modules.get("rasterio") or MagicMock()
-        rasterio_mod.open = lambda p: (_ for _ in ()).throw(Exception("corrupt"))
+        monkeypatch.setattr(
+            rasterio_mod, "open",
+            lambda p, *a, **kw: (_ for _ in ()).throw(Exception("corrupt")),
+            raising=False,
+        )
         monkeypatch.setitem(sys.modules, "rasterio", rasterio_mod)
         result = ft._sample_raster("/fake/path.tif", 100.0, 100.0, -999.0)
         assert result is None
@@ -1364,11 +1370,15 @@ class TestQueryFloodStudyRasters:
         mock_ds.__exit__ = MagicMock(return_value=False)
 
         rasterio_mod = sys.modules.get("rasterio") or MagicMock()
-        rasterio_mod.open = lambda p: mock_ds
+        # setattr (not direct assignment) so the real module's open is restored
+        monkeypatch.setattr(rasterio_mod, "open", lambda p, *a, **kw: mock_ds, raising=False)
         monkeypatch.setitem(sys.modules, "rasterio", rasterio_mod)
 
         # Mock _sample_raster to return a value for hawkesbury
-        monkeypatch.setattr(ft, "_sample_raster", lambda path, x, y, nodata: 15.5 if "hawkesbury" in path else None)
+        monkeypatch.setattr(
+            ft, "_sample_raster",
+            lambda path, x, y, nodata, valid_range=None: 15.5 if "hawkesbury" in path else None,
+        )
 
         result = ft._query_flood_study_rasters(-33.62, 150.82)
         assert len(result["flood_studies"]) >= 1
@@ -1504,16 +1514,17 @@ class TestQueryJrcSurfaceWater:
         mock_env.__exit__ = MagicMock(return_value=False)
 
         rasterio_mod = sys.modules.get("rasterio") or MagicMock()
-        rasterio_mod.open = lambda *a, **kw: mock_ds
-        rasterio_mod.Env = lambda **kw: mock_env
+        # setattr (not direct assignment) so the real module's attrs are restored
+        monkeypatch.setattr(rasterio_mod, "open", lambda *a, **kw: mock_ds, raising=False)
+        monkeypatch.setattr(rasterio_mod, "Env", lambda **kw: mock_env, raising=False)
         # Ensure rasterio.windows exists (for windowed read)
         windows_mod = MagicMock()
         windows_mod.Window = MagicMock()
-        rasterio_mod.windows = windows_mod
+        monkeypatch.setattr(rasterio_mod, "windows", windows_mod, raising=False)
         # Mock rasterio.transform.rowcol
         transform_mod = MagicMock()
         transform_mod.rowcol = lambda t, x, y: (50, 50)
-        rasterio_mod.transform = transform_mod
+        monkeypatch.setattr(rasterio_mod, "transform", transform_mod, raising=False)
         monkeypatch.setitem(sys.modules, "rasterio", rasterio_mod)
         monkeypatch.setitem(sys.modules, "rasterio.windows", windows_mod)
         monkeypatch.setitem(sys.modules, "rasterio.transform", transform_mod)
