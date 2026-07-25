@@ -228,6 +228,53 @@ class ConveyancingPdfRequest(BaseModel):
     report_id: str
 
 
+def _resolve_property(req: ConveyancingRequest) -> tuple[int, float, float, Optional[str]]:
+    """Resolve (prop_id, lat, lng, lot_wkt) authoritatively from req.address.
+
+    prior-art-checked: not a new data source. Replaces the inline caller-triple
+    fast path already in run_conveyancing; reuses the existing resolve_address.
+
+    All four values come from the SAME address resolution, so prop_id-keyed data
+    (LEP controls, valuation) and coordinate-keyed data (spatial overlays, strata,
+    nearby DAs) can never describe two different properties. The removed fast path
+    trusted a caller-supplied (prop_id, lat, lng) triple without binding them: a
+    mismatched triple produced a report mixing one property's controls with another's
+    overlays under a single address label. resolve_address also enforces GATE-0
+    parcel identity (fail-closed) and returns lot_wkt, which the fast path left None
+    (so overlay point-queries missed layers intersecting only the parcel edge).
+
+    A caller-supplied prop_id is accepted only as advisory: the address is
+    authoritative, so a disagreement is logged and the resolved prop_id wins.
+
+    Failure contract: 422 when the address resolves to no parcel (not found or
+    GATE-0 identity mismatch — resolve_address returns None, a client-fixable
+    input problem); 503 when resolve_address itself raises (Portal unreachable /
+    upstream 5xx — a retryable operational failure, not a claim that a valid
+    address is invalid).
+    """
+    try:
+        prop_id, lat, lng, lot_wkt = resolve_address(req.address)
+    except Exception:
+        logger.exception("Address resolution failed (operational) for %r", req.address)
+        raise HTTPException(
+            status_code=503,
+            detail="Address service temporarily unavailable; please retry.",
+        )
+
+    if not prop_id or not lat or not lng:
+        raise HTTPException(
+            status_code=422, detail=f"Could not resolve address to a parcel: {req.address}",
+        )
+
+    if req.prop_id and str(req.prop_id) != str(prop_id):
+        logger.warning(
+            "conveyancing: caller prop_id %s disagrees with resolved %s for %r; "
+            "using resolved (address is authoritative)",
+            req.prop_id, prop_id, req.address,
+        )
+    return int(prop_id), lat, lng, lot_wkt
+
+
 @router.post("/conveyancing")
 def run_conveyancing(req: ConveyancingRequest):
     """
@@ -235,22 +282,10 @@ def run_conveyancing(req: ConveyancingRequest):
     Returns structured data for the free tier frontend display.
     PDF generation is a separate paid endpoint.
     """
-    # Resolve address if lat/lng not provided
-    resolved_prop_id = None
-    lot_wkt = None
-
-    if req.lat and req.lng and req.prop_id:
-        lat, lng = req.lat, req.lng
-        resolved_prop_id = int(req.prop_id)
-    else:
-        try:
-            resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
-        except Exception as e:
-            logger.error(f"Address resolution failed: {e}")
-            raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
-
-        if not lat or not lng:
-            raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
+    # Resolve prop_id, coordinates AND lot geometry from the one address so
+    # prop_id-keyed data and coordinate-keyed data always describe the same
+    # property (see _resolve_property). A caller-supplied triple is never trusted.
+    resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
 
     # Fetch controls and valuation in parallel
     controls = {}

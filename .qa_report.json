@@ -1,62 +1,61 @@
 {
  "tier": "standard",
- "justification": "Fixes a silent-wrong-data defect in the conveyancing report: the nearby-DA lookup initialised da_count=0 and left it 0 whenever the check could not run (council unresolved, DATABASE_URL absent, or the query raised), while still listing the ePlanning DA API as a source — so a conveyancer read 'not assessed' as an authoritative 'none nearby'. Introduces three-state semantics (da_count None + da_fetch_failed True when not completed), withholds the DA source on failure, and renders 'could not be checked' in the UI. Matches CONVEYANCING_QA_ADVERSARIAL.md S1 / R6 and the existing three-state pattern in the /pdf path and intelligence_brief.py.",
- "commit_hash": "fefd5a27",
+ "justification": "Fixes a cross-property mix-up in the conveyancing report: run_conveyancing trusted a caller-supplied (prop_id, lat, lng) triple without binding the parts, so prop_id-keyed data (LEP controls, valuation) and coordinate-keyed data (overlays, strata, nearby DAs) could describe two different properties under one address label. The trusted fast path is removed; _resolve_property derives prop_id, coordinates AND lot_wkt from the single resolve_address(req.address) call (which also enforces GATE-0 parcel identity). This also fixes the fast path leaving lot_wkt None (adversarial finding #3: overlay point-queries missed edge-only layers). Operational resolver failures now return 503 (retryable) rather than a 422 that blames a valid address.",
+ "commit_hash": "f45bbe07",
  "files": [
   "services/conveyancing.py",
-  "frontend-nextjs/components/tools/ConveyancingTool.tsx",
-  "tests/test_conveyancing_da_threestate.py"
+  "tests/test_conveyancing_propid_binding.py"
  ],
  "pre_impl": {
-  "existing_data": "Reuses conveyancing_db.fetch_nearby_das unchanged (still called with council_name=None per test_conveyancing_nearby_da_council). Mirrors the three-state already used by the /pdf endpoint (_das=None until fetched) and by intelligence_brief.py's DataField[Optional[int]] da_count field. No new data source or fetcher is added.",
-  "assumption_mismatch": "The prior-art guard flagged this as a possible new data source; inspected and confirmed it is a refactor of the existing inline nearby-DA lookup in the same function into a helper, so the prior-art-checked ack was added rather than building a parallel path.",
-  "new_vs_existing": "New: the _nearby_da_count helper, the da_fetch_failed response field, and the UI not-assessed branch. Deliberately unchanged: the fetch_nearby_das query itself, the 200 m radius scoping, the council_name=None decision, and the /pdf path which was already three-state."
+  "existing_data": "Reuses the existing resolve_address (scripts/generate_conveyancing_report.py), which already returns prop_id, lat, lng and lot_wkt bound to one address and enforces GATE-0 parcel identity fail-closed. No new data source, query, or fetcher is introduced; the change only stops bypassing that resolver.",
+  "assumption_mismatch": "Checked the frontend: ConveyancingTool posts only {address} to /conveyancing, so the removed caller-triple fast path was never exercised by the product — only reachable by direct API callers. The triple the frontend later sends to the PDF endpoint comes from this call's authoritative result, so it stays consistent.",
+  "new_vs_existing": "New: the _resolve_property helper and the 503-vs-422 failure split. Deliberately unchanged: resolve_address itself, the parallel controls/overlays fetch, and the downstream response shape. The /conveyancing/pdf endpoint has the same caller-triple pattern but is mitigated by the report_id cache (authoritative first-call values) and the frontend flow; flagged for a follow-up, not changed here."
  },
  "functions": [
   {
-   "name": "_nearby_da_count",
-   "file_line": "services/conveyancing.py:164",
-   "input": "the LEP-derived council_name (Optional[str], gates whether the lookup is attempted) plus lot lat and lng floats used for the 200 m radius query",
-   "output": "a (da_count, fetch_failed) tuple where da_count is None on any not-completed check and an int (including a genuine 0) only when the query actually ran, and fetch_failed is the explicit not-assessed signal",
-   "if_none": "returns (None, True) when council_name is falsy, when DATABASE_URL is unset, or when psycopg2.connect / fetch_nearby_das raises — never a bare 0, so callers withhold the DA data source and render 'could not be checked'"
+   "name": "_resolve_property",
+   "file_line": "services/conveyancing.py:231",
+   "input": "the ConveyancingRequest — its address is authoritative; any caller-supplied prop_id, lat and lng are treated as advisory only and never used to fetch data",
+   "output": "a bound (prop_id:int, lat:float, lng:float, lot_wkt:Optional[str]) tuple all derived from resolve_address(req.address), so prop_id-keyed and coordinate-keyed data always describe the same property",
+   "if_none": "raises HTTPException 422 when resolve_address returns None (address not found or GATE-0 identity mismatch) and 503 when resolve_address raises (Portal outage); a caller prop_id disagreeing with the resolved one is logged and the resolved value wins"
   }
  ],
- "values": "N/A - this diff reads no DB or API values directly; it wraps an existing fetcher and only reshapes its result into three-state.",
- "queries": "N/A - no SQL is written or changed in this diff. The nearby-DA spatial query lives in conveyancing_db.fetch_nearby_das and is unchanged; it is still called with council_name=None so the 200 m Haversine radius does the scoping.",
+ "values": "N/A - this diff reads no DB or API values directly; resolve_address (unchanged) performs the NSW Planning Portal /address and /lot calls.",
+ "queries": "N/A - no SQL is written or changed in this diff.",
  "break_it": [
   {
-   "scenario": "A valid NSW address whose zone_epi does not resolve to a council name reaches the nearby-DA step, so the lookup is never attempted.",
-   "what_happens": "Previously da_count stayed at its 0 initialiser and the response still listed the ePlanning DA API as a source, so the conveyancer saw an authoritative 'no development applications within 200 m'.",
+   "scenario": "A direct API caller posts an address for property B but a prop_id (and coordinates) belonging to property A.",
+   "what_happens": "The old fast path trusted the triple, so LEP controls and valuation were fetched for A while overlays, strata and nearby DAs were fetched for B, and the whole mixture was labelled as B — a conveyancing report describing two different properties.",
    "mitigated": true,
-   "how": "_nearby_da_count returns (None, True) when council_name is falsy; the caller sets da_count None, marks da_fetch_failed True, and strips 'NSW ePlanning DA API' from data_sources. Covered by test_no_council_returns_none_not_zero.",
-   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_no_council_returns_none_not_zero"
+   "how": "_resolve_property ignores the caller triple and derives prop_id and coordinates from resolve_address(req.address); the caller prop_id is only logged on disagreement. Everything is keyed to the one resolved property.",
+   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_caller_triple_is_ignored"
   },
   {
-   "scenario": "The service runs in an environment where DATABASE_URL is not configured, but the council name resolved fine from the portal controls.",
-   "what_happens": "The old code skipped the fetch under the missing-URL guard yet left da_count at 0, presenting a database-unavailable condition as zero nearby DAs.",
+   "scenario": "A caller supplies a prop_id and coordinates so the report is generated for a large battleaxe or irregular parcel.",
+   "what_happens": "The old fast path left lot_wkt None, so get_unique_overlays / fetch_heritage_postgis ran a point query at the centroid and could miss a flood or heritage overlay intersecting only an edge of the parcel, yielding a plausible false clear.",
    "mitigated": true,
-   "how": "The helper checks os.getenv('DATABASE_URL') and returns (None, True) when absent before any connection attempt. Covered by test_no_database_url_returns_none_not_zero.",
-   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_no_database_url_returns_none_not_zero"
+   "how": "resolve_address returns the parcel polygon WKT, which _resolve_property always passes through, so overlay queries test the whole lot geometry rather than a single point.",
+   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_lot_wkt_bound_even_when_caller_had_none"
   },
   {
-   "scenario": "The council resolved and the DB is configured, but the connection or the fetch_nearby_das query raises at request time.",
-   "what_happens": "The broad except merely logged a warning while da_count kept its 0 value, so a transient query failure was served as a definitive none-nearby result.",
+   "scenario": "The address cannot be resolved to a parcel (not in the Portal index or a GATE-0 street-identity mismatch) while the caller still supplied a plausible-looking triple.",
+   "what_happens": "Trusting the triple would emit an authoritative report for an unverified parcel that may not match the requested street address at all.",
    "mitigated": true,
-   "how": "The except branch returns (None, True) instead of leaving a zero, so the failure surfaces as not-assessed. Covered by test_query_exception_returns_none_not_zero, which patches the connection and raises inside the fetch.",
-   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_query_exception_returns_none_not_zero"
+   "how": "resolve_address returns None in this case and _resolve_property raises HTTPException 422 (fail closed) instead of falling back to the caller triple.",
+   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_unresolvable_address_raises_422"
   },
   {
-   "scenario": "A property genuinely has zero development applications within 200 m and the query completes successfully.",
-   "what_happens": "An over-correction that mapped every 0 to None would hide real clean results and wrongly tell the conveyancer the check could not be run.",
+   "scenario": "The NSW Planning Portal is unreachable or returns a 5xx while resolving a perfectly valid address.",
+   "what_happens": "The previous blanket except mapped the operational error to HTTP 422 'could not resolve address', telling the user their valid address is invalid and giving no signal to retry.",
    "mitigated": true,
-   "how": "A successful fetch returns (len(das), False), so a real 0 stays (0, False) and renders 'No development applications found within 200 m'. Covered by test_genuine_zero_is_zero_not_failed.",
-   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_genuine_zero_is_zero_not_failed"
+   "how": "resolve_address raising is caught and re-raised as HTTPException 503 with a retry message and logger.exception, distinct from the 422 not-found path.",
+   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_operational_failure_raises_503_not_422"
   }
  ],
  "post_merge": {
-  "db_reset": "None - no schema or data changes; the change only reshapes an existing read into three-state.",
+  "db_reset": "None - no schema or data changes.",
   "secrets": "None - no secrets added, removed, or rotated.",
-  "other_repo": "None - change is contained to services/ and frontend-nextjs/ in this repo; the /pipeline/intelligence-brief parity path already returns three-state da_count so no coordinated change is needed.",
-  "manual_verify": "Run the conveyancing report for an address whose council does not resolve (or with DATABASE_URL unset) and confirm da_count is null, da_fetch_failed is true, the ePlanning DA API is absent from data_sources, and the UI shows 'could not be checked' rather than a zero."
+  "other_repo": "None in this repo's other services, but note: the /conveyancing/pdf endpoint uses the same caller-triple pattern (mitigated today by the report_id cache and the frontend passing this call's authoritative values). Applying the same binding there is a recommended follow-up, out of scope for this PR.",
+  "manual_verify": "POST /conveyancing with an address plus a deliberately wrong prop_id and mismatched lat/lng; confirm every output field (controls, valuation, overlays, strata, da_count) corresponds to the address, a warning about the prop_id disagreement is logged, and the response is internally consistent."
  }
 }
