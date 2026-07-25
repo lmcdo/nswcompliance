@@ -1964,6 +1964,56 @@ def get_bushfire_live(lat: float, lng: float) -> Optional[dict]:
         return None
 
 
+def get_mine_subsidence_live(lat: float, lng: float) -> dict:
+    """Mine subsidence district lookup, wrapped to a three-state status dict.
+
+    prior-art-checked: wraps services/portal_constraints.fetch_mine_subsidence
+    (the Site Report's fetcher) — no new client. The fetcher returns None for
+    "outside every district" and raises on failure, so this wrapper is where
+    clear and failed are kept apart: {"status": "empty"} is a checked clear;
+    {"status": "failed"} renders "Not assessed", never "Clear".
+    """
+    try:
+        try:
+            from portal_constraints import fetch_mine_subsidence
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import fetch_mine_subsidence
+        result = fetch_mine_subsidence(lat, lng)
+        if result is None:
+            return {"status": "empty"}
+        return {"status": "found", "data": result}
+    except Exception as e:
+        print(f"  [warn] Mine subsidence lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
+def get_contaminated_live(lat: float, lng: float) -> dict:
+    """EPA contaminated-land register lookup (500 m buffer), three-state.
+
+    prior-art-checked: wraps services/portal_constraints.fetch_contaminated_land
+    (the Site Report's fetcher) — same wrapper contract as
+    get_mine_subsidence_live; a failure must never render as a clear register.
+    """
+    try:
+        try:
+            from portal_constraints import fetch_contaminated_land
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from portal_constraints import fetch_contaminated_land
+        result = fetch_contaminated_land(lat, lng)
+        if result is None:
+            return {"status": "empty"}
+        return {"status": "found", "data": result}
+    except Exception as e:
+        print(f"  [warn] Contaminated land lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
 # ---------------------------------------------------------------------------
 # Risk-row sentence builders — pure functions (golden-sentence tested in
 # tests/test_conveyancing_truth.py). Keep these free of reportlab so the exact
@@ -2087,6 +2137,90 @@ def build_bushfire_row(
         "certificate or the NSW RFS BFPL map.",
         "note",
         "NSW RFS BFPL",
+    )
+
+
+# prior-art-checked: mirrors build_bushfire_row above (same file) — pure,
+# golden-testable row builders over the three-state payloads the orchestrator
+# wraps around portal_constraints.fetch_mine_subsidence / fetch_contaminated_land
+# (the Site Report's own fetchers) — no new client, no reimplementation.
+def build_mine_subsidence_row(mine_subsidence: Optional[dict]) -> tuple[str, str, str]:
+    """Build the Risk Summary mine subsidence row: (text, style_key, source_label).
+
+    Payload contract (services/conveyancing.py _fetch_mine_subsidence):
+      {"status": "found", "data": {...}} → in a proclaimed district (warn)
+      {"status": "empty"}               → checked clear (ok)
+      {"status": "failed"} / None / any other shape → "Not assessed" (note) —
+      NEVER "Clear" from a failed or missing lookup.
+    """
+    status = (mine_subsidence or {}).get("status")
+    if status == "found":
+        data = mine_subsidence.get("data") or {}
+        name = (data.get("district_name") or "").strip()
+        name_str = f"{name} Mine Subsidence District" if name else "a proclaimed mine subsidence district"
+        return (
+            f"Within the {name_str}. Building and subdivision work in a district is regulated "
+            f"under the Coal Mine Subsidence Compensation Act 2017 — development consent from "
+            f"Subsidence Advisory NSW may be required.",
+            "warn",
+            "NSW Spatial Services mine subsidence districts (live query)",
+        )
+    if status == "empty":
+        return (
+            "Clear — not within a proclaimed mine subsidence district (NSW Spatial Services, live query)",
+            "ok",
+            "NSW Spatial Services (live query)",
+        )
+    return (
+        "Not assessed — mine subsidence district lookup unavailable at report generation. "
+        "Confirm via a s10.7 certificate or Subsidence Advisory NSW.",
+        "note",
+        "NSW Spatial Services",
+    )
+
+
+def build_contaminated_land_row(contaminated: Optional[dict]) -> tuple[str, str, str]:
+    """Build the Risk Summary contaminated land row: (text, style_key, source_label).
+
+    The underlying query is a 500 m BUFFER around the lot, not a lot-boundary
+    test — every sentence states the radius, and a hit is worded as proximity,
+    never as contamination of the subject property. Same three-state contract
+    as build_mine_subsidence_row: only {"status": "empty"} may render clear.
+    """
+    status = (contaminated or {}).get("status")
+    if status == "found":
+        data = contaminated.get("data") or {}
+        count = data.get("site_count") or 1
+        site = data.get("nearest_site") or {}
+        name = (site.get("name") or "").strip()
+        suburb = (site.get("suburb") or "").strip()
+        mgmt = (site.get("management_class") or "").strip()
+        dist = site.get("distance_m")
+        parts = [p for p in (name, suburb) if p]
+        nearest_str = f" Nearest: {', '.join(parts)}" if parts else ""
+        dist_str = f" (~{dist} m away)" if dist is not None else ""
+        mgmt_str = f" — EPA management class: {mgmt}." if mgmt else "."
+        plural = "sites" if count != 1 else "site"
+        return (
+            f"{count} notified {plural} on the EPA contaminated land register within 500 m of this "
+            f"property.{nearest_str}{dist_str}{mgmt_str} This records proximity to a notified site, "
+            f"not contamination of the subject lot.",
+            "warn",
+            "NSW EPA contaminated land register (live query, 500 m radius)",
+        )
+    if status == "empty":
+        return (
+            "Clear — no notified sites on the EPA contaminated land register within 500 m "
+            "(live query). The register lists notified sites only; it is not a complete record "
+            "of land contamination.",
+            "ok",
+            "NSW EPA contaminated land register (live query, 500 m radius)",
+        )
+    return (
+        "Not assessed — EPA contaminated land register lookup unavailable at report generation. "
+        "Confirm via a s10.7(5) certificate and an EPA public register search.",
+        "note",
+        "NSW EPA contaminated land register",
     )
 
 
@@ -3100,6 +3234,8 @@ def generate_pdf(
     structures_records=None,
     structures_records_status: Optional[str] = None,
     climate: Optional[dict] = None,
+    mine_subsidence: Optional[dict] = None,
+    contaminated: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -3744,6 +3880,20 @@ def generate_pdf(
         flag("classified_road",         "Classified Road Frontage", "warn"),
         ["Bushfire Prone Land (BAL assessment)", Paragraph(_bf_text, ss[_bf_style]), _bf_source],
     ]
+    # Mine subsidence + contaminated land — three-state builders; a failed
+    # lookup renders "Not assessed", never "Clear" (WO-2 class).
+    _ms_text, _ms_style, _ms_source = build_mine_subsidence_row(mine_subsidence)
+    risk_rows.append([
+        "Mine Subsidence District",
+        Paragraph(_ms_text, ss[_ms_style]),
+        _ms_source,
+    ])
+    _cl_text, _cl_style, _cl_source = build_contaminated_land_row(contaminated)
+    risk_rows.append([
+        "Contaminated Land (EPA register, 500 m)",
+        Paragraph(_cl_text, ss[_cl_style]),
+        _cl_source,
+    ])
     # ANEF row — three-state builder: contour value when resolved, honest
     # fallback when empty, explicit not-assessed on lookup failure. None when
     # the lot has no ingested ANEF overlay (row omitted, Bowral regression).
@@ -5337,6 +5487,18 @@ def main():
     climate = query_narclim_state(lat, lng)
     print(f"  climate projection state: {climate.get('state')}")
 
+    print("\nChecking mine subsidence district (live) ...")
+    mine_subsidence = get_mine_subsidence_live(lat, lng)
+    print(f"  mine subsidence: {mine_subsidence.get('status')}")
+
+    print("\nChecking EPA contaminated land register within 500 m (live) ...")
+    contaminated = get_contaminated_live(lat, lng)
+    if contaminated.get("status") == "found":
+        _cl_data = contaminated.get("data") or {}
+        print(f"  {_cl_data.get('site_count')} notified site(s) within 500 m")
+    else:
+        print(f"  contaminated land: {contaminated.get('status')}")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -5358,6 +5520,8 @@ def main():
             structures_records=structures_records,
             structures_records_status=structures_records_status,
             climate=climate,
+            mine_subsidence=mine_subsidence,
+            contaminated=contaminated,
         )
 
 
