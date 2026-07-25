@@ -161,6 +161,46 @@ _DATA_SOURCES = [
 ]
 
 
+def _nearby_da_count(
+    council_name: Optional[str], lat: float, lng: float,
+) -> tuple[Optional[int], bool]:
+    """Return (da_count, fetch_failed) for the 200 m nearby-DA lookup.
+
+    prior-art-checked: not a new data source. Extracts the EXISTING inline
+    nearby-DA lookup already in this function into a helper so its false-zero
+    (da_count=0 on failure) becomes three-state. Reuses fetch_nearby_das and
+    mirrors intelligence_brief.py's DataField[Optional[int]] convention.
+
+    Three-state (CONVEYANCING_QA_ADVERSARIAL.md S1 / R6): da_count is None — never
+    0 — whenever the check could not be completed: council unresolved, DATABASE_URL
+    absent, or the query raised. A genuine "0 DAs within 200 m" returns (0, False)
+    and is therefore never confused with "not assessed". fetch_failed is True in
+    every not-completed case; callers use it to withhold the DA data source and to
+    render "could not be checked" instead of a false "none nearby".
+
+    council_name only gates whether we attempt the lookup; the query itself passes
+    council_name=None because the DB stores a different council-name vocabulary than
+    the LEP-derived name (see tests/test_conveyancing_nearby_da_council).
+    """
+    if not council_name:
+        return None, True
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None, True
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        try:
+            das = fetch_nearby_das(conn, lat, lng, council_name=None)
+            return len(das), False
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"DA fetch failed: {e}")
+        return None, True
+
+
 def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
@@ -250,32 +290,12 @@ def run_conveyancing(req: ConveyancingRequest):
         tax_config=tax_config,
     )
 
-    # DA count (quick — no full details in free tier)
+    # DA count (quick — no full details in free tier). Three-state: da_count is
+    # None + da_fetch_failed True when the check could not run, so a failure is
+    # never served as a false "0 DAs nearby" (see _nearby_da_count).
     zone_epi = controls.get("zone_epi", "")
     council_name = _council_from_zone_epi(zone_epi)
-    da_count = 0
-    if council_name:
-        try:
-            import psycopg2
-            _db_url = os.getenv("DATABASE_URL")
-            if _db_url:
-                _conn = psycopg2.connect(_db_url)
-                _conn.autocommit = True
-                try:
-                    # council_name=None: the 200m Haversine radius filter in
-                    # fetch_nearby_das already scopes the search precisely. The
-                    # council filter is redundant AND buggy — the DB stores a
-                    # different council-name vocabulary than the LEP-derived name
-                    # (e.g. "The Council of the Shire of Hornsby" vs "Hornsby
-                    # Shire Council"), so filtering silently returned zero and
-                    # printed a false "no DAs nearby". Matches intelligence_brief
-                    # _fetch_nearby_das, which passes None for the same reason.
-                    das = fetch_nearby_das(_conn, lat, lng, council_name=None)
-                    da_count = len(das)
-                finally:
-                    _conn.close()
-        except Exception as e:
-            logger.warning(f"DA fetch failed: {e}")
+    da_count, da_fetch_failed = _nearby_da_count(council_name, lat, lng)
 
     # Check DCP availability — text match then PostGIS cross-validation
     dcp_former_council = detect_former_council(req.address, zone_epi)
@@ -284,6 +304,10 @@ def run_conveyancing(req: ConveyancingRequest):
     )
 
     data_sources = list(_DATA_SOURCES)
+    if da_fetch_failed:
+        # Don't claim the DA API as a source when the nearby-DA check never ran —
+        # otherwise da_count None/absent reads as an authoritative "none nearby".
+        data_sources = [s for s in data_sources if s != "NSW ePlanning DA API"]
     if dcp_former_council:
         data_sources.append("PlotDetect DCP controls database")
 
@@ -346,8 +370,10 @@ def run_conveyancing(req: ConveyancingRequest):
             # Derived
             "headroom": headroom,
             "feasibility": feasibility,
-            # Summary counts
+            # Summary counts. da_count is None (not 0) when da_fetch_failed —
+            # "not assessed", distinct from a genuine 0 DAs within 200 m.
             "da_count": da_count,
+            "da_fetch_failed": da_fetch_failed,
             "dcp_available": bool(dcp_former_council),
         },
         "confidence": _compute_confidence(

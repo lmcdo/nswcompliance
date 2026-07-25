@@ -71,7 +71,10 @@ interface ConveyancingOutputs {
     land_value_per_m2_display?: string;
   };
   feasibility: FeasibilityItem[];
-  da_count: number;
+  // null = the nearby-DA check could not run (not "0 found"); da_fetch_failed
+  // is the explicit signal. See services/conveyancing.py _nearby_da_count.
+  da_count: number | null;
+  da_fetch_failed?: boolean;
   dcp_available: boolean;
 }
 
@@ -459,8 +462,15 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
             </Section>
           )}
 
-          {/* Nearby DAs summary */}
-          {result.outputs.da_count > 0 && (
+          {/* Nearby DAs summary — three-state: not assessed / found / none.
+              "could not be checked" must never render as a false "none nearby". */}
+          {(result.outputs.da_fetch_failed || result.outputs.da_count == null) ? (
+            <Section title="Nearby Development Activity">
+              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                Nearby development activity could not be checked for this address.
+              </div>
+            </Section>
+          ) : result.outputs.da_count > 0 ? (
             <Section title="Nearby Development Activity">
               <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
                 {result.outputs.da_count} development application{result.outputs.da_count !== 1 ? 's' : ''} found within 200m of this property.
@@ -470,6 +480,12 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
                 >
                   View full DA details &rarr;
                 </a>
+              </div>
+            </Section>
+          ) : (
+            <Section title="Nearby Development Activity">
+              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                No development applications found within 200m of this property.
               </div>
             </Section>
           )}
