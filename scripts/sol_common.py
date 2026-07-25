@@ -28,7 +28,8 @@ def _main_worktree_root(repo_root: Path) -> Path | None:
     try:
         common = subprocess.run(
             ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
-            cwd=repo_root, capture_output=True, text=True, timeout=10,
+            cwd=repo_root, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None

@@ -1,45 +1,26 @@
 {
  "tier": "minor",
- "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
- "commit_hash": "f98416d1",
+ "justification": "Developer tooling only. The Sol cross-review script decoded git subprocess output with the OS locale (cp1252 on Windows) and aborted on any non-ASCII byte. This change decodes that output as UTF-8. No product, runtime, database, or planning-data path is touched.",
+ "commit_hash": "22916a89",
  "files": [
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+  "scripts/cross_review.py",
+  "scripts/sol_common.py"
  ],
- "pre_impl": {
-  "existing_data": "Grounded in two verified research passes on 2026-07-20: a workflow study of Sydney duplex builders (free same-day site assessment is universal; monetisation starts at tender; ~21 manual lookups per site) and a code audit of what the engine actually returns. Copy claims only capabilities the audit confirmed: per-address eligibility with clause/page citations, the unconfirmed three-state, per-council DCP controls.",
-  "assumption_mismatch": "The audit killed three angles that earlier copy drafts flirted with: suburb-level eligible-stock aggregates (bulk index still serves corrupt FSR-derived yields), refusal-pattern insight (DA layer frozen at 2023-04, no refusal reasons exist), and naming any binding control beyond FSR or height. None of those appear in this copy. The not-covered panel states the sewer/easement/covenant gap rather than letting a builder assume coverage.",
-  "new_vs_existing": "No new capability and no new claim: the three-bucket framing renames what the widget already renders (eligible / clear no / indeterminate). The council-variation panel invites the builder to test their own councils rather than asserting a comparison we would have to substantiate in copy."
- },
- "functions": "N/A - copy-only change; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings only.",
+ "values": "N/A - no DB or API values are read by this change.",
  "queries": "N/A - no database access in this change.",
  "break_it": [
   {
-   "scenario": "The 'sorts enquiries three ways' copy over-promises a triage the widget does not actually render, so a builder installs it and sees only yes/no.",
-   "what_happens": "The pitch's central claim visibly fails on their own site during the pilot.",
+   "scenario": "A reviewed git diff contains a smart quote or em-dash (routine in this repo's user-facing copy and docs), so the git subprocess output carries bytes outside the cp1252 decode table.",
+   "what_happens": "Before this fix the review aborted with UnicodeDecodeError and produced no findings, silently skipping the cross-review for exactly the copy-bearing diffs most likely to carry liability language.",
    "mitigated": true,
-   "how": "The three buckets map exactly to states already shipped in DuplexCheckWidget: dualOccEligible true, clear no, and the indeterminate branch added in PR #790. No copy describes a state the component cannot render.",
-   "repro": "Run an eligible, an ineligible and an unconfirmed address on any /widget-demo page - three visually distinct cards."
-  },
-  {
-   "scenario": "The 'cited to the clause and page' claim is stated for councils where page-level citation does not exist, so a builder checks a citation and finds nothing.",
-   "what_happens": "The credibility claim that carries the whole pitch fails on inspection.",
-   "mitigated": true,
-   "how": "Audit confirmed the DCP control corpus is 100% cited to section_ref/pdf_page across the covered councils. Copy makes no coverage-count claim, so a builder outside the covered set sees fewer controls rather than a broken citation.",
-   "repro": "Run a covered-council address and follow a control back to its section reference."
-  },
-  {
-   "scenario": "A builder reads the council-variation panel as us asserting their published frontage minimums are wrong, and takes offence.",
-   "what_happens": "Relationship damage with a prospect at first contact.",
-   "mitigated": true,
-   "how": "The panel states only that controls vary by council and invites them to test their own; it makes no comparison to the builder's own published figures. The demonstration-not-assertion rule lives in the outreach doc for use on calls, not in on-page copy.",
-   "repro": "Read the 'Council by council' panel - no second-person claim about their content."
+   "how": "All three git-invoking subprocesses now pass encoding=utf-8 and errors=replace, so any byte sequence decodes without aborting. Verified by re-running the email-result branch review that previously crashed and getting a clean HIGH finding instead of a traceback.",
+   "repro": "Run scripts/cross_review.py --base origin/main on a branch whose diff contains an em-dash: before the fix it raised UnicodeDecodeError, after it returns ranked findings."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - static copy.",
-  "other_repo": "None. Mirrors the reframe applied to ~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md the same day so email and demo page tell one story.",
-  "manual_verify": "Yes - on the preview: /widget-demo/buildana leads with the site-assessment reframe, six panels render below the boundary caption, and the not-covered panel is present and legible."
+  "db_reset": "None - no database changes.",
+  "secrets": "None - no secrets added, removed, or rotated; the OPENAI_API_KEY resolution path is unchanged.",
+  "other_repo": "None - change is self-contained in this repo's scripts/ directory.",
+  "manual_verify": "Run scripts/cross_review.py --base origin/main on any branch with a non-ASCII diff and confirm it returns findings instead of a UnicodeDecodeError traceback."
  }
 }
