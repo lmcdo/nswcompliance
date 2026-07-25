@@ -22,7 +22,7 @@ export function generateMetadata(
   const lga = GRANNY_FLAT_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) return {}
   return {
-    title: `Granny Flat Income Potential in ${lga.name}, NSW — Free Eligibility Check`,
+    title: `Granny Flat Rules & Eligibility in ${lga.name}, NSW — Free Check`,
     description: `Could your ${lga.name} property earn $280–$340/week with a granny flat? Free eligibility check — lot size, zoning, heritage (${lga.heritageCount.toLocaleString()} items), flood${lga.hasFloodData ? ' (ARI data)' : ''}, biodiversity. No signup.`,
   }
 }
