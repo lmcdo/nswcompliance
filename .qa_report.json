@@ -1,26 +1,62 @@
 {
- "tier": "minor",
- "justification": "Developer tooling only. The Sol cross-review script decoded git subprocess output with the OS locale (cp1252 on Windows) and aborted on any non-ASCII byte. This change decodes that output as UTF-8. No product, runtime, database, or planning-data path is touched.",
- "commit_hash": "22916a89",
+ "tier": "standard",
+ "justification": "Fixes a silent-wrong-data defect in the conveyancing report: the nearby-DA lookup initialised da_count=0 and left it 0 whenever the check could not run (council unresolved, DATABASE_URL absent, or the query raised), while still listing the ePlanning DA API as a source — so a conveyancer read 'not assessed' as an authoritative 'none nearby'. Introduces three-state semantics (da_count None + da_fetch_failed True when not completed), withholds the DA source on failure, and renders 'could not be checked' in the UI. Matches CONVEYANCING_QA_ADVERSARIAL.md S1 / R6 and the existing three-state pattern in the /pdf path and intelligence_brief.py.",
+ "commit_hash": "fefd5a27",
  "files": [
-  "scripts/cross_review.py",
-  "scripts/sol_common.py"
+  "services/conveyancing.py",
+  "frontend-nextjs/components/tools/ConveyancingTool.tsx",
+  "tests/test_conveyancing_da_threestate.py"
  ],
- "values": "N/A - no DB or API values are read by this change.",
- "queries": "N/A - no database access in this change.",
+ "pre_impl": {
+  "existing_data": "Reuses conveyancing_db.fetch_nearby_das unchanged (still called with council_name=None per test_conveyancing_nearby_da_council). Mirrors the three-state already used by the /pdf endpoint (_das=None until fetched) and by intelligence_brief.py's DataField[Optional[int]] da_count field. No new data source or fetcher is added.",
+  "assumption_mismatch": "The prior-art guard flagged this as a possible new data source; inspected and confirmed it is a refactor of the existing inline nearby-DA lookup in the same function into a helper, so the prior-art-checked ack was added rather than building a parallel path.",
+  "new_vs_existing": "New: the _nearby_da_count helper, the da_fetch_failed response field, and the UI not-assessed branch. Deliberately unchanged: the fetch_nearby_das query itself, the 200 m radius scoping, the council_name=None decision, and the /pdf path which was already three-state."
+ },
+ "functions": [
+  {
+   "name": "_nearby_da_count",
+   "file_line": "services/conveyancing.py:164",
+   "input": "the LEP-derived council_name (Optional[str], gates whether the lookup is attempted) plus lot lat and lng floats used for the 200 m radius query",
+   "output": "a (da_count, fetch_failed) tuple where da_count is None on any not-completed check and an int (including a genuine 0) only when the query actually ran, and fetch_failed is the explicit not-assessed signal",
+   "if_none": "returns (None, True) when council_name is falsy, when DATABASE_URL is unset, or when psycopg2.connect / fetch_nearby_das raises — never a bare 0, so callers withhold the DA data source and render 'could not be checked'"
+  }
+ ],
+ "values": "N/A - this diff reads no DB or API values directly; it wraps an existing fetcher and only reshapes its result into three-state.",
+ "queries": "N/A - no SQL is written or changed in this diff. The nearby-DA spatial query lives in conveyancing_db.fetch_nearby_das and is unchanged; it is still called with council_name=None so the 200 m Haversine radius does the scoping.",
  "break_it": [
   {
-   "scenario": "A reviewed git diff contains a smart quote or em-dash (routine in this repo's user-facing copy and docs), so the git subprocess output carries bytes outside the cp1252 decode table.",
-   "what_happens": "Before this fix the review aborted with UnicodeDecodeError and produced no findings, silently skipping the cross-review for exactly the copy-bearing diffs most likely to carry liability language.",
+   "scenario": "A valid NSW address whose zone_epi does not resolve to a council name reaches the nearby-DA step, so the lookup is never attempted.",
+   "what_happens": "Previously da_count stayed at its 0 initialiser and the response still listed the ePlanning DA API as a source, so the conveyancer saw an authoritative 'no development applications within 200 m'.",
    "mitigated": true,
-   "how": "All three git-invoking subprocesses now pass encoding=utf-8 and errors=replace, so any byte sequence decodes without aborting. Verified by re-running the email-result branch review that previously crashed and getting a clean HIGH finding instead of a traceback.",
-   "repro": "Run scripts/cross_review.py --base origin/main on a branch whose diff contains an em-dash: before the fix it raised UnicodeDecodeError, after it returns ranked findings."
+   "how": "_nearby_da_count returns (None, True) when council_name is falsy; the caller sets da_count None, marks da_fetch_failed True, and strips 'NSW ePlanning DA API' from data_sources. Covered by test_no_council_returns_none_not_zero.",
+   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_no_council_returns_none_not_zero"
+  },
+  {
+   "scenario": "The service runs in an environment where DATABASE_URL is not configured, but the council name resolved fine from the portal controls.",
+   "what_happens": "The old code skipped the fetch under the missing-URL guard yet left da_count at 0, presenting a database-unavailable condition as zero nearby DAs.",
+   "mitigated": true,
+   "how": "The helper checks os.getenv('DATABASE_URL') and returns (None, True) when absent before any connection attempt. Covered by test_no_database_url_returns_none_not_zero.",
+   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_no_database_url_returns_none_not_zero"
+  },
+  {
+   "scenario": "The council resolved and the DB is configured, but the connection or the fetch_nearby_das query raises at request time.",
+   "what_happens": "The broad except merely logged a warning while da_count kept its 0 value, so a transient query failure was served as a definitive none-nearby result.",
+   "mitigated": true,
+   "how": "The except branch returns (None, True) instead of leaving a zero, so the failure surfaces as not-assessed. Covered by test_query_exception_returns_none_not_zero, which patches the connection and raises inside the fetch.",
+   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_query_exception_returns_none_not_zero"
+  },
+  {
+   "scenario": "A property genuinely has zero development applications within 200 m and the query completes successfully.",
+   "what_happens": "An over-correction that mapped every 0 to None would hide real clean results and wrongly tell the conveyancer the check could not be run.",
+   "mitigated": true,
+   "how": "A successful fetch returns (len(das), False), so a real 0 stays (0, False) and renders 'No development applications found within 200 m'. Covered by test_genuine_zero_is_zero_not_failed.",
+   "repro": "pytest tests/test_conveyancing_da_threestate.py::TestNearbyDaCountThreeState::test_genuine_zero_is_zero_not_failed"
   }
  ],
  "post_merge": {
-  "db_reset": "None - no database changes.",
-  "secrets": "None - no secrets added, removed, or rotated; the OPENAI_API_KEY resolution path is unchanged.",
-  "other_repo": "None - change is self-contained in this repo's scripts/ directory.",
-  "manual_verify": "Run scripts/cross_review.py --base origin/main on any branch with a non-ASCII diff and confirm it returns findings instead of a UnicodeDecodeError traceback."
+  "db_reset": "None - no schema or data changes; the change only reshapes an existing read into three-state.",
+  "secrets": "None - no secrets added, removed, or rotated.",
+  "other_repo": "None - change is contained to services/ and frontend-nextjs/ in this repo; the /pipeline/intelligence-brief parity path already returns three-state da_count so no coordinated change is needed.",
+  "manual_verify": "Run the conveyancing report for an address whose council does not resolve (or with DATABASE_URL unset) and confirm da_count is null, da_fetch_failed is true, the ePlanning DA API is absent from data_sources, and the UI shows 'could not be checked' rather than a zero."
  }
 }
