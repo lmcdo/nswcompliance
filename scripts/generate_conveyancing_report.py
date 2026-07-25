@@ -2077,8 +2077,10 @@ def get_coastal_inundation_live(
         years: dict[int, dict] = {}
         for instrument_key, value, value_numeric in rows:
             m = _COASTAL_IK_RE.search(instrument_key or "")
-            if not m or value_numeric is None:
+            if not m:
                 continue  # malformed row — never invent a year or frequency for it
+            if value_numeric is None:
+                continue  # frequency missing from the row — never compose one
             year = int(m.group(1))
             days = float(value_numeric)
             if year not in years or days > years[year]["days_per_year"]:
@@ -3351,7 +3353,9 @@ def build_coastal_inundation_lines(
         return out
 
     rows = []
-    for year in sorted((coastal.get("years") or {}).keys()):
+    for year in sorted((coastal.get("years") or {}).keys(), key=str):
+        if year is None:
+            continue
         row = _coastal_year_row(int(year), coastal["years"][year] or {})
         if row:
             rows.append(row)
