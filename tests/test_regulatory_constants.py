@@ -210,15 +210,16 @@ class TestCalcFeasibilityWithConfigs:
         assert "2026" in lt_item["question"]
         assert "$1,000,000" in lt_item["basis"]
 
-    def test_fallback_when_no_configs(self):
-        """Without injected configs, should use fallback values (450m², 2025 thresholds)."""
+    def test_no_configs_renders_not_assessed(self):
+        """Without injected configs there is NO fallback (#684): the
+        secondary-dwelling row renders 'Not assessed' and states no figure."""
         result = calc_feasibility(
             self._base_controls, self._base_valuation, self._base_overlays,
         )
         sd_item = next(r for r in result if "granny flat" in r["question"].lower())
-        # 500m² >= 450m² fallback → ok
-        assert sd_item["flag"] == "ok"
-        assert "450" in sd_item["basis"]
+        assert sd_item["answer"] == "Not assessed"
+        assert sd_item["flag"] == "warn"
+        assert "450" not in sd_item["basis"]
 
     def test_strata_skips_secondary_dwelling_and_tax(self):
         """Strata lots should skip granny flat and land tax regardless of configs."""

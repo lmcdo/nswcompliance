@@ -549,7 +549,7 @@ def get_sepp_standard_value(
     """Convenience: return a single numeric value for a specific standard.
 
     E.g. get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size", "R2")
-    returns 450.0
+    returns the stored numeric value for that standard
 
     Returns None if not found. Never raises.
     """
@@ -632,18 +632,26 @@ def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Opti
     try:
         conn = psycopg2.connect(db_url)
         conn.autocommit = True
-        # SEPP secondary dwelling standards
+        # SEPP secondary dwelling standards — NO fallback (#684): a missing or
+        # incomplete min_lot_size row returns None, and the secondary-dwelling
+        # feasibility row renders "Not assessed" downstream. A hardcoded
+        # regulatory figure must never render silently.
         sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
         sepp_standards = None
+        min_lot_row = None
         if sd_rows:
             sd_by_type = {r["standard_type"]: r for r in sd_rows}
             min_lot_row = sd_by_type.get("min_lot_size")
+        if min_lot_row and min_lot_row.get("numeric_value") is not None and min_lot_row.get("applicable_zones"):
             sepp_standards = {
-                "sd_min_lot": min_lot_row["numeric_value"] if min_lot_row else 450,
-                "sd_zones": set(min_lot_row["applicable_zones"]) if min_lot_row else {"R1", "R2", "R3", "R4"},
+                "sd_min_lot": float(min_lot_row["numeric_value"]),
+                "sd_zones": set(min_lot_row["applicable_zones"]),
             }
         else:
-            logger.warning("Regulatory configs: no secondary_dwelling rows in housing_sepp_standards — using fallback")
+            logger.warning(
+                "Regulatory configs: no usable min_lot_size row for secondary_dwelling — "
+                "secondary-dwelling feasibility renders 'Not assessed'"
+            )
         # Tax thresholds — no fallback; None renders "Not assessed"
         tax_config = fetch_tax_thresholds(conn)
         if tax_config is None:
@@ -781,9 +789,9 @@ def check_regulatory_freshness(conn) -> list[str]:
         rows = {r[0]: float(r[1]) for r in cur.fetchall()}
         cur.close()
         if "min_lot_size" not in rows:
-            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — fallback 450m² in use")
+            warnings.append("SEPP: missing min_lot_size for secondary_dwelling — feasibility row renders 'Not assessed'")
         if "max_floor_area" not in rows:
-            warnings.append("SEPP: missing max_floor_area for secondary_dwelling — fallback 60m² in use")
+            warnings.append("SEPP: missing max_floor_area for secondary_dwelling")
     except Exception as e:
         warnings.append(f"SEPP: query failed — {e}")
         try:
