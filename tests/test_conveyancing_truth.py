@@ -547,6 +547,18 @@ class TestSecondaryDwellingTruth:
         rows = self._run(None, is_strata=True)
         assert rows[0]["answer"] == "Not applicable — strata lot"
 
+    def test_corrupt_injected_config_fails_visible(self):
+        """Sol review of #816: calc_feasibility re-validates at its own
+        boundary — a zero/NaN minimum or a null zone entry from any caller
+        must render 'Not assessed', never pass every lot or crash sorted()."""
+        for corrupt in (
+            {"sd_min_lot": 0, "sd_zones": {"R2"}},
+            {"sd_min_lot": float("nan"), "sd_zones": {"R2"}},
+            {"sd_min_lot": 450.0, "sd_zones": {"R1", None}},
+        ):
+            rows = self._run(corrupt)
+            assert rows[0]["answer"] == "Not assessed", corrupt
+
     def test_lot_area_unavailable_uses_injected_figure(self):
         rows = self._run(_sepp_standards_db(), lot_area=None)
         assert rows[0]["answer"] == "Lot area unavailable"

@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -655,8 +655,14 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # 1. Secondary dwelling (granny flat)
     # Source: housing_sepp_standards table (migration 045). NO fallback (#684):
     # absent config renders "Not assessed" — fail-visible, never a hardcoded
-    # regulatory figure.
-    _sd = sepp_standards or {}
+    # regulatory figure. Re-validated at this boundary (Sol review): callers
+    # other than load_regulatory_configs may inject the dict directly, and a
+    # zero/NaN minimum or a null zone entry must degrade to "Not assessed",
+    # not pass every lot or crash rendering.
+    _sd = _validate_sepp_sd_config({
+        "numeric_value": (sepp_standards or {}).get("sd_min_lot"),
+        "applicable_zones": (sepp_standards or {}).get("sd_zones"),
+    }) or {}
     _SD_MIN_LOT = _sd.get("sd_min_lot")
     _SD_ZONES = _sd.get("sd_zones")
     if is_strata:
