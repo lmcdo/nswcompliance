@@ -1,7 +1,7 @@
-﻿{
+{
  "tier": "standard",
  "justification": "New user-facing section in the paid conveyancing PDF backed by a new production-DB spatial query. Wrong wording carries misleading-conduct exposure (extent claims about a named property) and a silent DB failure could render as a false 'outside the mapped extent'. Not critical: read-only disclosure layer, no schema change, no write path, feature-flagged, and it does not feed the constraints tile or any verdict.",
- "commit_hash": "f27076e6",
+ "commit_hash": "1de9cf06",
  "files": [
   "scripts/generate_conveyancing_report.py",
   "services/conveyancing.py",
