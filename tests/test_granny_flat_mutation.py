@@ -12,6 +12,7 @@ import io
 import json
 import math
 import os
+import pathlib
 import sys
 import uuid
 from datetime import date
@@ -47,8 +48,6 @@ from services.granny_flat import (
     MIN_FILL_RATIO,
     MAX_BBOX_FRACTION,
     MAX_ASPECT_RATIO,
-    _SEPP_FALLBACK_MIN_LOT_M2,
-    _SEPP_FALLBACK_MAX_GF_AREA_M2,
     DETECTION_PROMPTS,
 )
 
@@ -360,16 +359,17 @@ class TestComputeLotAreaM2Mutation:
 
 
 # ---------------------------------------------------------------------------
-# _get_sepp_sd_standards — DB lookup with fallback
+# _get_sepp_sd_standards — DB lookup, NO fallback (#817): missing rows or an
+# unreachable DB return None and the endpoints fail closed (503)
 # ---------------------------------------------------------------------------
 
 class TestGetSeppSdStandards:
-    def test_no_conn_returns_fallbacks(self):
+    def test_no_conn_returns_none(self):
         min_lot, max_gf = _get_sepp_sd_standards(conn=None)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
-    def test_db_values_override_fallback(self):
+    def test_db_values_returned(self):
         cur = FakeCursor(fetchall_result=[
             ("min_lot_size", 500.0),
             ("max_floor_area", 75.0),
@@ -379,14 +379,16 @@ class TestGetSeppSdStandards:
         assert min_lot == 500.0
         assert max_gf == 75.0
 
-    def test_partial_db_values_use_fallback_for_missing(self):
+    def test_partial_db_values_none_for_missing(self):
+        """Mutation check: a half-loaded row set must not substitute any
+        default for the missing standard."""
         cur = FakeCursor(fetchall_result=[("min_lot_size", 400.0)])
         conn = FakeConn(cursor=cur)
         min_lot, max_gf = _get_sepp_sd_standards(conn)
         assert min_lot == 400.0
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert max_gf is None
 
-    def test_db_error_returns_fallback(self):
+    def test_db_error_returns_none(self):
         class ErrorCursor:
             def execute(self, *a, **kw):
                 raise Exception("DB error")
@@ -396,15 +398,15 @@ class TestGetSeppSdStandards:
                 pass
         conn = FakeConn(cursor=ErrorCursor())
         min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
-    def test_empty_result_returns_fallback(self):
+    def test_empty_result_returns_none(self):
         cur = FakeCursor(fetchall_result=[])
         conn = FakeConn(cursor=cur)
         min_lot, max_gf = _get_sepp_sd_standards(conn)
-        assert min_lot == _SEPP_FALLBACK_MIN_LOT_M2
-        assert max_gf == _SEPP_FALLBACK_MAX_GF_AREA_M2
+        assert min_lot is None
+        assert max_gf is None
 
     def test_rows_dict_conversion(self):
         """Mutant: change float(r[1]) to r[1] — would break if DB returns Decimal."""
@@ -415,6 +417,53 @@ class TestGetSeppSdStandards:
         min_lot, _ = _get_sepp_sd_standards(conn)
         assert isinstance(min_lot, float)
         assert min_lot == 450.0
+
+
+# ---------------------------------------------------------------------------
+# SEPP standards unavailable — endpoints fail closed (#817): no fallback figure
+# may ever reach a response, so both endpoints 503 instead
+# ---------------------------------------------------------------------------
+
+class TestSeppStandardsUnavailableFailClosed:
+    def test_detect_503_when_standards_unavailable(self, monkeypatch):
+        from fastapi import HTTPException
+        _stub_detect_all(monkeypatch, sepp_standards=(None, None))
+        req = GrannyFlatDetectRequest(
+            address="1 Test St, Sydney NSW 2000", prop_id="12345",
+            lat=SYD_LAT, lng=SYD_LNG, lot_geometry=LOT_GEOMETRY,
+        )
+        with pytest.raises(HTTPException) as exc:
+            gf.detect_structures(req)
+        assert exc.value.status_code == 503
+        assert "450" not in str(exc.value.detail)
+
+    def test_confirm_503_when_standards_unavailable(self, monkeypatch):
+        from fastapi import HTTPException
+        _stub_confirm_all(monkeypatch, sepp_standards=(None, None))
+        req = _make_confirm_req()
+        with pytest.raises(HTTPException) as exc:
+            gf.confirm_and_calculate(req)
+        assert exc.value.status_code == 503
+        assert "450" not in str(exc.value.detail)
+
+    def test_confirm_503_when_max_floor_area_missing(self, monkeypatch):
+        """Mutation check: confirm derives floor area and cost from the max
+        standard — a half-loaded config must fail, not render a default."""
+        from fastapi import HTTPException
+        _stub_confirm_all(monkeypatch, sepp_standards=(450.0, None))
+        req = _make_confirm_req()
+        with pytest.raises(HTTPException) as exc:
+            gf.confirm_and_calculate(req)
+        assert exc.value.status_code == 503
+
+    def test_confirm_renders_injected_figures_not_constants(self, monkeypatch):
+        """Mutation check: inject non-default standards and they must flow
+        through to the response — a resurrected constant would pin 60.0."""
+        _stub_confirm_all(monkeypatch, sepp_standards=(500.0, 75.0))
+        req = _make_confirm_req()
+        resp = gf.confirm_and_calculate(req)
+        assert resp.max_floor_area_m2 == 75.0
+        assert resp.assumed_build_cost_aud == round(75.0 * 2500.0)
 
 
 # ---------------------------------------------------------------------------
@@ -1422,11 +1471,16 @@ class TestConstants:
     def test_max_aspect_ratio(self):
         assert MAX_ASPECT_RATIO == 8.0
 
-    def test_sepp_fallback_min_lot(self):
-        assert _SEPP_FALLBACK_MIN_LOT_M2 == 450.0
-
-    def test_sepp_fallback_max_gf(self):
-        assert _SEPP_FALLBACK_MAX_GF_AREA_M2 == 60.0
+    def test_sepp_fallback_constants_never_return(self):
+        """Source guard (#817): the SEPP fallback constants and any hardcoded
+        450 / 60 regulatory default must not be reintroduced — standards render
+        only from housing_sepp_standards; absence fails closed (503)."""
+        src = (
+            pathlib.Path(__file__).resolve().parent.parent
+            / "services" / "granny_flat.py"
+        ).read_text(encoding="utf-8")
+        for phrase in ("_SEPP_FALLBACK", "= 450", "fallback 450", "fallback 60"):
+            assert phrase not in src, f"SEPP fallback reintroduced in granny_flat.py: {phrase!r}"
 
     def test_detection_prompts_count(self):
         assert len(DETECTION_PROMPTS) == 3

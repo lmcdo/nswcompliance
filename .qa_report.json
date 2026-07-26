@@ -1,61 +1,83 @@
 {
  "tier": "standard",
- "justification": "Fixes a cross-property mix-up in the conveyancing report: run_conveyancing trusted a caller-supplied (prop_id, lat, lng) triple without binding the parts, so prop_id-keyed data (LEP controls, valuation) and coordinate-keyed data (overlays, strata, nearby DAs) could describe two different properties under one address label. The trusted fast path is removed; _resolve_property derives prop_id, coordinates AND lot_wkt from the single resolve_address(req.address) call (which also enforces GATE-0 parcel identity). This also fixes the fast path leaving lot_wkt None (adversarial finding #3: overlay point-queries missed edge-only layers). Operational resolver failures now return 503 (retryable) rather than a 422 that blames a valid address.",
- "commit_hash": "f45bbe07",
+ "justification": "Removes the SEPP secondary-dwelling fallback constants (450 m2 / 60 m2) from the satellite granny-flat service (#817), the last surface carrying the defect class removed from conveyancing in #684/#816. Regulatory figures in a paid product now come only from housing_sepp_standards; unavailable standards fail the endpoints closed (503). Above minor (regulatory figures, endpoint behaviour change); below critical (no new data source, query, or schema).",
+ "commit_hash": "pending",
  "files": [
-  "services/conveyancing.py",
-  "tests/test_conveyancing_propid_binding.py"
+  "services/granny_flat.py",
+  "tests/test_granny_flat_mutation.py",
+  "tests/test_granny_flat_logic.py",
+  "tests/test_regulatory_constants.py"
  ],
  "pre_impl": {
-  "existing_data": "Reuses the existing resolve_address (scripts/generate_conveyancing_report.py), which already returns prop_id, lat, lng and lot_wkt bound to one address and enforces GATE-0 parcel identity fail-closed. No new data source, query, or fetcher is introduced; the change only stops bypassing that resolver.",
-  "assumption_mismatch": "Checked the frontend: ConveyancingTool posts only {address} to /conveyancing, so the removed caller-triple fast path was never exercised by the product — only reachable by direct API callers. The triple the frontend later sends to the PDF endpoint comes from this call's authoritative result, so it stays consistent.",
-  "new_vs_existing": "New: the _resolve_property helper and the 503-vs-422 failure split. Deliberately unchanged: resolve_address itself, the parallel controls/overlays fetch, and the downstream response shape. The /conveyancing/pdf endpoint has the same caller-triple pattern but is mitigated by the report_id cache (authoritative first-call values) and the frontend flow; flagged for a follow-up, not changed here."
+  "existing_data": "housing_sepp_standards (migration 045) exists in production with min_lot_size and max_floor_area rows for secondary_dwelling, so the fallback only ever fired on DB-unreachable. The intelligence brief is decoupled from this service (light marker only), so the only consumers are the Next.js granny-flat routes, which already surface HTTP errors as visible failure states.",
+  "assumption_mismatch": "The response contracts (sepp_eligible bool, max_floor_area_m2 float) are consumed by six frontend files, so a three-state field change would ripple widely. Chose fail-closed 503 instead: when standards cannot be loaded neither endpoint can compute anything meaningful (eligibility, floor area, build cost, and yield all derive from them), and a 503 can never render a wrong figure. test_granny_flat_logic imported the fallback constant as a geometry-test bound; replaced with a local fixture constant.",
+  "new_vs_existing": "No new capability or contract change: same request and response models, same SQL. The change deletes the two constants, makes _get_sepp_sd_standards return None per missing standard, and adds a 503 guard at each endpoint after the existing load sites. Mirrors the #684 pattern one level up: conveyancing renders 'Not assessed' inside a multi-section report; a single-purpose API endpoint fails the request."
  },
  "functions": [
   {
-   "name": "_resolve_property",
-   "file_line": "services/conveyancing.py:231",
-   "input": "the ConveyancingRequest — its address is authoritative; any caller-supplied prop_id, lat and lng are treated as advisory only and never used to fetch data",
-   "output": "a bound (prop_id:int, lat:float, lng:float, lot_wkt:Optional[str]) tuple all derived from resolve_address(req.address), so prop_id-keyed and coordinate-keyed data always describe the same property",
-   "if_none": "raises HTTPException 422 when resolve_address returns None (address not found or GATE-0 identity mismatch) and 503 when resolve_address raises (Portal outage); a caller prop_id disagreeing with the resolved one is logged and the resolved value wins"
+   "name": "_get_sepp_sd_standards",
+   "file_line": "services/granny_flat.py:108",
+   "input": "optional psycopg2 connection to the production database, None when no connection could be opened",
+   "output": "tuple of min lot area and max floor area floats loaded from housing_sepp_standards rows",
+   "if_none": "conn None, query failure, or a missing row now yields None for that standard instead of substituting 450 or 60; callers fail closed with a 503"
+  },
+  {
+   "name": "detect_structures",
+   "file_line": "services/granny_flat.py:735",
+   "input": "GrannyFlatDetectRequest with address, coordinates, prop_id and optional lot geometry and lot area",
+   "output": "GrannyFlatDetectResponse with sepp_eligible screen, detected structures, tile payload and detect_id",
+   "if_none": "sepp_min_lot None raises HTTPException 503 before any eligibility screen, so sepp_eligible can never be computed against a hardcoded minimum"
+  },
+  {
+   "name": "confirm_and_calculate",
+   "file_line": "services/granny_flat.py:984",
+   "input": "GrannyFlatConfirmRequest with confirmed structure count, lot area, heritage and existing-dwelling flags",
+   "output": "GrannyFlatConfirmResponse with buildable verdict, max floor area, build cost, rent and confidence",
+   "if_none": "either standard None raises HTTPException 503, so buildable verdict, floor area cap, and cost figures can never derive from hardcoded defaults"
   }
  ],
- "values": "N/A - this diff reads no DB or API values directly; resolve_address (unchanged) performs the NSW Planning Portal /address and /lot calls.",
- "queries": "N/A - no SQL is written or changed in this diff.",
+ "values": [
+  {
+   "value": "min_lot_size and max_floor_area numeric_value rows from housing_sepp_standards for secondary_dwelling",
+   "read_at": "services/granny_flat.py _get_sepp_sd_standards, per-key rows.get with no default",
+   "if_missing": "None propagates to the endpoint guards which raise 503 with a message naming the SEPP as the source to consult; no figure renders"
+  }
+ ],
+ "queries": "N/A - the housing_sepp_standards SELECT (development_type + standard_type filter) is byte-identical to before; only the handling of missing rows changed.",
  "break_it": [
   {
-   "scenario": "A direct API caller posts an address for property B but a prop_id (and coordinates) belonging to property A.",
-   "what_happens": "The old fast path trusted the triple, so LEP controls and valuation were fetched for A while overlays, strata and nearby DAs were fetched for B, and the whole mixture was labelled as B — a conveyancing report describing two different properties.",
+   "scenario": "Database unreachable when a user runs the granny-flat tool, which previously screened eligibility against the hardcoded 450 m2 and priced the build from the hardcoded 60 m2.",
+   "what_happens": "A stale SEPP amendment would silently produce wrong eligibility verdicts and wrong cost figures in a paid product.",
    "mitigated": true,
-   "how": "_resolve_property ignores the caller triple and derives prop_id and coordinates from resolve_address(req.address); the caller prop_id is only logged on disagreement. Everything is keyed to the one resolved property.",
-   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_caller_triple_is_ignored"
+   "how": "Both endpoints now raise 503 with a message naming the SEPP as the authoritative source; the frontend routes already render fetch failures visibly. test_detect_503_when_standards_unavailable and test_confirm_503_when_standards_unavailable pin this.",
+   "repro": "Monkeypatch _get_sepp_sd_standards to return (None, None) and call either endpoint."
   },
   {
-   "scenario": "A caller supplies a prop_id and coordinates so the report is generated for a large battleaxe or irregular parcel.",
-   "what_happens": "The old fast path left lot_wkt None, so get_unique_overlays / fetch_heritage_postgis ran a point query at the centroid and could miss a flood or heritage overlay intersecting only an edge of the parcel, yielding a plausible false clear.",
+   "scenario": "A half-loaded standards table, for example min_lot_size present but max_floor_area deleted, lets confirm price a build from a defaulted floor area.",
+   "what_happens": "A real minimum mixed with an invented cap produces a cost and yield figure indistinguishable from a fully sourced one.",
    "mitigated": true,
-   "how": "resolve_address returns the parcel polygon WKT, which _resolve_property always passes through, so overlay queries test the whole lot geometry rather than a single point.",
-   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_lot_wkt_bound_even_when_caller_had_none"
+   "how": "rows.get now has no default so the missing standard is None, and confirm requires both standards before proceeding. test_partial_db_values_none_for_missing and test_confirm_503_when_max_floor_area_missing pin both layers.",
+   "repro": "Monkeypatch _get_sepp_sd_standards to return (450.0, None) and call confirm_and_calculate."
   },
   {
-   "scenario": "The address cannot be resolved to a parcel (not in the Portal index or a GATE-0 street-identity mismatch) while the caller still supplied a plausible-looking triple.",
-   "what_happens": "Trusting the triple would emit an authoritative report for an unverified parcel that may not match the requested street address at all.",
+   "scenario": "Someone reintroduces the constants during a refactor, restoring the silent fallback while all ordinary tests still pass because they inject standards.",
+   "what_happens": "The defect class returns invisibly and only fires in production during a DB outage.",
    "mitigated": true,
-   "how": "resolve_address returns None in this case and _resolve_property raises HTTPException 422 (fail closed) instead of falling back to the caller triple.",
-   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_unresolvable_address_raises_422"
+   "how": "test_sepp_fallback_constants_never_return greps the service source for _SEPP_FALLBACK and hardcoded 450/60 default phrases; test_confirm_renders_injected_figures_not_constants injects 75 m2 and asserts it flows to the response and build cost.",
+   "repro": "Re-add _SEPP_FALLBACK_MIN_LOT_M2 = 450.0 to granny_flat.py and run tests/test_granny_flat_mutation.py."
   },
   {
-   "scenario": "The NSW Planning Portal is unreachable or returns a 5xx while resolving a perfectly valid address.",
-   "what_happens": "The previous blanket except mapped the operational error to HTTP 422 'could not resolve address', telling the user their valid address is invalid and giving no signal to retry.",
+   "scenario": "The 503 fires during a transient DB blip mid-flow: a user who completed the detect step gets an error on confirm and loses the run.",
+   "what_happens": "Worse UX than the old silent fallback for that user, traded deliberately for never rendering an unverifiable figure.",
    "mitigated": true,
-   "how": "resolve_address raising is caught and re-raised as HTTPException 503 with a retry message and logger.exception, distinct from the 422 not-found path.",
-   "repro": "pytest tests/test_conveyancing_propid_binding.py::TestResolveProperty::test_operational_failure_raises_503_not_422"
+   "how": "Failure is loud and retryable: the detail message says to retry later, the detect flow can be re-run, and standards exist in production so this only occurs when the DB is down, when report writes and heritage checks are already degraded.",
+   "repro": "Kill the DB connection between detect and confirm and observe a 503 with the retry message rather than a report with defaulted figures."
   }
  ],
  "post_merge": {
-  "db_reset": "None - no schema or data changes.",
-  "secrets": "None - no secrets added, removed, or rotated.",
-  "other_repo": "None in this repo's other services, but note: the /conveyancing/pdf endpoint uses the same caller-triple pattern (mitigated today by the report_id cache and the frontend passing this call's authoritative values). Applying the same binding there is a recommended follow-up, out of scope for this PR.",
-  "manual_verify": "POST /conveyancing with an address plus a deliberately wrong prop_id and mismatched lat/lng; confirm every output field (controls, valuation, overlays, strata, da_count) corresponds to the address, a warning about the prop_id disagreement is logged, and the response is internally consistent."
+  "db_reset": "Not required - no schema or data changes; reads the existing housing_sepp_standards rows exactly as before.",
+  "secrets": "No secrets involved - connection handling unchanged.",
+  "other_repo": "None. This closes the defect class opened by #681/#684: no remaining SEPP/SD fallback constants in services, scripts, or src.",
+  "manual_verify": "Yes - with the DB reachable both endpoints behave identically to before (standards exist in prod); with DATABASE_URL broken, detect and confirm return 503 with the SEPP-naming message instead of a report containing 450/60 figures."
  }
 }
