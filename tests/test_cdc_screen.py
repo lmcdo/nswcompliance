@@ -38,7 +38,8 @@ def _standards(**overrides) -> dict:
 
 def _clear_inputs(**overrides) -> CdcScreenInputs:
     base = dict(
-        zone_code="R2", lot_area_m2=550.0, is_heritage=False, flood_prone=False,
+        zone_code="R2", lot_area_m2=550.0, heritage_item=False,
+        heritage_conservation_area=False, flood_prone=False,
         bushfire_prone=False, acid_sulfate_class=None, complying_excluded=False,
         dual_occ_prohibited=False, contaminated_lot_on_register=False,
         contamination_within_500m=False, mine_subsidence_district=False,
@@ -114,10 +115,24 @@ class TestLoadCdcStandards:
     def test_no_conn_returns_none(self):
         assert load_cdc_standards(None) is None
 
-    def test_query_filters_to_verified_rows(self):
+    def test_query_filters_to_verified_active_rows(self):
         cur = FakeCursor(rows=_std_rows())
         load_cdc_standards(FakeConn(cur))
         assert "manual_verified = TRUE" in cur.executed_sql
+        assert "is_active = TRUE" in cur.executed_sql
+
+    def test_duplicate_active_rows_fail_closed(self):
+        """Two active rows for one standard type would be a nondeterministic
+        pick — the loader must refuse, not choose."""
+        rows = _std_rows() + [("min_lot_size", 300.0, None, None, "cl 3.x")]
+        assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None
+
+    def test_invalid_present_acid_sulfate_fails_whole_load(self):
+        """A PRESENT but invalid threshold must not silently vanish and let
+        the screen run with incomplete standards."""
+        for bad in ("bad", 3.9, 0, 9, None):
+            rows = _std_rows(ass=None) + [("acid_sulfate_max_class", bad, None, None, "cl 1.19")]
+            assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None, bad
 
     def test_loads_valid_standards(self):
         out = load_cdc_standards(FakeConn(FakeCursor(rows=_std_rows(min_lot=200.0))))
@@ -168,27 +183,62 @@ class TestRunCdcScreen:
         assert "SEPP (Exempt and Complying Development Codes) 2008" in result.exclusions[0].source
 
     def test_lot_below_minimum_uses_injected_figure(self):
-        """Mutation check: the figure comes from standards, not a constant."""
-        result = run_cdc_screen(_standards(min_lot_size=600.0), _clear_inputs(lot_area_m2=550.0))
+        """Mutation check: the figure comes from standards, not a constant.
+        Condition asserted met → definite exclusion."""
+        result = run_cdc_screen(
+            _standards(min_lot_size=600.0),
+            _clear_inputs(lot_area_m2=550.0, min_lot_condition_met=True))
         assert result.eligible == "no"
-        reason = next(e for e in result.exclusions if e.constraint == "lot_size").reason
-        assert "600" in reason
-        assert "200" not in reason
+        exc = next(e for e in result.exclusions if e.constraint == "lot_size")
+        assert exc.severity == "definite"
+        assert "600" in exc.reason
+        assert "200" not in exc.reason
 
-    def test_lot_exclusion_carries_conditionality(self):
+    def test_lot_condition_unknown_is_likely_not_definite(self):
+        """The stored conditionality is EVALUATED: with the condition unknown
+        the threshold may not govern, so below-threshold is not a definite no."""
         result = run_cdc_screen(_standards(), _clear_inputs(lot_area_m2=150.0))
-        reason = next(e for e in result.exclusions if e.constraint == "lot_size").reason
-        assert "if no minimum size is specified" in reason
+        exc = next(e for e in result.exclusions if e.constraint == "lot_size")
+        assert exc.severity == "likely"
+        assert "if no minimum size is specified" in exc.reason
+        assert result.eligible == "maybe"
 
-    def test_overlay_exclusions(self):
-        for field, constraint in (
-            ("is_heritage", "heritage"),
-            ("flood_prone", "flood"),
-            ("bushfire_prone", "bushfire"),
-        ):
+    def test_lot_condition_not_met_is_unchecked(self):
+        """A specified minimum governs instead → this standard's figure does
+        not apply; no exclusion, surfaced as unchecked."""
+        result = run_cdc_screen(
+            _standards(), _clear_inputs(lot_area_m2=150.0, min_lot_condition_met=False))
+        assert not any(e.constraint == "lot_size" for e in result.exclusions)
+        assert any("lot size" in u for u in result.unchecked)
+
+    def test_nan_lot_area_surfaces_as_unchecked(self):
+        """NaN < min is False — without coercion a NaN area would silently
+        pass the minimum check as if screened."""
+        result = run_cdc_screen(_standards(), _clear_inputs(lot_area_m2=float("nan")))
+        assert not any(e.constraint == "lot_size" for e in result.exclusions)
+        assert "lot size" in result.unchecked
+
+    def test_heritage_item_is_definite_no(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(heritage_item=True))
+        assert result.eligible == "no"
+        exc = next(e for e in result.exclusions if e.constraint == "heritage")
+        assert exc.severity == "definite"
+
+    def test_heritage_conservation_area_is_likely_not_definite(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(heritage_conservation_area=True))
+        assert result.eligible == "maybe"
+        exc = next(e for e in result.exclusions if e.constraint == "heritage")
+        assert exc.severity == "likely"
+
+    def test_flood_bushfire_are_likely_not_blanket_definite(self):
+        """Broad overlay booleans alone do not establish a Codes SEPP
+        exclusion — they must never produce a definite 'no'."""
+        for field, constraint in (("flood_prone", "flood"), ("bushfire_prone", "bushfire")):
             result = run_cdc_screen(_standards(), _clear_inputs(**{field: True}))
-            assert result.eligible == "no", field
-            assert any(e.constraint == constraint for e in result.exclusions)
+            assert result.eligible == "maybe", field
+            exc = next(e for e in result.exclusions if e.constraint == constraint)
+            assert exc.severity == "likely"
+            assert "certifier" in exc.reason
 
     def test_unknown_inputs_surface_as_unchecked_not_silent_pass(self):
         result = run_cdc_screen(_standards(), CdcScreenInputs())
@@ -230,12 +280,23 @@ class TestRunCdcScreen:
         assert not any(e.constraint.startswith("mine") for e in result.exclusions)
         assert any("Subsidence Advisory" in w for w in result.warnings)
 
-    def test_dual_occ_prohibition_cites_epi_name(self):
+    def test_dual_occ_prohibition_excludes_only_dual_occ_proposals(self):
         result = run_cdc_screen(_standards(), _clear_inputs(
-            dual_occ_prohibited=True, dual_occ_epi_name="Ryde LEP 2014"))
+            dual_occ_prohibited=True, dual_occ_epi_name="Ryde LEP 2014",
+            development_type="dual_occupancy"))
         assert result.eligible == "no"
         exc = next(e for e in result.exclusions if e.constraint == "dual_occ_prohibition")
         assert exc.source == "Ryde LEP 2014"
+
+    def test_dual_occ_prohibition_is_warning_for_other_proposals(self):
+        """A dwelling-house (or unknown) proposal must not be rejected by a
+        dual-occ-specific prohibition."""
+        for dev_type in ("dwelling_house", None):
+            result = run_cdc_screen(_standards(), _clear_inputs(
+                dual_occ_prohibited=True, development_type=dev_type))
+            assert result.eligible == "maybe", dev_type
+            assert not any(e.constraint == "dual_occ_prohibition" for e in result.exclusions)
+            assert any("dual-occupancy prohibition" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------

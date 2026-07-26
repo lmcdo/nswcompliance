@@ -1,7 +1,7 @@
 {
  "tier": "standard",
- "justification": "PR-1 of the CDC screen consolidation (#820, plan ce-cdc-screen-consolidation-2026-07): new dark backend engine (services/cdc_screen.py) + additive migration 058 for cdc_eligibility_standards. Nothing is wired to any surface yet — the conveyancing PDF and workbench route are untouched — but the engine renders regulatory verdicts once wired, and the loader/validation contract must be right now, so standard tier not minor.",
- "commit_hash": "pending",
+ "justification": "PR-1 of the CDC screen consolidation (#820, plan ce-cdc-screen-consolidation-2026-07): new dark backend engine (services/cdc_screen.py) + additive migration 058 for cdc_eligibility_standards. Nothing is wired to any surface yet — the conveyancing PDF and workbench route are untouched — but the engine renders regulatory verdicts once wired, and the loader/validation contract must be right now, so standard tier not minor. Hardened per Sol review of the PR: lifecycle (is_active + one-active partial unique index), conditional min-lot evaluation, proposal-scoped dual-occ prohibition, flood/bushfire/HCA demoted to 'likely' (broad overlay booleans are not instrument exclusions), strict acid-sulfate validation, NaN input coercion.",
+ "commit_hash": "4ec28b52",
  "files": [
   "migrations/058_cdc_eligibility_standards.sql",
   "services/cdc_screen.py",
@@ -15,21 +15,21 @@
  "functions": [
   {
    "name": "load_cdc_standards",
-   "file_line": "services/cdc_screen.py:110",
+   "file_line": "services/cdc_screen.py:127",
    "input": "psycopg2 connection and code_name, reading only manual_verified rows from cdc_eligibility_standards",
    "output": "standards dict with eligible zone set, minimum lot size, conditionality text, optional acid sulfate class, and per-standard clause refs",
    "if_none": "missing connection, missing table, missing required rows, unverified-only rows, query failure, or invalid values all return None with a logged warning — callers render 'Not assessed', never a default figure"
   },
   {
    "name": "run_cdc_screen",
-   "file_line": "services/cdc_screen.py:167",
+   "file_line": "services/cdc_screen.py:198",
    "input": "validated standards dict plus CdcScreenInputs of three-state property facts where None means the fact could not be determined",
    "output": "CdcScreenResult with eligible 'no' or 'maybe' (never 'yes'), cited exclusions, warnings, checks performed, and unchecked list",
    "if_none": "garbage standards raise ValueError so callers must fail closed before calling; every None input lands in the unchecked list and a 'Not screened' warning instead of silently passing"
   },
   {
    "name": "_validate_standards",
-   "file_line": "services/cdc_screen.py:82",
+   "file_line": "services/cdc_screen.py:99",
    "input": "candidate standards dict from the loader or from a direct caller",
    "output": "normalised dict with finite positive minimum and non-empty string zone set, or None",
    "if_none": "zero, negative, NaN, or non-numeric minimums and null or empty zone entries return None — shared by loader and engine so direct injection cannot bypass validation (Sol #816 lesson)"
@@ -45,8 +45,8 @@
  "queries": [
   {
    "purpose": "load verified CDC standards for one complying-development code",
-   "file_line": "services/cdc_screen.py:123",
-   "where_clause": "WHERE code_name = %s AND manual_verified = TRUE — unverified seed rows are invisible to the engine by construction"
+   "file_line": "services/cdc_screen.py:131",
+   "where_clause": "WHERE code_name = %s AND manual_verified = TRUE AND is_active = TRUE — unverified or retired rows invisible; duplicate active rows fail closed in the loader"
   }
  ],
  "break_it": [

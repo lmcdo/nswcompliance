@@ -33,12 +33,22 @@ CREATE TABLE IF NOT EXISTS cdc_eligibility_standards (
   source_provision_ids  integer[]   NOT NULL,
   source_quote          text        NOT NULL,
   effective_date        date,
+  -- Lifecycle: superseded standards are retired by flipping is_active off,
+  -- never deleted (audit trail). The partial unique index below guarantees at
+  -- most ONE active row per (code_name, standard_type), so the loader can
+  -- never pick nondeterministically between a superseded and a replacement
+  -- value (Sol review of PR #824).
+  is_active             boolean     NOT NULL DEFAULT TRUE,
   manual_verified       boolean     NOT NULL DEFAULT FALSE,
   verified_by           text,
   verified_at           timestamptz,
   created_at            timestamptz NOT NULL DEFAULT now(),
   UNIQUE (code_name, standard_type, ref_number)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS cdc_standards_one_active
+  ON cdc_eligibility_standards (code_name, standard_type)
+  WHERE is_active;
 
 COMMENT ON TABLE cdc_eligibility_standards IS
   'Codes SEPP 2008 complying-development standards, provenance-cited to regulatory_provisions. Consumers read manual_verified rows only and fail closed when absent (issue #820).';

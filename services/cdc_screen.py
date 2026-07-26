@@ -31,7 +31,7 @@ import logging
 import math
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +54,21 @@ class CdcExclusion(BaseModel):
 class CdcScreenInputs(BaseModel):
     """Property facts feeding the screen. None = the fact could not be
     determined (three-state); every None surfaces as an unchecked warning,
-    never as a silent pass."""
+    never as a silent pass. Non-finite numbers are coerced to None so a NaN
+    from an upstream calculation surfaces as unchecked, not a silent pass."""
 
     zone_code: Optional[str] = None
     lot_area_m2: Optional[float] = None
-    is_heritage: Optional[bool] = None
+    # What is proposed, when known (e.g. 'dual_occupancy', 'dwelling_house').
+    # Proposal-specific prohibitions only exclude when they match this.
+    development_type: Optional[str] = None
+    # Whether the min-lot standard's conditionality is satisfied for this lot
+    # (e.g. cl 6.4(1)(d)(ii): True = no minimum size is specified for the lot,
+    # so the standard's figure applies; False = a specified minimum governs
+    # instead; None = unknown).
+    min_lot_condition_met: Optional[bool] = None
+    heritage_item: Optional[bool] = None
+    heritage_conservation_area: Optional[bool] = None
     flood_prone: Optional[bool] = None
     bushfire_prone: Optional[bool] = None
     acid_sulfate_class: Optional[int] = None
@@ -68,6 +78,13 @@ class CdcScreenInputs(BaseModel):
     contaminated_lot_on_register: Optional[bool] = None
     contamination_within_500m: Optional[bool] = None
     mine_subsidence_district: Optional[bool] = None
+
+    @field_validator("lot_area_m2")
+    @classmethod
+    def _finite_or_none(cls, v):
+        if v is not None and not math.isfinite(v):
+            return None
+        return v
 
 
 class CdcScreenResult(BaseModel):
@@ -126,16 +143,23 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
             """
             SELECT standard_type, numeric_value, applicable_zones, conditionality, ref_number
             FROM cdc_eligibility_standards
-            WHERE code_name = %s AND manual_verified = TRUE
+            WHERE code_name = %s AND manual_verified = TRUE AND is_active = TRUE
             """,
             (code_name,),
         )
-        rows = {r[0]: {"numeric_value": r[1], "applicable_zones": r[2],
-                       "conditionality": r[3], "ref_number": r[4]}
-                for r in cur.fetchall()}
+        fetched = cur.fetchall()
         cur.close()
     except Exception as e:
         logger.warning("CDC standards: query failed — screen unavailable, callers fail closed: %s", e)
+        return None
+
+    rows = {r[0]: {"numeric_value": r[1], "applicable_zones": r[2],
+                   "conditionality": r[3], "ref_number": r[4]}
+            for r in fetched}
+    if len(rows) != len(fetched):
+        # Two active rows for one standard type (index dropped or bypassed):
+        # picking either would be nondeterministic — fail closed instead.
+        logger.warning("CDC standards: duplicate active rows for %s — screen unavailable, callers fail closed", code_name)
         return None
 
     if any(t not in rows for t in _REQUIRED_STANDARDS):
@@ -153,11 +177,18 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         "refs": {t: v["ref_number"] for t, v in rows.items()},  # noqa: bracket-access — key guaranteed by guard above
     }
     ass = rows.get("acid_sulfate_max_class")
-    if ass and ass["numeric_value"] is not None:  # noqa: bracket-access — key guaranteed by guard above
+    if ass is not None:
+        # A PRESENT threshold must be a whole number in the map's class range;
+        # an invalid value fails the whole load — silently dropping the check
+        # would screen with incomplete standards (Sol review of PR #824).
         try:
-            candidate["acid_sulfate_max_class"] = int(ass["numeric_value"])  # noqa: bracket-access — key guaranteed by guard above
+            raw = float(ass["numeric_value"])  # noqa: bracket-access — key guaranteed by guard above
         except (TypeError, ValueError):
-            pass
+            raw = float("nan")
+        if not math.isfinite(raw) or raw != int(raw) or not 1 <= int(raw) <= 5:
+            logger.warning("CDC standards: invalid acid_sulfate_max_class for %s — screen unavailable, callers fail closed", code_name)
+            return None
+        candidate["acid_sulfate_max_class"] = int(raw)
     validated = _validate_standards(candidate)
     if validated is None:
         logger.warning("CDC standards: verified rows failed validation for %s — callers fail closed", code_name)
@@ -192,24 +223,53 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
             constraint="zone", severity="definite", source=_cite("eligible_zones"),
         ))
 
-    # 2. Lot size
+    # 2. Lot size. The standard may be conditional (e.g. cl 6.4(1)(d)(ii)'s
+    # figure applies only when no minimum size is specified for the lot) — the
+    # condition is EVALUATED, not just quoted (Sol review of PR #824):
+    #   condition met / unconditional → below-threshold = definite exclusion
+    #   condition NOT met → the standard's figure does not govern → unchecked
+    #   condition unknown → below-threshold = 'likely', with the condition quoted
     checks.append("Lot size")
-    if inputs.lot_area_m2 is None:
+    cond = standards.get("min_lot_conditionality")
+    if cond and inputs.min_lot_condition_met is False:
+        unchecked.append("lot size (a specified minimum applies; this standard's figure does not govern)")
+    elif inputs.lot_area_m2 is None:
         unchecked.append("lot size")
     elif inputs.lot_area_m2 < standards["min_lot_size"]:  # noqa: bracket-access — key guaranteed by guard above
-        cond = standards.get("min_lot_conditionality")
+        conditional = bool(cond) and inputs.min_lot_condition_met is not True
         exclusions.append(CdcExclusion(
             reason=(
                 f"Lot area {round(inputs.lot_area_m2):,} m² is below the "
                 f"{standards['min_lot_size']:g} m² minimum"
-                + (f" ({cond})" if cond else "")
+                + (f" — applies only where: {cond}" if conditional else "")
             ),
-            constraint="lot_size", severity="definite", source=_cite("min_lot_size"),
+            constraint="lot_size",
+            severity="likely" if conditional else "definite",
+            source=_cite("min_lot_size"),
         ))
 
-    # 3-5. Overlay exclusions (heritage / flood / bushfire)
+    # 3. Heritage: a heritage ITEM maps to a definite exclusion; a conservation
+    # area is conditional in the instrument, so it stays a 'likely' flag.
+    checks.append("Heritage")
+    if inputs.heritage_item is None and inputs.heritage_conservation_area is None:
+        unchecked.append("heritage")
+    else:
+        if inputs.heritage_item:
+            exclusions.append(CdcExclusion(
+                reason="Heritage item mapped on this land",
+                constraint="heritage", severity="definite", source="NSW Planning Portal",
+            ))
+        elif inputs.heritage_conservation_area:
+            exclusions.append(CdcExclusion(
+                reason="In a heritage conservation area — complying development is restricted; a certifier must assess which works remain available",
+                constraint="heritage", severity="likely", source="NSW Planning Portal",
+            ))
+
+    # 4-5. Flood / bushfire mapping alone does not establish a Codes SEPP
+    # exclusion — the instrument applies category-specific tests and additional
+    # development standards. 'likely' flags, never a definite 'no' from the
+    # broad overlay boolean (Sol review of PR #824).
     for field, label, constraint in (
-        ("is_heritage", "Heritage", "heritage"),
         ("flood_prone", "Flood risk", "flood"),
         ("bushfire_prone", "Bushfire risk", "bushfire"),
     ):
@@ -219,8 +279,12 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
             unchecked.append(label.lower())
         elif value:
             exclusions.append(CdcExclusion(
-                reason=f"{label} constraint mapped on this land",
-                constraint=constraint, severity="definite", source="NSW Planning Portal",
+                reason=(
+                    f"{label} constraint mapped on this land — the CDC pathway applies "
+                    f"category-specific tests and additional development standards here; "
+                    f"a certifier must assess which apply"
+                ),
+                constraint=constraint, severity="likely", source="NSW Planning Portal",
             ))
 
     # 6. Acid sulfate soils — only when the standards carry the class threshold;
@@ -247,16 +311,25 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
             source="NSW ePlanning MapServer (SEPP Exempt & Complying Codes 2008)",
         ))
 
-    # 8. Dual-occupancy prohibition — authoritative live layer.
+    # 8. Dual-occupancy prohibition — authoritative live layer, but it only
+    # excludes DUAL-OCC proposals; for any other (or unknown) proposal it is a
+    # warning, not a pathway rejection (Sol review of PR #824).
     checks.append("Dual occupancy prohibition")
     if inputs.dual_occ_prohibited is None:
         unchecked.append("dual occupancy prohibition")
     elif inputs.dual_occ_prohibited:
-        exclusions.append(CdcExclusion(
-            reason="Dual occupancy development is prohibited on this land",
-            constraint="dual_occ_prohibition", severity="definite",
-            source=inputs.dual_occ_epi_name or "NSW ePlanning MapServer",
-        ))
+        if inputs.development_type == "dual_occupancy":
+            exclusions.append(CdcExclusion(
+                reason="Dual occupancy development is prohibited on this land",
+                constraint="dual_occ_prohibition", severity="definite",
+                source=inputs.dual_occ_epi_name or "NSW ePlanning MapServer",
+            ))
+        else:
+            warnings.append(
+                "This land is in a mapped dual-occupancy prohibition area. That "
+                "affects dual-occupancy proposals only; other development types "
+                "are not excluded by it."
+            )
 
     # 9. Contamination — exclusion only when the LOT is on the register
     # ("significantly contaminated land" is on the Codes SEPP land-exclusion
