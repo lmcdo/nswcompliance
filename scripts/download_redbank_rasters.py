@@ -27,10 +27,10 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
 
-R2_ACCOUNT_ID        = os.environ.get("R2_ACCOUNT_ID", "")
-R2_ACCESS_KEY_ID     = os.environ.get("R2_ACCESS_KEY_ID", "")
-R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "")
-R2_BUCKET_NAME       = os.environ.get("R2_BUCKET_NAME", "")
+R2_ACCOUNT_ID        = os.environ.get("R2_ACCOUNT_ID") or ""
+R2_ACCESS_KEY_ID     = os.environ.get("R2_ACCESS_KEY_ID") or ""
+R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY") or ""
+R2_BUCKET_NAME       = os.environ.get("R2_BUCKET_NAME") or ""
 R2_PREFIX            = "redbank-rasters"
 
 DEST_DIR = Path(os.environ.get("REDBANK_RASTER_DIR", "/tmp/redbank_rasters"))
