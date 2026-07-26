@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Removes the last hardcoded SEPP regulatory fallback (450 m2 / R1-R4) from the paid conveyancing PDF (#684, same defect class as the land-tax fallback removed in #681). Touches figure rendering in a legal document plus confidence rating, so above minor; no new data source, query, or external boundary, so below critical.",
- "commit_hash": "37fb70ed",
+ "commit_hash": "23b8619d",
  "files": [
   ".claude/.pre-impl-done.json",
   "scripts/conveyancing_db.py",
@@ -26,10 +26,17 @@
   },
   {
    "name": "load_regulatory_configs",
-   "file_line": "scripts/conveyancing_db.py:622",
+   "file_line": "scripts/conveyancing_db.py:652",
    "input": "database URL string or None when DATABASE_URL is not set in the environment",
    "output": "tuple of sepp_standards dict and tax_config dict, either element None when its rows are missing or unusable",
    "if_none": "a missing, figure-less, or zone-less min_lot_size row now yields sepp_standards None with a logged warning instead of substituting 450 and the R1-R4 zone set"
+  },
+  {
+   "name": "_validate_sepp_sd_config",
+   "file_line": "scripts/conveyancing_db.py:619",
+   "input": "the min_lot_size row dict from housing_sepp_standards, or None when no row was found",
+   "output": "validated sepp_standards dict with finite positive sd_min_lot and non-empty string zone set",
+   "if_none": "a zero, negative, NaN, or non-numeric minimum, or any null or empty zone entry, returns None so a corrupt row fails closed to 'Not assessed' instead of passing every lot or crashing sorted() mid-render (Sol review finding)"
   },
   {
    "name": "_compute_confidence",
