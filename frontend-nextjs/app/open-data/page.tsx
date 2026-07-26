@@ -7,7 +7,7 @@ import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary';
 export const metadata: Metadata = {
   title: 'NSW Planning Open Data — Datasets Available on PlotDetect',
   description:
-    'Structured NSW planning datasets available on PlotDetect: secondary dwelling statistics for 102 councils, 465+ regulatory definitions, 2,039 heritage conservation areas, SEPP Housing numeric standards, and 10,000+ DCP provisions.',
+    'Structured NSW planning datasets available on PlotDetect: secondary dwelling statistics for 102 councils, 465+ regulatory definitions, 2,039 heritage conservation areas, SEPP Housing numeric standards, 10,000+ DCP provisions, flood study peak levels to 1-in-5000 AEP, and estuarine tidal inundation extents.',
   openGraph: {
     title: 'NSW Planning Open Data — PlotDetect Datasets',
     description:
@@ -122,6 +122,45 @@ const DATASETS = [
     ],
     caveats:
       'Coverage depth varies by council. Inner West has ~4,600 provisions; other councils have fewer. Provisions are extracted from DCP PDFs and may not capture all amendments.',
+  },
+  {
+    name: 'Council Flood Study Peak Flood Levels',
+    description:
+      'Peak flood level and depth grids from published flood studies, sampled per property. Four studies: Hawkesbury FRMSP 2025, Tweed Valley 2024, Wollongong 2024, and Redbank Creek 2025 — with design events from 50% AEP down to 1-in-5000 AEP and PMF where the study publishes them, plus modelled historical events such as March 2022.',
+    records: '4 studies · up to 11 design events each',
+    currency: 'Study publications 2024–2025',
+    source: 'NSW Flood Data Portal (NSW SES) and council flood studies',
+    sourceUrl: 'https://flooddata.ses.nsw.gov.au',
+    pageUrl: '/reports/flood',
+    pageLabel: 'Flood Report',
+    variableMeasured: [
+      'Peak flood level (m AHD)',
+      'Peak flood depth (m)',
+      'AEP design event',
+      'Modelled historical event levels',
+      'Study name and publication',
+    ],
+    caveats:
+      'Coverage is limited to each study’s modelled extent. Values are read from the published model grids; each study applies its own filtering criteria to shallow or low-hazard cells.',
+  },
+  {
+    name: 'Estuarine Tidal Inundation Extents (2050 / 2100)',
+    description:
+      'NSW-wide mapped extents showing how often low-lying land near estuaries is under tidal water, modelled under the SSP3-7.0 emissions scenario at 2050 and 2100 across four inundation frequencies (1 to 182.5 days per year). Surfaced as a mapped-extent disclosure in conveyancing reports.',
+    records: '1,415 mapped polygons',
+    currency: 'Published 24 November 2025',
+    source: 'NSW Estuarine Inundation 2025 — NSW DCCEEW (SEED portal, CC BY 4.0)',
+    sourceUrl: 'https://www.seed.nsw.gov.au',
+    pageUrl: '/conveyancing',
+    pageLabel: 'Conveyancing Report',
+    variableMeasured: [
+      'Mapped inundation extent',
+      'Scenario (SSP3-7.0)',
+      'Projection year (2050, 2100)',
+      'Inundation frequency (days/year)',
+    ],
+    caveats:
+      'Estuarine tidal inundation only — does not cover open-coast or surf inundation, coastal erosion, or rainfall-driven river flooding.',
   },
 ] as const;
 
@@ -315,6 +354,28 @@ export default function OpenDataPage() {
           <li>NSW Spatial Services &mdash; cadastral boundaries</li>
           <li>Bureau of Meteorology &mdash; climate and solar data</li>
           <li>NSW Rural Fire Service &mdash; bushfire-prone land mapping</li>
+          <li>
+            <a
+              href="https://flooddata.ses.nsw.gov.au"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-600 hover:text-teal-800 underline underline-offset-2"
+            >
+              NSW Flood Data Portal (SES)
+            </a>
+            {' '}&mdash; council flood study model outputs
+          </li>
+          <li>
+            <a
+              href="https://www.seed.nsw.gov.au"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-teal-600 hover:text-teal-800 underline underline-offset-2"
+            >
+              NSW SEED portal (DCCEEW)
+            </a>
+            {' '}&mdash; estuarine inundation mapping
+          </li>
         </ul>
       </div>
 
