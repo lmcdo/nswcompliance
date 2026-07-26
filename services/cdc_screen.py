@@ -184,8 +184,8 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         try:
             raw = float(ass["numeric_value"])  # noqa: bracket-access — key guaranteed by guard above
         except (TypeError, ValueError):
-            raw = float("nan")
-        if not math.isfinite(raw) or raw != int(raw) or not 1 <= int(raw) <= 5:
+            raw = None
+        if raw is None or not math.isfinite(raw) or raw != int(raw) or not 1 <= int(raw) <= 5:
             logger.warning("CDC standards: invalid acid_sulfate_max_class for %s — screen unavailable, callers fail closed", code_name)
             return None
         candidate["acid_sulfate_max_class"] = int(raw)
