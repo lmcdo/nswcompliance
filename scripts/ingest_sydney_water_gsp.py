@@ -8,8 +8,12 @@
 Ingest Sydney Water Growth Servicing Plan (GSP) polygons into
 `sydney_water_gsp_servicing` (migration 058).
 
-Downloads the 3 public GeoJSON files if absent, transforms every WW+DW feature to
-a row, and upserts on (product, swc_id) so an annual refresh is idempotent.
+Ingests the two SERVICING GeoJSON files (GSP_WW = wastewater, GSP_DW = drinking
+water). The third public file, GSP_AdditionalComments.json (4 broad advisory
+link-out polygons with no stage/timeframe/price), is intentionally NOT ingested here
+— it carries no serviceability status and does not fit this table; treat it as a
+separate advisory layer if ever needed. Refresh is idempotent: upsert on
+(product, swc_id) then delete any rows no longer in the source (snapshot replace).
 
 Data-handling rules baked in (see docs/servicing/gsp-smoketest-findings.md):
   * DSP price: parse the leading $ out of the HTML blob → dsp_price_per_et (nullable;
@@ -39,8 +43,10 @@ from shapely.geometry import MultiPolygon, Polygon, shape
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "sydney_water_gsp"
 CDN = "https://www.sydneywater.com.au/content/dam/sydneywater/applications/gsp/"
+# Only the two servicing layers. GSP_AdditionalComments.json is deliberately excluded
+# (see module docstring) — advisory link-outs, no serviceability status.
 FILES = {"WW": "GSP_WW.json", "DW": "GSP_DW.json"}
-EXPECTED_ROWS = 397  # 205 WW + 192 DW
+EXPECTED_ROWS = 397  # baseline snapshot (205 WW + 192 DW) — soft check; refresh may differ
 
 _HTML = re.compile(r"<[^>]+>")
 _PRICE = re.compile(r"\$\s*([\d,]+(?:\.\d+)?)")
@@ -179,9 +185,13 @@ def summarize(rows: list[dict]) -> None:
         priced = sum(r["dsp_price_per_et"] is not None for r in sub)
         print(f"  {product}: {len(sub)} rows · statuses={dict(statuses)} · "
               f"constrained={constrained} · with_price={priced}/{len(sub)}")
+    # Row count is a soft check — a GSP refresh legitimately changes the total. Warn on
+    # drift from the known baseline but don't block (structural checks below stay hard).
+    if len(rows) != EXPECTED_ROWS:
+        print(f"  [WARN] source has {len(rows)} rows (baseline {EXPECTED_ROWS}) — GSP may "
+              "have been updated; review the diff before ingesting.")
     # Integrity checks — explicit raises, NOT assert (assert is stripped under python -O,
     # which would let bad data through silently).
-    _require(len(rows) == EXPECTED_ROWS, f"expected {EXPECTED_ROWS} rows, got {len(rows)}")
     _require(all(r["status_code"] in _VALID_STATUS for r in rows), "unexpected status_code")
     _require(all(r["swc_id"] for r in rows), "blank swc_id")
     _require(all(r["wkt"].startswith("MULTIPOLYGON") for r in rows), "geom not multipolygon")
@@ -246,14 +256,38 @@ def apply(rows: list[dict]) -> None:
             template=template,
             page_size=100,
         )
+        # prior-art-checked: reuse not viable — snapshot-replace of the GSP servicing
+        # table added inline to its own ingest (no shared ingest module deletes rows by
+        # source-key set; flagged files are unrelated pipelines sharing generic tokens).
+        # Snapshot replacement: remove any rows whose (product, swc_id) is no longer in
+        # the current source, so a GSP refresh that retires a polygon doesn't leave a
+        # stale row (which would also break an exact row-count gate). Today this deletes
+        # 0 (fresh load); it matters on future refreshes.
+        execute_values(
+            cur,
+            """
+            DELETE FROM sydney_water_gsp_servicing t
+            WHERE NOT EXISTS (
+                SELECT 1 FROM (VALUES %s) AS s(product, swc_id)
+                WHERE s.product = t.product AND s.swc_id = t.swc_id
+            )
+            """,
+            [(r["product"], r["swc_id"]) for r in rows],
+            page_size=1000,
+            fetch=False,
+        )
         cur.execute("SELECT count(*) FROM sydney_water_gsp_servicing")
         after = cur.fetchone()[0]
-        if after != EXPECTED_ROWS:
+        # Gate on the source count, not a hard-coded number — the table must exactly
+        # mirror the source snapshot after upsert + delete-absent.
+        if after != len(rows):
             raise RuntimeError(
-                f"expected {EXPECTED_ROWS} rows after upsert, found {after} — rolling back"
+                f"expected {len(rows)} rows (source count) after refresh, found {after} "
+                "— rolling back"
             )
         conn.commit()
-        print(f"\nCOMMITTED. rows before={before}, after={after} (+{after - before} new).")
+        print(f"\nCOMMITTED. rows before={before}, after={after} "
+              f"(+{after - before} net; source={len(rows)}).")
     except Exception:
         conn.rollback()
         print("\nROLLED BACK — no changes written.")

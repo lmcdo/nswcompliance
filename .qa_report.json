@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "62ebb3a8",
+  "commit_hash": "69dbfa02",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
@@ -15,28 +15,28 @@
   "functions": [
     {
       "name": "parse_dsp_price",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:65",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:71",
       "input": "str | None - DSP price HTML blob from the GeoJSON property",
       "output": "float | None -> dsp_price_per_et column",
       "if_none": "None/empty/no-$ figure -> None (14+ rows legitimately carry no figure); $0 -> 0.0, never None"
     },
     {
       "name": "derive_status",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:72",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:78",
       "input": "stage str|None + special-comments str|None from source properties",
       "output": "(status_code, constrained bool) -> status_code + constrained columns",
       "if_none": "None stage -> UNKNOWN_STAGE; None special -> constrained False (narrow to the capacity phrase only)"
     },
     {
       "name": "geom_to_multipolygon_wkt",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:99",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:105",
       "input": "GeoJSON geometry dict, a Polygon feature from the source file",
       "output": "MULTIPOLYGON WKT str -> ST_GeomFromText into geom(4326)",
       "if_none": "empty/invalid-after-repair/non-polygon -> raises ValueError (fails the row loudly, never inserts junk geometry)"
     },
     {
       "name": "clean",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:58",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:64",
       "input": "str | None - raw source text",
       "output": "str | None - HTML-stripped, trimmed",
       "if_none": "None, empty string, or tags-only input all return None"
@@ -60,11 +60,11 @@
   ],
   "queries": [
     {
-      "purpose": "Upsert 397 GSP polygons into the new table",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:205",
-      "where_clause": "ON CONFLICT (product, swc_id) DO UPDATE - no WHERE; full-set replace on refresh",
-      "if_zero": "N/A - insert path; a post-insert count != 397 raises and rolls back before commit",
-      "if_wrong": "Row-count gate (expected 397) inside the transaction rolls back on any mismatch"
+      "purpose": "Upsert the GSP polygons then delete rows absent from the source (snapshot replace)",
+      "file_line": "scripts/ingest_sydney_water_gsp.py:229",
+      "where_clause": "ON CONFLICT (product, swc_id) DO UPDATE; then DELETE WHERE NOT EXISTS in source key set",
+      "if_zero": "N/A - insert path; after upsert+delete the count must equal the source row count or it rolls back",
+      "if_wrong": "Gate: final count must equal len(source rows), not a hard-coded number, so a refresh that adds/retires polygons stays consistent; mismatch rolls back the whole transaction"
     }
   ],
   "break_it": [
@@ -90,11 +90,11 @@
       "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestGeomToMultipolygonWkt::test_invalid_bowtie_preserves_both_lobes"
     },
     {
-      "scenario": "A network drop mid-batch commits a partial upsert of the GSP polygons, leaving the table with fewer than 397 rows, so addresses in the missing precincts silently return NOT_IN_PRECINCT.",
-      "what_happens": "A developer checking a covered growth-area site is wrongly told it is outside any servicing precinct - a silent wrong answer indistinguishable from the honest gap.",
+      "scenario": "A network drop mid-batch commits a partial upsert of the GSP polygons, or a GSP refresh retires a polygon and the stale row is left behind, so lookups return the wrong servicing status.",
+      "what_happens": "A developer checking a covered growth-area site is wrongly told it is outside any servicing precinct, or served an obsolete status - a silent wrong answer indistinguishable from the honest gap.",
       "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:205 - the upsert runs inside a single transaction (autocommit off) and a post-insert count gate (expected 397) raises and rolls back on any mismatch, so the insert is all-or-nothing.",
-      "repro": "Interrupt the --apply run mid-batch, then SELECT count(*) FROM sydney_water_gsp_servicing (0, not partial); or inspect the count-gate + rollback path in apply()."
+      "how": "scripts/ingest_sydney_water_gsp.py:229 - upsert + delete-absent (snapshot replace) run inside one transaction (autocommit off); the final count must equal len(source rows) or the whole transaction rolls back, so the table always mirrors the source snapshot and is all-or-nothing.",
+      "repro": "Interrupt the --apply run mid-batch, then SELECT count(*) (unchanged, not partial); or inspect the delete-absent + count gate in apply()."
     }
   ],
   "post_merge": {
