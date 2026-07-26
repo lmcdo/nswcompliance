@@ -724,7 +724,9 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_coastal_inundation_live
-            return get_coastal_inundation_live(req.lat, req.lng, lot_wkt=lot_wkt)
+            # Resolved, property-bound coordinates (#818 binding contract) —
+            # never req.lat/req.lng, which may belong to a different address.
+            return get_coastal_inundation_live(lat, lng, lot_wkt=lot_wkt)
         except Exception as e:
             logger.warning("estuarine inundation lookup failed: %s", e)
             return {"status": "failed"}

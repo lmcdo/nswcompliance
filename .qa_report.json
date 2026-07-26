@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New user-facing section in the paid conveyancing PDF backed by a new production-DB spatial query. Wrong wording carries misleading-conduct exposure (extent claims about a named property) and a silent DB failure could render as a false 'outside the mapped extent'. Not critical: read-only disclosure layer, no schema change, no write path, feature-flagged, and it does not feed the constraints tile or any verdict.",
- "commit_hash": "299abc0e",
+ "commit_hash": "15ac1814",
  "files": [
   "scripts/generate_conveyancing_report.py",
   "services/conveyancing.py",
@@ -38,7 +38,7 @@
   {
    "name": "_fetch_coastal",
    "file_line": "services/conveyancing.py:708",
-   "input": "req.lat/req.lng + lot_wkt from the cached or re-run pipeline",
+   "input": "resolved property-bound lat/lng from _resolve_property (#818 binding contract) + lot_wkt from the cached or re-run pipeline",
    "output": "the fetcher dict passed to generate_pdf(coastal=...)",
    "if_none": "any import/runtime exception returns {'status': 'failed'} so a broken deploy renders 'not assessed', not a crash or a false outside"
   }
