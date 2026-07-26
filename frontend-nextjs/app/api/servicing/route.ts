@@ -25,10 +25,12 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await query(
+      // ST_Covers (not ST_Contains): a point on a polygon boundary counts as inside,
+      // so a lot on a GSP edge is not falsely reported as outside every precinct.
       `SELECT product, polygon_name, growth_area, status_code, constrained,
               timeframe, dsp_price_per_et
        FROM sydney_water_gsp_servicing
-       WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))`,
+       WHERE ST_Covers(geom, ST_SetSRID(ST_MakePoint($1, $2), 4326))`,
       [lng, lat], // ST_MakePoint is (x=lng, y=lat)
     );
 

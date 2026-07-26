@@ -31,11 +31,13 @@ GSP_URL = (
 )
 GSP_SOURCE = "Sydney Water Growth Servicing Plan 2025–2030"
 
+# ST_Covers (not ST_Contains) so a point exactly on a polygon boundary counts as
+# inside — otherwise a lot on a GSP edge would falsely read as "not in a precinct".
 _SQL = """
     SELECT product, polygon_name, growth_area, status_code, constrained,
            timeframe, dsp_price_per_et, special_comments
     FROM sydney_water_gsp_servicing
-    WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+    WHERE ST_Covers(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
 """
 
 
