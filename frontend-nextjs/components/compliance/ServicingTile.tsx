@@ -33,10 +33,8 @@ const STAGE_HUMAN: Record<string, string> = {
 function productLine(label: string, p?: Product | null): string | null {
   if (!p) return null;
   const stage = STAGE_HUMAN[p.status_code] ?? 'stage not stated';
-  const tf =
-    p.timeframe && p.timeframe.toLowerCase() !== 'no timeframe noted.'
-      ? ` (${p.timeframe})`
-      : '';
+  const tfLower = p.timeframe?.toLowerCase();
+  const tf = tfLower && tfLower !== 'no timeframe noted.' ? ` (${p.timeframe})` : '';
   return `${label}: ${stage}${tf}`;
 }
 

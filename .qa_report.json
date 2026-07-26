@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "66c9092a",
+  "commit_hash": "7050d04a",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
@@ -18,7 +18,8 @@
     "frontend-nextjs/components/compliance/DcpRequestCta.tsx",
     "frontend-nextjs/components/compliance/LepControls.tsx",
     "frontend-nextjs/components/compliance/ServicingTile.tsx",
-    "frontend-nextjs/__tests__/components/compliance/DcpRequestCta.test.tsx"
+    "frontend-nextjs/__tests__/components/compliance/DcpRequestCta.test.tsx",
+    "tests/test_intelligence_brief_schema.py"
   ],
   "pre_impl": {
     "existing_data": "New standalone table sydney_water_gsp_servicing; reads no existing tables. spatial_overlays was inspected and rejected (no attributes column, bigint source_oid, instrument/LGA scope GSP polygons don't fit). Source = 3 public Sydney Water GeoJSON files (205 WW + 192 DW).",
