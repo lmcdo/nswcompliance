@@ -616,6 +616,36 @@ def fetch_tax_thresholds(
     }
 
 
+def _validate_sepp_sd_config(min_lot_row: Optional[dict]) -> Optional[dict]:
+    """Validate the min_lot_size row into calc_feasibility's sepp_standards shape.
+
+    Returns {"sd_min_lot": float, "sd_zones": set[str]} only when the minimum
+    is a finite positive number and every zone entry is a non-empty string.
+    A zero/NaN minimum would silently pass every lot, and a null zone entry
+    would crash sorted() mid-render — corrupt rows fail closed to None, which
+    renders "Not assessed" downstream.
+    """
+    if not min_lot_row:
+        return None
+    try:
+        min_lot = float(min_lot_row.get("numeric_value"))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(min_lot) or min_lot <= 0:
+        return None
+    raw_zones = min_lot_row.get("applicable_zones")
+    if not isinstance(raw_zones, (list, tuple, set)):
+        return None
+    zones = set()
+    for z in raw_zones:
+        if not isinstance(z, str) or not z.strip():
+            return None
+        zones.add(z.strip())
+    if not zones:
+        return None
+    return {"sd_min_lot": min_lot, "sd_zones": zones}
+
+
 # prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs
 # (not a fork — that module now imports this) so the CLI report path can inject
 # the same DB-loaded configs instead of silently rendering without them.
@@ -623,10 +653,10 @@ def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Opti
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
     Returns (sepp_standards, tax_config) — both None if DB unavailable.
-    A None tax_config renders fail-visible as "Not assessed" downstream.
+    A None element renders fail-visible as "Not assessed" downstream.
     """
     if not db_url:
-        logger.warning("Regulatory configs: DATABASE_URL not set — SEPP fallback, land tax 'Not assessed'")
+        logger.warning("Regulatory configs: DATABASE_URL not set — secondary dwelling and land tax render 'Not assessed'")
         return None, None
     conn = None
     try:
@@ -637,19 +667,14 @@ def load_regulatory_configs(db_url: Optional[str]) -> tuple[Optional[dict], Opti
         # feasibility row renders "Not assessed" downstream. A hardcoded
         # regulatory figure must never render silently.
         sd_rows = fetch_sepp_housing_standards(conn, development_type="secondary_dwelling")
-        sepp_standards = None
         min_lot_row = None
         if sd_rows:
             sd_by_type = {r["standard_type"]: r for r in sd_rows}
             min_lot_row = sd_by_type.get("min_lot_size")
-        if min_lot_row and min_lot_row.get("numeric_value") is not None and min_lot_row.get("applicable_zones"):
-            sepp_standards = {
-                "sd_min_lot": float(min_lot_row["numeric_value"]),
-                "sd_zones": set(min_lot_row["applicable_zones"]),
-            }
-        else:
+        sepp_standards = _validate_sepp_sd_config(min_lot_row)
+        if sepp_standards is None:
             logger.warning(
-                "Regulatory configs: no usable min_lot_size row for secondary_dwelling — "
+                "Regulatory configs: no valid min_lot_size row for secondary_dwelling — "
                 "secondary-dwelling feasibility renders 'Not assessed'"
             )
         # Tax thresholds — no fallback; None renders "Not assessed"

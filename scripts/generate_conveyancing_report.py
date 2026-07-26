@@ -803,7 +803,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "availability with a certifier."
             )
         })
-    elif zone in _SD_ZONES:  # SEPP Housing 2021 CDC zones — same zone set as secondary dwelling
+    elif zone in _SD_ZONES:  # zone set from the secondary-dwelling standards row — a screen, not the Codes SEPP zone scope
         blockers = []
         if has_heritage:
             blockers.append("heritage listing")
@@ -819,7 +819,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": (
                     "No heritage listing, biodiversity mapping or flood planning area identified "
                     "in the layers checked (see Section 1 coverage notes). CDC availability is "
-                    "subject to SEPP (Housing) 2021 controls — confirm with a certifier."
+                    "subject to the applicable complying development provisions — confirm with "
+                    "a certifier."
                 )
             })
         else:
@@ -830,13 +831,18 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": f"CDC eligibility affected by: {', '.join(blockers)}. Development will likely require a full DA."
             })
     else:
+        # This check screens against the zones in the SEPP (Housing) 2021
+        # secondary-dwelling standards row — it must not claim to define the
+        # CDC pathway's zone scope, which other instruments (Codes SEPP) govern.
         results.append({
             "question": "Complying Development Certificate (CDC)",
-            "answer": "Not applicable to this zone",
+            "answer": "Not assessed for this zone",
             "flag": "warn",
             "basis": (
-                f"Zone {zone} — CDC pathway applies to residential zones "
-                f"({', '.join(sorted(_SD_ZONES))}) under SEPP (Housing) 2021."
+                f"Zone {zone} is outside the residential zones in the SEPP (Housing) 2021 "
+                f"secondary-dwelling standards ({', '.join(sorted(_SD_ZONES))}), which is the "
+                f"zone set this check screens. Complying development pathways under other "
+                f"instruments were not assessed — confirm CDC availability with a certifier."
             )
         })
 

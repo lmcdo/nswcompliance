@@ -559,6 +559,23 @@ class TestSecondaryDwellingTruth:
         for phrase in ("else 450", 'else {"R1"', "fallback 450", "fallback 60"):
             assert phrase not in src, f"SEPP fallback reintroduced in conveyancing_db.py: {phrase!r}"
 
+    def test_cdc_outside_zone_is_screen_boundary_not_pathway_scope(self):
+        """Sol review of #816: the zone set comes from the secondary-dwelling
+        standards row, so an out-of-zone CDC row must state what was screened,
+        never that the CDC pathway itself 'applies to' those zones — the general
+        pathway's zone scope is governed by other instruments."""
+        from generate_conveyancing_report import calc_feasibility
+        rows = [r for r in calc_feasibility(
+            {"zone": "B2"}, {"lot_area_m2": 500, "land_value": 900_000}, [],
+            is_strata=False,
+            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}},
+            tax_config=None,
+        ) if "Complying Development" in r["question"]]
+        assert len(rows) == 1
+        assert rows[0]["answer"] == "Not assessed for this zone"
+        assert "applies to residential zones" not in rows[0]["basis"]
+        assert "were not assessed" in rows[0]["basis"]
+
 
 # ---------------------------------------------------------------------------
 # 10. ANEF row + note (Slice B) — three-state, value data-derived

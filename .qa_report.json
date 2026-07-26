@@ -1,45 +1,86 @@
 {
- "tier": "minor",
- "justification": "Copy-only change to the builder demo page (/widget-demo/[slug]): leads with the removed-labour-step reframe from the 2026-07-20 builder workflow research instead of the lead-gen framing, renames the three result buckets, and adds an explicit not-covered panel (sewer/easements/covenants). No logic, no data, no new fields.",
- "commit_hash": "f98416d1",
+ "tier": "standard",
+ "justification": "Removes the last hardcoded SEPP regulatory fallback (450 m2 / R1-R4) from the paid conveyancing PDF (#684, same defect class as the land-tax fallback removed in #681). Touches figure rendering in a legal document plus confidence rating, so above minor; no new data source, query, or external boundary, so below critical.",
+ "commit_hash": "37fb70ed",
  "files": [
-  "frontend-nextjs/app/widget-demo/[slug]/page.tsx"
+  ".claude/.pre-impl-done.json",
+  "scripts/conveyancing_db.py",
+  "scripts/generate_conveyancing_report.py",
+  "services/conveyancing.py",
+  "tests/test_conveyancing_truth.py",
+  "tests/test_regulatory_constants.py",
+  "tests/test_conveyancing_forensic.py"
  ],
  "pre_impl": {
-  "existing_data": "Grounded in two verified research passes on 2026-07-20: a workflow study of Sydney duplex builders (free same-day site assessment is universal; monetisation starts at tender; ~21 manual lookups per site) and a code audit of what the engine actually returns. Copy claims only capabilities the audit confirmed: per-address eligibility with clause/page citations, the unconfirmed three-state, per-council DCP controls.",
-  "assumption_mismatch": "The audit killed three angles that earlier copy drafts flirted with: suburb-level eligible-stock aggregates (bulk index still serves corrupt FSR-derived yields), refusal-pattern insight (DA layer frozen at 2023-04, no refusal reasons exist), and naming any binding control beyond FSR or height. None of those appear in this copy. The not-covered panel states the sewer/easement/covenant gap rather than letting a builder assume coverage.",
-  "new_vs_existing": "No new capability and no new claim: the three-bucket framing renames what the widget already renders (eligible / clear no / indeterminate). The council-variation panel invites the builder to test their own councils rather than asserting a comparison we would have to substantiate in copy."
+  "existing_data": "housing_sepp_standards (migration 045) exists in production and returns a min_lot_size row with numeric_value and applicable_zones for secondary_dwelling, which is why the fallback only ever fired on DB-unreachable, not on every report. The land-tax removal in #681 established the exact fail-visible pattern being reused: absent config renders 'Not assessed' and caps confidence.",
+  "assumption_mismatch": "Test runs exposed a second consumer of the zone set the issue did not mention: the CDC eligibility section (~line 789) shares _SD_ZONES and its else-branch carried a hardcoded 'R1-R4' zone claim. Both now render from injected config or 'Not assessed'. Two fallback-era tests (test_regulatory_constants, test_conveyancing_forensic) asserted the old behaviour and were updated to the new contract rather than deleted.",
+  "new_vs_existing": "No new capability: same feasibility rows, same config loader, same confidence function. The change deletes the _SD_FALLBACK_MIN_LOT / _SD_FALLBACK_ZONES constants and the loader's 450 / R1-R4 defaults, adds the two 'Not assessed' branches, and extends the existing static-claims guard and confidence caps that the land-tax removal introduced."
  },
- "functions": "N/A - copy-only change; no function added, changed, or removed.",
- "values": "N/A - no DB or API values involved; static JSX strings only.",
- "queries": "N/A - no database access in this change.",
+ "functions": [
+  {
+   "name": "calc_feasibility",
+   "file_line": "scripts/generate_conveyancing_report.py:629",
+   "input": "controls dict, valuation dict, overlays list, is_strata flag, optional sepp_standards and tax_config dicts loaded from the DB",
+   "output": "list of feasibility row dicts with question, answer, flag, basis strings rendered into the PDF",
+   "if_none": "sepp_standards None or missing either key renders the secondary-dwelling and CDC rows 'Not assessed' with flag warn and no numeric figure, never a hardcoded 450 or R1-R4 claim"
+  },
+  {
+   "name": "load_regulatory_configs",
+   "file_line": "scripts/conveyancing_db.py:622",
+   "input": "database URL string or None when DATABASE_URL is not set in the environment",
+   "output": "tuple of sepp_standards dict and tax_config dict, either element None when its rows are missing or unusable",
+   "if_none": "a missing, figure-less, or zone-less min_lot_size row now yields sepp_standards None with a logged warning instead of substituting 450 and the R1-R4 zone set"
+  },
+  {
+   "name": "_compute_confidence",
+   "file_line": "services/conveyancing.py:823",
+   "input": "controls, overlays, valuation plus flags including new sepp_config_missing boolean from the API runner",
+   "output": "confidence rating string high, medium, or low printed on the report cover",
+   "if_none": "sepp_config_missing True caps the rating at medium so a report with an unassessed secondary-dwelling row cannot claim high confidence"
+  }
+ ],
+ "values": [
+  {
+   "value": "min_lot_size row numeric_value and applicable_zones from housing_sepp_standards for secondary_dwelling",
+   "read_at": "scripts/conveyancing_db.py load_regulatory_configs, guarded for presence of both fields before building the config dict",
+   "if_missing": "sepp_standards stays None, warning logged, downstream rows render 'Not assessed', confidence capped at medium"
+  }
+ ],
+ "queries": "N/A - no query text changed; fetch_sepp_housing_standards call and its development_type filter are untouched, only the handling of an empty or incomplete result set changed.",
  "break_it": [
   {
-   "scenario": "The 'sorts enquiries three ways' copy over-promises a triage the widget does not actually render, so a builder installs it and sees only yes/no.",
-   "what_happens": "The pitch's central claim visibly fails on their own site during the pilot.",
+   "scenario": "DB unreachable at generation time, which previously made the report silently render the hardcoded 450 m2 / R1-R4 eligibility as if it were current law.",
+   "what_happens": "Report used to state a regulatory figure nobody had verified; a stale SEPP amendment would render wrong eligibility in a paid legal document.",
    "mitigated": true,
-   "how": "The three buckets map exactly to states already shipped in DuplexCheckWidget: dualOccEligible true, clear no, and the indeterminate branch added in PR #790. No copy describes a state the component cannot render.",
-   "repro": "Run an eligible, an ineligible and an unconfirmed address on any /widget-demo page - three visually distinct cards."
+   "how": "Constants deleted; the row renders 'Not assessed' with a basis directing the reader to the SEPP, main() prints a warning, and confidence caps at medium. test_config_absent_renders_not_assessed_no_figures asserts no digit-m2 pattern appears.",
+   "repro": "Run generate_conveyancing_report.py with DATABASE_URL unset and read the secondary-dwelling row."
   },
   {
-   "scenario": "The 'cited to the clause and page' claim is stated for councils where page-level citation does not exist, so a builder checks a citation and finds nothing.",
-   "what_happens": "The credibility claim that carries the whole pitch fails on inspection.",
+   "scenario": "A half-loaded config, for example a min_lot_size row whose applicable_zones column is NULL, mixes a real figure with a defaulted zone set.",
+   "what_happens": "Eligibility verdict would combine one authoritative value with one invented value, indistinguishable from a fully sourced verdict.",
    "mitigated": true,
-   "how": "Audit confirmed the DCP control corpus is 100% cited to section_ref/pdf_page across the covered councils. Copy makes no coverage-count claim, so a builder outside the covered set sees fewer controls rather than a broken citation.",
-   "repro": "Run a covered-council address and follow a control back to its section reference."
+   "how": "Loader requires both numeric_value and applicable_zones before building the dict, else None; calc_feasibility independently treats a dict missing either key as absent. test_partial_config_fails_visible_not_partial_figures covers dict-level halves; the loader guard covers row-level halves.",
+   "repro": "Call calc_feasibility with sepp_standards={'sd_min_lot': 450.0} and observe 'Not assessed'."
   },
   {
-   "scenario": "A builder reads the council-variation panel as us asserting their published frontage minimums are wrong, and takes offence.",
-   "what_happens": "Relationship damage with a prospect at first contact.",
+   "scenario": "Someone reintroduces the fallback later, for example during a refactor that 'restores' the deleted constants for convenience.",
+   "what_happens": "The silent-hardcoded-figure defect returns without any test noticing, since ordinary golden tests inject config and would still pass.",
    "mitigated": true,
-   "how": "The panel states only that controls vary by council and invites them to test their own; it makes no comparison to the builder's own published figures. The demonstration-not-assertion rule lives in the outreach doc for use on calls, not in on-page copy.",
-   "repro": "Read the 'Council by council' panel - no second-person claim about their content."
+   "how": "TestStaticClaimsGuard bans _SD_FALLBACK, literal '450 m2' text, and the R1-R4 set literal from generator source; test_db_loader_contains_no_fallback_constants does the same for conveyancing_db.py; the mutation-style test injects a 600 m2 figure and asserts 450 never renders.",
+   "repro": "Re-add _SD_FALLBACK_MIN_LOT = 450 to the generator and run tests/test_conveyancing_truth.py."
+  },
+  {
+   "scenario": "The CDC section, which shares the zone set, keeps its own hardcoded 'R1-R4' claim after the secondary-dwelling row is fixed.",
+   "what_happens": "The same defect survives one section lower: a zone-eligibility claim renders with no data source behind it.",
+   "mitigated": true,
+   "how": "CDC section now renders 'Not assessed' when the zone set is absent and interpolates the injected zone list into the not-applicable branch instead of the literal R1-R4 string.",
+   "repro": "Call calc_feasibility with sepp_standards=None for a B2 zone property and read the CDC row."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no database or schema changes.",
-  "secrets": "No secrets involved - static copy.",
-  "other_repo": "None. Mirrors the reframe applied to ~/.claude/plans/ce-builder-widget-outreach-emails-2026-07.md the same day so email and demo page tell one story.",
-  "manual_verify": "Yes - on the preview: /widget-demo/buildana leads with the site-assessment reframe, six panels render below the boundary caption, and the not-covered panel is present and legible."
+  "db_reset": "Not required - no schema or data changes; reads the existing housing_sepp_standards table exactly as before.",
+  "secrets": "No secrets involved - DATABASE_URL usage unchanged.",
+  "other_repo": "None. Follow-up filed for services/granny_flat.py which still carries _SEPP_FALLBACK_MIN_LOT_M2 = 450.0, the same defect class in the satellite product, kept out of this diff for reviewability.",
+  "manual_verify": "Yes - generate a report with DATABASE_URL unset: secondary-dwelling and CDC rows read 'Not assessed', cover confidence is at most medium, and no 450 m2 figure appears anywhere in the feasibility section."
  }
 }
