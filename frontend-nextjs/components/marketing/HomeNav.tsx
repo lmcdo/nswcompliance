@@ -32,6 +32,12 @@ export function HomeNav() {
             Tools
           </Link>
           <Link
+            href="/what-you-get"
+            className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
+          >
+            What you get
+          </Link>
+          <Link
             href="/browse"
             className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
           >

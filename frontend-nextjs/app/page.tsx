@@ -167,10 +167,10 @@ const CLIMATE_HAZARDS = [
 
 const PERSONAS = [
   {
-    title: 'Homebuyers',
-    description: 'Check hazards before you bid. Free instant checks, detailed reports for shortlisted properties.',
-    href: '/reports',
-    cta: 'Run a free check',
+    title: 'Homeowners & buyers',
+    description: 'Check hazards before you bid, and what you can build before you plan. Free instant checks; detailed reports for shortlisted properties.',
+    href: '/for/homebuyers',
+    cta: 'See homeowner tools',
   },
   {
     title: 'Conveyancers',
