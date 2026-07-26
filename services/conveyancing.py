@@ -434,8 +434,12 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
     cached = _load_pipeline_cache(req.report_id)
 
-    if cached:
-        # ---------- cache hit: unpack free-tier results ----------
+    # A usable cache entry must carry its own authoritative coordinates (written by
+    # the free-tier run). An entry missing them is treated as a miss so the whole
+    # property is re-resolved from the address below — cached prop_id data is never
+    # paired with coordinates resolved separately.
+    if cached and cached.get("lat") is not None and cached.get("lng") is not None:
+        # ---------- cache hit: unpack authoritative free-tier results ----------
         resolved_prop_id = cached.get("prop_id")
         if resolved_prop_id is not None:
             resolved_prop_id = int(resolved_prop_id)
@@ -450,23 +454,27 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         feasibility = cached.get("feasibility") or []
         dcp_former_council = cached.get("dcp_former_council")
         council_name = cached.get("council_name")
+        # Non-None by the branch condition; part of the same authoritative cache
+        # entry as prop_id/controls/valuation, so everything is one property.
+        lat = cached.get("lat")
+        lng = cached.get("lng")
     else:
         # ---------- cache miss: full pipeline re-run ----------
+        # Resolve prop_id, coordinates AND lot_wkt from the one address (same
+        # binding as the free-tier /conveyancing path) instead of trusting the
+        # caller's (prop_id, lat, lng). Without this a direct /pdf caller could mix
+        # one property's controls/valuation with another's overlays. The cache-hit
+        # branch above is already authoritative (coords written by the free-tier
+        # run). ConveyancingPdfRequest carries .address and .prop_id, which is all
+        # _resolve_property reads.
         logger.info(f"Cache miss for {req.report_id} — running full pipeline")
-        resolved_prop_id = int(req.prop_id) if req.prop_id else None
-        lot_wkt = None
+        resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
 
-        if not resolved_prop_id:
-            resolved_prop_id, _, _, lot_wkt = resolve_address(req.address)
+        controls = parse_controls(get_raw_controls(resolved_prop_id))
+        valuation = get_valuation(resolved_prop_id)
 
-        controls = {}
-        valuation = {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
-        if resolved_prop_id:
-            controls = parse_controls(get_raw_controls(resolved_prop_id))
-            valuation = get_valuation(resolved_prop_id)
-
-        unique_overlays, covered_layers, proximity_m = get_unique_overlays(req.lat, req.lng, lot_wkt)
-        strata_info = detect_strata(req.address, req.lat, req.lng)
+        unique_overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt)
+        strata_info = detect_strata(req.address, lat, lng)
 
         # PostGIS fallbacks
         ov_by_type = {o["layer_type"]: o for o in unique_overlays}
@@ -489,7 +497,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         council_name = _council_from_zone_epi(zone_epi)
         dcp_former_council = detect_former_council(req.address, zone_epi)
         dcp_former_council = _validate_former_council_postgis(
-            dcp_former_council, req.lat, req.lng, req.address, zone_epi,
+            dcp_former_council, lat, lng, req.address, zone_epi,
         )
 
     # ---------- PDF-exclusive data (parallelised) ----------
@@ -526,7 +534,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             # council-name vocabulary than the LEP-derived name, so filtering
             # silently returned zero → a false "no DAs" in the Nearby Development
             # Activity section.
-            _das = fetch_nearby_das(conn, req.lat, req.lng, council_name=None)
+            _das = fetch_nearby_das(conn, lat, lng, council_name=None)
             key_sites_clause = controls.get("key_sites_clause")
             epi_name = controls.get("zone_epi", "")
             prop_zone = controls.get("zone", "")
@@ -534,7 +542,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 _lep = fetch_lep_clauses(conn, key_sites_clause, epi_name)
             if dcp_former_council:
                 _dcp = fetch_dcp_setbacks(conn, dcp_former_council, prop_zone)
-            _heritage = fetch_heritage_postgis(conn, req.lat, req.lng, lot_wkt=lot_wkt)
+            _heritage = fetch_heritage_postgis(conn, lat, lng, lot_wkt=lot_wkt)
         except Exception as e:
             logger.warning("DB pre-fetch failed: %s", e)
         finally:
@@ -552,7 +560,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
             if m:
                 lep_height = float(m.group(1))
-        return get_shadow_risk(req.address, str(resolved_prop_id), req.lat, req.lng, height_m=lep_height)
+        return get_shadow_risk(req.address, str(resolved_prop_id), lat, lng, height_m=lep_height)
 
     def _fetch_bushfire():
         """Live NSW RFS BFPL point query (~1-2s) — governs the PDF bushfire row.
@@ -567,7 +575,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from bushfire_prescreen import _query_rfs_bfpl
             except ImportError:
                 from services.bushfire_prescreen import _query_rfs_bfpl
-            return _query_rfs_bfpl(req.lat, req.lng)
+            return _query_rfs_bfpl(lat, lng)
         except Exception as e:
             logger.warning("Live RFS BFPL query failed: %s", e)
             return None
@@ -583,7 +591,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from portal_constraints import resolve_anef_value
             except ImportError:
                 from services.portal_constraints import resolve_anef_value
-            return resolve_anef_value(req.lat, req.lng)
+            return resolve_anef_value(lat, lng)
         except Exception as e:
             logger.warning("ANEF value lookup failed: %s", e)
             return {"status": "failed"}
@@ -618,7 +626,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             except ImportError:
                 from services.portal_constraints import fetch_corridors_reservations
             return fetch_corridors_reservations(
-                req.lat, req.lng, lot_wkt=lot_wkt, prop_id=resolved_prop_id,
+                lat, lng, lot_wkt=lot_wkt, prop_id=resolved_prop_id,
             )
         except Exception as e:
             logger.warning("corridors/reservations check failed: %s", e)
@@ -634,7 +642,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_tod_uplift_live
-            return get_tod_uplift_live(req.lat, req.lng, controls, valuation)
+            return get_tod_uplift_live(lat, lng, controls, valuation)
         except Exception as e:
             logger.warning("TOD uplift check failed: %s", e)
             return None, None
@@ -670,7 +678,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
                 from climate_risk_raster import query_narclim_state
             except ImportError:
                 from services.climate_risk_raster import query_narclim_state
-            return query_narclim_state(req.lat, req.lng)
+            return query_narclim_state(lat, lng)
         except Exception as e:
             logger.warning("NARCliM projection lookup failed: %s", e)
             return {"state": "unavailable"}
@@ -685,7 +693,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_mine_subsidence_live
-            return get_mine_subsidence_live(req.lat, req.lng)
+            return get_mine_subsidence_live(lat, lng)
         except Exception as e:
             logger.warning("mine subsidence lookup failed: %s", e)
             return {"status": "failed"}
@@ -700,7 +708,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_contaminated_live
-            return get_contaminated_live(req.lat, req.lng)
+            return get_contaminated_live(lat, lng)
         except Exception as e:
             logger.warning("contaminated land lookup failed: %s", e)
             return {"status": "failed"}
@@ -746,7 +754,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")
     generate_pdf(
-        pdf_path, req.address, req.lat, req.lng, controls, valuation,
+        pdf_path, req.address, lat, lng, controls, valuation,
         headroom, feasibility, unique_overlays, das,
         dcp_former_council=dcp_former_council,
         strata_info=strata_info,
