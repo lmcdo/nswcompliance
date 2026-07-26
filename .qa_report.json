@@ -1,107 +1,54 @@
 {
  "tier": "standard",
- "justification": "New user-facing section in the paid conveyancing PDF backed by a new production-DB spatial query. Wrong wording carries misleading-conduct exposure (extent claims about a named property) and a silent DB failure could render as a false 'outside the mapped extent'. Not critical: read-only disclosure layer, no schema change, no write path, feature-flagged, and it does not feed the constraints tile or any verdict.",
- "commit_hash": "1de9cf06",
+ "justification": "Closes a forgery/mislabel vector in the PDF report. On a cache hit generate_conveyancing_pdf rendered the cached property's data but took the address label (and the address-derived lookups: shadow, structures, former-council) from req.address, so a caller could pair a valid report_id for a clean property with a different property's address and produce a due-diligence PDF showing one property's data under another's address. The label and all address-derived work now use a single bound `address` that comes from the cache on a hit and from req.address only on a miss (the resolution key). A cache entry lacking its own address (or coordinates) is treated as a miss and fully re-resolved, so no caller-supplied address is ever paired with cached data.",
+ "commit_hash": "5907eb4d",
  "files": [
-  "scripts/generate_conveyancing_report.py",
   "services/conveyancing.py",
-  "scripts/ingest_coastal_inundation.py",
-  "tests/test_coastal_inundation.py"
+  "tests/test_conveyancing_pdf_address_label.py"
  ],
  "pre_impl": {
-  "existing_data": "spatial_overlays rows with layer_type='coastal_inundation' â€” 1,415 polygons loaded 2026-07-09 by scripts/ingest_coastal_inundation.py (committed in this PR), instrument_key estuary_inund_2025_s370_y{2050|2100}_{f1..f4}, value_numeric = days/year, currency_date 2025-11-24. Checked live in this session: per-key counts sum to 1,415 and a cadastre-resolved lot (propid 6021043) intersects f4 for both years.",
-  "assumption_mismatch": "If instrument_key drifts from the loader's pattern or value_numeric is NULL, the row is skipped; if ALL intersecting rows are unparseable the fetcher returns failed (renders 'not assessed'), never a fabricated year or a false 'outside'. If the layer is ever deleted, every lot reads 'outside' â€” that is the one honest-but-wrong state; mitigated by the loader + count being committed alongside the renderer in this PR.",
-  "new_vs_existing": "Render-only change: applies to every PDF generated after deploy (service path fetches live per request; coastal is fetched in the PDF-exclusive stage, not stored in conveyancing_cache, so stale caches simply render without the section via the None default)."
+  "existing_data": "Uses the existing pipeline cache written by run_conveyancing's _save_pipeline_cache, which already stores address, prop_id, lat, lng and lot_wkt together. No new data source, query, or fetcher is introduced.",
+  "assumption_mismatch": "Confirmed all req.address uses in generate_conveyancing_pdf (previously at strata, former-council, shadow, structures, the generate_pdf label and the response) are within this one handler; run_conveyancing and _resolve_property keep their own req.address uses, so no blanket rename was possible and each site was rebound individually.",
+  "new_vs_existing": "New: a single bound local `address` for the whole handler and the cache-hit guard now also requiring a cached address. Deliberately unchanged: the cache-hit unpacking of controls/valuation/overlays, the coordinate binding from #818, and _resolve_property."
  },
  "functions": [
   {
-   "name": "get_coastal_inundation_live",
-   "file_line": "scripts/generate_conveyancing_report.py:2028",
-   "input": "lat/lng floats + optional lot_wkt string from resolve_address; DATABASE_URL env",
-   "output": "three-state dict: failed | outside(query_basis) | intersects(query_basis, years{year: {days_per_year, value}})",
-   "if_none": "missing DATABASE_URL or any DB error returns {'status': 'failed'} â€” renders 'not assessed', never an extent claim; missing lot_wkt falls back to the point query and tags query_basis='point' for the caveat"
-  },
-  {
-   "name": "build_coastal_inundation_lines",
-   "file_line": "scripts/generate_conveyancing_report.py:3333",
-   "input": "the fetcher dict (or None from stale callers) + report_date string",
-   "output": "render-state dict {render, state, rows, framing, scope_line, source_line, status_line, basis_note} consumed by generate_pdf",
-   "if_none": "None or unrecognised status returns render=False (section omitted â€” never a false claim); intersects with zero renderable years fails closed to the 'not assessed' line"
-  },
-  {
-   "name": "_coastal_year_row",
-   "file_line": "scripts/generate_conveyancing_report.py:3311",
-   "input": "year int + per-year tier dict {days_per_year, value} read from the DB row",
-   "output": "one factual sentence per year, or None",
-   "if_none": "missing days_per_year returns None (row dropped) â€” a figure is never composed; unparseable pct in value omits the parenthetical rather than inventing one"
-  },
-  {
-   "name": "_fetch_coastal",
-   "file_line": "services/conveyancing.py:716",
-   "input": "resolved property-bound lat/lng from _resolve_property (#818 binding contract) + lot_wkt from the cached or re-run pipeline",
-   "output": "the fetcher dict passed to generate_pdf(coastal=...)",
-   "if_none": "any import/runtime exception returns {'status': 'failed'} so a broken deploy renders 'not assessed', not a crash or a false outside"
+   "name": "generate_conveyancing_pdf",
+   "file_line": "services/conveyancing.py:423",
+   "input": "a ConveyancingPdfRequest; on a cache hit the address label and address-derived lookups come from the cached entry, on a miss from req.address (the same key _resolve_property resolves)",
+   "output": "a PDF whose address label, shadow, structures and former-council lookups all describe the one resolved/cached property; the caller's address never labels cached data from a different property",
+   "if_none": "a cache entry lacking its own address or coordinates is treated as a miss and fully re-resolved via _resolve_property (which raises 422 on an unresolvable address, 503 on a resolver outage)"
   }
  ],
- "values": [
-  {
-   "value": "value_numeric (days/year per tier row)",
-   "read_at": "scripts/generate_conveyancing_report.py:2109",
-   "nullable": "yes",
-   "guard_at": "scripts/generate_conveyancing_report.py:2106",
-   "if_missing": "row skipped; if no row for a year survives, that year is absent from the section; if none survive at all the fetcher fails closed to 'not assessed'"
-  },
-  {
-   "value": "years dict keys after any JSON boundary",
-   "read_at": "scripts/generate_conveyancing_report.py:3380",
-   "nullable": "no",
-   "guard_at": "scripts/generate_conveyancing_report.py:3381",
-   "if_missing": "string keys from a JSON round-trip are int()-converted per row; tested in test_string_year_keys_tolerated"
-  }
- ],
- "queries": [
-  {
-   "purpose": "lot-polygon (preferred) or point intersection against the estuarine inundation layer",
-   "file_line": "scripts/generate_conveyancing_report.py:2058",
-   "where_clause": "WHERE layer_type = 'coastal_inundation' AND instrument_key LIKE 'estuary\\_inund\\_2025\\_s370\\_%' ESCAPE '' AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326)) â€” point variant uses ST_Point(lng, lat). The instrument-prefix filter pins the query to the exact 2025 SSP3-7.0 publication the source line cites, so a future load under the same layer_type cannot mix in.",
-   "if_zero": "layer-presence probe runs first: layer absent â†’ status='failed' (never a universal false outside); layer present â†’ status='outside', an honest checked non-intersection (97% of NSW lots)",
-   "if_wrong": "worst case is an extent claim for the wrong lot; guarded upstream by GATE-0 parcel resolution supplying lot_wkt, and the point-basis caveat names the weaker basis when the polygon was unavailable"
-  }
- ],
+ "values": "N/A - reads no DB or API values directly; wraps the existing pipeline cache and _resolve_property.",
+ "queries": "N/A - no SQL is written or changed in this diff.",
  "break_it": [
   {
-   "scenario": "DB down at generation time renders as 'outside the mapped extent' on a canal-estate lot â€” a false clear in a legal document.",
-   "what_happens": "Buyer reads an outside-extent claim that was never checked.",
+   "scenario": "A caller runs a report on a clean property, keeps its report_id, then requests the PDF with that report_id but a different (problematic) property's address.",
+   "what_happens": "The old handler rendered the clean property's cached controls, valuation and hazards but labelled the PDF with the problematic property's address, forging a due-diligence document for the wrong property.",
    "mitigated": true,
-   "how": "scripts/generate_conveyancing_report.py:2052 â€” no DATABASE_URL and every exception path return status='failed'; additionally a zero-hit result only becomes 'outside' after a layer-presence probe (scripts/generate_conveyancing_report.py:2086) â€” a deleted or never-loaded layer fails closed instead of reading as outside on every lot. Tests: test_no_database_url_fails_not_outside, test_connect_error_fails_not_outside, test_no_rows_with_layer_absent_fails_closed, test_failed_renders_not_assessed_without_extent_claim.",
-   "repro": "unset DATABASE_URL and call get_coastal_inundation_live(-33.5, 151.3) â€” returns failed; section renders 'not assessed'"
+   "how": "On a cache hit the address label and address-derived lookups come from cached['address'], not req.address, so the report_id always renders its own property fully.",
+   "repro": "pytest tests/test_conveyancing_pdf_address_label.py::TestPdfAddressLabelBinding::test_pdf_label_uses_bound_address"
   },
   {
-   "scenario": "A malformed instrument_key or NULL value_numeric row poisons the year selection, inventing a year or frequency.",
-   "what_happens": "A fabricated figure appears in a conveyancer-facing disclosure.",
+   "scenario": "A legacy cache entry for report_id A has coordinates but no stored address, and a caller supplies property B's address.",
+   "what_happens": "An earlier version of this fix coalesced address = cached.get('address') or req.address, so a missing cached address silently restored the mix-up: A's data labelled with B's address.",
    "mitigated": true,
-   "how": "scripts/generate_conveyancing_report.py:2083 â€” unparseable rows are skipped and never invent a year; all-unparseable falls to status='failed' (a data defect must not read as checked-outside). Figures are READ from the stored value/value_numeric, never composed. Tests: test_malformed_rows_skipped_all_malformed_fails_closed, test_malformed_row_does_not_poison_valid_year, test_year_figures_read_from_rows_never_composed.",
-   "repro": "pytest tests/test_coastal_inundation.py::TestCoastalFetcher"
+   "how": "The cache-hit guard now also requires cached.get('address'); an entry missing it falls through to full authoritative re-resolution rather than borrowing the caller's address.",
+   "repro": "pytest tests/test_conveyancing_pdf_address_label.py::TestPdfAddressLabelBinding::test_cache_hit_binds_address_from_cache"
   },
   {
-   "scenario": "The section reads as general 'coastal' coverage, so a beachfront (open-surf, non-estuary) buyer treats 'outside the mapped extent' as an all-clear for coastal inundation.",
-   "what_happens": "Inclusion/omission trap â€” the report implies coverage the dataset does not have.",
+   "scenario": "A future edit passes req.address to a new fetcher, the PDF label, or the response instead of the bound address.",
+   "what_happens": "That path would render or query for the caller's address while the rest of the PDF describes the cached property, reintroducing the mislabel for that data source.",
    "mitigated": true,
-   "how": "The scope sentence (estuarine only; does NOT cover open-coast/surf inundation or erosion, nor riverine flooding) rides with EVERY rendered extent claim â€” outside and intersects states both; the anchor term everywhere is 'estuarine tidal inundation'. Tests: test_every_extent_claim_scoped_estuarine, test_outside_carries_scope_and_source.",
-   "repro": "read either generated PDF: scope sentence present under the section in both the intersects (Louth Park) and outside (Bowral) states"
-  },
-  {
-   "scenario": "Point-based fallback (no lot polygon) misses an extent that clips only the lot edge, and the report presents the point check as a lot check.",
-   "what_happens": "Partial-lot intersections read as outside with no signal of the weaker basis.",
-   "mitigated": true,
-   "how": "query_basis is threaded from the fetcher and the point basis renders an explicit caveat naming that the lot polygon was unavailable and a lot-boundary check can differ. Test: test_point_basis_gets_caveat_note.",
-   "repro": "call get_coastal_inundation_live without lot_wkt â€” result carries query_basis='point'; builder emits the basis note"
+   "how": "An AST guard asserts every req.address in the handler is the right-hand side of an `address = ...` binding and that generate_pdf is labelled with the bound address; a direct use fails the test.",
+   "repro": "pytest tests/test_conveyancing_pdf_address_label.py::TestPdfAddressLabelBinding::test_req_address_only_feeds_the_local_binding"
   }
  ],
  "post_merge": {
-  "db_reset": "No â€” read-only layer already live in spatial_overlays (loaded 2026-07-09).",
-  "secrets": "No â€” uses the existing DATABASE_URL.",
-  "other_repo": "No.",
-  "manual_verify": "Done pre-merge in this session: full CLI PDFs generated against production data for 314 Dagworth Road Louth Park (intersects, f4 182.5 d/yr both years, lot basis) and 38 Park Road Bowral (outside), with the rendered section text read back from both PDFs. Post-deploy: run one Railway /pipeline/conveyancing/pdf for an estuary address and check the section appears."
+  "db_reset": "None - no schema or data changes.",
+  "secrets": "None - no secrets added, removed, or rotated.",
+  "other_repo": "None. Completes the /conveyancing/pdf hardening started in #818 (coordinate binding); the free-tier /conveyancing path labels with its own resolved address already.",
+  "manual_verify": "POST /conveyancing/pdf with a valid report_id whose cache is for property A and req.address set to property B; confirm the generated PDF's address label and every address-derived section describe A, not B."
  }
 }

@@ -434,11 +434,12 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
     cached = _load_pipeline_cache(req.report_id)
 
-    # A usable cache entry must carry its own authoritative coordinates (written by
-    # the free-tier run). An entry missing them is treated as a miss so the whole
-    # property is re-resolved from the address below — cached prop_id data is never
-    # paired with coordinates resolved separately.
-    if cached and cached.get("lat") is not None and cached.get("lng") is not None:
+    # A usable cache entry must carry its own authoritative coordinates AND address
+    # (all written together by the free-tier run). An entry missing any of them is
+    # treated as a miss so the whole property is re-resolved below — cached data is
+    # never paired with coordinates or an address resolved/supplied separately.
+    if (cached and cached.get("lat") is not None and cached.get("lng") is not None
+            and cached.get("address")):
         # ---------- cache hit: unpack authoritative free-tier results ----------
         resolved_prop_id = cached.get("prop_id")
         if resolved_prop_id is not None:
@@ -458,6 +459,11 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         # entry as prop_id/controls/valuation, so everything is one property.
         lat = cached.get("lat")
         lng = cached.get("lng")
+        # The report's identity is the cached (report_id) entry, so the address
+        # label and address-derived lookups come from the cache, not the caller
+        # (guaranteed present by the branch condition). A caller can't render this
+        # property's data under a different address.
+        address = cached.get("address")
     else:
         # ---------- cache miss: full pipeline re-run ----------
         # Resolve prop_id, coordinates AND lot_wkt from the one address (same
@@ -469,12 +475,13 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         # _resolve_property reads.
         logger.info(f"Cache miss for {req.report_id} — running full pipeline")
         resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
+        address = req.address  # resolution key on a miss; kept as one local for both paths
 
         controls = parse_controls(get_raw_controls(resolved_prop_id))
         valuation = get_valuation(resolved_prop_id)
 
         unique_overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt)
-        strata_info = detect_strata(req.address, lat, lng)
+        strata_info = detect_strata(address, lat, lng)
 
         # PostGIS fallbacks
         ov_by_type = {o["layer_type"]: o for o in unique_overlays}
@@ -495,9 +502,9 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
         zone_epi = controls.get("zone_epi") or ""
         council_name = _council_from_zone_epi(zone_epi)
-        dcp_former_council = detect_former_council(req.address, zone_epi)
+        dcp_former_council = detect_former_council(address, zone_epi)
         dcp_former_council = _validate_former_council_postgis(
-            dcp_former_council, lat, lng, req.address, zone_epi,
+            dcp_former_council, lat, lng, address, zone_epi,
         )
 
     # ---------- PDF-exclusive data (parallelised) ----------
@@ -560,7 +567,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             m = re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
             if m:
                 lep_height = float(m.group(1))
-        return get_shadow_risk(req.address, str(resolved_prop_id), lat, lng, height_m=lep_height)
+        return get_shadow_risk(address, str(resolved_prop_id), lat, lng, height_m=lep_height)
 
     def _fetch_bushfire():
         """Live NSW RFS BFPL point query (~1-2s) — governs the PDF bushfire row.
@@ -657,7 +664,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         """
         try:
             from generate_conveyancing_report import get_structures_records_live
-            return get_structures_records_live(council_name, req.address)
+            return get_structures_records_live(council_name, address)
         except Exception as e:
             logger.warning("structures/records lookup failed: %s", e)
             return None, "failed"
@@ -774,7 +781,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     # Generate PDF
     pdf_path = os.path.join(tempfile.gettempdir(), f"conveyancing_{req.report_id}.pdf")
     generate_pdf(
-        pdf_path, req.address, lat, lng, controls, valuation,
+        pdf_path, address, lat, lng, controls, valuation,
         headroom, feasibility, unique_overlays, das,
         dcp_former_council=dcp_former_council,
         strata_info=strata_info,
@@ -805,7 +812,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
     return {
         "report_id": req.report_id,
         "pdf_url": pdf_url,
-        "address": req.address,
+        "address": address,
     }
 
 
