@@ -1,0 +1,253 @@
+"""CDC screen engine truth tests (#820 PR-1).
+
+Contract under test:
+  - standards come only from verified cdc_eligibility_standards rows; anything
+    missing or invalid fails closed to None (loader) / ValueError (engine)
+  - the screen never answers "yes"
+  - unknown inputs surface as unchecked warnings, never silent passes
+  - contamination: lot-on-register = exclusion; nearby = warning only
+  - mine subsidence: always a warning, never an exclusion
+"""
+
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from services.cdc_screen import (
+    CdcScreenInputs,
+    _validate_standards,
+    load_cdc_standards,
+    run_cdc_screen,
+)
+
+
+def _standards(**overrides) -> dict:
+    base = {
+        "eligible_zones": {"R1", "R2", "R3", "R4", "RU5"},
+        "min_lot_size": 200.0,
+        "min_lot_conditionality": "applies if no minimum size is specified for the lot",
+        "acid_sulfate_max_class": 3,
+        "refs": {"eligible_zones": "cl 3.1", "min_lot_size": "cl 6.4(1)(d)(ii)"},
+    }
+    base.update(overrides)
+    return base
+
+
+def _clear_inputs(**overrides) -> CdcScreenInputs:
+    base = dict(
+        zone_code="R2", lot_area_m2=550.0, is_heritage=False, flood_prone=False,
+        bushfire_prone=False, acid_sulfate_class=None, complying_excluded=False,
+        dual_occ_prohibited=False, contaminated_lot_on_register=False,
+        contamination_within_500m=False, mine_subsidence_district=False,
+    )
+    base.update(overrides)
+    return CdcScreenInputs(**base)
+
+
+class FakeCursor:
+    def __init__(self, rows=None, raise_on_execute=False):
+        self._rows = rows or []
+        self._raise = raise_on_execute
+        self.executed_sql = None
+
+    def execute(self, sql, params=None):
+        if self._raise:
+            raise Exception("DB error")
+        self.executed_sql = sql
+
+    def fetchall(self):
+        return self._rows
+
+    def close(self):
+        pass
+
+
+class FakeConn:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def cursor(self):
+        return self._cursor
+
+
+def _std_rows(min_lot=200.0, zones=("R1", "R2", "R3", "R4", "RU5"), ass=3):
+    rows = [
+        ("eligible_zones", None, list(zones), None, "cl 3.1"),
+        ("min_lot_size", min_lot, None, "if no minimum size is specified", "cl 6.4(1)(d)(ii)"),
+    ]
+    if ass is not None:
+        rows.append(("acid_sulfate_max_class", ass, None, None, "cl 1.19"))
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# _validate_standards — shared boundary validation
+# ---------------------------------------------------------------------------
+
+class TestValidateStandards:
+    def test_valid_normalises(self):
+        out = _validate_standards(_standards(eligible_zones=[" R1 ", "R2"]))
+        assert out["eligible_zones"] == {"R1", "R2"}
+        assert out["min_lot_size"] == 200.0
+
+    def test_rejects_zero_negative_nonfinite_minimum(self):
+        for bad in (0, -200, float("nan"), float("inf"), None, "abc"):
+            assert _validate_standards(_standards(min_lot_size=bad)) is None, bad
+
+    def test_rejects_bad_zone_collections(self):
+        for bad in (["R1", None], ["R1", ""], [], None, "R1"):
+            assert _validate_standards(_standards(eligible_zones=bad)) is None, bad
+
+    def test_rejects_empty(self):
+        assert _validate_standards(None) is None
+        assert _validate_standards({}) is None
+
+
+# ---------------------------------------------------------------------------
+# load_cdc_standards — verified rows only, fail closed
+# ---------------------------------------------------------------------------
+
+class TestLoadCdcStandards:
+    def test_no_conn_returns_none(self):
+        assert load_cdc_standards(None) is None
+
+    def test_query_filters_to_verified_rows(self):
+        cur = FakeCursor(rows=_std_rows())
+        load_cdc_standards(FakeConn(cur))
+        assert "manual_verified = TRUE" in cur.executed_sql
+
+    def test_loads_valid_standards(self):
+        out = load_cdc_standards(FakeConn(FakeCursor(rows=_std_rows(min_lot=200.0))))
+        assert out["min_lot_size"] == 200.0
+        assert out["eligible_zones"] == {"R1", "R2", "R3", "R4", "RU5"}
+        assert out["acid_sulfate_max_class"] == 3
+        assert out["refs"]["min_lot_size"] == "cl 6.4(1)(d)(ii)"
+
+    def test_missing_required_rows_returns_none(self):
+        only_zones = [("eligible_zones", None, ["R2"], None, "cl 3.1")]
+        assert load_cdc_standards(FakeConn(FakeCursor(rows=only_zones))) is None
+        assert load_cdc_standards(FakeConn(FakeCursor(rows=[]))) is None
+
+    def test_query_failure_returns_none(self):
+        assert load_cdc_standards(FakeConn(FakeCursor(raise_on_execute=True))) is None
+
+    def test_corrupt_values_return_none(self):
+        """Mutation check: a zero minimum or null zone entry must not load."""
+        assert load_cdc_standards(FakeConn(FakeCursor(rows=_std_rows(min_lot=0)))) is None
+        rows = _std_rows()
+        rows[0] = ("eligible_zones", None, ["R2", None], None, "cl 3.1")
+        assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None
+
+    def test_missing_acid_sulfate_row_is_allowed(self):
+        out = load_cdc_standards(FakeConn(FakeCursor(rows=_std_rows(ass=None))))
+        assert out is not None
+        assert out["acid_sulfate_max_class"] is None
+
+
+# ---------------------------------------------------------------------------
+# run_cdc_screen — verdicts
+# ---------------------------------------------------------------------------
+
+class TestRunCdcScreen:
+    def test_never_yes(self):
+        result = run_cdc_screen(_standards(), _clear_inputs())
+        assert result.eligible == "maybe"
+        assert result.exclusions == []
+
+    def test_garbage_standards_raise(self):
+        with pytest.raises(ValueError):
+            run_cdc_screen({"min_lot_size": 0, "eligible_zones": {"R2"}}, _clear_inputs())
+
+    def test_zone_outside_set_is_definite_no(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(zone_code="E2"))
+        assert result.eligible == "no"
+        assert any(e.constraint == "zone" and e.severity == "definite" for e in result.exclusions)
+        assert "SEPP (Exempt and Complying Development Codes) 2008" in result.exclusions[0].source
+
+    def test_lot_below_minimum_uses_injected_figure(self):
+        """Mutation check: the figure comes from standards, not a constant."""
+        result = run_cdc_screen(_standards(min_lot_size=600.0), _clear_inputs(lot_area_m2=550.0))
+        assert result.eligible == "no"
+        reason = next(e for e in result.exclusions if e.constraint == "lot_size").reason
+        assert "600" in reason
+        assert "200" not in reason
+
+    def test_lot_exclusion_carries_conditionality(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(lot_area_m2=150.0))
+        reason = next(e for e in result.exclusions if e.constraint == "lot_size").reason
+        assert "if no minimum size is specified" in reason
+
+    def test_overlay_exclusions(self):
+        for field, constraint in (
+            ("is_heritage", "heritage"),
+            ("flood_prone", "flood"),
+            ("bushfire_prone", "bushfire"),
+        ):
+            result = run_cdc_screen(_standards(), _clear_inputs(**{field: True}))
+            assert result.eligible == "no", field
+            assert any(e.constraint == constraint for e in result.exclusions)
+
+    def test_unknown_inputs_surface_as_unchecked_not_silent_pass(self):
+        result = run_cdc_screen(_standards(), CdcScreenInputs())
+        assert result.eligible == "maybe"
+        assert result.exclusions == []
+        assert "zone" in result.unchecked
+        assert "lot size" in result.unchecked
+        assert any("Not screened" in w for w in result.warnings)
+
+    def test_exclusion_area_layer_is_definite(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(complying_excluded=True))
+        assert result.eligible == "no"
+        assert any(e.constraint == "complying_exclusion" for e in result.exclusions)
+
+    def test_acid_sulfate_check_only_when_standard_present(self):
+        no_ass = _standards(acid_sulfate_max_class=None)
+        result = run_cdc_screen(no_ass, _clear_inputs(acid_sulfate_class=2))
+        assert "Acid sulfate soils" not in result.checks_performed
+        with_ass = run_cdc_screen(_standards(), _clear_inputs(acid_sulfate_class=2))
+        assert any(e.constraint == "acid_sulfate" and e.severity == "likely"
+                   for e in with_ass.exclusions)
+        # 'likely' severity alone must not produce a definite 'no'
+        assert with_ass.eligible == "maybe"
+
+    def test_contamination_on_register_is_exclusion(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(contaminated_lot_on_register=True))
+        assert result.eligible == "no"
+        assert any(e.constraint == "contamination" for e in result.exclusions)
+
+    def test_contamination_nearby_is_warning_only(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(contamination_within_500m=True))
+        assert result.eligible == "maybe"
+        assert not any(e.constraint == "contamination" for e in result.exclusions)
+        assert any("500 m" in w for w in result.warnings)
+
+    def test_mine_subsidence_is_warning_never_exclusion(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(mine_subsidence_district=True))
+        assert result.eligible == "maybe"
+        assert not any(e.constraint.startswith("mine") for e in result.exclusions)
+        assert any("Subsidence Advisory" in w for w in result.warnings)
+
+    def test_dual_occ_prohibition_cites_epi_name(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(
+            dual_occ_prohibited=True, dual_occ_epi_name="Ryde LEP 2014"))
+        assert result.eligible == "no"
+        exc = next(e for e in result.exclusions if e.constraint == "dual_occ_prohibition")
+        assert exc.source == "Ryde LEP 2014"
+
+
+# ---------------------------------------------------------------------------
+# Source guard — the engine must stay hardcode-free
+# ---------------------------------------------------------------------------
+
+def test_engine_source_contains_no_regulatory_constants():
+    """The zone lists and thresholds the TS route hardcodes must never appear
+    here — every figure flows from cdc_eligibility_standards."""
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parent.parent
+           / "services" / "cdc_screen.py").read_text(encoding="utf-8")
+    for phrase in ("'R1', 'R2'", '"R1", "R2"', "200m", "= 200", "8.5", "< 0.3",
+                   "CDC_ELIGIBLE_ZONES"):
+        assert phrase not in src, f"regulatory constant hardcoded in cdc_screen.py: {phrase!r}"
