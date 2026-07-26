@@ -609,9 +609,12 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           '1pct':  '1-in-100 yr (1% AEP)',
           '0_5pct': '1-in-200 yr (0.5% AEP)',
           '0_2pct': '1-in-500 yr (0.2% AEP)',
+          '0_1pct': '1-in-1000 yr (0.1% AEP)',
+          '0_05pct': '1-in-2000 yr (0.05% AEP)',
+          '0_02pct': '1-in-5000 yr (0.02% AEP)',
           'pmf':   'PMF (Probable Maximum Flood)',
         };
-        const AEP_ORDER = ['50pct','20pct','10pct','5pct','2pct','1pct','0_5pct','0_2pct','pmf'];
+        const AEP_ORDER = ['50pct','20pct','10pct','5pct','2pct','1pct','0_5pct','0_2pct','0_1pct','0_05pct','0_02pct','pmf'];
         return (
           <Page size="A4" style={s.page}>
             <LogoRow logo_b64={data.logo_b64} />

@@ -65,7 +65,8 @@ def get_diff(args: argparse.Namespace) -> str:
 
     try:
         proc = subprocess.run(
-            cmd, cwd=_REPO_ROOT, capture_output=True, text=True, timeout=60
+            cmd, cwd=_REPO_ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60,
         )
     except FileNotFoundError:
         sys.exit(f"Command not found: {cmd[0]} (is it installed / on PATH?)")
@@ -113,7 +114,8 @@ def load_checklist(base: str) -> str:
     try:
         proc = subprocess.run(
             ["git", "show", f"{base}:{_CHECKLIST_REL}"],
-            cwd=_REPO_ROOT, capture_output=True, text=True, timeout=15,
+            cwd=_REPO_ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=15,
         )
         if proc.returncode == 0 and proc.stdout.strip():
             return proc.stdout

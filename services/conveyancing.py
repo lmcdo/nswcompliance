@@ -161,6 +161,46 @@ _DATA_SOURCES = [
 ]
 
 
+def _nearby_da_count(
+    council_name: Optional[str], lat: float, lng: float,
+) -> tuple[Optional[int], bool]:
+    """Return (da_count, fetch_failed) for the 200 m nearby-DA lookup.
+
+    prior-art-checked: not a new data source. Extracts the EXISTING inline
+    nearby-DA lookup already in this function into a helper so its false-zero
+    (da_count=0 on failure) becomes three-state. Reuses fetch_nearby_das and
+    mirrors intelligence_brief.py's DataField[Optional[int]] convention.
+
+    Three-state (CONVEYANCING_QA_ADVERSARIAL.md S1 / R6): da_count is None — never
+    0 — whenever the check could not be completed: council unresolved, DATABASE_URL
+    absent, or the query raised. A genuine "0 DAs within 200 m" returns (0, False)
+    and is therefore never confused with "not assessed". fetch_failed is True in
+    every not-completed case; callers use it to withhold the DA data source and to
+    render "could not be checked" instead of a false "none nearby".
+
+    council_name only gates whether we attempt the lookup; the query itself passes
+    council_name=None because the DB stores a different council-name vocabulary than
+    the LEP-derived name (see tests/test_conveyancing_nearby_da_council).
+    """
+    if not council_name:
+        return None, True
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return None, True
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        try:
+            das = fetch_nearby_das(conn, lat, lng, council_name=None)
+            return len(das), False
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"DA fetch failed: {e}")
+        return None, True
+
+
 def _load_regulatory_configs() -> tuple[Optional[dict], Optional[dict]]:
     """Load SEPP Housing + tax thresholds from DB for calc_feasibility.
 
@@ -188,6 +228,53 @@ class ConveyancingPdfRequest(BaseModel):
     report_id: str
 
 
+def _resolve_property(req: ConveyancingRequest) -> tuple[int, float, float, Optional[str]]:
+    """Resolve (prop_id, lat, lng, lot_wkt) authoritatively from req.address.
+
+    prior-art-checked: not a new data source. Replaces the inline caller-triple
+    fast path already in run_conveyancing; reuses the existing resolve_address.
+
+    All four values come from the SAME address resolution, so prop_id-keyed data
+    (LEP controls, valuation) and coordinate-keyed data (spatial overlays, strata,
+    nearby DAs) can never describe two different properties. The removed fast path
+    trusted a caller-supplied (prop_id, lat, lng) triple without binding them: a
+    mismatched triple produced a report mixing one property's controls with another's
+    overlays under a single address label. resolve_address also enforces GATE-0
+    parcel identity (fail-closed) and returns lot_wkt, which the fast path left None
+    (so overlay point-queries missed layers intersecting only the parcel edge).
+
+    A caller-supplied prop_id is accepted only as advisory: the address is
+    authoritative, so a disagreement is logged and the resolved prop_id wins.
+
+    Failure contract: 422 when the address resolves to no parcel (not found or
+    GATE-0 identity mismatch — resolve_address returns None, a client-fixable
+    input problem); 503 when resolve_address itself raises (Portal unreachable /
+    upstream 5xx — a retryable operational failure, not a claim that a valid
+    address is invalid).
+    """
+    try:
+        prop_id, lat, lng, lot_wkt = resolve_address(req.address)
+    except Exception:
+        logger.exception("Address resolution failed (operational) for %r", req.address)
+        raise HTTPException(
+            status_code=503,
+            detail="Address service temporarily unavailable; please retry.",
+        )
+
+    if not prop_id or not lat or not lng:
+        raise HTTPException(
+            status_code=422, detail=f"Could not resolve address to a parcel: {req.address}",
+        )
+
+    if req.prop_id and str(req.prop_id) != str(prop_id):
+        logger.warning(
+            "conveyancing: caller prop_id %s disagrees with resolved %s for %r; "
+            "using resolved (address is authoritative)",
+            req.prop_id, prop_id, req.address,
+        )
+    return int(prop_id), lat, lng, lot_wkt
+
+
 @router.post("/conveyancing")
 def run_conveyancing(req: ConveyancingRequest):
     """
@@ -195,22 +282,10 @@ def run_conveyancing(req: ConveyancingRequest):
     Returns structured data for the free tier frontend display.
     PDF generation is a separate paid endpoint.
     """
-    # Resolve address if lat/lng not provided
-    resolved_prop_id = None
-    lot_wkt = None
-
-    if req.lat and req.lng and req.prop_id:
-        lat, lng = req.lat, req.lng
-        resolved_prop_id = int(req.prop_id)
-    else:
-        try:
-            resolved_prop_id, lat, lng, lot_wkt = resolve_address(req.address)
-        except Exception as e:
-            logger.error(f"Address resolution failed: {e}")
-            raise HTTPException(status_code=422, detail=f"Could not resolve address: {req.address}")
-
-        if not lat or not lng:
-            raise HTTPException(status_code=422, detail=f"Could not determine coordinates for: {req.address}")
+    # Resolve prop_id, coordinates AND lot geometry from the one address so
+    # prop_id-keyed data and coordinate-keyed data always describe the same
+    # property (see _resolve_property). A caller-supplied triple is never trusted.
+    resolved_prop_id, lat, lng, lot_wkt = _resolve_property(req)
 
     # Fetch controls and valuation in parallel
     controls = {}
@@ -250,32 +325,12 @@ def run_conveyancing(req: ConveyancingRequest):
         tax_config=tax_config,
     )
 
-    # DA count (quick — no full details in free tier)
+    # DA count (quick — no full details in free tier). Three-state: da_count is
+    # None + da_fetch_failed True when the check could not run, so a failure is
+    # never served as a false "0 DAs nearby" (see _nearby_da_count).
     zone_epi = controls.get("zone_epi", "")
     council_name = _council_from_zone_epi(zone_epi)
-    da_count = 0
-    if council_name:
-        try:
-            import psycopg2
-            _db_url = os.getenv("DATABASE_URL")
-            if _db_url:
-                _conn = psycopg2.connect(_db_url)
-                _conn.autocommit = True
-                try:
-                    # council_name=None: the 200m Haversine radius filter in
-                    # fetch_nearby_das already scopes the search precisely. The
-                    # council filter is redundant AND buggy — the DB stores a
-                    # different council-name vocabulary than the LEP-derived name
-                    # (e.g. "The Council of the Shire of Hornsby" vs "Hornsby
-                    # Shire Council"), so filtering silently returned zero and
-                    # printed a false "no DAs nearby". Matches intelligence_brief
-                    # _fetch_nearby_das, which passes None for the same reason.
-                    das = fetch_nearby_das(_conn, lat, lng, council_name=None)
-                    da_count = len(das)
-                finally:
-                    _conn.close()
-        except Exception as e:
-            logger.warning(f"DA fetch failed: {e}")
+    da_count, da_fetch_failed = _nearby_da_count(council_name, lat, lng)
 
     # Check DCP availability — text match then PostGIS cross-validation
     dcp_former_council = detect_former_council(req.address, zone_epi)
@@ -284,6 +339,10 @@ def run_conveyancing(req: ConveyancingRequest):
     )
 
     data_sources = list(_DATA_SOURCES)
+    if da_fetch_failed:
+        # Don't claim the DA API as a source when the nearby-DA check never ran —
+        # otherwise da_count None/absent reads as an authoritative "none nearby".
+        data_sources = [s for s in data_sources if s != "NSW ePlanning DA API"]
     if dcp_former_council:
         data_sources.append("PlotDetect DCP controls database")
 
@@ -346,8 +405,10 @@ def run_conveyancing(req: ConveyancingRequest):
             # Derived
             "headroom": headroom,
             "feasibility": feasibility,
-            # Summary counts
+            # Summary counts. da_count is None (not 0) when da_fetch_failed —
+            # "not assessed", distinct from a genuine 0 DAs within 200 m.
             "da_count": da_count,
+            "da_fetch_failed": da_fetch_failed,
             "dcp_available": bool(dcp_former_council),
         },
         "confidence": _compute_confidence(
