@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
@@ -441,7 +442,7 @@ export default function SetbackRequirementsNSWPage() {
           PlotDetect extracts DCP setback controls into structured numeric fields with clause
           citations — front, side, rear, and secondary street setbacks — for{' '}
           <Link href="/assessment" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
-            29 LGAs covering numeric controls and 7 councils with full structured provisions
+            {COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covering numeric controls and {COVERAGE_DISPLAY.dcpFullCouncils} councils with full structured provisions
           </Link>.
           Enter your address to see which setbacks apply.
         </p>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'For Buyers Agents — PlotDetect',
@@ -79,7 +80,7 @@ const WORKFLOW_SECTIONS = [
         title: 'Site Controls — Planning Provisions',
         question: 'What are the zone, FSR, height, heritage, and SEPP requirements?',
         answer:
-          'Zone permissibility, floor space ratio, height of buildings, minimum lot size, heritage status, all spatial overlays, and every applicable SEPP requirement — for any NSW address. Full DCP provisions for Inner West, structured numeric controls for 28 councils.',
+          `Zone permissibility, floor space ratio, height of buildings, minimum lot size, heritage status, all spatial overlays, and every applicable SEPP requirement — for any NSW address. Full DCP provisions for Inner West, structured numeric controls for ${COVERAGE_DISPLAY.dcpNumericCouncils} councils.`,
         href: '/assessment',
         badge: 'Free',
       },
@@ -168,7 +169,7 @@ const WORKFLOW_SECTIONS = [
         title: 'Validate — DA Analytics',
         question: 'What are the approval rates for this council?',
         answer:
-          'DA analytics across 128 NSW councils — approval rates, processing times, common refusal reasons, and trend analysis. Context for advising clients on what to expect.',
+          `DA analytics across ${COVERAGE_DISPLAY.totalNswCouncils} NSW councils — approval rates, processing times, common refusal reasons, and trend analysis. Context for advising clients on what to expect.`,
         href: '/validate',
         badge: 'Free',
       },
@@ -231,9 +232,9 @@ export default function BuyersAgentsPage() {
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">
           {[
             { value: '12', label: 'Property checks' },
-            { value: '130+', label: 'LGAs covered' },
-            { value: '8', label: 'Risk layers' },
-            { value: '7', label: 'Gov data sources' },
+            { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
+            { value: COVERAGE_DISPLAY.riskLayers, label: 'Risk layers' },
+            { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
               <div className="text-2xl font-bold text-white">{value}</div>
