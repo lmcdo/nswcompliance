@@ -2036,6 +2036,114 @@ def get_servicing_live(lat: float, lng: float) -> dict:
         return {"status": "failed"}
 
 
+# instrument_key pattern written by scripts/ingest_coastal_inundation.py:
+# estuary_inund_2025_s370_y{2050|2100}_{f1..f4}
+_COASTAL_IK_RE = re.compile(r"_y(\d{4})_f\d$")
+# Exact publication/scenario this renderer's source line cites. The query is
+# scoped to it so a future load under the same layer_type (new publication or
+# scenario) can never be rendered under the 2025 SSP3-7.0 attribution.
+_COASTAL_INSTRUMENT_PREFIX = "estuary_inund_2025_s370_"
+# LIKE pattern with '_' escaped (it is a LIKE wildcard).
+_COASTAL_IK_LIKE = _COASTAL_INSTRUMENT_PREFIX.replace("_", r"\_") + "%"
+
+
+def get_coastal_inundation_live(
+    lat: float, lng: float, lot_wkt: Optional[str] = None,
+) -> dict:
+    """Estuarine tidal inundation extent check (spatial_overlays), three-state.
+
+    prior-art-checked: same spatial_overlays intersection mechanics as
+    get_unique_overlays (lot polygon preferred, point fallback) against the
+    layer loaded by scripts/ingest_coastal_inundation.py — no new client, no
+    new geometry logic. Kept out of get_unique_overlays because this layer is
+    statewide + multi-row-per-lot (one row per year×tier), not a per-LGA
+    unique overlay, and it must never feed the cover CONSTRAINTS tile.
+
+    Returns:
+      {"status": "failed"}                       — DB unavailable/errored → "Not assessed"
+      {"status": "outside", "query_basis": ...}  — checked, no intersection
+      {"status": "intersects", "query_basis": ..., "years": {2050: {...}, 2100: {...}}}
+        each year dict: {"days_per_year": float, "value": str} — the MOST
+        FREQUENT mapped tier (max days/year) whose polygon intersects the lot;
+        tiers are nested so the most frequent is the informative one. Every
+        figure is READ from the stored row (loader-written `value` string +
+        `value_numeric`), never composed here.
+    """
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return {"status": "failed"}
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        if lot_wkt:
+            cur.execute(
+                r"""
+                SELECT instrument_key, value, value_numeric
+                FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326))
+                """,
+                (_COASTAL_IK_LIKE, lot_wkt),
+            )
+            query_basis = "lot"
+        else:
+            cur.execute(
+                r"""
+                SELECT instrument_key, value, value_numeric
+                FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+                """,
+                (_COASTAL_IK_LIKE, lng, lat),
+            )
+            query_basis = "point"
+        rows = cur.fetchall()
+        if not rows:
+            # Zero intersections is only a checked "outside" if the layer is
+            # actually present — a deleted/never-loaded layer must read as
+            # "not assessed", never a universal all-clear.
+            cur.execute(
+                r"""
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                LIMIT 1
+                """,
+                (_COASTAL_IK_LIKE,),
+            )
+            layer_present = cur.fetchone() is not None
+            cur.close()
+            if not layer_present:
+                return {"status": "failed"}
+            return {"status": "outside", "query_basis": query_basis}
+        cur.close()
+        years: dict[int, dict] = {}
+        for instrument_key, value, value_numeric in rows:
+            m = _COASTAL_IK_RE.search(instrument_key or "")
+            if not m:
+                continue  # malformed row — never invent a year or frequency for it
+            if value_numeric is None:
+                continue  # frequency missing from the row — never compose one
+            year = int(m.group(1))
+            days = float(value_numeric)
+            if year not in years or days > years[year]["days_per_year"]:
+                years[year] = {"days_per_year": days, "value": value}
+        if not years:
+            # Rows intersected but none were parseable — a data defect, not a
+            # checked clear. Fail closed to "Not assessed".
+            return {"status": "failed"}
+        return {"status": "intersects", "query_basis": query_basis, "years": years}
+    except Exception as e:
+        print(f"  [warn] Estuarine inundation query unavailable: {e}")
+        return {"status": "failed"}
+    finally:
+        if conn:
+            conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Risk-row sentence builders — pure functions (golden-sentence tested in
 # tests/test_conveyancing_truth.py). Keep these free of reportlab so the exact
@@ -3256,6 +3364,137 @@ def build_climate_lines(
     return out
 
 
+# ── Estuarine tidal inundation layer (mapped-extent disclosure) ─────────────
+# NSW Estuarine Inundation 2025 (SEED, CC BY 4.0). Terminology rule: the
+# anchor term in every factual claim is "estuarine tidal inundation" — never
+# "coastal" as a coverage word (a beachfront non-estuary buyer would wrongly
+# assume open-coast coverage). Factual mapped-extent statements only: NO
+# verdict, NO "at risk", NO safety/value/insurance claim, and the section
+# never flips the cover CONSTRAINTS tile.
+_COASTAL_SCOPE_LINE = (
+    "Scope: this mapping covers estuarine (river, lake, bay and tidal-inlet) "
+    "tidal inundation only. It does NOT cover open-coast/surf inundation or "
+    "coastal erosion, and it does NOT cover rainfall-driven river flooding — "
+    "current flood mapping for this property is set out in the Risk Summary."
+)
+_COASTAL_FRAMING_LINE = (
+    "The NSW Government's 2025 estuarine inundation dataset maps how often "
+    "low-lying land near estuaries is under tidal water, modelled under the "
+    "SSP3-7.0 emissions scenario at 2050 and 2100. The lines below state "
+    "whether this property intersects that mapped extent. This is modelled "
+    "future tidal mapping — not current hazard mapping, not a forecast of any "
+    "individual event, and not a statement about this property's value or its "
+    "insurance cover."
+)
+_COASTAL_SOURCE_LINE = (
+    "Source: NSW Estuarine Inundation — 2025 (NSW Department of Climate "
+    "Change, Energy, the Environment and Water; SEED portal; CC BY 4.0; "
+    "published 24 November 2025). Scenario SSP3-7.0 at 2050 and 2100; mapped "
+    "extents held at the source's ~5 m resolution. Retrieved for this report "
+    "on {date}."
+)
+_COASTAL_OUTSIDE_LINE = (
+    "This property is outside the mapped estuarine tidal inundation extent "
+    "for both 2050 and 2100 (SSP3-7.0)."
+)
+_COASTAL_UNAVAILABLE = (
+    "Estuarine tidal inundation was not assessed — the mapped-extent layer "
+    "was not available at report generation."
+)
+_COASTAL_POINT_BASIS_NOTE = (
+    "Checked against the property point — the lot polygon was unavailable for "
+    "this query. A lot-boundary check can differ where the mapped extent "
+    "crosses only part of the lot."
+)
+
+
+def _coastal_year_row(year: int, tier: dict) -> Optional[str]:
+    """One factual sentence per mapped year — every figure READ from the row.
+
+    A tier whose days_per_year is absent is skipped (never composed); the raw
+    loader-written `value` string rides along so the stored row is quotable.
+    """
+    days = tier.get("days_per_year")
+    if days is None:
+        return None
+    pct = None
+    m = re.search(r"\(([\d.]+%)\)", tier.get("value") or "")
+    if m:
+        pct = m.group(1)
+    freq = f"exceeded {days:g} days per year"
+    if pct:
+        freq += f" ({pct} of days)"
+    return (
+        f"{year}: intersects the mapped extent — most frequent mapped tier at "
+        f"this property: tidal inundation {freq}, under SSP3-7.0."
+    )
+
+
+def build_coastal_inundation_lines(
+    coastal: Optional[dict],
+    report_date: Optional[str] = None,
+) -> dict:
+    """Section content for the estuarine tidal inundation mapped-extent layer.
+
+    prior-art-checked: consumes get_coastal_inundation_live output; same
+    render-state contract as build_climate_lines (its sibling forward-looking
+    disclosure layer). This builder adds NO hazard logic and computes NO
+    figure — it renders what the stored rows state, with the scope sentence on
+    every rendered state so "estuarine" can never read as general coastal
+    coverage.
+
+    States in ``coastal["status"]``:
+      intersects → framing + per-year rows + scope + source (render True)
+      outside    → honest outside-mapped-extent line + scope + source (render True)
+      failed     → "not assessed" line, no extent claim (render True)
+      None/absent/unrecognised → render False (section omitted; never a false claim)
+
+    Returns {"render", "state", "rows", "framing", "scope_line",
+             "source_line", "status_line", "basis_note"}.
+    """
+    out = {"render": False, "state": "absent", "rows": [], "framing": None,
+           "scope_line": None, "source_line": None, "status_line": None,
+           "basis_note": None}
+    status = (coastal or {}).get("status")
+    if status not in ("intersects", "outside", "failed"):
+        return out
+
+    out["render"] = True
+    out["state"] = status
+    if status == "failed":
+        out["status_line"] = _COASTAL_UNAVAILABLE
+        return out
+
+    out["scope_line"] = _COASTAL_SCOPE_LINE
+    out["source_line"] = _COASTAL_SOURCE_LINE.format(
+        date=report_date or "the date of generation"
+    )
+    if coastal.get("query_basis") == "point":
+        out["basis_note"] = _COASTAL_POINT_BASIS_NOTE
+
+    if status == "outside":
+        out["status_line"] = _COASTAL_OUTSIDE_LINE
+        return out
+
+    rows = []
+    for year in sorted((coastal.get("years") or {}).keys(), key=str):
+        if year is None:
+            continue
+        row = _coastal_year_row(int(year), coastal["years"][year] or {})
+        if row:
+            rows.append(row)
+    if not rows:
+        # Claimed intersects but nothing renderable — fail closed to the
+        # honest not-assessed line rather than an empty extent claim.
+        out.update(state="failed", rows=[], scope_line=None, source_line=None,
+                   basis_note=None, status_line=_COASTAL_UNAVAILABLE)
+        return out
+    out["state"] = "intersects"
+    out["rows"] = rows
+    out["framing"] = _COASTAL_FRAMING_LINE
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -3337,6 +3576,7 @@ def generate_pdf(
     mine_subsidence: Optional[dict] = None,
     contaminated: Optional[dict] = None,
     servicing: Optional[dict] = None,
+    coastal: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -5208,6 +5448,38 @@ def generate_pdf(
                 story.append(Paragraph(_xml_escape(_climate_lines["status_line"]), ss["note"]))
 
     # ------------------------------------------------------------------
+    # SECTION — Estuarine Tidal Inundation (mapped extent, modelled scenario)
+    # NSW Estuarine Inundation 2025 layer, factual mapped-extent statements
+    # only: NO verdict, NO "at risk", NO safety/value/insurance claim (#699
+    # discipline, terminology rule: "estuarine", never "coastal" as a coverage
+    # word). Disclosure layer — it does NOT flip the cover CONSTRAINTS tile.
+    # Feature-flagged so a legal hold can disable it live.
+    # ------------------------------------------------------------------
+    if os.environ.get("CONVEYANCING_COASTAL_ENABLED", "true").lower() in ("1", "true", "yes"):
+        _coastal_lines = build_coastal_inundation_lines(
+            coastal, report_date=date.today().strftime("%d %B %Y")
+        )
+        if _coastal_lines["render"]:
+            h2(f"{_sec_no}. Estuarine Tidal Inundation — Mapped Extent")
+            _sec_no += 1
+            if _coastal_lines["state"] == "intersects":
+                story.append(Paragraph(_xml_escape(_coastal_lines["framing"]), ss["body"]))
+                story.append(Spacer(1, 1 * mm))
+                for _row in _coastal_lines["rows"]:
+                    story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
+            else:
+                story.append(Paragraph(_xml_escape(_coastal_lines["status_line"]), ss["note"]))
+            if _coastal_lines["basis_note"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["basis_note"]), ss["caveat"]))
+            if _coastal_lines["scope_line"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["scope_line"]), ss["caveat"]))
+            if _coastal_lines["source_line"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["source_line"]), ss["caveat"]))
+
+    # ------------------------------------------------------------------
     # SECTION (final) — Disclosure Notes
     # ------------------------------------------------------------------
     h2(f"{_sec_no}. Disclosure Notes")
@@ -5616,6 +5888,16 @@ def main():
     servicing = get_servicing_live(lat, lng)
     print(f"  servicing: {servicing.get('status')}")
 
+    print("\nChecking estuarine tidal inundation mapped extent (PostGIS) ...")
+    coastal = get_coastal_inundation_live(lat, lng, lot_wkt=lot_wkt)
+    if coastal.get("status") == "intersects":
+        _yrs = coastal.get("years") or {}
+        print(f"  intersects ({coastal.get('query_basis')}): "
+              + "; ".join(f"{y}: {t.get('days_per_year')} d/yr" for y, t in sorted(_yrs.items())))
+    else:
+        print(f"  estuarine inundation: {coastal.get('status')} "
+              f"({coastal.get('query_basis') or 'query not run'})")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -5640,6 +5922,7 @@ def main():
             mine_subsidence=mine_subsidence,
             contaminated=contaminated,
             servicing=servicing,
+            coastal=coastal,
         )
 
 
