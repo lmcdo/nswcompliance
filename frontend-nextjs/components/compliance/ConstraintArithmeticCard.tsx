@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, ChevronDown, ChevronUp, AlertTriangle, TrendingDown } from 'lucide-react';
 import { zoneFamily } from '@/lib/regulatory-constants';
+import { DcpRequestCta } from '@/components/compliance/DcpRequestCta';
 
 // ---------------------------------------------------------------------------
 // Types matching Python ConstraintArithmeticResult
@@ -174,6 +175,8 @@ interface ConstraintArithmeticCardProps {
   inputProvenance?: InputLedgerRow[] | null;
   /** Named-missing-control context, shown when the envelope could not compute. */
   envelopeGap?: EnvelopeGap | null;
+  /** Subject address, threaded into the missing-DCP request for alert context. */
+  address?: string | null;
 }
 
 export function ConstraintArithmeticCard({
@@ -189,6 +192,7 @@ export function ConstraintArithmeticCard({
   briefData,
   inputProvenance,
   envelopeGap,
+  address,
 }: ConstraintArithmeticCardProps) {
   const [result, setResult] = useState<ConstraintArithmeticResult | null>(briefData ?? null);
   const [loading, setLoading] = useState(false);
@@ -329,6 +333,11 @@ export function ConstraintArithmeticCard({
                 ? <> — see the DCP Controls card ({envelopeGap.dcpName}).</>
                 : <> — see the DCP Controls card.</>
               : <>, which is not in our structured dataset for this council yet — check the DCP on the council&rsquo;s website.</>}
+            {/* Point-of-pain CTA: when the DCP isn't loaded, let the user ask us to
+                prioritise it (records demand + pings ops). Reuses /api/dcp-interest. */}
+            {!envelopeGap.dcpOnboarded && (
+              <DcpRequestCta council={lga || formerCouncil || ''} address={address} />
+            )}
           </div>
         )}
 

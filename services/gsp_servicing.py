@@ -88,3 +88,50 @@ def fetch_gsp_servicing(lat: float, lng: float) -> dict:
         "status": "found",
         "data": {"ww": by_product.get("WW"), "dw": by_product.get("DW")},
     }
+
+
+_STAGE_HUMAN = {
+    "IN_DELIVERY": "servicing in delivery",
+    "PLANNED": "servicing planned",
+    "NO_CURRENT_PROJECT": "no current servicing project",
+    "UNKNOWN_STAGE": "servicing stage not stated",
+}
+
+
+def summarize_servicing(servicing: dict | None) -> str | None:
+    """One-line human summary for a Site Report row / workbench tile.
+
+    Returns None for a failed or missing lookup (caller shows "Not assessed"),
+    a factual sentence otherwise. Shared wording so every web surface reads the
+    same; the conveyancer PDF keeps its own richer row. Never says "serviceable".
+    """
+    if not servicing:
+        return None
+    status = servicing.get("status")
+    if status == "empty":
+        return (
+            "Not in a Sydney Water growth-servicing precinct — capacity for an "
+            "established-area site is set via a Section 73 application, not the GSP. "
+            f"Source: {GSP_SOURCE}."
+        )
+    if status == "found":
+        data = servicing.get("data") or {}
+        ww, dw = data.get("ww"), data.get("dw")
+        parts = []
+        for label, d in (("wastewater", ww), ("water", dw)):
+            if not d:
+                continue
+            human = _STAGE_HUMAN.get(d.get("status_code"), "stage not stated")
+            tf = (d.get("timeframe") or "").strip()
+            tf_s = f" ({tf})" if tf and tf.lower() != "no timeframe noted." else ""
+            parts.append(f"{label} {human}{tf_s}")
+        constrained = bool((ww or {}).get("constrained") or (dw or {}).get("constrained"))
+        text = "Within a Sydney Water growth-servicing area — " + "; ".join(parts) + "."
+        if constrained:
+            text += " Capacity/timescale constraints noted."
+        text += (
+            " Trunk capacity is not service-readiness — feasibility and connection works "
+            f"are still required. Source: {GSP_SOURCE}."
+        )
+        return text
+    return None  # failed / unknown

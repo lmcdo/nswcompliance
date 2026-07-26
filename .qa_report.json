@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "c72ea4a7",
+  "commit_hash": "66c9092a",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
@@ -9,7 +9,16 @@
     "services/gsp_servicing.py",
     "scripts/generate_conveyancing_report.py",
     "services/conveyancing.py",
-    "tests/test_conveyancing_servicing.py"
+    "tests/test_conveyancing_servicing.py",
+    "services/intelligence_brief.py",
+    "frontend-nextjs/app/api/servicing/route.ts",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/DcpRequestCta.tsx",
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/components/compliance/ServicingTile.tsx",
+    "frontend-nextjs/__tests__/components/compliance/DcpRequestCta.test.tsx"
   ],
   "pre_impl": {
     "existing_data": "New standalone table sydney_water_gsp_servicing; reads no existing tables. spatial_overlays was inspected and rejected (no attributes column, bigint source_oid, instrument/LGA scope GSP polygons don't fit). Source = 3 public Sydney Water GeoJSON files (205 WW + 192 DW).",
@@ -134,6 +143,20 @@
       "mitigated": true,
       "how": "scripts/generate_conveyancing_report.py:2271 - the row states 'indicative base charges (exclude CPI) - confirm the current charge with Sydney Water' and attributes + links the GSP page. Golden-tested by test_found_shows_dsp_as_base_charge.",
       "repro": "pytest tests/test_conveyancing_servicing.py::TestServicingFound::test_found_shows_dsp_as_base_charge"
+    },
+    {
+      "scenario": "On the Site Report or the /assessment workbench, the servicing lookup fails and the surface renders a stale or 'clear' servicing row instead of hiding it.",
+      "what_happens": "A user reads a servicing status that was never actually retrieved.",
+      "mitigated": true,
+      "how": "Site Report: services/intelligence_brief.py summarizes a failed lookup to None -> DataField NOT_AVAILABLE, and 'servicing' is in HIDE_WHEN_NULL_KEYS so the row is omitted. Workbench: components/compliance/ServicingTile.tsx renders null on status==='failed' or fetch error, and app/api/servicing/route.ts fails closed to {status:'failed'}.",
+      "repro": "Point ServicingTile at an unreachable /api/servicing (or a failed status) — the tile renders nothing; on the Site Report a null servicing DataField is hidden."
+    },
+    {
+      "scenario": "The missing-DCP CTA's capture request throws and blocks or breaks the report render.",
+      "what_happens": "A network hiccup on a lead capture takes down the whole assessment/report view.",
+      "mitigated": true,
+      "how": "components/compliance/DcpRequestCta.tsx wraps the fetch + posthog in try/catch and always resolves to the 'Noted' state; the CTA only renders when a council is known. Golden-tested in DcpRequestCta.test.tsx.",
+      "repro": "npx jest --testPathPattern=DcpRequestCta"
     }
   ],
   "post_merge": {
