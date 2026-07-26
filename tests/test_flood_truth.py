@@ -2129,7 +2129,7 @@ def test_flood_studies_redbank_design_ladder_complete():
     assert set(rb["design"].keys()) == expected
     for template in rb["design"].values():
         assert "{type}" in template, f"Redbank template must be typed: {template}"
-        assert template.endswith(".flt")
+        assert template.endswith(".tif")
     assert rb["historical"] == {
         "2022": "historical/RedBank_DES_Hist_March2022_{type}_Max_ProcessedOutput.tif",
     }

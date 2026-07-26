@@ -262,28 +262,29 @@ FLOOD_STUDIES: dict[str, dict] = {
             "REDBANK_RASTER_DIR",
             os.path.join(_FLOOD_STUDIES_BASE, "redbank"),
         ),
-        "crs": "EPSG:7856",  # GDA2020 MGA56 — from shapefile .prj in same package (absent from .flt)
+        "crs": "EPSG:7856",  # GDA2020 MGA56 — from shapefile .prj in the source package
         "nodata": -999.0,
         "has_depth": True,
-        # Design grids are raw ESRI BIL float (.flt + .hdr sidecar) at 1 m resolution —
-        # published misnamed ".tif" on the flood portal. Historical grid is genuine GeoTIFF.
+        # 1 m grids, losslessly recompressed from the portal's raw BIL payloads to
+        # tiled DEFLATE GeoTIFF (3.6 GB → 224 MB; pixel-identical verified) with
+        # CRS + nodata embedded. Source zip retained in data/redbank_flood/.
         # Peak enveloped + filtered (source READ ME: depth>0.10m OR d>0.05 & V*d>0.025 OR V>2m/s).
         # Each event carries 3–685 TUFLOW glitch cells (depth up to 1140 m, levels to -642 m AHD);
         # valid ranges below reject those at sample time. Catchment terrain tops out ~187 m AHD.
         "valid_depth_range": (0.0, 100.0),
         "valid_level_range": (-10.0, 250.0),
         "design": {
-            "20pct":   "design/RedbankCk_DES_20pcAEP_{type}_Max_ProcessedOutput.flt",
-            "10pct":   "design/RedbankCk_DES_10pcAEP_{type}_Max_ProcessedOutput.flt",
-            "5pct":    "design/RedbankCk_DES_5pcAEP_{type}_Max_ProcessedOutput.flt",
-            "2pct":    "design/RedbankCk_DES_2pcAEP_{type}_Max_ProcessedOutput.flt",
-            "1pct":    "design/RedbankCk_DES_1pcAEP_{type}_Max_ProcessedOutput.flt",
-            "0_5pct":  "design/RedbankCk_DES_1in200AEP_{type}_Max_ProcessedOutput.flt",
-            "0_2pct":  "design/RedbankCk_DES_1in500AEP_{type}_Max_ProcessedOutput.flt",
-            "0_1pct":  "design/RedbankCk_DES_1in1000AEP_{type}_Max_ProcessedOutput.flt",
-            "0_05pct": "design/RedbankCk_DES_1in2000AEP_{type}_Max_ProcessedOutput.flt",
-            "0_02pct": "design/RedbankCk_DES_1in5000AEP_{type}_Max_ProcessedOutput.flt",
-            "pmf":     "design/RedbankCk_DES_PMF_{type}_Max_ProcessedOutput.flt",
+            "20pct":   "design/RedbankCk_DES_20pcAEP_{type}_Max_ProcessedOutput.tif",
+            "10pct":   "design/RedbankCk_DES_10pcAEP_{type}_Max_ProcessedOutput.tif",
+            "5pct":    "design/RedbankCk_DES_5pcAEP_{type}_Max_ProcessedOutput.tif",
+            "2pct":    "design/RedbankCk_DES_2pcAEP_{type}_Max_ProcessedOutput.tif",
+            "1pct":    "design/RedbankCk_DES_1pcAEP_{type}_Max_ProcessedOutput.tif",
+            "0_5pct":  "design/RedbankCk_DES_1in200AEP_{type}_Max_ProcessedOutput.tif",
+            "0_2pct":  "design/RedbankCk_DES_1in500AEP_{type}_Max_ProcessedOutput.tif",
+            "0_1pct":  "design/RedbankCk_DES_1in1000AEP_{type}_Max_ProcessedOutput.tif",
+            "0_05pct": "design/RedbankCk_DES_1in2000AEP_{type}_Max_ProcessedOutput.tif",
+            "0_02pct": "design/RedbankCk_DES_1in5000AEP_{type}_Max_ProcessedOutput.tif",
+            "pmf":     "design/RedbankCk_DES_PMF_{type}_Max_ProcessedOutput.tif",
         },
         "historical": {
             "2022": "historical/RedBank_DES_Hist_March2022_{type}_Max_ProcessedOutput.tif",
