@@ -1,11 +1,15 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "69dbfa02",
+  "commit_hash": "c72ea4a7",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
-    "tests/test_sydney_water_gsp_ingest.py"
+    "tests/test_sydney_water_gsp_ingest.py",
+    "services/gsp_servicing.py",
+    "scripts/generate_conveyancing_report.py",
+    "services/conveyancing.py",
+    "tests/test_conveyancing_servicing.py"
   ],
   "pre_impl": {
     "existing_data": "New standalone table sydney_water_gsp_servicing; reads no existing tables. spatial_overlays was inspected and rejected (no attributes column, bigint source_oid, instrument/LGA scope GSP polygons don't fit). Source = 3 public Sydney Water GeoJSON files (205 WW + 192 DW).",
@@ -40,6 +44,27 @@
       "input": "str | None - raw source text",
       "output": "str | None - HTML-stripped, trimmed",
       "if_none": "None, empty string, or tags-only input all return None"
+    },
+    {
+      "name": "fetch_gsp_servicing",
+      "file_line": "services/gsp_servicing.py:59",
+      "input": "lat, lng floats + DATABASE_URL env - point-in-polygon over sydney_water_gsp_servicing",
+      "output": "three-state dict {found: {ww,dw} | empty | failed} consumed by the row builder",
+      "if_none": "DATABASE_URL unset or any DB error returns {status: failed}; never raises, so the whole PDF is not lost"
+    },
+    {
+      "name": "build_servicing_row",
+      "file_line": "scripts/generate_conveyancing_report.py:2271",
+      "input": "three-state servicing dict from get_servicing_live",
+      "output": "(text, style_key, source_label) tuple rendered as the Risk Summary servicing row",
+      "if_none": "None or failed status renders 'Not assessed' (note), never a clear/serviceable result"
+    },
+    {
+      "name": "get_servicing_live",
+      "file_line": "scripts/generate_conveyancing_report.py:2017",
+      "input": "lat, lng floats - wraps services.gsp_servicing.fetch_gsp_servicing",
+      "output": "pass-through three-state dict for the report + conveyancing API path",
+      "if_none": "any import/lookup error is caught and returns {status: failed} (fail closed)"
     }
   ],
   "values": [
@@ -95,6 +120,20 @@
       "mitigated": true,
       "how": "scripts/ingest_sydney_water_gsp.py:229 - upsert + delete-absent (snapshot replace) run inside one transaction (autocommit off); the final count must equal len(source rows) or the whole transaction rolls back, so the table always mirrors the source snapshot and is all-or-nothing.",
       "repro": "Interrupt the --apply run mid-batch, then SELECT count(*) (unchanged, not partial); or inspect the delete-absent + count gate in apply()."
+    },
+    {
+      "scenario": "The Sydney Water servicing lookup fails, or the address is outside every GSP precinct, and the conveyancer PDF renders it as 'serviceable' / 'clear' - overstating that the site can be connected.",
+      "what_happens": "A conveyancer relies on a false servicing assurance in a paid document; the developer discovers the site is capacity-constrained or needs a Section 73 feasibility only after committing.",
+      "mitigated": true,
+      "how": "scripts/generate_conveyancing_report.py:2271 - build_servicing_row: failed/None/junk -> 'Not assessed' (note); empty -> 'Not within a growth-servicing precinct ... Section 73' (note), never 'clear'; found never says 'serviceable' and states 'trunk capacity does not make a site service-ready'. Golden-tested in test_conveyancing_servicing.py.",
+      "repro": "pytest tests/test_conveyancing_servicing.py::TestServicingNotAssessed and ::TestServicingEmpty::test_empty_points_to_section_73_not_clear"
+    },
+    {
+      "scenario": "The DSP base charge is rendered as the definitive current fee, but Sydney Water CPI-adjusts it, so the figure quoted in the PDF is wrong.",
+      "what_happens": "A developer budgets from an out-of-date per-dwelling charge in a paid report.",
+      "mitigated": true,
+      "how": "scripts/generate_conveyancing_report.py:2271 - the row states 'indicative base charges (exclude CPI) - confirm the current charge with Sydney Water' and attributes + links the GSP page. Golden-tested by test_found_shows_dsp_as_base_charge.",
+      "repro": "pytest tests/test_conveyancing_servicing.py::TestServicingFound::test_found_shows_dsp_as_base_charge"
     }
   ],
   "post_merge": {

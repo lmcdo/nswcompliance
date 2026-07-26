@@ -2014,6 +2014,28 @@ def get_contaminated_live(lat: float, lng: float) -> dict:
         return {"status": "failed"}
 
 
+def get_servicing_live(lat: float, lng: float) -> dict:
+    """Sydney Water GSP servicing lookup, three-state.
+
+    prior-art-checked: wraps services/gsp_servicing.fetch_gsp_servicing (the reusable
+    DB point-in-polygon lookup over sydney_water_gsp_servicing, migration 058). Same
+    wrapper contract as get_mine_subsidence_live: it already returns the three-state
+    dict, so pass it through and fail closed to {"status": "failed"}.
+    """
+    try:
+        try:
+            from gsp_servicing import fetch_gsp_servicing
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from gsp_servicing import fetch_gsp_servicing
+        return fetch_gsp_servicing(lat, lng)
+    except Exception as e:
+        print(f"  [warn] Sydney Water servicing lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
 # ---------------------------------------------------------------------------
 # Risk-row sentence builders — pure functions (golden-sentence tested in
 # tests/test_conveyancing_truth.py). Keep these free of reportlab so the exact
@@ -2221,6 +2243,84 @@ def build_contaminated_land_row(contaminated: Optional[dict]) -> tuple[str, str,
         "Confirm via a s10.7(5) certificate and an EPA public register search.",
         "note",
         "NSW EPA contaminated land register",
+    )
+
+
+# Sydney Water Growth Servicing Plan row. Source is © Sydney Water, "guide only" —
+# every rendered surface attributes and links (GSP page), and the DSP figure is stated
+# as a CPI-excluded BASE charge, never the live charge.
+_SERVICING_STAGE_HUMAN = {
+    "IN_DELIVERY": "trunk servicing in delivery",
+    "PLANNED": "servicing planned",
+    "NO_CURRENT_PROJECT": "no current servicing project",
+    "UNKNOWN_STAGE": "servicing stage not stated",
+}
+
+
+def _servicing_product_phrase(label: str, d: Optional[dict]) -> Optional[str]:
+    if not d:
+        return None
+    human = _SERVICING_STAGE_HUMAN.get(d.get("status_code"), "servicing stage not stated")
+    tf = (d.get("timeframe") or "").strip()
+    tf_str = f", indicative {tf}" if tf and tf.lower() != "no timeframe noted." else ""
+    price = d.get("dsp_price_per_et")
+    price_str = f", base DSP ~${price:,.0f}/ET" if price is not None else ""
+    return f"{label}: {human}{tf_str}{price_str}"
+
+
+def build_servicing_row(servicing: Optional[dict]) -> tuple[str, str, str]:
+    """Build the Risk Summary servicing row: (text, style_key, source_label).
+
+    Three-state (services/gsp_servicing.fetch_gsp_servicing):
+      {"status": "found", "data": {"ww":..,"dw":..}} → in a growth-servicing area
+      {"status": "empty"}  → NOT in a GSP precinct — established-suburb gap, "note"
+                              (never "clear"; capacity is a Section 73 question)
+      {"status": "failed"} / None / other → "Not assessed", never a clear result.
+    DSP figures are stated as CPI-excluded base charges; wording never says the site
+    is "serviceable" or "ready" — trunk capacity is not service-readiness.
+    """
+    try:
+        from gsp_servicing import GSP_SOURCE
+    except ImportError:
+        from services.gsp_servicing import GSP_SOURCE
+
+    status = (servicing or {}).get("status")
+    if status == "found":
+        data = servicing.get("data") or {}
+        ww, dw = data.get("ww"), data.get("dw")
+        area = ((ww or dw or {}).get("growth_area") or "").strip()
+        area_str = f" ({area})" if area else ""
+        phrases = [p for p in (_servicing_product_phrase("Wastewater", ww),
+                               _servicing_product_phrase("drinking water", dw)) if p]
+        constrained = bool((ww or {}).get("constrained") or (dw or {}).get("constrained"))
+        constraint_str = (
+            " Sydney Water notes capacity and timescale constraints in this area that may "
+            "affect servicing your development."
+        ) if constrained else ""
+        text = (
+            f"Within a Sydney Water growth-servicing area{area_str}. "
+            + "; ".join(phrases) + ". "
+            + "Trunk capacity indicated does not make a site service-ready — feasibility and "
+            "connection works are still required."
+            + constraint_str
+            + " DSP figures are indicative base charges (exclude CPI) — confirm the current "
+            f"charge with Sydney Water. Source: {GSP_SOURCE} (guide only)."
+        )
+        return (text, "warn" if constrained else "note", GSP_SOURCE)
+    if status == "empty":
+        return (
+            "Not within a Sydney Water growth-servicing precinct. Servicing capacity for an "
+            "established-area site is determined individually via a Section 73 application "
+            "(Notice of Requirements) and is not published in the Growth Servicing Plan. "
+            f"Source: {GSP_SOURCE}.",
+            "note",
+            GSP_SOURCE,
+        )
+    return (
+        "Not assessed — Sydney Water Growth Servicing Plan lookup unavailable at report "
+        f"generation. Confirm servicing directly with Sydney Water. Source: {GSP_SOURCE}.",
+        "note",
+        GSP_SOURCE,
     )
 
 
@@ -3236,6 +3336,7 @@ def generate_pdf(
     climate: Optional[dict] = None,
     mine_subsidence: Optional[dict] = None,
     contaminated: Optional[dict] = None,
+    servicing: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -3893,6 +3994,18 @@ def generate_pdf(
         "Contaminated Land (EPA register, 500 m)",
         Paragraph(_cl_text, ss[_cl_style]),
         _cl_source,
+    ])
+    # Sydney Water servicing — three-state; the Source cell is a live link back to the
+    # Sydney Water GSP page (attribution required — data is © Sydney Water, guide only).
+    _sv_text, _sv_style, _sv_source = build_servicing_row(servicing)
+    try:
+        from gsp_servicing import GSP_URL
+    except ImportError:
+        from services.gsp_servicing import GSP_URL
+    risk_rows.append([
+        "Water/Sewer Servicing (Sydney Water GSP)",
+        Paragraph(_sv_text, ss[_sv_style]),
+        Paragraph(f'<a href="{GSP_URL}" color="#2563EB">{_sv_source}</a>', ss["note"]),
     ])
     # ANEF row — three-state builder: contour value when resolved, honest
     # fallback when empty, explicit not-assessed on lookup failure. None when
@@ -5499,6 +5612,10 @@ def main():
     else:
         print(f"  contaminated land: {contaminated.get('status')}")
 
+    print("\nChecking Sydney Water Growth Servicing Plan (live) ...")
+    servicing = get_servicing_live(lat, lng)
+    print(f"  servicing: {servicing.get('status')}")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -5522,6 +5639,7 @@ def main():
             climate=climate,
             mine_subsidence=mine_subsidence,
             contaminated=contaminated,
+            servicing=servicing,
         )
 
 
