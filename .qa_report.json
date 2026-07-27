@@ -1,35 +1,40 @@
 {
- "tier": "minor",
- "justification": "Guardrail-only change: prior-art four-sweep rule in CLAUDE.md plus a PreToolUse hook gating Artifact publishes on a fresh sweeps marker. No product code, no DB access, no served output touched.",
- "commit_hash": "0c0ba734",
- "files": [
-  "CLAUDE.md",
-  ".claude/settings.json",
-  ".claude/hooks/surface-prior-art-guard.py"
- ],
- "functions": "N/A - one small hook script; no product functions changed.",
- "values": "N/A - no DB or API values involved.",
- "queries": "N/A - no database access.",
- "break_it": [
-  {
-   "scenario": "The hook blocks legitimate Artifact listing calls, breaking artifact discovery.",
-   "what_happens": "Sessions could not enumerate existing artifacts at all.",
-   "mitigated": true,
-   "how": "action list passes through unconditionally; smoke-tested (exit 0 for list, exit 2 for publish without marker).",
-   "repro": "echo a list-action payload into the hook and observe exit 0."
+  "tier": "minor",
+  "justification": "Additive, static marketing page: a grouped human-readable site directory (/directory) linking existing pages, plus a footer link and a sitemap entry. No data, no DB, no new queries, no logic — only presentational JSX + a static link list. Minor, not Standard, because nothing computes a result or reads live data (council counts are read from the same static lib/lga-data arrays the sitemap already uses).",
+  "commit_hash": "24f98292",
+  "files": [
+    "frontend-nextjs/app/site-directory/page.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/app/sitemap.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "Links only to routes verified to resolve (enumerated from app/ page.tsx routes). Council-count badges read from lib/lga-data/*_LGAS arrays — the same source app/sitemap.ts uses.",
+    "assumption_mismatch": "If a linked route is later removed, the directory link 404s. Mitigated: links were checked against the actual static route list at build time; tsc passes. Council counts can never overstate — they are .length of the live arrays, so they track real coverage.",
+    "new_vs_existing": "New page + one footer link + one sitemap URL. Touches no existing rows, data, or behaviour."
   },
-  {
-   "scenario": "A malformed or stale marker silently allows publishes, defeating the gate.",
-   "what_happens": "The guard would be decorative, like the memory rule it replaces.",
-   "mitigated": true,
-   "how": "Unreadable markers, markers older than 4h, and markers lacking two sweeps plus a verdict all block with the reason named in stderr.",
-   "repro": "Write an empty marker file and attempt a publish payload - exit 2 with marker must list sweeps."
+  "functions": "N/A — static server component, no functions added.",
+  "values": "N/A — no DB/API values; static link list + array .length counts.",
+  "queries": "N/A — no database access.",
+  "break_it": [
+    {
+      "scenario": "A directory card links to a route that does not resolve (e.g. a bare tool hub like /flood-risk which is LGA-only), sending users to a 404.",
+      "what_happens": "A user clicks a listed page and hits a 404 — the directory would be actively misleading.",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/site-directory/page.tsx links only routes confirmed present in app/ (the per-address tools point at their /reports/* hub, which exists, and to /browse for per-council pages) — NOT the bare LGA-only hubs. tsc --noEmit passes on the file.",
+      "repro": "Enumerate app/**/page.tsx static routes and diff against the hrefs in GROUPS — every href is present."
+    },
+    {
+      "scenario": "A council-count badge overstates coverage (says more councils than are live).",
+      "what_happens": "A visitor is misled about how many councils a tool covers.",
+      "mitigated": true,
+      "how": "Counts are `${X_LGAS.length}` read directly from lib/lga-data arrays (same source as app/sitemap.ts), so the badge equals actual coverage and updates automatically when arrays change.",
+      "repro": "Compare a badge to the array length used by sitemap.ts for that tool."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No — plotdetect info-site directory is handled separately in lmcdo/website.",
+    "manual_verify": "Open /site-directory on the preview; confirm every card link resolves and the footer 'Site directory' link appears site-wide."
   }
- ],
- "post_merge": {
-  "db_reset": "Not required - no database involvement.",
-  "secrets": "No secrets involved.",
-  "other_repo": "None. Candidate for later porting to the claude-railguards public repo.",
-  "manual_verify": "Yes - next session: an Artifact publish without the marker is blocked with the sweep instructions; writing the marker then publishing succeeds."
- }
 }
