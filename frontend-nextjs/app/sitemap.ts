@@ -75,6 +75,8 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/reports/pre-da-history`, priority: 0.8, changeFrequency: 'weekly', lastModified: now },
         { url: `${base}/dcp-browse`,      priority: 0.8,  changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/browse`,          priority: 0.7,  changeFrequency: 'weekly',  lastModified: now },
+        { url: `${base}/what-you-get`,    priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
+        { url: `${base}/for/homebuyers`,  priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/conveyancers`, priority: 0.8, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/builders`,    priority: 0.7,  changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/for/buyers-agents`, priority: 0.7, changeFrequency: 'monthly', lastModified: now },
