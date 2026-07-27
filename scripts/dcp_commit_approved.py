@@ -53,23 +53,38 @@ import dcp_extract_changed as dx  # noqa: E402
 
 
 def find_committable_chapters(cur) -> list[dict]:
-    """Chapters whose every queued change is approved (none blocking)."""
+    """Chapters whose every queued change is approved (none blocking).
+
+    'rejected' blocks ONLY while it belongs to the chapter's CURRENT content
+    hash. Historically any rejected row blocked its chapter forever: the
+    re-extract refresh deletes pending rows only, so one rejection of a bad
+    extraction would have wedged the chapter permanently even after a clean
+    re-extraction superseded it (2026-07 triage finding). Superseded rejected
+    rows stay in the table as audit history; they just stop blocking.
+    """
     cur.execute(
         """
-        SELECT council, chapter_key,
-               COUNT(*) FILTER (WHERE status = 'approved') AS approved,
+        SELECT q.council, q.chapter_key,
+               COUNT(*) FILTER (WHERE q.status = 'approved') AS approved,
                COUNT(*) FILTER (
-                   WHERE status IN ('pending', 'in_progress', 'rejected', 'needs_info')
+                   WHERE q.status IN ('pending', 'in_progress', 'needs_info')
+                      OR (q.status = 'rejected'
+                          AND q.source_content_hash = r.content_hash)
                ) AS blocking,
-               MAX(source_content_hash) AS approved_hash,
-               COUNT(DISTINCT source_content_hash) AS hash_variants
-        FROM dcp_review_queue
-        GROUP BY council, chapter_key
-        HAVING COUNT(*) FILTER (WHERE status = 'approved') > 0
+               MAX(q.source_content_hash) AS approved_hash,
+               COUNT(DISTINCT q.source_content_hash) AS hash_variants
+        FROM dcp_review_queue q
+        JOIN dcp_chapter_registry r
+          ON r.council = q.council AND r.chapter_key = q.chapter_key
+         AND r.is_active = TRUE
+        GROUP BY q.council, q.chapter_key
+        HAVING COUNT(*) FILTER (WHERE q.status = 'approved') > 0
            AND COUNT(*) FILTER (
-                   WHERE status IN ('pending', 'in_progress', 'rejected', 'needs_info')
+                   WHERE q.status IN ('pending', 'in_progress', 'needs_info')
+                      OR (q.status = 'rejected'
+                          AND q.source_content_hash = r.content_hash)
                ) = 0
-        ORDER BY council, chapter_key
+        ORDER BY q.council, q.chapter_key
         """
     )
     cols = [d[0] for d in cur.description]
