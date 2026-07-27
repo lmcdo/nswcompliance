@@ -1,93 +1,83 @@
 {
  "tier": "standard",
- "justification": "Removes the last hardcoded SEPP regulatory fallback (450 m2 / R1-R4) from the paid conveyancing PDF (#684, same defect class as the land-tax fallback removed in #681). Touches figure rendering in a legal document plus confidence rating, so above minor; no new data source, query, or external boundary, so below critical.",
- "commit_hash": "87ba6504",
+ "justification": "Removes the SEPP secondary-dwelling fallback constants (450 m2 / 60 m2) from the satellite granny-flat service (#817), the last surface carrying the defect class removed from conveyancing in #684/#816. Regulatory figures in a paid product now come only from housing_sepp_standards; unavailable standards fail the endpoints closed (503). Above minor (regulatory figures, endpoint behaviour change); below critical (no new data source, query, or schema).",
+ "commit_hash": "pending",
  "files": [
-  ".claude/.pre-impl-done.json",
-  "scripts/conveyancing_db.py",
-  "scripts/generate_conveyancing_report.py",
-  "services/conveyancing.py",
-  "tests/test_conveyancing_truth.py",
-  "tests/test_regulatory_constants.py",
-  "tests/test_conveyancing_forensic.py"
+  "services/granny_flat.py",
+  "tests/test_granny_flat_mutation.py",
+  "tests/test_granny_flat_logic.py",
+  "tests/test_regulatory_constants.py"
  ],
  "pre_impl": {
-  "existing_data": "housing_sepp_standards (migration 045) exists in production and returns a min_lot_size row with numeric_value and applicable_zones for secondary_dwelling, which is why the fallback only ever fired on DB-unreachable, not on every report. The land-tax removal in #681 established the exact fail-visible pattern being reused: absent config renders 'Not assessed' and caps confidence.",
-  "assumption_mismatch": "Test runs exposed a second consumer of the zone set the issue did not mention: the CDC eligibility section (~line 789) shares _SD_ZONES and its else-branch carried a hardcoded 'R1-R4' zone claim. Both now render from injected config or 'Not assessed'. Two fallback-era tests (test_regulatory_constants, test_conveyancing_forensic) asserted the old behaviour and were updated to the new contract rather than deleted.",
-  "new_vs_existing": "No new capability: same feasibility rows, same config loader, same confidence function. The change deletes the _SD_FALLBACK_MIN_LOT / _SD_FALLBACK_ZONES constants and the loader's 450 / R1-R4 defaults, adds the two 'Not assessed' branches, and extends the existing static-claims guard and confidence caps that the land-tax removal introduced."
+  "existing_data": "housing_sepp_standards (migration 045) exists in production with min_lot_size and max_floor_area rows for secondary_dwelling, so the fallback only ever fired on DB-unreachable. The intelligence brief is decoupled from this service (light marker only), so the only consumers are the Next.js granny-flat routes, which already surface HTTP errors as visible failure states.",
+  "assumption_mismatch": "The response contracts (sepp_eligible bool, max_floor_area_m2 float) are consumed by six frontend files, so a three-state field change would ripple widely. Chose fail-closed 503 instead: when standards cannot be loaded neither endpoint can compute anything meaningful (eligibility, floor area, build cost, and yield all derive from them), and a 503 can never render a wrong figure. test_granny_flat_logic imported the fallback constant as a geometry-test bound; replaced with a local fixture constant.",
+  "new_vs_existing": "No new capability or contract change: same request and response models, same SQL. The change deletes the two constants, makes _get_sepp_sd_standards return None per missing standard, and adds a 503 guard at each endpoint after the existing load sites. Mirrors the #684 pattern one level up: conveyancing renders 'Not assessed' inside a multi-section report; a single-purpose API endpoint fails the request."
  },
  "functions": [
   {
-   "name": "calc_feasibility",
-   "file_line": "scripts/generate_conveyancing_report.py:629",
-   "input": "controls dict, valuation dict, overlays list, is_strata flag, optional sepp_standards and tax_config dicts loaded from the DB",
-   "output": "list of feasibility row dicts with question, answer, flag, basis strings rendered into the PDF",
-   "if_none": "sepp_standards None or missing either key renders the secondary-dwelling and CDC rows 'Not assessed' with flag warn and no numeric figure, never a hardcoded 450 or R1-R4 claim"
+   "name": "_get_sepp_sd_standards",
+   "file_line": "services/granny_flat.py:108",
+   "input": "optional psycopg2 connection to the production database, None when no connection could be opened",
+   "output": "tuple of min lot area and max floor area floats loaded from housing_sepp_standards rows",
+   "if_none": "conn None, query failure, or a missing row now yields None for that standard instead of substituting 450 or 60; callers fail closed with a 503"
   },
   {
-   "name": "load_regulatory_configs",
-   "file_line": "scripts/conveyancing_db.py:652",
-   "input": "database URL string or None when DATABASE_URL is not set in the environment",
-   "output": "tuple of sepp_standards dict and tax_config dict, either element None when its rows are missing or unusable",
-   "if_none": "a missing, figure-less, or zone-less min_lot_size row now yields sepp_standards None with a logged warning instead of substituting 450 and the R1-R4 zone set"
+   "name": "detect_structures",
+   "file_line": "services/granny_flat.py:735",
+   "input": "GrannyFlatDetectRequest with address, coordinates, prop_id and optional lot geometry and lot area",
+   "output": "GrannyFlatDetectResponse with sepp_eligible screen, detected structures, tile payload and detect_id",
+   "if_none": "sepp_min_lot None raises HTTPException 503 before any eligibility screen, so sepp_eligible can never be computed against a hardcoded minimum"
   },
   {
-   "name": "_validate_sepp_sd_config",
-   "file_line": "scripts/conveyancing_db.py:619",
-   "input": "the min_lot_size row dict from housing_sepp_standards, or None when no row was found",
-   "output": "validated sepp_standards dict with finite positive sd_min_lot and non-empty string zone set",
-   "if_none": "a zero, negative, NaN, or non-numeric minimum, or any null or empty zone entry, returns None so a corrupt row fails closed to 'Not assessed' instead of passing every lot or crashing sorted() mid-render (Sol review finding)"
-  },
-  {
-   "name": "_compute_confidence",
-   "file_line": "services/conveyancing.py:939",
-   "input": "controls, overlays, valuation plus flags including new sepp_config_missing boolean from the API runner",
-   "output": "confidence rating string high, medium, or low printed on the report cover",
-   "if_none": "sepp_config_missing True caps the rating at medium so a report with an unassessed secondary-dwelling row cannot claim high confidence"
+   "name": "confirm_and_calculate",
+   "file_line": "services/granny_flat.py:984",
+   "input": "GrannyFlatConfirmRequest with confirmed structure count, lot area, heritage and existing-dwelling flags",
+   "output": "GrannyFlatConfirmResponse with buildable verdict, max floor area, build cost, rent and confidence",
+   "if_none": "either standard None raises HTTPException 503, so buildable verdict, floor area cap, and cost figures can never derive from hardcoded defaults"
   }
  ],
  "values": [
   {
-   "value": "min_lot_size row numeric_value and applicable_zones from housing_sepp_standards for secondary_dwelling",
-   "read_at": "scripts/conveyancing_db.py load_regulatory_configs, guarded for presence of both fields before building the config dict",
-   "if_missing": "sepp_standards stays None, warning logged, downstream rows render 'Not assessed', confidence capped at medium"
+   "value": "min_lot_size and max_floor_area numeric_value rows from housing_sepp_standards for secondary_dwelling",
+   "read_at": "services/granny_flat.py _get_sepp_sd_standards, per-key rows.get with no default",
+   "if_missing": "None propagates to the endpoint guards which raise 503 with a message naming the SEPP as the source to consult; no figure renders"
   }
  ],
- "queries": "N/A - no query text changed; fetch_sepp_housing_standards call and its development_type filter are untouched, only the handling of an empty or incomplete result set changed.",
+ "queries": "N/A - the housing_sepp_standards SELECT (development_type + standard_type filter) is byte-identical to before; only the handling of missing rows changed.",
  "break_it": [
   {
-   "scenario": "DB unreachable at generation time, which previously made the report silently render the hardcoded 450 m2 / R1-R4 eligibility as if it were current law.",
-   "what_happens": "Report used to state a regulatory figure nobody had verified; a stale SEPP amendment would render wrong eligibility in a paid legal document.",
+   "scenario": "Database unreachable when a user runs the granny-flat tool, which previously screened eligibility against the hardcoded 450 m2 and priced the build from the hardcoded 60 m2.",
+   "what_happens": "A stale SEPP amendment would silently produce wrong eligibility verdicts and wrong cost figures in a paid product.",
    "mitigated": true,
-   "how": "Constants deleted; the row renders 'Not assessed' with a basis directing the reader to the SEPP, main() prints a warning, and confidence caps at medium. test_config_absent_renders_not_assessed_no_figures asserts no digit-m2 pattern appears.",
-   "repro": "Run generate_conveyancing_report.py with DATABASE_URL unset and read the secondary-dwelling row."
+   "how": "Both endpoints now raise 503 with a message naming the SEPP as the authoritative source; the frontend routes already render fetch failures visibly. test_detect_503_when_standards_unavailable and test_confirm_503_when_standards_unavailable pin this.",
+   "repro": "Monkeypatch _get_sepp_sd_standards to return (None, None) and call either endpoint."
   },
   {
-   "scenario": "A half-loaded config, for example a min_lot_size row whose applicable_zones column is NULL, mixes a real figure with a defaulted zone set.",
-   "what_happens": "Eligibility verdict would combine one authoritative value with one invented value, indistinguishable from a fully sourced verdict.",
+   "scenario": "A half-loaded standards table, for example min_lot_size present but max_floor_area deleted, lets confirm price a build from a defaulted floor area.",
+   "what_happens": "A real minimum mixed with an invented cap produces a cost and yield figure indistinguishable from a fully sourced one.",
    "mitigated": true,
-   "how": "Loader requires both numeric_value and applicable_zones before building the dict, else None; calc_feasibility independently treats a dict missing either key as absent. test_partial_config_fails_visible_not_partial_figures covers dict-level halves; the loader guard covers row-level halves.",
-   "repro": "Call calc_feasibility with sepp_standards={'sd_min_lot': 450.0} and observe 'Not assessed'."
+   "how": "rows.get now has no default so the missing standard is None, and confirm requires both standards before proceeding. test_partial_db_values_none_for_missing and test_confirm_503_when_max_floor_area_missing pin both layers.",
+   "repro": "Monkeypatch _get_sepp_sd_standards to return (450.0, None) and call confirm_and_calculate."
   },
   {
-   "scenario": "Someone reintroduces the fallback later, for example during a refactor that 'restores' the deleted constants for convenience.",
-   "what_happens": "The silent-hardcoded-figure defect returns without any test noticing, since ordinary golden tests inject config and would still pass.",
+   "scenario": "Someone reintroduces the constants during a refactor, restoring the silent fallback while all ordinary tests still pass because they inject standards.",
+   "what_happens": "The defect class returns invisibly and only fires in production during a DB outage.",
    "mitigated": true,
-   "how": "TestStaticClaimsGuard bans _SD_FALLBACK, literal '450 m2' text, and the R1-R4 set literal from generator source; test_db_loader_contains_no_fallback_constants does the same for conveyancing_db.py; the mutation-style test injects a 600 m2 figure and asserts 450 never renders.",
-   "repro": "Re-add _SD_FALLBACK_MIN_LOT = 450 to the generator and run tests/test_conveyancing_truth.py."
+   "how": "test_sepp_fallback_constants_never_return greps the service source for _SEPP_FALLBACK and hardcoded 450/60 default phrases; test_confirm_renders_injected_figures_not_constants injects 75 m2 and asserts it flows to the response and build cost.",
+   "repro": "Re-add _SEPP_FALLBACK_MIN_LOT_M2 = 450.0 to granny_flat.py and run tests/test_granny_flat_mutation.py."
   },
   {
-   "scenario": "The CDC section, which shares the zone set, keeps its own hardcoded 'R1-R4' claim after the secondary-dwelling row is fixed.",
-   "what_happens": "The same defect survives one section lower: a zone-eligibility claim renders with no data source behind it.",
+   "scenario": "The 503 fires during a transient DB blip mid-flow: a user who completed the detect step gets an error on confirm and loses the run.",
+   "what_happens": "Worse UX than the old silent fallback for that user, traded deliberately for never rendering an unverifiable figure.",
    "mitigated": true,
-   "how": "CDC section now renders 'Not assessed' when the zone set is absent and interpolates the injected zone list into the not-applicable branch instead of the literal R1-R4 string.",
-   "repro": "Call calc_feasibility with sepp_standards=None for a B2 zone property and read the CDC row."
+   "how": "Failure is loud and retryable: the detail message says to retry later, the detect flow can be re-run, and standards exist in production so this only occurs when the DB is down, when report writes and heritage checks are already degraded.",
+   "repro": "Kill the DB connection between detect and confirm and observe a 503 with the retry message rather than a report with defaulted figures."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data changes; reads the existing housing_sepp_standards table exactly as before.",
-  "secrets": "No secrets involved - DATABASE_URL usage unchanged.",
-  "other_repo": "None. Follow-up filed for services/granny_flat.py which still carries _SEPP_FALLBACK_MIN_LOT_M2 = 450.0, the same defect class in the satellite product, kept out of this diff for reviewability.",
-  "manual_verify": "Yes - generate a report with DATABASE_URL unset: secondary-dwelling and CDC rows read 'Not assessed', cover confidence is at most medium, and no 450 m2 figure appears anywhere in the feasibility section."
+  "db_reset": "Not required - no schema or data changes; reads the existing housing_sepp_standards rows exactly as before.",
+  "secrets": "No secrets involved - connection handling unchanged.",
+  "other_repo": "None. This closes the defect class opened by #681/#684: no remaining SEPP/SD fallback constants in services, scripts, or src.",
+  "manual_verify": "Yes - with the DB reachable both endpoints behave identically to before (standards exist in prod); with DATABASE_URL broken, detect and confirm return 503 with the SEPP-naming message instead of a report containing 450/60 figures."
  }
 }

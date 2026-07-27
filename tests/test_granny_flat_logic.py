@@ -19,8 +19,11 @@ from services.granny_flat import (
     _compute_lot_area_m2,
     _check_heritage_overlay,
     GrannyFlatDetectResponse,
-    _SEPP_FALLBACK_MIN_LOT_M2 as SEPP_MIN_LOT_M2,
 )
+
+# Test fixture bound only — mirrors the prod housing_sepp_standards row. The
+# service itself carries no such constant (#817).
+SEPP_MIN_LOT_M2 = 450.0
 
 
 # ---------------------------------------------------------------------------

@@ -4,7 +4,8 @@ Verifies:
   1. fetch_sepp_housing_standards returns correct shape and filters by zone/dev_type
   2. get_sepp_standard_value returns single float
   3. fetch_tax_thresholds returns correct shape
-  4. granny_flat._get_sepp_sd_standards falls back when DB unavailable
+  4. granny_flat._get_sepp_sd_standards has NO fallback (#817) — covered in
+     tests/test_granny_flat_mutation.py (None → endpoints fail closed, 503)
   5. calc_feasibility uses injected configs correctly
 """
 
