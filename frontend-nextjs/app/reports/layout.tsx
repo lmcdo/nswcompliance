@@ -74,6 +74,7 @@ export default async function ReportsLayout({ children }: { children: React.Reac
             <Link href="/how-it-works" className="hover:text-slate-300 transition-colors">How it works</Link>
             <Link href="/pricing" className="hover:text-slate-600 transition-colors">Pricing</Link>
             <Link href="/for/builders" className="hover:text-slate-300 transition-colors">Embed program</Link>
+            <Link href="/site-directory" className="hover:text-slate-300 transition-colors">Site directory</Link>
             <Link href="/privacy" className="hover:text-slate-300 transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-slate-300 transition-colors">Terms</Link>
           </div>

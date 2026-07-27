@@ -1,40 +1,32 @@
 {
   "tier": "minor",
-  "justification": "Additive, static marketing page: a grouped human-readable site directory (/directory) linking existing pages, plus a footer link and a sitemap entry. No data, no DB, no new queries, no logic — only presentational JSX + a static link list. Minor, not Standard, because nothing computes a result or reads live data (council counts are read from the same static lib/lga-data arrays the sitemap already uses).",
-  "commit_hash": "24f98292",
+  "justification": "Adds a 'Site directory' footer link to the two consumer-surface footers (app/reports/layout.tsx — which canibuildit.com.au/ rewrites to — and app/(tools)/layout.tsx for the per-council tool pages), so the /site-directory page is reachable from the menu on canibuildit, not only the pro/marketing SiteFooter. Presentational only: one <Link> and one array entry. No data, no logic, no DB.",
+  "commit_hash": "5d9b4664",
   "files": [
-    "frontend-nextjs/app/site-directory/page.tsx",
-    "frontend-nextjs/components/marketing/SiteFooter.tsx",
-    "frontend-nextjs/app/sitemap.ts"
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/(tools)/layout.tsx"
   ],
   "pre_impl": {
-    "existing_data": "Links only to routes verified to resolve (enumerated from app/ page.tsx routes). Council-count badges read from lib/lga-data/*_LGAS arrays — the same source app/sitemap.ts uses.",
-    "assumption_mismatch": "If a linked route is later removed, the directory link 404s. Mitigated: links were checked against the actual static route list at build time; tsc passes. Council counts can never overstate — they are .length of the live arrays, so they track real coverage.",
-    "new_vs_existing": "New page + one footer link + one sitemap URL. Touches no existing rows, data, or behaviour."
+    "existing_data": "None. /site-directory already exists and returns 200; this only links to it. The link target was verified live.",
+    "assumption_mismatch": "If /site-directory were removed, this footer link would 404 — but the page shipped in #828 and is live. tsc passes.",
+    "new_vs_existing": "Two existing inline footers gain one link each; the marketing SiteFooter already had it (#828). No behaviour change."
   },
-  "functions": "N/A — static server component, no functions added.",
-  "values": "N/A — no DB/API values; static link list + array .length counts.",
-  "queries": "N/A — no database access.",
+  "functions": "N/A — static JSX link additions.",
+  "values": "N/A.",
+  "queries": "N/A.",
   "break_it": [
     {
-      "scenario": "A directory card links to a route that does not resolve (e.g. a bare tool hub like /flood-risk which is LGA-only), sending users to a 404.",
-      "what_happens": "A user clicks a listed page and hits a 404 — the directory would be actively misleading.",
+      "scenario": "The link is added to the marketing footer only (SiteFooter) again and still doesn't appear on canibuildit, because canibuildit.com.au/ rewrites to /reports which uses app/reports/layout.tsx, not SiteFooter.",
+      "what_happens": "The site-directory link stays invisible on the consumer home — the exact gap being fixed.",
       "mitigated": true,
-      "how": "frontend-nextjs/app/site-directory/page.tsx links only routes confirmed present in app/ (the per-address tools point at their /reports/* hub, which exists, and to /browse for per-council pages) — NOT the bare LGA-only hubs. tsc --noEmit passes on the file.",
-      "repro": "Enumerate app/**/page.tsx static routes and diff against the hrefs in GROUPS — every href is present."
-    },
-    {
-      "scenario": "A council-count badge overstates coverage (says more councils than are live).",
-      "what_happens": "A visitor is misled about how many councils a tool covers.",
-      "mitigated": true,
-      "how": "Counts are `${X_LGAS.length}` read directly from lib/lga-data arrays (same source as app/sitemap.ts), so the badge equals actual coverage and updates automatically when arrays change.",
-      "repro": "Compare a badge to the array length used by sitemap.ts for that tool."
+      "how": "Confirmed via middleware.ts (isCanibuilditDomain && pathname==='/' rewrites to /reports) that app/reports/layout.tsx is the canibuildit home footer; the link is added there and in app/(tools)/layout.tsx for the tool pages.",
+      "repro": "curl canibuildit.com.au/ after deploy and grep for '/site-directory' in the footer."
     }
   ],
   "post_merge": {
     "db_reset": "No.",
     "secrets": "No.",
-    "other_repo": "No — plotdetect info-site directory is handled separately in lmcdo/website.",
-    "manual_verify": "Open /site-directory on the preview; confirm every card link resolves and the footer 'Site directory' link appears site-wide."
+    "other_repo": "No.",
+    "manual_verify": "After deploy, open canibuildit.com.au/ and a tool page (e.g. /granny-flat/<council>) and confirm the footer shows a working 'Site directory' link."
   }
 }
