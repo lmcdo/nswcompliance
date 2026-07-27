@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "PR-2 of #820: wires the conveyancing CDC row (all three calc_feasibility call sites) and the workbench /api/cdc/preliminary-check route onto the backend CDC screen engine, deleting the route's hardcoded zone lists and thresholds. The paid PDF's CDC verdict now comes from founder-verified, clause-cited standards; every unavailable fact renders fail-visible.",
- "commit_hash": "1145960b",
+ "commit_hash": "440b0836",
  "files": [
   ".claude/.pre-impl-done.json",
   "services/cdc_screen.py",

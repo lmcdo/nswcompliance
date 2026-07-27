@@ -660,9 +660,9 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         — a stale or hardcoded regulatory figure never renders silently.
     cdc_result: a services.cdc_screen.CdcScreenResult run by the caller
         (#820 PR-2) — the CDC row renders from the engine's verdict, which is
-        driven by verified cdc_eligibility_standards rows. NO fallback: when
-        None the CDC row renders "Not assessed"; the row never screens against
-        the secondary-dwelling zone set again.
+        driven by founder-reviewed cdc_eligibility_standards rows. NO fallback:
+        when None the CDC row renders "Not assessed"; the row never screens
+        against the secondary-dwelling zone set again.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
