@@ -1,30 +1,62 @@
 {
- "tier": "minor",
- "justification": "Plain-language report states in the conveyancing tool UI. The 'nearby DA could not be checked' panel now states explicitly that it is NOT the same as 'none nearby' (the check did not run, so no count is shown either way), and the error surface shows the backend's plain reason (422 unresolvable address vs 503 temporary outage) with guards for null / non-string error payloads. Copy-and-messaging only; no planning logic, data, or API path changes. (The accompanying blog post was moved to the info-site repo, so this PR is UI-only.)",
- "commit_hash": "41f35986",
+ "tier": "standard",
+ "justification": "Migration 059 seeds cdc_eligibility_standards with the three Housing Code standards the CDC engine reads (zones, min lot, acid-sulfate class), every row quote-cited to regulatory_provisions ids. Rows land manual_verified=false and the engine reads verified rows only, so nothing renders from this seed until founder review. Standard tier because the content is regulatory data destined for a paid report, even though the diff is one SQL file.",
+ "commit_hash": "0d2da329",
  "files": [
-  "frontend-nextjs/components/tools/ConveyancingTool.tsx"
+  ".claude/.pre-impl-done.json",
+  "migrations/059_seed_cdc_housing_code_standards.sql"
  ],
- "values": "N/A - no DB or API values read; UI copy and error mapping only.",
- "queries": "N/A - no database access.",
- "break_it": [
+ "pre_impl": {
+  "existing_data": "Values grounded in the ingested Codes SEPP corpus this session: cl 3.1(3) Lot requirements (regulatory_provisions ids 36996/36997) supplies the zone set R1-R4+RU5 and the flat 200 m2 minimum; cl 1.19(1)(c) (ids 36184/36185) supplies the acid-sulfate exclusion at Class 1 or 2. Verified live that load_cdc_standards returns None with these unverified rows present.",
+  "assumption_mismatch": "Three corrections against the workbench route's TS hardcodes emerged from grounding: acid-sulfate exclusion is Class 1-2 not Class <=3 (the route over-excluded Class 3 land); B1/B2 are ungrounded for the Housing Code and are not seeded; the conditional 200 m2 wording (cl 6.4(1)(d)(ii)) belongs to a different code, so the Housing Code minimum carries NULL conditionality.",
+  "new_vs_existing": "Data-only insert into the table created by migration 058; no code changes. ON CONFLICT DO NOTHING makes re-runs safe; the one-active partial unique index prevents duplicate actives."
+ },
+ "functions": "N/A - no function added or changed; this is a data seed for the already-tested loader in services/cdc_screen.py.",
+ "values": [
   {
-   "scenario": "A user reads the 'nearby development-application check could not be completed' panel and reads the absence of a number as confirmation there are no development applications nearby.",
-   "what_happens": "They would treat 'we could not look' as 'there is nothing there' and skip a check they should make with the council.",
-   "mitigated": true,
-   "how": "The panel states explicitly that this is NOT 'none nearby', that the check did not run so no count is shown either way, and suggests trying again or another address. The merged three-state backend never sends a real 0 as a failure."
+   "value": "eligible_zones R1,R2,R3,R4,RU5 for housing_code",
+   "read_at": "cl 3.1(3)(a) quote, provisions 36996/36997",
+   "if_missing": "engine loader returns None and every surface renders Not assessed"
   },
   {
-   "scenario": "The API returns a non-2xx body that is null, or has a non-string error/detail (for example a FastAPI request-validation error where detail is an array of objects).",
-   "what_happens": "Reading json.detail on null would throw, and coercing an object would show the user '[object Object]' instead of a usable message.",
+   "value": "min_lot_size 200 m2 (unconditional)",
+   "read_at": "cl 3.1(3)(b) quote, provisions 36996/36997",
+   "if_missing": "same fail-closed path; a below-minimum verdict can only cite this row"
+  },
+  {
+   "value": "acid_sulfate_max_class 2",
+   "read_at": "cl 1.19(1)(c) quote, provisions 36184/36185",
+   "if_missing": "acid-sulfate check simply does not run (optional standard)"
+  }
+ ],
+ "queries": "N/A - INSERT ... ON CONFLICT DO NOTHING only; no SELECT changed.",
+ "break_it": [
+  {
+   "scenario": "A seeded value is wrong (misread clause) and goes straight into paid-report verdicts.",
+   "what_happens": "Wrong regulatory figure with a confident citation — worse than no figure.",
    "mitigated": true,
-   "how": "The handler guards the payload (only treats it as an object when it is one) and only uses error/detail when they are non-empty strings, else falls back to a generic 'Analysis failed'. FastAPI HTTPException detail (the 422/503 reasons) is a string and surfaces correctly."
+   "how": "manual_verified=false on every row and the loader's verified-only WHERE clause (pinned by test) keep the engine dark until each row is human-reviewed against its quoted clause.",
+   "repro": "Run load_cdc_standards against prod now — returns None despite rows existing."
+  },
+  {
+   "scenario": "The seed is re-run (deploy replay) and duplicates rows.",
+   "what_happens": "Duplicate actives would make the loader fail closed everywhere.",
+   "mitigated": true,
+   "how": "ON CONFLICT DO NOTHING plus the cdc_standards_one_active partial unique index.",
+   "repro": "Execute migration 059 twice — row count stays 3."
+  },
+  {
+   "scenario": "The quotes drift from the instrument after an amendment and verified rows silently go stale.",
+   "what_happens": "Verified-but-superseded standards keep rendering current-looking verdicts in the paid report.",
+   "mitigated": true,
+   "how": "Rows carry source_provision_ids into the versioned provisions corpus and an is_active lifecycle; instrument_currency monitoring exists for the corpus. Residual risk documented in plan ce-cdc-screen-consolidation-2026-07 (currency monitoring is out of scope for this seed).",
+   "repro": "Compare source_quote against the cited provision ids after any Codes SEPP re-ingest."
   }
  ],
  "post_merge": {
-  "db_reset": "None - no database or schema changes.",
-  "secrets": "None - no secrets added, removed, or rotated.",
-  "other_repo": "The companion blog post moves to the info-site repo (lmcdo/website), where the product/methodology blog lives; tracked separately.",
-  "manual_verify": "On a preview deploy, run the conveyancing tool for an address whose DA check cannot complete and confirm the panel explains it is not 'none nearby'; trigger a resolve failure and confirm the plain 422/503 reason shows."
+  "db_reset": "Migration already applied to prod (additive insert of 3 inert rows, verified fail-closed live). Re-application is a no-op.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Next: founder verifies rows (flip manual_verified), then PR-2 wires PDF row + workbench route per issue #820.",
+  "manual_verify": "Yes - founder review IS the step: read each row's source_quote against its provision ids, then flip manual_verified."
  }
 }
