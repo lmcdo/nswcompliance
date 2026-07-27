@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -226,10 +226,10 @@ CLASSIFIED_ROAD_NOTE = (
 # rendered silently-stale figures in a legal document (PR #674 D1/D3 defect
 # class). When no config is injected the section renders "Not assessed".
 
-# Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
-# Authoritative source: housing_sepp_standards table (migration 045).
-_SD_FALLBACK_MIN_LOT = 450
-_SD_FALLBACK_ZONES = {"R1", "R2", "R3", "R4"}
+# Secondary dwelling SEPP fallback constants intentionally removed (#684) —
+# same defect class as the land-tax fallback above. Authoritative source:
+# housing_sepp_standards table (migration 045); when no config is injected the
+# secondary-dwelling row renders "Not assessed".
 
 # ZONE_PERMITTED lookup table intentionally removed.
 # Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
@@ -635,8 +635,10 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
 
     sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
-        sd_min_lot (float), sd_zones (set[str]). Falls back to hardcoded
-        values if not provided or if DB was unreachable.
+        sd_min_lot (float), sd_zones (set[str]).
+        NO fallback: when absent the secondary-dwelling row renders
+        "Not assessed" — a stale or hardcoded regulatory figure never
+        renders silently (#684, same rule as tax_config below).
     tax_config: pre-loaded from tax_thresholds table. Keys:
         tax_year, threshold_dollars, rate, base_amount_dollars.
         NO fallback: when absent the land-tax section renders "Not assessed"
@@ -651,12 +653,18 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
-    # Source: housing_sepp_standards table (migration 045), fallback to hardcoded.
-    _sd = sepp_standards or {}
-    if not sepp_standards:
-        print("  [warn] calc_feasibility: using SEPP fallback values (no DB config injected)")
-    _SD_MIN_LOT = _sd.get("sd_min_lot", _SD_FALLBACK_MIN_LOT)
-    _SD_ZONES = _sd.get("sd_zones", _SD_FALLBACK_ZONES)
+    # Source: housing_sepp_standards table (migration 045). NO fallback (#684):
+    # absent config renders "Not assessed" — fail-visible, never a hardcoded
+    # regulatory figure. Re-validated at this boundary (Sol review): callers
+    # other than load_regulatory_configs may inject the dict directly, and a
+    # zero/NaN minimum or a null zone entry must degrade to "Not assessed",
+    # not pass every lot or crash rendering.
+    _sd = _validate_sepp_sd_config({
+        "numeric_value": (sepp_standards or {}).get("sd_min_lot"),
+        "applicable_zones": (sepp_standards or {}).get("sd_zones"),
+    }) or {}
+    _SD_MIN_LOT = _sd.get("sd_min_lot")
+    _SD_ZONES = _sd.get("sd_zones")
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -668,6 +676,19 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "and by-laws govern permissible alterations."
             )
         })
+    elif _SD_MIN_LOT is None or not _SD_ZONES:
+        print("  [warn] calc_feasibility: SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
+        results.append({
+            "question": "Secondary dwelling (granny flat)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                "The SEPP Housing 2021 secondary-dwelling standards (minimum lot area and "
+                "eligible zones) were unavailable at report generation, so no eligibility "
+                "figure is stated. Obtain the current Chapter 3 standards from the SEPP "
+                "(Housing) 2021 or council before relying on secondary-dwelling potential."
+            )
+        })
     elif lot_area is not None:
         if zone in _SD_ZONES:
             if lot_area >= _SD_MIN_LOT:
@@ -676,7 +697,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     "answer": "Likely permissible",
                     "flag": "ok",
                     "basis": (
-                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT} m² minimum "
+                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53). Subject to DCP setback and height controls. "
                         f"Some councils have excluded dual occupancy CDC — confirm DA vs CDC pathway."
                     )
@@ -687,7 +708,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     "answer": "Unlikely — lot too small",
                     "flag": "warn",
                     "basis": (
-                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT} m² minimum "
+                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53(1)(b)). Confirm current SEPP standards."
                     )
                 })
@@ -707,9 +728,9 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             "answer": "Lot area unavailable",
             "flag": "warn",
             "basis": (
-                "Lot area data not available from NSW Valuation Service. "
-                "Secondary dwelling eligibility requires lot area ≥ 450 m² "
-                "(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
+                f"Lot area data not available from NSW Valuation Service. "
+                f"Secondary dwelling eligibility requires lot area ≥ {_SD_MIN_LOT:g} m² "
+                f"(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
             )
         })
 
@@ -774,7 +795,21 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "common property."
             )
         })
-    elif zone in _SD_ZONES:  # SEPP Housing 2021 CDC zones — same zone set as secondary dwelling
+    elif not _SD_ZONES:
+        # Config missing (#684): the zone-eligibility set comes from the same
+        # housing_sepp_standards row as the secondary-dwelling minimum — never
+        # from a hardcoded zone list. Fail visible.
+        results.append({
+            "question": "Complying Development Certificate (CDC)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                "The SEPP Housing 2021 zone-eligibility standards were unavailable at "
+                "report generation, so the CDC pathway was not evaluated. Confirm CDC "
+                "availability with a certifier."
+            )
+        })
+    elif zone in _SD_ZONES:  # zone set from the secondary-dwelling standards row — a screen, not the Codes SEPP zone scope
         blockers = []
         if has_heritage:
             blockers.append("heritage listing")
@@ -790,7 +825,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": (
                     "No heritage listing, biodiversity mapping or flood planning area identified "
                     "in the layers checked (see Section 1 coverage notes). CDC availability is "
-                    "subject to SEPP (Housing) 2021 controls — confirm with a certifier."
+                    "subject to the applicable complying development provisions — confirm with "
+                    "a certifier."
                 )
             })
         else:
@@ -801,11 +837,19 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": f"CDC eligibility affected by: {', '.join(blockers)}. Development will likely require a full DA."
             })
     else:
+        # This check screens against the zones in the SEPP (Housing) 2021
+        # secondary-dwelling standards row — it must not claim to define the
+        # CDC pathway's zone scope, which other instruments (Codes SEPP) govern.
         results.append({
             "question": "Complying Development Certificate (CDC)",
-            "answer": "Not applicable to this zone",
+            "answer": "Not assessed for this zone",
             "flag": "warn",
-            "basis": f"Zone {zone} — CDC pathway applies to residential zones R1–R4."
+            "basis": (
+                f"Zone {zone} is outside the residential zones in the SEPP (Housing) 2021 "
+                f"secondary-dwelling standards ({', '.join(sorted(_SD_ZONES))}), which is the "
+                f"zone set this check screens. Complying development pathways under other "
+                f"instruments were not assessed — confirm CDC availability with a certifier."
+            )
         })
 
     # 4. Development potential (suppress for strata — whole-lot area × FSR is meaningless for a unit)
@@ -2014,6 +2058,136 @@ def get_contaminated_live(lat: float, lng: float) -> dict:
         return {"status": "failed"}
 
 
+def get_servicing_live(lat: float, lng: float) -> dict:
+    """Sydney Water GSP servicing lookup, three-state.
+
+    prior-art-checked: wraps services/gsp_servicing.fetch_gsp_servicing (the reusable
+    DB point-in-polygon lookup over sydney_water_gsp_servicing, migration 058). Same
+    wrapper contract as get_mine_subsidence_live: it already returns the three-state
+    dict, so pass it through and fail closed to {"status": "failed"}.
+    """
+    try:
+        try:
+            from gsp_servicing import fetch_gsp_servicing
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from gsp_servicing import fetch_gsp_servicing
+        return fetch_gsp_servicing(lat, lng)
+    except Exception as e:
+        print(f"  [warn] Sydney Water servicing lookup unavailable: {e}")
+        return {"status": "failed"}
+
+
+# instrument_key pattern written by scripts/ingest_coastal_inundation.py:
+# estuary_inund_2025_s370_y{2050|2100}_{f1..f4}
+_COASTAL_IK_RE = re.compile(r"_y(\d{4})_f\d$")
+# Exact publication/scenario this renderer's source line cites. The query is
+# scoped to it so a future load under the same layer_type (new publication or
+# scenario) can never be rendered under the 2025 SSP3-7.0 attribution.
+_COASTAL_INSTRUMENT_PREFIX = "estuary_inund_2025_s370_"
+# LIKE pattern with '_' escaped (it is a LIKE wildcard).
+_COASTAL_IK_LIKE = _COASTAL_INSTRUMENT_PREFIX.replace("_", r"\_") + "%"
+
+
+def get_coastal_inundation_live(
+    lat: float, lng: float, lot_wkt: Optional[str] = None,
+) -> dict:
+    """Estuarine tidal inundation extent check (spatial_overlays), three-state.
+
+    prior-art-checked: same spatial_overlays intersection mechanics as
+    get_unique_overlays (lot polygon preferred, point fallback) against the
+    layer loaded by scripts/ingest_coastal_inundation.py — no new client, no
+    new geometry logic. Kept out of get_unique_overlays because this layer is
+    statewide + multi-row-per-lot (one row per year×tier), not a per-LGA
+    unique overlay, and it must never feed the cover CONSTRAINTS tile.
+
+    Returns:
+      {"status": "failed"}                       — DB unavailable/errored → "Not assessed"
+      {"status": "outside", "query_basis": ...}  — checked, no intersection
+      {"status": "intersects", "query_basis": ..., "years": {2050: {...}, 2100: {...}}}
+        each year dict: {"days_per_year": float, "value": str} — the MOST
+        FREQUENT mapped tier (max days/year) whose polygon intersects the lot;
+        tiers are nested so the most frequent is the informative one. Every
+        figure is READ from the stored row (loader-written `value` string +
+        `value_numeric`), never composed here.
+    """
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        return {"status": "failed"}
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        if lot_wkt:
+            cur.execute(
+                r"""
+                SELECT instrument_key, value, value_numeric
+                FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326))
+                """,
+                (_COASTAL_IK_LIKE, lot_wkt),
+            )
+            query_basis = "lot"
+        else:
+            cur.execute(
+                r"""
+                SELECT instrument_key, value, value_numeric
+                FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+                """,
+                (_COASTAL_IK_LIKE, lng, lat),
+            )
+            query_basis = "point"
+        rows = cur.fetchall()
+        if not rows:
+            # Zero intersections is only a checked "outside" if the layer is
+            # actually present — a deleted/never-loaded layer must read as
+            # "not assessed", never a universal all-clear.
+            cur.execute(
+                r"""
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'coastal_inundation'
+                  AND instrument_key LIKE %s ESCAPE '\'
+                LIMIT 1
+                """,
+                (_COASTAL_IK_LIKE,),
+            )
+            layer_present = cur.fetchone() is not None
+            cur.close()
+            if not layer_present:
+                return {"status": "failed"}
+            return {"status": "outside", "query_basis": query_basis}
+        cur.close()
+        years: dict[int, dict] = {}
+        for instrument_key, value, value_numeric in rows:
+            m = _COASTAL_IK_RE.search(instrument_key or "")
+            if not m:
+                continue  # malformed row — never invent a year or frequency for it
+            if value_numeric is None:
+                continue  # frequency missing from the row — never compose one
+            year = int(m.group(1))
+            days = float(value_numeric)
+            if year not in years or days > years[year]["days_per_year"]:
+                years[year] = {"days_per_year": days, "value": value}
+        if not years:
+            # Rows intersected but none were parseable — a data defect, not a
+            # checked clear. Fail closed to "Not assessed".
+            return {"status": "failed"}
+        return {"status": "intersects", "query_basis": query_basis, "years": years}
+    except Exception as e:
+        print(f"  [warn] Estuarine inundation query unavailable: {e}")
+        return {"status": "failed"}
+    finally:
+        if conn:
+            conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Risk-row sentence builders — pure functions (golden-sentence tested in
 # tests/test_conveyancing_truth.py). Keep these free of reportlab so the exact
@@ -2221,6 +2395,84 @@ def build_contaminated_land_row(contaminated: Optional[dict]) -> tuple[str, str,
         "Confirm via a s10.7(5) certificate and an EPA public register search.",
         "note",
         "NSW EPA contaminated land register",
+    )
+
+
+# Sydney Water Growth Servicing Plan row. Source is © Sydney Water, "guide only" —
+# every rendered surface attributes and links (GSP page), and the DSP figure is stated
+# as a CPI-excluded BASE charge, never the live charge.
+_SERVICING_STAGE_HUMAN = {
+    "IN_DELIVERY": "trunk servicing in delivery",
+    "PLANNED": "servicing planned",
+    "NO_CURRENT_PROJECT": "no current servicing project",
+    "UNKNOWN_STAGE": "servicing stage not stated",
+}
+
+
+def _servicing_product_phrase(label: str, d: Optional[dict]) -> Optional[str]:
+    if not d:
+        return None
+    human = _SERVICING_STAGE_HUMAN.get(d.get("status_code"), "servicing stage not stated")
+    tf = (d.get("timeframe") or "").strip()
+    tf_str = f", indicative {tf}" if tf and tf.lower() != "no timeframe noted." else ""
+    price = d.get("dsp_price_per_et")
+    price_str = f", base DSP ~${price:,.0f}/ET" if price is not None else ""
+    return f"{label}: {human}{tf_str}{price_str}"
+
+
+def build_servicing_row(servicing: Optional[dict]) -> tuple[str, str, str]:
+    """Build the Risk Summary servicing row: (text, style_key, source_label).
+
+    Three-state (services/gsp_servicing.fetch_gsp_servicing):
+      {"status": "found", "data": {"ww":..,"dw":..}} → in a growth-servicing area
+      {"status": "empty"}  → NOT in a GSP precinct — established-suburb gap, "note"
+                              (never "clear"; capacity is a Section 73 question)
+      {"status": "failed"} / None / other → "Not assessed", never a clear result.
+    DSP figures are stated as CPI-excluded base charges; wording never says the site
+    is "serviceable" or "ready" — trunk capacity is not service-readiness.
+    """
+    try:
+        from gsp_servicing import GSP_SOURCE
+    except ImportError:
+        from services.gsp_servicing import GSP_SOURCE
+
+    status = (servicing or {}).get("status")
+    if status == "found":
+        data = servicing.get("data") or {}
+        ww, dw = data.get("ww"), data.get("dw")
+        area = ((ww or dw or {}).get("growth_area") or "").strip()
+        area_str = f" ({area})" if area else ""
+        phrases = [p for p in (_servicing_product_phrase("Wastewater", ww),
+                               _servicing_product_phrase("drinking water", dw)) if p]
+        constrained = bool((ww or {}).get("constrained") or (dw or {}).get("constrained"))
+        constraint_str = (
+            " Sydney Water notes capacity and timescale constraints in this area that may "
+            "affect servicing your development."
+        ) if constrained else ""
+        text = (
+            f"Within a Sydney Water growth-servicing area{area_str}. "
+            + "; ".join(phrases) + ". "
+            + "Trunk capacity indicated does not make a site service-ready — feasibility and "
+            "connection works are still required."
+            + constraint_str
+            + " DSP figures are indicative base charges (exclude CPI) — confirm the current "
+            f"charge with Sydney Water. Source: {GSP_SOURCE} (guide only)."
+        )
+        return (text, "warn" if constrained else "note", GSP_SOURCE)
+    if status == "empty":
+        return (
+            "Not within a Sydney Water growth-servicing precinct. Servicing capacity for an "
+            "established-area site is determined individually via a Section 73 application "
+            "(Notice of Requirements) and is not published in the Growth Servicing Plan. "
+            f"Source: {GSP_SOURCE}.",
+            "note",
+            GSP_SOURCE,
+        )
+    return (
+        "Not assessed — Sydney Water Growth Servicing Plan lookup unavailable at report "
+        f"generation. Confirm servicing directly with Sydney Water. Source: {GSP_SOURCE}.",
+        "note",
+        GSP_SOURCE,
     )
 
 
@@ -3156,6 +3408,137 @@ def build_climate_lines(
     return out
 
 
+# ── Estuarine tidal inundation layer (mapped-extent disclosure) ─────────────
+# NSW Estuarine Inundation 2025 (SEED, CC BY 4.0). Terminology rule: the
+# anchor term in every factual claim is "estuarine tidal inundation" — never
+# "coastal" as a coverage word (a beachfront non-estuary buyer would wrongly
+# assume open-coast coverage). Factual mapped-extent statements only: NO
+# verdict, NO "at risk", NO safety/value/insurance claim, and the section
+# never flips the cover CONSTRAINTS tile.
+_COASTAL_SCOPE_LINE = (
+    "Scope: this mapping covers estuarine (river, lake, bay and tidal-inlet) "
+    "tidal inundation only. It does NOT cover open-coast/surf inundation or "
+    "coastal erosion, and it does NOT cover rainfall-driven river flooding — "
+    "current flood mapping for this property is set out in the Risk Summary."
+)
+_COASTAL_FRAMING_LINE = (
+    "The NSW Government's 2025 estuarine inundation dataset maps how often "
+    "low-lying land near estuaries is under tidal water, modelled under the "
+    "SSP3-7.0 emissions scenario at 2050 and 2100. The lines below state "
+    "whether this property intersects that mapped extent. This is modelled "
+    "future tidal mapping — not current hazard mapping, not a forecast of any "
+    "individual event, and not a statement about this property's value or its "
+    "insurance cover."
+)
+_COASTAL_SOURCE_LINE = (
+    "Source: NSW Estuarine Inundation — 2025 (NSW Department of Climate "
+    "Change, Energy, the Environment and Water; SEED portal; CC BY 4.0; "
+    "published 24 November 2025). Scenario SSP3-7.0 at 2050 and 2100; mapped "
+    "extents held at the source's ~5 m resolution. Retrieved for this report "
+    "on {date}."
+)
+_COASTAL_OUTSIDE_LINE = (
+    "This property is outside the mapped estuarine tidal inundation extent "
+    "for both 2050 and 2100 (SSP3-7.0)."
+)
+_COASTAL_UNAVAILABLE = (
+    "Estuarine tidal inundation was not assessed — the mapped-extent layer "
+    "was not available at report generation."
+)
+_COASTAL_POINT_BASIS_NOTE = (
+    "Checked against the property point — the lot polygon was unavailable for "
+    "this query. A lot-boundary check can differ where the mapped extent "
+    "crosses only part of the lot."
+)
+
+
+def _coastal_year_row(year: int, tier: dict) -> Optional[str]:
+    """One factual sentence per mapped year — every figure READ from the row.
+
+    A tier whose days_per_year is absent is skipped (never composed); the raw
+    loader-written `value` string rides along so the stored row is quotable.
+    """
+    days = tier.get("days_per_year")
+    if days is None:
+        return None
+    pct = None
+    m = re.search(r"\(([\d.]+%)\)", tier.get("value") or "")
+    if m:
+        pct = m.group(1)
+    freq = f"exceeded {days:g} days per year"
+    if pct:
+        freq += f" ({pct} of days)"
+    return (
+        f"{year}: intersects the mapped extent — most frequent mapped tier at "
+        f"this property: tidal inundation {freq}, under SSP3-7.0."
+    )
+
+
+def build_coastal_inundation_lines(
+    coastal: Optional[dict],
+    report_date: Optional[str] = None,
+) -> dict:
+    """Section content for the estuarine tidal inundation mapped-extent layer.
+
+    prior-art-checked: consumes get_coastal_inundation_live output; same
+    render-state contract as build_climate_lines (its sibling forward-looking
+    disclosure layer). This builder adds NO hazard logic and computes NO
+    figure — it renders what the stored rows state, with the scope sentence on
+    every rendered state so "estuarine" can never read as general coastal
+    coverage.
+
+    States in ``coastal["status"]``:
+      intersects → framing + per-year rows + scope + source (render True)
+      outside    → honest outside-mapped-extent line + scope + source (render True)
+      failed     → "not assessed" line, no extent claim (render True)
+      None/absent/unrecognised → render False (section omitted; never a false claim)
+
+    Returns {"render", "state", "rows", "framing", "scope_line",
+             "source_line", "status_line", "basis_note"}.
+    """
+    out = {"render": False, "state": "absent", "rows": [], "framing": None,
+           "scope_line": None, "source_line": None, "status_line": None,
+           "basis_note": None}
+    status = (coastal or {}).get("status")
+    if status not in ("intersects", "outside", "failed"):
+        return out
+
+    out["render"] = True
+    out["state"] = status
+    if status == "failed":
+        out["status_line"] = _COASTAL_UNAVAILABLE
+        return out
+
+    out["scope_line"] = _COASTAL_SCOPE_LINE
+    out["source_line"] = _COASTAL_SOURCE_LINE.format(
+        date=report_date or "the date of generation"
+    )
+    if coastal.get("query_basis") == "point":
+        out["basis_note"] = _COASTAL_POINT_BASIS_NOTE
+
+    if status == "outside":
+        out["status_line"] = _COASTAL_OUTSIDE_LINE
+        return out
+
+    rows = []
+    for year in sorted((coastal.get("years") or {}).keys(), key=str):
+        if year is None:
+            continue
+        row = _coastal_year_row(int(year), coastal["years"][year] or {})
+        if row:
+            rows.append(row)
+    if not rows:
+        # Claimed intersects but nothing renderable — fail closed to the
+        # honest not-assessed line rather than an empty extent claim.
+        out.update(state="failed", rows=[], scope_line=None, source_line=None,
+                   basis_note=None, status_line=_COASTAL_UNAVAILABLE)
+        return out
+    out["state"] = "intersects"
+    out["rows"] = rows
+    out["framing"] = _COASTAL_FRAMING_LINE
+    return out
+
+
 # Layers the unmapped-coverage footnote reports on. Bushfire is deliberately
 # absent: it is checked live against the NSW RFS BFPL service, not our ingest.
 _UNMAPPED_NOTE_LAYERS = (
@@ -3236,6 +3619,8 @@ def generate_pdf(
     climate: Optional[dict] = None,
     mine_subsidence: Optional[dict] = None,
     contaminated: Optional[dict] = None,
+    servicing: Optional[dict] = None,
+    coastal: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -3893,6 +4278,18 @@ def generate_pdf(
         "Contaminated Land (EPA register, 500 m)",
         Paragraph(_cl_text, ss[_cl_style]),
         _cl_source,
+    ])
+    # Sydney Water servicing — three-state; the Source cell is a live link back to the
+    # Sydney Water GSP page (attribution required — data is © Sydney Water, guide only).
+    _sv_text, _sv_style, _sv_source = build_servicing_row(servicing)
+    try:
+        from gsp_servicing import GSP_URL
+    except ImportError:
+        from services.gsp_servicing import GSP_URL
+    risk_rows.append([
+        "Water/Sewer Servicing (Sydney Water GSP)",
+        Paragraph(_sv_text, ss[_sv_style]),
+        Paragraph(f'<a href="{GSP_URL}" color="#2563EB">{_sv_source}</a>', ss["note"]),
     ])
     # ANEF row — three-state builder: contour value when resolved, honest
     # fallback when empty, explicit not-assessed on lookup failure. None when
@@ -4723,13 +5120,15 @@ def generate_pdf(
         ],
         [
             # source_ref: SEPP (Housing) 2021 s53 — non-discretionary development
-            # standards for secondary dwellings (450 m² site area).
+            # standards for secondary dwellings. The site-area figure is NOT
+            # stated here (#684): the feasibility row above renders it from the
+            # housing_sepp_standards table; this cell only cites the clause.
             "SEPP (Housing) 2021",
             "Residential zones — dual occ, secondary dwellings, complying dev",
-            "Enables secondary dwellings (450 m² non-discretionary site-area standard, s53), "
-            "dual occupancy, and low-rise medium density housing pathways in eligible zones. "
-            "Sets non-discretionary standards a consent authority cannot use as refusal grounds "
-            "when met.",
+            "Enables secondary dwellings, dual occupancy, and low-rise medium density "
+            "housing pathways in eligible zones. Sets non-discretionary standards, "
+            "including a site-area standard for secondary dwellings (s53), that a "
+            "consent authority cannot use as refusal grounds when met.",
         ],
         [
             # source_ref: SEPP (Transport and Infrastructure) 2021 s2.120
@@ -5095,6 +5494,38 @@ def generate_pdf(
                 story.append(Paragraph(_xml_escape(_climate_lines["status_line"]), ss["note"]))
 
     # ------------------------------------------------------------------
+    # SECTION — Estuarine Tidal Inundation (mapped extent, modelled scenario)
+    # NSW Estuarine Inundation 2025 layer, factual mapped-extent statements
+    # only: NO verdict, NO "at risk", NO safety/value/insurance claim (#699
+    # discipline, terminology rule: "estuarine", never "coastal" as a coverage
+    # word). Disclosure layer — it does NOT flip the cover CONSTRAINTS tile.
+    # Feature-flagged so a legal hold can disable it live.
+    # ------------------------------------------------------------------
+    if os.environ.get("CONVEYANCING_COASTAL_ENABLED", "true").lower() in ("1", "true", "yes"):
+        _coastal_lines = build_coastal_inundation_lines(
+            coastal, report_date=date.today().strftime("%d %B %Y")
+        )
+        if _coastal_lines["render"]:
+            h2(f"{_sec_no}. Estuarine Tidal Inundation — Mapped Extent")
+            _sec_no += 1
+            if _coastal_lines["state"] == "intersects":
+                story.append(Paragraph(_xml_escape(_coastal_lines["framing"]), ss["body"]))
+                story.append(Spacer(1, 1 * mm))
+                for _row in _coastal_lines["rows"]:
+                    story.append(Paragraph(f"• {_xml_escape(_row)}", ss["note"]))
+            else:
+                story.append(Paragraph(_xml_escape(_coastal_lines["status_line"]), ss["note"]))
+            if _coastal_lines["basis_note"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["basis_note"]), ss["caveat"]))
+            if _coastal_lines["scope_line"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["scope_line"]), ss["caveat"]))
+            if _coastal_lines["source_line"]:
+                story.append(Spacer(1, 1 * mm))
+                story.append(Paragraph(_xml_escape(_coastal_lines["source_line"]), ss["caveat"]))
+
+    # ------------------------------------------------------------------
     # SECTION (final) — Disclosure Notes
     # ------------------------------------------------------------------
     h2(f"{_sec_no}. Disclosure Notes")
@@ -5324,6 +5755,8 @@ def main():
     _sepp_standards, _tax_config = load_regulatory_configs(os.getenv("DATABASE_URL"))
     if _tax_config is None:
         print("  [warn] land tax config unavailable — land tax section renders 'Not assessed'")
+    if _sepp_standards is None:
+        print("  [warn] SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays, is_strata=strata,
         sepp_standards=_sepp_standards, tax_config=_tax_config,
@@ -5499,6 +5932,20 @@ def main():
     else:
         print(f"  contaminated land: {contaminated.get('status')}")
 
+    print("\nChecking Sydney Water Growth Servicing Plan (live) ...")
+    servicing = get_servicing_live(lat, lng)
+    print(f"  servicing: {servicing.get('status')}")
+
+    print("\nChecking estuarine tidal inundation mapped extent (PostGIS) ...")
+    coastal = get_coastal_inundation_live(lat, lng, lot_wkt=lot_wkt)
+    if coastal.get("status") == "intersects":
+        _yrs = coastal.get("years") or {}
+        print(f"  intersects ({coastal.get('query_basis')}): "
+              + "; ".join(f"{y}: {t.get('days_per_year')} d/yr" for y, t in sorted(_yrs.items())))
+    else:
+        print(f"  estuarine inundation: {coastal.get('status')} "
+              f"({coastal.get('query_basis') or 'query not run'})")
+
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
         generate_pdf(
@@ -5522,6 +5969,8 @@ def main():
             climate=climate,
             mine_subsidence=mine_subsidence,
             contaminated=contaminated,
+            servicing=servicing,
+            coastal=coastal,
         )
 
 

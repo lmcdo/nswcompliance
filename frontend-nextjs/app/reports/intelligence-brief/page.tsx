@@ -924,6 +924,7 @@ function valueWithUnit(key: string, raw: unknown, unit?: string): string {
 const FIELD_LABEL_OVERRIDES: Record<string, string> = {
   coastal_land_application: 'Coastal Management Area',
   coastal_hazards: 'Coastal Management Area',
+  servicing: 'Water & Sewer Servicing',
   // Flood pass-through rows (PR-B) — plain-English labels for composite rows.
   ems_flood_detected: 'Copernicus emergency mapping',
   sar_flood_detected: 'Radar flood detection (Sentinel-1)',
@@ -988,6 +989,8 @@ const FIELD_HINTS: Record<string, string> = {
     'Sites on the EPA contaminated-land register within 500 m, with the nearest site’s details and measured distance.',
   mine_subsidence_district:
     'The proclaimed mine subsidence district this lot falls within.',
+  servicing:
+    'Sydney Water Growth Servicing Plan status for this lot (water & sewer). Guide only — trunk capacity is not service-readiness; confirm with Sydney Water.',
   lot_total: 'Number of lots in the strata scheme (NSW Strata Hub).',
   dwelling_type: 'Building form classified from the strata scheme’s lot count (NSW Strata Hub).',
   registration_date: 'Date the strata plan was registered (NSW Strata Hub).',
@@ -1030,7 +1033,7 @@ function FieldLabel({ fieldKey }: { fieldKey: string }) {
   const hint = FIELD_HINTS[fieldKey];
   return (
     <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-      {formatKey(fieldKey)}
+      {FIELD_LABEL_OVERRIDES[fieldKey] ?? formatKey(fieldKey)}
       {hint && (
         <span className="block text-[10px] font-normal text-slate-400 mt-0.5 leading-snug">{hint}</span>
       )}
@@ -1077,6 +1080,9 @@ const HIDE_WHEN_NULL_KEYS = new Set([
   'ground_elevation_m_ahd', 's1_gap_warning', 'jrc_data_year',
   // LGA determination stats — null means the layer holds none for this council.
   'da_refusal_stats',
+  // Sydney Water servicing — null = lookup failed/unavailable this run; the
+  // summary row only shows when there's a real answer (found or not-in-precinct).
+  'servicing',
 ]);
 
 // Satellite fields folded into a neighbouring composite row (rendered inside

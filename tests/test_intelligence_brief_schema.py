@@ -114,6 +114,9 @@ def _make_env_constraints(**overrides):
         nearest_features=_auth({"flood": 830}),
         contaminated_detail=_auth(None),
         mine_subsidence_district=_auth(None),
+        # Sydney Water servicing summary — 'empty' (not in a growth precinct) is a
+        # real authoritative answer, so the fully-available fixture carries one.
+        servicing=_auth("Not in a Sydney Water growth-servicing precinct."),
     )
     defaults.update(overrides)
     return EnvironmentalConstraints(**defaults)
