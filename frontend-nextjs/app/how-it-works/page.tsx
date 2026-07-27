@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { HowToJsonLd } from '@/lib/json-ld';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'How It Works — PlotDetect',
@@ -94,7 +95,7 @@ const TOOLS = [
     href: '/reports/threat-radar',
     sources: [
       { name: 'NSW ePlanning Portal (OnlineDA + OnlineCDC)', use: 'All DA and CDC applications lodged across NSW' },
-      { name: 'Automated daily ingestion', use: 'Applications from 128 NSW councils indexed and geocoded daily' },
+      { name: 'Automated daily ingestion', use: `Applications from ${COVERAGE_DISPLAY.totalNswCouncils} NSW councils indexed and geocoded daily` },
     ],
     cadence: 'DA data is refreshed daily from the NSW ePlanning Portal. There is typically a 24–48 hour lag from lodgement to appearance in results.',
     limitations: 'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.',
@@ -114,12 +115,12 @@ const TOOLS = [
     href: '/reports/conveyancing',
     sources: [
       { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, FSR, height, heritage, environmental overlays, LEP provisions' },
-      { name: 'Council DCP provisions', use: 'Setback controls, parking rates, and landscaping standards for 28 LGAs' },
+      { name: 'Council DCP provisions', use: `Setback controls, parking rates, and landscaping standards for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs` },
       { name: 'NSW Rural Fire Service', use: 'Bushfire-prone land status' },
       { name: 'NSW Government spatial overlays', use: 'Flood control lot status from LEP and council flood studies' },
     ],
     cadence: 'Planning Portal data is queried live. DCP provisions are updated when new LGAs are onboarded or instruments are amended.',
-    limitations: 'DCP setback controls are available for 28 LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.',
+    limitations: `DCP setback controls are available for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.`,
   },
   {
     name: 'Climate Risk Score',

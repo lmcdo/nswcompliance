@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { DatasetJsonLd } from '@/lib/json-ld';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'NSW Planning Open Data — Datasets Available on PlotDetect',
-  description:
-    'Structured NSW planning datasets available on PlotDetect: secondary dwelling statistics for 102 councils, 465+ regulatory definitions, 2,039 heritage conservation areas, SEPP Housing numeric standards, 10,000+ DCP provisions, flood study peak levels to 1-in-5000 AEP, and estuarine tidal inundation extents.',
+  description: `Structured NSW planning datasets available on PlotDetect: secondary dwelling statistics for ${COVERAGE_DISPLAY.secondaryDwellingCouncils} councils, ${COVERAGE_DISPLAY.regulatoryDefinitions} regulatory definitions, ${COVERAGE_DISPLAY.heritageAreas} heritage conservation areas, SEPP Housing numeric standards, ${COVERAGE_DISPLAY.dcpActionableProvisions} actionable DCP provisions, flood study peak levels to 1-in-5000 AEP, and estuarine tidal inundation extents.`,
   openGraph: {
     title: 'NSW Planning Open Data — PlotDetect Datasets',
     description:
@@ -23,7 +23,7 @@ const DATASETS = [
     name: 'Secondary Dwelling Application Statistics',
     description:
       'DA and CDC application volumes, processing times, pathway ratios, and self-reported build costs for secondary dwellings across 102 NSW councils. Derived from the NSW Planning Portal open data API.',
-    records: '102 councils',
+    records: `${COVERAGE_DISPLAY.secondaryDwellingCouncils} councils`,
     currency: '2026-05-20',
     source: 'NSW Planning Portal open data API',
     sourceUrl: 'https://www.planningportal.nsw.gov.au/opendata/dataset/online-da-data-api',
@@ -45,7 +45,7 @@ const DATASETS = [
     name: 'NSW Planning Regulatory Definitions',
     description:
       'Definitions of planning terms extracted from NSW LEPs, DCPs, and SEPPs. Each definition includes the source document, clause reference, legislation type, and domain tags.',
-    records: '465+ definitions',
+    records: `${COVERAGE_DISPLAY.regulatoryDefinitions} definitions`,
     currency: 'Stable since January 2026',
     source: 'NSW LEP, DCP, and SEPP instruments',
     sourceUrl: 'https://legislation.nsw.gov.au',
@@ -65,7 +65,7 @@ const DATASETS = [
     name: 'Heritage Conservation Areas',
     description:
       'Heritage conservation areas across NSW with names, significance classifications, LGA assignments, and geographic boundaries. Sourced from council heritage studies and NSW Heritage databases.',
-    records: '2,039 areas',
+    records: `${COVERAGE_DISPLAY.heritageAreas} areas`,
     currency: 'Current',
     source: 'Council heritage studies and NSW Heritage databases',
     sourceUrl: null,
@@ -84,7 +84,7 @@ const DATASETS = [
     name: 'SEPP Housing 2021 Numeric Standards',
     description:
       'Structured numeric development standards from SEPP (Housing) 2021 and the NSW Apartment Design Guide. Covers height limits, lot sizes, floor areas, site coverage, parking rates, setbacks, and ADG design criteria — grouped by development type with clause references.',
-    records: '33 SEPP standards + 23 ADG design criteria',
+    records: `${COVERAGE_DISPLAY.seppStandards} SEPP standards + ${COVERAGE_DISPLAY.adgCriteria} ADG design criteria`,
     currency: 'Legislative instruments — amended periodically',
     source: 'SEPP (Housing) 2021 and NSW Apartment Design Guide (March 2023)',
     sourceUrl: 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714',
@@ -105,7 +105,7 @@ const DATASETS = [
     name: 'DCP Provisions (Actionable)',
     description:
       'Development Control Plan provisions extracted from council DCP documents, tagged by topic (parking, setbacks, heritage, waste, landscaping), precinct, applicable zones, and development types. Deep coverage for Inner West Council; shallower for other LGAs.',
-    records: '10,008 actionable provisions',
+    records: `${COVERAGE_DISPLAY.dcpActionableProvisions} actionable provisions`,
     currency: 'Varies by LGA — extracted from current DCP documents',
     source: 'Council DCP documents (PDF extraction)',
     sourceUrl: null,

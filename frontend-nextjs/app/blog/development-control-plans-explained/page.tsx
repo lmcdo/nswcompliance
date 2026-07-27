@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
@@ -432,7 +433,7 @@ export default function DCPExplainedPage() {
           PlotDetect extracts DCP controls into structured, queryable fields with clause citations.
           For{' '}
           <Link href="/assessment" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">
-            29 LGAs with numeric controls and 7 councils with full structured provisions
+            {COVERAGE_DISPLAY.dcpNumericCouncils} LGAs with numeric controls and {COVERAGE_DISPLAY.dcpFullCouncils} councils with full structured provisions
           </Link>
           , you can enter an address and see{' '}
           <Link href="/blog/setback-requirements-nsw" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { FileCheck, Droplets, Flame, ShieldCheck, ArrowRight } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'For Conveyancers — PlotDetect',
@@ -43,7 +44,7 @@ export default function ConveyancersPage() {
               icon: Droplets,
               iconColor: 'text-blue-600',
               title: 'Flood depth modelling',
-              description: 'Not just "flood zone" — modelled depth at ARI return periods from council flood studies. 71 LGA coverage.',
+              description: `Not just "flood zone" — modelled depth at ARI return periods from council flood studies. ${COVERAGE_DISPLAY.floodLgas} LGA coverage.`,
             },
             {
               icon: Flame,
@@ -55,7 +56,7 @@ export default function ConveyancersPage() {
               icon: ShieldCheck,
               iconColor: 'text-teal-600',
               title: 'DCP setback controls',
-              description: 'Front, side, and rear setbacks from the applicable DCP — with clause citations. 28 LGAs covered.',
+              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs covered.`,
             },
             {
               icon: FileCheck,

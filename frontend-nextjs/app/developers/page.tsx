@@ -4,6 +4,7 @@ import { Code2, Database, Zap, Lock, ArrowRight, FileJson, Building2, Scale } fr
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'Property Data API — Structured NSW Planning Controls | PlotDetect',
@@ -59,7 +60,7 @@ const DATA_POINTS = [
   },
   {
     label: 'DCP numeric controls',
-    detail: 'Setbacks, parking rates, landscaping, site coverage, building separation — 999+ rows across 29 LGAs. Full structured provisions for 7 councils.',
+    detail: `Setbacks, parking rates, landscaping, site coverage, building separation — ${COVERAGE_DISPLAY.dcpSetbackRows} rows across ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full structured provisions for ${COVERAGE_DISPLAY.dcpFullCouncils} councils.`,
   },
   {
     label: 'SEPP requirements',
@@ -71,7 +72,7 @@ const DATA_POINTS = [
   },
   {
     label: 'Flood depth modelling',
-    detail: 'Modelled flood depth at ARI return periods from council flood studies — 71 LGA coverage',
+    detail: `Modelled flood depth at ARI return periods from council flood studies — ${COVERAGE_DISPLAY.floodLgas} LGA coverage`,
   },
 ];
 
@@ -248,10 +249,10 @@ export default function DevelopersPage() {
         <h2 className="text-xl font-bold text-gray-900 mb-4">Coverage</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { stat: '128', label: 'NSW councils', sub: 'Zone + LEP controls' },
-            { stat: '29', label: 'LGAs', sub: 'DCP numeric controls' },
-            { stat: '71', label: 'LGAs', sub: 'Flood depth modelling' },
-            { stat: '47,818', label: 'Provisions', sub: 'Extracted & classified' },
+            { stat: COVERAGE_DISPLAY.totalNswCouncils, label: 'NSW councils', sub: 'Zone + LEP controls' },
+            { stat: COVERAGE_DISPLAY.dcpNumericCouncils, label: 'LGAs', sub: 'DCP numeric controls' },
+            { stat: COVERAGE_DISPLAY.floodLgas, label: 'LGAs', sub: 'Flood depth modelling' },
+            { stat: COVERAGE_DISPLAY.provisionsTotal, label: 'Provisions', sub: 'Extracted & classified' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
               <p className="text-2xl font-bold text-gray-900">{stat}</p>
