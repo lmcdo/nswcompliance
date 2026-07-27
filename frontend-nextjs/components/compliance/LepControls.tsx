@@ -5,6 +5,7 @@ import { ConstraintArithmeticCard } from './ConstraintArithmeticCard';
 import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
+import { ServicingTile } from './ServicingTile';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
@@ -24,6 +25,9 @@ interface LepControlsProps {
   lotArea?: number;
   strataInfo?: StrataInfo;
   developmentType?: string;
+  /** Lot coordinates — feed the Sydney Water servicing lookup. */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export function LepControls({
@@ -34,6 +38,8 @@ export function LepControls({
   lotArea,
   strataInfo,
   developmentType,
+  lat,
+  lng,
 }: LepControlsProps) {
   // Extract layer metadata for child cards
   const landZoningLayer = planningLayers?.find(
@@ -315,6 +321,10 @@ export function LepControls({
                 {constraints?.drinkingWaterCatchment?.inCatchment ? 'Yes' : 'No'}
               </span>
             </div>
+
+            {/* Water/Sewer Servicing — Sydney Water GSP (self-fetches by lat/lng;
+                renders nothing when coords or data are unavailable) */}
+            <ServicingTile lat={lat} lng={lng} />
 
             {/* Terrestrial Biodiversity */}
             <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${

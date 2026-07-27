@@ -81,7 +81,12 @@ class TestSilentOmission:
     def test_secondary_dwelling_unavailable_when_no_lot_area(self):
         controls = {"zone": "R2"}
         valuation = {"lot_area_m2": None}
-        results = calc_feasibility(controls, valuation, [], is_strata=False)
+        # SEPP config injected: without it the config-missing branch renders
+        # "Not assessed" first (#684) and the lot-area path never runs.
+        results = calc_feasibility(
+            controls, valuation, [], is_strata=False,
+            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2", "R3", "R4"}},
+        )
         sd = [r for r in results if "Secondary dwelling" in r["question"]]
         assert len(sd) == 1
         assert "unavailable" in sd[0]["answer"].lower()

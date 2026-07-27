@@ -414,6 +414,7 @@ def run_conveyancing(req: ConveyancingRequest):
         "confidence": _compute_confidence(
             controls, unique_overlays, valuation, covered_layers=covered_layers,
             tax_config_missing=tax_config is None,
+            sepp_config_missing=sepp_standards is None,
         ),
         "data_sources": data_sources,
     }
@@ -720,6 +721,22 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("contaminated land lookup failed: %s", e)
             return {"status": "failed"}
 
+    def _fetch_servicing():
+        """Sydney Water Growth Servicing Plan servicing status — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_servicing_live
+        (which wraps services.gsp_servicing.fetch_gsp_servicing, the reusable DB
+        lookup). A failed lookup renders "Not assessed", never a clear/serviceable
+        result. Data is © Sydney Water — the row attributes + links to the GSP page.
+        """
+        try:
+            from generate_conveyancing_report import get_servicing_live
+            # Resolved, property-bound coordinates (#818 binding contract).
+            return get_servicing_live(lat, lng)
+        except Exception as e:
+            logger.warning("Sydney Water servicing lookup failed: %s", e)
+            return {"status": "failed"}
+
     def _fetch_coastal():
         """Estuarine tidal inundation mapped-extent check — three-state.
 
@@ -750,6 +767,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_future = executor.submit(_fetch_climate)
         mine_future = executor.submit(_fetch_mine_subsidence)
         contam_future = executor.submit(_fetch_contaminated)
+        servicing_future = executor.submit(_fetch_servicing)
         coastal_future = executor.submit(_fetch_coastal)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
@@ -762,6 +780,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_result = climate_future.result()
         mine_subsidence_result = mine_future.result()
         contaminated_result = contam_future.result()
+        servicing_result = servicing_future.result()
         coastal_result = coastal_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
@@ -801,6 +820,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate=climate_result,
         mine_subsidence=mine_subsidence_result,
         contaminated=contaminated_result,
+        servicing=servicing_result,
         coastal=coastal_result,
     )
 
@@ -924,6 +944,7 @@ def _compute_confidence(
     shadow_height_source: Optional[str] = None,
     live_query_failures: int = 0,
     tax_config_missing: bool = False,
+    sepp_config_missing: bool = False,
 ) -> str:
     """Rate confidence on data completeness AND data integrity (QA-S7).
 
@@ -932,6 +953,8 @@ def _compute_confidence(
       - shadow height from the assumed default envelope   → at most "medium"
       - 1 live-query failure → at most "medium"; ≥2 → "low"
       - land-tax config absent (section rendered "Not assessed") → at most "medium"
+      - SEPP Housing config absent (secondary-dwelling row "Not assessed", #684)
+        → at most "medium"
     A report that had to assume, or whose coverage has holes, must not claim
     "high" confidence regardless of how many fields are populated.
     """
@@ -960,6 +983,8 @@ def _compute_confidence(
     if shadow_height_source == "default":
         rating = _cap_confidence(rating, "medium")
     if tax_config_missing:
+        rating = _cap_confidence(rating, "medium")
+    if sepp_config_missing:
         rating = _cap_confidence(rating, "medium")
     if live_query_failures >= 2:
         rating = _cap_confidence(rating, "low")
