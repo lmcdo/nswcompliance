@@ -231,6 +231,20 @@ CLASSIFIED_ROAD_NOTE = (
 # housing_sepp_standards table (migration 045); when no config is injected the
 # secondary-dwelling row renders "Not assessed".
 
+# Display labels for CDC screen constraint keys (#820) — presentation only,
+# never regulatory data: the verdicts and figures come from the engine.
+_CDC_CONSTRAINT_LABELS = {
+    "zone": "zone",
+    "lot_size": "lot size",
+    "heritage": "heritage",
+    "flood": "flood risk",
+    "bushfire": "bushfire risk",
+    "acid_sulfate": "acid sulfate soils",
+    "complying_exclusion": "mapped exclusion area",
+    "dual_occ_prohibition": "dual-occupancy prohibition",
+    "contamination": "contaminated land",
+}
+
 # ZONE_PERMITTED lookup table intentionally removed.
 # Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
 # and legislation_url fields returned by the portal layerintersect call.
@@ -629,7 +643,8 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
 def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict],
                      is_strata: bool = False,
                      sepp_standards: Optional[dict] = None,
-                     tax_config: Optional[dict] = None) -> list[dict]:
+                     tax_config: Optional[dict] = None,
+                     cdc_result=None) -> list[dict]:
     """
     Answer the questions buyers actually ask their conveyancer.
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
@@ -643,14 +658,16 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         tax_year, threshold_dollars, rate, base_amount_dollars.
         NO fallback: when absent the land-tax section renders "Not assessed"
         — a stale or hardcoded regulatory figure never renders silently.
+    cdc_result: a services.cdc_screen.CdcScreenResult run by the caller
+        (#820 PR-2) — the CDC row renders from the engine's verdict, which is
+        driven by verified cdc_eligibility_standards rows. NO fallback: when
+        None the CDC row renders "Not assessed"; the row never screens against
+        the secondary-dwelling zone set again.
     """
     results = []
     lot_area = valuation.get("lot_area_m2")
     _zone_parts = (controls.get("zone") or "").split()
     zone = _zone_parts[0].upper() if _zone_parts else ""
-    has_heritage = bool(controls.get("heritage_items"))
-    has_biodiversity = any(o["layer_type"] == "biodiversity" for o in unique_overlays)
-    has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
     # Source: housing_sepp_standards table (migration 045). NO fallback (#684):
@@ -795,62 +812,57 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "common property."
             )
         })
-    elif not _SD_ZONES:
-        # Config missing (#684): the zone-eligibility set comes from the same
-        # housing_sepp_standards row as the secondary-dwelling minimum — never
-        # from a hardcoded zone list. Fail visible.
+    elif cdc_result is None:
+        # Screen unavailable (#820): standards unverified or DB unreachable —
+        # fail visible, never a zone-list guess. The old secondary-dwelling
+        # zone screen is gone for good.
         results.append({
             "question": "Complying Development Certificate (CDC)",
             "answer": "Not assessed",
             "flag": "warn",
             "basis": (
-                "The SEPP Housing 2021 zone-eligibility standards were unavailable at "
+                "The complying-development screening standards were unavailable at "
                 "report generation, so the CDC pathway was not evaluated. Confirm CDC "
                 "availability with a certifier."
             )
         })
-    elif zone in _SD_ZONES:  # zone set from the secondary-dwelling standards row — a screen, not the Codes SEPP zone scope
-        blockers = []
-        if has_heritage:
-            blockers.append("heritage listing")
-        if has_biodiversity:
-            blockers.append("biodiversity sensitivity overlay")
-        if has_flood:
-            blockers.append("flood planning area")
-        if not blockers:
+    else:
+        # Render the engine's verdict (services/cdc_screen.py): exclusions are
+        # clause-cited from cdc_eligibility_standards; the engine never says
+        # "yes", so this row never claims eligibility either.
+        _definite = [e for e in cdc_result.exclusions if e.severity == "definite"]
+        _likely = [e for e in cdc_result.exclusions if e.severity == "likely"]
+        _notes = [f"{e.reason} ({e.source})." for e in _definite + _likely]
+        _notes.extend(cdc_result.warnings)   # includes the not-screened summary
+        _labels = lambda excs: ", ".join(dict.fromkeys(  # noqa: E731
+            _CDC_CONSTRAINT_LABELS.get(e.constraint, e.constraint.replace("_", " "))
+            for e in excs))
+        if cdc_result.eligible == "no":
             results.append({
                 "question": "Complying Development Certificate (CDC)",
-                "answer": "Potentially eligible",
-                "flag": "ok",
-                "basis": (
-                    "No heritage listing, biodiversity mapping or flood planning area identified "
-                    "in the layers checked (see Section 1 coverage notes). CDC availability is "
-                    "subject to the applicable complying development provisions — confirm with "
-                    "a certifier."
-                )
+                "answer": f"Excluded — {_labels(_definite)}",
+                "flag": "alert",
+                "basis": " ".join(_notes) + " Development will likely require a full DA."
+            })
+        elif _likely:
+            results.append({
+                "question": "Complying Development Certificate (CDC)",
+                "answer": f"Restricted — {_labels(_likely)}",
+                "flag": "warn",
+                "basis": " ".join(_notes) + " A certifier must assess whether the CDC pathway remains available."
             })
         else:
             results.append({
                 "question": "Complying Development Certificate (CDC)",
-                "answer": f"Restricted — {', '.join(blockers)}",
-                "flag": "alert",
-                "basis": f"CDC eligibility affected by: {', '.join(blockers)}. Development will likely require a full DA."
+                "answer": "No exclusions identified in screened constraints",
+                "flag": "ok",
+                "basis": (
+                    f"Screened: {', '.join(cdc_result.checks_performed)}. "
+                    + (" ".join(_notes) + " " if _notes else "")
+                    + "CDC availability remains subject to the applicable complying "
+                      "development provisions — confirm with a certifier."
+                )
             })
-    else:
-        # This check screens against the zones in the SEPP (Housing) 2021
-        # secondary-dwelling standards row — it must not claim to define the
-        # CDC pathway's zone scope, which other instruments (Codes SEPP) govern.
-        results.append({
-            "question": "Complying Development Certificate (CDC)",
-            "answer": "Not assessed for this zone",
-            "flag": "warn",
-            "basis": (
-                f"Zone {zone} is outside the residential zones in the SEPP (Housing) 2021 "
-                f"secondary-dwelling standards ({', '.join(sorted(_SD_ZONES))}), which is the "
-                f"zone set this check screens. Complying development pathways under other "
-                f"instruments were not assessed — confirm CDC availability with a certifier."
-            )
-        })
 
     # 4. Development potential (suppress for strata — whole-lot area × FSR is meaningless for a unit)
     headroom = calc_development_headroom(controls, valuation)
@@ -5757,9 +5769,20 @@ def main():
         print("  [warn] land tax config unavailable — land tax section renders 'Not assessed'")
     if _sepp_standards is None:
         print("  [warn] SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
+    # CDC screen (#820): verdict from the backend engine + verified Codes SEPP
+    # standards; None renders "Not assessed" — never a zone-list guess.
+    from services.cdc_screen import run_cdc_screen_for_report
+    _cdc_result = run_cdc_screen_for_report(
+        os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
+        controls.get("heritage_items"), controls.get("heritage_hca"),
+        unique_overlays, covered_layers,
+    )
+    if _cdc_result is None:
+        print("  [warn] CDC screen unavailable — CDC row renders 'Not assessed'")
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays, is_strata=strata,
         sepp_standards=_sepp_standards, tax_config=_tax_config,
+        cdc_result=_cdc_result,
     )
 
     raw_council = args.council or _council_from_zone_epi(controls.get("zone_epi", ""))
