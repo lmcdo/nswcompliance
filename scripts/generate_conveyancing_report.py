@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 # DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
 sys.path.insert(0, str(Path(__file__).parent))
-from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs  # noqa: E402
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp, load_regulatory_configs, _validate_sepp_sd_config  # noqa: E402
 from services.address_identity import parcel_identity_match  # noqa: E402  GATE-0
 
 # ---------------------------------------------------------------------------
@@ -226,10 +226,10 @@ CLASSIFIED_ROAD_NOTE = (
 # rendered silently-stale figures in a legal document (PR #674 D1/D3 defect
 # class). When no config is injected the section renders "Not assessed".
 
-# Secondary dwelling SEPP fallbacks — used only when DB is unreachable.
-# Authoritative source: housing_sepp_standards table (migration 045).
-_SD_FALLBACK_MIN_LOT = 450
-_SD_FALLBACK_ZONES = {"R1", "R2", "R3", "R4"}
+# Secondary dwelling SEPP fallback constants intentionally removed (#684) —
+# same defect class as the land-tax fallback above. Authoritative source:
+# housing_sepp_standards table (migration 045); when no config is injected the
+# secondary-dwelling row renders "Not assessed".
 
 # ZONE_PERMITTED lookup table intentionally removed.
 # Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
@@ -635,8 +635,10 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     Returns list of {question, answer, flag (ok/warn/alert), basis}.
 
     sepp_standards: pre-loaded from housing_sepp_standards table. Keys:
-        sd_min_lot (float), sd_zones (set[str]). Falls back to hardcoded
-        values if not provided or if DB was unreachable.
+        sd_min_lot (float), sd_zones (set[str]).
+        NO fallback: when absent the secondary-dwelling row renders
+        "Not assessed" — a stale or hardcoded regulatory figure never
+        renders silently (#684, same rule as tax_config below).
     tax_config: pre-loaded from tax_thresholds table. Keys:
         tax_year, threshold_dollars, rate, base_amount_dollars.
         NO fallback: when absent the land-tax section renders "Not assessed"
@@ -651,12 +653,18 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
-    # Source: housing_sepp_standards table (migration 045), fallback to hardcoded.
-    _sd = sepp_standards or {}
-    if not sepp_standards:
-        print("  [warn] calc_feasibility: using SEPP fallback values (no DB config injected)")
-    _SD_MIN_LOT = _sd.get("sd_min_lot", _SD_FALLBACK_MIN_LOT)
-    _SD_ZONES = _sd.get("sd_zones", _SD_FALLBACK_ZONES)
+    # Source: housing_sepp_standards table (migration 045). NO fallback (#684):
+    # absent config renders "Not assessed" — fail-visible, never a hardcoded
+    # regulatory figure. Re-validated at this boundary (Sol review): callers
+    # other than load_regulatory_configs may inject the dict directly, and a
+    # zero/NaN minimum or a null zone entry must degrade to "Not assessed",
+    # not pass every lot or crash rendering.
+    _sd = _validate_sepp_sd_config({
+        "numeric_value": (sepp_standards or {}).get("sd_min_lot"),
+        "applicable_zones": (sepp_standards or {}).get("sd_zones"),
+    }) or {}
+    _SD_MIN_LOT = _sd.get("sd_min_lot")
+    _SD_ZONES = _sd.get("sd_zones")
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -668,6 +676,19 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "and by-laws govern permissible alterations."
             )
         })
+    elif _SD_MIN_LOT is None or not _SD_ZONES:
+        print("  [warn] calc_feasibility: SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
+        results.append({
+            "question": "Secondary dwelling (granny flat)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                "The SEPP Housing 2021 secondary-dwelling standards (minimum lot area and "
+                "eligible zones) were unavailable at report generation, so no eligibility "
+                "figure is stated. Obtain the current Chapter 3 standards from the SEPP "
+                "(Housing) 2021 or council before relying on secondary-dwelling potential."
+            )
+        })
     elif lot_area is not None:
         if zone in _SD_ZONES:
             if lot_area >= _SD_MIN_LOT:
@@ -676,7 +697,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     "answer": "Likely permissible",
                     "flag": "ok",
                     "basis": (
-                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT} m² minimum "
+                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53). Subject to DCP setback and height controls. "
                         f"Some councils have excluded dual occupancy CDC — confirm DA vs CDC pathway."
                     )
@@ -687,7 +708,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     "answer": "Unlikely — lot too small",
                     "flag": "warn",
                     "basis": (
-                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT} m² minimum "
+                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53(1)(b)). Confirm current SEPP standards."
                     )
                 })
@@ -707,9 +728,9 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             "answer": "Lot area unavailable",
             "flag": "warn",
             "basis": (
-                "Lot area data not available from NSW Valuation Service. "
-                "Secondary dwelling eligibility requires lot area ≥ 450 m² "
-                "(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
+                f"Lot area data not available from NSW Valuation Service. "
+                f"Secondary dwelling eligibility requires lot area ≥ {_SD_MIN_LOT:g} m² "
+                f"(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
             )
         })
 
@@ -774,7 +795,21 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "common property."
             )
         })
-    elif zone in _SD_ZONES:  # SEPP Housing 2021 CDC zones — same zone set as secondary dwelling
+    elif not _SD_ZONES:
+        # Config missing (#684): the zone-eligibility set comes from the same
+        # housing_sepp_standards row as the secondary-dwelling minimum — never
+        # from a hardcoded zone list. Fail visible.
+        results.append({
+            "question": "Complying Development Certificate (CDC)",
+            "answer": "Not assessed",
+            "flag": "warn",
+            "basis": (
+                "The SEPP Housing 2021 zone-eligibility standards were unavailable at "
+                "report generation, so the CDC pathway was not evaluated. Confirm CDC "
+                "availability with a certifier."
+            )
+        })
+    elif zone in _SD_ZONES:  # zone set from the secondary-dwelling standards row — a screen, not the Codes SEPP zone scope
         blockers = []
         if has_heritage:
             blockers.append("heritage listing")
@@ -790,7 +825,8 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": (
                     "No heritage listing, biodiversity mapping or flood planning area identified "
                     "in the layers checked (see Section 1 coverage notes). CDC availability is "
-                    "subject to SEPP (Housing) 2021 controls — confirm with a certifier."
+                    "subject to the applicable complying development provisions — confirm with "
+                    "a certifier."
                 )
             })
         else:
@@ -801,11 +837,19 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "basis": f"CDC eligibility affected by: {', '.join(blockers)}. Development will likely require a full DA."
             })
     else:
+        # This check screens against the zones in the SEPP (Housing) 2021
+        # secondary-dwelling standards row — it must not claim to define the
+        # CDC pathway's zone scope, which other instruments (Codes SEPP) govern.
         results.append({
             "question": "Complying Development Certificate (CDC)",
-            "answer": "Not applicable to this zone",
+            "answer": "Not assessed for this zone",
             "flag": "warn",
-            "basis": f"Zone {zone} — CDC pathway applies to residential zones R1–R4."
+            "basis": (
+                f"Zone {zone} is outside the residential zones in the SEPP (Housing) 2021 "
+                f"secondary-dwelling standards ({', '.join(sorted(_SD_ZONES))}), which is the "
+                f"zone set this check screens. Complying development pathways under other "
+                f"instruments were not assessed — confirm CDC availability with a certifier."
+            )
         })
 
     # 4. Development potential (suppress for strata — whole-lot area × FSR is meaningless for a unit)
@@ -5076,13 +5120,15 @@ def generate_pdf(
         ],
         [
             # source_ref: SEPP (Housing) 2021 s53 — non-discretionary development
-            # standards for secondary dwellings (450 m² site area).
+            # standards for secondary dwellings. The site-area figure is NOT
+            # stated here (#684): the feasibility row above renders it from the
+            # housing_sepp_standards table; this cell only cites the clause.
             "SEPP (Housing) 2021",
             "Residential zones — dual occ, secondary dwellings, complying dev",
-            "Enables secondary dwellings (450 m² non-discretionary site-area standard, s53), "
-            "dual occupancy, and low-rise medium density housing pathways in eligible zones. "
-            "Sets non-discretionary standards a consent authority cannot use as refusal grounds "
-            "when met.",
+            "Enables secondary dwellings, dual occupancy, and low-rise medium density "
+            "housing pathways in eligible zones. Sets non-discretionary standards, "
+            "including a site-area standard for secondary dwellings (s53), that a "
+            "consent authority cannot use as refusal grounds when met.",
         ],
         [
             # source_ref: SEPP (Transport and Infrastructure) 2021 s2.120
@@ -5709,6 +5755,8 @@ def main():
     _sepp_standards, _tax_config = load_regulatory_configs(os.getenv("DATABASE_URL"))
     if _tax_config is None:
         print("  [warn] land tax config unavailable — land tax section renders 'Not assessed'")
+    if _sepp_standards is None:
+        print("  [warn] SEPP Housing standards unavailable — secondary dwelling renders 'Not assessed'")
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays, is_strata=strata,
         sepp_standards=_sepp_standards, tax_config=_tax_config,

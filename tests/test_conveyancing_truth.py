@@ -255,6 +255,13 @@ class TestStaticClaimsGuard:
         "1_075_000",
         "1075000",
         "1,075,000",
+        # Secondary dwelling (#684): the SEPP fallback constants and any literal
+        # 450 m² / R1-R4 eligibility figure must never return to the generator —
+        # figures render only from injected housing_sepp_standards config.
+        "_SD_FALLBACK",
+        "450 m²",
+        "≥ 450",
+        '{"R1", "R2", "R3", "R4"}',
         # Corridors (Section 11): we state LRA map presence, authority and
         # instrument — never acquisition intent or likelihood.
         "will be acquired",
@@ -476,6 +483,110 @@ class TestLandTaxTruth:
         lt = [r for r in results if "land tax" in r["question"].lower()]
         assert len(lt) == 1
         assert lt[0]["answer"] == "Not assessed"
+
+
+# ---------------------------------------------------------------------------
+# 10. Secondary-dwelling truth (#684) — same rule as land tax: figures render
+#     only from injected housing_sepp_standards config, absence is fail-visible
+# ---------------------------------------------------------------------------
+
+def _sepp_standards_db() -> dict:
+    """Shape produced by conveyancing_db.load_regulatory_configs from the
+    housing_sepp_standards min_lot_size row (numeric_value cast to float)."""
+    return {"sd_min_lot": 450.0, "sd_zones": {"R1", "R2", "R3", "R4"}}
+
+
+def _sd_rows(results: list[dict]) -> list[dict]:
+    return [r for r in results if "secondary dwelling" in r["question"].lower()]
+
+
+class TestSecondaryDwellingTruth:
+    def _run(self, sepp_standards, zone="R2", lot_area=500, is_strata=False):
+        from generate_conveyancing_report import calc_feasibility
+        return _sd_rows(calc_feasibility(
+            {"zone": zone}, {"lot_area_m2": lot_area, "land_value": 900_000}, [],
+            is_strata=is_strata, sepp_standards=sepp_standards, tax_config=None,
+        ))
+
+    def test_config_present_renders_injected_figure(self):
+        """Mutation check: the rendered minimum comes from the config, not any
+        constant — inject a non-450 figure and it must appear."""
+        rows = self._run({"sd_min_lot": 600.0, "sd_zones": {"R2"}}, lot_area=650)
+        assert len(rows) == 1
+        assert rows[0]["answer"] == "Likely permissible"
+        assert "600 m²" in rows[0]["basis"]
+        assert "450" not in rows[0]["basis"]
+
+    def test_config_present_below_minimum_uses_injected_figure(self):
+        rows = self._run(_sepp_standards_db(), lot_area=300)
+        assert rows[0]["answer"] == "Unlikely — lot too small"
+        assert "450 m²" in rows[0]["basis"]           # from the injected config
+        assert "Cl 53(1)(b)" in rows[0]["basis"]
+
+    def test_config_absent_renders_not_assessed_no_figures(self):
+        """Mutation check: restoring any hardcoded fallback fails this — an
+        absent config must never produce an eligibility figure or zone claim."""
+        import re as _re
+        rows = self._run(None)
+        assert len(rows) == 1
+        assert rows[0]["answer"] == "Not assessed"
+        assert rows[0]["flag"] == "warn"
+        blob = rows[0]["answer"] + " " + rows[0]["basis"]
+        assert not _re.search(r"\d+\s*m²", blob)
+        assert "450" not in blob
+        assert "unavailable" in rows[0]["basis"]
+
+    def test_partial_config_fails_visible_not_partial_figures(self):
+        """A config missing either key renders 'Not assessed' — half-loaded
+        standards must not mix with any default."""
+        for partial in ({"sd_min_lot": 450.0}, {"sd_zones": {"R1", "R2"}}, {}):
+            rows = self._run(partial)
+            assert rows[0]["answer"] == "Not assessed", partial
+
+    def test_strata_branch_unaffected_by_absent_config(self):
+        rows = self._run(None, is_strata=True)
+        assert rows[0]["answer"] == "Not applicable — strata lot"
+
+    def test_corrupt_injected_config_fails_visible(self):
+        """Sol review of #816: calc_feasibility re-validates at its own
+        boundary — a zero/NaN minimum or a null zone entry from any caller
+        must render 'Not assessed', never pass every lot or crash sorted()."""
+        for corrupt in (
+            {"sd_min_lot": 0, "sd_zones": {"R2"}},
+            {"sd_min_lot": float("nan"), "sd_zones": {"R2"}},
+            {"sd_min_lot": 450.0, "sd_zones": {"R1", None}},
+        ):
+            rows = self._run(corrupt)
+            assert rows[0]["answer"] == "Not assessed", corrupt
+
+    def test_lot_area_unavailable_uses_injected_figure(self):
+        rows = self._run(_sepp_standards_db(), lot_area=None)
+        assert rows[0]["answer"] == "Lot area unavailable"
+        assert "450 m²" in rows[0]["basis"]           # interpolated, not literal
+
+    def test_db_loader_contains_no_fallback_constants(self):
+        """Source guard one level up (#684): conveyancing_db must not
+        reintroduce the 450 / R1-R4 defaults the loader used to carry."""
+        src = (_ROOT / "scripts" / "conveyancing_db.py").read_text(encoding="utf-8")
+        for phrase in ("else 450", 'else {"R1"', "fallback 450", "fallback 60"):
+            assert phrase not in src, f"SEPP fallback reintroduced in conveyancing_db.py: {phrase!r}"
+
+    def test_cdc_outside_zone_is_screen_boundary_not_pathway_scope(self):
+        """Sol review of #816: the zone set comes from the secondary-dwelling
+        standards row, so an out-of-zone CDC row must state what was screened,
+        never that the CDC pathway itself 'applies to' those zones — the general
+        pathway's zone scope is governed by other instruments."""
+        from generate_conveyancing_report import calc_feasibility
+        rows = [r for r in calc_feasibility(
+            {"zone": "B2"}, {"lot_area_m2": 500, "land_value": 900_000}, [],
+            is_strata=False,
+            sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}},
+            tax_config=None,
+        ) if "Complying Development" in r["question"]]
+        assert len(rows) == 1
+        assert rows[0]["answer"] == "Not assessed for this zone"
+        assert "applies to residential zones" not in rows[0]["basis"]
+        assert "were not assessed" in rows[0]["basis"]
 
 
 # ---------------------------------------------------------------------------

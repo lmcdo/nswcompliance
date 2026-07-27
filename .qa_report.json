@@ -1,169 +1,93 @@
 {
-  "tier": "standard",
-  "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "2abcca21",
-  "files": [
-    "scripts/ingest_sydney_water_gsp.py",
-    "migrations/058_sydney_water_gsp_servicing.sql",
-    "tests/test_sydney_water_gsp_ingest.py",
-    "services/gsp_servicing.py",
-    "scripts/generate_conveyancing_report.py",
-    "services/conveyancing.py",
-    "tests/test_conveyancing_servicing.py",
-    "services/intelligence_brief.py",
-    "frontend-nextjs/app/api/servicing/route.ts",
-    "frontend-nextjs/app/assessment/page.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
-    "frontend-nextjs/components/compliance/DcpRequestCta.tsx",
-    "frontend-nextjs/components/compliance/LepControls.tsx",
-    "frontend-nextjs/components/compliance/ServicingTile.tsx",
-    "frontend-nextjs/__tests__/components/compliance/DcpRequestCta.test.tsx",
-    "tests/test_intelligence_brief_schema.py"
-  ],
-  "pre_impl": {
-    "existing_data": "New standalone table sydney_water_gsp_servicing; reads no existing tables. spatial_overlays was inspected and rejected (no attributes column, bigint source_oid, instrument/LGA scope GSP polygons don't fit). Source = 3 public Sydney Water GeoJSON files (205 WW + 192 DW).",
-    "assumption_mismatch": "If the source schema drifts (field renamed/removed), transform() raises on missing SWC_Unique_Identifier and the dry-run integrity assertions (row count 397, valid status set, MULTIPOLYGON geometry, unique keys) fail loudly before any write. DSP price format change -> parse returns None (never a wrong number). Verified live: 0/397 invalid geometries.",
-    "new_vs_existing": "Insert-then-upsert on conflict (product, swc_id); an annual refresh updates in place. No existing rows in any other table are read or modified. Reversal is DROP TABLE sydney_water_gsp_servicing."
+ "tier": "standard",
+ "justification": "Removes the last hardcoded SEPP regulatory fallback (450 m2 / R1-R4) from the paid conveyancing PDF (#684, same defect class as the land-tax fallback removed in #681). Touches figure rendering in a legal document plus confidence rating, so above minor; no new data source, query, or external boundary, so below critical.",
+ "commit_hash": "87ba6504",
+ "files": [
+  ".claude/.pre-impl-done.json",
+  "scripts/conveyancing_db.py",
+  "scripts/generate_conveyancing_report.py",
+  "services/conveyancing.py",
+  "tests/test_conveyancing_truth.py",
+  "tests/test_regulatory_constants.py",
+  "tests/test_conveyancing_forensic.py"
+ ],
+ "pre_impl": {
+  "existing_data": "housing_sepp_standards (migration 045) exists in production and returns a min_lot_size row with numeric_value and applicable_zones for secondary_dwelling, which is why the fallback only ever fired on DB-unreachable, not on every report. The land-tax removal in #681 established the exact fail-visible pattern being reused: absent config renders 'Not assessed' and caps confidence.",
+  "assumption_mismatch": "Test runs exposed a second consumer of the zone set the issue did not mention: the CDC eligibility section (~line 789) shares _SD_ZONES and its else-branch carried a hardcoded 'R1-R4' zone claim. Both now render from injected config or 'Not assessed'. Two fallback-era tests (test_regulatory_constants, test_conveyancing_forensic) asserted the old behaviour and were updated to the new contract rather than deleted.",
+  "new_vs_existing": "No new capability: same feasibility rows, same config loader, same confidence function. The change deletes the _SD_FALLBACK_MIN_LOT / _SD_FALLBACK_ZONES constants and the loader's 450 / R1-R4 defaults, adds the two 'Not assessed' branches, and extends the existing static-claims guard and confidence caps that the land-tax removal introduced."
+ },
+ "functions": [
+  {
+   "name": "calc_feasibility",
+   "file_line": "scripts/generate_conveyancing_report.py:629",
+   "input": "controls dict, valuation dict, overlays list, is_strata flag, optional sepp_standards and tax_config dicts loaded from the DB",
+   "output": "list of feasibility row dicts with question, answer, flag, basis strings rendered into the PDF",
+   "if_none": "sepp_standards None or missing either key renders the secondary-dwelling and CDC rows 'Not assessed' with flag warn and no numeric figure, never a hardcoded 450 or R1-R4 claim"
   },
-  "functions": [
-    {
-      "name": "parse_dsp_price",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:71",
-      "input": "str | None - DSP price HTML blob from the GeoJSON property",
-      "output": "float | None -> dsp_price_per_et column",
-      "if_none": "None/empty/no-$ figure -> None (14+ rows legitimately carry no figure); $0 -> 0.0, never None"
-    },
-    {
-      "name": "derive_status",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:78",
-      "input": "stage str|None + special-comments str|None from source properties",
-      "output": "(status_code, constrained bool) -> status_code + constrained columns",
-      "if_none": "None stage -> UNKNOWN_STAGE; None special -> constrained False (narrow to the capacity phrase only)"
-    },
-    {
-      "name": "geom_to_multipolygon_wkt",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:105",
-      "input": "GeoJSON geometry dict, a Polygon feature from the source file",
-      "output": "MULTIPOLYGON WKT str -> ST_GeomFromText into geom(4326)",
-      "if_none": "empty/invalid-after-repair/non-polygon -> raises ValueError (fails the row loudly, never inserts junk geometry)"
-    },
-    {
-      "name": "clean",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:64",
-      "input": "str | None - raw source text",
-      "output": "str | None - HTML-stripped, trimmed",
-      "if_none": "None, empty string, or tags-only input all return None"
-    },
-    {
-      "name": "fetch_gsp_servicing",
-      "file_line": "services/gsp_servicing.py:61",
-      "input": "lat, lng floats + DATABASE_URL env - point-in-polygon over sydney_water_gsp_servicing",
-      "output": "three-state dict {found: {ww,dw} | empty | failed} consumed by the row builder",
-      "if_none": "DATABASE_URL unset or any DB error returns {status: failed}; never raises, so the whole PDF is not lost"
-    },
-    {
-      "name": "build_servicing_row",
-      "file_line": "scripts/generate_conveyancing_report.py:2379",
-      "input": "three-state servicing dict from get_servicing_live",
-      "output": "(text, style_key, source_label) tuple rendered as the Risk Summary servicing row",
-      "if_none": "None or failed status renders 'Not assessed' (note), never a clear/serviceable result"
-    },
-    {
-      "name": "get_servicing_live",
-      "file_line": "scripts/generate_conveyancing_report.py:2017",
-      "input": "lat, lng floats - wraps services.gsp_servicing.fetch_gsp_servicing",
-      "output": "pass-through three-state dict for the report + conveyancing API path",
-      "if_none": "any import/lookup error is caught and returns {status: failed} (fail closed)"
-    }
-  ],
-  "values": [
-    {
-      "value": "dsp_price_per_et",
-      "read_at": "scripts/ingest_sydney_water_gsp.py:138",
-      "nullable": "yes",
-      "guard_at": "scripts/ingest_sydney_water_gsp.py:64",
-      "if_missing": "NULL stored; reader shows 'DSP charge: see Sydney Water land-development page' rather than a fabricated figure"
-    },
-    {
-      "value": "special_comments",
-      "read_at": "scripts/ingest_sydney_water_gsp.py:132",
-      "nullable": "yes",
-      "guard_at": "scripts/ingest_sydney_water_gsp.py:132",
-      "if_missing": "NULL stored; DW file has no such key at all -> always NULL for DW (expected)"
-    }
-  ],
-  "queries": [
-    {
-      "purpose": "Upsert the GSP polygons then delete rows absent from the source (snapshot replace)",
-      "file_line": "scripts/ingest_sydney_water_gsp.py:229",
-      "where_clause": "ON CONFLICT (product, swc_id) DO UPDATE; then DELETE WHERE NOT EXISTS in source key set",
-      "if_zero": "N/A - insert path; after upsert+delete the count must equal the source row count or it rolls back",
-      "if_wrong": "Gate: final count must equal len(source rows), not a hard-coded number, so a refresh that adds/retires polygons stays consistent; mismatch rolls back the whole transaction"
-    }
-  ],
-  "break_it": [
-    {
-      "scenario": "A source row's DSP price shows '$0' and a naive parser treats 0 as falsy, storing NULL - the reader then hides a genuinely $0 (already-serviced) charge.",
-      "what_happens": "A user is told 'charge unavailable' when the real answer is $0 - understating serviceability readiness.",
-      "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:64 - parse_dsp_price returns float(0.0) for '$0', distinct from None. Covered by test_zero_is_valid_not_none and mutation 'price: $0 -> None' (KILLED).",
-      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestParseDspPrice::test_zero_is_valid_not_none"
-    },
-    {
-      "scenario": "The 'under investigation by DPHI' note (8 rows) is wrongly treated as a hard capacity constraint, flagging areas as constrained when they are only under study.",
-      "what_happens": "A developer is told a site is capacity-constrained when it is not - a false negative that could kill a viable deal.",
-      "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:71 - constrained matches only 'capacity and timescale constraints'; the DPHI note is preserved in special_comments but does not set the flag. Covered by test_dphi_note_is_not_constrained and mutation 'status: DPHI note wrongly flagged' (KILLED).",
-      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestDeriveStatus::test_dphi_note_is_not_constrained"
-    },
-    {
-      "scenario": "A self-intersecting source polygon is repaired with buffer(0), which discards one lobe of a multi-part footprint, so ST_Contains lookups silently miss the dropped area.",
-      "what_happens": "An address inside the discarded lobe returns NOT_IN_PRECINCT (wrong) instead of its real servicing status.",
-      "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:99 - geom_to_multipolygon_wkt uses make_valid (not buffer(0)) then keeps ALL polygonal parts via _polygonal_parts, so no lobe is lost; zero parts -> ValueError. Live check confirmed 0/397 invalid via ST_IsValid. Covered by test_invalid_bowtie_preserves_both_lobes.",
-      "repro": "pytest tests/test_sydney_water_gsp_ingest.py::TestGeomToMultipolygonWkt::test_invalid_bowtie_preserves_both_lobes"
-    },
-    {
-      "scenario": "A network drop mid-batch commits a partial upsert of the GSP polygons, or a GSP refresh retires a polygon and the stale row is left behind, so lookups return the wrong servicing status.",
-      "what_happens": "A developer checking a covered growth-area site is wrongly told it is outside any servicing precinct, or served an obsolete status - a silent wrong answer indistinguishable from the honest gap.",
-      "mitigated": true,
-      "how": "scripts/ingest_sydney_water_gsp.py:229 - upsert + delete-absent (snapshot replace) run inside one transaction (autocommit off); the final count must equal len(source rows) or the whole transaction rolls back, so the table always mirrors the source snapshot and is all-or-nothing.",
-      "repro": "Interrupt the --apply run mid-batch, then SELECT count(*) (unchanged, not partial); or inspect the delete-absent + count gate in apply()."
-    },
-    {
-      "scenario": "The Sydney Water servicing lookup fails, or the address is outside every GSP precinct, and the conveyancer PDF renders it as 'serviceable' / 'clear' - overstating that the site can be connected.",
-      "what_happens": "A conveyancer relies on a false servicing assurance in a paid document; the developer discovers the site is capacity-constrained or needs a Section 73 feasibility only after committing.",
-      "mitigated": true,
-      "how": "scripts/generate_conveyancing_report.py:2271 - build_servicing_row: failed/None/junk -> 'Not assessed' (note); empty -> 'Not within a growth-servicing precinct ... Section 73' (note), never 'clear'; found never says 'serviceable' and states 'trunk capacity does not make a site service-ready'. Golden-tested in test_conveyancing_servicing.py.",
-      "repro": "pytest tests/test_conveyancing_servicing.py::TestServicingNotAssessed and ::TestServicingEmpty::test_empty_points_to_section_73_not_clear"
-    },
-    {
-      "scenario": "The DSP base charge is rendered as the definitive current fee, but Sydney Water CPI-adjusts it, so the figure quoted in the PDF is wrong.",
-      "what_happens": "A developer budgets from an out-of-date per-dwelling charge in a paid report.",
-      "mitigated": true,
-      "how": "scripts/generate_conveyancing_report.py:2271 - the row states 'indicative base charges (exclude CPI) - confirm the current charge with Sydney Water' and attributes + links the GSP page. Golden-tested by test_found_shows_dsp_as_base_charge.",
-      "repro": "pytest tests/test_conveyancing_servicing.py::TestServicingFound::test_found_shows_dsp_as_base_charge"
-    },
-    {
-      "scenario": "On the Site Report or the /assessment workbench, the servicing lookup fails and the surface renders a stale or 'clear' servicing row instead of hiding it.",
-      "what_happens": "A user reads a servicing status that was never actually retrieved.",
-      "mitigated": true,
-      "how": "Site Report: services/intelligence_brief.py summarizes a failed lookup to None -> DataField NOT_AVAILABLE, and 'servicing' is in HIDE_WHEN_NULL_KEYS so the row is omitted. Workbench: components/compliance/ServicingTile.tsx renders null on status==='failed' or fetch error, and app/api/servicing/route.ts fails closed to {status:'failed'}.",
-      "repro": "Point ServicingTile at an unreachable /api/servicing (or a failed status) — the tile renders nothing; on the Site Report a null servicing DataField is hidden."
-    },
-    {
-      "scenario": "The missing-DCP CTA's capture request throws and blocks or breaks the report render.",
-      "what_happens": "A network hiccup on a lead capture takes down the whole assessment/report view.",
-      "mitigated": true,
-      "how": "components/compliance/DcpRequestCta.tsx wraps the fetch + posthog in try/catch and always resolves to the 'Noted' state; the CTA only renders when a council is known. Golden-tested in DcpRequestCta.test.tsx.",
-      "repro": "npx jest --testPathPattern=DcpRequestCta"
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No - additive new table, reversible by DROP TABLE sydney_water_gsp_servicing.",
-    "secrets": "No - DB creds read from existing .env PG* vars; no new secrets.",
-    "other_repo": "No.",
-    "manual_verify": "No - migration 058 already applied to the live DB and verified (397 rows, live point-in-polygon returns Leppington WW+DW, outside point empty, 0 invalid geometries)."
+  {
+   "name": "load_regulatory_configs",
+   "file_line": "scripts/conveyancing_db.py:652",
+   "input": "database URL string or None when DATABASE_URL is not set in the environment",
+   "output": "tuple of sepp_standards dict and tax_config dict, either element None when its rows are missing or unusable",
+   "if_none": "a missing, figure-less, or zone-less min_lot_size row now yields sepp_standards None with a logged warning instead of substituting 450 and the R1-R4 zone set"
+  },
+  {
+   "name": "_validate_sepp_sd_config",
+   "file_line": "scripts/conveyancing_db.py:619",
+   "input": "the min_lot_size row dict from housing_sepp_standards, or None when no row was found",
+   "output": "validated sepp_standards dict with finite positive sd_min_lot and non-empty string zone set",
+   "if_none": "a zero, negative, NaN, or non-numeric minimum, or any null or empty zone entry, returns None so a corrupt row fails closed to 'Not assessed' instead of passing every lot or crashing sorted() mid-render (Sol review finding)"
+  },
+  {
+   "name": "_compute_confidence",
+   "file_line": "services/conveyancing.py:939",
+   "input": "controls, overlays, valuation plus flags including new sepp_config_missing boolean from the API runner",
+   "output": "confidence rating string high, medium, or low printed on the report cover",
+   "if_none": "sepp_config_missing True caps the rating at medium so a report with an unassessed secondary-dwelling row cannot claim high confidence"
   }
+ ],
+ "values": [
+  {
+   "value": "min_lot_size row numeric_value and applicable_zones from housing_sepp_standards for secondary_dwelling",
+   "read_at": "scripts/conveyancing_db.py load_regulatory_configs, guarded for presence of both fields before building the config dict",
+   "if_missing": "sepp_standards stays None, warning logged, downstream rows render 'Not assessed', confidence capped at medium"
+  }
+ ],
+ "queries": "N/A - no query text changed; fetch_sepp_housing_standards call and its development_type filter are untouched, only the handling of an empty or incomplete result set changed.",
+ "break_it": [
+  {
+   "scenario": "DB unreachable at generation time, which previously made the report silently render the hardcoded 450 m2 / R1-R4 eligibility as if it were current law.",
+   "what_happens": "Report used to state a regulatory figure nobody had verified; a stale SEPP amendment would render wrong eligibility in a paid legal document.",
+   "mitigated": true,
+   "how": "Constants deleted; the row renders 'Not assessed' with a basis directing the reader to the SEPP, main() prints a warning, and confidence caps at medium. test_config_absent_renders_not_assessed_no_figures asserts no digit-m2 pattern appears.",
+   "repro": "Run generate_conveyancing_report.py with DATABASE_URL unset and read the secondary-dwelling row."
+  },
+  {
+   "scenario": "A half-loaded config, for example a min_lot_size row whose applicable_zones column is NULL, mixes a real figure with a defaulted zone set.",
+   "what_happens": "Eligibility verdict would combine one authoritative value with one invented value, indistinguishable from a fully sourced verdict.",
+   "mitigated": true,
+   "how": "Loader requires both numeric_value and applicable_zones before building the dict, else None; calc_feasibility independently treats a dict missing either key as absent. test_partial_config_fails_visible_not_partial_figures covers dict-level halves; the loader guard covers row-level halves.",
+   "repro": "Call calc_feasibility with sepp_standards={'sd_min_lot': 450.0} and observe 'Not assessed'."
+  },
+  {
+   "scenario": "Someone reintroduces the fallback later, for example during a refactor that 'restores' the deleted constants for convenience.",
+   "what_happens": "The silent-hardcoded-figure defect returns without any test noticing, since ordinary golden tests inject config and would still pass.",
+   "mitigated": true,
+   "how": "TestStaticClaimsGuard bans _SD_FALLBACK, literal '450 m2' text, and the R1-R4 set literal from generator source; test_db_loader_contains_no_fallback_constants does the same for conveyancing_db.py; the mutation-style test injects a 600 m2 figure and asserts 450 never renders.",
+   "repro": "Re-add _SD_FALLBACK_MIN_LOT = 450 to the generator and run tests/test_conveyancing_truth.py."
+  },
+  {
+   "scenario": "The CDC section, which shares the zone set, keeps its own hardcoded 'R1-R4' claim after the secondary-dwelling row is fixed.",
+   "what_happens": "The same defect survives one section lower: a zone-eligibility claim renders with no data source behind it.",
+   "mitigated": true,
+   "how": "CDC section now renders 'Not assessed' when the zone set is absent and interpolates the injected zone list into the not-applicable branch instead of the literal R1-R4 string.",
+   "repro": "Call calc_feasibility with sepp_standards=None for a B2 zone property and read the CDC row."
+  }
+ ],
+ "post_merge": {
+  "db_reset": "Not required - no schema or data changes; reads the existing housing_sepp_standards table exactly as before.",
+  "secrets": "No secrets involved - DATABASE_URL usage unchanged.",
+  "other_repo": "None. Follow-up filed for services/granny_flat.py which still carries _SEPP_FALLBACK_MIN_LOT_M2 = 450.0, the same defect class in the satellite product, kept out of this diff for reviewability.",
+  "manual_verify": "Yes - generate a report with DATABASE_URL unset: secondary-dwelling and CDC rows read 'Not assessed', cover confidence is at most medium, and no 450 m2 figure appears anywhere in the feasibility section."
+ }
 }
