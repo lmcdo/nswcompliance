@@ -1,96 +1,30 @@
 {
- "tier": "standard",
- "justification": "PR-1 of the CDC screen consolidation (#820, plan ce-cdc-screen-consolidation-2026-07): new dark backend engine (services/cdc_screen.py) + additive migration 058 for cdc_eligibility_standards. Nothing is wired to any surface yet — the conveyancing PDF and workbench route are untouched — but the engine renders regulatory verdicts once wired, and the loader/validation contract must be right now, so standard tier not minor. Hardened per Sol review of the PR: lifecycle (is_active + one-active partial unique index), conditional min-lot evaluation, proposal-scoped dual-occ prohibition, flood/bushfire/HCA demoted to 'likely' (broad overlay booleans are not instrument exclusions), strict acid-sulfate validation, NaN input coercion.",
- "commit_hash": "0f15284c",
+ "tier": "minor",
+ "justification": "Plain-language report states in the conveyancing tool UI. The 'nearby DA could not be checked' panel now states explicitly that it is NOT the same as 'none nearby' (the check did not run, so no count is shown either way), and the error surface shows the backend's plain reason (422 unresolvable address vs 503 temporary outage) with guards for null / non-string error payloads. Copy-and-messaging only; no planning logic, data, or API path changes. (The accompanying blog post was moved to the info-site repo, so this PR is UI-only.)",
+ "commit_hash": "41f35986",
  "files": [
-  ".claude/.pre-impl-done.json",
-  "migrations/058_cdc_eligibility_standards.sql",
-  "services/cdc_screen.py",
-  "tests/test_cdc_screen.py"
+  "frontend-nextjs/components/tools/ConveyancingTool.tsx"
  ],
- "pre_impl": {
-  "existing_data": "Prior-art sweep (after two earlier misses this session, both user-corrected): the Codes SEPP 2008 is fully ingested (~70 documents, 5,213 regulatory_provisions rows — id 22630 cl 1.19 land exemptions, id 36185 significantly-contaminated-land exclusion, id 14240 cl 6.4(1)(d)(ii) conditional 200 m2 minimum); the workbench already runs a 10-check TS screen at /api/cdc/preliminary-check with hardcoded zone lists/thresholds; development_pathways holds a 1-row prototype of criteria-with-provenance. This engine replaces the TS hardcodes' role, sourced from a new provenance-cited table.",
-  "assumption_mismatch": "Two values the TS route hardcodes did not survive grounding: the flat '200 m2 minimum' is actually conditional in the instrument (cl 6.4(1)(d)(ii): applies only if no minimum is specified), so the standards table carries a conditionality column and the exclusion reason quotes it; the FSR<0.3 warning had no instrument grounding at all and is dropped from the engine. Mine subsidence turned out not to be a Codes SEPP exclusion (no hit in the instrument text) — modelled as a warning about the separate Subsidence Advisory NSW approval, never an exclusion.",
-  "new_vs_existing": "New table (additive migration, schema only — no seed rows, no existing table touched) and new service module. No surface behaviour changes in this PR: the engine is dark until standards rows are seeded, founder-verified (manual_verified flag), and PR-2 wires the PDF row and swaps the route internals. Verdict semantics copied from the existing route: never 'yes', only 'no' with cited exclusions or 'maybe' with certifier disclaimer."
- },
- "functions": [
-  {
-   "name": "load_cdc_standards",
-   "file_line": "services/cdc_screen.py:138",
-   "input": "psycopg2 connection and code_name, reading only manual_verified rows from cdc_eligibility_standards",
-   "output": "standards dict with eligible zone set, minimum lot size, conditionality text, optional acid sulfate class, and per-standard clause refs",
-   "if_none": "missing connection, missing table, missing required rows, unverified-only rows, query failure, or invalid values all return None with a logged warning — callers render 'Not assessed', never a default figure"
-  },
-  {
-   "name": "run_cdc_screen",
-   "file_line": "services/cdc_screen.py:213",
-   "input": "validated standards dict plus CdcScreenInputs of three-state property facts where None means the fact could not be determined",
-   "output": "CdcScreenResult with eligible 'no' or 'maybe' (never 'yes'), cited exclusions, warnings, checks performed, and unchecked list",
-   "if_none": "garbage standards raise ValueError so callers must fail closed before calling; every None input lands in the unchecked list and a 'Not screened' warning instead of silently passing"
-  },
-  {
-   "name": "_validate_standards",
-   "file_line": "services/cdc_screen.py:110",
-   "input": "candidate standards dict from the loader or from a direct caller",
-   "output": "normalised dict with finite positive minimum and non-empty string zone set, or None",
-   "if_none": "zero, negative, NaN, or non-numeric minimums and null or empty zone entries return None — shared by loader and engine so direct injection cannot bypass validation (Sol #816 lesson)"
-  }
- ],
- "values": [
-  {
-   "value": "eligible_zones, min_lot_size (+conditionality), acid_sulfate_max_class rows from cdc_eligibility_standards where manual_verified",
-   "read_at": "services/cdc_screen.py load_cdc_standards, validated by _validate_standards before use",
-   "if_missing": "loader returns None; no screen runs; the consuming surface renders 'Not assessed' — enforced by tests test_missing_required_rows_returns_none and test_corrupt_values_return_none"
-  }
- ],
- "queries": [
-  {
-   "purpose": "load verified CDC standards for one complying-development code",
-   "file_line": "services/cdc_screen.py:142",
-   "where_clause": "WHERE code_name = %s AND manual_verified = TRUE AND is_active = TRUE — unverified or retired rows invisible; duplicate active rows fail closed in the loader"
-  }
- ],
+ "values": "N/A - no DB or API values read; UI copy and error mapping only.",
+ "queries": "N/A - no database access.",
  "break_it": [
   {
-   "scenario": "Seed rows land in the table but the founder has not reviewed them, and the engine starts screening against unreviewed regulatory values.",
-   "what_happens": "Unverified extraction errors would drive definite 'no' verdicts in a paid report.",
+   "scenario": "A user reads the 'nearby development-application check could not be completed' panel and reads the absence of a number as confirmation there are no development applications nearby.",
+   "what_happens": "They would treat 'we could not look' as 'there is nothing there' and skip a check they should make with the council.",
    "mitigated": true,
-   "how": "The loader's WHERE clause reads manual_verified = TRUE only; test_query_filters_to_verified_rows pins the clause text so removing the filter fails the suite.",
-   "repro": "Insert a row with manual_verified=false and call load_cdc_standards — it returns None (no other verified rows exist)."
+   "how": "The panel states explicitly that this is NOT 'none nearby', that the check did not run so no count is shown either way, and suggests trying again or another address. The merged three-state backend never sends a real 0 as a failure."
   },
   {
-   "scenario": "A corrupt standards row (zero minimum, null zone entry) loads and every lot passes the minimum or rendering crashes.",
-   "what_happens": "Same defect class as the Sol #816 findings: silent universal pass or mid-report TypeError.",
+   "scenario": "The API returns a non-2xx body that is null, or has a non-string error/detail (for example a FastAPI request-validation error where detail is an array of objects).",
+   "what_happens": "Reading json.detail on null would throw, and coercing an object would show the user '[object Object]' instead of a usable message.",
    "mitigated": true,
-   "how": "_validate_standards rejects non-finite/non-positive minimums and non-string zones at BOTH the loader and the engine boundary; run_cdc_screen raises on garbage rather than screening. Tests cover 0/NaN/inf/negative minimums and null/empty zone entries at both layers.",
-   "repro": "run_cdc_screen({'min_lot_size': 0, 'eligible_zones': {'R2'}}, inputs) raises ValueError."
-  },
-  {
-   "scenario": "A caller cannot fetch some property fact (zone unknown, layer query failed) and the screen silently treats it as passing.",
-   "what_happens": "A 'maybe' verdict that looks fully screened when constraints were never checked.",
-   "mitigated": true,
-   "how": "Every input is three-state; None lands in result.unchecked plus a 'Not screened (data unavailable)' warning naming each constraint. test_unknown_inputs_surface_as_unchecked_not_silent_pass pins it.",
-   "repro": "run_cdc_screen(standards, CdcScreenInputs()) — all facts None — returns maybe with all constraints listed as unchecked."
-  },
-  {
-   "scenario": "Someone re-adds the TS route's hardcoded zone list or thresholds to the engine during PR-2 porting.",
-   "what_happens": "The hardcoded-regulatory-data defect this whole consolidation exists to remove returns in the new home.",
-   "mitigated": true,
-   "how": "test_engine_source_contains_no_regulatory_constants greps the module source for the zone-list literals, 200m/8.5/0.3 figures, and CDC_ELIGIBLE_ZONES; any reappearance fails the suite.",
-   "repro": "Add CDC_ELIGIBLE_ZONES = ['R1', 'R2'] to cdc_screen.py and run tests/test_cdc_screen.py."
-  },
-  {
-   "scenario": "A nearby EPA register site gets rendered as a CDC exclusion for the subject lot.",
-   "what_happens": "Overstated legal claim about a neighbour's contamination — the #807 wording rule (proximity, never subject-lot contamination) violated in a new surface.",
-   "mitigated": true,
-   "how": "Severity mapping is structural: only contaminated_lot_on_register produces an exclusion; contamination_within_500m produces a warning that explicitly says it does not exclude the lot. test_contamination_nearby_is_warning_only pins it.",
-   "repro": "run_cdc_screen(standards, inputs with contamination_within_500m=True) — verdict stays maybe."
+   "how": "The handler guards the payload (only treats it as an object when it is one) and only uses error/detail when they are non-empty strings, else falls back to a generic 'Analysis failed'. FastAPI HTTPException detail (the 422/503 reasons) is a string and surfaces correctly."
   }
  ],
  "post_merge": {
-  "db_reset": "Migration 058 must be applied (additive CREATE TABLE only; touches no existing table, no backup content exists to lose). Until applied AND seeded AND rows verified, the engine loader returns None everywhere — nothing renders differently.",
-  "secrets": "No secrets involved — engine takes an injected connection.",
-  "other_repo": "None. PR-2 (wire PDF row + swap /api/cdc/preliminary-check internals, delete its TS hardcodes) and the founder-reviewed seeding step are tracked in issue #820 / plan ce-cdc-screen-consolidation-2026-07.",
-  "manual_verify": "Yes - after seeding+verification: a property in a mapped exclusion area returns 'no' citing the layer; an all-clear property returns 'maybe' (never 'yes'); a property with unknown zone lists zone under 'Not screened'."
+  "db_reset": "None - no database or schema changes.",
+  "secrets": "None - no secrets added, removed, or rotated.",
+  "other_repo": "The companion blog post moves to the info-site repo (lmcdo/website), where the product/methodology blog lives; tracked separately.",
+  "manual_verify": "On a preview deploy, run the conveyancing tool for an address whose DA check cannot complete and confirm the panel explains it is not 'none nearby'; trigger a resolve failure and confirm the plain 422/503 reason shows."
  }
 }
