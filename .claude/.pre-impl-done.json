@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-26T12:10:00+10:00",
-  "target": "#684 continued: CDC section shares _SD_ZONES — extend fail-visible handling there",
-  "findings_summary": "Test run exposed a second consumer of the zone set (CDC eligibility, generator ~line 792) plus a hardcoded 'R1-R4' zone claim in its else-branch; both now render from injected housing_sepp_standards config or 'Not assessed'. No new queries."
+  "timestamp": "2026-07-27T09:30:00+10:00",
+  "target": "Sol hardening of PR #824: migration 058 lifecycle (is_active + one-active partial unique index) + cdc_screen.py loader/engine fixes",
+  "findings_summary": "New table only (unapplied migration; additive), no joins/loops/timeout risk; the change itself is the numeric-validation hardening: acid-sulfate rows must be integral 1-5 or load fails closed, NaN lot areas surface as unchecked, duplicate active rows impossible by partial unique index + loader fail-closed guard"
 }
