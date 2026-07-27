@@ -60,16 +60,30 @@ async function buildScreenInputs(address: string) {
   const propertyData = await PropertyDataService.getPropertyComplianceData(address);
   const { constraints, heritage, environmental, propertyArea, lotDimensions } = propertyData;
 
-  // Lot area: prefer cadastre-calculated, fall back to property area string
+  // Lot area: prefer cadastre-calculated, fall back to property area string.
+  // The fallback must respect the unit — "0.1 ha" is 1,000 m², not 0.1 m²,
+  // and an unknown unit reads as unknown, never as square metres.
   let lotArea: number | null = null;
   if (lotDimensions?.area) {
     lotArea = lotDimensions.area;
   } else if (propertyArea) {
-    const areaMatch = propertyArea.match(/[\d,]+\.?\d*/);
-    if (areaMatch) lotArea = parseFloat(areaMatch[0].replace(',', ''));
+    const areaMatch = propertyArea.match(/([\d,]+\.?\d*)\s*(ha|hectare|hectares|m2|m²|sqm|square met\w*)?/i);
+    if (areaMatch && areaMatch[1]) {
+      const value = parseFloat(areaMatch[1].replace(/,/g, ''));
+      const unit = (areaMatch[2] || '').toLowerCase();
+      if (unit.startsWith('ha')) {
+        lotArea = value * 10_000;
+      } else if (unit) {
+        lotArea = value;                 // an explicit m² variant
+      } else {
+        lotArea = null;                  // no unit — cannot assume m²
+      }
+    }
   }
 
-  // Heritage: item vs conservation area are independent facts for the engine
+  // Heritage: item vs conservation area are INDEPENDENT facts for the engine —
+  // "Heritage item within a conservation area" must set both, never one at
+  // the other's expense.
   let heritageItem: boolean | null = null;
   let heritageHca: boolean | null = null;
   if (heritage?.isHeritage === false) {
@@ -78,9 +92,9 @@ async function buildScreenInputs(address: string) {
   } else if (heritage?.isHeritage === true) {
     const type = (heritage.heritageType || '').toLowerCase();
     heritageHca = type.includes('conservation area');
-    // Unclassifiable heritage reads as an item (the stricter fact), matching
-    // the previous behaviour for bare "Heritage listed" results.
-    heritageItem = !heritageHca;
+    // An explicit item marker, or unclassifiable heritage (the stricter
+    // reading, matching previous behaviour for bare "Heritage listed").
+    heritageItem = type.includes('item') || !heritageHca;
   }
 
   // Acid sulfate: parse the class number; the engine validates range

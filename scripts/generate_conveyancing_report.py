@@ -837,19 +837,27 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
         _labels = lambda excs: ", ".join(dict.fromkeys(  # noqa: E731
             _CDC_CONSTRAINT_LABELS.get(e.constraint, e.constraint.replace("_", " "))
             for e in excs))
+        # Scope honesty (Sol review of #829): the standards screened are the
+        # Housing Code's — a negative here must not rule out other complying-
+        # development codes the screen never assessed.
+        _scope_note = (
+            " This screen assesses the Housing Code standards; other complying "
+            "development pathways were not assessed — a certifier can determine "
+            "the available approval pathway."
+        )
         if cdc_result.eligible == "no":
             results.append({
                 "question": "Complying Development Certificate (CDC)",
-                "answer": f"Excluded — {_labels(_definite)}",
+                "answer": f"Excluded (Housing Code) — {_labels(_definite)}",
                 "flag": "alert",
-                "basis": " ".join(_notes) + " Development will likely require a full DA."
+                "basis": " ".join(_notes) + _scope_note
             })
         elif _likely:
             results.append({
                 "question": "Complying Development Certificate (CDC)",
                 "answer": f"Restricted — {_labels(_likely)}",
                 "flag": "warn",
-                "basis": " ".join(_notes) + " A certifier must assess whether the CDC pathway remains available."
+                "basis": " ".join(_notes) + _scope_note
             })
         else:
             results.append({

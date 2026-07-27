@@ -623,9 +623,12 @@ class TestCdcRowFromEngine:
             "constraint": "zone", "severity": "definite",
             "source": "SEPP (Exempt and Complying Development Codes) 2008, cl 3.1(3)(a)",
         }]))
-        assert rows[0]["answer"] == "Excluded — zone"
+        assert rows[0]["answer"] == "Excluded (Housing Code) — zone"
         assert rows[0]["flag"] == "alert"
         assert "cl 3.1(3)(a)" in rows[0]["basis"]
+        # Scope honesty: a Housing Code negative never rules out other codes
+        assert "other complying development pathways were not assessed" in rows[0]["basis"].lower()
+        assert "full DA" not in rows[0]["basis"]
 
     def test_likely_exclusion_renders_restricted_not_excluded(self):
         rows = self._run(self._result(exclusions=[{
