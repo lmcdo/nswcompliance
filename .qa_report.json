@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "DCP extraction fidelity gates (regulatory-currency plan W2): the 2026-07 review backlog reached human review with 105/307 rows garbled and fidelity_status NULL everywhere. Adds a doubled-glyph header strip + per-row fidelity verdict at queue-insert, scopes rejected-row commit blocking to the current content hash (a rejected row previously wedged its chapter forever), and fixes the watchdog runbook to distinguish awaiting-review from awaiting-extraction.",
- "commit_hash": "pending",
+ "commit_hash": "751efa79",
  "files": [
   ".claude/.pre-impl-done.json",
   "scripts/dcp_extract_changed.py",
@@ -73,10 +73,10 @@
    "repro": "strip_garbled_header_lines on the Lloyd Street sentence returns it unchanged."
   },
   {
-   "scenario": "A reviewer rejects a bad extraction and the chapter never commits again even after a clean re-extraction.",
+   "scenario": "find_committable_chapters treats a rejected row as blocking forever: a reviewer rejects a bad extraction and the chapter never commits again even after a clean re-extraction.",
    "what_happens": "Permanent silent wedge - the chapter serves stale data forever while the dashboard shows daily successful commit runs.",
    "mitigated": true,
-   "how": "Blocking is hash-scoped: rejected rows for superseded extractions stop blocking and stay as audit history. Source-pinned by test (both filter instances carry the hash condition).",
+   "how": "The committable query's blocking filter is hash-scoped: rejected rows count only where q.source_content_hash = r.content_hash, so rejected rows for superseded extractions stop blocking and stay as audit history. Source-pinned by test (both filter instances carry the hash condition).",
    "repro": "Reject a row, re-extract the chapter under a new content_hash, approve the fresh rows - the chapter commits."
   },
   {
