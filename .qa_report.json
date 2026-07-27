@@ -1,109 +1,35 @@
 {
- "tier": "standard",
- "justification": "PR-2 of #820: wires the conveyancing CDC row (all three calc_feasibility call sites) and the workbench /api/cdc/preliminary-check route onto the backend CDC screen engine, deleting the route's hardcoded zone lists and thresholds. The paid PDF's CDC verdict now comes from founder-verified, clause-cited standards; every unavailable fact renders fail-visible.",
- "commit_hash": "30b5ae9a",
+ "tier": "minor",
+ "justification": "Guardrail-only change: prior-art four-sweep rule in CLAUDE.md plus a PreToolUse hook gating Artifact publishes on a fresh sweeps marker. No product code, no DB access, no served output touched.",
+ "commit_hash": "pending",
  "files": [
-  ".claude/.pre-impl-done.json",
-  "services/cdc_screen.py",
-  "services/cdc_screen_api.py",
-  "services/compliance_api_server.py",
-  "services/conveyancing.py",
-  "scripts/generate_conveyancing_report.py",
-  "frontend-nextjs/app/api/cdc/preliminary-check/route.ts",
-  "tests/test_cdc_screen.py",
-  "tests/test_conveyancing_truth.py"
+  "CLAUDE.md",
+  ".claude/settings.json",
+  ".claude/hooks/surface-prior-art-guard.py"
  ],
- "pre_impl": {
-  "existing_data": "Explore-agent mapped all call sites before coding: three calc_feasibility call sites (script main(), run_conveyancing, generate_conveyancing_pdf) each have zone, lot, portal heritage lists, overlays and covered_layers in scope; the TS route's PropertyDataService supplies richer facts (exclusion layer 92, dual-occ layer 452, acid class). Standards are live and founder-verified (migration 059, rows 1-3 flipped).",
-  "assumption_mismatch": "Contamination, subsidence and bushfire-live are fetched AFTER the feasibility call (or only in the PDF path), so those engine inputs are omitted in the report paths and surface in the result's unchecked list rather than pretending to be screened. The old 'Potentially eligible' wording is retired: the clear-screen row now states what was screened and defers the verdict to a certifier, never claiming eligibility.",
-  "new_vs_existing": "Engine, standards and tests existed (PR #824/#827); this PR adds consumption only: a thin /pipeline/cdc/screen endpoint (granny-flat 503 pattern), a fail-closed report wrapper (run_cdc_screen_for_report), the CDC row rendering from CdcScreenResult, and the TS route as pure data plumbing. The SD-zone screen is deleted from the CDC row for good, pinned by test_cdc_never_screens_from_sd_zone_set."
- },
- "functions": [
-  {
-   "name": "run_cdc_screen_for_report",
-   "file_line": "services/cdc_screen.py:484",
-   "input": "db url plus report-shaped facts: zone string, lot area, portal heritage lists, unique overlays, covered layers",
-   "output": "CdcScreenResult or None; wraps standards load, input building and the screen in one fail-closed call",
-   "if_none": "any failure (no url, unverified standards, engine crash) returns None with a logged warning and the CDC row renders 'Not assessed' - a crashed screen can never abort a paid report"
-  },
-  {
-   "name": "build_cdc_inputs",
-   "file_line": "services/cdc_screen.py:436",
-   "input": "zone description, lot area, heritage item and HCA lists, overlays list, covered-layers set",
-   "output": "CdcScreenInputs model populated with three-state property facts",
-   "if_none": "an overlay absent from the list reads False only when its layer is in covered_layers, else None (unchecked); heritage None lists stay unknown; unparseable acid-sulfate values stay None"
-  },
-  {
-   "name": "load_cdc_standards_from_url",
-   "file_line": "services/cdc_screen.py:410",
-   "input": "database url string or None",
-   "output": "verified standards dict via load_cdc_standards, connection opened and closed locally",
-   "if_none": "missing url or connection failure returns None with a warning - same fail-closed contract as the conn-based loader"
-  },
-  {
-   "name": "cdc_screen",
-   "file_line": "services/cdc_screen_api.py:44",
-   "input": "POST /pipeline/cdc/screen with CdcScreenInputs JSON from the Next.js route",
-   "output": "CdcScreenResult JSON for the route; the verdict is never yes",
-   "if_none": "standards unavailable raises HTTPException 503 (granny-flat #819 pattern); the TS route catches any non-OK and renders 'maybe' with a visible could-not-run warning"
-  },
-  {
-   "name": "calc_feasibility",
-   "file_line": "scripts/generate_conveyancing_report.py:643",
-   "input": "existing args plus cdc_result, the engine verdict run by the caller",
-   "output": "feasibility rows; the CDC row renders Excluded, Restricted, or no-exclusions-identified from the verdict, with clause citations in the basis",
-   "if_none": "cdc_result None renders 'Not assessed' - the row never screens against the secondary-dwelling zone set again, and never claims eligibility in any branch"
-  }
- ],
- "values": [
-  {
-   "value": "verified cdc_eligibility_standards rows (zones R1-R4+RU5, 200 m2 minimum, acid-sulfate class 2)",
-   "read_at": "load_cdc_standards via the report wrapper and the /pipeline/cdc/screen endpoint; validated at both boundaries",
-   "if_missing": "wrapper returns None so the PDF row reads 'Not assessed'; endpoint 503 so the route renders 'maybe' with a could-not-run warning; nothing renders a figure"
-  }
- ],
- "queries": "N/A - no query text added or changed; both consumers reach the standards through the already-tested load_cdc_standards SELECT (manual_verified AND is_active).",
+ "functions": "N/A - one small hook script; no product functions changed.",
+ "values": "N/A - no DB or API values involved.",
+ "queries": "N/A - no database access.",
  "break_it": [
   {
-   "scenario": "The Python backend is down when the workbench route runs, and the route silently renders a clear screen.",
-   "what_happens": "A 'maybe' verdict that looks fully screened when no screening happened at all.",
+   "scenario": "The hook blocks legitimate Artifact listing calls, breaking artifact discovery.",
+   "what_happens": "Sessions could not enumerate existing artifacts at all.",
    "mitigated": true,
-   "how": "The route's catch returns 'maybe' with explicit warnings ('CDC screen could not run', 'Manual verification required'), empty checksPerformed, and a screening-unavailable disclaimer - visibly degraded, nothing asserted.",
-   "repro": "Stop the FastAPI server and call /api/cdc/preliminary-check?address=..."
+   "how": "action list passes through unconditionally; smoke-tested (exit 0 for list, exit 2 for publish without marker).",
+   "repro": "echo a list-action payload into the hook and observe exit 0."
   },
   {
-   "scenario": "A report path lacks a fact the engine checks (bushfire layer not covered, contamination never fetched pre-feasibility) and the row reads as fully screened.",
-   "what_happens": "The paid PDF would imply constraints were checked that never were.",
+   "scenario": "A malformed or stale marker silently allows publishes, defeating the gate.",
+   "what_happens": "The guard would be decorative, like the memory rule it replaces.",
    "mitigated": true,
-   "how": "build_cdc_inputs maps uncovered layers and unfetched facts to None; the engine lists every None in unchecked and appends the 'Not screened (data unavailable)' warning, which the row's basis renders. Pinned by test_overlay_absent_is_false_only_when_layer_covered and test_clear_screen_never_claims_eligibility.",
-   "repro": "Run calc_feasibility with a cdc_result built from empty covered_layers and read the CDC row basis."
-  },
-  {
-   "scenario": "The engine or standards load crashes mid-report (schema drift, connection pool exhaustion).",
-   "what_happens": "A paid PDF generation would abort at the feasibility step.",
-   "mitigated": true,
-   "how": "run_cdc_screen_for_report catches everything and returns None; the row renders 'Not assessed'. test_engine_crash_degrades_to_none pins it.",
-   "repro": "Monkeypatch run_cdc_screen to raise and call run_cdc_screen_for_report."
-  },
-  {
-   "scenario": "Someone re-adds a zone list or threshold to the TS route during a later edit.",
-   "what_happens": "The hardcoded-regulatory-data defect returns to the surface this PR cleaned.",
-   "mitigated": true,
-   "how": "The engine-side source guard still bans the constants from cdc_screen.py; the route now contains no regulatory branch to anchor them to, and its header documents the two grounding errors the old hardcodes carried. Residual risk accepted for the TS side (no jest infrastructure for this route).",
-   "repro": "grep CDC_ELIGIBLE_ZONES frontend-nextjs/app/api/cdc/ - no matches."
-  },
-  {
-   "scenario": "The old 'Potentially eligible' ok-row wording survives somewhere and claims eligibility from a partial screen.",
-   "what_happens": "An eligibility claim in a legal document from a screen that cannot establish eligibility.",
-   "mitigated": true,
-   "how": "The ok branch renders 'No exclusions identified in screened constraints' and the basis names what was screened plus the certifier deferral; test_clear_screen_never_claims_eligibility asserts 'eligible' never appears in the answer.",
-   "repro": "Run the clear-screen truth test."
+   "how": "Unreadable markers, markers older than 4h, and markers lacking two sweeps plus a verdict all block with the reason named in stderr.",
+   "repro": "Write an empty marker file and attempt a publish payload - exit 2 with marker must list sweeps."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data changes; reads the standards seeded and verified via migrations 058/059.",
-  "secrets": "No secrets involved - PYTHON_API_URL and DATABASE_URL usage follow existing patterns.",
-  "other_repo": "None. Railway redeploy picks up the new /pipeline/cdc/screen endpoint; Vercel picks up the route swap. Issue #820 closes with this PR; Codes SEPP currency monitoring noted in the plan as the residual follow-up.",
-  "manual_verify": "Yes - on preview: run a workbench CDC check for an R2 address (verdict maybe with checks listed), an E2 address (no, zone exclusion citing cl 3.1(3)(a)), and generate a conveyancing report to see the CDC row cite the same standards; unset PYTHON_API_URL to see the visible could-not-run degradation."
+  "db_reset": "Not required - no database involvement.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Candidate for later porting to the claude-railguards public repo.",
+  "manual_verify": "Yes - next session: an Artifact publish without the marker is blocked with the sweep instructions; writing the marker then publishing succeeds."
  }
 }
