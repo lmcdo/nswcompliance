@@ -23,8 +23,8 @@ Confidence logic:
   "low"    — SAMGEO_VALIDATED = False (pre-spike)
 
 SEPP Housing 2021 rules applied (sourced from housing_sepp_standards table):
-  - Min lot area: from DB (fallback 450 m²)
-  - Max granny flat floor area: from DB (fallback 60 m²)
+  - Min lot area: from DB only — no fallback (#817); unavailable → 503
+  - Max granny flat floor area: from DB only — no fallback (#817); unavailable → 503
   - Setbacks: SEPP Housing defaults (rear 3m, side 0.9m)
 """
 
@@ -92,21 +92,28 @@ MAX_BBOX_FRACTION = 0.35
 # Buildings are roughly equidimensional. Values > 8 indicate fences, roads, errors.
 MAX_ASPECT_RATIO = 8.0
 
-# SEPP Housing 2021 fallbacks — used only when DB is unreachable.
-# Authoritative source: housing_sepp_standards table (migration 045).
-_SEPP_FALLBACK_MIN_LOT_M2 = 450.0
-_SEPP_FALLBACK_MAX_GF_AREA_M2 = 60.0
+# SEPP Housing 2021 fallback constants intentionally removed (#817) — same
+# defect class as the conveyancing fallback removed in #684: a hardcoded
+# regulatory figure must never render silently when the DB path fails.
+# Authoritative source: housing_sepp_standards table (migration 045); when the
+# standards cannot be loaded the endpoints fail closed (503).
+
+_SEPP_UNAVAILABLE_DETAIL = (
+    "The SEPP Housing 2021 secondary-dwelling standards could not be loaded "
+    "from the database, so eligibility cannot be assessed. Retry later, or "
+    "obtain the current Chapter 3 standards from the SEPP (Housing) 2021."
+)
 
 
-def _get_sepp_sd_standards(conn=None) -> tuple[float, float]:
-    """Load secondary dwelling SEPP standards from DB; fall back to hardcoded values.
+def _get_sepp_sd_standards(conn=None) -> tuple[Optional[float], Optional[float]]:
+    """Load secondary dwelling SEPP standards from DB. NO fallback (#817).
 
-    Returns (min_lot_m2, max_floor_area_m2).
+    Returns (min_lot_m2, max_floor_area_m2); either element is None when its
+    row is missing or the DB is unreachable — callers fail closed on None.
     """
     if conn is None:
-        logger.warning("SEPP standards: no DB connection, using fallback values (min_lot=%.0f, max_gf=%.0f)",
-                        _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2)
-        return _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2
+        logger.warning("SEPP standards: no DB connection — standards unavailable, callers fail closed")
+        return None, None
     try:
         cur = conn.cursor()
         cur.execute(
@@ -120,12 +127,12 @@ def _get_sepp_sd_standards(conn=None) -> tuple[float, float]:
         rows = {r[0]: float(r[1]) for r in cur.fetchall()}
         cur.close()
         return (
-            rows.get("min_lot_size", _SEPP_FALLBACK_MIN_LOT_M2),
-            rows.get("max_floor_area", _SEPP_FALLBACK_MAX_GF_AREA_M2),
+            rows.get("min_lot_size"),
+            rows.get("max_floor_area"),
         )
     except Exception as e:
-        logger.warning("Failed to load SEPP standards from DB, using fallback: %s", e)
-        return _SEPP_FALLBACK_MIN_LOT_M2, _SEPP_FALLBACK_MAX_GF_AREA_M2
+        logger.warning("Failed to load SEPP standards from DB — standards unavailable, callers fail closed: %s", e)
+        return None, None
 
 # NSW Planning Portal
 NSW_API_BASE = "https://api.apps1.nsw.gov.au/planning"
@@ -740,7 +747,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
     lot_area_m2 = req.lot_area_m2 if req.lot_area_m2 is not None else (
         _compute_lot_area_m2(lot_geometry) if lot_geometry else None)
 
-    # Load SEPP standards from DB (with fallback)
+    # Load SEPP standards from DB — no fallback (#817): unavailable standards
+    # fail the request rather than screen eligibility against a hardcoded figure.
     _detect_conn = None
     try:
         _detect_conn = _get_conn()
@@ -750,6 +758,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
     finally:
         if _detect_conn:
             _detect_conn.close()
+    if sepp_min_lot is None:
+        raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
 
     sepp_eligible = True
     sepp_ineligible_reason = None
@@ -989,7 +999,9 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         if _fallback_geom:
             lot_area_m2 = _compute_lot_area_m2(_fallback_geom)
 
-    # Load SEPP standards from DB (with fallback)
+    # Load SEPP standards from DB — no fallback (#817): the buildable verdict,
+    # floor-area cap, and cost figures all derive from these standards, so an
+    # unavailable config fails the request instead of rendering hardcoded figures.
     _confirm_conn = None
     try:
         _confirm_conn = _get_conn()
@@ -999,6 +1011,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     finally:
         if _confirm_conn:
             _confirm_conn.close()
+    if sepp_min_lot is None or sepp_max_gf is None:
+        raise HTTPException(status_code=503, detail=_SEPP_UNAVAILABLE_DETAIL)
 
     granny_flat_buildable = True
     max_floor_area_m2 = sepp_max_gf

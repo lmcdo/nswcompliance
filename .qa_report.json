@@ -1,61 +1,35 @@
 {
- "tier": "standard",
- "justification": "Closes the cross-property mix-up in the PDF report (the /conveyancing/pdf twin of #811). generate_conveyancing_pdf's cache-miss path trusted the caller's prop_id (int(req.prop_id)) for controls/valuation while using req.lat/req.lng for every spatial fetch, so a direct caller could blend one property's controls with another's overlays/DAs/hazards. The cache-miss path now binds prop_id, coordinates and lot_wkt via _resolve_property (the #811 helper); all spatial fetches use the bound lat/lng (no req.lat/req.lng remain in the handler); and a cache entry lacking its own authoritative coordinates is treated as a miss and fully re-resolved rather than paired with request-supplied coordinates. Operational resolver failures return 503 via _resolve_property.",
- "commit_hash": "0f71caf0",
+ "tier": "minor",
+ "justification": "Guardrail-only change: prior-art four-sweep rule in CLAUDE.md plus a PreToolUse hook gating Artifact publishes on a fresh sweeps marker. No product code, no DB access, no served output touched.",
+ "commit_hash": "0c0ba734",
  "files": [
-  "services/conveyancing.py",
-  "tests/test_conveyancing_pdf_propid_binding.py"
+  "CLAUDE.md",
+  ".claude/settings.json",
+  ".claude/hooks/surface-prior-art-guard.py"
  ],
- "pre_impl": {
-  "existing_data": "Reuses _resolve_property (merged in #811) and the existing pipeline cache written by run_conveyancing's _save_pipeline_cache, which already stores address, prop_id, lat, lng and lot_wkt. No new data source, query, or fetcher is introduced.",
-  "assumption_mismatch": "Confirmed the frontend reaches this endpoint with a report_id whose cache was written by the authoritative free-tier run, so the normal flow always hits the coordinate-bearing cache branch; the caller-triple path is a direct-API vector. All 14 req.lat/req.lng usages were inside generate_conveyancing_pdf only, so rebinding them to a local lat/lng is safe.",
-  "new_vs_existing": "New: the cache-miss _resolve_property binding, the local lat/lng rebinding of every spatial fetch, and the cache-hit guard requiring cached coordinates. Deliberately unchanged: the cache-hit unpacking of controls/valuation/overlays, the parallel PDF-exclusive fetchers, and _resolve_property itself."
- },
- "functions": [
-  {
-   "name": "generate_conveyancing_pdf",
-   "file_line": "services/conveyancing.py:423",
-   "input": "a ConveyancingPdfRequest (address, report_id, and advisory lat/lng/prop_id); the property is taken from the coordinate-bearing pipeline cache or, on a miss, from _resolve_property(req)",
-   "output": "a generated PDF whose LEP controls, valuation, overlays, strata, DAs and hazards all describe the one resolved property; the advisory caller lat/lng/prop_id are never used for any fetch",
-   "if_none": "on a cache miss with an unresolvable address _resolve_property raises HTTPException 422, and 503 on a resolver outage; a cache entry missing lat/lng is treated as a miss and fully re-resolved"
-  }
- ],
- "values": "N/A - reads no DB or API values directly; wraps the existing pipeline cache and _resolve_property.",
- "queries": "N/A - no SQL is written or changed in this diff.",
+ "functions": "N/A - one small hook script; no product functions changed.",
+ "values": "N/A - no DB or API values involved.",
+ "queries": "N/A - no database access.",
  "break_it": [
   {
-   "scenario": "A direct /conveyancing/pdf caller submits a report_id with no cache entry, an address for property B, but a prop_id for property A.",
-   "what_happens": "The old cache-miss path set resolved_prop_id from int(req.prop_id) (A) for controls and valuation while every spatial fetch used req.lat/req.lng (B), producing a PDF blending two properties.",
+   "scenario": "The hook blocks legitimate Artifact listing calls, breaking artifact discovery.",
+   "what_happens": "Sessions could not enumerate existing artifacts at all.",
    "mitigated": true,
-   "how": "The cache-miss branch now calls _resolve_property(req), which derives prop_id, coordinates and lot_wkt from the one address and ignores the caller triple; all fetches use the bound lat/lng.",
-   "repro": "pytest tests/test_conveyancing_pdf_propid_binding.py::TestPdfCoordinateBinding::test_cache_miss_branch_resolves_authoritatively"
+   "how": "action list passes through unconditionally; smoke-tested (exit 0 for list, exit 2 for publish without marker).",
+   "repro": "echo a list-action payload into the hook and observe exit 0."
   },
   {
-   "scenario": "A caller submits a report_id whose cached entry is an older one lacking lat/lng, together with a different property's address.",
-   "what_happens": "An earlier version of this fix fell back to resolving coordinates from req.address while keeping the cached property's controls, so a mismatched report_id and address could still blend two properties.",
+   "scenario": "A malformed or stale marker silently allows publishes, defeating the gate.",
+   "what_happens": "The guard would be decorative, like the memory rule it replaces.",
    "mitigated": true,
-   "how": "The cache-hit guard now requires the entry's own lat and lng to be present; an entry missing them falls through to the full authoritative re-resolution, so cached controls are never paired with separately-resolved coordinates.",
-   "repro": "pytest tests/test_conveyancing_pdf_propid_binding.py::TestPdfCoordinateBinding::test_cache_hit_requires_cached_coordinates"
-  },
-  {
-   "scenario": "A future edit wires a new spatial fetcher in the PDF handler using req.lat / req.lng directly.",
-   "what_happens": "That fetch would run at the caller-supplied coordinates rather than the resolved property's, silently reintroducing the mix-up for that data source.",
-   "mitigated": true,
-   "how": "An AST guard asserts generate_conveyancing_pdf reads no req.lat / req.lng anywhere in code; every coordinate is the bound lat/lng.",
-   "repro": "pytest tests/test_conveyancing_pdf_propid_binding.py::TestPdfCoordinateBinding::test_no_code_path_reads_request_coordinates"
-  },
-  {
-   "scenario": "A future edit reintroduces int(req.prop_id) to derive the property in the PDF handler.",
-   "what_happens": "Controls and valuation would again come from the caller-supplied prop_id, decoupled from the coordinates used for spatial data.",
-   "mitigated": true,
-   "how": "An AST guard asserts the handler never reads req.prop_id; the property comes from the cache or _resolve_property.",
-   "repro": "pytest tests/test_conveyancing_pdf_propid_binding.py::TestPdfCoordinateBinding::test_handler_never_trusts_caller_prop_id"
+   "how": "Unreadable markers, markers older than 4h, and markers lacking two sweeps plus a verdict all block with the reason named in stderr.",
+   "repro": "Write an empty marker file and attempt a publish payload - exit 2 with marker must list sweeps."
   }
  ],
  "post_merge": {
-  "db_reset": "None - no schema or data changes.",
-  "secrets": "None - no secrets added, removed, or rotated.",
-  "other_repo": "None. Follow-up (out of scope, system-wide): resolve_address output and cached coordinates are not range-validated against NSW bounds anywhere; a defensive coordinate schema at the resolution boundary would harden all coordinate consumers, not just this path.",
-  "manual_verify": "POST /conveyancing/pdf with a report_id that has no cache entry, an address for one property, and a deliberately wrong prop_id plus mismatched lat/lng; confirm every section of the generated PDF (controls, valuation, overlays, DAs, hazards) corresponds to the address and none reflect the supplied coordinates."
+  "db_reset": "Not required - no database involvement.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Candidate for later porting to the claude-railguards public repo.",
+  "manual_verify": "Yes - next session: an Artifact publish without the marker is blocked with the sweep instructions; writing the marker then publishing succeeds."
  }
 }

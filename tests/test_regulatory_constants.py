@@ -4,7 +4,8 @@ Verifies:
   1. fetch_sepp_housing_standards returns correct shape and filters by zone/dev_type
   2. get_sepp_standard_value returns single float
   3. fetch_tax_thresholds returns correct shape
-  4. granny_flat._get_sepp_sd_standards falls back when DB unavailable
+  4. granny_flat._get_sepp_sd_standards has NO fallback (#817) — covered in
+     tests/test_granny_flat_mutation.py (None → endpoints fail closed, 503)
   5. calc_feasibility uses injected configs correctly
 """
 
@@ -24,6 +25,7 @@ _spec.loader.exec_module(_mod)
 
 fetch_sepp_housing_standards = _mod.fetch_sepp_housing_standards
 get_sepp_standard_value = _mod.get_sepp_standard_value
+_validate_sepp_sd_config = _mod._validate_sepp_sd_config
 fetch_tax_thresholds = _mod.fetch_tax_thresholds
 fetch_heritage_postgis = _mod.fetch_heritage_postgis
 fetch_dcp_setbacks = _mod.fetch_dcp_setbacks
@@ -210,15 +212,37 @@ class TestCalcFeasibilityWithConfigs:
         assert "2026" in lt_item["question"]
         assert "$1,000,000" in lt_item["basis"]
 
-    def test_fallback_when_no_configs(self):
-        """Without injected configs, should use fallback values (450m², 2025 thresholds)."""
+    def test_validator_rejects_zero_minimum(self):
+        """A 0 m² minimum would silently pass every lot — corrupt row fails closed."""
+        row = {"numeric_value": 0, "applicable_zones": ["R2"]}
+        assert _validate_sepp_sd_config(row) is None
+
+    def test_validator_rejects_negative_and_nonfinite(self):
+        for bad in (-450, float("nan"), float("inf"), None, "abc"):
+            row = {"numeric_value": bad, "applicable_zones": ["R2"]}
+            assert _validate_sepp_sd_config(row) is None, bad
+
+    def test_validator_rejects_null_or_empty_zone_entries(self):
+        """A null zone entry would crash sorted() mid-render — fail closed instead."""
+        for bad_zones in (["R1", None], ["R1", ""], ["R1", "  "], [], None, "R1"):
+            row = {"numeric_value": 450, "applicable_zones": bad_zones}
+            assert _validate_sepp_sd_config(row) is None, bad_zones
+
+    def test_validator_accepts_and_normalises_valid_row(self):
+        row = {"numeric_value": "450", "applicable_zones": [" R1 ", "R2"]}
+        cfg = _validate_sepp_sd_config(row)
+        assert cfg == {"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}}
+
+    def test_no_configs_renders_not_assessed(self):
+        """Without injected configs there is NO fallback (#684): the
+        secondary-dwelling row renders 'Not assessed' and states no figure."""
         result = calc_feasibility(
             self._base_controls, self._base_valuation, self._base_overlays,
         )
         sd_item = next(r for r in result if "granny flat" in r["question"].lower())
-        # 500m² >= 450m² fallback → ok
-        assert sd_item["flag"] == "ok"
-        assert "450" in sd_item["basis"]
+        assert sd_item["answer"] == "Not assessed"
+        assert sd_item["flag"] == "warn"
+        assert "450" not in sd_item["basis"]
 
     def test_strata_skips_secondary_dwelling_and_tax(self):
         """Strata lots should skip granny flat and land tax regardless of configs."""
