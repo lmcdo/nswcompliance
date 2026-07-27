@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T09:30:00+10:00",
-  "target": "Sol hardening of PR #824: migration 058 lifecycle (is_active + one-active partial unique index) + cdc_screen.py loader/engine fixes",
-  "findings_summary": "New table only (unapplied migration; additive), no joins/loops/timeout risk; the change itself is the numeric-validation hardening: acid-sulfate rows must be integral 1-5 or load fails closed, NaN lot areas surface as unchecked, duplicate active rows impossible by partial unique index + loader fail-closed guard"
+  "timestamp": "2026-07-27T10:40:00+10:00",
+  "target": "migration 059: seed cdc_eligibility_standards (3 rows, manual_verified=false) from grounded Codes SEPP provisions",
+  "findings_summary": "Grounded in prod provisions: cl 3.1(3) Lot requirements ids 36996/36997 (zones R1-R4+RU5, 200m2 flat minimum — NOT the conditional cl 6.4 wording, different code), cl 1.19(1)(c) ids 36184/36185 (ASS max class 2 — TS route's <=3 was wrong; B1/B2 in TS route ungrounded for housing_code and dropped). Rows inert until manual_verified flipped."
 }

@@ -1,96 +1,62 @@
 {
  "tier": "standard",
- "justification": "PR-1 of the CDC screen consolidation (#820, plan ce-cdc-screen-consolidation-2026-07): new dark backend engine (services/cdc_screen.py) + additive migration 058 for cdc_eligibility_standards. Nothing is wired to any surface yet — the conveyancing PDF and workbench route are untouched — but the engine renders regulatory verdicts once wired, and the loader/validation contract must be right now, so standard tier not minor. Hardened per Sol review of the PR: lifecycle (is_active + one-active partial unique index), conditional min-lot evaluation, proposal-scoped dual-occ prohibition, flood/bushfire/HCA demoted to 'likely' (broad overlay booleans are not instrument exclusions), strict acid-sulfate validation, NaN input coercion.",
- "commit_hash": "0f15284c",
+ "justification": "Migration 059 seeds cdc_eligibility_standards with the three Housing Code standards the CDC engine reads (zones, min lot, acid-sulfate class), every row quote-cited to regulatory_provisions ids. Rows land manual_verified=false and the engine reads verified rows only, so nothing renders from this seed until founder review. Standard tier because the content is regulatory data destined for a paid report, even though the diff is one SQL file.",
+ "commit_hash": "pending",
  "files": [
   ".claude/.pre-impl-done.json",
-  "migrations/058_cdc_eligibility_standards.sql",
-  "services/cdc_screen.py",
-  "tests/test_cdc_screen.py"
+  "migrations/059_seed_cdc_housing_code_standards.sql"
  ],
  "pre_impl": {
-  "existing_data": "Prior-art sweep (after two earlier misses this session, both user-corrected): the Codes SEPP 2008 is fully ingested (~70 documents, 5,213 regulatory_provisions rows — id 22630 cl 1.19 land exemptions, id 36185 significantly-contaminated-land exclusion, id 14240 cl 6.4(1)(d)(ii) conditional 200 m2 minimum); the workbench already runs a 10-check TS screen at /api/cdc/preliminary-check with hardcoded zone lists/thresholds; development_pathways holds a 1-row prototype of criteria-with-provenance. This engine replaces the TS hardcodes' role, sourced from a new provenance-cited table.",
-  "assumption_mismatch": "Two values the TS route hardcodes did not survive grounding: the flat '200 m2 minimum' is actually conditional in the instrument (cl 6.4(1)(d)(ii): applies only if no minimum is specified), so the standards table carries a conditionality column and the exclusion reason quotes it; the FSR<0.3 warning had no instrument grounding at all and is dropped from the engine. Mine subsidence turned out not to be a Codes SEPP exclusion (no hit in the instrument text) — modelled as a warning about the separate Subsidence Advisory NSW approval, never an exclusion.",
-  "new_vs_existing": "New table (additive migration, schema only — no seed rows, no existing table touched) and new service module. No surface behaviour changes in this PR: the engine is dark until standards rows are seeded, founder-verified (manual_verified flag), and PR-2 wires the PDF row and swaps the route internals. Verdict semantics copied from the existing route: never 'yes', only 'no' with cited exclusions or 'maybe' with certifier disclaimer."
+  "existing_data": "Values grounded in the ingested Codes SEPP corpus this session: cl 3.1(3) Lot requirements (regulatory_provisions ids 36996/36997) supplies the zone set R1-R4+RU5 and the flat 200 m2 minimum; cl 1.19(1)(c) (ids 36184/36185) supplies the acid-sulfate exclusion at Class 1 or 2. Verified live that load_cdc_standards returns None with these unverified rows present.",
+  "assumption_mismatch": "Three corrections against the workbench route's TS hardcodes emerged from grounding: acid-sulfate exclusion is Class 1-2 not Class <=3 (the route over-excluded Class 3 land); B1/B2 are ungrounded for the Housing Code and are not seeded; the conditional 200 m2 wording (cl 6.4(1)(d)(ii)) belongs to a different code, so the Housing Code minimum carries NULL conditionality.",
+  "new_vs_existing": "Data-only insert into the table created by migration 058; no code changes. ON CONFLICT DO NOTHING makes re-runs safe; the one-active partial unique index prevents duplicate actives."
  },
- "functions": [
-  {
-   "name": "load_cdc_standards",
-   "file_line": "services/cdc_screen.py:138",
-   "input": "psycopg2 connection and code_name, reading only manual_verified rows from cdc_eligibility_standards",
-   "output": "standards dict with eligible zone set, minimum lot size, conditionality text, optional acid sulfate class, and per-standard clause refs",
-   "if_none": "missing connection, missing table, missing required rows, unverified-only rows, query failure, or invalid values all return None with a logged warning — callers render 'Not assessed', never a default figure"
-  },
-  {
-   "name": "run_cdc_screen",
-   "file_line": "services/cdc_screen.py:213",
-   "input": "validated standards dict plus CdcScreenInputs of three-state property facts where None means the fact could not be determined",
-   "output": "CdcScreenResult with eligible 'no' or 'maybe' (never 'yes'), cited exclusions, warnings, checks performed, and unchecked list",
-   "if_none": "garbage standards raise ValueError so callers must fail closed before calling; every None input lands in the unchecked list and a 'Not screened' warning instead of silently passing"
-  },
-  {
-   "name": "_validate_standards",
-   "file_line": "services/cdc_screen.py:110",
-   "input": "candidate standards dict from the loader or from a direct caller",
-   "output": "normalised dict with finite positive minimum and non-empty string zone set, or None",
-   "if_none": "zero, negative, NaN, or non-numeric minimums and null or empty zone entries return None — shared by loader and engine so direct injection cannot bypass validation (Sol #816 lesson)"
-  }
- ],
+ "functions": "N/A - no function added or changed; this is a data seed for the already-tested loader in services/cdc_screen.py.",
  "values": [
   {
-   "value": "eligible_zones, min_lot_size (+conditionality), acid_sulfate_max_class rows from cdc_eligibility_standards where manual_verified",
-   "read_at": "services/cdc_screen.py load_cdc_standards, validated by _validate_standards before use",
-   "if_missing": "loader returns None; no screen runs; the consuming surface renders 'Not assessed' — enforced by tests test_missing_required_rows_returns_none and test_corrupt_values_return_none"
-  }
- ],
- "queries": [
+   "value": "eligible_zones R1,R2,R3,R4,RU5 for housing_code",
+   "read_at": "cl 3.1(3)(a) quote, provisions 36996/36997",
+   "if_missing": "engine loader returns None and every surface renders Not assessed"
+  },
   {
-   "purpose": "load verified CDC standards for one complying-development code",
-   "file_line": "services/cdc_screen.py:142",
-   "where_clause": "WHERE code_name = %s AND manual_verified = TRUE AND is_active = TRUE — unverified or retired rows invisible; duplicate active rows fail closed in the loader"
+   "value": "min_lot_size 200 m2 (unconditional)",
+   "read_at": "cl 3.1(3)(b) quote, provisions 36996/36997",
+   "if_missing": "same fail-closed path; a below-minimum verdict can only cite this row"
+  },
+  {
+   "value": "acid_sulfate_max_class 2",
+   "read_at": "cl 1.19(1)(c) quote, provisions 36184/36185",
+   "if_missing": "acid-sulfate check simply does not run (optional standard)"
   }
  ],
+ "queries": "N/A - INSERT ... ON CONFLICT DO NOTHING only; no SELECT changed.",
  "break_it": [
   {
-   "scenario": "Seed rows land in the table but the founder has not reviewed them, and the engine starts screening against unreviewed regulatory values.",
-   "what_happens": "Unverified extraction errors would drive definite 'no' verdicts in a paid report.",
+   "scenario": "A seeded value is wrong (misread clause) and goes straight into paid-report verdicts.",
+   "what_happens": "Wrong regulatory figure with a confident citation — worse than no figure.",
    "mitigated": true,
-   "how": "The loader's WHERE clause reads manual_verified = TRUE only; test_query_filters_to_verified_rows pins the clause text so removing the filter fails the suite.",
-   "repro": "Insert a row with manual_verified=false and call load_cdc_standards — it returns None (no other verified rows exist)."
+   "how": "manual_verified=false on every row and the loader's verified-only WHERE clause (pinned by test) keep the engine dark until each row is human-reviewed against its quoted clause.",
+   "repro": "Run load_cdc_standards against prod now — returns None despite rows existing."
   },
   {
-   "scenario": "A corrupt standards row (zero minimum, null zone entry) loads and every lot passes the minimum or rendering crashes.",
-   "what_happens": "Same defect class as the Sol #816 findings: silent universal pass or mid-report TypeError.",
+   "scenario": "The seed is re-run (deploy replay) and duplicates rows.",
+   "what_happens": "Duplicate actives would make the loader fail closed everywhere.",
    "mitigated": true,
-   "how": "_validate_standards rejects non-finite/non-positive minimums and non-string zones at BOTH the loader and the engine boundary; run_cdc_screen raises on garbage rather than screening. Tests cover 0/NaN/inf/negative minimums and null/empty zone entries at both layers.",
-   "repro": "run_cdc_screen({'min_lot_size': 0, 'eligible_zones': {'R2'}}, inputs) raises ValueError."
+   "how": "ON CONFLICT DO NOTHING plus the cdc_standards_one_active partial unique index.",
+   "repro": "Execute migration 059 twice — row count stays 3."
   },
   {
-   "scenario": "A caller cannot fetch some property fact (zone unknown, layer query failed) and the screen silently treats it as passing.",
-   "what_happens": "A 'maybe' verdict that looks fully screened when constraints were never checked.",
+   "scenario": "The quotes drift from the instrument after an amendment and verified rows silently go stale.",
+   "what_happens": "Verified-but-superseded standards keep rendering.",
    "mitigated": true,
-   "how": "Every input is three-state; None lands in result.unchecked plus a 'Not screened (data unavailable)' warning naming each constraint. test_unknown_inputs_surface_as_unchecked_not_silent_pass pins it.",
-   "repro": "run_cdc_screen(standards, CdcScreenInputs()) — all facts None — returns maybe with all constraints listed as unchecked."
-  },
-  {
-   "scenario": "Someone re-adds the TS route's hardcoded zone list or thresholds to the engine during PR-2 porting.",
-   "what_happens": "The hardcoded-regulatory-data defect this whole consolidation exists to remove returns in the new home.",
-   "mitigated": true,
-   "how": "test_engine_source_contains_no_regulatory_constants greps the module source for the zone-list literals, 200m/8.5/0.3 figures, and CDC_ELIGIBLE_ZONES; any reappearance fails the suite.",
-   "repro": "Add CDC_ELIGIBLE_ZONES = ['R1', 'R2'] to cdc_screen.py and run tests/test_cdc_screen.py."
-  },
-  {
-   "scenario": "A nearby EPA register site gets rendered as a CDC exclusion for the subject lot.",
-   "what_happens": "Overstated legal claim about a neighbour's contamination — the #807 wording rule (proximity, never subject-lot contamination) violated in a new surface.",
-   "mitigated": true,
-   "how": "Severity mapping is structural: only contaminated_lot_on_register produces an exclusion; contamination_within_500m produces a warning that explicitly says it does not exclude the lot. test_contamination_nearby_is_warning_only pins it.",
-   "repro": "run_cdc_screen(standards, inputs with contamination_within_500m=True) — verdict stays maybe."
+   "how": "Rows carry source_provision_ids into the versioned provisions corpus and an is_active lifecycle; instrument_currency monitoring exists for the corpus. Residual risk documented in plan ce-cdc-screen-consolidation-2026-07 (currency monitoring is out of scope for this seed).",
+   "repro": "Compare source_quote against the cited provision ids after any Codes SEPP re-ingest."
   }
  ],
  "post_merge": {
-  "db_reset": "Migration 058 must be applied (additive CREATE TABLE only; touches no existing table, no backup content exists to lose). Until applied AND seeded AND rows verified, the engine loader returns None everywhere — nothing renders differently.",
-  "secrets": "No secrets involved — engine takes an injected connection.",
-  "other_repo": "None. PR-2 (wire PDF row + swap /api/cdc/preliminary-check internals, delete its TS hardcodes) and the founder-reviewed seeding step are tracked in issue #820 / plan ce-cdc-screen-consolidation-2026-07.",
-  "manual_verify": "Yes - after seeding+verification: a property in a mapped exclusion area returns 'no' citing the layer; an all-clear property returns 'maybe' (never 'yes'); a property with unknown zone lists zone under 'Not screened'."
+  "db_reset": "Migration already applied to prod (additive insert of 3 inert rows, verified fail-closed live). Re-application is a no-op.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Next: founder verifies rows (flip manual_verified), then PR-2 wires PDF row + workbench route per issue #820.",
+  "manual_verify": "Yes - founder review IS the step: read each row's source_quote against its provision ids, then flip manual_verified."
  }
 }
