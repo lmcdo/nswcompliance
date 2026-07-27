@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New production table (migration 058) + ETL ingest writing 397 rows, feeding user-facing serviceability wording with liability implications (DSP price, capacity status). Above Minor because it creates a data pipeline and a new table; below Critical because it is a backend ingest not yet wired to any user surface and touches no existing rows (additive, reversible by DROP TABLE).",
-  "commit_hash": "7050d04a",
+  "commit_hash": "2abcca21",
   "files": [
     "scripts/ingest_sydney_water_gsp.py",
     "migrations/058_sydney_water_gsp_servicing.sql",
@@ -57,14 +57,14 @@
     },
     {
       "name": "fetch_gsp_servicing",
-      "file_line": "services/gsp_servicing.py:59",
+      "file_line": "services/gsp_servicing.py:61",
       "input": "lat, lng floats + DATABASE_URL env - point-in-polygon over sydney_water_gsp_servicing",
       "output": "three-state dict {found: {ww,dw} | empty | failed} consumed by the row builder",
       "if_none": "DATABASE_URL unset or any DB error returns {status: failed}; never raises, so the whole PDF is not lost"
     },
     {
       "name": "build_servicing_row",
-      "file_line": "scripts/generate_conveyancing_report.py:2271",
+      "file_line": "scripts/generate_conveyancing_report.py:2379",
       "input": "three-state servicing dict from get_servicing_live",
       "output": "(text, style_key, source_label) tuple rendered as the Risk Summary servicing row",
       "if_none": "None or failed status renders 'Not assessed' (note), never a clear/serviceable result"
