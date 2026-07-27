@@ -44,6 +44,15 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-gate.py\""
           }
         ]
+      },
+      {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/surface-prior-art-guard.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
