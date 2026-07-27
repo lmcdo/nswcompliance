@@ -133,6 +133,15 @@ cur.execute("""
 """)
 unlinked = cur.fetchall()
 
+# ── Check 6: pending review rows per chapter (distinguishes review-blocked
+# from extraction-pending in the stuck-chapter alert) ───────────────────────
+cur.execute("""
+    SELECT council, chapter_key, COUNT(*), MIN(created_at)
+    FROM dcp_review_queue WHERE status = 'pending'
+    GROUP BY council, chapter_key
+""")
+pending_by_chapter = {(c, k): (n, oldest) for c, k, n, oldest in cur.fetchall()}
+
 cur.close()
 conn.close()
 
@@ -147,11 +156,32 @@ if stuck:
     now = datetime.now(timezone.utc)
     critical = [(c, k, d) for c, k, d in stuck if (now - d).total_seconds() > 48 * 3600]
     chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d in stuck)
+    # A stuck chapter is either awaiting EXTRACTION (no queued rows yet — the
+    # Monday cron or a manual run fixes it) or awaiting REVIEW (rows sit
+    # pending in dcp_review_queue — only a human ruling unblocks it). The old
+    # alert told operators to run extraction either way, which was wrong
+    # advice for the 2026-07 backlog: extraction had run; 307 rows sat
+    # unreviewed for weeks while the same alert repeated.
     if critical:
+        lines = []
+        review_blocked = 0
+        for c, k, _ in critical:
+            pend = pending_by_chapter.get((c, k))
+            if pend:
+                n, oldest = pend
+                age_d = (now - oldest).days if oldest else "?"
+                lines.append(f"  [{c}/{k}] awaiting REVIEW — {n} rows pending, oldest {age_d}d")
+                review_blocked += 1
+            else:
+                lines.append(f"  [{c}/{k}] awaiting extraction")
+        runbook = []
+        if review_blocked:
+            runbook.append("  Review: /internal/dcp-review")
+        if review_blocked < len(critical):
+            runbook.append("  Extract: python scripts/dcp_extract_changed.py")
         critical_issues.append(
             f"{len(critical)} chapters stuck >48h — stale data may be served:\n"
-            + "\n".join(f"  [{c}/{k}]" for c, k, _ in critical)
-            + f"\n  Run: python scripts/dcp_extract_changed.py"
+            + "\n".join(lines) + "\n" + "\n".join(runbook)
         )
     non_critical = [x for x in stuck if x not in critical]
     if non_critical:

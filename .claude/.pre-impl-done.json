@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T12:05:00+10:00",
-  "target": "PR-2 #820 continued: remaining call-site wiring in services/conveyancing.py (run_conveyancing + generate_conveyancing_pdf) and TS route swap",
-  "findings_summary": "Same investigation as previous marker (Explore-mapped call sites); covered_layers confirmed in scope at all three calc_feasibility call sites; conveyancing.py imports via dual services./local pattern; no new queries — cdc standards read via already-tested load_cdc_standards_from_url"
+  "timestamp": "2026-07-27T20:30:00+10:00",
+  "target": "DCP extraction fidelity gates: garble/structure classifier at queue-insert, header-artifact strip, hash-scoped rejected blocking, watchdog runbook fix",
+  "findings_summary": "Live investigation: 105/307 queue rows garbled (pdfplumber doubled-glyph text layer, CoS letter-spaced headers + KRG column interleave), 8 structurally broken (year-keyed provisions, 43k->2.7k section collapse); fidelity_status was never populated at insert (all NULL); rejected rows block commit forever (find_committable_chapters counts all-time rejected) while extract DELETE clears pending only; watchdog runbook line says run extraction when the queue is review-blocked"
 }

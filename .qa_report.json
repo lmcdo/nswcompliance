@@ -1,109 +1,96 @@
 {
  "tier": "standard",
- "justification": "PR-2 of #820: wires the conveyancing CDC row (all three calc_feasibility call sites) and the workbench /api/cdc/preliminary-check route onto the backend CDC screen engine, deleting the route's hardcoded zone lists and thresholds. The paid PDF's CDC verdict now comes from founder-verified, clause-cited standards; every unavailable fact renders fail-visible.",
- "commit_hash": "30b5ae9a",
+ "justification": "DCP extraction fidelity gates (regulatory-currency plan W2): the 2026-07 review backlog reached human review with 105/307 rows garbled and fidelity_status NULL everywhere. Adds a doubled-glyph header strip + per-row fidelity verdict at queue-insert, scopes rejected-row commit blocking to the current content hash (a rejected row previously wedged its chapter forever), and fixes the watchdog runbook to distinguish awaiting-review from awaiting-extraction.",
+ "commit_hash": "pending",
  "files": [
   ".claude/.pre-impl-done.json",
-  "services/cdc_screen.py",
-  "services/cdc_screen_api.py",
-  "services/compliance_api_server.py",
-  "services/conveyancing.py",
-  "scripts/generate_conveyancing_report.py",
-  "frontend-nextjs/app/api/cdc/preliminary-check/route.ts",
-  "tests/test_cdc_screen.py",
-  "tests/test_conveyancing_truth.py"
+  "scripts/dcp_extract_changed.py",
+  "scripts/dcp_commit_approved.py",
+  "scripts/dcp_watchdog.py",
+  "tests/test_dcp_extraction_fidelity.py",
+  "tests/test_dcp_review_enqueue.py"
  ],
  "pre_impl": {
-  "existing_data": "Explore-agent mapped all call sites before coding: three calc_feasibility call sites (script main(), run_conveyancing, generate_conveyancing_pdf) each have zone, lot, portal heritage lists, overlays and covered_layers in scope; the TS route's PropertyDataService supplies richer facts (exclusion layer 92, dual-occ layer 452, acid class). Standards are live and founder-verified (migration 059, rows 1-3 flipped).",
-  "assumption_mismatch": "Contamination, subsidence and bushfire-live are fetched AFTER the feasibility call (or only in the PDF path), so those engine inputs are omitted in the report paths and surface in the result's unchecked list rather than pretending to be screened. The old 'Potentially eligible' wording is retired: the clear-screen row now states what was screened and defers the verdict to a certifier, never claiming eligibility.",
-  "new_vs_existing": "Engine, standards and tests existed (PR #824/#827); this PR adds consumption only: a thin /pipeline/cdc/screen endpoint (granny-flat 503 pattern), a fail-closed report wrapper (run_cdc_screen_for_report), the CDC row rendering from CdcScreenResult, and the TS route as pure data plumbing. The SD-zone screen is deleted from the CDC row for good, pinned by test_cdc_never_screens_from_sd_zone_set."
+  "existing_data": "Live triage of the 307 pending dcp_review_queue rows: 105 garbled (pdfplumber reads CoS letter-spaced running headers as doubled glyphs, Ku-ring-gai two-column interleave), 8 structurally broken (44k-char provision keyed off the bare year 2021, the 43k-char parking section collapsed to 2.7k when its tables migrated). fidelity_status was NULL on all 307 - the columns from migrations 055/056 were never populated at insert. find_committable_chapters counts all-time rejected rows as blocking while the extract refresh deletes pending rows only.",
+  "assumption_mismatch": "'No doubled letters' proved insufficient as a cleanliness gate - Georges River rows were letter-clean but structurally broken (section collapse + junk year key), which is why the classifier carries four independent checks rather than one garble regex. Rejecting bad rows outright would have permanently wedged six chapters (rejected blocks forever), so the triage kept bad rows pending with fidelity stamps and this PR fixes the blocking semantics for the future.",
+  "new_vs_existing": "Extends the existing suspect_reason chapter-level guard with row-level verdicts; reuses the queue's existing fidelity_status/suspect_reason columns (no schema change); the commit query gains a registry join for hash scoping; the watchdog gains one query and a two-state runbook message. No new tables, no new services."
  },
  "functions": [
   {
-   "name": "run_cdc_screen_for_report",
-   "file_line": "services/cdc_screen.py:484",
-   "input": "db url plus report-shaped facts: zone string, lot area, portal heritage lists, unique overlays, covered layers",
-   "output": "CdcScreenResult or None; wraps standards load, input building and the screen in one fail-closed call",
-   "if_none": "any failure (no url, unverified standards, engine crash) returns None with a logged warning and the CDC row renders 'Not assessed' - a crashed screen can never abort a paid report"
+   "name": "strip_garbled_header_lines",
+   "file_line": "scripts/dcp_extract_changed.py:1461",
+   "input": "extracted section text possibly containing letter-spaced running-header lines whose text layer doubled every glyph",
+   "output": "text with garbled header lines removed and body lines untouched",
+   "if_none": "None and empty inputs pass through unchanged; lines with legitimate doubles (Lloyd, III) are preserved because the strip fires only when doubled runs dominate a line's letters"
   },
   {
-   "name": "build_cdc_inputs",
-   "file_line": "services/cdc_screen.py:436",
-   "input": "zone description, lot area, heritage item and HCA lists, overlays list, covered-layers set",
-   "output": "CdcScreenInputs model populated with three-state property facts",
-   "if_none": "an overlay absent from the list reads False only when its layer is in covered_layers, else None (unchecked); heritage None lists stay unknown; unparseable acid-sulfate values stay None"
+   "name": "classify_row_fidelity",
+   "file_line": "scripts/dcp_extract_changed.py:1478",
+   "input": "one queue row's ref key, old text, and stripped new text",
+   "output": "tuple of verdict ok or failed plus a joined reason naming each failed check",
+   "if_none": "missing old text is legitimate for added clauses (only the oversize check applies); missing new text is legitimate for removals; a clean row returns ok with reason None"
   },
   {
-   "name": "load_cdc_standards_from_url",
-   "file_line": "services/cdc_screen.py:410",
-   "input": "database url string or None",
-   "output": "verified standards dict via load_cdc_standards, connection opened and closed locally",
-   "if_none": "missing url or connection failure returns None with a warning - same fail-closed contract as the conn-based loader"
-  },
-  {
-   "name": "cdc_screen",
-   "file_line": "services/cdc_screen_api.py:44",
-   "input": "POST /pipeline/cdc/screen with CdcScreenInputs JSON from the Next.js route",
-   "output": "CdcScreenResult JSON for the route; the verdict is never yes",
-   "if_none": "standards unavailable raises HTTPException 503 (granny-flat #819 pattern); the TS route catches any non-OK and renders 'maybe' with a visible could-not-run warning"
-  },
-  {
-   "name": "calc_feasibility",
-   "file_line": "scripts/generate_conveyancing_report.py:643",
-   "input": "existing args plus cdc_result, the engine verdict run by the caller",
-   "output": "feasibility rows; the CDC row renders Excluded, Restricted, or no-exclusions-identified from the verdict, with clause citations in the basis",
-   "if_none": "cdc_result None renders 'Not assessed' - the row never screens against the secondary-dwelling zone set again, and never claims eligibility in any branch"
+   "name": "find_committable_chapters",
+   "file_line": "scripts/dcp_commit_approved.py:55",
+   "input": "database cursor over dcp_review_queue joined to dcp_chapter_registry",
+   "output": "chapters whose every current-hash queued change is approved with nothing blocking",
+   "if_none": "rejected rows for a superseded content hash no longer block - they remain as audit history; pending, in-progress and needs-info rows of any hash still block as before"
   }
  ],
  "values": [
   {
-   "value": "verified cdc_eligibility_standards rows (zones R1-R4+RU5, 200 m2 minimum, acid-sulfate class 2)",
-   "read_at": "load_cdc_standards via the report wrapper and the /pipeline/cdc/screen endpoint; validated at both boundaries",
-   "if_missing": "wrapper returns None so the PDF row reads 'Not assessed'; endpoint 503 so the route renders 'maybe' with a could-not-run warning; nothing renders a figure"
+   "value": "fidelity_status (ok/failed) and merged suspect_reason on every inserted queue row",
+   "read_at": "computed at insert time in enqueue_review_changes from the stripped new text",
+   "if_missing": "cannot be missing going forward - the INSERT always writes a verdict; the 2026-07 backlog's NULLs were the defect this closes"
   }
  ],
- "queries": "N/A - no query text added or changed; both consumers reach the standards through the already-tested load_cdc_standards SELECT (manual_verified AND is_active).",
+ "queries": [
+  {
+   "purpose": "select chapters safe to commit, with rejected rows blocking only for the current extraction",
+   "file_line": "scripts/dcp_commit_approved.py:66",
+   "where_clause": "blocking counts status pending/in_progress/needs_info at any hash, plus rejected only where q.source_content_hash = r.content_hash via the registry join"
+  },
+  {
+   "purpose": "pending review rows per chapter for the watchdog's two-state runbook",
+   "file_line": "scripts/dcp_watchdog.py:128",
+   "where_clause": "WHERE status = 'pending' GROUP BY council, chapter_key"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "The Python backend is down when the workbench route runs, and the route silently renders a clear screen.",
-   "what_happens": "A 'maybe' verdict that looks fully screened when no screening happened at all.",
+   "scenario": "A council republishes with letter-spaced headers again and the garble reaches review unlabelled.",
+   "what_happens": "Reviewers approve doubled-glyph junk into served provision text.",
    "mitigated": true,
-   "how": "The route's catch returns 'maybe' with explicit warnings ('CDC screen could not run', 'Manual verification required'), empty checksPerformed, and a screening-unavailable disclaimer - visibly degraded, nothing asserted.",
-   "repro": "Stop the FastAPI server and call /api/cdc/preliminary-check?address=..."
+   "how": "Header lines are stripped before insert; any garble that survives the strip fails the row's fidelity verdict, which the queue row carries visibly. Tests pin both the strip and the verdict on the real CoS and Ku-ring-gai artifacts.",
+   "repro": "classify_row_fidelity on text containing nneeww ddwweelllliinngg returns failed with garbled_glyphs."
   },
   {
-   "scenario": "A report path lacks a fact the engine checks (bushfire layer not covered, contamination never fetched pre-feasibility) and the row reads as fully screened.",
-   "what_happens": "The paid PDF would imply constraints were checked that never were.",
+   "scenario": "The header strip eats legitimate body text containing doubled letters.",
+   "what_happens": "Served provision text would silently lose valid lines it should keep.",
    "mitigated": true,
-   "how": "build_cdc_inputs maps uncovered layers and unfetched facts to None; the engine lists every None in unchecked and appends the 'Not screened (data unavailable)' warning, which the row's basis renders. Pinned by test_overlay_absent_is_false_only_when_layer_covered and test_clear_screen_never_claims_eligibility.",
-   "repro": "Run calc_feasibility with a cdc_result built from empty covered_layers and read the CDC row basis."
+   "how": "The strip removes whole lines only when doubled runs cover more than 60 percent of the line's letters and the line has 8+ letters; Lloyd Street setback text survives, pinned by test.",
+   "repro": "strip_garbled_header_lines on the Lloyd Street sentence returns it unchanged."
   },
   {
-   "scenario": "The engine or standards load crashes mid-report (schema drift, connection pool exhaustion).",
-   "what_happens": "A paid PDF generation would abort at the feasibility step.",
+   "scenario": "A reviewer rejects a bad extraction and the chapter never commits again even after a clean re-extraction.",
+   "what_happens": "Permanent silent wedge - the chapter serves stale data forever while the dashboard shows daily successful commit runs.",
    "mitigated": true,
-   "how": "run_cdc_screen_for_report catches everything and returns None; the row renders 'Not assessed'. test_engine_crash_degrades_to_none pins it.",
-   "repro": "Monkeypatch run_cdc_screen to raise and call run_cdc_screen_for_report."
+   "how": "Blocking is hash-scoped: rejected rows for superseded extractions stop blocking and stay as audit history. Source-pinned by test (both filter instances carry the hash condition).",
+   "repro": "Reject a row, re-extract the chapter under a new content_hash, approve the fresh rows - the chapter commits."
   },
   {
-   "scenario": "Someone re-adds a zone list or threshold to the TS route during a later edit.",
-   "what_happens": "The hardcoded-regulatory-data defect returns to the surface this PR cleaned.",
+   "scenario": "The watchdog keeps telling operators to run extraction while the real blocker is an unworked review queue.",
+   "what_happens": "The exact 2026-07 failure: identical alerts for weeks, wrong runbook, 307 rows unreviewed.",
    "mitigated": true,
-   "how": "The engine-side source guard still bans the constants from cdc_screen.py; the route now contains no regulatory branch to anchor them to, and its header documents the two grounding errors the old hardcodes carried. Residual risk accepted for the TS side (no jest infrastructure for this route).",
-   "repro": "grep CDC_ELIGIBLE_ZONES frontend-nextjs/app/api/cdc/ - no matches."
-  },
-  {
-   "scenario": "The old 'Potentially eligible' ok-row wording survives somewhere and claims eligibility from a partial screen.",
-   "what_happens": "An eligibility claim in a legal document from a screen that cannot establish eligibility.",
-   "mitigated": true,
-   "how": "The ok branch renders 'No exclusions identified in screened constraints' and the basis names what was screened plus the certifier deferral; test_clear_screen_never_claims_eligibility asserts 'eligible' never appears in the answer.",
-   "repro": "Run the clear-screen truth test."
+   "how": "The alert now labels each stuck chapter awaiting REVIEW (with row count and oldest age) or awaiting extraction, and points the former at /internal/dcp-review.",
+   "repro": "Run dcp_watchdog.py with pending rows present - the critical block names the review queue."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema or data changes; reads the standards seeded and verified via migrations 058/059.",
-  "secrets": "No secrets involved - PYTHON_API_URL and DATABASE_URL usage follow existing patterns.",
-  "other_repo": "None. Railway redeploy picks up the new /pipeline/cdc/screen endpoint; Vercel picks up the route swap. Issue #820 closes with this PR; Codes SEPP currency monitoring noted in the plan as the residual follow-up.",
-  "manual_verify": "Yes - on preview: run a workbench CDC check for an R2 address (verdict maybe with checks listed), an E2 address (no, zone exclusion citing cl 3.1(3)(a)), and generate a conveyancing report to see the CDC row cite the same standards; unset PYTHON_API_URL to see the visible could-not-run degradation."
+  "db_reset": "Not required - no schema change; fidelity columns already exist (migrations 055/056). Railway auto-deploys the monitors image on merge; next Monday's cron re-extracts the flagged chapters through the new gates.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Follow-ups tracked in ce-regulatory-currency-system-2026-07: SEPP auto-stale PR (W3), Unlimited-OCR Phase-0 eval with the CoS letter-spaced chapter as a third test case, healthcheck dead-man per cron (W5).",
+  "manual_verify": "Yes - after next Monday's cron: the re-extracted City of Sydney rows carry fidelity_status (ok rows clean of doubled-glyph runs, residual junk marked failed), and the watchdog alert for any still-stuck chapter names the correct queue."
  }
 }
