@@ -40,7 +40,7 @@ const COMPANY_LINKS = [
   { label: 'For Planners', href: '/for/planners' },
   { label: 'Developers / API', href: '/developers' },
   { label: 'Contact', href: '/contact' },
-  { label: 'Site directory', href: '/directory' },
+  { label: 'Site directory', href: '/site-directory' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
 ];

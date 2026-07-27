@@ -90,6 +90,11 @@ from conveyancing_db import (  # noqa: E402
 )
 from lga_lookup import lookup_lga  # noqa: E402
 
+try:
+    from services.cdc_screen import run_cdc_screen_for_report  # Docker (PYTHONPATH=/app)
+except ImportError:
+    from cdc_screen import run_cdc_screen_for_report  # noqa: E402 — local
+
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 
@@ -318,11 +323,19 @@ def run_conveyancing(req: ConveyancingRequest):
     # Calculate derived data
     headroom = calc_development_headroom(controls, valuation)
     sepp_standards, tax_config = _load_regulatory_configs()
+    # CDC screen (#820): engine verdict from verified Codes SEPP standards;
+    # None renders "Not assessed" — never a zone-list guess.
+    cdc_result = run_cdc_screen_for_report(
+        os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
+        controls.get("heritage_items"), controls.get("heritage_hca"),
+        unique_overlays, covered_layers,
+    )
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays,
         is_strata=strata_info["is_strata"],
         sepp_standards=sepp_standards,
         tax_config=tax_config,
+        cdc_result=cdc_result,
     )
 
     # DA count (quick — no full details in free tier). Three-state: da_count is
@@ -494,11 +507,17 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
         headroom = calc_development_headroom(controls, valuation)
         sepp_standards, tax_config = _load_regulatory_configs()
+        cdc_result = run_cdc_screen_for_report(
+            os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
+            controls.get("heritage_items"), controls.get("heritage_hca"),
+            unique_overlays, covered_layers,
+        )
         feasibility = calc_feasibility(
             controls, valuation, unique_overlays,
             is_strata=strata_info["is_strata"],
             sepp_standards=sepp_standards,
             tax_config=tax_config,
+            cdc_result=cdc_result,
         )
 
         zone_epi = controls.get("zone_epi") or ""

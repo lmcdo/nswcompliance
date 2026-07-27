@@ -55,7 +55,7 @@ export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
         { url: `${base}/glossary`,        priority: 0.85, changeFrequency: 'weekly',  lastModified: now },
         { url: `${base}/planning-standards`, priority: 0.85, changeFrequency: 'monthly', lastModified: now },
         { url: `${base}/open-data`,          priority: 0.8,  changeFrequency: 'monthly', lastModified: now },
-        { url: `${base}/directory`,          priority: 0.7,  changeFrequency: 'weekly',  lastModified: now },
+        { url: `${base}/site-directory`,     priority: 0.7,  changeFrequency: 'weekly',  lastModified: now },
         ...DATA_DICTIONARY_FIELDS.map(f => ({
           url: `${base}/open-data/fields/${f.slug}`,
           priority: 0.75,

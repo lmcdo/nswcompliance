@@ -140,7 +140,18 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
         body: JSON.stringify({ address: addr }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Analysis failed');
+      // Surface the backend's plain-language reason. FastAPI HTTPException returns
+      // `detail` as a STRING ("...temporarily unavailable; please retry." on 503,
+      // "Could not resolve address to a parcel: ..." on 422). Request-validation
+      // errors return `detail` as an array of objects — ignore those (they would
+      // stringify to "[object Object]") and fall back to a generic message.
+      if (!res.ok) {
+        const obj = json && typeof json === 'object' ? json : {};
+        const error = typeof obj.error === 'string' ? obj.error.trim() : '';
+        const detail = typeof obj.detail === 'string' ? obj.detail.trim() : '';
+        // `||` (not `??`) so an empty/whitespace field falls through to the next.
+        throw new Error(error || detail || 'Analysis failed');
+      }
       setResult(json);
       setState('complete');
       posthog.capture('tool_run', {
@@ -467,7 +478,10 @@ export function ConveyancingTool({ lgaSlug }: { lgaSlug?: string }) {
           {(result.outputs.da_fetch_failed || result.outputs.da_count == null) ? (
             <Section title="Nearby Development Activity">
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
-                Nearby development activity could not be checked for this address.
+                We couldn&rsquo;t complete the nearby development-application check for this
+                address. This does <span className="font-medium">not</span> mean there are none
+                nearby &mdash; it means the check didn&rsquo;t run, so we&rsquo;re not showing a
+                count either way. Try again shortly, or check another address.
               </div>
             </Section>
           ) : result.outputs.da_count > 0 ? (

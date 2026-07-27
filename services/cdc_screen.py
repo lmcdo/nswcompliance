@@ -29,6 +29,7 @@ legislation, so it always maps to a warning.
 
 import logging
 import math
+import re
 from typing import Literal, Optional
 
 from pydantic import BaseModel, field_validator
@@ -404,3 +405,104 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
         eligible=eligible, exclusions=exclusions, warnings=warnings,
         checks_performed=checks, unchecked=unchecked,
     )
+
+
+def load_cdc_standards_from_url(db_url: Optional[str], code_name: str = "housing_code") -> Optional[dict]:
+    """Open a connection, load verified standards, close. Never raises —
+    any failure returns None and the caller renders "Not assessed"."""
+    if not db_url:
+        logger.warning("CDC standards: DATABASE_URL not set — screen unavailable, callers fail closed")
+        return None
+    conn = None
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        return load_cdc_standards(conn, code_name=code_name)
+    except Exception as e:
+        logger.warning("CDC standards: connection failed — screen unavailable, callers fail closed: %s", e)
+        return None
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+_ACID_CLASS_RE = re.compile(r"class\s*([1-5])", re.IGNORECASE)
+
+
+def build_cdc_inputs(
+    zone: Optional[str],
+    lot_area_m2: Optional[float],
+    heritage_items,
+    heritage_hca,
+    unique_overlays: Optional[list],
+    covered_layers,
+) -> CdcScreenInputs:
+    """Map conveyancing-report data (controls/overlays shapes) to CdcScreenInputs.
+
+    Three-state everywhere: an overlay ABSENT from unique_overlays reads False
+    only when its layer is in covered_layers (the layer was queried and found
+    nothing); otherwise None (never checked). heritage lists follow the portal
+    controls shape: a list (possibly empty) is a known answer, None is unknown.
+    Facts this report path never fetches (exclusion-area layer, dual-occ
+    prohibition, contamination register, subsidence district at this stage)
+    are simply omitted — they surface in the result's unchecked list.
+    """
+    _zone_parts = (zone or "").split()
+    zone_code = _zone_parts[0].upper() if _zone_parts else None
+
+    overlays = unique_overlays or []
+    covered = covered_layers or set()
+
+    def _overlay_state(layer: str) -> Optional[bool]:
+        if any(o.get("layer_type") == layer for o in overlays):
+            return True
+        return False if layer in covered else None
+
+    acid_class = None
+    for o in overlays:
+        if o.get("layer_type") == "acid_sulfate":
+            m = _ACID_CLASS_RE.search(str(o.get("value") or ""))
+            if m:
+                acid_class = int(m.group(1))
+            break
+
+    return CdcScreenInputs(
+        zone_code=zone_code,
+        lot_area_m2=lot_area_m2,
+        heritage_item=None if heritage_items is None else bool(heritage_items),
+        heritage_conservation_area=None if heritage_hca is None else bool(heritage_hca),
+        flood_prone=_overlay_state("flood"),
+        bushfire_prone=_overlay_state("bushfire"),
+        acid_sulfate_class=acid_class,
+    )
+
+
+def run_cdc_screen_for_report(
+    db_url: Optional[str],
+    zone: Optional[str],
+    lot_area_m2: Optional[float],
+    heritage_items,
+    heritage_hca,
+    unique_overlays: Optional[list],
+    covered_layers,
+) -> Optional[CdcScreenResult]:
+    """One-call convenience for the conveyancing report paths: load verified
+    standards, build inputs from report-shaped data, run the screen. Returns
+    None whenever the screen cannot run — the caller renders "Not assessed".
+    Never raises: a crashed screen must degrade to fail-visible, not abort a
+    paid report."""
+    try:
+        standards = load_cdc_standards_from_url(db_url)
+        if standards is None:
+            return None
+        return run_cdc_screen(standards, build_cdc_inputs(
+            zone, lot_area_m2, heritage_items, heritage_hca,
+            unique_overlays, covered_layers,
+        ))
+    except Exception as e:
+        logger.warning("CDC screen failed — caller renders 'Not assessed': %s", e)
+        return None

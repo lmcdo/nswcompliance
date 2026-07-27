@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T09:30:00+10:00",
-  "target": "Sol hardening of PR #824: migration 058 lifecycle (is_active + one-active partial unique index) + cdc_screen.py loader/engine fixes",
-  "findings_summary": "New table only (unapplied migration; additive), no joins/loops/timeout risk; the change itself is the numeric-validation hardening: acid-sulfate rows must be integral 1-5 or load fails closed, NaN lot areas surface as unchecked, duplicate active rows impossible by partial unique index + loader fail-closed guard"
+  "timestamp": "2026-07-27T12:05:00+10:00",
+  "target": "PR-2 #820 continued: remaining call-site wiring in services/conveyancing.py (run_conveyancing + generate_conveyancing_pdf) and TS route swap",
+  "findings_summary": "Same investigation as previous marker (Explore-mapped call sites); covered_layers confirmed in scope at all three calc_feasibility call sites; conveyancing.py imports via dual services./local pattern; no new queries — cdc standards read via already-tested load_cdc_standards_from_url"
 }

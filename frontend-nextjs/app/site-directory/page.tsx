@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: 'Site directory — every tool, report and page | PlotDetect',
   description:
     'A complete, grouped index of every tool, report and page on the site — property reports, free instant checks, planning controls, data and guides.',
-  alternates: { canonical: '/directory' },
+  alternates: { canonical: '/site-directory' },
 };
 
 // Grouped index of the site's user-facing pages. Links only to routes that

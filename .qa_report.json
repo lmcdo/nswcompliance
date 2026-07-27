@@ -3,7 +3,7 @@
   "justification": "Additive, static marketing page: a grouped human-readable site directory (/directory) linking existing pages, plus a footer link and a sitemap entry. No data, no DB, no new queries, no logic — only presentational JSX + a static link list. Minor, not Standard, because nothing computes a result or reads live data (council counts are read from the same static lib/lga-data arrays the sitemap already uses).",
   "commit_hash": "24f98292",
   "files": [
-    "frontend-nextjs/app/directory/page.tsx",
+    "frontend-nextjs/app/site-directory/page.tsx",
     "frontend-nextjs/components/marketing/SiteFooter.tsx",
     "frontend-nextjs/app/sitemap.ts"
   ],
@@ -20,7 +20,7 @@
       "scenario": "A directory card links to a route that does not resolve (e.g. a bare tool hub like /flood-risk which is LGA-only), sending users to a 404.",
       "what_happens": "A user clicks a listed page and hits a 404 — the directory would be actively misleading.",
       "mitigated": true,
-      "how": "frontend-nextjs/app/directory/page.tsx links only routes confirmed present in app/ (the per-address tools point at their /reports/* hub, which exists, and to /browse for per-council pages) — NOT the bare LGA-only hubs. tsc --noEmit passes on the file.",
+      "how": "frontend-nextjs/app/site-directory/page.tsx links only routes confirmed present in app/ (the per-address tools point at their /reports/* hub, which exists, and to /browse for per-council pages) — NOT the bare LGA-only hubs. tsc --noEmit passes on the file.",
       "repro": "Enumerate app/**/page.tsx static routes and diff against the hrefs in GROUPS — every href is present."
     },
     {
@@ -35,6 +35,6 @@
     "db_reset": "No.",
     "secrets": "No.",
     "other_repo": "No — plotdetect info-site directory is handled separately in lmcdo/website.",
-    "manual_verify": "Open /directory on the preview; confirm every card link resolves and the footer 'Site directory' link appears site-wide."
+    "manual_verify": "Open /site-directory on the preview; confirm every card link resolves and the footer 'Site directory' link appears site-wide."
   }
 }

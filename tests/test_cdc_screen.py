@@ -356,3 +356,67 @@ def test_engine_source_contains_no_regulatory_constants():
     for phrase in ("'R1', 'R2'", '"R1", "R2"', "200m", "= 200", "8.5", "< 0.3",
                    "CDC_ELIGIBLE_ZONES"):
         assert phrase not in src, f"regulatory constant hardcoded in cdc_screen.py: {phrase!r}"
+
+
+# ---------------------------------------------------------------------------
+# build_cdc_inputs — report-shaped data → three-state engine inputs
+# ---------------------------------------------------------------------------
+
+class TestBuildCdcInputs:
+    def test_overlay_absent_is_false_only_when_layer_covered(self):
+        """Absence of a flood overlay means 'clear' only if the flood layer was
+        actually queried; otherwise it must read unknown."""
+        from services.cdc_screen import build_cdc_inputs
+        covered = build_cdc_inputs("R2 Low Density", 500.0, [], [], [], {"flood"})
+        assert covered.flood_prone is False
+        uncovered = build_cdc_inputs("R2 Low Density", 500.0, [], [], [], set())
+        assert uncovered.flood_prone is None
+
+    def test_overlay_present_is_true_regardless_of_coverage(self):
+        from services.cdc_screen import build_cdc_inputs
+        inputs = build_cdc_inputs("R2", 500.0, [], [], [{"layer_type": "flood", "value": "x"}], set())
+        assert inputs.flood_prone is True
+
+    def test_zone_token_extracted_and_uppercased(self):
+        from services.cdc_screen import build_cdc_inputs
+        assert build_cdc_inputs("r2 Low Density Residential", None, None, None, [], set()).zone_code == "R2"
+        assert build_cdc_inputs("", None, None, None, [], set()).zone_code is None
+        assert build_cdc_inputs(None, None, None, None, [], set()).zone_code is None
+
+    def test_heritage_lists_are_three_state(self):
+        from services.cdc_screen import build_cdc_inputs
+        known_clear = build_cdc_inputs("R2", None, [], [], [], set())
+        assert known_clear.heritage_item is False
+        assert known_clear.heritage_conservation_area is False
+        listed = build_cdc_inputs("R2", None, ["Item 123"], None, [], set())
+        assert listed.heritage_item is True
+        assert listed.heritage_conservation_area is None
+
+    def test_acid_class_parsed_from_overlay_value(self):
+        from services.cdc_screen import build_cdc_inputs
+        inputs = build_cdc_inputs("R2", None, [], [], [
+            {"layer_type": "acid_sulfate", "value": "Class 2"}], {"acid_sulfate"})
+        assert inputs.acid_sulfate_class == 2
+        junk = build_cdc_inputs("R2", None, [], [], [
+            {"layer_type": "acid_sulfate", "value": "Present"}], {"acid_sulfate"})
+        assert junk.acid_sulfate_class is None
+
+
+class TestRunCdcScreenForReport:
+    def test_fails_closed_without_db(self, monkeypatch):
+        """No DATABASE_URL / unloadable standards → None, never an exception."""
+        from services.cdc_screen import run_cdc_screen_for_report
+        assert run_cdc_screen_for_report(None, "R2", 500.0, [], [], [], set()) is None
+
+    def test_engine_crash_degrades_to_none(self, monkeypatch):
+        import services.cdc_screen as cs
+        monkeypatch.setattr(cs, "load_cdc_standards_from_url", lambda *a, **k: _standards())
+        monkeypatch.setattr(cs, "run_cdc_screen", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+        assert cs.run_cdc_screen_for_report("postgres://x", "R2", 500.0, [], [], [], set()) is None
+
+    def test_runs_screen_when_standards_load(self, monkeypatch):
+        import services.cdc_screen as cs
+        monkeypatch.setattr(cs, "load_cdc_standards_from_url", lambda *a, **k: _standards())
+        result = cs.run_cdc_screen_for_report("postgres://x", "E2 Environmental", 500.0, [], [], [], set())
+        assert result.eligible == "no"
+        assert any(e.constraint == "zone" for e in result.exclusions)
