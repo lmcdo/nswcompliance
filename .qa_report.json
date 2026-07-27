@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Guardrail-only change: prior-art four-sweep rule in CLAUDE.md plus a PreToolUse hook gating Artifact publishes on a fresh sweeps marker. No product code, no DB access, no served output touched.",
- "commit_hash": "pending",
+ "commit_hash": "0c0ba734",
  "files": [
   "CLAUDE.md",
   ".claude/settings.json",

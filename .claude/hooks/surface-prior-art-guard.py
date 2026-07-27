@@ -45,7 +45,7 @@ def main() -> int:
     else:
         try:
             marker = json.load(open(marker_path, encoding="utf-8"))
-            ts = datetime.fromisoformat(str(marker.get("timestamp", "")).replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(str(marker.get("timestamp") or "").replace("Z", "+00:00"))
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
             age_h = (datetime.now(timezone.utc) - ts).total_seconds() / 3600
