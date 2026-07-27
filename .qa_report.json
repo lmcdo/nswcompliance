@@ -1,7 +1,7 @@
 {
  "tier": "standard",
- "justification": "DCP extraction fidelity gates (regulatory-currency plan W2): the 2026-07 review backlog reached human review with 105/307 rows garbled and fidelity_status NULL everywhere. Adds a doubled-glyph header strip + per-row fidelity verdict at queue-insert, scopes rejected-row commit blocking to the current content hash (a rejected row previously wedged its chapter forever), and fixes the watchdog runbook to distinguish awaiting-review from awaiting-extraction.",
- "commit_hash": "751efa79",
+ "justification": "DCP extraction fidelity gates (regulatory-currency plan W2): the 2026-07 review backlog reached human review with 105/307 rows garbled and fidelity_status NULL everywhere. Adds a doubled-glyph header strip + per-row fidelity verdict at queue-insert, scopes rejected-row commit blocking to the current content hash (a rejected row previously wedged its chapter forever), and fixes the watchdog runbook to distinguish awaiting-review from awaiting-extraction. Hardened per Sol review of the PR: emptied-by-strip rows fail (never ok), prior rejected rows are superseded on re-extraction (the PDF-hash wedge), the commit join requires r.is_active, and the watchdog counts every commit-blocking status.",
+ "commit_hash": "26bb9c61",
  "files": [
   ".claude/.pre-impl-done.json",
   "scripts/dcp_extract_changed.py",
@@ -85,6 +85,13 @@
    "mitigated": true,
    "how": "The alert now labels each stuck chapter awaiting REVIEW (with row count and oldest age) or awaiting extraction, and points the former at /internal/dcp-review.",
    "repro": "Run dcp_watchdog.py with pending rows present - the critical block names the review queue."
+  },
+  {
+   "scenario": "An extraction of a changed clause yields ONLY header garbage; the strip empties it and the classifier sees falsy text.",
+   "what_happens": "An empty replacement would be marked ok and approving it would erase the served provision.",
+   "mitigated": true,
+   "how": "classify_row_fidelity takes change_type and fails any non-removal whose stripped text is empty (emptied_by_strip); the collapse check uses new_text is not None so empty strings count as zero length. Pinned by test on the real CoS header.",
+   "repro": "classify_row_fidelity('X__3_2', long_old, strip_garbled_header_lines(COS_HEADER), 'changed') returns failed."
   }
  ],
  "post_merge": {

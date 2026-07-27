@@ -1476,12 +1476,17 @@ def strip_garbled_header_lines(text: str | None) -> str | None:
 
 
 def classify_row_fidelity(ref: str | None, old_text: str | None,
-                          new_text: str | None) -> tuple[str, str | None]:
+                          new_text: str | None,
+                          change_type: str = "changed") -> tuple[str, str | None]:
     """Verdict for one queue row: ('ok', None) or ('failed', reason).
 
-    Checks (each proven against a real 2026-07 defect):
+    Checks (each proven against a real 2026-07 defect, plus Sol review of
+    PR #830):
       garbled_glyphs — doubled-glyph runs survived the header strip
       junk_ref       — provision keyed off a bare year / zone code / 'table'
+      emptied_by_strip — a non-removal whose stripped text is empty (the
+                          extraction produced ONLY header garbage; approving
+                          would erase the provision)
       section_collapsed — new text < 30% of a substantial old text (content
                           migrated to another key; approving would gut it)
       oversize_new_provision — a brand-new >20k-char provision (a mis-keyed
@@ -1493,7 +1498,10 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
         reasons.append("garbled_glyphs")
     if _JUNK_REF.match(short):
         reasons.append("junk_ref")
-    if old_text and new_text and len(old_text) > 2000 and len(new_text) < 0.3 * len(old_text):
+    if change_type != "removed" and new_text is not None and not new_text.strip():
+        reasons.append("emptied_by_strip")
+    if (old_text and new_text is not None and len(old_text) > 2000
+            and len(new_text) < 0.3 * len(old_text)):
         reasons.append("section_collapsed")
     if not old_text and new_text and len(new_text) > 20000:
         reasons.append("oversize_new_provision")
@@ -2383,10 +2391,20 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         )
 
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
-        # Only 'pending' rows are cleared — approved/rejected history is preserved.
+        # Only 'pending' rows are cleared — approved history is preserved.
         cur.execute(
             "DELETE FROM dcp_review_queue "
             "WHERE council = %s AND chapter_key = %s AND status = 'pending'",
+            (council, chapter_key),
+        )
+        # Prior rejections are SUPERSEDED by this fresh extraction, not kept
+        # blocking: the content hash is the source PDF's hash, so an
+        # extractor-side fix re-extracts under the SAME hash and hash-scoped
+        # blocking alone would wedge the chapter forever (Sol review of
+        # PR #830). Rows stay in the table as labelled audit history.
+        cur.execute(
+            "UPDATE dcp_review_queue SET status = 'superseded' "
+            "WHERE council = %s AND chapter_key = %s AND status = 'rejected'",
             (council, chapter_key),
         )
         for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:

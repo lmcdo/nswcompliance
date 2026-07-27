@@ -76,6 +76,7 @@ def find_committable_chapters(cur) -> list[dict]:
         FROM dcp_review_queue q
         JOIN dcp_chapter_registry r
           ON r.council = q.council AND r.chapter_key = q.chapter_key
+         AND r.is_active = TRUE
         GROUP BY q.council, q.chapter_key
         HAVING COUNT(*) FILTER (WHERE q.status = 'approved') > 0
            AND COUNT(*) FILTER (

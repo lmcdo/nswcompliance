@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T20:30:00+10:00",
-  "target": "DCP extraction fidelity gates: garble/structure classifier at queue-insert, header-artifact strip, hash-scoped rejected blocking, watchdog runbook fix",
-  "findings_summary": "Live investigation: 105/307 queue rows garbled (pdfplumber doubled-glyph text layer, CoS letter-spaced headers + KRG column interleave), 8 structurally broken (year-keyed provisions, 43k->2.7k section collapse); fidelity_status was never populated at insert (all NULL); rejected rows block commit forever (find_committable_chapters counts all-time rejected) while extract DELETE clears pending only; watchdog runbook line says run extraction when the queue is review-blocked"
+  "timestamp": "2026-07-27T21:30:00+10:00",
+  "target": "Sol round on PR #830: emptied-by-strip verdict, supersede prior rejected on re-extraction (same-PDF-hash wedge), r.is_active on commit join, watchdog counts all blocking statuses",
+  "findings_summary": "All four Sol findings verified against code: empty stripped text passed as ok (collapse skipped on falsy); content_hash is the PDF hash so extractor fixes re-extract under the SAME hash and hash-scoped rejected still wedges; registry join lacked is_active; watchdog review-blocked query counted pending only. No new tables; one UPDATE statement added to the refresh path."
 }

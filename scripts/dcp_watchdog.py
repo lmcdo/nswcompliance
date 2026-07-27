@@ -133,12 +133,19 @@ cur.execute("""
 """)
 unlinked = cur.fetchall()
 
-# ── Check 6: pending review rows per chapter (distinguishes review-blocked
-# from extraction-pending in the stuck-chapter alert) ───────────────────────
+# ── Check 6: commit-blocking review rows per chapter (distinguishes
+# review-blocked from extraction-pending in the stuck-chapter alert). All
+# statuses that block find_committable_chapters count, not just 'pending' —
+# a chapter wholly in needs_info is review-blocked too. Rejected rows count
+# only at the chapter's current content hash, mirroring the commit query.
 cur.execute("""
-    SELECT council, chapter_key, COUNT(*), MIN(created_at)
-    FROM dcp_review_queue WHERE status = 'pending'
-    GROUP BY council, chapter_key
+    SELECT q.council, q.chapter_key, COUNT(*), MIN(q.created_at)
+    FROM dcp_review_queue q
+    JOIN dcp_chapter_registry r
+      ON r.council = q.council AND r.chapter_key = q.chapter_key
+    WHERE q.status IN ('pending', 'in_progress', 'needs_info')
+       OR (q.status = 'rejected' AND q.source_content_hash = r.content_hash)
+    GROUP BY q.council, q.chapter_key
 """)
 pending_by_chapter = {(c, k): (n, oldest) for c, k, n, oldest in cur.fetchall()}
 

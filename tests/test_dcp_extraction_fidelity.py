@@ -85,6 +85,20 @@ class TestClassifyRowFidelity:
         status, _ = classify_row_fidelity("X__3_21", None, "a genuinely new clause of modest size")
         assert status == "ok"
 
+    def test_emptied_by_strip_fails_not_ok(self):
+        """Sol #830: a changed row whose extraction was ONLY header garbage
+        strips to empty — approving it would erase the provision. It must
+        fail, never slip through as ok because the checks see falsy text."""
+        stripped = strip_garbled_header_lines(COS_HEADER)
+        status, reason = classify_row_fidelity("X__3_2", "a real existing clause " * 20,
+                                               stripped, "changed")
+        assert status == "failed"
+        assert "emptied_by_strip" in reason
+
+    def test_removed_rows_allow_empty_new_text(self):
+        status, _ = classify_row_fidelity("X__3_2", "old clause text " * 10, None, "removed")
+        assert status == "ok"
+
 
 class TestQueueInsertCarriesFidelity:
     def test_insert_statement_includes_fidelity_status(self):
@@ -117,6 +131,26 @@ class TestCommitBlockingScope:
         assert blocking.count("q.source_content_hash = r.content_hash") == 2
 
 
+class TestRejectedSupersededOnReextraction:
+    def test_refresh_supersedes_prior_rejected_rows(self):
+        """Sol #830: content_hash is the source PDF's hash, so an
+        extractor-side fix re-extracts under the SAME hash — hash-scoped
+        blocking alone would wedge the chapter forever. The refresh must flip
+        prior rejected rows to 'superseded' (kept as audit history)."""
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_extract_changed.py"), encoding="utf-8").read()
+        assert "SET status = 'superseded'" in src
+        assert "status = 'rejected'" in src
+
+    def test_commit_join_excludes_inactive_chapters(self):
+        """Sol #830: an inactive registry chapter with leftover approved rows
+        must never be selected for commit."""
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_commit_approved.py"), encoding="utf-8").read()
+        block = src[src.index("find_committable_chapters"):src.index("ORDER BY q.council")]
+        assert "r.is_active = TRUE" in block
+
+
 class TestWatchdogRunbook:
     def test_alert_distinguishes_review_blocked_from_extraction_pending(self):
         """The old alert said 'run extraction' even when 307 rows were sitting
@@ -127,3 +161,13 @@ class TestWatchdogRunbook:
         assert "awaiting REVIEW" in src
         assert "awaiting extraction" in src
         assert "/internal/dcp-review" in src
+
+    def test_review_blocked_counts_all_blocking_statuses(self):
+        """Sol #830: a chapter wholly in needs_info is review-blocked too —
+        the watchdog's classification query must mirror the commit query's
+        blocking statuses, including current-hash rejected."""
+        src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                                "dcp_watchdog.py"), encoding="utf-8").read()
+        block = src[src.index("Check 6"):src.index("pending_by_chapter = ")]
+        assert "'pending', 'in_progress', 'needs_info'" in block
+        assert "q.source_content_hash = r.content_hash" in block
