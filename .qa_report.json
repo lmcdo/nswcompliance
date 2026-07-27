@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Migration 059 seeds cdc_eligibility_standards with the three Housing Code standards the CDC engine reads (zones, min lot, acid-sulfate class), every row quote-cited to regulatory_provisions ids. Rows land manual_verified=false and the engine reads verified rows only, so nothing renders from this seed until founder review. Standard tier because the content is regulatory data destined for a paid report, even though the diff is one SQL file.",
- "commit_hash": "pending",
+ "commit_hash": "30eb3ec3",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/059_seed_cdc_housing_code_standards.sql"
@@ -47,7 +47,7 @@
   },
   {
    "scenario": "The quotes drift from the instrument after an amendment and verified rows silently go stale.",
-   "what_happens": "Verified-but-superseded standards keep rendering.",
+   "what_happens": "Verified-but-superseded standards keep rendering current-looking verdicts in the paid report.",
    "mitigated": true,
    "how": "Rows carry source_provision_ids into the versioned provisions corpus and an is_active lifecycle; instrument_currency monitoring exists for the corpus. Residual risk documented in plan ce-cdc-screen-consolidation-2026-07 (currency monitoring is out of scope for this seed).",
    "repro": "Compare source_quote against the cited provision ids after any Codes SEPP re-ingest."
