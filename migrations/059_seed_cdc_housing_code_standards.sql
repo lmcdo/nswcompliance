@@ -49,3 +49,22 @@ VALUES
     FALSE
   )
 ON CONFLICT DO NOTHING;
+
+-- Replay guard (Sol review of PR #827): ON CONFLICT DO NOTHING makes re-runs
+-- safe, but a conflicting row carrying DIFFERENT values would be skipped
+-- silently. Assert the three seeded standards exist with exactly the seeded
+-- values, so drift fails the migration loudly instead of shipping quietly.
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM cdc_eligibility_standards
+  WHERE code_name = 'housing_code' AND is_active
+    AND (   (standard_type = 'eligible_zones'
+             AND applicable_zones = ARRAY['R1','R2','R3','R4','RU5'])
+         OR (standard_type = 'min_lot_size' AND numeric_value = 200)
+         OR (standard_type = 'acid_sulfate_max_class' AND numeric_value = 2));
+  IF n <> 3 THEN
+    RAISE EXCEPTION
+      'cdc_eligibility_standards seed mismatch: expected the 3 housing_code rows with seeded values, found %', n;
+  END IF;
+END $$;

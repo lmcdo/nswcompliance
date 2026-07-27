@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Migration 059 seeds cdc_eligibility_standards with the three Housing Code standards the CDC engine reads (zones, min lot, acid-sulfate class), every row quote-cited to regulatory_provisions ids. Rows land manual_verified=false and the engine reads verified rows only, so nothing renders from this seed until founder review. Standard tier because the content is regulatory data destined for a paid report, even though the diff is one SQL file.",
- "commit_hash": "30eb3ec3",
+ "commit_hash": "0d2da329",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/059_seed_cdc_housing_code_standards.sql"
