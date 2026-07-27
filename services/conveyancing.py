@@ -720,6 +720,22 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
             logger.warning("contaminated land lookup failed: %s", e)
             return {"status": "failed"}
 
+    def _fetch_servicing():
+        """Sydney Water Growth Servicing Plan servicing status — three-state.
+
+        prior-art-checked: reuses generate_conveyancing_report.get_servicing_live
+        (which wraps services.gsp_servicing.fetch_gsp_servicing, the reusable DB
+        lookup). A failed lookup renders "Not assessed", never a clear/serviceable
+        result. Data is © Sydney Water — the row attributes + links to the GSP page.
+        """
+        try:
+            from generate_conveyancing_report import get_servicing_live
+            # Resolved, property-bound coordinates (#818 binding contract).
+            return get_servicing_live(lat, lng)
+        except Exception as e:
+            logger.warning("Sydney Water servicing lookup failed: %s", e)
+            return {"status": "failed"}
+
     def _fetch_coastal():
         """Estuarine tidal inundation mapped-extent check — three-state.
 
@@ -750,6 +766,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_future = executor.submit(_fetch_climate)
         mine_future = executor.submit(_fetch_mine_subsidence)
         contam_future = executor.submit(_fetch_contaminated)
+        servicing_future = executor.submit(_fetch_servicing)
         coastal_future = executor.submit(_fetch_coastal)
         das, lep_clauses, dcp_setbacks_db, postgis_heritage = db_future.result()
         shadow_result = shadow_future.result()
@@ -762,6 +779,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate_result = climate_future.result()
         mine_subsidence_result = mine_future.result()
         contaminated_result = contam_future.result()
+        servicing_result = servicing_future.result()
         coastal_result = coastal_future.result()
 
     # Merge PostGIS heritage — keep HCA and individual items separate.
@@ -801,6 +819,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         climate=climate_result,
         mine_subsidence=mine_subsidence_result,
         contaminated=contaminated_result,
+        servicing=servicing_result,
         coastal=coastal_result,
     )
 

@@ -480,6 +480,13 @@ class EnvironmentalConstraints(BaseModel):
         value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
         source="nsw_spatial_services", reason="Not yet wired in orchestrator",
     )
+    # Sydney Water Growth Servicing Plan status — one-line human summary from
+    # gsp_servicing.summarize_servicing. Data is © Sydney Water ("guide only");
+    # the summary carries the source attribution.
+    servicing: DataField[Optional[str]] = DataField(
+        value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
+        source="sydney_water_gsp", reason="Not yet wired in orchestrator",
+    )
 
 
 class Neighbourhood(BaseModel):
@@ -2950,6 +2957,7 @@ def _build_environmental(
     mine_subsidence_raw: Optional[dict] = None,
     contaminated_land_raw: Optional[dict] = None,
     drinking_water_raw: Optional[dict] = None,
+    servicing_raw: Optional[dict] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
     overlays_failed: bool = False,
@@ -2976,6 +2984,10 @@ def _build_environmental(
     na = ConfidenceLevel.NOT_AVAILABLE
     overlay_auth = na if overlays_failed else auth          # purely overlay-derived fields
     both_failed = overlays_failed and controls_failed       # overlay+controls hazard fields
+
+    # Sydney Water servicing → one-line summary (None for failed/missing lookup).
+    from services.gsp_servicing import summarize_servicing as _summarize_servicing
+    _servicing_summary = _summarize_servicing(servicing_raw)
 
     overlay_list = (overlays_data.get("overlays") or []) if overlays_data else []
     covered = (overlays_data.get("covered_layers") or []) if overlays_data else []
@@ -3219,6 +3231,17 @@ def _build_environmental(
             source="sepp_resilience_hazards",
             as_at=today,
             reason="Drinking water catchment lookup did not complete" if drinking_failed else None,
+        ),
+        # Sydney Water servicing — one-line summary via the shared summarizer.
+        # 'empty' (not in a growth precinct) is a real answer (authoritative);
+        # a failed/missing lookup summarizes to None -> NOT_AVAILABLE.
+        servicing=DataField(
+            value=_servicing_summary,
+            confidence=na if _servicing_summary is None else auth,
+            source="sydney_water_gsp",
+            as_at=today,
+            reason=("Sydney Water servicing lookup did not complete"
+                    if _servicing_summary is None else None),
         ),
     )
 
@@ -3591,6 +3614,11 @@ def _generate_brief_sse(
             _safe_call, lambda: _fetch_drinking_water_catchment(lat, lng),
             "sepp_resilience_hazards", ConfidenceLevel.AUTHORITATIVE,
         )
+        from services.gsp_servicing import fetch_gsp_servicing as _fetch_gsp_servicing
+        f_servicing = pool.submit(
+            _safe_call, lambda: _fetch_gsp_servicing(lat, lng),
+            "sydney_water_gsp", ConfidenceLevel.AUTHORITATIVE,
+        )
 
         # Satellite — fire immediately if requested
         f_bushfire = f_flood_sat = f_climate = f_granny = None
@@ -3808,6 +3836,7 @@ def _generate_brief_sse(
         mine_sub_df = _timed_result(f_mine_sub, 10, "nsw_spatial_services", timings)
         contam_df = _timed_result(f_contam, 10, "epa_contaminated_sites", timings)
         drinking_df = _timed_result(f_drinking, 10, "sepp_resilience_hazards", timings)
+        servicing_df = _timed_result(f_servicing, 10, "sydney_water_gsp", timings)
 
         overlays_data, overlays_failed = _unwrap_or_default(overlays_df, {"overlays": [], "covered_layers": [], "proximity_m": {}})  # WO-2: overlays_failed -> _build_environmental stamps overlay-derived fields NOT_AVAILABLE instead of False@AUTHORITATIVE
         heritage_postgis = heritage_df.value
@@ -3817,6 +3846,10 @@ def _generate_brief_sse(
         mine_subsidence_raw, mine_failed = _unwrap_or_default(mine_sub_df, None)
         contaminated_land_raw, contam_failed = _unwrap_or_default(contam_df, None)
         drinking_water_raw, drinking_failed = _unwrap_or_default(drinking_df, None)
+        # fetch_gsp_servicing returns its own three-state dict (never raises); a
+        # timeout/_safe_call failure yields None -> _build_environmental marks it
+        # NOT_AVAILABLE. The dict's own 'failed' status is handled there too.
+        servicing_raw, _servicing_failed = _unwrap_or_default(servicing_df, None)
         # lot_geometry already awaited + reconciled before economics (above).
         contributions_df = _timed_result(f_contributions, 15, "planning_portal_cp", timings) if f_contributions else DataField(
             value=None, confidence=ConfidenceLevel.NOT_AVAILABLE,
@@ -3828,6 +3861,7 @@ def _generate_brief_sse(
             mine_subsidence_raw=mine_subsidence_raw,
             contaminated_land_raw=contaminated_land_raw,
             drinking_water_raw=drinking_water_raw,
+            servicing_raw=servicing_raw,
             lat=lat, lng=lng,
             overlays_failed=overlays_failed, controls_failed=controls_failed,
             mine_failed=mine_failed, contam_failed=contam_failed,
