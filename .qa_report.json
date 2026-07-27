@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Removes the last hardcoded SEPP regulatory fallback (450 m2 / R1-R4) from the paid conveyancing PDF (#684, same defect class as the land-tax fallback removed in #681). Touches figure rendering in a legal document plus confidence rating, so above minor; no new data source, query, or external boundary, so below critical.",
- "commit_hash": "8ba3dee1",
+ "commit_hash": "87ba6504",
  "files": [
   ".claude/.pre-impl-done.json",
   "scripts/conveyancing_db.py",
@@ -40,7 +40,7 @@
   },
   {
    "name": "_compute_confidence",
-   "file_line": "services/conveyancing.py:823",
+   "file_line": "services/conveyancing.py:939",
    "input": "controls, overlays, valuation plus flags including new sepp_config_missing boolean from the API runner",
    "output": "confidence rating string high, medium, or low printed on the report cover",
    "if_none": "sepp_config_missing True caps the rating at medium so a report with an unassessed secondary-dwelling row cannot claim high confidence"
