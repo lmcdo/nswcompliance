@@ -81,8 +81,19 @@ class CdcScreenInputs(BaseModel):
 
     @field_validator("lot_area_m2")
     @classmethod
-    def _finite_or_none(cls, v):
-        if v is not None and not math.isfinite(v):
+    def _positive_finite_or_none(cls, v):
+        # Non-finite AND non-positive areas are upstream error sentinels, not
+        # measurements — surface as unchecked, never as an exclusion.
+        if v is not None and (not math.isfinite(v) or v <= 0):
+            return None
+        return v
+
+    @field_validator("acid_sulfate_class")
+    @classmethod
+    def _valid_class_or_none(cls, v):
+        # Acid Sulfate Soils Maps use classes 1-5; anything else is corrupt
+        # upstream data and must read as unknown, not as screened-and-clear.
+        if v is not None and not 1 <= v <= 5:
             return None
         return v
 
@@ -151,6 +162,10 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         cur.close()
     except Exception as e:
         logger.warning("CDC standards: query failed — screen unavailable, callers fail closed: %s", e)
+        try:
+            conn.rollback()   # don't leave a shared connection in an aborted transaction
+        except Exception:
+            pass
         return None
 
     rows = {r[0]: {"numeric_value": r[1], "applicable_zones": r[2],
@@ -239,7 +254,7 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
         conditional = bool(cond) and inputs.min_lot_condition_met is not True
         exclusions.append(CdcExclusion(
             reason=(
-                f"Lot area {round(inputs.lot_area_m2):,} m² is below the "
+                f"Lot area {inputs.lot_area_m2:,.10g} m² is below the "
                 f"{standards['min_lot_size']:g} m² minimum"
                 + (f" — applies only where: {cond}" if conditional else "")
             ),
@@ -249,21 +264,24 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
         ))
 
     # 3. Heritage: a heritage ITEM maps to a definite exclusion; a conservation
-    # area is conditional in the instrument, so it stays a 'likely' flag.
+    # area is conditional in the instrument, so it stays a 'likely' flag. The
+    # two facts are independent — an unknown item status is NOT cleared by a
+    # known-false conservation-area status (Sol review round 2).
     checks.append("Heritage")
-    if inputs.heritage_item is None and inputs.heritage_conservation_area is None:
-        unchecked.append("heritage")
-    else:
-        if inputs.heritage_item:
-            exclusions.append(CdcExclusion(
-                reason="Heritage item mapped on this land",
-                constraint="heritage", severity="definite", source="NSW Planning Portal",
-            ))
-        elif inputs.heritage_conservation_area:
-            exclusions.append(CdcExclusion(
-                reason="In a heritage conservation area — complying development is restricted; a certifier must assess which works remain available",
-                constraint="heritage", severity="likely", source="NSW Planning Portal",
-            ))
+    if inputs.heritage_item is None:
+        unchecked.append("heritage item")
+    elif inputs.heritage_item:
+        exclusions.append(CdcExclusion(
+            reason="Heritage item mapped on this land",
+            constraint="heritage", severity="definite", source="NSW Planning Portal",
+        ))
+    if inputs.heritage_conservation_area is None:
+        unchecked.append("heritage conservation area")
+    elif inputs.heritage_conservation_area and not inputs.heritage_item:
+        exclusions.append(CdcExclusion(
+            reason="In a heritage conservation area — complying development is restricted; a certifier must assess which works remain available",
+            constraint="heritage", severity="likely", source="NSW Planning Portal",
+        ))
 
     # 4-5. Flood / bushfire mapping alone does not establish a Codes SEPP
     # exclusion — the instrument applies category-specific tests and additional
@@ -324,6 +342,16 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
                 constraint="dual_occ_prohibition", severity="definite",
                 source=inputs.dual_occ_epi_name or "NSW ePlanning MapServer",
             ))
+        elif inputs.development_type is None:
+            # A definite prohibition exists here but whether it governs is
+            # unknowable without the proposal type — surface that, don't
+            # quietly downgrade (Sol review round 2).
+            unchecked.append("development type (a dual-occupancy prohibition applies here; whether it governs this proposal could not be determined)")
+            warnings.append(
+                "This land is in a mapped dual-occupancy prohibition area. It "
+                "excludes dual-occupancy proposals; the proposal type was not "
+                "determined, so whether it applies here was not assessed."
+            )
         else:
             warnings.append(
                 "This land is in a mapped dual-occupancy prohibition area. That "
@@ -335,20 +363,22 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
     # ("significantly contaminated land" is on the Codes SEPP land-exclusion
     # list); a register site nearby is a warning, never an exclusion.
     checks.append("Contaminated land")
-    if inputs.contaminated_lot_on_register is None and inputs.contamination_within_500m is None:
-        unchecked.append("contaminated land")
-    else:
-        if inputs.contaminated_lot_on_register:
-            exclusions.append(CdcExclusion(
-                reason="Lot is on the EPA contaminated-land record (significantly contaminated land is excluded from complying development)",
-                constraint="contamination", severity="definite",
-                source="EPA Contaminated Land Record + SEPP (Exempt and Complying Development Codes) 2008",
-            ))
-        elif inputs.contamination_within_500m:
-            warnings.append(
-                "An EPA contaminated-land record site lies within 500 m. That does not "
-                "exclude this lot from complying development; check the lot's own status."
-            )
+    # The subject-lot register status and the proximity result are independent
+    # facts: an unknown lot status is NOT cleared by a known-false proximity
+    # result (Sol review round 2).
+    if inputs.contaminated_lot_on_register is None:
+        unchecked.append("contaminated land (subject-lot register status)")
+    elif inputs.contaminated_lot_on_register:
+        exclusions.append(CdcExclusion(
+            reason="Lot is on the EPA contaminated-land record (significantly contaminated land is excluded from complying development)",
+            constraint="contamination", severity="definite",
+            source="EPA Contaminated Land Record + SEPP (Exempt and Complying Development Codes) 2008",
+        ))
+    if inputs.contamination_within_500m and not inputs.contaminated_lot_on_register:
+        warnings.append(
+            "An EPA contaminated-land record site lies within 500 m. That does not "
+            "exclude this lot from complying development; check the lot's own status."
+        )
 
     # 10. Mine subsidence district — warning only: an approval requirement
     # under other legislation, not a Codes SEPP exclusion.

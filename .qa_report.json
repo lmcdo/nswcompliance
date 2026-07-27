@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "PR-1 of the CDC screen consolidation (#820, plan ce-cdc-screen-consolidation-2026-07): new dark backend engine (services/cdc_screen.py) + additive migration 058 for cdc_eligibility_standards. Nothing is wired to any surface yet — the conveyancing PDF and workbench route are untouched — but the engine renders regulatory verdicts once wired, and the loader/validation contract must be right now, so standard tier not minor. Hardened per Sol review of the PR: lifecycle (is_active + one-active partial unique index), conditional min-lot evaluation, proposal-scoped dual-occ prohibition, flood/bushfire/HCA demoted to 'likely' (broad overlay booleans are not instrument exclusions), strict acid-sulfate validation, NaN input coercion.",
- "commit_hash": "cc99206b",
+ "commit_hash": "df59ee1d",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/058_cdc_eligibility_standards.sql",

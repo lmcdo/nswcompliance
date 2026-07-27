@@ -218,6 +218,40 @@ class TestRunCdcScreen:
         assert not any(e.constraint == "lot_size" for e in result.exclusions)
         assert "lot size" in result.unchecked
 
+    def test_nonpositive_lot_area_is_error_sentinel_not_exclusion(self):
+        """-1 or 0 from an upstream failure must read as unknown, never as a
+        tiny lot that fails the minimum."""
+        for bad in (-1.0, 0.0):
+            result = run_cdc_screen(_standards(), _clear_inputs(lot_area_m2=bad))
+            assert not any(e.constraint == "lot_size" for e in result.exclusions), bad
+            assert "lot size" in result.unchecked, bad
+
+    def test_lot_reason_never_contradicts_comparison(self):
+        """199.6 m² vs a 200 m² minimum must not render as '200 below 200'."""
+        result = run_cdc_screen(
+            _standards(), _clear_inputs(lot_area_m2=199.6, min_lot_condition_met=True))
+        reason = next(e for e in result.exclusions if e.constraint == "lot_size").reason
+        assert "199.6" in reason
+
+    def test_unknown_heritage_item_not_cleared_by_known_hca(self):
+        """heritage_item=None with heritage_conservation_area=False must
+        surface the item status as unchecked, not read as clear."""
+        result = run_cdc_screen(_standards(), _clear_inputs(
+            heritage_item=None, heritage_conservation_area=False))
+        assert any("heritage item" in u for u in result.unchecked)
+
+    def test_unknown_lot_register_not_cleared_by_known_proximity(self):
+        result = run_cdc_screen(_standards(), _clear_inputs(
+            contaminated_lot_on_register=None, contamination_within_500m=False))
+        assert any("subject-lot register" in u for u in result.unchecked)
+
+    def test_out_of_range_acid_class_reads_as_unknown(self):
+        """Class 6 does not exist on the maps — corrupt data must surface as
+        unchecked, not as screened-and-clear."""
+        result = run_cdc_screen(_standards(), _clear_inputs(acid_sulfate_class=6))
+        assert not any(e.constraint == "acid_sulfate" for e in result.exclusions)
+        assert "acid sulfate soils" in result.unchecked
+
     def test_heritage_item_is_definite_no(self):
         result = run_cdc_screen(_standards(), _clear_inputs(heritage_item=True))
         assert result.eligible == "no"
@@ -297,6 +331,16 @@ class TestRunCdcScreen:
             assert result.eligible == "maybe", dev_type
             assert not any(e.constraint == "dual_occ_prohibition" for e in result.exclusions)
             assert any("dual-occupancy prohibition" in w for w in result.warnings)
+
+    def test_dual_occ_prohibition_with_unknown_proposal_surfaces_unchecked(self):
+        """Unknown proposal type on prohibited land is a gap in the screen,
+        not a quiet downgrade — it must appear in unchecked."""
+        result = run_cdc_screen(_standards(), _clear_inputs(
+            dual_occ_prohibited=True, development_type=None))
+        assert any("development type" in u for u in result.unchecked)
+        known = run_cdc_screen(_standards(), _clear_inputs(
+            dual_occ_prohibited=True, development_type="dwelling_house"))
+        assert not any("development type" in u for u in known.unchecked)
 
 
 # ---------------------------------------------------------------------------

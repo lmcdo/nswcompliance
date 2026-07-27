@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS cdc_eligibility_standards (
   -- was at the relevant time, specified". NULL = unconditional.
   conditionality        text,
   ref_number            text,
-  source_provision_ids  integer[]   NOT NULL,
-  source_quote          text        NOT NULL,
+  -- Provenance is ENFORCED, not aspirational: a standard with no cited
+  -- provisions or a blank quote cannot exist (Sol review round 2).
+  source_provision_ids  integer[]   NOT NULL CHECK (cardinality(source_provision_ids) > 0),
+  source_quote          text        NOT NULL CHECK (btrim(source_quote) <> ''),
   effective_date        date,
   -- Lifecycle: superseded standards are retired by flipping is_active off,
   -- never deleted (audit trail). The partial unique index below guarantees at
@@ -42,8 +44,11 @@ CREATE TABLE IF NOT EXISTS cdc_eligibility_standards (
   manual_verified       boolean     NOT NULL DEFAULT FALSE,
   verified_by           text,
   verified_at           timestamptz,
-  created_at            timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (code_name, standard_type, ref_number)
+  created_at            timestamptz NOT NULL DEFAULT now()
+  -- No unconditional UNIQUE on (code_name, standard_type, ref_number): an
+  -- amended value under the SAME clause ref must be insertable alongside its
+  -- retired predecessor (audit trail). The partial index below is the only
+  -- uniqueness rule: one ACTIVE row per (code_name, standard_type).
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS cdc_standards_one_active
