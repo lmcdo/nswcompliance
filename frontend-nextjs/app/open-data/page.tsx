@@ -173,7 +173,7 @@ export default function OpenDataPage() {
           key={ds.name}
           name={ds.name}
           description={ds.description}
-          url={`https://plotdetect.com.au${ds.pageUrl}`}
+          url={`https://canibuildit.com.au${ds.pageUrl}`}
           spatialCoverage="New South Wales, Australia"
           variableMeasured={[...ds.variableMeasured]}
           license="Derived from NSW Government open data and legislative instruments"
