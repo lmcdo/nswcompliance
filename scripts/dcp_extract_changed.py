@@ -1445,6 +1445,71 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
     return serious_flagged / total_provisions > SCHEMA_FAIL_RATIO
 
 
+# ── Per-row fidelity gate (2026-07 review-queue triage findings) ────────────
+# The 2026-07 backlog reached review with 105/307 rows garbled and NULL
+# fidelity_status everywhere: pdfplumber reads letter-spaced running headers as
+# doubled glyphs (CoS "GGEENNEERRAALL"), interleaves two-column text
+# (Ku-ring-gai), keys provisions off bare years, and can collapse a 43k-char
+# section into a 2.7k stub when tables migrate. Every queue row now carries an
+# explicit fidelity verdict at insert time — garbage flags itself instead of
+# waiting for a human to notice.
+
+_GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
+_JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
+
+
+def strip_garbled_header_lines(text: str | None) -> str | None:
+    """Drop lines dominated by doubled-glyph runs (letter-spaced running
+    headers whose text layer duplicates every glyph). Only whole LINES are
+    removed, and only when the doubled run covers most of the line's letters —
+    body text containing a legitimate 'LLoyd' or 'III' is untouched."""
+    if not text:
+        return text
+    kept = []
+    for line in text.splitlines():
+        letters = sum(ch.isalpha() for ch in line)
+        doubled = sum(len(m.group(0)) for m in _GARBLE_RUN.finditer(line))
+        if letters >= 8 and doubled / max(letters, 1) > 0.6:
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def classify_row_fidelity(ref: str | None, old_text: str | None,
+                          new_text: str | None,
+                          change_type: str = "changed") -> tuple[str, str | None]:
+    """Verdict for one queue row: ('ok', None) or ('failed', reason).
+
+    Checks (each proven against a real 2026-07 defect, plus Sol review of
+    PR #830):
+      garbled_glyphs — doubled-glyph runs survived the header strip
+      junk_ref       — provision keyed off a bare year / zone code / 'table'
+      emptied_by_strip — a non-removal whose stripped text is empty (the
+                          extraction produced ONLY header garbage; approving
+                          would erase the provision)
+      section_collapsed — new text < 30% of a substantial old text (content
+                          migrated to another key; approving would gut it)
+      oversize_new_provision — a brand-new >20k-char provision (a mis-keyed
+                          section split, not a genuine new clause)
+    """
+    reasons = []
+    short = (ref or "").split("__")[-1]
+    if _GARBLE_RUN.search(new_text or ""):
+        reasons.append("garbled_glyphs")
+    if _JUNK_REF.match(short):
+        reasons.append("junk_ref")
+    if change_type != "removed" and new_text is not None and not new_text.strip():
+        reasons.append("emptied_by_strip")
+    if (old_text and new_text is not None and len(old_text) > 2000
+            and len(new_text) < 0.3 * len(old_text)):
+        reasons.append("section_collapsed")
+    if not old_text and new_text and len(new_text) > 20000:
+        reasons.append("oversize_new_provision")
+    if reasons:
+        return "failed", "+".join(reasons)
+    return "ok", None
+
+
 def suspect_reason(review_data: dict) -> str | None:
     """Return a short SUSPECT reason for a review chapter, or None if it looks fine.
 
@@ -2326,23 +2391,42 @@ def enqueue_review_changes(conn, review_chapters: list[dict]) -> int:
         )
 
         # Refresh: drop stale pending rows for this chapter, then insert fresh.
-        # Only 'pending' rows are cleared — approved/rejected history is preserved.
+        # Only 'pending' rows are cleared — approved history is preserved.
         cur.execute(
             "DELETE FROM dcp_review_queue "
             "WHERE council = %s AND chapter_key = %s AND status = 'pending'",
             (council, chapter_key),
         )
+        # Prior rejections are SUPERSEDED by this fresh extraction, not kept
+        # blocking: the content hash is the source PDF's hash, so an
+        # extractor-side fix re-extracts under the SAME hash and hash-scoped
+        # blocking alone would wedge the chapter forever (Sol review of
+        # PR #830). Rows stay in the table as labelled audit history.
+        cur.execute(
+            "UPDATE dcp_review_queue SET status = 'superseded' "
+            "WHERE council = %s AND chapter_key = %s AND status = 'rejected'",
+            (council, chapter_key),
+        )
         for change_type, ref, old_t, new_t, old_p, new_p, has_num in rows:
+            # Fidelity gate: strip doubled-glyph running headers, then verdict
+            # the row. A 'failed' row still lands in the queue (it blocks the
+            # chapter's commit and the watchdog reports it) but carries its
+            # reason so nobody has to diagnose garbage by eye again.
+            new_t = strip_garbled_header_lines(new_t)
+            fidelity, row_reason = classify_row_fidelity(ref, old_t, new_t)
+            merged_reason = "; ".join(x for x in (reason, row_reason) if x) or None
             cur.execute(
                 """
                 INSERT INTO dcp_review_queue
                     (council, chapter_key, document_id, ref_number, change_type,
                      old_text, new_text, old_page, new_page, has_numeric_change,
-                     source_content_hash, suspect_reason, is_full_replace, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                     source_content_hash, suspect_reason, is_full_replace, status,
+                     fidelity_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending', %s)
                 """,
                 (council, chapter_key, document_id, ref, change_type,
-                 old_t, new_t, old_p, new_p, has_num, content_hash, reason, is_full_replace),
+                 old_t, new_t, old_p, new_p, has_num, content_hash, merged_reason,
+                 is_full_replace, fidelity),
             )
             total += 1
 
