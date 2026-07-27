@@ -571,22 +571,90 @@ class TestSecondaryDwellingTruth:
         for phrase in ("else 450", 'else {"R1"', "fallback 450", "fallback 60"):
             assert phrase not in src, f"SEPP fallback reintroduced in conveyancing_db.py: {phrase!r}"
 
-    def test_cdc_outside_zone_is_screen_boundary_not_pathway_scope(self):
-        """Sol review of #816: the zone set comes from the secondary-dwelling
-        standards row, so an out-of-zone CDC row must state what was screened,
-        never that the CDC pathway itself 'applies to' those zones — the general
-        pathway's zone scope is governed by other instruments."""
+    def test_cdc_never_screens_from_sd_zone_set(self):
+        """#820 PR-2: the CDC row renders ONLY from the engine result. With no
+        cdc_result, a fully-populated SEPP Housing config must still render
+        'Not assessed' — the secondary-dwelling zone screen is gone for good."""
         from generate_conveyancing_report import calc_feasibility
         rows = [r for r in calc_feasibility(
-            {"zone": "B2"}, {"lot_area_m2": 500, "land_value": 900_000}, [],
+            {"zone": "R2"}, {"lot_area_m2": 500, "land_value": 900_000}, [],
             is_strata=False,
             sepp_standards={"sd_min_lot": 450.0, "sd_zones": {"R1", "R2"}},
             tax_config=None,
         ) if "Complying Development" in r["question"]]
         assert len(rows) == 1
-        assert rows[0]["answer"] == "Not assessed for this zone"
-        assert "applies to residential zones" not in rows[0]["basis"]
-        assert "were not assessed" in rows[0]["basis"]
+        assert rows[0]["answer"] == "Not assessed"
+
+
+# ---------------------------------------------------------------------------
+# CDC row from the engine (#820 PR-2) — the row renders the CdcScreenResult
+# verdict and never claims eligibility
+# ---------------------------------------------------------------------------
+
+class TestCdcRowFromEngine:
+    def _run(self, cdc_result, zone="R2"):
+        from generate_conveyancing_report import calc_feasibility
+        return [r for r in calc_feasibility(
+            {"zone": zone}, {"lot_area_m2": 500, "land_value": 900_000}, [],
+            is_strata=False, sepp_standards=None, tax_config=None,
+            cdc_result=cdc_result,
+        ) if "Complying Development" in r["question"]]
+
+    @staticmethod
+    def _result(eligible="maybe", exclusions=(), warnings=(), checks=("Zone", "Lot size"), unchecked=()):
+        import sys as _sys, os as _os
+        _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), ".."))
+        from services.cdc_screen import CdcExclusion, CdcScreenResult
+        return CdcScreenResult(
+            eligible=eligible,
+            exclusions=[CdcExclusion(**e) for e in exclusions],
+            warnings=list(warnings), checks_performed=list(checks),
+            unchecked=list(unchecked),
+        )
+
+    def test_no_result_renders_not_assessed(self):
+        rows = self._run(None)
+        assert rows[0]["answer"] == "Not assessed"
+        assert rows[0]["flag"] == "warn"
+
+    def test_definite_exclusion_renders_excluded_with_citation(self):
+        rows = self._run(self._result(eligible="no", exclusions=[{
+            "reason": "Zone B2 is not in the zones this code applies to",
+            "constraint": "zone", "severity": "definite",
+            "source": "SEPP (Exempt and Complying Development Codes) 2008, cl 3.1(3)(a)",
+        }]))
+        assert rows[0]["answer"] == "Excluded (Housing Code) — zone"
+        assert rows[0]["flag"] == "alert"
+        assert "cl 3.1(3)(a)" in rows[0]["basis"]
+        # Scope honesty: a Housing Code negative never rules out other codes
+        assert "other complying development pathways were not assessed" in rows[0]["basis"].lower()
+        assert "full DA" not in rows[0]["basis"]
+
+    def test_likely_exclusion_renders_restricted_not_excluded(self):
+        rows = self._run(self._result(exclusions=[{
+            "reason": "Flood risk constraint mapped on this land — a certifier must assess",
+            "constraint": "flood", "severity": "likely", "source": "NSW Planning Portal",
+        }]))
+        assert rows[0]["answer"] == "Restricted — flood risk"
+        assert rows[0]["flag"] == "warn"
+
+    def test_clear_screen_never_claims_eligibility(self):
+        """The old row said 'Potentially eligible'; the engine-backed row
+        states what was screened and defers the verdict to a certifier."""
+        rows = self._run(self._result(warnings=["Not screened (data unavailable): heritage item."]))
+        assert rows[0]["flag"] == "ok"
+        assert "eligible" not in rows[0]["answer"].lower()
+        assert "Not screened" in rows[0]["basis"]
+        assert "certifier" in rows[0]["basis"]
+
+    def test_strata_branch_unchanged(self):
+        from generate_conveyancing_report import calc_feasibility
+        rows = [r for r in calc_feasibility(
+            {"zone": "R2"}, {"lot_area_m2": None, "land_value": 900_000}, [],
+            is_strata=True, sepp_standards=None, tax_config=None,
+            cdc_result=self._result(),
+        ) if "Complying Development" in r["question"]]
+        assert rows[0]["answer"] == "Unit alterations only — strata by-laws apply"
 
 
 # ---------------------------------------------------------------------------

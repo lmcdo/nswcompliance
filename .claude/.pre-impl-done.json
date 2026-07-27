@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T10:40:00+10:00",
-  "target": "migration 059: seed cdc_eligibility_standards (3 rows, manual_verified=false) from grounded Codes SEPP provisions",
-  "findings_summary": "Grounded in prod provisions: cl 3.1(3) Lot requirements ids 36996/36997 (zones R1-R4+RU5, 200m2 flat minimum — NOT the conditional cl 6.4 wording, different code), cl 1.19(1)(c) ids 36184/36185 (ASS max class 2 — TS route's <=3 was wrong; B1/B2 in TS route ungrounded for housing_code and dropped). Rows inert until manual_verified flipped."
+  "timestamp": "2026-07-27T12:05:00+10:00",
+  "target": "PR-2 #820 continued: remaining call-site wiring in services/conveyancing.py (run_conveyancing + generate_conveyancing_pdf) and TS route swap",
+  "findings_summary": "Same investigation as previous marker (Explore-mapped call sites); covered_layers confirmed in scope at all three calc_feasibility call sites; conveyancing.py imports via dual services./local pattern; no new queries — cdc standards read via already-tested load_cdc_standards_from_url"
 }
