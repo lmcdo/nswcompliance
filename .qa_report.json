@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "PR-2 of #820: wires the conveyancing CDC row (all three calc_feasibility call sites) and the workbench /api/cdc/preliminary-check route onto the backend CDC screen engine, deleting the route's hardcoded zone lists and thresholds. The paid PDF's CDC verdict now comes from founder-verified, clause-cited standards; every unavailable fact renders fail-visible.",
- "commit_hash": "pending",
+ "commit_hash": "1145960b",
  "files": [
   ".claude/.pre-impl-done.json",
   "services/cdc_screen.py",
@@ -30,7 +30,7 @@
    "name": "build_cdc_inputs",
    "file_line": "services/cdc_screen.py:436",
    "input": "zone description, lot area, heritage item and HCA lists, overlays list, covered-layers set",
-   "output": "CdcScreenInputs with three-state facts",
+   "output": "CdcScreenInputs model populated with three-state property facts",
    "if_none": "an overlay absent from the list reads False only when its layer is in covered_layers, else None (unchecked); heritage None lists stay unknown; unparseable acid-sulfate values stay None"
   },
   {
@@ -44,7 +44,7 @@
    "name": "cdc_screen",
    "file_line": "services/cdc_screen_api.py:44",
    "input": "POST /pipeline/cdc/screen with CdcScreenInputs JSON from the Next.js route",
-   "output": "CdcScreenResult JSON; never 'yes'",
+   "output": "CdcScreenResult JSON for the route; the verdict is never yes",
    "if_none": "standards unavailable raises HTTPException 503 (granny-flat #819 pattern); the TS route catches any non-OK and renders 'maybe' with a visible could-not-run warning"
   },
   {
