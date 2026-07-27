@@ -60,6 +60,20 @@ See `.claude/rules/` — regulatory-data, frontend, enrichment, services, blog-c
 - Never delete/overwrite code unless explicitly instructed
 - Never interpret regulations — only extract exact clauses
 
+## Prior-Art Four-Sweep [CRITICAL]
+Before ANY claim that something "doesn't exist / isn't built / isn't in the DB",
+or before building any new surface (page, sheet, artifact, tool, review UI),
+run ALL four sweeps and cite them in the claim:
+1. **DB content, not table names**: `documents` by name pattern + `regulatory_provisions` by `document_id`
+2. **Frontend surfaces**: `frontend-nextjs/app/**` (including `app/internal`), `components/`, `hooks/` — grep the CONCEPT, not the expected filename
+3. **Python**: `services/` `scripts/` `src/` `enrichment/`
+4. **Plans + memory indexes** (`~/.claude/plans/INDEX*.md`, MEMORY.md)
+A negative claim without its greps is unsupported. Artifact publishes are
+hook-gated on a fresh `.claude/.prior-art-surfaces.json` marker (see
+`.claude/hooks/surface-prior-art-guard.py`) — reuse an existing surface when
+one exists (e.g. `/internal/dcp-review`) instead of building a parallel one.
+Origin: four prior-art misses in one session, 2026-07-27.
+
 ## Deployment & Branching [ENFORCED]
 Branch naming: `fix/` | `feat/` | `chore/`
 Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" → `gh pr merge --squash`

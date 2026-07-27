@@ -1,103 +1,35 @@
 {
- "tier": "standard",
- "justification": "DCP extraction fidelity gates (regulatory-currency plan W2): the 2026-07 review backlog reached human review with 105/307 rows garbled and fidelity_status NULL everywhere. Adds a doubled-glyph header strip + per-row fidelity verdict at queue-insert, scopes rejected-row commit blocking to the current content hash (a rejected row previously wedged its chapter forever), and fixes the watchdog runbook to distinguish awaiting-review from awaiting-extraction. Hardened per Sol review of the PR: emptied-by-strip rows fail (never ok), prior rejected rows are superseded on re-extraction (the PDF-hash wedge), the commit join requires r.is_active, and the watchdog counts every commit-blocking status.",
- "commit_hash": "26bb9c61",
+ "tier": "minor",
+ "justification": "Guardrail-only change: prior-art four-sweep rule in CLAUDE.md plus a PreToolUse hook gating Artifact publishes on a fresh sweeps marker. No product code, no DB access, no served output touched.",
+ "commit_hash": "0c0ba734",
  "files": [
-  ".claude/.pre-impl-done.json",
-  "scripts/dcp_extract_changed.py",
-  "scripts/dcp_commit_approved.py",
-  "scripts/dcp_watchdog.py",
-  "tests/test_dcp_extraction_fidelity.py",
-  "tests/test_dcp_review_enqueue.py"
+  "CLAUDE.md",
+  ".claude/settings.json",
+  ".claude/hooks/surface-prior-art-guard.py"
  ],
- "pre_impl": {
-  "existing_data": "Live triage of the 307 pending dcp_review_queue rows: 105 garbled (pdfplumber reads CoS letter-spaced running headers as doubled glyphs, Ku-ring-gai two-column interleave), 8 structurally broken (44k-char provision keyed off the bare year 2021, the 43k-char parking section collapsed to 2.7k when its tables migrated). fidelity_status was NULL on all 307 - the columns from migrations 055/056 were never populated at insert. find_committable_chapters counts all-time rejected rows as blocking while the extract refresh deletes pending rows only.",
-  "assumption_mismatch": "'No doubled letters' proved insufficient as a cleanliness gate - Georges River rows were letter-clean but structurally broken (section collapse + junk year key), which is why the classifier carries four independent checks rather than one garble regex. Rejecting bad rows outright would have permanently wedged six chapters (rejected blocks forever), so the triage kept bad rows pending with fidelity stamps and this PR fixes the blocking semantics for the future.",
-  "new_vs_existing": "Extends the existing suspect_reason chapter-level guard with row-level verdicts; reuses the queue's existing fidelity_status/suspect_reason columns (no schema change); the commit query gains a registry join for hash scoping; the watchdog gains one query and a two-state runbook message. No new tables, no new services."
- },
- "functions": [
-  {
-   "name": "strip_garbled_header_lines",
-   "file_line": "scripts/dcp_extract_changed.py:1461",
-   "input": "extracted section text possibly containing letter-spaced running-header lines whose text layer doubled every glyph",
-   "output": "text with garbled header lines removed and body lines untouched",
-   "if_none": "None and empty inputs pass through unchanged; lines with legitimate doubles (Lloyd, III) are preserved because the strip fires only when doubled runs dominate a line's letters"
-  },
-  {
-   "name": "classify_row_fidelity",
-   "file_line": "scripts/dcp_extract_changed.py:1478",
-   "input": "one queue row's ref key, old text, and stripped new text",
-   "output": "tuple of verdict ok or failed plus a joined reason naming each failed check",
-   "if_none": "missing old text is legitimate for added clauses (only the oversize check applies); missing new text is legitimate for removals; a clean row returns ok with reason None"
-  },
-  {
-   "name": "find_committable_chapters",
-   "file_line": "scripts/dcp_commit_approved.py:55",
-   "input": "database cursor over dcp_review_queue joined to dcp_chapter_registry",
-   "output": "chapters whose every current-hash queued change is approved with nothing blocking",
-   "if_none": "rejected rows for a superseded content hash no longer block - they remain as audit history; pending, in-progress and needs-info rows of any hash still block as before"
-  }
- ],
- "values": [
-  {
-   "value": "fidelity_status (ok/failed) and merged suspect_reason on every inserted queue row",
-   "read_at": "computed at insert time in enqueue_review_changes from the stripped new text",
-   "if_missing": "cannot be missing going forward - the INSERT always writes a verdict; the 2026-07 backlog's NULLs were the defect this closes"
-  }
- ],
- "queries": [
-  {
-   "purpose": "select chapters safe to commit, with rejected rows blocking only for the current extraction",
-   "file_line": "scripts/dcp_commit_approved.py:66",
-   "where_clause": "blocking counts status pending/in_progress/needs_info at any hash, plus rejected only where q.source_content_hash = r.content_hash via the registry join"
-  },
-  {
-   "purpose": "pending review rows per chapter for the watchdog's two-state runbook",
-   "file_line": "scripts/dcp_watchdog.py:128",
-   "where_clause": "WHERE status = 'pending' GROUP BY council, chapter_key"
-  }
- ],
+ "functions": "N/A - one small hook script; no product functions changed.",
+ "values": "N/A - no DB or API values involved.",
+ "queries": "N/A - no database access.",
  "break_it": [
   {
-   "scenario": "A council republishes with letter-spaced headers again and the garble reaches review unlabelled.",
-   "what_happens": "Reviewers approve doubled-glyph junk into served provision text.",
+   "scenario": "The hook blocks legitimate Artifact listing calls, breaking artifact discovery.",
+   "what_happens": "Sessions could not enumerate existing artifacts at all.",
    "mitigated": true,
-   "how": "Header lines are stripped before insert; any garble that survives the strip fails the row's fidelity verdict, which the queue row carries visibly. Tests pin both the strip and the verdict on the real CoS and Ku-ring-gai artifacts.",
-   "repro": "classify_row_fidelity on text containing nneeww ddwweelllliinngg returns failed with garbled_glyphs."
+   "how": "action list passes through unconditionally; smoke-tested (exit 0 for list, exit 2 for publish without marker).",
+   "repro": "echo a list-action payload into the hook and observe exit 0."
   },
   {
-   "scenario": "The header strip eats legitimate body text containing doubled letters.",
-   "what_happens": "Served provision text would silently lose valid lines it should keep.",
+   "scenario": "A malformed or stale marker silently allows publishes, defeating the gate.",
+   "what_happens": "The guard would be decorative, like the memory rule it replaces.",
    "mitigated": true,
-   "how": "The strip removes whole lines only when doubled runs cover more than 60 percent of the line's letters and the line has 8+ letters; Lloyd Street setback text survives, pinned by test.",
-   "repro": "strip_garbled_header_lines on the Lloyd Street sentence returns it unchanged."
-  },
-  {
-   "scenario": "find_committable_chapters treats a rejected row as blocking forever: a reviewer rejects a bad extraction and the chapter never commits again even after a clean re-extraction.",
-   "what_happens": "Permanent silent wedge - the chapter serves stale data forever while the dashboard shows daily successful commit runs.",
-   "mitigated": true,
-   "how": "The committable query's blocking filter is hash-scoped: rejected rows count only where q.source_content_hash = r.content_hash, so rejected rows for superseded extractions stop blocking and stay as audit history. Source-pinned by test (both filter instances carry the hash condition).",
-   "repro": "Reject a row, re-extract the chapter under a new content_hash, approve the fresh rows - the chapter commits."
-  },
-  {
-   "scenario": "The watchdog keeps telling operators to run extraction while the real blocker is an unworked review queue.",
-   "what_happens": "The exact 2026-07 failure: identical alerts for weeks, wrong runbook, 307 rows unreviewed.",
-   "mitigated": true,
-   "how": "The alert now labels each stuck chapter awaiting REVIEW (with row count and oldest age) or awaiting extraction, and points the former at /internal/dcp-review.",
-   "repro": "Run dcp_watchdog.py with pending rows present - the critical block names the review queue."
-  },
-  {
-   "scenario": "An extraction of a changed clause yields ONLY header garbage; the strip empties it and the classifier sees falsy text.",
-   "what_happens": "An empty replacement would be marked ok and approving it would erase the served provision.",
-   "mitigated": true,
-   "how": "classify_row_fidelity takes change_type and fails any non-removal whose stripped text is empty (emptied_by_strip); the collapse check uses new_text is not None so empty strings count as zero length. Pinned by test on the real CoS header.",
-   "repro": "classify_row_fidelity('X__3_2', long_old, strip_garbled_header_lines(COS_HEADER), 'changed') returns failed."
+   "how": "Unreadable markers, markers older than 4h, and markers lacking two sweeps plus a verdict all block with the reason named in stderr.",
+   "repro": "Write an empty marker file and attempt a publish payload - exit 2 with marker must list sweeps."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required - no schema change; fidelity columns already exist (migrations 055/056). Railway auto-deploys the monitors image on merge; next Monday's cron re-extracts the flagged chapters through the new gates.",
+  "db_reset": "Not required - no database involvement.",
   "secrets": "No secrets involved.",
-  "other_repo": "None. Follow-ups tracked in ce-regulatory-currency-system-2026-07: SEPP auto-stale PR (W3), Unlimited-OCR Phase-0 eval with the CoS letter-spaced chapter as a third test case, healthcheck dead-man per cron (W5).",
-  "manual_verify": "Yes - after next Monday's cron: the re-extracted City of Sydney rows carry fidelity_status (ok rows clean of doubled-glyph runs, residual junk marked failed), and the watchdog alert for any still-stuck chapter names the correct queue."
+  "other_repo": "None. Candidate for later porting to the claude-railguards public repo.",
+  "manual_verify": "Yes - next session: an Artifact publish without the marker is blocked with the sweep instructions; writing the marker then publishing succeeds."
  }
 }
