@@ -8,6 +8,8 @@ import { sanitizeHTML } from '@/lib/sanitize'
 import { BreadcrumbJsonLd, DatasetJsonLd } from '@/lib/json-ld'
 
 export const revalidate = 86400
+// Only slugs from generateStaticParams render; unknown slugs 404 (not 500).
+export const dynamicParams = false
 
 export function generateStaticParams() {
   return FLOOD_LGAS.map(lga => ({ 'lga-slug': lga.slug }))

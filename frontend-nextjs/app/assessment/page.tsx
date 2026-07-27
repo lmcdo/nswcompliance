@@ -582,6 +582,8 @@ export default function AssessmentPage() {
                         lotArea={selectedProperty.lotDimensions?.area}
                         strataInfo={(selectedProperty as any).strataInfo}
                         developmentType={developmentType}
+                        lat={mapLat}
+                        lng={mapLng}
                       />
                     </ErrorBoundary>
                   </div>

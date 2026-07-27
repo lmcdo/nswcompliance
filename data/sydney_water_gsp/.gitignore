@@ -1,0 +1,3 @@
+# Bulky public source data — re-downloadable via scripts/smoketest_gsp_servicing.py header URLs.
+# Do not commit the 3.3MB GeoJSON blobs (large-file gate).
+GSP_*.json

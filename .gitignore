@@ -580,3 +580,8 @@ temp_dcp_pdfs/
 data/latent_scope/
 latent-scope-data/
 .venv-latentscope/
+
+# Sydney Water GSP servicing feature (migration 058) — track the pipeline, not the data blobs
+!scripts/ingest_sydney_water_gsp.py
+!docs/servicing/
+!docs/servicing/**
