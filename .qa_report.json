@@ -1,32 +1,83 @@
 {
-  "tier": "minor",
-  "justification": "Adds a 'Site directory' footer link to the two consumer-surface footers (app/reports/layout.tsx — which canibuildit.com.au/ rewrites to — and app/(tools)/layout.tsx for the per-council tool pages), so the /site-directory page is reachable from the menu on canibuildit, not only the pro/marketing SiteFooter. Presentational only: one <Link> and one array entry. No data, no logic, no DB.",
-  "commit_hash": "5d9b4664",
-  "files": [
-    "frontend-nextjs/app/reports/layout.tsx",
-    "frontend-nextjs/app/(tools)/layout.tsx"
-  ],
-  "pre_impl": {
-    "existing_data": "None. /site-directory already exists and returns 200; this only links to it. The link target was verified live.",
-    "assumption_mismatch": "If /site-directory were removed, this footer link would 404 — but the page shipped in #828 and is live. tsc passes.",
-    "new_vs_existing": "Two existing inline footers gain one link each; the marketing SiteFooter already had it (#828). No behaviour change."
+ "tier": "standard",
+ "justification": "OCR extraction fallback (#832 integration, Phase-0 passed 3/3): when a chapter's PDF text layer is garbled, page texts come from the Unlimited-OCR Modal endpoint (pixels, not text layer) and feed the SAME section splitter; everything downstream (diff, review queue, fidelity gates, commit) unchanged. Fail-visible: endpoint unset/unreachable means extraction proceeds on the text layer exactly as today. Deploy source for the Modal service lives in the repo (the panels/structures deploys came from an untracked folder - lesson applied).",
+ "commit_hash": "pending",
+ "files": [
+  ".claude/.pre-impl-done.json",
+  "scripts/modal_ocr_service.py",
+  "scripts/dcp_extract_changed.py",
+  "tests/test_ocr_fallback.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Phase-0 eval (issue #832) passed all three hard chapters: zero garble on KRG interleave, CoS letter-spaced headers, Woollahra watermark; tables emerge as structured markup. Endpoint deployed and smoke-tested live (200, clean text, auth enforced, 401 without token). Weights pinned to revision 27a5997f in Modal volume unlimited-ocr-weights.",
+  "assumption_mismatch": "The model emits detection tags in the form tag+blocktype+coords - the first normaliser regex left the block-type word behind (caught by test). pdfplumber table extraction reads the garbled text layer, so in OCR mode inline flattened table rows replace it rather than running both.",
+  "new_vs_existing": "The seam is one helper (_page_text) covering all three existing page-read sites; the splitter, TOC override, diff and queue logic are untouched. Trigger is deterministic: doubled-glyph runs in the raw text layer AND MODAL_OCR_URL set. The AI_EXTRACTION path is unrelated and unchanged."
+ },
+ "functions": [
+  {
+   "name": "fetch_ocr_page_texts",
+   "file_line": "scripts/dcp_extract_changed.py:1517",
+   "input": "chapter PDF path; MODAL_OCR_URL and MODAL_OCR_TOKEN from env",
+   "output": "list of normalised per-page texts from the OCR endpoint",
+   "if_none": "missing env, non-200, junk payload, or any exception returns None with a printed reason - the caller stays on the text layer and the fidelity gates flag the rows as they do today"
   },
-  "functions": "N/A — static JSX link additions.",
-  "values": "N/A.",
-  "queries": "N/A.",
-  "break_it": [
-    {
-      "scenario": "The link is added to the marketing footer only (SiteFooter) again and still doesn't appear on canibuildit, because canibuildit.com.au/ rewrites to /reports which uses app/reports/layout.tsx, not SiteFooter.",
-      "what_happens": "The site-directory link stays invisible on the consumer home — the exact gap being fixed.",
-      "mitigated": true,
-      "how": "Confirmed via middleware.ts (isCanibuilditDomain && pathname==='/' rewrites to /reports) that app/reports/layout.tsx is the canibuildit home footer; the link is added there and in app/(tools)/layout.tsx for the tool pages.",
-      "repro": "curl canibuildit.com.au/ after deploy and grep for '/site-directory' in the footer."
-    }
-  ],
-  "post_merge": {
-    "db_reset": "No.",
-    "secrets": "No.",
-    "other_repo": "No.",
-    "manual_verify": "After deploy, open canibuildit.com.au/ and a tool page (e.g. /granny-flat/<council>) and confirm the footer shows a working 'Site directory' link."
+  {
+   "name": "normalise_ocr_page",
+   "file_line": "scripts/dcp_extract_changed.py:1499",
+   "input": "raw model output for one page including detection tags and table markup",
+   "output": "plain splitter-ready text with tables flattened to pipe-separated rows",
+   "if_none": "empty or None input returns empty string; no exception paths"
+  },
+  {
+   "name": "text_layer_garbled",
+   "file_line": "scripts/dcp_extract_changed.py:1511",
+   "input": "raw pdfplumber page texts for the chapter",
+   "output": "True when any page carries doubled-glyph runs (the OCR trigger)",
+   "if_none": "empty or None pages contribute False - a blank text layer alone never triggers OCR"
   }
+ ],
+ "values": [
+  {
+   "value": "OCR page texts replacing the garbled text layer for flagged chapters",
+   "read_at": "ChapterExtractor._page_text (line 825) serving ocr_pages when set; the three read sites all route through it",
+   "if_missing": "ocr_pages None means every site reads pdfplumber exactly as before this change"
+  }
+ ],
+ "queries": "N/A - no database access added; the queue insert path is untouched.",
+ "break_it": [
+  {
+   "scenario": "The Modal endpoint is down or slow when a garbled chapter extracts.",
+   "what_happens": "The chapter would block on OCR or crash the cron mid-run.",
+   "mitigated": true,
+   "how": "fetch_ocr_page_texts catches everything (timeout 1800s) and returns None; extraction proceeds on the text layer and the rows fail fidelity visibly, exactly the pre-change behaviour. Four failure modes pinned by tests.",
+   "repro": "Set MODAL_OCR_URL to an unreachable host and extract a garbled chapter - rows enqueue with fidelity failed."
+  },
+  {
+   "scenario": "OCR mode silently loses table data because pdfplumber table extraction is skipped.",
+   "what_happens": "Parking-rate style tables would vanish from review text.",
+   "mitigated": true,
+   "how": "The model emits tables inline as markup which normalise_ocr_page flattens to pipe-rows inside the page text, so the content rides in new_text; pinned by the flatten test with a parking-rate table.",
+   "repro": "normalise_ocr_page on a table fragment yields Dwelling house | 2 spaces rows."
+  },
+  {
+   "scenario": "A clean chapter gets needlessly routed through OCR, adding cost and cold-start latency to every cron run.",
+   "what_happens": "Cron runtime and Modal spend balloon for no fidelity gain.",
+   "mitigated": true,
+   "how": "The trigger requires actual doubled-glyph runs in the raw text layer; clean layers (including legitimate doubles like Lloyd/III) never fire, pinned by tests.",
+   "repro": "text_layer_garbled on clean pages returns False."
+  },
+  {
+   "scenario": "An unauthorised caller uses the public endpoint to run free GPU OCR.",
+   "what_happens": "Modal spend on someone else's documents.",
+   "mitigated": true,
+   "how": "Shared-secret header checked in-function against the Modal secret; smoke test confirmed 401 without the token. Residual: rotate MODAL_OCR_TOKEN if leaked (it lives in .env and Railway env).",
+   "repro": "POST without X-OCR-Token returns 401."
+  }
+ ],
+ "post_merge": {
+  "db_reset": "Not required - no schema or data changes.",
+  "secrets": "MODAL_OCR_TOKEN added to root .env and Modal secret ocr-service-token; must also be set with MODAL_OCR_URL on Railway dcp-extract and dcp-extract-all services (dashboard env, not git).",
+  "other_repo": "None. Modal deploy source is scripts/modal_ocr_service.py in this repo; redeploy with modal deploy after edits.",
+  "manual_verify": "Yes - after Railway env is set: re-run extraction for the 7 held chapters; garbled ones print OCR lines and enqueue clean rows; with the endpoint stopped the same run degrades to text-layer rows flagged failed."
+ }
 }
