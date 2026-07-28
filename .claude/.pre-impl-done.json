@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-27T21:30:00+10:00",
-  "target": "Sol round on PR #830: emptied-by-strip verdict, supersede prior rejected on re-extraction (same-PDF-hash wedge), r.is_active on commit join, watchdog counts all blocking statuses",
-  "findings_summary": "All four Sol findings verified against code: empty stripped text passed as ok (collapse skipped on falsy); content_hash is the PDF hash so extractor fixes re-extract under the SAME hash and hash-scoped rejected still wedges; registry join lacked is_active; watchdog review-blocked query counted pending only. No new tables; one UPDATE statement added to the refresh path."
+  "timestamp": "2026-07-28T22:50:00+10:00",
+  "target": "OCR extraction fallback (#832 integration): Modal web endpoint (repo-homed deploy source) + garbled-text-layer detection routing page texts through OCR in dcp_extract_changed",
+  "findings_summary": "Phase-0 passed 3/3 chapters (issue #832 comment). Seam verified: _extract_page_text called per page from _extract_sequential/_maybe_toc_override/extract_by_page_ranges; instance-level ocr_pages override covers all three. OCR text carries tables inline as <table> markup (strip to text rows for the splitter); pdfplumber table extraction skipped in OCR mode. Fallback fails visible: endpoint unreachable -> None -> pipeline behaves exactly as today (rows fail fidelity, chapter blocked). Weights pinned rev 27a5997f in Modal volume unlimited-ocr-weights"
 }
