@@ -429,11 +429,20 @@ COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
     # Waverley DCP 2022: two-level split.
     # Level 1: numbered sub-sections like "1.1 DEMOLITION AND CONSTRUCTION"
     # Level 2: Objectives/Controls keyword headings within each sub-section
+    # Waverley DCP 2022: three-level split.
+    # Level 1: numbered sub-sections like "1.1 DEMOLITION AND CONSTRUCTION"
+    # Level 2: numbered sub-subsections like "7.2.1 Vehicle Access" (mixed case).
+    #   Without this level these headings are swallowed as body text, so every
+    #   Objectives/Controls block under 7.2.1..7.2.6 collides onto the parent
+    #   7.2 ref — the ref-collision defect found by the 2026-07-28 fidelity
+    #   sweep. Title must start with a letter to avoid matching numbered lists.
+    # Level 3: Objectives/Controls keyword headings within each (sub-)subsection
     "waverley": [
         re.compile(r"(?m)^(\d+\.\d+)\s+([A-Z][A-Z0-9\s/&(),.-]+)$"),
+        re.compile(r"(?m)^(\d+\.\d+\.\d+)\s+([A-Za-z][^\n]{0,80})$"),
         re.compile(
             r"(?m)^()(General Objectives|General Controls|Objectives|Controls"
-            r"|Design Guidance|Performance Criteria)\s*$"
+            r"|Design Guidance|Performance Criteria|Prescriptive Controls)\s*$"
         ),
     ],
     # Marrickville DCP 2011: two-level split.
