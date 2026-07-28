@@ -818,6 +818,14 @@ class DCPExtractor:
         self.document_id = document_id
         self.council = council
         self.page_count: int = 0
+        # Set when the text layer proved garbled and OCR page texts were
+        # fetched — _page_text then serves these instead of pdfplumber's.
+        self.ocr_pages: list[str] | None = None
+
+    def _page_text(self, page: Any, page_num: int) -> str:
+        if self.ocr_pages and 0 < page_num <= len(self.ocr_pages):
+            return self.ocr_pages[page_num - 1]
+        return _extract_page_text(page, self.council)
 
     def extract(self) -> list[dict[str, Any]]:
         """Top-level extraction: sequential body-heading detection, with a
@@ -833,6 +841,17 @@ class DCPExtractor:
         if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
             from scripts.ai_extractor import ai_extract_chapter
             return ai_extract_chapter(self.pdf_path, self.council)
+        # OCR fallback trigger (#832): a garbled text layer means every reader
+        # of it produces junk — route the chapter through the OCR endpoint and
+        # let the SAME splitter run over clean page texts.
+        if os.getenv("MODAL_OCR_URL", "").strip():
+            with pdfplumber.open(self.pdf_path) as _pdf:
+                _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+            if text_layer_garbled(_raw):
+                print("    [OCR] garbled text layer detected — fetching OCR page texts")
+                self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
+                if self.ocr_pages:
+                    print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
             override = self._maybe_toc_override(sections)
@@ -850,8 +869,8 @@ class DCPExtractor:
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
             page_texts = [
-                _clean_page_text(_extract_page_text(p, self.council), self.council)
-                for p in pdf.pages
+                _clean_page_text(self._page_text(p, i + 1), self.council)
+                for i, p in enumerate(pdf.pages)
             ]
         entries = parse_toc_entries(page_texts)
         seq_codes = [(s.get("section_number") or "") for s in sequential]
@@ -890,9 +909,11 @@ class DCPExtractor:
             for page_num, page in enumerate(pdf.pages, start=1):
                 print(f"    page {page_num}/{total}", end="\r")
 
-                text = _extract_page_text(page, self.council)
+                text = self._page_text(page, page_num)
                 text = _clean_page_text(text, self.council)
-                page_tables = page.extract_tables() or []
+                # OCR mode: tables arrive inline in the page text (flattened
+                # markup) — pdfplumber's table finder reads the garbled layer.
+                page_tables = [] if self.ocr_pages else (page.extract_tables() or [])
 
                 section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
                 # TOC page guard: if the page contains 5+ section-code matches it is
@@ -1043,14 +1064,15 @@ class DCPExtractor:
                 clipped_end = min(page_end, self.page_count)
                 for page_num in range(page_start, clipped_end + 1):
                     page = pdf.pages[page_num - 1]
-                    text = _extract_page_text(page, self.council)
+                    text = self._page_text(page, page_num)
                     text = _clean_page_text(text, self.council)
                     content += f"\n\n{text}"
                     pages_included.append(page_num)
-                    for tbl in page.extract_tables() or []:
-                        html = self._table_to_html(tbl)
-                        if html:
-                            tables.append({"html": html, "page": page_num})
+                    if not self.ocr_pages:
+                        for tbl in page.extract_tables() or []:
+                            html = self._table_to_html(tbl)
+                            if html:
+                                tables.append({"html": html, "page": page_num})
 
                 if subsection_patterns:
                     # First pattern splits the raw page-range content
@@ -1457,6 +1479,104 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
 _GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
 _JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
 
+# ── OCR fallback (issue #832, Phase-0 passed 2026-07-28) ────────────────────
+# When a chapter's PDF text layer is garbled (letter-spaced doubled glyphs,
+# two-column interleave — classes NO text-layer reader can fix), page texts
+# are fetched from the Unlimited-OCR Modal endpoint (pixels, not text layer)
+# and fed to the SAME section splitter. Fail-visible: endpoint unset or
+# unreachable → None → extraction proceeds on the text layer exactly as
+# before, and the fidelity gates flag the rows.
+
+_OCR_DET_TAG = re.compile(
+    r"<\|det\|>\s*[a-z_]+\s*\[\d+(?:,\s*\d+){3}\]\s*<\|/det\|>"   # full unit: tag + block type + coords
+    r"|<\|/?(?:det|image(?:_caption)?)\|>|\[\d+(?:,\s*\d+){3}\]"  # any stragglers
+)
+_OCR_ROW_TAG = re.compile(r"</tr>|<tr[^>]*>", re.IGNORECASE)
+_OCR_CELL = re.compile(r"</?t[dh][^>]*>", re.IGNORECASE)
+_OCR_TABLE_TAG = re.compile(r"</?(?:table|tbody|thead)[^>]*>", re.IGNORECASE)
+
+
+def _garble_evidence(text: str) -> bool:
+    """True when doubled-glyph runs are strong evidence of a garbled layer.
+
+    Legitimate English carries short doubled runs INSIDE longer words
+    ('bookkeeping' = b·ookkee·ping — un-doubled letters on both sides; Sol
+    review of PR #836). Doubling artifacts double whole tokens ('nneeww',
+    'GGEENNEERRAALL'), so their runs sit at word boundaries. Evidence:
+      - any run of 8+ chars (4+ doubled pairs), or
+      - 2+ short runs that are word-boundary-adjacent (not word-internal).
+    """
+    t = text or ""
+    boundary_runs = 0
+    for m in _GARBLE_RUN.finditer(t):
+        if len(m.group(0)) >= 8:
+            return True
+        before = t[m.start() - 1] if m.start() > 0 else " "
+        after = t[m.end()] if m.end() < len(t) else " "
+        if not (before.isalpha() and after.isalpha()):
+            boundary_runs += 1
+    return boundary_runs >= 2
+
+
+def normalise_ocr_page(text: str) -> str:
+    """Model output → plain text the section splitter understands: detection
+    tags dropped, table markup flattened to ' | '-separated rows. Empty cells
+    are PRESERVED as empty delimiters — collapsing them shifts values into
+    the wrong column (Sol review of PR #836: a setback under Zone B must not
+    read as Zone A's)."""
+    t = _OCR_DET_TAG.sub("", text or "")
+    t = _OCR_ROW_TAG.sub("\n", t)
+    # Cell BOUNDARIES (</td><td>) become single pipes — an empty cell keeps
+    # its slot ('Setback |  | 3m'), so values never shift columns.
+    t = re.sub(r"</t[dh]>\s*<t[dh][^>]*>", " | ", t, flags=re.IGNORECASE)
+    t = _OCR_CELL.sub("", t)
+    t = _OCR_TABLE_TAG.sub("\n", t)
+    t = re.sub(r"[ \t]+\n", "\n", t)
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+def text_layer_garbled(page_texts: list[str]) -> bool:
+    """True when any page's text layer carries STRONG doubled-glyph evidence
+    — the trigger for routing the chapter through OCR. A single short run on
+    a page is not enough (legitimate words like 'bookkeeping' match the bare
+    pattern)."""
+    return any(_garble_evidence(t) for t in page_texts)
+
+
+def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
+    """POST the PDF to the Modal OCR endpoint; return normalised per-page
+    texts, or None on ANY failure (caller stays on the text layer). The
+    response must carry EXACTLY expected_pages entries — a short response
+    would serve OCR text for the wrong source pages (Sol review of PR #836)."""
+    url = os.getenv("MODAL_OCR_URL", "").strip()
+    token = os.getenv("MODAL_OCR_TOKEN", "").strip()
+    if not url or not token:
+        print("    [OCR] MODAL_OCR_URL/TOKEN not set — staying on text layer")
+        return None
+    try:
+        import requests
+
+        resp = requests.post(
+            url,
+            data=open(pdf_path, "rb").read(),
+            headers={"X-OCR-Token": token},
+            timeout=1800,
+        )
+        if resp.status_code != 200:
+            print(f"    [OCR] endpoint returned {resp.status_code} — staying on text layer")
+            return None
+        pages = resp.json().get("pages")
+        if not isinstance(pages, list) or not pages:
+            print("    [OCR] endpoint returned no pages — staying on text layer")
+            return None
+        if len(pages) != expected_pages:
+            print(f"    [OCR] page count mismatch ({len(pages)} vs {expected_pages} in PDF) — staying on text layer")
+            return None
+        return [normalise_ocr_page(p) for p in pages]
+    except Exception as e:
+        print(f"    [OCR] fetch failed ({e}) — staying on text layer")
+        return None
+
 
 def strip_garbled_header_lines(text: str | None) -> str | None:
     """Drop lines dominated by doubled-glyph runs (letter-spaced running
@@ -1494,7 +1614,7 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
     """
     reasons = []
     short = (ref or "").split("__")[-1]
-    if _GARBLE_RUN.search(new_text or ""):
+    if _garble_evidence(new_text or ""):
         reasons.append("garbled_glyphs")
     if _JUNK_REF.match(short):
         reasons.append("junk_ref")
