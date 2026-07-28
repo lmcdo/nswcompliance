@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "OCR extraction fallback (#832 integration, Phase-0 passed 3/3): when a chapter's PDF text layer is garbled, page texts come from the Unlimited-OCR Modal endpoint (pixels, not text layer) and feed the SAME section splitter; everything downstream (diff, review queue, fidelity gates, commit) unchanged. Fail-visible: endpoint unset/unreachable means extraction proceeds on the text layer exactly as today. Deploy source for the Modal service lives in the repo (the panels/structures deploys came from an untracked folder - lesson applied).",
- "commit_hash": "pending",
+ "commit_hash": "74b6cf60",
  "files": [
   ".claude/.pre-impl-done.json",
   "scripts/modal_ocr_service.py",

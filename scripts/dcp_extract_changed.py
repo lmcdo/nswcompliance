@@ -849,7 +849,7 @@ class DCPExtractor:
                 _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
             if text_layer_garbled(_raw):
                 print("    [OCR] garbled text layer detected — fetching OCR page texts")
-                self.ocr_pages = fetch_ocr_page_texts(self.pdf_path)
+                self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
                 if self.ocr_pages:
                     print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
         sections = self._extract_sequential()
@@ -1491,32 +1491,63 @@ _OCR_DET_TAG = re.compile(
     r"<\|det\|>\s*[a-z_]+\s*\[\d+(?:,\s*\d+){3}\]\s*<\|/det\|>"   # full unit: tag + block type + coords
     r"|<\|/?(?:det|image(?:_caption)?)\|>|\[\d+(?:,\s*\d+){3}\]"  # any stragglers
 )
-_OCR_ROW_END = re.compile(r"</tr>", re.IGNORECASE)
+_OCR_ROW_TAG = re.compile(r"</tr>|<tr[^>]*>", re.IGNORECASE)
 _OCR_CELL = re.compile(r"</?t[dh][^>]*>", re.IGNORECASE)
 _OCR_TABLE_TAG = re.compile(r"</?(?:table|tbody|thead)[^>]*>", re.IGNORECASE)
 
 
+def _garble_evidence(text: str) -> bool:
+    """True when doubled-glyph runs are strong evidence of a garbled layer.
+
+    Legitimate English carries short doubled runs INSIDE longer words
+    ('bookkeeping' = b·ookkee·ping — un-doubled letters on both sides; Sol
+    review of PR #836). Doubling artifacts double whole tokens ('nneeww',
+    'GGEENNEERRAALL'), so their runs sit at word boundaries. Evidence:
+      - any run of 8+ chars (4+ doubled pairs), or
+      - 2+ short runs that are word-boundary-adjacent (not word-internal).
+    """
+    t = text or ""
+    boundary_runs = 0
+    for m in _GARBLE_RUN.finditer(t):
+        if len(m.group(0)) >= 8:
+            return True
+        before = t[m.start() - 1] if m.start() > 0 else " "
+        after = t[m.end()] if m.end() < len(t) else " "
+        if not (before.isalpha() and after.isalpha()):
+            boundary_runs += 1
+    return boundary_runs >= 2
+
+
 def normalise_ocr_page(text: str) -> str:
     """Model output → plain text the section splitter understands: detection
-    tags dropped, table markup flattened to ' | '-separated rows."""
+    tags dropped, table markup flattened to ' | '-separated rows. Empty cells
+    are PRESERVED as empty delimiters — collapsing them shifts values into
+    the wrong column (Sol review of PR #836: a setback under Zone B must not
+    read as Zone A's)."""
     t = _OCR_DET_TAG.sub("", text or "")
-    t = _OCR_ROW_END.sub("\n", t)
-    t = _OCR_CELL.sub(" | ", t)
+    t = _OCR_ROW_TAG.sub("\n", t)
+    # Cell BOUNDARIES (</td><td>) become single pipes — an empty cell keeps
+    # its slot ('Setback |  | 3m'), so values never shift columns.
+    t = re.sub(r"</t[dh]>\s*<t[dh][^>]*>", " | ", t, flags=re.IGNORECASE)
+    t = _OCR_CELL.sub("", t)
     t = _OCR_TABLE_TAG.sub("\n", t)
-    t = re.sub(r"[ \t]*\|[ \t]*(\|[ \t]*)+", " | ", t)          # collapse empty cells
     t = re.sub(r"[ \t]+\n", "\n", t)
     return re.sub(r"\n{3,}", "\n\n", t).strip()
 
 
 def text_layer_garbled(page_texts: list[str]) -> bool:
-    """True when any page's text layer carries doubled-glyph runs — the
-    trigger for routing the chapter through OCR."""
-    return any(_GARBLE_RUN.search(t or "") for t in page_texts)
+    """True when any page's text layer carries STRONG doubled-glyph evidence
+    — the trigger for routing the chapter through OCR. A single short run on
+    a page is not enough (legitimate words like 'bookkeeping' match the bare
+    pattern)."""
+    return any(_garble_evidence(t) for t in page_texts)
 
 
-def fetch_ocr_page_texts(pdf_path) -> list[str] | None:
+def fetch_ocr_page_texts(pdf_path, expected_pages: int) -> list[str] | None:
     """POST the PDF to the Modal OCR endpoint; return normalised per-page
-    texts, or None on ANY failure (caller stays on the text layer)."""
+    texts, or None on ANY failure (caller stays on the text layer). The
+    response must carry EXACTLY expected_pages entries — a short response
+    would serve OCR text for the wrong source pages (Sol review of PR #836)."""
     url = os.getenv("MODAL_OCR_URL", "").strip()
     token = os.getenv("MODAL_OCR_TOKEN", "").strip()
     if not url or not token:
@@ -1537,6 +1568,9 @@ def fetch_ocr_page_texts(pdf_path) -> list[str] | None:
         pages = resp.json().get("pages")
         if not isinstance(pages, list) or not pages:
             print("    [OCR] endpoint returned no pages — staying on text layer")
+            return None
+        if len(pages) != expected_pages:
+            print(f"    [OCR] page count mismatch ({len(pages)} vs {expected_pages} in PDF) — staying on text layer")
             return None
         return [normalise_ocr_page(p) for p in pages]
     except Exception as e:
@@ -1580,7 +1614,7 @@ def classify_row_fidelity(ref: str | None, old_text: str | None,
     """
     reasons = []
     short = (ref or "").split("__")[-1]
-    if _GARBLE_RUN.search(new_text or ""):
+    if _garble_evidence(new_text or ""):
         reasons.append("garbled_glyphs")
     if _JUNK_REF.match(short):
         reasons.append("junk_ref")
