@@ -93,6 +93,48 @@ class InstrumentResult:
     stored_version: str | None
     source: str = ""  # 'pco' or 'austlii'
     error: str | None = None
+    stale_notes: tuple = ()
+
+
+# ── SEPP auto-stale (W3, founder decision 2026-07-29) ───────────────────────
+# A version change marks dependent standards rows STALE — not retired. The
+# consumers keep serving the last-reviewed values WITH a visible notice; the
+# founder clears stale_since/stale_reason during re-verification. The E&C
+# Codes SEPP feeds both tables (housing_sepp_standards carries rows citing
+# SEPP (E&C) 2008, e.g. secondary-dwelling max_floor_area).
+STANDARDS_TABLES_BY_INSTRUMENT = {
+    "sepp_exempt_complying_2008": ["cdc_eligibility_standards", "housing_sepp_standards"],
+    "sepp_housing_2021": ["housing_sepp_standards"],
+}
+
+
+def mark_dependent_standards_stale(
+    conn, instrument_key: str, instrument_label: str,
+    old_version: str | None, new_version: str | None,
+) -> list[str]:
+    """Stamp stale_since/stale_reason on standards tables fed by a changed
+    instrument. Only rows not already stale are stamped (the FIRST detected
+    change is the one the notice should date from). Returns human-readable
+    lines for the alert; empty when the instrument feeds no standards table."""
+    notes: list[str] = []
+    reason = (
+        f"{instrument_label} version changed "
+        f"({old_version or 'unknown'} -> {new_version or 'unknown'})"
+    )
+    cur = conn.cursor()
+    for table in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
+        cur.execute(
+            f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s "
+            f"WHERE stale_since IS NULL",
+            (reason,),
+        )
+        if cur.rowcount:
+            notes.append(
+                f"  {table}: {cur.rowcount} standards row(s) marked STALE — "
+                f"served with a notice until re-checked"
+            )
+    cur.close()
+    return notes
 
 
 def send_telegram(message: str) -> None:
@@ -536,6 +578,7 @@ def check_instrument(
     now = datetime.now(timezone.utc)
     cur = conn.cursor()
 
+    stale_notes: list[str] = []
     if changed:
         print(f"  {key} [{source}]")
         print(f"    [CHANGED] {stored_version} → {new_version}")
@@ -550,6 +593,13 @@ def check_instrument(
                 """,
                 (new_version, now, now, key),
             )
+            # Auto-stale dependent standards (W3): last-reviewed values keep
+            # serving WITH a notice; founder clears on re-verification.
+            stale_notes = mark_dependent_standards_stale(
+                conn, key, label, stored_version, new_version,
+            )
+            for note in stale_notes:
+                print(f"  {note}")
             conn.commit()
     else:
         status = "(first run — baseline set)" if first_run else "[unchanged]"
@@ -587,6 +637,7 @@ def check_instrument(
         instrument_key=key, instrument_label=label,
         changed=changed, new_version=new_version,
         stored_version=stored_version, source=source,
+        stale_notes=tuple(stale_notes),
     )
 
 
@@ -747,11 +798,14 @@ def main():
     if changed:
         lines = []
         for r in changed:
-            lines.append(
+            entry = (
                 f"  {r.instrument_key}\n"
                 f"    Was: {r.stored_version or '(unknown)'}\n"
                 f"    Now: {r.new_version}"
             )
+            if r.stale_notes:
+                entry += "\n" + "\n".join(r.stale_notes)
+            lines.append(entry)
         msg = (
             f"LEGISLATION CHANGE DETECTED ({source_used})\n"
             f"{len(changed)} instrument(s) updated:\n\n"

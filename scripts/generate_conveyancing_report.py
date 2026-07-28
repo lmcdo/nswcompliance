@@ -679,9 +679,22 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     _sd = _validate_sepp_sd_config({
         "numeric_value": (sepp_standards or {}).get("sd_min_lot"),
         "applicable_zones": (sepp_standards or {}).get("sd_zones"),
+        "stale_since": (sepp_standards or {}).get("stale_since"),
+        "stale_reason": (sepp_standards or {}).get("stale_reason"),
     }) or {}
     _SD_MIN_LOT = _sd.get("sd_min_lot")
     _SD_ZONES = _sd.get("sd_zones")
+    # Auto-stale notice (W3, founder-specified): a changed source instrument
+    # does NOT blank the row — the last-reviewed figure renders WITH this note.
+    _sd_stale_note = ""
+    if _sd.get("stale_since"):
+        _ss = _sd["stale_since"]
+        _sd_date = _ss.date().isoformat() if hasattr(_ss, "date") else str(_ss)
+        _sd_stale_note = (
+            f" Note: {_sd.get('stale_reason') or 'the source instrument was amended'} "
+            f"(detected {_sd_date}) after this figure was last reviewed; a re-check "
+            f"against the amended instrument is pending."
+        )
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -717,6 +730,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                         f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53). Subject to DCP setback and height controls. "
                         f"Some councils have excluded dual occupancy CDC — confirm DA vs CDC pathway."
+                    + _sd_stale_note
                     )
                 })
             else:
@@ -727,6 +741,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                     "basis": (
                         f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT:g} m² minimum "
                         f"(SEPP Housing 2021, Cl 53(1)(b)). Confirm current SEPP standards."
+                    + _sd_stale_note
                     )
                 })
         else:
@@ -748,6 +763,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 f"Lot area data not available from NSW Valuation Service. "
                 f"Secondary dwelling eligibility requires lot area ≥ {_SD_MIN_LOT:g} m² "
                 f"(SEPP Housing 2021, Cl 53). Confirm lot dimensions with council or a surveyor."
+            + _sd_stale_note
             )
         })
 
