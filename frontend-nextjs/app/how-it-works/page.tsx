@@ -246,6 +246,34 @@ export default function HowItWorksPage() {
             </ul>
           </section>
 
+          {/* --- Where location-specific rules come from --- */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Where location-specific (precinct) rules come from</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Some council DCP chapters apply only inside mapped areas — town centres, beachfront
+              character areas, named sites. The boundary of each area is defined by a map figure in
+              the adopted DCP document itself, and that figure is the authority. Council online
+              mapping services publish machine-readable copies of those figures, which councils
+              label as a guide only.
+            </p>
+            <p className="text-sm text-gray-600 mb-3">
+              Before a boundary is used to match addresses, it goes through a fixed set of checks:
+            </p>
+            <ul className="text-sm text-gray-600 space-y-2 mb-3">
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Geometry checks — the polygon must be valid, in the expected coordinate system, with area and location consistent with the adopted figure.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Point checks against the adopted figure — real addresses geocoded through the NSW Planning Portal, chosen from inside and outside the mapped area, must match or not match exactly as the DCP figure shows. Negative tests (addresses that must return no match) are part of the set.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Provenance recorded — each stored boundary records the DCP map figure it copies, the geometry source, and the date it was checked.</li>
+            </ul>
+            <p className="text-sm text-gray-600 mb-3">
+              Where an area&apos;s boundary has not passed these checks, its location-specific rules are
+              excluded from results and the report states that site-specific controls may exist for
+              the property — a missing boundary is disclosed, never silently filled in. Where mapped
+              areas overlap, the rules for every applicable area are returned. The per-property
+              legal record of which controls apply remains a Section 10.7 planning certificate
+              issued by the council.
+            </p>
+          </section>
+
           {/* --- What this is not --- */}
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">What this is not</h2>
