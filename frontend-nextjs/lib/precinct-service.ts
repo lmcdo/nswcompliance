@@ -23,6 +23,13 @@ export interface PrecinctMapping {
 // REMOVED: Hardcoded street mappings - Use PostGIS spatial matching instead
 // PostGIS provides accurate geometric matching from dcp_precinct_boundaries table
 
+// LGAs whose DCP precincts tile the whole area — a containment miss there is a
+// geocoding artefact, so snapping to the nearest boundary within 500m is safe.
+// In councils with sparse site-specific precincts (e.g. Waverley Part E), most
+// addresses are legitimately in no precinct; snapping would serve controls for
+// an area the property is not in.
+const NEAREST_FALLBACK_LGAS = new Set(['inner west', 'ku-ring-gai']);
+
 /**
  * Get DCP precinct for an address using PostGIS geometric matching
  *
@@ -177,7 +184,10 @@ async function getPrecinctUsingPostGIS(
       console.log('[Precinct Service] Geocoded coordinates:', coords);
     }
 
-    // Step 2: Query PostGIS for precinct containing these coordinates
+    // Step 2: Query PostGIS for ALL precincts containing these coordinates.
+    // DCP precincts can legitimately overlap (e.g. Waverley E5 "113 Macpherson
+    // Street" sits inside the E3 "Macpherson Street" village centre), and the
+    // provisions API accepts comma-separated precinct IDs.
     const query = `
       SELECT
         precinct_id,
@@ -191,34 +201,42 @@ async function getPrecinctUsingPostGIS(
         ST_SetSRID(ST_MakePoint($1, $2), 4326)
       )
       AND LOWER(lga) = LOWER($3)
-      ORDER BY confidence_score DESC
-      LIMIT 1
+      ORDER BY confidence_score DESC, precinct_id ASC
     `;
 
     const result = await getDbPool().query(query, [coords.longitude, coords.latitude, lga]);
 
     if (result.rows.length === 0) {
+      // Nearest-boundary snapping is only valid where precincts tile the LGA;
+      // elsewhere "no precinct" is the correct answer for most addresses.
+      if (!NEAREST_FALLBACK_LGAS.has(lga.toLowerCase().trim())) {
+        return null;
+      }
       // Try finding nearest precinct within 500m (fallback for boundary edge cases)
       return await findNearestPrecinct(coords.longitude, coords.latitude, lga);
     }
 
-    const precinct = result.rows[0];
+    const primary = result.rows[0];
+    const allIds = result.rows.map((r: { precinct_id: string }) => r.precinct_id).join(',');
+    const allNames = result.rows
+      .map((r: { precinct_name: string }) => r.precinct_name)
+      .join(' + ');
 
-    // Build document ID for provision lookup
+    // Build document ID for provision lookup (primary precinct)
     const documentId = buildPrecinctDocumentId(
-      precinct.precinct_id,
-      precinct.precinct_name,
-      precinct.lga
+      primary.precinct_id,
+      primary.precinct_name,
+      primary.lga
     );
 
     return {
-      precinctId: precinct.precinct_id,
-      precinctNumber: precinct.precinct_id,  // Same as precinctId for compatibility
-      precinctName: precinct.precinct_name,
+      precinctId: allIds,
+      precinctNumber: primary.precinct_id,  // Primary precinct for compatibility
+      precinctName: allNames,
       documentId: documentId,
-      lga: precinct.lga,
-      formerCouncil: getFormerCouncilFromPrecinctId(precinct.precinct_id),
-      confidenceScore: precinct.confidence_score,
+      lga: primary.lga,
+      formerCouncil: getFormerCouncilFromPrecinctId(primary.precinct_id),
+      confidenceScore: primary.confidence_score,
       matchMethod: 'geometric'
     };
 
@@ -350,6 +368,13 @@ const PRECINCT_ID_PATTERNS: Record<string, RegExp[]> = {
   'Parramatta': [
     /^parra/i,                 // parra_* prefix
     /^p_/i,                    // p_* prefix
+  ],
+
+  // Waverley DCP 2022 Part E precincts (E1 Bondi Junction … E7 Edina Estate).
+  // Without this entry the default below returns 'Marrickville' and the
+  // provisions API would be scoped to the wrong council.
+  'Waverley': [
+    /^e\d+$/i,                 // E1, E2, ... E7
   ],
 };
 
