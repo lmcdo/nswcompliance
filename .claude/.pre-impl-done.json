@@ -1,6 +1,1 @@
-{
-  "status": "passed",
-  "timestamp": "2026-07-28T22:50:00+10:00",
-  "target": "OCR extraction fallback (#832 integration): Modal web endpoint (repo-homed deploy source) + garbled-text-layer detection routing page texts through OCR in dcp_extract_changed",
-  "findings_summary": "Phase-0 passed 3/3 chapters (issue #832 comment). Seam verified: _extract_page_text called per page from _extract_sequential/_maybe_toc_override/extract_by_page_ranges; instance-level ocr_pages override covers all three. OCR text carries tables inline as <table> markup (strip to text rows for the splitter); pdfplumber table extraction skipped in OCR mode. Fallback fails visible: endpoint unreachable -> None -> pipeline behaves exactly as today (rows fail fidelity, chapter blocked). Weights pinned rev 27a5997f in Modal volume unlimited-ocr-weights"
-}
+{"status": "trivial", "timestamp": "2026-07-28T23:59:00+10:00", "reason": "one-line cron cadence change in a Railway config toml; no code, no queries"}

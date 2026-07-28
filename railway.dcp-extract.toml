@@ -12,5 +12,9 @@ dockerfilePath = "Dockerfile.monitors"
 
 [deploy]
 startCommand = "python scripts/run_monitors.py"
-cronSchedule = "0 3 * * 1"   # weekly Mon 03:00 UTC, just after monitor-dcp detects (02:00)
+cronSchedule = "0 3 * * *"   # DAILY 03:00 UTC (founder decision 2026-07-28): a
+                             # weekly run left detected changes stuck up to 6
+                             # days, tripping the watchdog's >48h alarm by
+                             # design. Near-free when the queue is empty (the
+                             # script exits in seconds with nothing flagged).
 restartPolicyType = "NEVER"  # cron job: run to completion, do not restart
