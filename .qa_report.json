@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Removes 'ku-ring-gai' from NEAREST_FALLBACK_LGAS in frontend-nextjs/lib/precinct-service.ts. Ku-ring-gai has 10 site-specific precinct boundaries covering 0.29 km2 of an ~85 km2 LGA (verified live against dcp_precinct_boundaries 2026-07-29), so the 500m nearest-boundary snap serves controls for an area the property is not in. Same rationale as Waverley's exclusion in #835; Inner West (tiling precincts) keeps the fallback.",
- "commit_hash": "aff700d4",
+ "commit_hash": "1ed31a69",
  "files": [
   "frontend-nextjs/lib/precinct-service.ts"
  ],
