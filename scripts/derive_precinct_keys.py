@@ -206,7 +206,10 @@ def _derive(strategy: dict, row: dict) -> str | None:
             return None
         num = m.group(1)
         n = strategy.get("components")
-        return num if n is None else ".".join(num.split(".")[:n])
+        if n is None:
+            return num
+        parts = num.split(".")   # regex guarantees ≥1 numeric part; slice is empty-safe
+        return ".".join(parts[:n])
     raise ValueError(f"unknown strategy {t}")
 
 
