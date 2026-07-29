@@ -148,6 +148,13 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
     for rule in RULES:
         if council and rule["council"] != council:
             continue
+        # Footgun guard: a bulk `--apply` (no --council) must NOT touch validate:False
+        # rules — those are going-forward-correct but disagree with current hand-patched
+        # rows (e.g. Ashfield ch-D page-range vs text-location+duplication). Applying them
+        # requires an explicit `--council <name>` so it's a deliberate act.
+        if apply and not council and not rule["validate"]:
+            print(f"  {rule['name']:<34} SKIPPED on bulk --apply (validate:False; pass --council to apply)")
+            continue
         params = dict(rule.get("params", {}))
         cur.execute(
             f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer
@@ -196,6 +203,7 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
     print(f"\ntotals: new={total_new} changed={total_changed} already-ok={total_ok} no-derivation={total_none}")
     if apply:
         bpath = REPO / "data" / "db_rollback_backups" / f"precinct_keying_derived_{datetime.now(timezone.utc):%Y-%m-%d}.csv"
+        bpath.parent.mkdir(parents=True, exist_ok=True)
         with open(bpath, "a", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             if f.tell() == 0:

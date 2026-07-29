@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New scripts/derive_precinct_keys.py: a config-driven, idempotent precinct-keying DERIVATION pass. Root-cause fix for the year-long churn (docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md): v2_precinct_id was applied by hand, so every re-extraction nulled it and the manual re-key recurred. This derives the key from a written rule per (council,chapter) so re-running reproduces it and re-extraction stops being destructive. Default dry-run; --apply gated + backup; only writes rows whose derived key differs; never touches provision_text. A derived key also sets v2_dcp_layer='precinct' (a keyed row is a precinct-layer row).",
- "commit_hash": "260749fd",
+ "commit_hash": "f9df1314",
  "files": [
   "scripts/derive_precinct_keys.py",
   "tests/test_derive_precinct_keys.py"
