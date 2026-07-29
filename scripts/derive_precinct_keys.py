@@ -20,7 +20,7 @@ is never modified.
 RULE STRATEGIES
   doc_regex  : capture a group from document_id, format into a template   (Marrickville)
   ref_regex  : capture group(s) from ref_number, format into a template   (Leichhardt C2 / G)
-  page_range : map pdf_page to a precinct via [(precinct, lo, hi)] ranges  (Ashfield ch-D — GOING-FORWARD; current hand-patched rows won't all match, that's expected)
+  page_range : map pdf_page to a precinct via [(precinct, lo, hi)] ranges  (City of Sydney 2/5/6 — reproduces exactly; Ashfield ch-D — going-forward, current hand-patched rows won't all match)
   constant   : one precinct_id for every row the selector matches          (Ashfield E2)
   chapter_map: precinct_id from a source_chapter_key -> id map             (KG single-site)
 
@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import re
 import sys
@@ -64,6 +65,17 @@ _KG_SINGLE_SITE = {
     "section-b-part-14n-8a-14-16-buckingham-road-killara": "14N",
     "section-b-part-14o-pymble-golf-club": "14O",
 }
+
+# ── City of Sydney sections 2/5/6: page ranges derived 2026-07-29 directly from
+#    the existing keyed rows (min..max pdf_page per precinct, gaps folded forward
+#    so ranges are contiguous and non-overlapping). CoS refs are garbled (only
+#    101/152/128 encode the key) but pdf_page is clean: these ranges reproduce all
+#    462 keys exactly, so the CoS rules are validate:True. Sidecar JSON keeps the
+#    159 ranges out of the rule body; regenerate with scripts/cos_build_ranges
+#    logic if the CoS DCP is re-paginated. ──────────────────────────────────────
+with open(REPO / "data" / "cos_precinct_page_ranges.json", encoding="utf-8") as _f:
+    _COS_RANGES: dict = json.load(_f)
+
 
 # ── The rule set. Each rule: a SELECTOR (which rows) + a STRATEGY (derive key). ──
 # `validate`: True means --validate asserts the derived key reproduces the key
@@ -115,6 +127,32 @@ RULES: list[dict] = [
         "where": r"v2_dcp_part ~ '^E[0-9]'",
         "strategy": {"type": "column_copy", "column": "v2_dcp_part", "match": r"^E[0-9]$"},
         "validate": False,
+    },
+    # City of Sydney (biggest keyed council: 462 rows). CoS has no precinct
+    # boundaries yet, so these keys drive the for-property EXCLUSION + precinct_warning
+    # (task 1, 2026-07-29). Keyed from page footers/refs by hand originally; these
+    # page_range rules reproduce all 462 exactly, so re-extraction now self-heals
+    # instead of un-keying CoS (it was EXPOSED per audit_precinct_keying_coverage.py).
+    {
+        "name": "city_of_sydney_section_2_locality",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-2-locality-statements'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_2_locality_statements"]},
+        "validate": True,
+    },
+    {
+        "name": "city_of_sydney_section_5_areas",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-5-specific-areas'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_5_specific_areas"]},
+        "validate": True,
+    },
+    {
+        "name": "city_of_sydney_section_6_sites",
+        "council": "city_of_sydney",
+        "where": "source_chapter_key = 'section-6-specific-sites'",
+        "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_6_specific_sites"]},
+        "validate": True,
     },
 ]
 
