@@ -17,6 +17,14 @@ A keyed row is a precinct-layer row, so a derived key also sets v2_dcp_layer='pr
 (matches how the for-property route filters). Nothing else is touched; provision_text
 is never modified.
 
+FINGERPRINT GATE (page_range rules): a page->precinct map only holds while the source
+PDF's pagination is unchanged. pdf_page is the physical page a heading sits on, so a
+byte-identical PDF reproduces the ranges exactly; a re-paginated/replaced amendment
+would shift pages and silently mis-key. Rules carrying a `fingerprint` (max_page +
+min_coverage) re-check the structure on every run and FAIL CLOSED on mismatch — keys
+are left un-written so rows serve council-wide + precinct_warning (the safe failure)
+instead of confident wrong-precinct keys. Regenerate the ranges, then re-run.
+
 RULE STRATEGIES
   doc_regex  : capture a group from document_id, format into a template   (Marrickville)
   ref_regex  : capture group(s) from ref_number, format into a template   (Leichhardt C2 / G)
@@ -139,6 +147,7 @@ RULES: list[dict] = [
         "where": "source_chapter_key = 'section-2-locality-statements'",
         "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_2_locality_statements"]},
         "validate": True,
+        "fingerprint": {"max_page": 169, "min_coverage": 0.95},
     },
     {
         "name": "city_of_sydney_section_5_areas",
@@ -146,6 +155,7 @@ RULES: list[dict] = [
         "where": "source_chapter_key = 'section-5-specific-areas'",
         "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_5_specific_areas"]},
         "validate": True,
+        "fingerprint": {"max_page": 366, "min_coverage": 0.95},
     },
     {
         "name": "city_of_sydney_section_6_sites",
@@ -153,6 +163,7 @@ RULES: list[dict] = [
         "where": "source_chapter_key = 'section-6-specific-sites'",
         "strategy": {"type": "page_range", "ranges": _COS_RANGES["Sydney_DCP_2012__section_6_specific_sites"]},
         "validate": True,
+        "fingerprint": {"max_page": 265, "min_coverage": 0.95},
     },
 ]
 
@@ -187,6 +198,23 @@ def _derive(strategy: dict, row: dict) -> str | None:
     raise ValueError(f"unknown strategy {t}")
 
 
+def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -> list:
+    """Why a page_range rule's structural fingerprint fails (empty list = passes).
+
+    A page->precinct map is only valid while the source PDF's pagination is
+    unchanged. Two cheap signals catch a re-paginated / replaced PDF before the
+    rule can mis-key: the last keyed page must still match, and almost every row
+    must still fall inside a span (coverage). Pure so it can be unit-tested."""
+    reasons: list = []
+    actual_max = max(pdf_pages) if pdf_pages else None
+    coverage = (n_total - n_none) / n_total if n_total else 0.0
+    if actual_max != fp["max_page"]:
+        reasons.append(f"last page {actual_max} != expected {fp['max_page']} (PDF re-paginated?)")
+    if coverage < fp["min_coverage"]:
+        reasons.append(f"coverage {coverage:.1%} < {fp['min_coverage']:.0%} (rows fell outside every span)")
+    return reasons
+
+
 def run(council: str | None, apply: bool, validate: bool) -> int:
     conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
     conn.autocommit = not apply
@@ -216,6 +244,8 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
         cols = [d[0] for d in cur.description]
         rows = [dict(zip(cols, r)) for r in cur.fetchall()]
         r_new = r_changed = r_ok = r_none = 0
+        pending: list[tuple] = []  # (row_id, current, derived, layer) — buffered so the
+        # fingerprint gate below can decide to write them or fail closed as a batch.
         for row in rows:
             derived = _derive(rule["strategy"], row)
             current = row["v2_precinct_id"]
@@ -232,13 +262,41 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
                 r_new += 1
             else:
                 r_changed += 1
-            if apply:
-                backup_rows.append((row["id"], current or "", derived, row["v2_dcp_layer"] or "", rule["name"]))
+            pending.append((row["id"], current, derived, row["v2_dcp_layer"]))
+
+        # ── Fingerprint gate (page_range rules over a re-extractable PDF) ──────────
+        # A page->precinct map only holds while the source PDF's pagination is
+        # unchanged. pdf_page is the physical page a section's heading sits on, so a
+        # byte-identical PDF reproduces it exactly — but a new amendment / re-pagination
+        # shifts every page and would make these ranges key the WRONG area. So re-check
+        # the structure on EVERY run: the last keyed page must still match, and the vast
+        # majority of rows must still fall inside a span. On mismatch FAIL CLOSED — skip
+        # the writes, leaving rows un-keyed (council-wide + precinct_warning, the safe
+        # failure) rather than writing confident wrong-precinct keys. Regenerate the
+        # ranges (scripts/cos_build_ranges) against the new PDF, then re-run.
+        fp = rule.get("fingerprint")
+        fp_ok = True
+        if fp and rows:
+            pages = [r["pdf_page"] for r in rows if r["pdf_page"] is not None]
+            reasons = _fingerprint_reasons(fp, pages, r_none, len(rows))
+            if reasons:
+                fp_ok = False
+                msg = f"{rule['name']} FINGERPRINT MISMATCH — " + "; ".join(reasons)
+                print(f"  ⚠ {msg}")
+                print(f"     -> keys NOT written (fail-closed); rows stay council-wide + warned. "
+                      f"Regenerate ranges against the new PDF, then re-run.")
+                if validate:
+                    validation_failures.append(msg)
+
+        if apply and fp_ok:
+            for row_id, current, derived, layer in pending:
+                backup_rows.append((row_id, current or "", derived, layer or "", rule["name"]))
                 cur.execute(
                     "UPDATE regulatory_provisions SET v2_precinct_id=%s, v2_dcp_layer='precinct' WHERE id=%s",
-                    (derived, row["id"]))
+                    (derived, row_id))
+        gate = "" if fp_ok else "  [FAIL-CLOSED: not written]"
         print(f"  {rule['name']:<34} rows={len(rows):<5} new={r_new} changed={r_changed} "
-              f"already-ok={r_ok} no-derivation={r_none}")
+              f"already-ok={r_ok} no-derivation={r_none}{gate}")
         total_new += r_new; total_changed += r_changed; total_ok += r_ok; total_none += r_none
 
     if validate and validation_failures:

@@ -63,6 +63,44 @@ def test_page_range():
     assert derive(s, row(pdf_page=None)) is None
 
 
+def test_fingerprint_passes_on_matching_structure():
+    fp = {"max_page": 169, "min_coverage": 0.95}
+    # last page matches, every row derived -> no reasons
+    assert mod._fingerprint_reasons(fp, [1, 50, 169], n_none=0, n_total=107) == []
+
+
+def test_fingerprint_fails_closed_on_repagination():
+    """A new amendment that shifts the last page must trip the gate so keys are
+    NOT written (fail-closed) rather than mapping shifted pages to old ranges."""
+    fp = {"max_page": 169, "min_coverage": 0.95}
+    reasons = mod._fingerprint_reasons(fp, [1, 50, 172], n_none=0, n_total=107)
+    assert reasons and "re-paginated" in reasons[0]
+
+
+def test_fingerprint_fails_closed_on_low_coverage():
+    """If many re-extracted rows fall outside every span, the structure drifted."""
+    fp = {"max_page": 169, "min_coverage": 0.95}
+    reasons = mod._fingerprint_reasons(fp, [1, 169], n_none=20, n_total=100)  # 80% covered
+    assert any("coverage" in r for r in reasons)
+
+
+def test_fingerprint_reports_both_failures():
+    fp = {"max_page": 169, "min_coverage": 0.95}
+    reasons = mod._fingerprint_reasons(fp, [1, 300], n_none=30, n_total=100)
+    assert len(reasons) == 2
+
+
+def test_cos_rules_carry_a_fingerprint():
+    """Every CoS page_range rule must ship a fingerprint, else re-extraction could
+    silently mis-key when the PDF changes. Guards against adding a 4th CoS rule
+    without the gate."""
+    cos = [r for r in mod.RULES if r["council"] == "city_of_sydney"]
+    assert len(cos) == 3
+    for r in cos:
+        assert "fingerprint" in r, r["name"]
+        assert r["fingerprint"]["max_page"] > 0 and 0 < r["fingerprint"]["min_coverage"] <= 1
+
+
 def test_cos_page_ranges_are_contiguous_and_ordered():
     """The City of Sydney sidecar drives 3 validate:True rules; a bad regeneration
     could mis-key a whole area two ways, so guard both invariants the generator
