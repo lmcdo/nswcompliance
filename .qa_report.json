@@ -1,66 +1,39 @@
 {
- "tier": "standard",
- "justification": "Extraction-pipeline config + one routing fix, no serving-path changes: (1) REPLACE the wrong Ashfield chapter-D manifest \u2014 it had 8 parts with locality-table names ('D-Part4 Haberfield' is actually chapter E2) and wrong page ranges, the root cause of the unreliable D-refs, missing Part 9, and bad auto-derived dcp_precinct_localities names; new 13-part table verified against the adopted PDF's per-page 'Part N' running headers. (2) ADD manifests for the 15 newly registered Ku-ring-gai Part 14 chapters (sections from each PDF's '14X.n' headings). (3) Add 'ashfield' to UPRIGHT_ONLY_COUNCILS (rotated 'Part N' side banner extracted reversed). (4) Hoist the #832 OCR fallback trigger into _maybe_route_via_ocr() called from BOTH extract() and extract_by_page_ranges() \u2014 before this, manifest-driven councils (all of Ku-ring-gai) never reached the garble check and kept doubled-glyph text layers.",
+ "tier": "minor",
+ "justification": "Versions the precinct-boundary health check (scripts/verify_precinct_boundaries.py was untracked working-scripts territory; .gitignore gains an explicit exception like the other permanent QA artifacts) and adds three City of Sydney KNOWN_POINTS spot checks for the 145 boundaries that went live today, plus one centroid exception (2.13.9 L-shaped corridor+park). No serving-path or pipeline code changes; the script is read-only against the DB.",
  "commit_hash": "",
  "files": [
-  "scripts/dcp_extract_changed.py"
+  ".gitignore",
+  "scripts/verify_precinct_boundaries.py"
  ],
  "pre_impl": {
-  "existing_data": "Chapter-D part list verified 2026-07-29 against R2 v1.1-2026-03-02 (13 parts, page ranges from running headers). KG Part 14 sub-parts registered same day via add_new_chapter.py (15 chapters, R2-mirrored). Review-mode runs (no DB writes) exercised every new manifest: round 1 exposed the reversed banner + missed OCR routing; round 3 confirms OCR now fires ('using OCR text for N pages').",
-  "assumption_mismatch": "If KG republishes a Part-14 PDF with different pagination the manifest ranges drift \u2014 same exposure as every existing KG manifest; the r2_monitor hash-change flow re-flags the chapter.",
-  "new_vs_existing": "Manifests follow the existing COUNCIL_CHAPTER_RANGES shape and KG one-row-per-section granularity. The OCR hoist moves an existing block into a method without changing its trigger logic; ocr_pages idempotence guard prevents double-fetch."
+  "existing_data": "Script existed since the 2026-07-28 Waverley session but scripts/ is gitignored wholesale; exceptions pattern already used for pr_overlap_guard, xref_*, hub_scrapers. CoS coords geocoded independently via SIX Address_Location (not derived from the polygons being tested); '60 Martin Place' omitted because SIX returns the 53-63 odd-side range.",
+  "assumption_mismatch": "If SIX coords were wrong the new spot checks would fail loudly, not pass silently; all three verified passing against production before commit.",
+  "new_vs_existing": "Additive only: 3 KNOWN_POINTS entries, 1 CENTROID_EXCEPTIONS entry, 2 comment lines, 1 gitignore exception. No logic changes."
  },
- "functions": [
-  {
-   "name": "_maybe_route_via_ocr",
-   "file_line": "scripts/dcp_extract_changed.py:1202",
-   "input": "self.pdf_path + council; env MODAL_OCR_URL/TOKEN; no args",
-   "output": "sets self.ocr_pages to per-page OCR texts when the raw text layer shows strong doubled-glyph evidence; otherwise leaves it None",
-   "if_none": "MODAL_OCR_URL unset or layer not garbled: returns immediately and extraction stays on the pdfplumber text layer, exactly the pre-change behaviour"
-  },
-  {
-   "name": "extract_by_page_ranges",
-   "file_line": "scripts/dcp_extract_changed.py:1219",
-   "input": "manifest ranges + optional subsection patterns",
-   "output": "section dicts; now reads OCR page texts via _page_text when the trigger fired",
-   "if_none": "empty ranges yield an empty list as before; OCR fetch failure returns None and the text layer is kept (fetch_ocr_page_texts contract unchanged)"
-  }
- ],
- "values": [
-  {
-   "value": "Ashfield chapter-D manifest: 13 parts, pages 3-40/41-57/58-83/84-95/96-106/107-155/156-168/169-180/181-182/183-187/188-192/193-196/197-204",
-   "read_at": "scripts/dcp_extract_changed.py:170 (COUNCIL_CHAPTER_RANGES)",
-   "if_missing": "chapter falls back to council-level page ranges or sequential detection \u2014 same fallback every unlisted chapter uses"
-  }
- ],
- "queries": "N/A - no SQL changed; the script's existing registry/provision queries are untouched.",
+ "functions": "run_checks unchanged; KNOWN_POINTS/CENTROID_EXCEPTIONS data extended.",
+ "values": "KNOWN_POINTS 8 -> 11; CENTROID_EXCEPTIONS 7 -> 8.",
+ "queries": "No SQL changed; script remains read-only SELECTs.",
  "break_it": [
   {
-   "scenario": "A future re-extraction of any OTHER ashfield chapter now also gets the upright-only filter; a chapter whose legitimate body text pdfplumber marks as rotated would lose it.",
-   "what_happens": "Text loss would surface as count_drop/schema_fail in the review gates before commit.",
+   "scenario": "The CoS boundaries are later reloaded with shifted geometries (e.g. wrong SRID) and the reload forgets to re-verify.",
+   "what_happens": "The three CoS spot checks fail with exit code 1 the next time the script runs - which is the point of versioning it.",
    "mitigated": true,
-   "how": "Review-mode round 2 ran the filter across chapter D: banner junk 0 hits, body text intact; gates block silent regressions for other chapters.",
-   "repro": "Run --council ashfield --all --review and inspect the review file."
+   "how": "Script is now tracked and referenced from the boundary worklist doc as the mandatory pre/post-import check.",
+   "repro": "Shift any CoS boundary by 0.01 deg and run the script."
   },
   {
-   "scenario": "Modal OCR endpoint down or returns wrong page count during a KG run.",
-   "what_happens": "fetch_ocr_page_texts returns None on ANY failure and extraction stays on the (garbled) text layer; the schema_fail artifact gate then blocks approval.",
-   "mitigated": true,
-   "how": "Existing #836 contract (exact page-count check) unchanged; gates remain the backstop.",
-   "repro": "Unset MODAL_OCR_TOKEN and run --council ku_ring_gai --review."
-  },
-  {
-   "scenario": "The OCR trigger now runs for every manifest-driven chapter, adding a full-PDF text pass per chapter.",
-   "what_happens": "One extra pdfplumber read per chapter (seconds); Modal spend only when garble detected.",
-   "mitigated": true,
-   "how": "ocr_pages guard makes it once-per-extractor; trigger requires strong doubled-glyph evidence per the #836 Sol-reviewed heuristic.",
-   "repro": "Time --council ku_ring_gai --review before/after."
+   "scenario": "A clone without .env runs the script.",
+   "what_happens": "Pre-existing behaviour: KeyError on SUPABASE_DB_URL - unchanged by this PR, config comes from repo-root .env.",
+   "mitigated": false,
+   "how": "Out of scope; documented in the script docstring usage.",
+   "repro": "Run outside a configured checkout."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required \u2014 this PR changes extraction config only; DB content changes go through the review-gated extraction flow separately.",
-  "secrets": "None; MODAL_OCR_URL/TOKEN already provisioned in .env.",
+  "db_reset": "Not required.",
+  "secrets": "None - script reads DATABASE_URL from .env, no values committed.",
   "other_repo": "None.",
-  "manual_verify": "Yes - reviews/ku_ring_gai_*.txt and reviews/ashfield_*.txt from the worktree runs; commit of extracted content is a separate deliberate re-run without --review after human review."
+  "manual_verify": "Run python scripts/verify_precinct_boundaries.py - expect PASS with 11/11 spot checks."
  }
 }
