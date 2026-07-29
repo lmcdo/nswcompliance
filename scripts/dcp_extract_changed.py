@@ -3372,14 +3372,29 @@ def main() -> None:
         print("ENRICHMENT PIPELINE")
         print(f"{'='*60}")
 
-        print("\n[1/3] Actionability classification...")
+        print("\n[1/4] Actionability classification...")
         run_actionability_classification(batch_size=500)
 
-        print("\n[2/3] Layer + topic tagging...")
+        print("\n[2/4] Layer + topic tagging...")
         run_layer_tagging(batch_size=500)
 
-        print("\n[3/3] Applicability tagging...")
+        print("\n[3/4] Applicability tagging...")
         run_applicability_tagging(batch_size=500)
+
+        # [4/4] Precinct-keying derivation — the fix for the churn: a re-extraction
+        # nulls v2_precinct_id, so re-derive it from the committed rule per council
+        # (docs/EXTRACTION_WHY_IT_RECURS...). Without this, every cron re-extraction
+        # silently un-keys precinct provisions (e.g. Waverley, 2026-07-29).
+        print("\n[4/4] Precinct-keying derivation...")
+        try:
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location(
+                "derive_precinct_keys", str(Path(__file__).with_name("derive_precinct_keys.py")))
+            _dpk = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_dpk)
+            _dpk.run(args.council, apply=True, validate=False)
+        except Exception as exc:
+            print(f"  [warn] precinct-keying derivation skipped (non-fatal): {exc}")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
 

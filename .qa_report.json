@@ -1,78 +1,74 @@
 {
  "tier": "standard",
- "justification": "New scripts/derive_precinct_keys.py: a config-driven, idempotent precinct-keying DERIVATION pass. Root-cause fix for the year-long churn (docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md): v2_precinct_id was applied by hand, so every re-extraction nulled it and the manual re-key recurred. This derives the key from a written rule per (council,chapter) so re-running reproduces it and re-extraction stops being destructive. Default dry-run; --apply gated + backup; only writes rows whose derived key differs; never touches provision_text. A derived key also sets v2_dcp_layer='precinct' (a keyed row is a precinct-layer row).",
- "commit_hash": "5c569e7e",
+ "justification": "Stops the precinct-keying churn permanently: (1) adds a Waverley rule (column_copy: v2_precinct_id := v2_dcp_part for E-parts) to the derivation pass \u2014 needed because the daily re-extraction cron had already superseded Waverley's 07-28 keyed generation and nulled the keys; (2) wires the derivation pass to RUN AUTOMATICALLY as step [4/4] of the post-extraction enrichment block, so any re-extraction re-derives precinct keys instead of leaving them NULL. This is the fix for docs/EXTRACTION_WHY_IT_RECURS: re-extraction is now non-destructive to keying without human action.",
+ "commit_hash": "bfc9080b",
  "files": [
+  "scripts/dcp_extract_changed.py",
   "scripts/derive_precinct_keys.py",
   "tests/test_derive_precinct_keys.py"
  ],
  "pre_impl": {
-  "existing_data": "Keying strategies were worked out and applied MANUALLY across this session (Marrickville doc-suffix->N_, Leichhardt C2 ref-regex, Ashfield E2 whole-doc->Haberfield, KG single-site constants, Ashfield ch-D page-range). ACCEPTANCE TEST run: --validate against the live DB REPRODUCES the existing manual keys exactly \u2014 Marrickville 1456/1456, Leichhardt 867/867, Ashfield-E2 118/120 already-ok (2 non-actionable). Ashfield ch-D deliberately validate:False (its rows were hand-patched via text-location+duplication, not page \u2014 302 would-change; the page rule is going-forward-correct, applied only after a clean re-extraction).",
-  "assumption_mismatch": "If a chapter's real keying isn't expressible by one of the 5 strategies, the rule returns None for those rows (reported as no-derivation) and leaves them untouched \u2014 never guesses.",
-  "new_vs_existing": "Backend derivation, inverse of the frontend precinct-serving code (precinct-service.ts reads the key; this writes it). No prior backend keyer existed."
+  "existing_data": "Live forensics: Waverley current gen = 264 rows, 0 keyed, but v2_dcp_part='E1'..'E6' present; superseded gen = 885 rows keyed (the 07-28 work the cron overwrote). Boundaries E1-E5,E7. After --apply: 5/6 reconnect (E1-E5); E7 stays orphan (re-extraction dropped the cadastre-derived Edina Estate content \u2014 the pass correctly does not invent it). Enrichment already auto-runs post-extraction (actionability/layer/applicability); keying is the missing 4th step.",
+  "assumption_mismatch": "If a re-extraction changes v2_dcp_part semantics the copy would mis-key; column_copy only fires when the value matches ^E[0-9], and the extraction sets v2_dcp_part deterministically per Part.",
+  "new_vs_existing": "column_copy is a 3rd derivation strategy alongside the existing ones; the auto-run reuses the enrichment block's existing post-commit hook point."
  },
  "functions": [
   {
    "name": "_derive",
-   "file_line": "scripts/derive_precinct_keys.py:112",
-   "input": "a strategy dict + a provision row dict (document_id/ref_number/pdf_page/source_chapter_key)",
-   "output": "the derived v2_precinct_id string, or None when the strategy does not match the row",
-   "if_none": "row is counted no-derivation and left untouched \u2014 the pass never writes a guessed key"
+   "file_line": "scripts/derive_precinct_keys.py:122",
+   "input": "strategy {column, match} + row; reads row[v2_dcp_part]",
+   "output": "the column value when it matches the regex (Waverley E1..E7), else None",
+   "if_none": "non-matching/NULL v2_dcp_part yields None -> row untouched"
   },
   {
-   "name": "run",
-   "file_line": "scripts/derive_precinct_keys.py:139",
-   "input": "council filter, apply bool, validate bool; reads current rows per RULES selector",
-   "output": "per-rule new/changed/already-ok/no-derivation counts; on --apply, guarded UPDATE of v2_precinct_id + layer with CSV backup",
-   "if_none": "dry-run (default) writes nothing; --validate rolls back and exits 1 if any validate-rule's derived key disagrees with the existing key"
+   "name": "main",
+   "file_line": "scripts/dcp_extract_changed.py:3178",
+   "input": "args.council; runs after actionability/layer/applicability on a passed commit",
+   "output": "calls derive_precinct_keys.run(council, apply=True) so committed rows get keyed",
+   "if_none": "wrapped in try/except \u2014 a keying failure is non-fatal and prints a warn, never blocks extraction"
   }
  ],
  "values": [
   {
-   "value": "5 rules: marrickville_part9 (doc_regex), leichhardt_c2 (ref_regex), ashfield_e2 (constant Haberfield), ku_ring_gai_part14_single_site (chapter_map), ashfield_chapter_d_parts (page_range, validate:False)",
-   "read_at": "scripts/derive_precinct_keys.py:72 (RULES)",
-   "if_missing": "a council with no rule is simply not processed \u2014 no rows touched"
+   "value": "waverley_part_e rule: column_copy of v2_dcp_part matching ^E[0-9]$|^E[0-9] ",
+   "read_at": "scripts/derive_precinct_keys.py:113 (RULES)",
+   "if_missing": "Waverley would remain unkeyed after re-extraction (the pre-fix state)"
   }
  ],
  "queries": [
   {
-   "purpose": "select current rows a rule targets",
-   "file_line": "scripts/derive_precinct_keys.py:155",
-   "where_clause": "WHERE is_current = true AND source_council = %(council)s AND (<rule.where>)"
-  },
-  {
-   "purpose": "apply the derived key (only when different)",
-   "file_line": "scripts/derive_precinct_keys.py:180",
-   "where_clause": "UPDATE ... SET v2_precinct_id=%s, v2_dcp_layer='precinct' WHERE id=%s"
+   "purpose": "select Waverley rows carrying an E-part to key",
+   "file_line": "scripts/derive_precinct_keys.py:175",
+   "where_clause": "WHERE is_current=true AND source_council='waverley' AND v2_dcp_part ~ '^E[0-9]'"
   }
  ],
  "break_it": [
   {
-   "scenario": "The page-range rule for Ashfield ch-D is applied and overwrites the more-accurate hand-patched (text-location + per-part-duplication) keys.",
-   "what_happens": "302 rows would change to page-derived keys, regressing the duplication handling.",
+   "scenario": "The daily re-extraction cron runs and supersedes the newly-keyed Waverley rows again with unkeyed ones.",
+   "what_happens": "Without the auto-run wiring, Waverley silently un-keys every night (the bug just observed).",
    "mitigated": true,
-   "how": "validate:False keeps it out of --validate; and it only runs when --council ashfield is passed. The doc directs: apply page rule ONLY after a clean columnar re-extraction, not against the current patchwork.",
-   "repro": "python scripts/derive_precinct_keys.py --council ashfield (dry-run shows 302 changed \u2014 do not --apply)"
+   "how": "The derivation pass now runs as enrichment step [4/4] on every commit, so the cron re-keys Waverley itself immediately after re-extracting.",
+   "repro": "run the extractor in commit mode for waverley and confirm the [4/4] keying step keys the E-parts"
   },
   {
-   "scenario": "A rule's regex matches a row it shouldn't and derives a wrong key.",
-   "what_happens": "A wrong v2_precinct_id would be written to that provision row, mis-keying it.",
+   "scenario": "The auto-run keying raises (e.g. transient DB error) mid-cron.",
+   "what_happens": "It could abort the whole extraction run if unguarded.",
    "mitigated": true,
-   "how": "--validate asserts every derived key on a validate-rule reproduces the human-verified existing key (2441 real rows reproduced exactly); unit tests pin each strategy incl. non-match->None.",
-   "repro": "python scripts/derive_precinct_keys.py --validate"
+   "how": "The [4/4] call is wrapped in try/except and prints a non-fatal warning; extraction and enrichment already completed and committed.",
+   "repro": "point DATABASE_URL at an unreachable host during the keying step"
   },
   {
-   "scenario": "The --apply pass is run a second time against the same already-keyed rows.",
-   "what_happens": "second run is a no-op.",
+   "scenario": "Auto-run applies a validate:False rule (Ashfield ch-D page-range) after a re-extraction.",
+   "what_happens": "The ch-D rows get page-derived keys.",
    "mitigated": true,
-   "how": "idempotent: rows already keyed correctly count already-ok and are skipped (only writes where derived != current or layer != precinct).",
-   "repro": "run --apply twice; second shows new=0 changed=0"
+   "how": "Correct in this context: after a re-extraction the rows are fresh/unkeyed, so the page rule is the right keying (no hand-patch to overwrite). The footgun guard only concerns applying it against existing hand-patched rows.",
+   "repro": "re-extract ashfield chapter-d and confirm [4/4] keys by page"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required \u2014 pass is opt-in per council.",
+  "db_reset": "Not required.",
   "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - after --council ku_ring_gai --apply, the KG single-site boundaries (14I/14J/14K/14L) connect and those addresses serve their precinct rules."
+  "manual_verify": "Yes - Waverley 5/6 boundaries now serve (E1-E5); next cron re-extraction of any keyed council keeps its keys via [4/4]."
  }
 }

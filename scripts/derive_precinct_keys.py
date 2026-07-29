@@ -106,6 +106,16 @@ RULES: list[dict] = [
         "strategy": {"type": "page_range", "ranges": _ASHFIELD_D_PARTS},
         "validate": False,
     },
+    {   # Waverley Part E: the extraction already sets v2_dcp_part='E1'..'E7';
+        # keying = copy that into v2_precinct_id. Added 2026-07-29 after the daily
+        # re-extraction cron superseded the 07-28 keyed generation and lost the keys
+        # (the exact churn this pass fixes — Waverley now has a rule so it self-heals).
+        "name": "waverley_part_e",
+        "council": "waverley",
+        "where": r"v2_dcp_part ~ '^E[0-9]'",
+        "strategy": {"type": "column_copy", "column": "v2_dcp_part", "match": r"^E[0-9]$"},
+        "validate": False,
+    },
 ]
 
 
@@ -116,6 +126,9 @@ def _derive(strategy: dict, row: dict) -> str | None:
         return strategy["precinct_id"]
     if t == "chapter_map":
         return strategy["map"].get(row["source_chapter_key"])
+    if t == "column_copy":
+        val = row.get(strategy["column"])
+        return val if val and re.search(strategy["match"], val) else None
     if t == "doc_regex":
         m = re.search(strategy["pattern"], row["document_id"] or "")
         return strategy["template"].format(*m.groups()) if m else None
@@ -157,7 +170,7 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
             continue
         params = dict(rule.get("params", {}))
         cur.execute(
-            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer
+            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer, v2_dcp_part
                 FROM regulatory_provisions
                 WHERE is_current = true AND source_council = %(council)s AND ({rule['where']})""",
             {"council": rule["council"], **params},

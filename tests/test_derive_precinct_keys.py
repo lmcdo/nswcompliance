@@ -47,6 +47,14 @@ def test_chapter_map():
     assert derive(s, row(source_chapter_key="section-b-part-14a-st-ives-local-centre")) is None
 
 
+def test_column_copy_waverley():
+    s = {"type": "column_copy", "column": "v2_dcp_part", "match": r"^E[0-9]$"}
+    assert derive(s, {**row(), "v2_dcp_part": "E1"}) == "E1"
+    assert derive(s, {**row(), "v2_dcp_part": "E7"}) == "E7"
+    assert derive(s, {**row(), "v2_dcp_part": "B5"}) is None
+    assert derive(s, {**row(), "v2_dcp_part": None}) is None
+
+
 def test_page_range():
     s = {"type": "page_range", "ranges": [("Part 1", 3, 40), ("Part 6", 107, 155)]}
     assert derive(s, row(pdf_page=20)) == "Part 1"
