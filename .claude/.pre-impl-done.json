@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-07-29T10:20:00+10:00",
-  "target": "W3 SEPP auto-stale: monitor marks dependent standards stale on version change; UIs keep serving last-reviewed values WITH a notice (founder-specified), cleared on re-verification",
-  "findings_summary": "Seam verified: legislation_monitor.check_instrument changed-block (line ~539) + alert assembly (~747); instrument keys sepp_exempt_complying_2008 + sepp_housing_2021 confirmed in instrument_currency; consumers = load_cdc_standards (cdc_eligibility_standards) and fetch_sepp_housing_standards/load_regulatory_configs (housing_sepp_standards) -> calc_feasibility SD row + CDC engine warnings. Additive columns only (stale_since/stale_reason); no behaviour change while NULL"
+  "timestamp": "2026-07-29T06:20:00Z",
+  "target": "geometric two-column PDF reader (_find_gutter/_columnar_text) in dcp_extract_changed.py",
+  "findings_summary": "Pure PDF word-geometry logic — NO DB read/write, no schema, no joins, no batch DB op (the protocol's risk surfaces are all N/A). Real risk = extraction fidelity: mitigated by (1) validating output against the exact pages the semantic sweep proved were dropped (Ashfield ch.D setback legend p129-130, CoS 5.2.4 table p81-82) BEFORE wiring, (2) unit tests incl. single-column-returns-None, (3) review-gated only — no auto-commit; count_drop/preflight gates remain the backstop. Existing header-pair splitter (COUNCIL_COLUMN_CONFIGS) unchanged; new path is a fallback for GEOMETRIC_COLUMN_COUNCILS."
 }
