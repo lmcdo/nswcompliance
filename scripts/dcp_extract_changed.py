@@ -690,6 +690,98 @@ def _clean_page_text(text: str, council: str | None) -> str:
 #   Page width: 595 (A4)
 #   'Objectives' header at x0=56.7, 'Controls' header at x0=209.8 (same y)
 #   Column boundary: x=195 (midpoint between ~180 and ~209)
+# Councils whose two-column body layout has NO reliable header-pair anchor
+# (Objectives|Controls) to trigger COUNCIL_COLUMN_CONFIGS — read them with the
+# geometric columnar reader instead (gutter found from word x-geometry, no
+# per-council boundary_x). Added 2026-07-29 after the semantic sweep showed
+# two-column reading-order interleave dropped whole sections (CoS 5.2.4 table,
+# Ashfield ch.D setback legends, Marrickville part-2/9).
+GEOMETRIC_COLUMN_COUNCILS = {"ashfield", "marrickville", "city_of_sydney"}
+
+
+def _find_gutter(words: list[dict], page_width: float) -> float | None:
+    """Return the x of a clear vertical two-column gutter, or None.
+
+    Scans the central 40-60% band for the x that the fewest words straddle.
+    A gutter is real only when <5% of words cross it AND each side holds >=25%
+    of the words — otherwise the page is single-column (many words straddle
+    centre) and the caller falls back to plain extraction. Pure."""
+    if len(words) < 30 or page_width <= 0:
+        return None
+    lo, hi, step = page_width * 0.40, page_width * 0.60, max(1.0, page_width * 0.01)
+    n = len(words)
+    best_x, best_cross = None, None
+    x = lo
+    while x <= hi:
+        cross = sum(1 for w in words if w["x0"] < x < w["x1"])
+        if best_cross is None or cross < best_cross:
+            best_cross, best_x = cross, x
+        x += step
+    if best_x is None or best_cross / n >= 0.05:
+        return None
+    left = sum(1 for w in words if (w["x0"] + w["x1"]) / 2 < best_x)
+    if left / n < 0.25 or (n - left) / n < 0.25:
+        return None
+    return best_x
+
+
+def _columnar_text(page: Any) -> str | None:
+    """Read a two-column page in true reading order (full-width headings kept
+    in place, then left column, then right column, per horizontal band).
+
+    Returns None when the page is not clearly two-column, so the caller falls
+    back to plain extract_text(). Band algorithm: group words into lines, a line
+    that spans the gutter is a full-width break; runs of non-spanning lines
+    between breaks are emitted left-then-right. Pure aside from extract_words()."""
+    from collections import defaultdict
+    words = page.extract_words() or []
+    W = float(page.width or 0)
+    cx = _find_gutter(words, W)
+    if cx is None:
+        return None
+    # A line is TWO-COLUMN when it has words on both sides of cx AND a wide empty
+    # gap at the gutter; it is FULL-WIDTH (heading) when text runs continuously
+    # across cx (a straddling word, or only a normal word-space gap). This gap
+    # test is what separates "5.2.4 Local Infrastructure" (heading) from an
+    # "L… | R…" body row that shares the same y.
+    gap_min = max(30.0, W * 0.05)
+    lines: dict[int, list[dict]] = defaultdict(list)
+    for w in words:
+        lines[round(w["top"] / 3.0)].append(w)
+
+    def line_text(lw: list[dict]) -> str:
+        return " ".join(w["text"] for w in sorted(lw, key=lambda w: w["x0"]))
+
+    out: list[str] = []
+    block: dict[str, list[list[dict]]] | None = None
+
+    def flush() -> None:
+        nonlocal block
+        if block:
+            out.extend(line_text(l) for l in block["left"])
+            out.extend(line_text(l) for l in block["right"])
+            block = None
+
+    for _, lw in sorted(lines.items()):
+        left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
+        right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
+        straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
+        two_col = False
+        if left and right and not straddle:
+            gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
+            two_col = gap >= gap_min
+        if two_col:
+            if block is None:
+                block = {"left": [], "right": []}
+            block["left"].append(left)
+            block["right"].append(right)
+        else:
+            flush()
+            out.append(line_text(lw))
+    flush()
+    return "\n".join(out)
+
+
 COUNCIL_COLUMN_CONFIGS: dict[str, dict] = {
     "ku_ring_gai": {
         # Left column (Objectives): x=0–195
@@ -915,6 +1007,14 @@ def _extract_page_text(page: Any, council: str | None) -> str:
         page = _upright_only(page)
 
     if not council or council not in COUNCIL_COLUMN_CONFIGS:
+        # Geometric two-column reader for councils without a header-pair anchor.
+        # Runs AFTER the upright filter so rotated banner words are already gone
+        # (they otherwise scramble the gutter reading). Returns None on any page
+        # that is not clearly two-column, falling back to plain extraction.
+        if council in GEOMETRIC_COLUMN_COUNCILS:
+            columnar = _columnar_text(page)
+            if columnar is not None:
+                return columnar
         return page.extract_text() or ""
 
     cfg = COUNCIL_COLUMN_CONFIGS[council]
@@ -1210,11 +1310,20 @@ class DCPExtractor:
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
             _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+        # Empty text layers are as unreadable as garbled ones: scanned pages
+        # yield no text at all (Marrickville part9 chapters, 2026-07-29) and
+        # previously never triggered OCR because the garble heuristic needs
+        # doubled glyphs to exist.
+        empty_frac = (sum(1 for t in _raw if len(t.strip()) < 40) / len(_raw)) if _raw else 0.0
         if text_layer_garbled(_raw):
             print("    [OCR] garbled text layer detected — fetching OCR page texts")
-            self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
-            if self.ocr_pages:
-                print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
+        elif empty_frac >= PREFLIGHT_EMPTY_RATIO:
+            print(f"    [OCR] {empty_frac:.0%} of pages have no text layer (scanned) — fetching OCR page texts")
+        else:
+            return
+        self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
+        if self.ocr_pages:
+            print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
 
     def extract_by_page_ranges(
         self,
@@ -1659,6 +1768,96 @@ def is_schema_fail(total_provisions: int, serious_flagged: int) -> bool:
 _GARBLE_RUN = re.compile(r"(?:([A-Za-z])\1){3,}")
 _JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
 
+
+# ── Preflight layout check (2026-07-29) ─────────────────────────────────────
+# prior-art-checked: the guard's hits are SEPP markdown parsers (different
+# corpus, post-extraction parsing); no existing pre-extraction layout detector
+# exists — this extends this file's own fidelity toolkit in place.
+# Structural problems (two-column bodies, rotated banners, garbled layers,
+# empty text layers) previously surfaced only AFTER extraction, as schema_fail
+# artifacts or interleaved text the post-gates flagged. The preflight measures
+# the layout BEFORE any parse so the operator summary names the problem class
+# up front and the chapter is flagged suspect even when downstream heuristics
+# would miss it (e.g. the Ashfield PC|DS two-column interleave, 2026-07-29).
+
+PREFLIGHT_TWO_COL_RATIO = 0.20   # >=20% of text pages two-column -> flag
+PREFLIGHT_EMPTY_RATIO = 0.30     # >=30% of pages with no text layer -> flag
+
+# Councils whose two-column/margin layout handling is PROVEN by a full source
+# fidelity sweep — the geometric detector still measures them, but the suspect
+# flag is suppressed (Waverley: margin-note layout, 2026-07-28 sweep = zero
+# missing provisions / zero wrong values). Add a council here only with that
+# level of evidence.
+PREFLIGHT_TWO_COL_VERIFIED = {"waverley"}
+
+
+def detect_two_column_words(word_spans: list[tuple[float, float]], page_width: float) -> bool:
+    """True when a page's word x-spans form two lateral bands with a clear
+    gutter: both halves carry >=25% of words and <5% of words cross the middle
+    band. Pure — word_spans are (x0, x1) pairs."""
+    if len(word_spans) < 30 or page_width <= 0:
+        return False
+    mid_lo, mid_hi = page_width * 0.42, page_width * 0.58
+    left = right = crossing = 0
+    for x0, x1 in word_spans:
+        if x0 < mid_lo and x1 > mid_hi:
+            crossing += 1  # spans the gutter — single-column prose
+        elif (x0 + x1) / 2 < page_width * 0.5:
+            left += 1
+        else:
+            right += 1
+    n = len(word_spans)
+    return left / n >= 0.25 and right / n >= 0.25 and crossing / n < 0.05
+
+
+def preflight_layout(pdf_path, council: str) -> dict:
+    """Measure layout hazards before parsing. Returns counts + flag booleans.
+    Never raises — a preflight failure must not block extraction (the post
+    gates still stand); it reports {} on any error."""
+    try:
+        two_col = rotated = garbled = empty = text_pages = 0
+        with pdfplumber.open(pdf_path) as pdf:
+            total = len(pdf.pages)
+            for page in pdf.pages:
+                try:
+                    words = page.extract_words() or []
+                except Exception:
+                    words = []
+                if len(words) < 12:
+                    empty += 1
+                    continue
+                text_pages += 1
+                spans = [(w["x0"], w["x1"]) for w in words]
+                if detect_two_column_words(spans, float(page.width or 0)):
+                    two_col += 1
+                chars = page.chars or []
+                if chars:
+                    non_upright = sum(1 for c in chars if not c.get("upright", True))
+                    if non_upright / len(chars) > 0.15:
+                        rotated += 1
+                if _garble_evidence(page.extract_text() or ""):
+                    garbled += 1
+        report = {
+            "total_pages": total,
+            "text_pages": text_pages,
+            "two_column_pages": two_col,
+            "rotated_pages": rotated,
+            "garbled_pages": garbled,
+            "empty_text_pages": empty,
+        }
+        report["two_column_fail"] = (
+            text_pages > 0
+            and two_col / text_pages >= PREFLIGHT_TWO_COL_RATIO
+            and council not in PREFLIGHT_TWO_COL_VERIFIED
+        )
+        report["empty_layer_fail"] = (
+            total > 0 and empty / total >= PREFLIGHT_EMPTY_RATIO
+        )
+        return report
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"    [preflight] skipped ({exc})")
+        return {}
+
 # ── OCR fallback (issue #832, Phase-0 passed 2026-07-28) ────────────────────
 # When a chapter's PDF text layer is garbled (letter-spaced doubled glyphs,
 # two-column interleave — classes NO text-layer reader can fix), page texts
@@ -1830,6 +2029,13 @@ def suspect_reason(review_data: dict) -> str | None:
     if review_data.get("truncation_fail"):
         return (f"truncation_fail ({review_data.get('truncation_flagged')}/"
                 f"{review_data.get('total_provisions')} provisions truncated)")
+    pf = review_data.get("preflight") or {}
+    if pf.get("two_column_fail"):
+        return (f"preflight_two_column ({pf.get('two_column_pages')}/"
+                f"{pf.get('text_pages')} text pages two-column — interleave likely)")
+    if pf.get("empty_layer_fail"):
+        return (f"preflight_empty_layer ({pf.get('empty_text_pages')}/"
+                f"{pf.get('total_pages')} pages without text layer — scanned source)")
     return None
 
 
@@ -2149,6 +2355,20 @@ def extract_chapter(
 
         extractor = DCPExtractor(pdf_path, document_id, council=council)
 
+        preflight = preflight_layout(pdf_path, council)
+        if preflight:
+            print(
+                f"    Preflight: {preflight['text_pages']} text pages — "
+                f"two-column {preflight['two_column_pages']}, rotated {preflight['rotated_pages']}, "
+                f"garbled {preflight['garbled_pages']}, empty-layer {preflight['empty_text_pages']}"
+            )
+            if preflight.get("two_column_fail"):
+                print("    [preflight] ⚠ TWO-COLUMN body layout — text-order interleave likely; "
+                      "review output before approving")
+            if preflight.get("empty_layer_fail"):
+                print("    [preflight] ⚠ EMPTY TEXT LAYERS on many pages — scanned source; "
+                      "OCR routing required for full coverage")
+
         # If a page-range config exists for this council/chapter, use it directly.
         # This handles DCPs where SECTION_RE matches TOC entries instead of real
         # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
@@ -2333,6 +2553,7 @@ def extract_chapter(
                 "document_id": document_id,
                 "content_hash": chapter.get("content_hash"),
                 "diff": review_diff,
+                "preflight": preflight,
             }
 
         # 3. Provision count gate — before touching the DB.
@@ -3151,14 +3372,29 @@ def main() -> None:
         print("ENRICHMENT PIPELINE")
         print(f"{'='*60}")
 
-        print("\n[1/3] Actionability classification...")
+        print("\n[1/4] Actionability classification...")
         run_actionability_classification(batch_size=500)
 
-        print("\n[2/3] Layer + topic tagging...")
+        print("\n[2/4] Layer + topic tagging...")
         run_layer_tagging(batch_size=500)
 
-        print("\n[3/3] Applicability tagging...")
+        print("\n[3/4] Applicability tagging...")
         run_applicability_tagging(batch_size=500)
+
+        # [4/4] Precinct-keying derivation — the fix for the churn: a re-extraction
+        # nulls v2_precinct_id, so re-derive it from the committed rule per council
+        # (docs/EXTRACTION_WHY_IT_RECURS...). Without this, every cron re-extraction
+        # silently un-keys precinct provisions (e.g. Waverley, 2026-07-29).
+        print("\n[4/4] Precinct-keying derivation...")
+        try:
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location(
+                "derive_precinct_keys", str(Path(__file__).with_name("derive_precinct_keys.py")))
+            _dpk = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_dpk)
+            _dpk.run(args.council, apply=True, validate=False)
+        except Exception as exc:
+            print(f"  [warn] precinct-keying derivation skipped (non-fatal): {exc}")
     else:
         print("\n  Skipping enrichment — quality gate did not pass.")
 
