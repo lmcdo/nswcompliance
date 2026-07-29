@@ -377,13 +377,24 @@ const PRECINCT_ID_PATTERNS: Record<string, RegExp[]> = {
   'Waverley': [
     /^e\d+$/i,                 // E1, E2, ... E7
   ],
+
+  // Sydney DCP 2012 section-keyed precincts: 2.x[.y] locality statements,
+  // 5.x specific areas, 6.x.y specific sites (e.g. '2.13.6', '5.8', '6.3.3').
+  'City of Sydney': [
+    /^[256]\.\d{1,2}(\.\d{1,2})?$/,
+  ],
+
+  // Ku-ring-gai DCP Part 14 local centre precincts (14B_T1..T4, 14I..14O).
+  'Ku-ring-gai': [
+    /^14[A-O](_T\d)?$/i,
+  ],
 };
 
 /**
  * Get former council from precinct ID using config-driven patterns
  * Returns the council name that owns this precinct based on ID patterns
  */
-function getFormerCouncilFromPrecinctId(precinctId: string): string {
+export function getFormerCouncilFromPrecinctId(precinctId: string): string {
   if (!precinctId) return 'Unknown';
 
   const id = precinctId.toLowerCase();

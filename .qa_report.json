@@ -1,38 +1,84 @@
 {
- "tier": "minor",
- "justification": "Removes 'ku-ring-gai' from NEAREST_FALLBACK_LGAS in frontend-nextjs/lib/precinct-service.ts. Ku-ring-gai has 10 site-specific precinct boundaries covering 0.29 km2 of an ~85 km2 LGA (verified live against dcp_precinct_boundaries 2026-07-29), so the 500m nearest-boundary snap serves controls for an area the property is not in. Same rationale as Waverley's exclusion in #835; Inner West (tiling precincts) keeps the fallback.",
- "commit_hash": "1ed31a69",
+ "tier": "standard",
+ "justification": "Two precinct-serving fixes that gate the CoS boundary load: (1) PRECINCT_ID_PATTERNS entries for City of Sydney ('2.13.6'/'5.8'/'6.3.3' section keys) and Ku-ring-gai ('14B_T1'..'14O') so a boundary match no longer falls through to the 'Marrickville' default and scopes the provisions API to the wrong council (the #835 Waverley bug class; Ku-ring-gai polygons are matchable TODAY). (2) precinct_warning no longer suppressed when precinct ids are passed but match zero provisions (locality fallback passes name-shaped ids), and now also fires when an LGA has precinct boundaries with no keyed provisions (Ku-ring-gai Part 14, Marrickville, Leichhardt \u2014 content not extracted, previously a silent gap).",
+ "commit_hash": "8a94cb91",
  "files": [
-  "frontend-nextjs/lib/precinct-service.ts"
+  "frontend-nextjs/lib/precinct-service.ts",
+  "frontend-nextjs/app/api/provisions/for-property/route.ts",
+  "frontend-nextjs/__tests__/lib/precinct-attribution.test.ts"
  ],
  "pre_impl": {
-  "existing_data": "dcp_precinct_boundaries: 10 rows LOWER(lga) LIKE 'ku%', SUM(area_sqm)=0.2904 km2. The gate was introduced in #835 with the set ['inner west', 'ku-ring-gai'].",
-  "assumption_mismatch": "If Ku-ring-gai precincts actually tiled the LGA, removing the snap would drop legitimate edge-case matches; the 0.29 km2 coverage disproves tiling.",
-  "new_vs_existing": "One-line set membership change plus comment update; containment (ST_Contains) matching for Ku-ring-gai is unchanged."
+  "existing_data": "dcp_precinct_boundaries id formats verified live 2026-07-29: Ku-ring-gai '14B_T1'..'14O' (10 rows), CoS ids to be loaded as '2.x[.y]'/'5.x'/'6.x.y'. dcp_precinct_provisions and dcp_precinct_requirements are EMPTY (legacy path dead) \u2014 v2_precinct_id on regulatory_provisions is the only serving path. COUNCIL_DOC_PATTERNS already maps city_of_sydney->'Sydney_DCP' and ku_ring_gai->'Ku-ring-gai_DCP'.",
+  "assumption_mismatch": "If a future council introduces dotted ids colliding with the leading-2/5/6 pattern the attribution would mislabel; the pattern is scoped and documented, and Leichhardt C2-prefix ids are pinned by test to still attribute to Leichhardt.",
+  "new_vs_existing": "Pattern entries follow the existing Waverley precedent in the same table. Warning block extends the existing cached EXISTS check; adds one Map cache and a council-to-LGA structural map (organisational structure, not regulatory data)."
  },
- "functions": "getPrecinctUsingPostGIS: for lga='Ku-ring-gai', a containment miss now returns null instead of calling findNearestPrecinct.",
- "values": "NEAREST_FALLBACK_LGAS: {'inner west', 'ku-ring-gai'} -> {'inner west'}.",
- "queries": "No SQL changed.",
- "break_it": [
+ "functions": [
   {
-   "scenario": "An address genuinely inside a Ku-ring-gai precinct polygon but geocoded a few metres outside it (kerbline geocode) previously snapped to the right precinct; now it returns no precinct.",
-   "what_happens": "Under-inclusion for that edge case: the precinct layer is excluded and the existing precinct_warning banner fires, matching the Waverley behaviour.",
-   "mitigated": true,
-   "how": "Honest miss preferred over the common wrong-area serve: with 0.34% area coverage, nearly every 500m-snap match was for a property NOT in the precinct. Containment matching is untouched.",
-   "repro": "Geocode an address on the boundary of 14I Killara Golf Club a few metres outside the polygon; before: snapped match, after: no precinct + warning."
+   "name": "getFormerCouncilFromPrecinctId",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts:396",
+   "input": "precinct_id string from a dcp_precinct_boundaries match, e.g. '5.2', '14B_T1', 'E1', 'Part 1'",
+   "output": "council display name used to scope the provisions API; new: '5.2' returns 'City of Sydney', '14B_T1' returns 'Ku-ring-gai'",
+   "if_none": "empty id returns 'Unknown'; unmatched formats still fall through to the documented 'Marrickville' default (unchanged legacy behaviour, now covered for every live id format)"
   },
   {
-   "scenario": "LGA string arrives as 'Ku-Ring-Gai' with different casing.",
-   "what_happens": "Gate lowercases and trims before the set lookup; casing cannot re-enable the fallback.",
+   "name": "GET for-property precinctWarning block",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:410",
+   "input": "filters.former_council, optional filters.precinct_id (comma-separated ids), optional filters.lga",
+   "output": "meta.precinct_warning boolean; now true when passed ids match zero provisions, or when the LGA has boundaries but no keyed precinct provisions",
+   "if_none": "no former_council leaves the warning false exactly as before; missing lga falls back to the COUNCIL_TO_LGA map and skips the boundary branch when unmapped"
+  }
+ ],
+ "values": [
+  {
+   "value": "COUNCIL_TO_LGA map: ashfield/marrickville/leichhardt -> 'Inner West', waverley -> 'Waverley', ku_ring_gai -> 'Ku-ring-gai', city_of_sydney -> 'Sydney'",
+   "read_at": "frontend-nextjs/app/api/provisions/for-property/route.ts:449 (lgaName resolution in the warning block)",
+   "if_missing": "unmapped council slug skips the boundary-existence branch entirely, so the warning simply keeps its provisions-based behaviour"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Do the passed precinct ids match any current provisions for this council (dud-id detection)",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:423",
+   "where_clause": "WHERE source_council = $1 AND v2_precinct_id = ANY($2::text[]) AND is_current = true LIMIT 1"
+  },
+  {
+   "purpose": "Does this council have any actionable precinct-layer provisions (pre-existing check, unchanged semantics)",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:430",
+   "where_clause": "WHERE source_council = $1 AND v2_dcp_layer = 'precinct' AND v2_is_actionable = true AND is_current = true LIMIT 1"
+  },
+  {
+   "purpose": "Does the LGA have precinct boundary polygons at all (content-not-extracted warning)",
+   "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:443",
+   "where_clause": "WHERE LOWER(lga) = LOWER($1) LIMIT 1"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Locality fallback passes 'Ashfield Town Centre' (name-shaped id matching zero rows); previously warning was suppressed and precinct rows silently absent.",
+   "what_happens": "idsMatchProvisions is false so the warning now fires exactly as in the no-id case.",
    "mitigated": true,
-   "how": "Existing .toLowerCase().trim() in the gate.",
-   "repro": "Call getPrecinctForAddress with lga='Ku-Ring-Gai'."
+   "how": "New EXISTS check against the passed ids before suppressing the warning.",
+   "repro": "GET /api/provisions/for-property?former_council=ashfield&precinct_id=Ashfield%20Town%20Centre"
+  },
+  {
+   "scenario": "Ku-ring-gai address inside the Killara Golf Club polygon: geometric match returns '14I', attribution previously defaulted to 'Marrickville' and scoped provisions to Marrickville documents.",
+   "what_happens": "Attribution now returns 'Ku-ring-gai'; the warning also fires because no provisions carry '14I' (Part 14 not extracted).",
+   "mitigated": true,
+   "how": "New pattern entry plus the dud-id warning path; pinned by the attribution test.",
+   "repro": "getFormerCouncilFromPrecinctId('14I') plus a for-property call with precinct_id=14I"
+  },
+  {
+   "scenario": "Boundary EXISTS result cached forever: after boundaries load for a council, a stale negative cache for its LGA would skip the warning until restart.",
+   "what_happens": "Warning missing for that narrow window; the provisions-exist branch already covers CoS (420 actionable precinct rows) so CoS never reaches the boundary branch.",
+   "mitigated": true,
+   "how": "Boundary branch is only reached when the council has NO precinct provisions; loading boundaries for such a council accompanies a deploy/restart in practice, and the cache is per-process.",
+   "repro": "Load boundaries for a provisions-less council without restarting the server process."
   }
  ],
  "post_merge": {
   "db_reset": "Not required.",
   "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - a Ku-ring-gai address outside the 10 polygons shows no precinct rules plus the precinct_warning banner on verify.plotdetect.com.au."
+  "manual_verify": "Yes - after deploy, the CoS boundary load (prepared, gated on this PR) can run; then a Green Square address shows section-5/2 rows and a Ku-ring-gai address inside a Part-14 polygon shows the precinct warning instead of Marrickville-scoped content."
  }
 }
