@@ -16,6 +16,7 @@ spec.loader.exec_module(mod)
 
 detect = mod.detect_two_column_words
 suspect_reason = mod.suspect_reason
+detect_repealed = mod.detect_repealed_stamp
 
 W = 600.0  # page width
 
@@ -67,3 +68,37 @@ def test_suspect_reason_preflight_empty_layer():
 
 def test_suspect_reason_clean_preflight_is_none():
     assert suspect_reason({"diff": {}, "preflight": {"two_column_fail": False}}) is None
+
+
+# ── Repealed-stamp front-matter guard (Woollahra failure class, 2026-07-29) ──
+
+def test_repealed_stamp_woollahra_amendment_footer():
+    texts = ["Chapter C1\nPaddington Heritage Conservation Area",
+             "Repealed by WDCP 2015 Amendment No. 13 on 12 October 2020\nbody text"]
+    hit = detect_repealed(texts)
+    assert hit == "Repealed by WDCP 2015 Amendment No. 13 on 12 October 2020"
+
+
+def test_repealed_stamp_pre2015_variant():
+    # c2/c3/f1 archive files use the terse form with no space before the year
+    assert detect_repealed(["Repealed by WDCP2015 on 23/05/15"]) is not None
+
+
+def test_repealed_stamp_case_insensitive_and_indented():
+    assert detect_repealed(["   REPEALED BY Amendment No. 7"]) is not None
+
+
+def test_repealed_prose_mid_line_not_matched():
+    # Amendment-history prose mentions repeal mid-sentence — must NOT reject
+    texts = ["This chapter replaces the controls that were repealed by Amendment 5."]
+    assert detect_repealed(texts) is None
+
+
+def test_repealed_clean_front_matter_none():
+    texts = ["Chapter A1\nIntroduction",
+             "CHAPTER A1 APPROVED ON 27 APRIL 2015\nLast amended on 24 February 2026", ""]
+    assert detect_repealed(texts) is None
+
+
+def test_repealed_empty_and_none_pages_safe():
+    assert detect_repealed(["", None, ""]) is None

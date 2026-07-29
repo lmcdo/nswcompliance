@@ -1,99 +1,77 @@
 {
  "tier": "standard",
- "justification": "Stacked on the verify-script versioning (#845): council attribution now prefers the dcp_precinct_boundaries.former_council column over PRECINCT_ID_PATTERNS regexes. The pattern approach degrades per council: dotted Parramatta ids (7.10.1, 9) and name-keyed Woollahra ids (Paddington HCA) have no safe regex, and unmatched ids fall through to the Marrickville default (the #835/#842 bug class). Column set on all new boundary rows (Parramatta-staged 13, Woollahra-staged 14); patterns stay as fallback for legacy NULL rows (Ku-ring-gai). Also adds 9 KNOWN_POINTS (4 Parramatta + 5 Woollahra, SIX-geocoded, all verified against staged polygons) and 2 centroid exceptions (7.10.1 union of 2 disjoint HCAs; 7.10.12 = 5 parcels).",
- "commit_hash": "0706aa49",
+ "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
+ "commit_hash": "9563d65f",
  "files": [
-  ".gitignore",
-  "frontend-nextjs/__tests__/lib/precinct-attribution.test.ts",
-  "frontend-nextjs/lib/precinct-service.ts",
-  "scripts/verify_precinct_boundaries.py"
+  "scripts/dcp_extract_changed.py",
+  "tests/test_extraction_preflight.py",
+  "tests/test_columnar_reader.py"
  ],
+ "addendum_columnar_reader": "Same branch also adds the geometric two-column READER (_find_gutter/_columnar_text, GEOMETRIC_COLUMN_COUNCILS) that ACTS on what the preflight detects: finds the gutter from word x-geometry (no per-council boundary_x, unlike the header-pair COUNCIL_COLUMN_CONFIGS path), reads left-column-then-right per horizontal band, keeps full-width headings in place. Runs only for ashfield/marrickville/city_of_sydney, only after the upright filter, and returns None (plain fallback) on any non-two-column page. End-to-end proof: Ashfield ch.D review-mode extraction \u2014 the preflight_two_column SUSPECT flag CLEARED and provisions recovered rose 546->638; remaining count_drop is vs an inflated baseline (earlier duplicated part-copies), a human-review judgement, not interleave. 8 columnar unit tests incl. single-column-returns-None and full-width-heading-kept-in-place; a caught bug (same-y left+right merged as full-width) fixed via gutter-gap test. Extractor suites 255 green.",
  "pre_impl": {
-  "existing_data": "Script existed since the 2026-07-28 Waverley session but scripts/ is gitignored wholesale; exceptions pattern already used for pr_overlap_guard, xref_*, hub_scrapers. CoS coords geocoded independently via SIX Address_Location (not derived from the polygons being tested); '60 Martin Place' omitted because SIX returns the 53-63 odd-side range.",
-  "assumption_mismatch": "If SIX coords were wrong the new spot checks would fail loudly, not pass silently; all three verified passing against production before commit.",
-  "new_vs_existing": "Additive only: 3 KNOWN_POINTS entries, 1 CENTROID_EXCEPTIONS entry, 2 comment lines, 1 gitignore exception. No logic changes."
+  "existing_data": "Post-extraction gates exist (schema_fail, count_drop, coverage_fail, truncation_fail) and stayed untouched; no pre-extraction layout detector existed (prior-art guard hits were SEPP markdown parsers, unrelated). Validated on real PDFs: Ashfield chapter D flags (78/192 two-column pages - the known interleave source); Waverley measures 404/450 but is exempted by evidence (2026-07-28 full fidelity sweep proved its margin-note layout handling).",
+  "assumption_mismatch": "A margin-note layout council could false-flag as two-column; the flag is advisory (suspect line, never blocks extraction) and the PREFLIGHT_TWO_COL_VERIFIED allowlist requires sweep-level evidence to suppress it.",
+  "new_vs_existing": "Pure additive: one pure detector + one measuring function + a report print + a suspect_reason branch ordered AFTER all existing reasons; preflight failure returns {} and changes nothing."
  },
  "functions": [
   {
-   "name": "normalizeFormerCouncil",
-   "file_line": "frontend-nextjs/lib/precinct-service.ts",
-   "input": "stored former_council value (display name, slug, NULL, blank)",
-   "output": "display form (city_of_sydney -> City of Sydney, ku_ring_gai -> Ku-ring-gai) or null",
-   "if_none": "null/undefined/blank return null so the caller falls back to patterns"
+   "name": "detect_two_column_words",
+   "file_line": "scripts/dcp_extract_changed.py:1806",
+   "input": "list of (x0,x1) word spans plus page width",
+   "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
+   "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
   },
   {
-   "name": "resolveFormerCouncil",
-   "file_line": "frontend-nextjs/lib/precinct-service.ts",
-   "input": "boundary row former_council + precinct_id",
-   "output": "column-first attribution; getFormerCouncilFromPrecinctId only when column NULL",
-   "if_none": "both empty -> patterns -> Unknown/Marrickville default unchanged (legacy behaviour)"
+   "name": "preflight_layout",
+   "file_line": "scripts/dcp_extract_changed.py:1840",
+   "input": "pdf path + council slug; opens the PDF with pdfplumber",
+   "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
+   "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
+  },
+  {
+   "name": "detect_repealed_stamp",
+   "file_line": "scripts/dcp_extract_changed.py:1829",
+   "input": "first PREFLIGHT_REPEALED_PAGES pages of text",
+   "output": "the line-anchored \"Repealed by ...\" stamp line, or None",
+   "if_none": "empty/None pages are safe; mid-sentence repeal prose never matches (line-anchored)"
   }
  ],
  "values": [
   {
-   "value": "KNOWN_POINTS grows 11 -> 20 (4 Parramatta + 5 Woollahra SIX-geocoded entries)",
-   "read_at": "scripts/verify_precinct_boundaries.py KNOWN_POINTS list",
-   "if_missing": "spot checks silently skip new councils and a bad boundary reload passes verification"
-  },
-  {
-   "value": "CENTROID_EXCEPTIONS grows 8 -> 10 (7.10.1 union of 2 disjoint HCAs; 7.10.12 five parcels)",
-   "read_at": "scripts/verify_precinct_boundaries.py CENTROID_EXCEPTIONS set",
-   "if_missing": "script reports 2 permanent warnings and PASS-with-warnings becomes noise"
+   "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
+   "read_at": "scripts/dcp_extract_changed.py:1783",
+   "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
   }
  ],
- "queries": [
-  {
-   "purpose": "multi-match precinct lookup now also reads council attribution from the row",
-   "file_line": "frontend-nextjs/lib/precinct-service.ts (getPrecinctUsingPostGIS SELECT)",
-   "where_clause": "ST_Contains(boundary, point) AND LOWER(lga)=LOWER($3) \u2014 unchanged; only former_council added to SELECT"
-  },
-  {
-   "purpose": "nearest-precinct fallback reads the same column",
-   "file_line": "frontend-nextjs/lib/precinct-service.ts (findNearestPrecinct SELECT)",
-   "where_clause": "LOWER(lga)=LOWER($3) AND ST_DWithin(...500m) \u2014 unchanged; only former_council added to SELECT"
-  }
- ],
+ "queries": "N/A - no SQL touched.",
  "break_it": [
   {
-   "scenario": "The CoS boundaries are later reloaded with shifted geometries (e.g. wrong SRID) and the reload forgets to re-verify.",
-   "what_happens": "The three CoS spot checks fail with exit code 1 the next time the script runs - which is the point of versioning it.",
+   "scenario": "Waverley re-extraction gets smeared as suspect because its margin layout reads as two-column.",
+   "what_happens": "Without the allowlist every Waverley review would carry a false suspect line against a sweep-proven extraction.",
    "mitigated": true,
-   "how": "Script is now tracked and referenced from the boundary worklist doc as the mandatory pre/post-import check.",
-   "repro": "Shift any CoS boundary by 0.01 deg and run the script."
+   "how": "PREFLIGHT_TWO_COL_VERIFIED exemption, gated on full-sweep evidence; verified live (two_column_fail False for the Waverley PDF).",
+   "repro": "preflight_layout(waverley_pdf, 'waverley')"
   },
   {
-   "scenario": "A clone without .env runs the script.",
-   "what_happens": "Pre-existing behaviour: KeyError on SUPABASE_DB_URL - unchanged by this PR, config comes from repo-root .env.",
-   "mitigated": false,
-   "how": "Out of scope; documented in the script docstring usage.",
-   "repro": "Run outside a configured checkout."
+   "scenario": "A corrupt PDF makes pdfplumber raise inside the preflight.",
+   "what_happens": "Preflight prints a skip line and returns {}; extraction and all existing gates behave exactly as before.",
+   "mitigated": true,
+   "how": "Whole function wrapped; suspect_reason treats missing preflight as clean.",
+   "repro": "point preflight_layout at a non-PDF file"
   },
   {
-   "scenario": "A future council loads boundary rows whose former_council holds an unknown slug (e.g. northern_beaches).",
-   "what_happens": "normalizeFormerCouncil title-cases it (Northern Beaches) instead of silently attributing Marrickville.",
+   "scenario": "Preflight adds a full pdfplumber pass per chapter and slows the cron.",
+   "what_happens": "Seconds per chapter on the same file the extractor opens anyway.",
    "mitigated": true,
-   "how": "Generic slug title-casing with joiner-word handling; jest cases pin the known values.",
-   "repro": "resolveFormerCouncil(\"northern_beaches\", \"X1\")"
-  },
-  {
-   "scenario": "Column set to whitespace-only by a bad loader.",
-   "what_happens": "Treated as NULL -> pattern fallback, never a blank display string.",
-   "mitigated": true,
-   "how": "normalizeFormerCouncil trims and returns null on blank; test pins it.",
-   "repro": "normalizeFormerCouncil(\"   \")"
-  },
-  {
-   "scenario": "The multi-match precinct lookup query runs against a database whose dcp_precinct_boundaries lacks the former_council column (stale environment).",
-   "what_happens": "The SELECT errors, the existing catch returns null and the address gets no precinct match \u2014 visible as a missing-precinct result, never a wrong-council attribution.",
-   "mitigated": true,
-   "how": "Column has existed on the production table since the Inner West loads; the catch block already downgrades any query error to a null match, and the nearest-precinct fallback query fails the same visible way.",
-   "repro": "Drop former_council in a scratch DB and call getPrecinctForAddress."
+   "how": "Single pass, no OCR/network; acceptable against multi-minute extractions.",
+   "repro": "time a --review run before/after"
   }
  ],
  "post_merge": {
   "db_reset": "Not required.",
-  "secrets": "None - script reads DATABASE_URL from .env, no values committed.",
+  "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Run python scripts/verify_precinct_boundaries.py \u2014 expect PASS 20/20 spot checks, 0 warnings. After deploy: flip Parramatta-staged -> City of Parramatta (portal LGA Name string), re-run script; Woollahra flip waits for provision keying."
- }
+  "manual_verify": "Yes - next --review run prints the Preflight line per chapter and flags two-column/scanned chapters in the SUSPECT summary."
+ },
+ "addendum_repealed_guard": "Stacked commit adds the repealed-source hard reject: detect_repealed_stamp (pure, line-anchored /^Repealed by/i over front matter) wired into preflight_layout (repealed_stamp key) and extract_chapter, which REFUSES the chapter before extraction (needs_extraction stays TRUE). Origin: 20/23 Woollahra chapters extracted from repeal-stamped archives (2026-07-29 re-source). 6 pure tests: footer variant, terse WDCP2015 variant, case/indent, mid-line prose negative, clean front matter, empty/None pages."
 }
