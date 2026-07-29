@@ -1,69 +1,78 @@
 {
  "tier": "standard",
- "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
- "commit_hash": "9563d65f",
+ "justification": "New scripts/derive_precinct_keys.py: a config-driven, idempotent precinct-keying DERIVATION pass. Root-cause fix for the year-long churn (docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md): v2_precinct_id was applied by hand, so every re-extraction nulled it and the manual re-key recurred. This derives the key from a written rule per (council,chapter) so re-running reproduces it and re-extraction stops being destructive. Default dry-run; --apply gated + backup; only writes rows whose derived key differs; never touches provision_text. A derived key also sets v2_dcp_layer='precinct' (a keyed row is a precinct-layer row).",
+ "commit_hash": "5c569e7e",
  "files": [
-  "scripts/dcp_extract_changed.py",
-  "tests/test_extraction_preflight.py",
-  "tests/test_columnar_reader.py"
+  "scripts/derive_precinct_keys.py",
+  "tests/test_derive_precinct_keys.py"
  ],
- "addendum_columnar_reader": "Same branch also adds the geometric two-column READER (_find_gutter/_columnar_text, GEOMETRIC_COLUMN_COUNCILS) that ACTS on what the preflight detects: finds the gutter from word x-geometry (no per-council boundary_x, unlike the header-pair COUNCIL_COLUMN_CONFIGS path), reads left-column-then-right per horizontal band, keeps full-width headings in place. Runs only for ashfield/marrickville/city_of_sydney, only after the upright filter, and returns None (plain fallback) on any non-two-column page. End-to-end proof: Ashfield ch.D review-mode extraction \u2014 the preflight_two_column SUSPECT flag CLEARED and provisions recovered rose 546->638; remaining count_drop is vs an inflated baseline (earlier duplicated part-copies), a human-review judgement, not interleave. 8 columnar unit tests incl. single-column-returns-None and full-width-heading-kept-in-place; a caught bug (same-y left+right merged as full-width) fixed via gutter-gap test. Extractor suites 255 green.",
  "pre_impl": {
-  "existing_data": "Post-extraction gates exist (schema_fail, count_drop, coverage_fail, truncation_fail) and stayed untouched; no pre-extraction layout detector existed (prior-art guard hits were SEPP markdown parsers, unrelated). Validated on real PDFs: Ashfield chapter D flags (78/192 two-column pages - the known interleave source); Waverley measures 404/450 but is exempted by evidence (2026-07-28 full fidelity sweep proved its margin-note layout handling).",
-  "assumption_mismatch": "A margin-note layout council could false-flag as two-column; the flag is advisory (suspect line, never blocks extraction) and the PREFLIGHT_TWO_COL_VERIFIED allowlist requires sweep-level evidence to suppress it.",
-  "new_vs_existing": "Pure additive: one pure detector + one measuring function + a report print + a suspect_reason branch ordered AFTER all existing reasons; preflight failure returns {} and changes nothing."
+  "existing_data": "Keying strategies were worked out and applied MANUALLY across this session (Marrickville doc-suffix->N_, Leichhardt C2 ref-regex, Ashfield E2 whole-doc->Haberfield, KG single-site constants, Ashfield ch-D page-range). ACCEPTANCE TEST run: --validate against the live DB REPRODUCES the existing manual keys exactly \u2014 Marrickville 1456/1456, Leichhardt 867/867, Ashfield-E2 118/120 already-ok (2 non-actionable). Ashfield ch-D deliberately validate:False (its rows were hand-patched via text-location+duplication, not page \u2014 302 would-change; the page rule is going-forward-correct, applied only after a clean re-extraction).",
+  "assumption_mismatch": "If a chapter's real keying isn't expressible by one of the 5 strategies, the rule returns None for those rows (reported as no-derivation) and leaves them untouched \u2014 never guesses.",
+  "new_vs_existing": "Backend derivation, inverse of the frontend precinct-serving code (precinct-service.ts reads the key; this writes it). No prior backend keyer existed."
  },
  "functions": [
   {
-   "name": "detect_two_column_words",
-   "file_line": "scripts/dcp_extract_changed.py:1794",
-   "input": "list of (x0,x1) word spans plus page width",
-   "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
-   "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
+   "name": "_derive",
+   "file_line": "scripts/derive_precinct_keys.py:112",
+   "input": "a strategy dict + a provision row dict (document_id/ref_number/pdf_page/source_chapter_key)",
+   "output": "the derived v2_precinct_id string, or None when the strategy does not match the row",
+   "if_none": "row is counted no-derivation and left untouched \u2014 the pass never writes a guessed key"
   },
   {
-   "name": "preflight_layout",
-   "file_line": "scripts/dcp_extract_changed.py:1813",
-   "input": "pdf path + council slug; opens the PDF with pdfplumber",
-   "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
-   "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
+   "name": "run",
+   "file_line": "scripts/derive_precinct_keys.py:139",
+   "input": "council filter, apply bool, validate bool; reads current rows per RULES selector",
+   "output": "per-rule new/changed/already-ok/no-derivation counts; on --apply, guarded UPDATE of v2_precinct_id + layer with CSV backup",
+   "if_none": "dry-run (default) writes nothing; --validate rolls back and exits 1 if any validate-rule's derived key disagrees with the existing key"
   }
  ],
  "values": [
   {
-   "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
-   "read_at": "scripts/dcp_extract_changed.py:1783",
-   "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
+   "value": "5 rules: marrickville_part9 (doc_regex), leichhardt_c2 (ref_regex), ashfield_e2 (constant Haberfield), ku_ring_gai_part14_single_site (chapter_map), ashfield_chapter_d_parts (page_range, validate:False)",
+   "read_at": "scripts/derive_precinct_keys.py:72 (RULES)",
+   "if_missing": "a council with no rule is simply not processed \u2014 no rows touched"
   }
  ],
- "queries": "N/A - no SQL touched.",
+ "queries": [
+  {
+   "purpose": "select current rows a rule targets",
+   "file_line": "scripts/derive_precinct_keys.py:155",
+   "where_clause": "WHERE is_current = true AND source_council = %(council)s AND (<rule.where>)"
+  },
+  {
+   "purpose": "apply the derived key (only when different)",
+   "file_line": "scripts/derive_precinct_keys.py:180",
+   "where_clause": "UPDATE ... SET v2_precinct_id=%s, v2_dcp_layer='precinct' WHERE id=%s"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "Waverley re-extraction gets smeared as suspect because its margin layout reads as two-column.",
-   "what_happens": "Without the allowlist every Waverley review would carry a false suspect line against a sweep-proven extraction.",
+   "scenario": "The page-range rule for Ashfield ch-D is applied and overwrites the more-accurate hand-patched (text-location + per-part-duplication) keys.",
+   "what_happens": "302 rows would change to page-derived keys, regressing the duplication handling.",
    "mitigated": true,
-   "how": "PREFLIGHT_TWO_COL_VERIFIED exemption, gated on full-sweep evidence; verified live (two_column_fail False for the Waverley PDF).",
-   "repro": "preflight_layout(waverley_pdf, 'waverley')"
+   "how": "validate:False keeps it out of --validate; and it only runs when --council ashfield is passed. The doc directs: apply page rule ONLY after a clean columnar re-extraction, not against the current patchwork.",
+   "repro": "python scripts/derive_precinct_keys.py --council ashfield (dry-run shows 302 changed \u2014 do not --apply)"
   },
   {
-   "scenario": "A corrupt PDF makes pdfplumber raise inside the preflight.",
-   "what_happens": "Preflight prints a skip line and returns {}; extraction and all existing gates behave exactly as before.",
+   "scenario": "A rule's regex matches a row it shouldn't and derives a wrong key.",
+   "what_happens": "A wrong v2_precinct_id would be written to that provision row, mis-keying it.",
    "mitigated": true,
-   "how": "Whole function wrapped; suspect_reason treats missing preflight as clean.",
-   "repro": "point preflight_layout at a non-PDF file"
+   "how": "--validate asserts every derived key on a validate-rule reproduces the human-verified existing key (2441 real rows reproduced exactly); unit tests pin each strategy incl. non-match->None.",
+   "repro": "python scripts/derive_precinct_keys.py --validate"
   },
   {
-   "scenario": "Preflight adds a full pdfplumber pass per chapter and slows the cron.",
-   "what_happens": "Seconds per chapter on the same file the extractor opens anyway.",
+   "scenario": "The --apply pass is run a second time against the same already-keyed rows.",
+   "what_happens": "second run is a no-op.",
    "mitigated": true,
-   "how": "Single pass, no OCR/network; acceptable against multi-minute extractions.",
-   "repro": "time a --review run before/after"
+   "how": "idempotent: rows already keyed correctly count already-ok and are skipped (only writes where derived != current or layer != precinct).",
+   "repro": "run --apply twice; second shows new=0 changed=0"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required.",
+  "db_reset": "Not required \u2014 pass is opt-in per council.",
   "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - next --review run prints the Preflight line per chapter and flags two-column/scanned chapters in the SUSPECT summary."
+  "manual_verify": "Yes - after --council ku_ring_gai --apply, the KG single-site boundaries (14I/14J/14K/14L) connect and those addresses serve their precinct rules."
  }
 }
