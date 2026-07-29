@@ -1,74 +1,39 @@
 {
- "tier": "standard",
- "justification": "Stops the precinct-keying churn permanently: (1) adds a Waverley rule (column_copy: v2_precinct_id := v2_dcp_part for E-parts) to the derivation pass \u2014 needed because the daily re-extraction cron had already superseded Waverley's 07-28 keyed generation and nulled the keys; (2) wires the derivation pass to RUN AUTOMATICALLY as step [4/4] of the post-extraction enrichment block, so any re-extraction re-derives precinct keys instead of leaving them NULL. This is the fix for docs/EXTRACTION_WHY_IT_RECURS: re-extraction is now non-destructive to keying without human action.",
- "commit_hash": "bfc9080b",
+ "tier": "minor",
+ "justification": "Versions the precinct-boundary health check (scripts/verify_precinct_boundaries.py was untracked working-scripts territory; .gitignore gains an explicit exception like the other permanent QA artifacts) and adds three City of Sydney KNOWN_POINTS spot checks for the 145 boundaries that went live today, plus one centroid exception (2.13.9 L-shaped corridor+park). No serving-path or pipeline code changes; the script is read-only against the DB.",
+ "commit_hash": "",
  "files": [
-  "scripts/dcp_extract_changed.py",
-  "scripts/derive_precinct_keys.py",
-  "tests/test_derive_precinct_keys.py"
+  ".gitignore",
+  "scripts/verify_precinct_boundaries.py"
  ],
  "pre_impl": {
-  "existing_data": "Live forensics: Waverley current gen = 264 rows, 0 keyed, but v2_dcp_part='E1'..'E6' present; superseded gen = 885 rows keyed (the 07-28 work the cron overwrote). Boundaries E1-E5,E7. After --apply: 5/6 reconnect (E1-E5); E7 stays orphan (re-extraction dropped the cadastre-derived Edina Estate content \u2014 the pass correctly does not invent it). Enrichment already auto-runs post-extraction (actionability/layer/applicability); keying is the missing 4th step.",
-  "assumption_mismatch": "If a re-extraction changes v2_dcp_part semantics the copy would mis-key; column_copy only fires when the value matches ^E[0-9], and the extraction sets v2_dcp_part deterministically per Part.",
-  "new_vs_existing": "column_copy is a 3rd derivation strategy alongside the existing ones; the auto-run reuses the enrichment block's existing post-commit hook point."
+  "existing_data": "Script existed since the 2026-07-28 Waverley session but scripts/ is gitignored wholesale; exceptions pattern already used for pr_overlap_guard, xref_*, hub_scrapers. CoS coords geocoded independently via SIX Address_Location (not derived from the polygons being tested); '60 Martin Place' omitted because SIX returns the 53-63 odd-side range.",
+  "assumption_mismatch": "If SIX coords were wrong the new spot checks would fail loudly, not pass silently; all three verified passing against production before commit.",
+  "new_vs_existing": "Additive only: 3 KNOWN_POINTS entries, 1 CENTROID_EXCEPTIONS entry, 2 comment lines, 1 gitignore exception. No logic changes."
  },
- "functions": [
-  {
-   "name": "_derive",
-   "file_line": "scripts/derive_precinct_keys.py:122",
-   "input": "strategy {column, match} + row; reads row[v2_dcp_part]",
-   "output": "the column value when it matches the regex (Waverley E1..E7), else None",
-   "if_none": "non-matching/NULL v2_dcp_part yields None -> row untouched"
-  },
-  {
-   "name": "main",
-   "file_line": "scripts/dcp_extract_changed.py:3178",
-   "input": "args.council; runs after actionability/layer/applicability on a passed commit",
-   "output": "calls derive_precinct_keys.run(council, apply=True) so committed rows get keyed",
-   "if_none": "wrapped in try/except \u2014 a keying failure is non-fatal and prints a warn, never blocks extraction"
-  }
- ],
- "values": [
-  {
-   "value": "waverley_part_e rule: column_copy of v2_dcp_part matching ^E[0-9]$|^E[0-9] ",
-   "read_at": "scripts/derive_precinct_keys.py:113 (RULES)",
-   "if_missing": "Waverley would remain unkeyed after re-extraction (the pre-fix state)"
-  }
- ],
- "queries": [
-  {
-   "purpose": "select Waverley rows carrying an E-part to key",
-   "file_line": "scripts/derive_precinct_keys.py:175",
-   "where_clause": "WHERE is_current=true AND source_council='waverley' AND v2_dcp_part ~ '^E[0-9]'"
-  }
- ],
+ "functions": "run_checks unchanged; KNOWN_POINTS/CENTROID_EXCEPTIONS data extended.",
+ "values": "KNOWN_POINTS 8 -> 11; CENTROID_EXCEPTIONS 7 -> 8.",
+ "queries": "No SQL changed; script remains read-only SELECTs.",
  "break_it": [
   {
-   "scenario": "The daily re-extraction cron runs and supersedes the newly-keyed Waverley rows again with unkeyed ones.",
-   "what_happens": "Without the auto-run wiring, Waverley silently un-keys every night (the bug just observed).",
+   "scenario": "The CoS boundaries are later reloaded with shifted geometries (e.g. wrong SRID) and the reload forgets to re-verify.",
+   "what_happens": "The three CoS spot checks fail with exit code 1 the next time the script runs - which is the point of versioning it.",
    "mitigated": true,
-   "how": "The derivation pass now runs as enrichment step [4/4] on every commit, so the cron re-keys Waverley itself immediately after re-extracting.",
-   "repro": "run the extractor in commit mode for waverley and confirm the [4/4] keying step keys the E-parts"
+   "how": "Script is now tracked and referenced from the boundary worklist doc as the mandatory pre/post-import check.",
+   "repro": "Shift any CoS boundary by 0.01 deg and run the script."
   },
   {
-   "scenario": "The auto-run keying raises (e.g. transient DB error) mid-cron.",
-   "what_happens": "It could abort the whole extraction run if unguarded.",
-   "mitigated": true,
-   "how": "The [4/4] call is wrapped in try/except and prints a non-fatal warning; extraction and enrichment already completed and committed.",
-   "repro": "point DATABASE_URL at an unreachable host during the keying step"
-  },
-  {
-   "scenario": "Auto-run applies a validate:False rule (Ashfield ch-D page-range) after a re-extraction.",
-   "what_happens": "The ch-D rows get page-derived keys.",
-   "mitigated": true,
-   "how": "Correct in this context: after a re-extraction the rows are fresh/unkeyed, so the page rule is the right keying (no hand-patch to overwrite). The footgun guard only concerns applying it against existing hand-patched rows.",
-   "repro": "re-extract ashfield chapter-d and confirm [4/4] keys by page"
+   "scenario": "A clone without .env runs the script.",
+   "what_happens": "Pre-existing behaviour: KeyError on SUPABASE_DB_URL - unchanged by this PR, config comes from repo-root .env.",
+   "mitigated": false,
+   "how": "Out of scope; documented in the script docstring usage.",
+   "repro": "Run outside a configured checkout."
   }
  ],
  "post_merge": {
   "db_reset": "Not required.",
-  "secrets": "None.",
+  "secrets": "None - script reads DATABASE_URL from .env, no values committed.",
   "other_repo": "None.",
-  "manual_verify": "Yes - Waverley 5/6 boundaries now serve (E1-E5); next cron re-extraction of any keyed council keeps its keys via [4/4]."
+  "manual_verify": "Run python scripts/verify_precinct_boundaries.py - expect PASS with 11/11 spot checks."
  }
 }
