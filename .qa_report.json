@@ -1,11 +1,13 @@
 {
  "tier": "standard",
  "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
- "commit_hash": "cad3ab50",
+ "commit_hash": "9563d65f",
  "files": [
   "scripts/dcp_extract_changed.py",
-  "tests/test_extraction_preflight.py"
+  "tests/test_extraction_preflight.py",
+  "tests/test_columnar_reader.py"
  ],
+ "addendum_columnar_reader": "Same branch also adds the geometric two-column READER (_find_gutter/_columnar_text, GEOMETRIC_COLUMN_COUNCILS) that ACTS on what the preflight detects: finds the gutter from word x-geometry (no per-council boundary_x, unlike the header-pair COUNCIL_COLUMN_CONFIGS path), reads left-column-then-right per horizontal band, keeps full-width headings in place. Runs only for ashfield/marrickville/city_of_sydney, only after the upright filter, and returns None (plain fallback) on any non-two-column page. End-to-end proof: Ashfield ch.D review-mode extraction \u2014 the preflight_two_column SUSPECT flag CLEARED and provisions recovered rose 546->638; remaining count_drop is vs an inflated baseline (earlier duplicated part-copies), a human-review judgement, not interleave. 8 columnar unit tests incl. single-column-returns-None and full-width-heading-kept-in-place; a caught bug (same-y left+right merged as full-width) fixed via gutter-gap test. Extractor suites 255 green.",
  "pre_impl": {
   "existing_data": "Post-extraction gates exist (schema_fail, count_drop, coverage_fail, truncation_fail) and stayed untouched; no pre-extraction layout detector existed (prior-art guard hits were SEPP markdown parsers, unrelated). Validated on real PDFs: Ashfield chapter D flags (78/192 two-column pages - the known interleave source); Waverley measures 404/450 but is exempted by evidence (2026-07-28 full fidelity sweep proved its margin-note layout handling).",
   "assumption_mismatch": "A margin-note layout council could false-flag as two-column; the flag is advisory (suspect line, never blocks extraction) and the PREFLIGHT_TWO_COL_VERIFIED allowlist requires sweep-level evidence to suppress it.",
@@ -14,14 +16,14 @@
  "functions": [
   {
    "name": "detect_two_column_words",
-   "file_line": "scripts/dcp_extract_changed.py:1694",
+   "file_line": "scripts/dcp_extract_changed.py:1794",
    "input": "list of (x0,x1) word spans plus page width",
    "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
    "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
   },
   {
    "name": "preflight_layout",
-   "file_line": "scripts/dcp_extract_changed.py:1713",
+   "file_line": "scripts/dcp_extract_changed.py:1813",
    "input": "pdf path + council slug; opens the PDF with pdfplumber",
    "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
    "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
@@ -30,7 +32,7 @@
  "values": [
   {
    "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
-   "read_at": "scripts/dcp_extract_changed.py:1691",
+   "read_at": "scripts/dcp_extract_changed.py:1783",
    "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
   }
  ],

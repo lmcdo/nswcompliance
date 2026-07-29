@@ -690,6 +690,98 @@ def _clean_page_text(text: str, council: str | None) -> str:
 #   Page width: 595 (A4)
 #   'Objectives' header at x0=56.7, 'Controls' header at x0=209.8 (same y)
 #   Column boundary: x=195 (midpoint between ~180 and ~209)
+# Councils whose two-column body layout has NO reliable header-pair anchor
+# (Objectives|Controls) to trigger COUNCIL_COLUMN_CONFIGS — read them with the
+# geometric columnar reader instead (gutter found from word x-geometry, no
+# per-council boundary_x). Added 2026-07-29 after the semantic sweep showed
+# two-column reading-order interleave dropped whole sections (CoS 5.2.4 table,
+# Ashfield ch.D setback legends, Marrickville part-2/9).
+GEOMETRIC_COLUMN_COUNCILS = {"ashfield", "marrickville", "city_of_sydney"}
+
+
+def _find_gutter(words: list[dict], page_width: float) -> float | None:
+    """Return the x of a clear vertical two-column gutter, or None.
+
+    Scans the central 40-60% band for the x that the fewest words straddle.
+    A gutter is real only when <5% of words cross it AND each side holds >=25%
+    of the words — otherwise the page is single-column (many words straddle
+    centre) and the caller falls back to plain extraction. Pure."""
+    if len(words) < 30 or page_width <= 0:
+        return None
+    lo, hi, step = page_width * 0.40, page_width * 0.60, max(1.0, page_width * 0.01)
+    n = len(words)
+    best_x, best_cross = None, None
+    x = lo
+    while x <= hi:
+        cross = sum(1 for w in words if w["x0"] < x < w["x1"])
+        if best_cross is None or cross < best_cross:
+            best_cross, best_x = cross, x
+        x += step
+    if best_x is None or best_cross / n >= 0.05:
+        return None
+    left = sum(1 for w in words if (w["x0"] + w["x1"]) / 2 < best_x)
+    if left / n < 0.25 or (n - left) / n < 0.25:
+        return None
+    return best_x
+
+
+def _columnar_text(page: Any) -> str | None:
+    """Read a two-column page in true reading order (full-width headings kept
+    in place, then left column, then right column, per horizontal band).
+
+    Returns None when the page is not clearly two-column, so the caller falls
+    back to plain extract_text(). Band algorithm: group words into lines, a line
+    that spans the gutter is a full-width break; runs of non-spanning lines
+    between breaks are emitted left-then-right. Pure aside from extract_words()."""
+    from collections import defaultdict
+    words = page.extract_words() or []
+    W = float(page.width or 0)
+    cx = _find_gutter(words, W)
+    if cx is None:
+        return None
+    # A line is TWO-COLUMN when it has words on both sides of cx AND a wide empty
+    # gap at the gutter; it is FULL-WIDTH (heading) when text runs continuously
+    # across cx (a straddling word, or only a normal word-space gap). This gap
+    # test is what separates "5.2.4 Local Infrastructure" (heading) from an
+    # "L… | R…" body row that shares the same y.
+    gap_min = max(30.0, W * 0.05)
+    lines: dict[int, list[dict]] = defaultdict(list)
+    for w in words:
+        lines[round(w["top"] / 3.0)].append(w)
+
+    def line_text(lw: list[dict]) -> str:
+        return " ".join(w["text"] for w in sorted(lw, key=lambda w: w["x0"]))
+
+    out: list[str] = []
+    block: dict[str, list[list[dict]]] | None = None
+
+    def flush() -> None:
+        nonlocal block
+        if block:
+            out.extend(line_text(l) for l in block["left"])
+            out.extend(line_text(l) for l in block["right"])
+            block = None
+
+    for _, lw in sorted(lines.items()):
+        left = [w for w in lw if (w["x0"] + w["x1"]) / 2 < cx]
+        right = [w for w in lw if (w["x0"] + w["x1"]) / 2 >= cx]
+        straddle = any(w["x0"] < cx - 5 and w["x1"] > cx + 5 for w in lw)
+        two_col = False
+        if left and right and not straddle:
+            gap = min(w["x0"] for w in right) - max(w["x1"] for w in left)
+            two_col = gap >= gap_min
+        if two_col:
+            if block is None:
+                block = {"left": [], "right": []}
+            block["left"].append(left)
+            block["right"].append(right)
+        else:
+            flush()
+            out.append(line_text(lw))
+    flush()
+    return "\n".join(out)
+
+
 COUNCIL_COLUMN_CONFIGS: dict[str, dict] = {
     "ku_ring_gai": {
         # Left column (Objectives): x=0–195
@@ -915,6 +1007,14 @@ def _extract_page_text(page: Any, council: str | None) -> str:
         page = _upright_only(page)
 
     if not council or council not in COUNCIL_COLUMN_CONFIGS:
+        # Geometric two-column reader for councils without a header-pair anchor.
+        # Runs AFTER the upright filter so rotated banner words are already gone
+        # (they otherwise scramble the gutter reading). Returns None on any page
+        # that is not clearly two-column, falling back to plain extraction.
+        if council in GEOMETRIC_COLUMN_COUNCILS:
+            columnar = _columnar_text(page)
+            if columnar is not None:
+                return columnar
         return page.extract_text() or ""
 
     cfg = COUNCIL_COLUMN_CONFIGS[council]
