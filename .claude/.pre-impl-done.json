@@ -1,6 +1,1 @@
-{
-  "status": "passed",
-  "timestamp": "2026-07-29T10:20:00+10:00",
-  "target": "W3 SEPP auto-stale: monitor marks dependent standards stale on version change; UIs keep serving last-reviewed values WITH a notice (founder-specified), cleared on re-verification",
-  "findings_summary": "Seam verified: legislation_monitor.check_instrument changed-block (line ~539) + alert assembly (~747); instrument keys sepp_exempt_complying_2008 + sepp_housing_2021 confirmed in instrument_currency; consumers = load_cdc_standards (cdc_eligibility_standards) and fetch_sepp_housing_standards/load_regulatory_configs (housing_sepp_standards) -> calc_feasibility SD row + CDC engine warnings. Additive columns only (stale_since/stale_reason); no behaviour change while NULL"
-}
+{"status":"passed","timestamp":"2026-07-29T09:00:00Z","target":"Waverley keying rule + auto-run of the derivation pass after extraction","findings_summary":"column_copy strategy (v2_precinct_id := v2_dcp_part for Waverley E-parts); wires the derivation run() as enrichment step [4/4] so a re-extraction re-keys itself (the churn fix). No new DB queries beyond the derivation pass's own guarded ones. Verified live: Waverley reconnected 0/6->5/6; E7 is a re-extraction content loss the pass correctly can't invent."}
