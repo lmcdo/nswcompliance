@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
- "commit_hash": "",
+ "commit_hash": "cad3ab50",
  "files": [
   "scripts/dcp_extract_changed.py",
   "tests/test_extraction_preflight.py"
@@ -14,14 +14,14 @@
  "functions": [
   {
    "name": "detect_two_column_words",
-   "file_line": "scripts/dcp_extract_changed.py:1685",
+   "file_line": "scripts/dcp_extract_changed.py:1694",
    "input": "list of (x0,x1) word spans plus page width",
    "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
    "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
   },
   {
    "name": "preflight_layout",
-   "file_line": "scripts/dcp_extract_changed.py:1704",
+   "file_line": "scripts/dcp_extract_changed.py:1713",
    "input": "pdf path + council slug; opens the PDF with pdfplumber",
    "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
    "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
@@ -30,7 +30,7 @@
  "values": [
   {
    "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
-   "read_at": "scripts/dcp_extract_changed.py:1682",
+   "read_at": "scripts/dcp_extract_changed.py:1691",
    "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
   }
  ],

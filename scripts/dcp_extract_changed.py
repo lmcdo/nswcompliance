@@ -1210,11 +1210,20 @@ class DCPExtractor:
             return
         with pdfplumber.open(self.pdf_path) as _pdf:
             _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+        # Empty text layers are as unreadable as garbled ones: scanned pages
+        # yield no text at all (Marrickville part9 chapters, 2026-07-29) and
+        # previously never triggered OCR because the garble heuristic needs
+        # doubled glyphs to exist.
+        empty_frac = (sum(1 for t in _raw if len(t.strip()) < 40) / len(_raw)) if _raw else 0.0
         if text_layer_garbled(_raw):
             print("    [OCR] garbled text layer detected — fetching OCR page texts")
-            self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
-            if self.ocr_pages:
-                print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
+        elif empty_frac >= PREFLIGHT_EMPTY_RATIO:
+            print(f"    [OCR] {empty_frac:.0%} of pages have no text layer (scanned) — fetching OCR page texts")
+        else:
+            return
+        self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
+        if self.ocr_pages:
+            print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
 
     def extract_by_page_ranges(
         self,
