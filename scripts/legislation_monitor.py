@@ -111,7 +111,8 @@ class InstrumentResult:
 STANDARDS_TABLES_BY_INSTRUMENT = {
     "sepp_exempt_complying_2008": [
         ("cdc_eligibility_standards", None),
-        ("housing_sepp_standards", "source_document ILIKE '%exempt%'"),
+        ("housing_sepp_standards",
+         "(source_document ILIKE '%exempt%' OR source_document ILIKE '%e&c%')"),
     ],
     "sepp_housing_2021": [
         ("housing_sepp_standards", "source_document ILIKE '%housing%'"),

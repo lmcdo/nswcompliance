@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "SEPP auto-stale (regulatory-currency plan W3, founder decision 2026-07-29): a detected version change of a source instrument stamps stale_since/stale_reason on dependent standards rows. Founder-specified behaviour: values KEEP SERVING with a visible notice in every consumer (CDC screen warnings, secondary-dwelling row basis) - never a silent stale figure, never a blanked row. Cleared during re-verification.",
- "commit_hash": "61de3aa0",
+ "commit_hash": "0bd1f05b",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/061_sepp_standards_stale_since.sql",

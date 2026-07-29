@@ -85,6 +85,32 @@ class TestMonitorMarking:
         cdc_sql = next(s for s, _ in conn2._cur.executed if "cdc_eligibility_standards" in s)
         assert "ILIKE" not in cdc_sql   # whole table is E&C-derived
 
+    def test_predicates_match_representative_source_documents(self):
+        """Sol #839 round 2: evaluate the predicates against every known
+        source_document spelling (prod values verified 2026-07-29 plus the
+        in-repo abbreviation), not just the SQL text."""
+        housing_docs = [
+            "SEPP (Housing) 2021 - LMR Amendment",
+            "SEPP (Housing) 2021",
+            "State Environmental Planning Policy (Housing) 2021",
+        ]
+        ec_docs = [
+            "State Environmental Planning Policy (Exempt and Complying\r\n"
+            "  Development Codes) 2008",
+            "SEPP (E&C) 2008",   # abbreviation used by in-repo fixtures
+        ]
+
+        def matches(predicate: str, doc: str) -> bool:
+            pats = re.findall(r"ILIKE '%(.+?)%'", predicate)
+            return any(p.lower() in doc.lower() for p in pats)
+
+        housing_pred = dict(TABLE_MAP["sepp_housing_2021"])["housing_sepp_standards"]
+        ec_pred = dict(TABLE_MAP["sepp_exempt_complying_2008"])["housing_sepp_standards"]
+        for doc in housing_docs:
+            assert matches(housing_pred, doc) and not matches(ec_pred, doc), doc
+        for doc in ec_docs:
+            assert matches(ec_pred, doc) and not matches(housing_pred, doc), doc
+
     def test_unmapped_instrument_is_noop(self):
         conn = FakeConn()
         notes = mark_stale(conn, "lep_inner_west_2022", "Inner West LEP 2022", "a", "b")
