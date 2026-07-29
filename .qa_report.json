@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "SEPP auto-stale (regulatory-currency plan W3, founder decision 2026-07-29): a detected version change of a source instrument stamps stale_since/stale_reason on dependent standards rows. Founder-specified behaviour: values KEEP SERVING with a visible notice in every consumer (CDC screen warnings, secondary-dwelling row basis) - never a silent stale figure, never a blanked row. Cleared during re-verification.",
- "commit_hash": "f1ede32b",
+ "commit_hash": "61de3aa0",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/061_sepp_standards_stale_since.sql",
@@ -21,7 +21,7 @@
  "functions": [
   {
    "name": "mark_dependent_standards_stale",
-   "file_line": "scripts/legislation_monitor.py:111",
+   "file_line": "scripts/legislation_monitor.py:122",
    "input": "db connection, changed instrument key and label, old and new version strings",
    "output": "human-readable alert lines naming each stamped table and row count",
    "if_none": "an instrument with no mapped standards table returns an empty list and touches nothing; WHERE stale_since IS NULL means the FIRST detected change dates the notice and repeats never overwrite it"
@@ -51,7 +51,7 @@
  "queries": [
   {
    "purpose": "stamp dependent standards stale on an instrument version change",
-   "file_line": "scripts/legislation_monitor.py:130",
+   "file_line": "scripts/legislation_monitor.py:140",
    "where_clause": "WHERE stale_since IS NULL plus a per-instrument source_document predicate (Housing rows ILIKE '%housing%', E&C rows ILIKE '%exempt%') - the first change wins, and each instrument stamps only the rows it actually supplies"
   }
  ],
