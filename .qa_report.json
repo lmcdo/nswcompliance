@@ -1,27 +1,38 @@
 {
  "tier": "minor",
- "justification": "One-line Railway config change: dcp-extract cron weekly (Mon) to daily. Founder decision 2026-07-28; near-free no-op when the queue is empty; closes the up-to-6-day stuck window that tripped the watchdog by design.",
- "commit_hash": "pending",
+ "justification": "Removes 'ku-ring-gai' from NEAREST_FALLBACK_LGAS in frontend-nextjs/lib/precinct-service.ts. Ku-ring-gai has 10 site-specific precinct boundaries covering 0.29 km2 of an ~85 km2 LGA (verified live against dcp_precinct_boundaries 2026-07-29), so the 500m nearest-boundary snap serves controls for an area the property is not in. Same rationale as Waverley's exclusion in #835; Inner West (tiling precincts) keeps the fallback.",
+ "commit_hash": "aff700d4",
  "files": [
-  ".claude/.pre-impl-done.json",
-  "railway.dcp-extract.toml"
+  "frontend-nextjs/lib/precinct-service.ts"
  ],
- "functions": "N/A - config only.",
- "values": "N/A - no data values.",
- "queries": "N/A - no queries.",
+ "pre_impl": {
+  "existing_data": "dcp_precinct_boundaries: 10 rows LOWER(lga) LIKE 'ku%', SUM(area_sqm)=0.2904 km2. The gate was introduced in #835 with the set ['inner west', 'ku-ring-gai'].",
+  "assumption_mismatch": "If Ku-ring-gai precincts actually tiled the LGA, removing the snap would drop legitimate edge-case matches; the 0.29 km2 coverage disproves tiling.",
+  "new_vs_existing": "One-line set membership change plus comment update; containment (ST_Contains) matching for Ku-ring-gai is unchanged."
+ },
+ "functions": "getPrecinctUsingPostGIS: for lga='Ku-ring-gai', a containment miss now returns null instead of calling findNearestPrecinct.",
+ "values": "NEAREST_FALLBACK_LGAS: {'inner west', 'ku-ring-gai'} -> {'inner west'}.",
+ "queries": "No SQL changed.",
  "break_it": [
   {
-   "scenario": "Daily runs pile up Modal OCR spend on chapters that repeatedly trigger the fallback.",
-   "what_happens": "A garbled chapter stuck awaiting review would be re-OCRed every day.",
+   "scenario": "An address genuinely inside a Ku-ring-gai precinct polygon but geocoded a few metres outside it (kerbline geocode) previously snapped to the right precinct; now it returns no precinct.",
+   "what_happens": "Under-inclusion for that edge case: the precinct layer is excluded and the existing precinct_warning banner fires, matching the Waverley behaviour.",
    "mitigated": true,
-   "how": "Extraction only processes needs_extraction chapters; a chapter awaiting REVIEW keeps its pending rows and the refresh replaces them, but the OCR trigger re-fires only while the source text layer stays garbled - bounded by review cadence, and the watchdog now names review-blocked chapters explicitly. Worst case a few dollars a week, visible on the Modal dashboard.",
-   "repro": "Flag a garbled chapter and leave it unreviewed two days - two OCR passes."
+   "how": "Honest miss preferred over the common wrong-area serve: with 0.34% area coverage, nearly every 500m-snap match was for a property NOT in the precinct. Containment matching is untouched.",
+   "repro": "Geocode an address on the boundary of 14I Killara Golf Club a few metres outside the polygon; before: snapped match, after: no precinct + warning."
+  },
+  {
+   "scenario": "LGA string arrives as 'Ku-Ring-Gai' with different casing.",
+   "what_happens": "Gate lowercases and trims before the set lookup; casing cannot re-enable the fallback.",
+   "mitigated": true,
+   "how": "Existing .toLowerCase().trim() in the gate.",
+   "repro": "Call getPrecinctForAddress with lga='Ku-Ring-Gai'."
   }
  ],
  "post_merge": {
   "db_reset": "Not required.",
   "secrets": "None.",
-  "other_repo": "Railway picks the schedule up from config-as-code on next deploy (auto-deploys on merge).",
-  "manual_verify": "Yes - Railway dcp-extract service shows Next run tomorrow instead of next Monday."
+  "other_repo": "None.",
+  "manual_verify": "Yes - a Ku-ring-gai address outside the 10 polygons shows no precinct rules plus the precinct_warning banner on verify.plotdetect.com.au."
  }
 }
