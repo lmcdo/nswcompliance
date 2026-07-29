@@ -160,15 +160,27 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("C-Part4",  "Tree Management",                77,  85),
         ("C-Part5",  "GreenWay",                       86,  90),
     ],
+    # Chapter D has 13 Parts (source-verified 2026-07-29 against the adopted PDF's
+    # per-page 'Part N – Name' running headers; R2 v1.1-2026-03-02). The previous
+    # 8-entry manifest here used wrong names (locality names, incl. 'Haberfield'
+    # which is chapter E2) and wrong ranges — the root cause of the unreliable
+    # D-numbers in refs, the missing Part 9, and the bad auto-derived
+    # dcp_precinct_localities names. Keys carry the Part number so refs and the
+    # v2_precinct_id backfill ('Part N') stay aligned with dcp_precinct_boundaries.
     ("ashfield", "chapter-d-precinct-guidelines"): [
-        ("D-Part1",  "Ashfield Town Centre",            3,  42),
-        ("D-Part2",  "Ashfield East",                  43,  59),
-        ("D-Part3",  "Croydon South",                  60,  85),
-        ("D-Part4",  "Haberfield",                     86, 111),
-        ("D-Part5",  "Hurlstone Park",                112, 157),
-        ("D-Part6",  "Summer Hill",                   158, 170),
-        ("D-Part7",  "Ashfield South",                171, 181),
-        ("D-Part8",  "Canterbury Road",               182, 204),
+        ("D-Part1",  "Ashfield Town Centre",              3,  40),
+        ("D-Part2",  "Ashfield East",                    41,  57),
+        ("D-Part3",  "Ashfield West",                    58,  83),
+        ("D-Part4",  "Croydon Town Centre",              84,  95),
+        ("D-Part5",  "Neighbourhood Centre (B1) Zone",   96, 106),
+        ("D-Part6",  "Enterprise Zone (B6) Parramatta Road", 107, 155),
+        ("D-Part7",  "Enterprise Zone (B6) Hurlstone Park",  156, 168),
+        ("D-Part8",  "SummerHill Town Centre",          169, 180),
+        ("D-Part9",  "Summer Hill Flour Mills Site",    181, 182),
+        ("D-Part10", "Edwards Street B4 Zone",          183, 187),
+        ("D-Part11", "Industrial Zones",                188, 192),
+        ("D-Part12", "55-63 Smith Street Summer Hill",  193, 196),
+        ("D-Part13", "120C Old Canterbury Road",        197, 204),
     ],
     ("ashfield", "chapter-e1-heritage"): [
         # E1 has 392 pages and high SECTION_RE hit rate (175%) — let regex handle it.
@@ -360,6 +372,155 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("9c_14",  "Acoustic Privacy",                     32, 32),
         ("9c_15",  "Fencing",                              33, 33),
         ("9c_16",  "Services",                             34, 35),
+    ],
+    # ── Ku-ring-gai DCP Part 14 (Local Centres + specific sites), registered 2026-07-29.
+    # Section ranges derived from each PDF's '14X.n' headings (incl. -separated
+    # variants) with contiguous fill; page 1 TOC/cover as intro. One row per section,
+    # matching the existing Ku-ring-gai granularity convention.
+    ("ku_ring_gai", "section-b-part-14a-st-ives-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14a_1", "St Ives Local Centre Context", 2, 2),
+        ("14a_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14a_3", "Proposed Community Infrastructure", 4, 5),
+        ("14a_4", "Setbacks", 6, 6),
+        ("14a_5", "Built Form", 7, 7),
+        ("14a_6", "Building Entries, Car Parking And Service Access", 8, 8),
+        ("14a_7", "Precinct S1: St Ives Shopping Village", 9, 13),
+        ("14a_8", "Precinct S2: Stanley Street Shops", 14, 19),
+        ("14a_9", "Precinct S3: Buildings In R4 Zones", 20, 22),
+    ],
+    ("ku_ring_gai", "section-b-part-14b-turramurra-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14b_1", "Turramurra Local Centre Context", 2, 2),
+        ("14b_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14b_3", "Proposed Community Infrastructure", 4, 5),
+        ("14b_4", "Setbacks", 6, 6),
+        ("14b_5", "Built Form", 7, 7),
+        ("14b_6", "Building Entries, Car Parking And Service Access", 8, 8),
+        ("14b_7", "Environmental Protection And Bush Fire Protection", 9, 9),
+        ("14b_8", "Precinct T1: Pacific Highway And Ray Street Retail Area", 10, 20),
+        ("14b_9", "Precinct T2: Rohini Street And Eastern Road Retail Cent", 21, 22),
+        ("14b_3", "Proposed Community Infrastructure", 23, 23),
+        ("14b_9", "Precinct T2: Rohini Street And Eastern Road Retail Cent", 24, 26),
+        ("14b_10", "Precinct T3: Kissing Point Road Retail Area", 27, 34),
+        ("14b_11", "Precinct T4: Hillview Area", 35, 38),
+    ],
+    ("ku_ring_gai", "section-b-part-14c-pymble-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14c_1", "Pymble Local Centre Context", 2, 2),
+        ("14c_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14c_3", "Proposed Community Infrastructure", 4, 5),
+        ("14c_4", "Setbacks", 6, 6),
+        ("14c_5", "Built Form", 7, 7),
+        ("14c_6", "Building Entries, Car Parking And Service", 8, 8),
+        ("14c_7", "Precinct 1: Grandview Street And Pacific", 9, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14d-gordon-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14d_1", "Gordon Local Centre Context", 2, 2),
+        ("14d_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14d_3", "Proposed Community Infrastructure", 4, 5),
+        ("14d_4", "Setbacks", 6, 7),
+        ("14d_5", "Built Form", 8, 8),
+        ("14d_6", "Building Entries, Car Parking And Service", 9, 9),
+        ("14d_7", "Precinct G1: St Johns Avenue And Henry", 10, 15),
+        ("14d_8", "Precinct G2: Pacific Highway Retail", 16, 21),
+        ("14d_9", "Precinct G3: Civic Hub", 22, 27),
+        ("14d_10", "Precinct G4: Mixed Use", 28, 33),
+        ("14d_11", "Precinct G5: Buildings In R4 Zones", 34, 36),
+    ],
+    ("ku_ring_gai", "section-b-part-14e-lindfield-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14e_1", "Lindfield Local Centre Context", 2, 2),
+        ("14e_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14e_3", "Proposed Community Infrastructure", 4, 6),
+        ("14e_4", "Setbacks", 7, 8),
+        ("14e_5", "Built Form", 9, 9),
+        ("14e_6", "Building Entries, Car Parking And Service Access", 10, 10),
+        ("14e_7", "Precinct L1: Balfour Street Retail Area", 11, 17),
+        ("14e_8", "Precinct L2: Pacific Highway Retail Area", 18, 23),
+        ("14e_9", "Precinct L3: Tryon Place Mixed Use Area", 24, 29),
+        ("14e_10", "Precinct L4: Tryon Road And Lindfield Avenue Retail", 30, 42),
+        ("14e_11", "Precinct L5: Lindfield Community Hub", 43, 55),
+        ("14e_12", "Precinct L6: 259-271 Pacific Highway, Lindfield", 56, 64),
+        ("14e_13", "Precinct L7: Buildings In R4 Zones", 65, 66),
+        ("14e_14", "Precinct L8: Buildings In R4 Zones", 67, 70),
+    ],
+    ("ku_ring_gai", "section-b-part-14f-roseville-local-centre"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14f_1", "Roseville Local Centre Context", 2, 2),
+        ("14f_2", "Public Domain And Pedestrian Access", 3, 3),
+        ("14f_3", "Proposed Community Infrastructure", 4, 5),
+        ("14f_4", "Setbacks", 6, 6),
+        ("14f_5", "Built Form", 7, 7),
+        ("14f_6", "Building Entries, Car Parking And Service", 8, 8),
+        ("14f_7", "Precinct R1: Hill Street Shops", 9, 14),
+        ("14f_8", "Precinct R2: Pacific Highway Shops", 15, 19),
+        ("14f_9", "Precinct R3: Pacific Highway To Roseville Station", 20, 24),
+    ],
+    ("ku_ring_gai", "section-b-part-14g-pymble-business-park"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14g_1", "Urban Precinct", 2, 3),
+        ("14g_2", "Public Domain And Pedestrian Access", 4, 5),
+        ("14g_3", "Proposed Community Infrastructure", 6, 7),
+        ("14g_4", "Building Setbacks", 8, 9),
+        ("14g_5", "Built Form", 10, 12),
+        ("14g_6", "Heritage", 13, 14),
+        ("14g_7", "Shared On-Site Parking", 15, 16),
+    ],
+    ("ku_ring_gai", "section-b-part-14h-screen-australia-site"): [
+        ("14h_1", "Urban Precinct", 1, 3),
+        ("14h_2", "Public Domain And", 4, 5),
+        ("14h_3", "Building Setbacks", 6, 8),
+    ],
+    ("ku_ring_gai", "section-b-part-14i-killara-golf-club"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14i_1", "Urban Precinct", 2, 4),
+        ("14i_2", "Pedestrian And Vehicular Access", 5, 7),
+        ("14i_3", "Building Setbacks", 8, 9),
+        ("14i_4", "Built Form", 10, 11),
+        ("14i_5", "Heritage", 12, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14j-holford-crescent-gordon"): [
+        ("14j_1", "Building Setbacks", 1, 4),
+    ],
+    ("ku_ring_gai", "section-b-part-14k-45-47-tennyson-avenue-and-105-eastern-road-turramurra"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14k_1", "Urban Precinct", 2, 3),
+        ("14k_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14k_3", "Building Setbacks", 6, 7),
+        ("14k_4", "Built Form", 8, 9),
+        ("14k_5", "Public Domain", 10, 12),
+    ],
+    ("ku_ring_gai", "section-b-part-14l-62-and-64-66-pacific-highway-roseville"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14l_1", "Urban Precinct", 2, 3),
+        ("14l_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14l_3", "Building Setbacks", 6, 7),
+        ("14l_4", "Built Form", 8, 9),
+        ("14l_5", "Heritage", 10, 11),
+        ("14l_6", "Public Domain", 12, 14),
+    ],
+    ("ku_ring_gai", "section-b-part-14m-47-warrane-road-roseville-chase"): [
+        ("14m_1", "Urban Precinct", 1, 3),
+        ("14m_2", "Public Domain, Pedestrian And", 4, 5),
+        ("14m_3", "Building Setbacks", 6, 7),
+    ],
+    ("ku_ring_gai", "section-b-part-14n-8a-14-16-buckingham-road-killara"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14n_1", "Urban Precinct", 2, 3),
+        ("14n_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14n_3", "Building Setbacks", 6, 7),
+        ("14n_4", "Built Form", 8, 9),
+        ("14n_5", "Heritage", 10, 11),
+    ],
+    ("ku_ring_gai", "section-b-part-14o-pymble-golf-club"): [
+        ("intro", "Cover and Introduction", 1, 1),
+        ("14o_1", "Urban Precinct", 2, 3),
+        ("14o_2", "Pedestrian And Vehicular Access", 4, 5),
+        ("14o_3", "Building Setbacks", 6, 7),
+        ("14o_4", "Built Form", 8, 9),
+        ("14o_5", "Heritage", 10, 11),
     ],
     ("ku_ring_gai", "section-b-part-19-heritage"): [
         ("intro",   "Introduction",                         1,  4),
@@ -602,7 +763,9 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
 # Councils whose PDFs contain rotated figure/diagram labels (sidebar labels,
 # figure callouts, diagram text) that pdfplumber extracts as reversed or
 # garbled characters. Filtering to upright-only chars removes them.
-UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai"}
+# ashfield added 2026-07-29: chapter D carries a rotated 'Part N – <name>'
+# side banner on every page, extracted reversed ('ertneC nwoT –1 traP').
+UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai", "ashfield"}
 
 
 # ── TOC-driven extraction ────────────────────────────────────────────────────
@@ -850,17 +1013,7 @@ class DCPExtractor:
         if os.getenv("AI_EXTRACTION", "").strip().lower() in ("1", "true", "yes"):
             from scripts.ai_extractor import ai_extract_chapter
             return ai_extract_chapter(self.pdf_path, self.council)
-        # OCR fallback trigger (#832): a garbled text layer means every reader
-        # of it produces junk — route the chapter through the OCR endpoint and
-        # let the SAME splitter run over clean page texts.
-        if os.getenv("MODAL_OCR_URL", "").strip():
-            with pdfplumber.open(self.pdf_path) as _pdf:
-                _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
-            if text_layer_garbled(_raw):
-                print("    [OCR] garbled text layer detected — fetching OCR page texts")
-                self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
-                if self.ocr_pages:
-                    print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
+        self._maybe_route_via_ocr()
         sections = self._extract_sequential()
         if self.council in TOC_DRIVEN_COUNCILS:
             override = self._maybe_toc_override(sections)
@@ -1046,6 +1199,23 @@ class DCPExtractor:
         print()  # clear progress line
         return sections
 
+    def _maybe_route_via_ocr(self) -> None:
+        """OCR fallback trigger (#832): a garbled text layer means every reader
+        of it produces junk — route the chapter through the OCR endpoint and
+        let the SAME splitter run over clean page texts. Called from BOTH the
+        sequential path (extract) and the page-range path (extract_by_page_ranges);
+        before 2026-07-29 only extract() checked, so manifest-driven councils
+        (all of Ku-ring-gai) silently kept garbled text layers."""
+        if self.ocr_pages is not None or not os.getenv("MODAL_OCR_URL", "").strip():
+            return
+        with pdfplumber.open(self.pdf_path) as _pdf:
+            _raw = [_extract_page_text(p, self.council) or "" for p in _pdf.pages]
+        if text_layer_garbled(_raw):
+            print("    [OCR] garbled text layer detected — fetching OCR page texts")
+            self.ocr_pages = fetch_ocr_page_texts(self.pdf_path, expected_pages=len(_raw))
+            if self.ocr_pages:
+                print(f"    [OCR] using OCR text for {len(self.ocr_pages)} pages")
+
     def extract_by_page_ranges(
         self,
         ranges: list[tuple[str, str, int, int]],
@@ -1063,6 +1233,7 @@ class DCPExtractor:
                                   Group 1 (sub_num) may be empty for keyword-only headings.
                                   Configured per-council in COUNCIL_SUBSECTION_PATTERNS.
         """
+        self._maybe_route_via_ocr()
         sections: list[dict[str, Any]] = []
         with pdfplumber.open(self.pdf_path) as pdf:
             self.page_count = len(pdf.pages)
