@@ -63,11 +63,14 @@ def test_page_range():
     assert derive(s, row(pdf_page=None)) is None
 
 
-def test_cos_page_ranges_are_disjoint_and_ordered():
+def test_cos_page_ranges_are_contiguous_and_ordered():
     """The City of Sydney sidecar drives 3 validate:True rules; a bad regeneration
-    that overlapped two precincts' page ranges would silently mis-key a whole area.
-    Guard the invariant that made page_range safe for CoS: within each chapter the
-    ranges are ordered and non-overlapping so exactly one precinct wins per page."""
+    could mis-key a whole area two ways, so guard both invariants the generator
+    holds. OVERLAP (two spans share a page) -> the first-listed precinct silently
+    wins. GAP (a page belongs to no span) -> a re-extracted row there derives None
+    and falls back to city-wide serving. The generator folds each span's hi forward
+    to next_lo-1, so within a chapter the spans are strictly contiguous
+    (lo == prev_hi + 1) — assert exactly that, which rules out both failures."""
     ranges = mod._COS_RANGES
     assert set(ranges) == {
         "Sydney_DCP_2012__section_2_locality_statements",
@@ -80,5 +83,7 @@ def test_cos_page_ranges_are_disjoint_and_ordered():
         for pid, lo, hi in rs:
             assert lo <= hi, f"{doc}: {pid} inverted range {lo}>{hi}"
             if prev_hi is not None:
-                assert lo > prev_hi, f"{doc}: {pid} overlaps previous (lo={lo} <= prev_hi={prev_hi})"
+                assert lo == prev_hi + 1, (
+                    f"{doc}: {pid} not contiguous with previous "
+                    f"(lo={lo}, expected {prev_hi + 1}) — overlap or gap")
             prev_hi = hi
