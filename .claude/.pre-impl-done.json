@@ -1,6 +1,1 @@
-{
-  "status": "passed",
-  "timestamp": "2026-07-29T10:20:00+10:00",
-  "target": "W3 SEPP auto-stale: monitor marks dependent standards stale on version change; UIs keep serving last-reviewed values WITH a notice (founder-specified), cleared on re-verification",
-  "findings_summary": "Seam verified: legislation_monitor.check_instrument changed-block (line ~539) + alert assembly (~747); instrument keys sepp_exempt_complying_2008 + sepp_housing_2021 confirmed in instrument_currency; consumers = load_cdc_standards (cdc_eligibility_standards) and fetch_sepp_housing_standards/load_regulatory_configs (housing_sepp_standards) -> calc_feasibility SD row + CDC engine warnings. Additive columns only (stale_since/stale_reason); no behaviour change while NULL"
-}
+{"status":"passed","timestamp":"2026-07-29T07:00:00Z","target":"scripts/derive_precinct_keys.py — config-driven idempotent precinct-keying derivation pass","findings_summary":"Read-only DB investigation done all session: keying strategies per (council,chapter) already worked out and applied manually today (Marrickville doc-suffix->N_, Ashfield E2 whole-doc->Haberfield, Leichhardt C2 ref-regex, KG single-site constants). This codifies them as config. ACCEPTANCE TEST = --dry-run must REPRODUCE the keys already in the DB for the clean-deterministic councils (Marrickville/Leichhardt-C2/Ashfield-E2) before any --apply. Default dry-run, --apply gated + backup, idempotent (only writes where key differs), never touches provision_text. First real use: key the inert KG Part-14 rows."}

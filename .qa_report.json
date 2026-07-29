@@ -1,66 +1,78 @@
 {
  "tier": "standard",
- "justification": "Extraction-pipeline config + one routing fix, no serving-path changes: (1) REPLACE the wrong Ashfield chapter-D manifest \u2014 it had 8 parts with locality-table names ('D-Part4 Haberfield' is actually chapter E2) and wrong page ranges, the root cause of the unreliable D-refs, missing Part 9, and bad auto-derived dcp_precinct_localities names; new 13-part table verified against the adopted PDF's per-page 'Part N' running headers. (2) ADD manifests for the 15 newly registered Ku-ring-gai Part 14 chapters (sections from each PDF's '14X.n' headings). (3) Add 'ashfield' to UPRIGHT_ONLY_COUNCILS (rotated 'Part N' side banner extracted reversed). (4) Hoist the #832 OCR fallback trigger into _maybe_route_via_ocr() called from BOTH extract() and extract_by_page_ranges() \u2014 before this, manifest-driven councils (all of Ku-ring-gai) never reached the garble check and kept doubled-glyph text layers.",
- "commit_hash": "",
+ "justification": "New scripts/derive_precinct_keys.py: a config-driven, idempotent precinct-keying DERIVATION pass. Root-cause fix for the year-long churn (docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md): v2_precinct_id was applied by hand, so every re-extraction nulled it and the manual re-key recurred. This derives the key from a written rule per (council,chapter) so re-running reproduces it and re-extraction stops being destructive. Default dry-run; --apply gated + backup; only writes rows whose derived key differs; never touches provision_text. A derived key also sets v2_dcp_layer='precinct' (a keyed row is a precinct-layer row).",
+ "commit_hash": "260749fd",
  "files": [
-  "scripts/dcp_extract_changed.py"
+  "scripts/derive_precinct_keys.py",
+  "tests/test_derive_precinct_keys.py"
  ],
  "pre_impl": {
-  "existing_data": "Chapter-D part list verified 2026-07-29 against R2 v1.1-2026-03-02 (13 parts, page ranges from running headers). KG Part 14 sub-parts registered same day via add_new_chapter.py (15 chapters, R2-mirrored). Review-mode runs (no DB writes) exercised every new manifest: round 1 exposed the reversed banner + missed OCR routing; round 3 confirms OCR now fires ('using OCR text for N pages').",
-  "assumption_mismatch": "If KG republishes a Part-14 PDF with different pagination the manifest ranges drift \u2014 same exposure as every existing KG manifest; the r2_monitor hash-change flow re-flags the chapter.",
-  "new_vs_existing": "Manifests follow the existing COUNCIL_CHAPTER_RANGES shape and KG one-row-per-section granularity. The OCR hoist moves an existing block into a method without changing its trigger logic; ocr_pages idempotence guard prevents double-fetch."
+  "existing_data": "Keying strategies were worked out and applied MANUALLY across this session (Marrickville doc-suffix->N_, Leichhardt C2 ref-regex, Ashfield E2 whole-doc->Haberfield, KG single-site constants, Ashfield ch-D page-range). ACCEPTANCE TEST run: --validate against the live DB REPRODUCES the existing manual keys exactly \u2014 Marrickville 1456/1456, Leichhardt 867/867, Ashfield-E2 118/120 already-ok (2 non-actionable). Ashfield ch-D deliberately validate:False (its rows were hand-patched via text-location+duplication, not page \u2014 302 would-change; the page rule is going-forward-correct, applied only after a clean re-extraction).",
+  "assumption_mismatch": "If a chapter's real keying isn't expressible by one of the 5 strategies, the rule returns None for those rows (reported as no-derivation) and leaves them untouched \u2014 never guesses.",
+  "new_vs_existing": "Backend derivation, inverse of the frontend precinct-serving code (precinct-service.ts reads the key; this writes it). No prior backend keyer existed."
  },
  "functions": [
   {
-   "name": "_maybe_route_via_ocr",
-   "file_line": "scripts/dcp_extract_changed.py:1202",
-   "input": "self.pdf_path + council; env MODAL_OCR_URL/TOKEN; no args",
-   "output": "sets self.ocr_pages to per-page OCR texts when the raw text layer shows strong doubled-glyph evidence; otherwise leaves it None",
-   "if_none": "MODAL_OCR_URL unset or layer not garbled: returns immediately and extraction stays on the pdfplumber text layer, exactly the pre-change behaviour"
+   "name": "_derive",
+   "file_line": "scripts/derive_precinct_keys.py:112",
+   "input": "a strategy dict + a provision row dict (document_id/ref_number/pdf_page/source_chapter_key)",
+   "output": "the derived v2_precinct_id string, or None when the strategy does not match the row",
+   "if_none": "row is counted no-derivation and left untouched \u2014 the pass never writes a guessed key"
   },
   {
-   "name": "extract_by_page_ranges",
-   "file_line": "scripts/dcp_extract_changed.py:1219",
-   "input": "manifest ranges + optional subsection patterns",
-   "output": "section dicts; now reads OCR page texts via _page_text when the trigger fired",
-   "if_none": "empty ranges yield an empty list as before; OCR fetch failure returns None and the text layer is kept (fetch_ocr_page_texts contract unchanged)"
+   "name": "run",
+   "file_line": "scripts/derive_precinct_keys.py:139",
+   "input": "council filter, apply bool, validate bool; reads current rows per RULES selector",
+   "output": "per-rule new/changed/already-ok/no-derivation counts; on --apply, guarded UPDATE of v2_precinct_id + layer with CSV backup",
+   "if_none": "dry-run (default) writes nothing; --validate rolls back and exits 1 if any validate-rule's derived key disagrees with the existing key"
   }
  ],
  "values": [
   {
-   "value": "Ashfield chapter-D manifest: 13 parts, pages 3-40/41-57/58-83/84-95/96-106/107-155/156-168/169-180/181-182/183-187/188-192/193-196/197-204",
-   "read_at": "scripts/dcp_extract_changed.py:170 (COUNCIL_CHAPTER_RANGES)",
-   "if_missing": "chapter falls back to council-level page ranges or sequential detection \u2014 same fallback every unlisted chapter uses"
+   "value": "5 rules: marrickville_part9 (doc_regex), leichhardt_c2 (ref_regex), ashfield_e2 (constant Haberfield), ku_ring_gai_part14_single_site (chapter_map), ashfield_chapter_d_parts (page_range, validate:False)",
+   "read_at": "scripts/derive_precinct_keys.py:72 (RULES)",
+   "if_missing": "a council with no rule is simply not processed \u2014 no rows touched"
   }
  ],
- "queries": "N/A - no SQL changed; the script's existing registry/provision queries are untouched.",
+ "queries": [
+  {
+   "purpose": "select current rows a rule targets",
+   "file_line": "scripts/derive_precinct_keys.py:155",
+   "where_clause": "WHERE is_current = true AND source_council = %(council)s AND (<rule.where>)"
+  },
+  {
+   "purpose": "apply the derived key (only when different)",
+   "file_line": "scripts/derive_precinct_keys.py:180",
+   "where_clause": "UPDATE ... SET v2_precinct_id=%s, v2_dcp_layer='precinct' WHERE id=%s"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "A future re-extraction of any OTHER ashfield chapter now also gets the upright-only filter; a chapter whose legitimate body text pdfplumber marks as rotated would lose it.",
-   "what_happens": "Text loss would surface as count_drop/schema_fail in the review gates before commit.",
+   "scenario": "The page-range rule for Ashfield ch-D is applied and overwrites the more-accurate hand-patched (text-location + per-part-duplication) keys.",
+   "what_happens": "302 rows would change to page-derived keys, regressing the duplication handling.",
    "mitigated": true,
-   "how": "Review-mode round 2 ran the filter across chapter D: banner junk 0 hits, body text intact; gates block silent regressions for other chapters.",
-   "repro": "Run --council ashfield --all --review and inspect the review file."
+   "how": "validate:False keeps it out of --validate; and it only runs when --council ashfield is passed. The doc directs: apply page rule ONLY after a clean columnar re-extraction, not against the current patchwork.",
+   "repro": "python scripts/derive_precinct_keys.py --council ashfield (dry-run shows 302 changed \u2014 do not --apply)"
   },
   {
-   "scenario": "Modal OCR endpoint down or returns wrong page count during a KG run.",
-   "what_happens": "fetch_ocr_page_texts returns None on ANY failure and extraction stays on the (garbled) text layer; the schema_fail artifact gate then blocks approval.",
+   "scenario": "A rule's regex matches a row it shouldn't and derives a wrong key.",
+   "what_happens": "A wrong v2_precinct_id would be written to that provision row, mis-keying it.",
    "mitigated": true,
-   "how": "Existing #836 contract (exact page-count check) unchanged; gates remain the backstop.",
-   "repro": "Unset MODAL_OCR_TOKEN and run --council ku_ring_gai --review."
+   "how": "--validate asserts every derived key on a validate-rule reproduces the human-verified existing key (2441 real rows reproduced exactly); unit tests pin each strategy incl. non-match->None.",
+   "repro": "python scripts/derive_precinct_keys.py --validate"
   },
   {
-   "scenario": "The OCR trigger now runs for every manifest-driven chapter, adding a full-PDF text pass per chapter.",
-   "what_happens": "One extra pdfplumber read per chapter (seconds); Modal spend only when garble detected.",
+   "scenario": "The --apply pass is run a second time against the same already-keyed rows.",
+   "what_happens": "second run is a no-op.",
    "mitigated": true,
-   "how": "ocr_pages guard makes it once-per-extractor; trigger requires strong doubled-glyph evidence per the #836 Sol-reviewed heuristic.",
-   "repro": "Time --council ku_ring_gai --review before/after."
+   "how": "idempotent: rows already keyed correctly count already-ok and are skipped (only writes where derived != current or layer != precinct).",
+   "repro": "run --apply twice; second shows new=0 changed=0"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required \u2014 this PR changes extraction config only; DB content changes go through the review-gated extraction flow separately.",
-  "secrets": "None; MODAL_OCR_URL/TOKEN already provisioned in .env.",
+  "db_reset": "Not required \u2014 pass is opt-in per council.",
+  "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - reviews/ku_ring_gai_*.txt and reviews/ashfield_*.txt from the worktree runs; commit of extracted content is a separate deliberate re-run without --review after human review."
+  "manual_verify": "Yes - after --council ku_ring_gai --apply, the KG single-site boundaries (14I/14J/14K/14L) connect and those addresses serve their precinct rules."
  }
 }
