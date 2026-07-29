@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "SEPP auto-stale (regulatory-currency plan W3, founder decision 2026-07-29): a detected version change of a source instrument stamps stale_since/stale_reason on dependent standards rows. Founder-specified behaviour: values KEEP SERVING with a visible notice in every consumer (CDC screen warnings, secondary-dwelling row basis) - never a silent stale figure, never a blanked row. Cleared during re-verification.",
- "commit_hash": "pending",
+ "commit_hash": "8fd2e831",
  "files": [
   ".claude/.pre-impl-done.json",
   "migrations/061_sepp_standards_stale_since.sql",
@@ -52,7 +52,7 @@
   {
    "purpose": "stamp dependent standards stale on an instrument version change",
    "file_line": "scripts/legislation_monitor.py:130",
-   "where_clause": "WHERE stale_since IS NULL - only not-yet-stale rows, so the first change wins and the notice date stays honest"
+   "where_clause": "WHERE stale_since IS NULL plus a per-instrument source_document predicate (Housing rows ILIKE '%housing%', E&C rows ILIKE '%exempt%') - the first change wins, and each instrument stamps only the rows it actually supplies"
   }
  ],
  "break_it": [
@@ -76,6 +76,20 @@
    "mitigated": true,
    "how": "WHERE stale_since IS NULL makes the first stamp permanent until cleared by re-verification; pinned by test asserting the clause on every UPDATE.",
    "repro": "Run mark_dependent_standards_stale twice - the second run matches zero rows."
+  },
+  {
+   "scenario": "A Housing SEPP amendment marks the E&C-derived rows stale too (housing_sepp_standards holds rows from BOTH instruments), so an unrelated notice appears on the floor-area standard.",
+   "what_happens": "False staleness - the notice claims an instrument change that does not affect that row, eroding trust in the notice itself.",
+   "mitigated": true,
+   "how": "Sol review of PR #839: STANDARDS_TABLES_BY_INSTRUMENT now maps to (table, predicate) pairs; each instrument's UPDATE is scoped by source_document (verified against prod values 2026-07-29). Pinned by test_each_instrument_stamps_only_its_own_rows.",
+   "repro": "mark_dependent_standards_stale for sepp_housing_2021 - the housing_sepp_standards UPDATE carries ILIKE '%housing%' and never touches Exempt-and-Complying rows."
+  },
+  {
+   "scenario": "Two amendments stale different rows and the loader pairs amendment A's reason with amendment B's date.",
+   "what_happens": "The rendered notice misattributes which change triggered it.",
+   "mitigated": true,
+   "how": "Sol review of PR #839: load_cdc_standards now sorts (stale_since, stale_reason) pairs and takes BOTH fields from the single latest row. Pinned by test_loader_pairs_date_with_its_own_reason.",
+   "repro": "Two stale rows with different dates/reasons - the returned dict carries the later row's date AND its reason."
   },
   {
    "scenario": "A boundary re-validation drops the stale fields and the PDF path renders values with no notice while the workbench shows one.",

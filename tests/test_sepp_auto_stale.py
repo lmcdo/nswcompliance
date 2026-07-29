@@ -71,6 +71,20 @@ class TestMonitorMarking:
         assert any("housing_sepp_standards" in s for s in sqls)
         assert not any("cdc_eligibility_standards" in s for s in sqls)
 
+    def test_each_instrument_stamps_only_its_own_rows(self):
+        """Sol #839: housing_sepp_standards holds rows from BOTH instruments —
+        a Housing amendment must not stale the E&C-derived rows and vice versa."""
+        conn = FakeConn()
+        mark_stale(conn, "sepp_housing_2021", "SEPP (Housing) 2021", "a", "b")
+        housing_sql = next(s for s, _ in conn._cur.executed if "housing_sepp_standards" in s)
+        assert "ILIKE '%housing%'" in housing_sql
+        conn2 = FakeConn()
+        mark_stale(conn2, "sepp_exempt_complying_2008", "E&C Codes SEPP", "a", "b")
+        ec_housing_sql = next(s for s, _ in conn2._cur.executed if "housing_sepp_standards" in s)
+        assert "ILIKE '%exempt%'" in ec_housing_sql
+        cdc_sql = next(s for s, _ in conn2._cur.executed if "cdc_eligibility_standards" in s)
+        assert "ILIKE" not in cdc_sql   # whole table is E&C-derived
+
     def test_unmapped_instrument_is_noop(self):
         conn = FakeConn()
         notes = mark_stale(conn, "lep_inner_west_2022", "Inner West LEP 2022", "a", "b")
@@ -117,10 +131,35 @@ class TestCdcEngineNotice:
         assert not any("re-check" in w for w in result.warnings)
 
     def test_loader_aggregates_stale_from_rows(self):
-        """Source pin: load_cdc_standards selects and propagates the columns."""
+        """Source pin: load_cdc_standards selects the columns and takes the
+        date and reason from the SAME (latest) row — never mixed pairs."""
         src = (ROOT / "services" / "cdc_screen.py").read_text(encoding="utf-8")
         assert "stale_since, stale_reason" in src
-        assert '"stale_since": max(' in src
+        assert '"stale_since": _latest[0]' in src
+        assert '"stale_reason": _latest[1]' in src
+
+    def test_loader_pairs_date_with_its_own_reason(self):
+        """Sol #839: two amendments on different rows — the notice must carry
+        the LATER amendment's date AND its reason, not a mixed pair."""
+        from services.cdc_screen import load_cdc_standards
+        d1 = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        d2 = datetime.datetime(2026, 6, 1, tzinfo=datetime.timezone.utc)
+        rows = [
+            ("eligible_zones", None, ["R1", "R2"], None, "cl 3.1", d1, "amendment A"),
+            ("min_lot_size", 200.0, None, None, "cl 3.1(3)(b)", d2, "amendment B"),
+        ]
+
+        class Cur:
+            def execute(self, *a): pass
+            def fetchall(self): return rows
+            def close(self): pass
+
+        class Conn:
+            def cursor(self): return Cur()
+
+        out = load_cdc_standards(Conn())
+        assert out["stale_since"] == d2
+        assert out["stale_reason"] == "amendment B"
 
 
 class TestSecondaryDwellingNotice:

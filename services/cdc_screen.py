@@ -189,16 +189,22 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
 
     # Auto-stale (W3): a version change of the source instrument marks rows
     # stale — values still serve, but consumers surface a notice.
-    _stale = [(v.get("stale_since"), v.get("stale_reason")) for v in rows.values()
-              if v.get("stale_since")]
+    # The date and reason must come from the SAME row (Sol #839: independent
+    # max()/next() could pair amendment A's reason with amendment B's date).
+    _stale = sorted(
+        ((v.get("stale_since"), v.get("stale_reason")) for v in rows.values()
+         if v.get("stale_since")),
+        key=lambda x: x[0],
+    )
+    _latest = _stale[-1] if _stale else (None, None)
     candidate = {
         "eligible_zones": rows["eligible_zones"]["applicable_zones"],  # noqa: bracket-access — key guaranteed by guard above
         "min_lot_size": rows["min_lot_size"]["numeric_value"],  # noqa: bracket-access — key guaranteed by guard above
         "min_lot_conditionality": rows["min_lot_size"]["conditionality"],  # noqa: bracket-access — key guaranteed by guard above
         "acid_sulfate_max_class": None,
         "refs": {t: v["ref_number"] for t, v in rows.items()},  # noqa: bracket-access — key guaranteed by guard above
-        "stale_since": max((s for s, _ in _stale), default=None),
-        "stale_reason": next((r for _, r in _stale if r), None),
+        "stale_since": _latest[0],
+        "stale_reason": _latest[1],
     }
     ass = rows.get("acid_sulfate_max_class")
     if ass is not None:

@@ -102,9 +102,20 @@ class InstrumentResult:
 # founder clears stale_since/stale_reason during re-verification. The E&C
 # Codes SEPP feeds both tables (housing_sepp_standards carries rows citing
 # SEPP (E&C) 2008, e.g. secondary-dwelling max_floor_area).
+# Each entry: (table, extra WHERE predicate or None). housing_sepp_standards
+# carries rows from BOTH instruments (source_document values verified in prod
+# 2026-07-29: 'SEPP (Housing) 2021' variants vs '...(Exempt and Complying\n
+# Development Codes) 2008'), so each instrument stamps only its OWN rows —
+# a Housing amendment must not stale the E&C-derived floor-area standard
+# (Sol review of PR #839).
 STANDARDS_TABLES_BY_INSTRUMENT = {
-    "sepp_exempt_complying_2008": ["cdc_eligibility_standards", "housing_sepp_standards"],
-    "sepp_housing_2021": ["housing_sepp_standards"],
+    "sepp_exempt_complying_2008": [
+        ("cdc_eligibility_standards", None),
+        ("housing_sepp_standards", "source_document ILIKE '%exempt%'"),
+    ],
+    "sepp_housing_2021": [
+        ("housing_sepp_standards", "source_document ILIKE '%housing%'"),
+    ],
 }
 
 
@@ -112,20 +123,21 @@ def mark_dependent_standards_stale(
     conn, instrument_key: str, instrument_label: str,
     old_version: str | None, new_version: str | None,
 ) -> list[str]:
-    """Stamp stale_since/stale_reason on standards tables fed by a changed
+    """Stamp stale_since/stale_reason on standards rows fed by a changed
     instrument. Only rows not already stale are stamped (the FIRST detected
-    change is the one the notice should date from). Returns human-readable
-    lines for the alert; empty when the instrument feeds no standards table."""
+    change is the one the notice should date from), and only rows the changed
+    instrument actually supplies. Returns human-readable lines for the alert;
+    empty when the instrument feeds no standards table."""
     notes: list[str] = []
     reason = (
         f"{instrument_label} version changed "
         f"({old_version or 'unknown'} -> {new_version or 'unknown'})"
     )
     cur = conn.cursor()
-    for table in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
+    for table, predicate in STANDARDS_TABLES_BY_INSTRUMENT.get(instrument_key, []):
+        where = "stale_since IS NULL" + (f" AND ({predicate})" if predicate else "")
         cur.execute(
-            f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s "
-            f"WHERE stale_since IS NULL",
+            f"UPDATE {table} SET stale_since = NOW(), stale_reason = %s WHERE {where}",
             (reason,),
         )
         if cur.rowcount:
