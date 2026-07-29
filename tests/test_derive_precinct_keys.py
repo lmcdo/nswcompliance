@@ -63,6 +63,24 @@ def test_page_range():
     assert derive(s, row(pdf_page=None)) is None
 
 
+def test_text_heading_full_and_trimmed():
+    s_full = {"type": "text_heading"}
+    assert derive(s_full, row(provision_text="# 2.1.1 York Street Special Character Area")) == "2.1.1"
+    s2 = {"type": "text_heading", "components": 2}   # area granularity (5.x)
+    assert derive(s2, row(provision_text="# 5.1.1.4 Built form massing")) == "5.1"
+    s3 = {"type": "text_heading", "components": 3}   # site granularity (6.x.y)
+    assert derive(s3, row(provision_text="# 6.1.4.2 Built Form and Design")) == "6.1.4"
+
+
+def test_text_heading_none_when_no_heading():
+    s = {"type": "text_heading"}
+    assert derive(s, row(provision_text="Section 5 general text with no leading heading")) is None
+    assert derive(s, row(provision_text="")) is None
+    assert derive(s, row(provision_text=None)) is None
+    # a garbled figure page (no parseable number) yields None -> fall back to another rule
+    assert derive(s, row(provision_text="# 1 C O S D y e d ve n l e o y pment")) == "1"
+
+
 def test_fingerprint_passes_on_matching_structure():
     fp = {"max_page": 169, "min_coverage": 0.95}
     # last page matches, every row derived -> no reasons

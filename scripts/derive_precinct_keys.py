@@ -29,6 +29,7 @@ RULE STRATEGIES
   doc_regex  : capture a group from document_id, format into a template   (Marrickville)
   ref_regex  : capture group(s) from ref_number, format into a template   (Leichhardt C2 / G)
   page_range : map pdf_page to a precinct via [(precinct, lo, hi)] ranges  (City of Sydney 2/5/6 — reproduces exactly; Ashfield ch-D — going-forward, current hand-patched rows won't all match)
+  text_heading: the precinct number in the provision's own leading markdown heading, trimmed to `components` (CONTENT anchor — survives re-pagination; the durable default when refs are garbled but headings are clean)
   constant   : one precinct_id for every row the selector matches          (Ashfield E2)
   chapter_map: precinct_id from a source_chapter_key -> id map             (KG single-site)
 
@@ -195,6 +196,17 @@ def _derive(strategy: dict, row: dict) -> str | None:
             if lo <= p <= hi:
                 return pid
         return None
+    if t == "text_heading":
+        # Content anchor: the precinct number in the provision's own leading markdown
+        # heading (e.g. "# 5.1.1.4 ..."). Travels WITH the text, so it survives
+        # re-pagination — unlike page_range. `components` trims the dotted number to the
+        # precinct granularity (2 -> "5.1" area; 3 -> "6.1.4" site; None -> full "2.1.1").
+        m = re.match(r"\s*#\s*([0-9]+(?:\.[0-9]+)*)", row.get("provision_text") or "")
+        if not m:
+            return None
+        num = m.group(1)
+        n = strategy.get("components")
+        return num if n is None else ".".join(num.split(".")[:n])
     raise ValueError(f"unknown strategy {t}")
 
 
@@ -236,7 +248,7 @@ def run(council: str | None, apply: bool, validate: bool) -> int:
             continue
         params = dict(rule.get("params", {}))
         cur.execute(
-            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer, v2_dcp_part
+            f"""SELECT id, document_id, ref_number, pdf_page, source_chapter_key, v2_precinct_id, v2_dcp_layer, v2_dcp_part, provision_text
                 FROM regulatory_provisions
                 WHERE is_current = true AND source_council = %(council)s AND ({rule['where']})""",
             {"council": rule["council"], **params},
