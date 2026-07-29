@@ -1,1 +1,6 @@
-{"status": "trivial", "timestamp": "2026-07-28T23:59:00+10:00", "reason": "one-line cron cadence change in a Railway config toml; no code, no queries"}
+{
+  "status": "passed",
+  "timestamp": "2026-07-29T10:20:00+10:00",
+  "target": "W3 SEPP auto-stale: monitor marks dependent standards stale on version change; UIs keep serving last-reviewed values WITH a notice (founder-specified), cleared on re-verification",
+  "findings_summary": "Seam verified: legislation_monitor.check_instrument changed-block (line ~539) + alert assembly (~747); instrument keys sepp_exempt_complying_2008 + sepp_housing_2021 confirmed in instrument_currency; consumers = load_cdc_standards (cdc_eligibility_standards) and fetch_sepp_housing_standards/load_regulatory_configs (housing_sepp_standards) -> calc_feasibility SD row + CDC engine warnings. Additive columns only (stale_since/stale_reason); no behaviour change while NULL"
+}

@@ -1,27 +1,108 @@
 {
- "tier": "minor",
- "justification": "One-line Railway config change: dcp-extract cron weekly (Mon) to daily. Founder decision 2026-07-28; near-free no-op when the queue is empty; closes the up-to-6-day stuck window that tripped the watchdog by design.",
- "commit_hash": "pending",
+ "tier": "standard",
+ "justification": "SEPP auto-stale (regulatory-currency plan W3, founder decision 2026-07-29): a detected version change of a source instrument stamps stale_since/stale_reason on dependent standards rows. Founder-specified behaviour: values KEEP SERVING with a visible notice in every consumer (CDC screen warnings, secondary-dwelling row basis) - never a silent stale figure, never a blanked row. Cleared during re-verification.",
+ "commit_hash": "0bd1f05b",
  "files": [
   ".claude/.pre-impl-done.json",
-  "railway.dcp-extract.toml"
+  "migrations/061_sepp_standards_stale_since.sql",
+  "scripts/legislation_monitor.py",
+  "scripts/conveyancing_db.py",
+  "scripts/generate_conveyancing_report.py",
+  "services/cdc_screen.py",
+  "tests/test_sepp_auto_stale.py",
+  "tests/test_cdc_screen.py",
+  "tests/test_regulatory_constants.py"
  ],
- "functions": "N/A - config only.",
- "values": "N/A - no data values.",
- "queries": "N/A - no queries.",
+ "pre_impl": {
+  "existing_data": "Seam verified live: legislation_monitor.check_instrument changed-block updates instrument_registry and the alert assembly lists changed instruments; instrument keys sepp_exempt_complying_2008 and sepp_housing_2021 confirmed in instrument_currency; consumers are load_cdc_standards and fetch_sepp_housing_standards/load_regulatory_configs feeding calc_feasibility. Migration 061 applied to prod (additive columns, verified).",
+  "assumption_mismatch": "The E&C Codes SEPP feeds BOTH tables - housing_sepp_standards carries rows citing SEPP (E&C) 2008 (e.g. secondary-dwelling max_floor_area) - so its mapping stamps both, while Housing 2021 stamps housing only. The calc_feasibility boundary re-validation would have silently dropped the stale fields (fresh dict build); _validate_sepp_sd_config and the boundary call now pass them through explicitly.",
+  "new_vs_existing": "No behaviour change while stale_since IS NULL (all rows today). The monitor's changed-block gains one function call; loaders gain two columns; the engine and the SD row gain a conditional notice sentence. Granny-flat service staleness notice deferred as a follow-up (its endpoints only 503 on absent standards)."
+ },
+ "functions": [
+  {
+   "name": "mark_dependent_standards_stale",
+   "file_line": "scripts/legislation_monitor.py:122",
+   "input": "db connection, changed instrument key and label, old and new version strings",
+   "output": "human-readable alert lines naming each stamped table and row count",
+   "if_none": "an instrument with no mapped standards table returns an empty list and touches nothing; WHERE stale_since IS NULL means the FIRST detected change dates the notice and repeats never overwrite it"
+  },
+  {
+   "name": "load_cdc_standards",
+   "file_line": "services/cdc_screen.py:139",
+   "input": "connection and code name; now also reads stale_since/stale_reason per row",
+   "output": "standards dict carrying the latest stale_since and first stale_reason across rows",
+   "if_none": "no stale rows leaves both keys None and the engine emits no notice - identical to pre-change behaviour"
+  },
+  {
+   "name": "_validate_sepp_sd_config",
+   "file_line": "scripts/conveyancing_db.py:619",
+   "input": "min_lot_size row dict, now possibly carrying stale fields",
+   "output": "validated config dict with stale fields passed through when present",
+   "if_none": "absent stale fields are simply not added; validation semantics for values and zones are unchanged"
+  }
+ ],
+ "values": [
+  {
+   "value": "stale_since/stale_reason stamped by the monitor on cdc_eligibility_standards and housing_sepp_standards",
+   "read_at": "load_cdc_standards and fetch_sepp_housing_standards; rendered as a notice in CDC screen warnings and the secondary-dwelling row basis",
+   "if_missing": "NULL means no notice anywhere - the exact behaviour before this change"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "stamp dependent standards stale on an instrument version change",
+   "file_line": "scripts/legislation_monitor.py:140",
+   "where_clause": "WHERE stale_since IS NULL plus a per-instrument source_document predicate (Housing rows ILIKE '%housing%', E&C rows ILIKE '%exempt%') - the first change wins, and each instrument stamps only the rows it actually supplies"
+  }
+ ],
  "break_it": [
   {
-   "scenario": "Daily runs pile up Modal OCR spend on chapters that repeatedly trigger the fallback.",
-   "what_happens": "A garbled chapter stuck awaiting review would be re-OCRed every day.",
+   "scenario": "A SEPP amendment lands and the standards keep rendering with no indication anything changed.",
+   "what_happens": "The exact silent-staleness this workstream exists to kill - confident figures from a superseded instrument.",
    "mitigated": true,
-   "how": "Extraction only processes needs_extraction chapters; a chapter awaiting REVIEW keeps its pending rows and the refresh replaces them, but the OCR trigger re-fires only while the source text layer stays garbled - bounded by review cadence, and the watchdog now names review-blocked chapters explicitly. Worst case a few dollars a week, visible on the Modal dashboard.",
-   "repro": "Flag a garbled chapter and leave it unreviewed two days - two OCR passes."
+   "how": "The monitor's changed-block stamps the mapped tables in the same transaction as the registry update; the engine and the SD row render the notice whenever stale_since is set. Pinned by tests at monitor, loader and both render sites.",
+   "repro": "Set stale_since on the standards rows and run the CDC screen - the warning names the change and date."
+  },
+  {
+   "scenario": "The notice blanks or blocks the figures instead of annotating them.",
+   "what_happens": "Violates the founder-specified behaviour - reports must keep showing the last-reviewed values.",
+   "mitigated": true,
+   "how": "Staleness never enters validation or the fail-closed paths; test_stale_standards_still_screen_with_notice asserts the screen RAN and test_stale_config_renders_value_with_note asserts 'Likely permissible' still renders.",
+   "repro": "Run calc_feasibility with a stale config - the answer is unchanged, only the basis gains the note."
+  },
+  {
+   "scenario": "Repeated monitor runs after the same amendment keep re-stamping and the notice date drifts forward.",
+   "what_happens": "The notice would always claim the change was 'detected today', hiding how long re-verification has been pending.",
+   "mitigated": true,
+   "how": "WHERE stale_since IS NULL makes the first stamp permanent until cleared by re-verification; pinned by test asserting the clause on every UPDATE.",
+   "repro": "Run mark_dependent_standards_stale twice - the second run matches zero rows."
+  },
+  {
+   "scenario": "A Housing SEPP amendment marks the E&C-derived rows stale too (housing_sepp_standards holds rows from BOTH instruments), so an unrelated notice appears on the floor-area standard.",
+   "what_happens": "False staleness - the notice claims an instrument change that does not affect that row, eroding trust in the notice itself.",
+   "mitigated": true,
+   "how": "Sol review of PR #839: STANDARDS_TABLES_BY_INSTRUMENT now maps to (table, predicate) pairs; each instrument's UPDATE is scoped by source_document (verified against prod values 2026-07-29). Pinned by test_each_instrument_stamps_only_its_own_rows.",
+   "repro": "mark_dependent_standards_stale for sepp_housing_2021 - the housing_sepp_standards UPDATE carries ILIKE '%housing%' and never touches Exempt-and-Complying rows."
+  },
+  {
+   "scenario": "Two amendments stale different rows and the loader pairs amendment A's reason with amendment B's date.",
+   "what_happens": "The rendered notice misattributes which change triggered it.",
+   "mitigated": true,
+   "how": "Sol review of PR #839: load_cdc_standards now sorts (stale_since, stale_reason) pairs and takes BOTH fields from the single latest row. Pinned by test_loader_pairs_date_with_its_own_reason.",
+   "repro": "Two stale rows with different dates/reasons - the returned dict carries the later row's date AND its reason."
+  },
+  {
+   "scenario": "A boundary re-validation drops the stale fields and the PDF path renders values with no notice while the workbench shows one.",
+   "what_happens": "Inconsistent surfaces - the paid document is the one missing the caveat.",
+   "mitigated": true,
+   "how": "_validate_sepp_sd_config and calc_feasibility's boundary dict pass stale fields through explicitly; the SD-row test exercises the full injected-config path.",
+   "repro": "calc_feasibility with a stale sepp_standards dict - the granny-flat basis carries the note."
   }
  ],
  "post_merge": {
-  "db_reset": "Not required.",
-  "secrets": "None.",
-  "other_repo": "Railway picks the schedule up from config-as-code on next deploy (auto-deploys on merge).",
-  "manual_verify": "Yes - Railway dcp-extract service shows Next run tomorrow instead of next Monday."
+  "db_reset": "Migration 061 already applied to prod (additive columns, verified via information_schema). All rows NULL, so nothing renders differently until the monitor first detects a change.",
+  "secrets": "No secrets involved.",
+  "other_repo": "None. Fly legislation-monitor picks the code up on its next manual deploy (fly deploy -a plotdetect-legislation-monitor - auto-deploy is not wired for Fly). Follow-up: granny-flat service staleness notice; re-verification runbook is documented in the migration header.",
+  "manual_verify": "Yes - simulate: UPDATE housing_sepp_standards SET stale_since=now(), stale_reason='test' WHERE development_type='secondary_dwelling'; generate a report - the granny-flat row shows the note with the value intact; then clear the stamp and the note disappears."
  }
 }

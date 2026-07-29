@@ -74,13 +74,13 @@ class FakeConn:
         return self._cursor
 
 
-def _std_rows(min_lot=200.0, zones=("R1", "R2", "R3", "R4", "RU5"), ass=3):
+def _std_rows(min_lot=200.0, zones=("R1", "R2", "R3", "R4", "RU5"), ass=3, stale=None):
     rows = [
-        ("eligible_zones", None, list(zones), None, "cl 3.1"),
-        ("min_lot_size", min_lot, None, "if no minimum size is specified", "cl 6.4(1)(d)(ii)"),
+        ("eligible_zones", None, list(zones), None, "cl 3.1", stale, "instrument amended" if stale else None),
+        ("min_lot_size", min_lot, None, "if no minimum size is specified", "cl 6.4(1)(d)(ii)", stale, "instrument amended" if stale else None),
     ]
     if ass is not None:
-        rows.append(("acid_sulfate_max_class", ass, None, None, "cl 1.19"))
+        rows.append(("acid_sulfate_max_class", ass, None, None, "cl 1.19", None, None))
     return rows
 
 
@@ -124,14 +124,14 @@ class TestLoadCdcStandards:
     def test_duplicate_active_rows_fail_closed(self):
         """Two active rows for one standard type would be a nondeterministic
         pick — the loader must refuse, not choose."""
-        rows = _std_rows() + [("min_lot_size", 300.0, None, None, "cl 3.x")]
+        rows = _std_rows() + [("min_lot_size", 300.0, None, None, "cl 3.x", None, None)]
         assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None
 
     def test_invalid_present_acid_sulfate_fails_whole_load(self):
         """A PRESENT but invalid threshold must not silently vanish and let
         the screen run with incomplete standards."""
         for bad in ("bad", 3.9, 0, 9, None):
-            rows = _std_rows(ass=None) + [("acid_sulfate_max_class", bad, None, None, "cl 1.19")]
+            rows = _std_rows(ass=None) + [("acid_sulfate_max_class", bad, None, None, "cl 1.19", None, None)]
             assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None, bad
 
     def test_loads_valid_standards(self):
@@ -142,7 +142,7 @@ class TestLoadCdcStandards:
         assert out["refs"]["min_lot_size"] == "cl 6.4(1)(d)(ii)"
 
     def test_missing_required_rows_returns_none(self):
-        only_zones = [("eligible_zones", None, ["R2"], None, "cl 3.1")]
+        only_zones = [("eligible_zones", None, ["R2"], None, "cl 3.1", None, None)]
         assert load_cdc_standards(FakeConn(FakeCursor(rows=only_zones))) is None
         assert load_cdc_standards(FakeConn(FakeCursor(rows=[]))) is None
 
@@ -153,7 +153,7 @@ class TestLoadCdcStandards:
         """Mutation check: a zero minimum or null zone entry must not load."""
         assert load_cdc_standards(FakeConn(FakeCursor(rows=_std_rows(min_lot=0)))) is None
         rows = _std_rows()
-        rows[0] = ("eligible_zones", None, ["R2", None], None, "cl 3.1")
+        rows[0] = ("eligible_zones", None, ["R2", None], None, "cl 3.1", None, None)
         assert load_cdc_standards(FakeConn(FakeCursor(rows=rows))) is None
 
     def test_missing_acid_sulfate_row_is_allowed(self):
