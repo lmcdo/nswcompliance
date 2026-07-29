@@ -10,7 +10,11 @@
 jest.mock('@/lib/db', () => ({ getPool: () => ({ query: jest.fn() }) }));
 jest.mock('@/lib/nsw-planning-portal', () => ({ getPropertyCoordinates: jest.fn() }));
 
-import { getFormerCouncilFromPrecinctId } from '@/lib/precinct-service';
+import {
+  getFormerCouncilFromPrecinctId,
+  normalizeFormerCouncil,
+  resolveFormerCouncil,
+} from '@/lib/precinct-service';
 
 describe('getFormerCouncilFromPrecinctId', () => {
   test.each([
@@ -44,5 +48,54 @@ describe('getFormerCouncilFromPrecinctId', () => {
 
   test('empty id returns Unknown', () => {
     expect(getFormerCouncilFromPrecinctId('')).toBe('Unknown');
+  });
+});
+
+describe('normalizeFormerCouncil', () => {
+  test.each([
+    // display names stored as-is pass through
+    ['Waverley', 'Waverley'],
+    ['Marrickville', 'Marrickville'],
+    ['Parramatta', 'Parramatta'],
+    ['Woollahra', 'Woollahra'],
+    // slug form title-cases with lowercase joiners
+    ['city_of_sydney', 'City of Sydney'],
+    // hyphenated council preserved
+    ['ku_ring_gai', 'Ku-ring-gai'],
+  ])('%s -> %s', (raw, expected) => {
+    expect(normalizeFormerCouncil(raw)).toBe(expected);
+  });
+
+  test('null, undefined and blank return null', () => {
+    expect(normalizeFormerCouncil(null)).toBeNull();
+    expect(normalizeFormerCouncil(undefined)).toBeNull();
+    expect(normalizeFormerCouncil('   ')).toBeNull();
+  });
+});
+
+describe('resolveFormerCouncil (column-first attribution)', () => {
+  test('stored column wins over any pattern match', () => {
+    // '9' is a Parramatta city-centre id; no pattern covers it — without the
+    // column this would fall through to the 'Marrickville' default
+    expect(resolveFormerCouncil('Parramatta', '9')).toBe('Parramatta');
+    // even where a pattern WOULD match another council, the column wins
+    expect(resolveFormerCouncil('Parramatta', 'E1')).toBe('Parramatta');
+  });
+
+  test('dotted Parramatta HCA ids attribute via column, not Marrickville default', () => {
+    expect(resolveFormerCouncil('Parramatta', '7.10.1')).toBe('Parramatta');
+  });
+
+  test('name-keyed Woollahra ids attribute via column', () => {
+    expect(resolveFormerCouncil('Woollahra', 'Paddington HCA')).toBe('Woollahra');
+  });
+
+  test('slug columns render as display names', () => {
+    expect(resolveFormerCouncil('city_of_sydney', '6.3.3')).toBe('City of Sydney');
+  });
+
+  test('NULL column falls back to patterns (legacy Ku-ring-gai rows)', () => {
+    expect(resolveFormerCouncil(null, '14B_T1')).toBe('Ku-ring-gai');
+    expect(resolveFormerCouncil(undefined, 'E7')).toBe('Waverley');
   });
 });

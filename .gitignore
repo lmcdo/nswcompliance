@@ -405,6 +405,8 @@ scripts/
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
 !scripts/xref_pretask_setup.py
 !scripts/xref_detection_audit.py
+# Precinct boundary health check (run before/after every boundary import)
+!scripts/verify_precinct_boundaries.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py

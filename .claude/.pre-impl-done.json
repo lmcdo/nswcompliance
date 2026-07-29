@@ -1,6 +1,1 @@
-{
-  "status": "passed",
-  "timestamp": "2026-07-29T06:20:00Z",
-  "target": "geometric two-column PDF reader (_find_gutter/_columnar_text) in dcp_extract_changed.py",
-  "findings_summary": "Pure PDF word-geometry logic — NO DB read/write, no schema, no joins, no batch DB op (the protocol's risk surfaces are all N/A). Real risk = extraction fidelity: mitigated by (1) validating output against the exact pages the semantic sweep proved were dropped (Ashfield ch.D setback legend p129-130, CoS 5.2.4 table p81-82) BEFORE wiring, (2) unit tests incl. single-column-returns-None, (3) review-gated only — no auto-commit; count_drop/preflight gates remain the backstop. Existing header-pair splitter (COUNCIL_COLUMN_CONFIGS) unchanged; new path is a fallback for GEOMETRIC_COLUMN_COUNCILS."
-}
+{"status":"passed","timestamp":"2026-07-29T09:00:00Z","target":"Waverley keying rule + auto-run of the derivation pass after extraction","findings_summary":"column_copy strategy (v2_precinct_id := v2_dcp_part for Waverley E-parts); wires the derivation run() as enrichment step [4/4] so a re-extraction re-keys itself (the churn fix). No new DB queries beyond the derivation pass's own guarded ones. Verified live: Waverley reconnected 0/6->5/6; E7 is a re-extraction content loss the pass correctly can't invent."}
