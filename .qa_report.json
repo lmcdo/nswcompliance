@@ -1,66 +1,67 @@
 {
  "tier": "standard",
- "justification": "Extraction-pipeline config + one routing fix, no serving-path changes: (1) REPLACE the wrong Ashfield chapter-D manifest \u2014 it had 8 parts with locality-table names ('D-Part4 Haberfield' is actually chapter E2) and wrong page ranges, the root cause of the unreliable D-refs, missing Part 9, and bad auto-derived dcp_precinct_localities names; new 13-part table verified against the adopted PDF's per-page 'Part N' running headers. (2) ADD manifests for the 15 newly registered Ku-ring-gai Part 14 chapters (sections from each PDF's '14X.n' headings). (3) Add 'ashfield' to UPRIGHT_ONLY_COUNCILS (rotated 'Part N' side banner extracted reversed). (4) Hoist the #832 OCR fallback trigger into _maybe_route_via_ocr() called from BOTH extract() and extract_by_page_ranges() \u2014 before this, manifest-driven councils (all of Ku-ring-gai) never reached the garble check and kept doubled-glyph text layers.",
+ "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
  "commit_hash": "",
  "files": [
-  "scripts/dcp_extract_changed.py"
+  "scripts/dcp_extract_changed.py",
+  "tests/test_extraction_preflight.py"
  ],
  "pre_impl": {
-  "existing_data": "Chapter-D part list verified 2026-07-29 against R2 v1.1-2026-03-02 (13 parts, page ranges from running headers). KG Part 14 sub-parts registered same day via add_new_chapter.py (15 chapters, R2-mirrored). Review-mode runs (no DB writes) exercised every new manifest: round 1 exposed the reversed banner + missed OCR routing; round 3 confirms OCR now fires ('using OCR text for N pages').",
-  "assumption_mismatch": "If KG republishes a Part-14 PDF with different pagination the manifest ranges drift \u2014 same exposure as every existing KG manifest; the r2_monitor hash-change flow re-flags the chapter.",
-  "new_vs_existing": "Manifests follow the existing COUNCIL_CHAPTER_RANGES shape and KG one-row-per-section granularity. The OCR hoist moves an existing block into a method without changing its trigger logic; ocr_pages idempotence guard prevents double-fetch."
+  "existing_data": "Post-extraction gates exist (schema_fail, count_drop, coverage_fail, truncation_fail) and stayed untouched; no pre-extraction layout detector existed (prior-art guard hits were SEPP markdown parsers, unrelated). Validated on real PDFs: Ashfield chapter D flags (78/192 two-column pages - the known interleave source); Waverley measures 404/450 but is exempted by evidence (2026-07-28 full fidelity sweep proved its margin-note layout handling).",
+  "assumption_mismatch": "A margin-note layout council could false-flag as two-column; the flag is advisory (suspect line, never blocks extraction) and the PREFLIGHT_TWO_COL_VERIFIED allowlist requires sweep-level evidence to suppress it.",
+  "new_vs_existing": "Pure additive: one pure detector + one measuring function + a report print + a suspect_reason branch ordered AFTER all existing reasons; preflight failure returns {} and changes nothing."
  },
  "functions": [
   {
-   "name": "_maybe_route_via_ocr",
-   "file_line": "scripts/dcp_extract_changed.py:1202",
-   "input": "self.pdf_path + council; env MODAL_OCR_URL/TOKEN; no args",
-   "output": "sets self.ocr_pages to per-page OCR texts when the raw text layer shows strong doubled-glyph evidence; otherwise leaves it None",
-   "if_none": "MODAL_OCR_URL unset or layer not garbled: returns immediately and extraction stays on the pdfplumber text layer, exactly the pre-change behaviour"
+   "name": "detect_two_column_words",
+   "file_line": "scripts/dcp_extract_changed.py:1685",
+   "input": "list of (x0,x1) word spans plus page width",
+   "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
+   "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
   },
   {
-   "name": "extract_by_page_ranges",
-   "file_line": "scripts/dcp_extract_changed.py:1219",
-   "input": "manifest ranges + optional subsection patterns",
-   "output": "section dicts; now reads OCR page texts via _page_text when the trigger fired",
-   "if_none": "empty ranges yield an empty list as before; OCR fetch failure returns None and the text layer is kept (fetch_ocr_page_texts contract unchanged)"
+   "name": "preflight_layout",
+   "file_line": "scripts/dcp_extract_changed.py:1704",
+   "input": "pdf path + council slug; opens the PDF with pdfplumber",
+   "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
+   "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
   }
  ],
  "values": [
   {
-   "value": "Ashfield chapter-D manifest: 13 parts, pages 3-40/41-57/58-83/84-95/96-106/107-155/156-168/169-180/181-182/183-187/188-192/193-196/197-204",
-   "read_at": "scripts/dcp_extract_changed.py:170 (COUNCIL_CHAPTER_RANGES)",
-   "if_missing": "chapter falls back to council-level page ranges or sequential detection \u2014 same fallback every unlisted chapter uses"
+   "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
+   "read_at": "scripts/dcp_extract_changed.py:1682",
+   "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
   }
  ],
- "queries": "N/A - no SQL changed; the script's existing registry/provision queries are untouched.",
+ "queries": "N/A - no SQL touched.",
  "break_it": [
   {
-   "scenario": "A future re-extraction of any OTHER ashfield chapter now also gets the upright-only filter; a chapter whose legitimate body text pdfplumber marks as rotated would lose it.",
-   "what_happens": "Text loss would surface as count_drop/schema_fail in the review gates before commit.",
+   "scenario": "Waverley re-extraction gets smeared as suspect because its margin layout reads as two-column.",
+   "what_happens": "Without the allowlist every Waverley review would carry a false suspect line against a sweep-proven extraction.",
    "mitigated": true,
-   "how": "Review-mode round 2 ran the filter across chapter D: banner junk 0 hits, body text intact; gates block silent regressions for other chapters.",
-   "repro": "Run --council ashfield --all --review and inspect the review file."
+   "how": "PREFLIGHT_TWO_COL_VERIFIED exemption, gated on full-sweep evidence; verified live (two_column_fail False for the Waverley PDF).",
+   "repro": "preflight_layout(waverley_pdf, 'waverley')"
   },
   {
-   "scenario": "Modal OCR endpoint down or returns wrong page count during a KG run.",
-   "what_happens": "fetch_ocr_page_texts returns None on ANY failure and extraction stays on the (garbled) text layer; the schema_fail artifact gate then blocks approval.",
+   "scenario": "A corrupt PDF makes pdfplumber raise inside the preflight.",
+   "what_happens": "Preflight prints a skip line and returns {}; extraction and all existing gates behave exactly as before.",
    "mitigated": true,
-   "how": "Existing #836 contract (exact page-count check) unchanged; gates remain the backstop.",
-   "repro": "Unset MODAL_OCR_TOKEN and run --council ku_ring_gai --review."
+   "how": "Whole function wrapped; suspect_reason treats missing preflight as clean.",
+   "repro": "point preflight_layout at a non-PDF file"
   },
   {
-   "scenario": "The OCR trigger now runs for every manifest-driven chapter, adding a full-PDF text pass per chapter.",
-   "what_happens": "One extra pdfplumber read per chapter (seconds); Modal spend only when garble detected.",
+   "scenario": "Preflight adds a full pdfplumber pass per chapter and slows the cron.",
+   "what_happens": "Seconds per chapter on the same file the extractor opens anyway.",
    "mitigated": true,
-   "how": "ocr_pages guard makes it once-per-extractor; trigger requires strong doubled-glyph evidence per the #836 Sol-reviewed heuristic.",
-   "repro": "Time --council ku_ring_gai --review before/after."
+   "how": "Single pass, no OCR/network; acceptable against multi-minute extractions.",
+   "repro": "time a --review run before/after"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required \u2014 this PR changes extraction config only; DB content changes go through the review-gated extraction flow separately.",
-  "secrets": "None; MODAL_OCR_URL/TOKEN already provisioned in .env.",
+  "db_reset": "Not required.",
+  "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - reviews/ku_ring_gai_*.txt and reviews/ashfield_*.txt from the worktree runs; commit of extracted content is a separate deliberate re-run without --review after human review."
+  "manual_verify": "Yes - next --review run prints the Preflight line per chapter and flags two-column/scanned chapters in the SUSPECT summary."
  }
 }
