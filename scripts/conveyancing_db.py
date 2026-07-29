@@ -507,7 +507,7 @@ def fetch_sepp_housing_standards(
             f"""
             SELECT development_type, standard_type, numeric_value, unit,
                    applicable_zones, source_clause, source_document,
-                   legislation_url, effective_date
+                   legislation_url, effective_date, stale_since, stale_reason
             FROM housing_sepp_standards
             {where}
             ORDER BY development_type, standard_type
@@ -535,6 +535,10 @@ def fetch_sepp_housing_standards(
             "source_document": r[6],
             "legislation_url": r[7],
             "effective_date": str(r[8]) if r[8] else None,
+            # Auto-stale (W3): set by the legislation monitor on a source
+            # instrument version change; values still serve, with a notice.
+            "stale_since": r[9],
+            "stale_reason": r[10],
         }
         for r in rows
     ]
@@ -643,7 +647,12 @@ def _validate_sepp_sd_config(min_lot_row: Optional[dict]) -> Optional[dict]:
         zones.add(z.strip())
     if not zones:
         return None
-    return {"sd_min_lot": min_lot, "sd_zones": zones}
+    out = {"sd_min_lot": min_lot, "sd_zones": zones}
+    # Auto-stale passthrough (W3): the caller renders a notice when present.
+    if min_lot_row.get("stale_since"):
+        out["stale_since"] = min_lot_row.get("stale_since")
+        out["stale_reason"] = min_lot_row.get("stale_reason")
+    return out
 
 
 # prior-art-checked: MOVED from services/conveyancing.py._load_regulatory_configs

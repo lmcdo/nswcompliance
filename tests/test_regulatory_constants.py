@@ -70,10 +70,10 @@ class TestFetchSeppHousingStandards:
         rows = [
             ("secondary_dwelling", "min_lot_size", Decimal("450"), "m²",
              ["R1", "R2", "R3", "R4"], "53(1)(b)", "SEPP Housing 2021",
-             "https://legislation.nsw.gov.au/...", "2021-11-29"),
+             "https://legislation.nsw.gov.au/...", "2021-11-29", None, None),
             ("secondary_dwelling", "max_floor_area", Decimal("60"), "m²",
              ["R1", "R2", "R3", "R4"], "22(1)", "SEPP (E&C) 2008",
-             "https://legislation.nsw.gov.au/...", "2021-11-29"),
+             "https://legislation.nsw.gov.au/...", "2021-11-29", None, None),
         ]
         conn = _mock_conn_with_sepp_rows(rows)
         result = fetch_sepp_housing_standards(conn)
@@ -130,7 +130,7 @@ class TestGetSeppStandardValue:
         rows = [
             ("secondary_dwelling", "min_lot_size", Decimal("450"), "m²",
              ["R1", "R2", "R3", "R4"], "53(1)(b)", "SEPP Housing 2021",
-             "https://...", "2021-11-29"),
+             "https://...", "2021-11-29", None, None),
         ]
         conn = _mock_conn_with_sepp_rows(rows)
         val = get_sepp_standard_value(conn, "secondary_dwelling", "min_lot_size")
