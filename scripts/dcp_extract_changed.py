@@ -1783,6 +1783,18 @@ _JUNK_REF = re.compile(r"^(?:19|20)\d{2}$|^R\d$|^table", re.IGNORECASE)
 PREFLIGHT_TWO_COL_RATIO = 0.20   # >=20% of text pages two-column -> flag
 PREFLIGHT_EMPTY_RATIO = 0.30     # >=30% of pages with no text layer -> flag
 
+# A source PDF whose front matter carries a council repeal stamp ("Repealed by
+# WDCP 2015 Amendment No. 13 on 12 October 2020") is an archive document, not
+# the in-force chapter. Extracting one silently replaces current controls with
+# repealed ones — 20/23 Woollahra chapters shipped exactly that way before the
+# 2026-07-29 re-source. Unlike the layout flags above this is a HARD REJECT:
+# extract_chapter refuses the chapter and keeps needs_extraction=TRUE so the
+# fix is always a registry re-point, never an approval.
+# Line-anchored so amendment-history prose deeper in a sentence ("...was
+# repealed by Amendment 5") cannot false-positive; only front matter is read.
+PREFLIGHT_REPEALED_PAGES = 4
+_REPEALED_STAMP = re.compile(r"^\s*repealed\s+by\b", re.IGNORECASE)
+
 # Councils whose two-column/margin layout handling is PROVEN by a full source
 # fidelity sweep — the geometric detector still measures them, but the suspect
 # flag is suppressed (Waverley: margin-note layout, 2026-07-28 sweep = zero
@@ -1810,15 +1822,36 @@ def detect_two_column_words(word_spans: list[tuple[float, float]], page_width: f
     return left / n >= 0.25 and right / n >= 0.25 and crossing / n < 0.05
 
 
+# prior-art-checked: guard hits (council-config.ts, intelligence_brief.py,
+# document_finder.py, ...) are council/document lookups sharing only generic
+# tokens — no existing repeal-stamp/front-matter currency detector anywhere in
+# the pipeline; this extends the file's own preflight toolkit in place.
+def detect_repealed_stamp(front_page_texts: list[str]) -> str | None:
+    """Return the repeal-stamp line found in a document's front matter, or
+    None. Pure — front_page_texts are the first PREFLIGHT_REPEALED_PAGES
+    pages' texts."""
+    for text in front_page_texts:
+        for line in (text or "").splitlines():
+            if _REPEALED_STAMP.match(line):
+                return line.strip()[:120]
+    return None
+
+
 def preflight_layout(pdf_path, council: str) -> dict:
     """Measure layout hazards before parsing. Returns counts + flag booleans.
     Never raises — a preflight failure must not block extraction (the post
     gates still stand); it reports {} on any error."""
     try:
         two_col = rotated = garbled = empty = text_pages = 0
+        front_texts: list[str] = []
         with pdfplumber.open(pdf_path) as pdf:
             total = len(pdf.pages)
-            for page in pdf.pages:
+            for idx, page in enumerate(pdf.pages):
+                if idx < PREFLIGHT_REPEALED_PAGES:
+                    try:
+                        front_texts.append(page.extract_text() or "")
+                    except Exception:
+                        front_texts.append("")
                 try:
                     words = page.extract_words() or []
                 except Exception:
@@ -1853,6 +1886,7 @@ def preflight_layout(pdf_path, council: str) -> dict:
         report["empty_layer_fail"] = (
             total > 0 and empty / total >= PREFLIGHT_EMPTY_RATIO
         )
+        report["repealed_stamp"] = detect_repealed_stamp(front_texts)
         return report
     except Exception as exc:  # pragma: no cover - defensive
         print(f"    [preflight] skipped ({exc})")
@@ -2368,6 +2402,16 @@ def extract_chapter(
             if preflight.get("empty_layer_fail"):
                 print("    [preflight] ⚠ EMPTY TEXT LAYERS on many pages — scanned source; "
                       "OCR routing required for full coverage")
+            if preflight.get("repealed_stamp"):
+                # Hard reject — an archive document must never reach extraction,
+                # let alone the review queue. needs_extraction stays TRUE so the
+                # chapter keeps surfacing until the registry URL is re-pointed
+                # at the in-force version (Woollahra failure class, 2026-07-29).
+                print(f"    [preflight] ✗ REPEALED SOURCE: \"{preflight['repealed_stamp']}\"")
+                print("    [preflight] chapter REJECTED — re-point council_url at the "
+                      "in-force chapter, re-mirror, then re-run")
+                cur.close()
+                return False, None
 
         # If a page-range config exists for this council/chapter, use it directly.
         # This handles DCPs where SECTION_RE matches TOC entries instead of real

@@ -16,17 +16,24 @@
  "functions": [
   {
    "name": "detect_two_column_words",
-   "file_line": "scripts/dcp_extract_changed.py:1794",
+   "file_line": "scripts/dcp_extract_changed.py:1806",
    "input": "list of (x0,x1) word spans plus page width",
    "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
    "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
   },
   {
    "name": "preflight_layout",
-   "file_line": "scripts/dcp_extract_changed.py:1813",
+   "file_line": "scripts/dcp_extract_changed.py:1840",
    "input": "pdf path + council slug; opens the PDF with pdfplumber",
    "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
    "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
+  },
+  {
+   "name": "detect_repealed_stamp",
+   "file_line": "scripts/dcp_extract_changed.py:1829",
+   "input": "first PREFLIGHT_REPEALED_PAGES pages of text",
+   "output": "the line-anchored \"Repealed by ...\" stamp line, or None",
+   "if_none": "empty/None pages are safe; mid-sentence repeal prose never matches (line-anchored)"
   }
  ],
  "values": [
@@ -65,5 +72,6 @@
   "secrets": "None.",
   "other_repo": "None.",
   "manual_verify": "Yes - next --review run prints the Preflight line per chapter and flags two-column/scanned chapters in the SUSPECT summary."
- }
+ },
+ "addendum_repealed_guard": "Stacked commit adds the repealed-source hard reject: detect_repealed_stamp (pure, line-anchored /^Repealed by/i over front matter) wired into preflight_layout (repealed_stamp key) and extract_chapter, which REFUSES the chapter before extraction (needs_extraction stays TRUE). Origin: 20/23 Woollahra chapters extracted from repeal-stamped archives (2026-07-29 re-source). 6 pure tests: footer variant, terse WDCP2015 variant, case/indent, mid-line prose negative, clean front matter, empty/None pages."
 }
