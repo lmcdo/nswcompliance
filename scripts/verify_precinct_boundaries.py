@@ -60,6 +60,24 @@ KNOWN_POINTS = [
     # E7 = union of the cadastre block bound by Birrell/Carrington/Church/Bronte
     # (the DCP's own text definition, p390); probe point is block interior.
     (151.25220, -33.89720, "E7", "Edina Estate block interior (Waverley)"),
+    # Parramatta — staged as 'Parramatta-staged' until the attribution deploy;
+    # flip target is lga='City of Parramatta' (portal layerintersect LGA Name,
+    # verified 2026-07-29). Coords via SIX Address_Location 2026-07-29; DCP
+    # text corroborates 15 Boronia Ave (7.10.11 names the northern-side row).
+    (151.008622, -33.801548, "7.10.1", "74 Sorrell St North Parramatta (HCA)"),
+    (151.075045, -33.774674, "7.10.11", "15 Boronia Ave Epping (Parramatta HCA)"),
+    (151.086887, -33.774601, "7.10.9", "46 Essex St Epping (Parramatta HCA)"),
+    (151.004125, -33.818227, "9", "126 Church St Parramatta (city centre)"),
+    # Woollahra — staged as 'Woollahra-staged'; flip target lga='Woollahra'
+    # AFTER the provision keying lands. NAME-keyed ids (never C-numbers — the
+    # C1/C2/C3 token collides 3 ways; see C1C2C3_COLLISION_NOTE 2026-07-29).
+    # Coords via SIX Address_Location 2026-07-29 against ePlanning LEP 2014
+    # heritage polygons (H_NAME join, areas match spatial_overlays 15/15).
+    (151.229931, -33.884864, "Paddington HCA", "60 William St Paddington (Woollahra)"),
+    (151.234182, -33.888747, "Woollahra HCA", "32 Queen St Woollahra"),
+    (151.279359, -33.841571, "Watsons Bay HCA", "12 Pacific St Watsons Bay"),
+    (151.239930, -33.869177, "Etham Avenue HCA", "7 Etham Ave Darling Point (B2.2)"),
+    (151.265198, -33.873992, "Kent Road HCA", "14 Kent Rd Rose Bay (B2.11)"),
 ]
 
 # Known exceptions: precincts where centroid legitimately falls outside boundary
@@ -73,6 +91,8 @@ CENTROID_EXCEPTIONS = {
     "E3",        # Waverley Local Village Centres — 94 scattered polygons LGA-wide
     "E4",        # Waverley Special Character Areas — 3 separate areas
     "2.13.9",    # CoS Redfern Street and Redfern Park — L-shaped corridor + park
+    "7.10.1",    # Parramatta — union of 2 disjoint HCAs (North Parramatta + Sorrell St)
+    "7.10.12",   # Parramatta Burnside Homes — 5 separate parcels, centroid in gap
 }
 
 

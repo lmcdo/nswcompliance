@@ -1,9 +1,11 @@
 {
- "tier": "minor",
- "justification": "Versions the precinct-boundary health check (scripts/verify_precinct_boundaries.py was untracked working-scripts territory; .gitignore gains an explicit exception like the other permanent QA artifacts) and adds three City of Sydney KNOWN_POINTS spot checks for the 145 boundaries that went live today, plus one centroid exception (2.13.9 L-shaped corridor+park). No serving-path or pipeline code changes; the script is read-only against the DB.",
- "commit_hash": "",
+ "tier": "standard",
+ "justification": "Stacked on the verify-script versioning (#845): council attribution now prefers the dcp_precinct_boundaries.former_council column over PRECINCT_ID_PATTERNS regexes. The pattern approach degrades per council: dotted Parramatta ids (7.10.1, 9) and name-keyed Woollahra ids (Paddington HCA) have no safe regex, and unmatched ids fall through to the Marrickville default (the #835/#842 bug class). Column set on all new boundary rows (Parramatta-staged 13, Woollahra-staged 14); patterns stay as fallback for legacy NULL rows (Ku-ring-gai). Also adds 9 KNOWN_POINTS (4 Parramatta + 5 Woollahra, SIX-geocoded, all verified against staged polygons) and 2 centroid exceptions (7.10.1 union of 2 disjoint HCAs; 7.10.12 = 5 parcels).",
+ "commit_hash": "0706aa49",
  "files": [
   ".gitignore",
+  "frontend-nextjs/__tests__/lib/precinct-attribution.test.ts",
+  "frontend-nextjs/lib/precinct-service.ts",
   "scripts/verify_precinct_boundaries.py"
  ],
  "pre_impl": {
@@ -11,9 +13,46 @@
   "assumption_mismatch": "If SIX coords were wrong the new spot checks would fail loudly, not pass silently; all three verified passing against production before commit.",
   "new_vs_existing": "Additive only: 3 KNOWN_POINTS entries, 1 CENTROID_EXCEPTIONS entry, 2 comment lines, 1 gitignore exception. No logic changes."
  },
- "functions": "run_checks unchanged; KNOWN_POINTS/CENTROID_EXCEPTIONS data extended.",
- "values": "KNOWN_POINTS 8 -> 11; CENTROID_EXCEPTIONS 7 -> 8.",
- "queries": "No SQL changed; script remains read-only SELECTs.",
+ "functions": [
+  {
+   "name": "normalizeFormerCouncil",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts",
+   "input": "stored former_council value (display name, slug, NULL, blank)",
+   "output": "display form (city_of_sydney -> City of Sydney, ku_ring_gai -> Ku-ring-gai) or null",
+   "if_none": "null/undefined/blank return null so the caller falls back to patterns"
+  },
+  {
+   "name": "resolveFormerCouncil",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts",
+   "input": "boundary row former_council + precinct_id",
+   "output": "column-first attribution; getFormerCouncilFromPrecinctId only when column NULL",
+   "if_none": "both empty -> patterns -> Unknown/Marrickville default unchanged (legacy behaviour)"
+  }
+ ],
+ "values": [
+  {
+   "value": "KNOWN_POINTS grows 11 -> 20 (4 Parramatta + 5 Woollahra SIX-geocoded entries)",
+   "read_at": "scripts/verify_precinct_boundaries.py KNOWN_POINTS list",
+   "if_missing": "spot checks silently skip new councils and a bad boundary reload passes verification"
+  },
+  {
+   "value": "CENTROID_EXCEPTIONS grows 8 -> 10 (7.10.1 union of 2 disjoint HCAs; 7.10.12 five parcels)",
+   "read_at": "scripts/verify_precinct_boundaries.py CENTROID_EXCEPTIONS set",
+   "if_missing": "script reports 2 permanent warnings and PASS-with-warnings becomes noise"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "multi-match precinct lookup now also reads council attribution from the row",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts (getPrecinctUsingPostGIS SELECT)",
+   "where_clause": "ST_Contains(boundary, point) AND LOWER(lga)=LOWER($3) \u2014 unchanged; only former_council added to SELECT"
+  },
+  {
+   "purpose": "nearest-precinct fallback reads the same column",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts (findNearestPrecinct SELECT)",
+   "where_clause": "LOWER(lga)=LOWER($3) AND ST_DWithin(...500m) \u2014 unchanged; only former_council added to SELECT"
+  }
+ ],
  "break_it": [
   {
    "scenario": "The CoS boundaries are later reloaded with shifted geometries (e.g. wrong SRID) and the reload forgets to re-verify.",
@@ -28,12 +67,33 @@
    "mitigated": false,
    "how": "Out of scope; documented in the script docstring usage.",
    "repro": "Run outside a configured checkout."
+  },
+  {
+   "scenario": "A future council loads boundary rows whose former_council holds an unknown slug (e.g. northern_beaches).",
+   "what_happens": "normalizeFormerCouncil title-cases it (Northern Beaches) instead of silently attributing Marrickville.",
+   "mitigated": true,
+   "how": "Generic slug title-casing with joiner-word handling; jest cases pin the known values.",
+   "repro": "resolveFormerCouncil(\"northern_beaches\", \"X1\")"
+  },
+  {
+   "scenario": "Column set to whitespace-only by a bad loader.",
+   "what_happens": "Treated as NULL -> pattern fallback, never a blank display string.",
+   "mitigated": true,
+   "how": "normalizeFormerCouncil trims and returns null on blank; test pins it.",
+   "repro": "normalizeFormerCouncil(\"   \")"
+  },
+  {
+   "scenario": "The multi-match precinct lookup query runs against a database whose dcp_precinct_boundaries lacks the former_council column (stale environment).",
+   "what_happens": "The SELECT errors, the existing catch returns null and the address gets no precinct match \u2014 visible as a missing-precinct result, never a wrong-council attribution.",
+   "mitigated": true,
+   "how": "Column has existed on the production table since the Inner West loads; the catch block already downgrades any query error to a null match, and the nearest-precinct fallback query fails the same visible way.",
+   "repro": "Drop former_council in a scratch DB and call getPrecinctForAddress."
   }
  ],
  "post_merge": {
   "db_reset": "Not required.",
   "secrets": "None - script reads DATABASE_URL from .env, no values committed.",
   "other_repo": "None.",
-  "manual_verify": "Run python scripts/verify_precinct_boundaries.py - expect PASS with 11/11 spot checks."
+  "manual_verify": "Run python scripts/verify_precinct_boundaries.py \u2014 expect PASS 20/20 spot checks, 0 warnings. After deploy: flip Parramatta-staged -> City of Parramatta (portal LGA Name string), re-run script; Woollahra flip waits for provision keying."
  }
 }
