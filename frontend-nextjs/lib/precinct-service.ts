@@ -25,10 +25,11 @@ export interface PrecinctMapping {
 
 // LGAs whose DCP precincts tile the whole area — a containment miss there is a
 // geocoding artefact, so snapping to the nearest boundary within 500m is safe.
-// In councils with sparse site-specific precincts (e.g. Waverley Part E), most
+// In councils with sparse site-specific precincts (e.g. Waverley Part E, and
+// Ku-ring-gai where 10 boundaries cover 0.29 km² of an ~85 km² LGA), most
 // addresses are legitimately in no precinct; snapping would serve controls for
 // an area the property is not in.
-const NEAREST_FALLBACK_LGAS = new Set(['inner west', 'ku-ring-gai']);
+const NEAREST_FALLBACK_LGAS = new Set(['inner west']);
 
 /**
  * Get DCP precinct for an address using PostGIS geometric matching

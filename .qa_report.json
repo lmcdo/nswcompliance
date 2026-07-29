@@ -1,14 +1,14 @@
 {
  "tier": "standard",
- "justification": "Two precinct-serving fixes that gate the CoS boundary load: (1) PRECINCT_ID_PATTERNS entries for City of Sydney ('2.13.6'/'5.8'/'6.3.3' section keys) and Ku-ring-gai ('14B_T1'..'14O') so a boundary match no longer falls through to the 'Marrickville' default and scopes the provisions API to the wrong council (the #835 Waverley bug class; Ku-ring-gai polygons are matchable TODAY). (2) precinct_warning no longer suppressed when precinct ids are passed but match zero provisions (locality fallback passes name-shaped ids), and now also fires when an LGA has precinct boundaries with no keyed provisions (Ku-ring-gai Part 14, Marrickville, Leichhardt — content not extracted, previously a silent gap).",
- "commit_hash": "f9f3f626",
+ "justification": "Two precinct-serving fixes that gate the CoS boundary load: (1) PRECINCT_ID_PATTERNS entries for City of Sydney ('2.13.6'/'5.8'/'6.3.3' section keys) and Ku-ring-gai ('14B_T1'..'14O') so a boundary match no longer falls through to the 'Marrickville' default and scopes the provisions API to the wrong council (the #835 Waverley bug class; Ku-ring-gai polygons are matchable TODAY). (2) precinct_warning no longer suppressed when precinct ids are passed but match zero provisions (locality fallback passes name-shaped ids), and now also fires when an LGA has precinct boundaries with no keyed provisions (Ku-ring-gai Part 14, Marrickville, Leichhardt \u2014 content not extracted, previously a silent gap).",
+ "commit_hash": "8a94cb91",
  "files": [
   "frontend-nextjs/lib/precinct-service.ts",
   "frontend-nextjs/app/api/provisions/for-property/route.ts",
   "frontend-nextjs/__tests__/lib/precinct-attribution.test.ts"
  ],
  "pre_impl": {
-  "existing_data": "dcp_precinct_boundaries id formats verified live 2026-07-29: Ku-ring-gai '14B_T1'..'14O' (10 rows), CoS ids to be loaded as '2.x[.y]'/'5.x'/'6.x.y'. dcp_precinct_provisions and dcp_precinct_requirements are EMPTY (legacy path dead) — v2_precinct_id on regulatory_provisions is the only serving path. COUNCIL_DOC_PATTERNS already maps city_of_sydney->'Sydney_DCP' and ku_ring_gai->'Ku-ring-gai_DCP'.",
+  "existing_data": "dcp_precinct_boundaries id formats verified live 2026-07-29: Ku-ring-gai '14B_T1'..'14O' (10 rows), CoS ids to be loaded as '2.x[.y]'/'5.x'/'6.x.y'. dcp_precinct_provisions and dcp_precinct_requirements are EMPTY (legacy path dead) \u2014 v2_precinct_id on regulatory_provisions is the only serving path. COUNCIL_DOC_PATTERNS already maps city_of_sydney->'Sydney_DCP' and ku_ring_gai->'Ku-ring-gai_DCP'.",
   "assumption_mismatch": "If a future council introduces dotted ids colliding with the leading-2/5/6 pattern the attribution would mislabel; the pattern is scoped and documented, and Leichhardt C2-prefix ids are pinned by test to still attribute to Leichhardt.",
   "new_vs_existing": "Pattern entries follow the existing Waverley precedent in the same table. Warning block extends the existing cached EXISTS check; adds one Map cache and a council-to-LGA structural map (organisational structure, not regulatory data)."
  },
