@@ -22,14 +22,14 @@
   },
   {
    "name": "buildEmailContent",
-   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:251",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:248",
    "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
    "output": "escapeHtml(address) computed once at the top (line 257) and reused across every case; for 'intelligence-brief': {subject: 'Your Site Report — <address>' (raw, plain text), body: HTML-escaped address + links to verify.plotdetect.com.au/reports/intelligence-brief}; the 6 other body-interpolating cases (flood, solar-yield, shadow, threat-radar, dual-occ-referral, granny-flat) now use the same escaped value; lga-request unaffected (no address in its body)",
    "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
   },
   {
    "name": "escapeHtml",
-   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:242",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:239",
    "input": "raw string (the user-submitted, Zod length-only-bounded address)",
    "output": "the same string with &, <, >, \", ' replaced by their HTML entities, safe to interpolate into an HTML email body",
    "if_none": "empty string in -> empty string out; no special-casing needed"

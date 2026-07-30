@@ -234,11 +234,8 @@ export async function POST(req: NextRequest) {
 }
 
 // address is user-submitted (Zod only bounds its length, not its character set)
-// and gets interpolated into an HTML email body — escape it before use in any
-// NEW case here. The 7 pre-existing cases below share this same unescaped
-// interpolation; that's a pre-existing pattern, not introduced by this PR, and
-// out of scope for a lead-capture-400 bugfix — flagged for a follow-up, not
-// silently left or silently expanded into here.
+// and gets interpolated into an HTML email body — every case below uses the
+// escaped value (see safeAddress in buildEmailContent), never the raw address.
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
