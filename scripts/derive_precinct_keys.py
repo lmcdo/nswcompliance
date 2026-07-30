@@ -248,7 +248,13 @@ def _derive(strategy: dict, row: dict) -> str | None:
                 break
         if match is None:
             return None
-        return ".".join(comps[:match]) + letter
+        # The letter belongs to the TOP-LEVEL part (e.g. Part "9B"), so it must attach
+        # to the first kept component, not be appended after the last one — otherwise
+        # a hypothetical letter-suffixed part with depth>1 (none exist in Parramatta's
+        # corpus today, but the map is general) would derive "7.10.1B" instead of the
+        # correct "7B.10.1".
+        trimmed = comps[:match]
+        return trimmed[0] + letter + ("." + ".".join(trimmed[1:]) if len(trimmed) > 1 else "")
     if t == "text_heading":
         # Content anchor: the precinct number in the provision's own leading markdown
         # heading (e.g. "# 5.1.1.4 ..."). Travels WITH the text, so it survives

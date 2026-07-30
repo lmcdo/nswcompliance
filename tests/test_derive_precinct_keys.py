@@ -86,6 +86,17 @@ def test_ref_components_rejects_bare_chunk_counters():
     assert _parra("...__45") is None
 
 
+def test_ref_components_letter_attaches_to_top_level_part():
+    """The letter suffix belongs to the top-level part identity ('9B'), not to
+    whichever component happens to be trimmed last. No letter-suffixed part with
+    depth>1 exists in Parramatta's corpus today, but the map is general-purpose —
+    prove a hypothetical '7B' with depth 3 derives '7B.10.1', not '7.10.1B'."""
+    s = {"type": "ref_components",
+         "components_map": {"7": 3, "9": 1}, "max_top_digits": 1}
+    assert derive(s, row(ref_number="...__7B_10_1_3")) == "7B.10.1"
+    assert derive(s, row(ref_number="...__9B")) == "9B"
+
+
 def test_ref_components_rejects_non_precinct_parts():
     """Parts outside the map (e.g. Parramatta Part 3 'Residential Development' — a
     general topic chapter, not a precinct) must derive None, not the raw heading
