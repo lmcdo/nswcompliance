@@ -1,77 +1,80 @@
 {
  "tier": "standard",
- "justification": "Adds a pre-extraction layout preflight to dcp_extract_changed.py: per-chapter measurement of two-column body pages (word x-span banding), rotated-char pages, garbled pages, and empty text layers, BEFORE any parse. Feeds suspect_reason so structural hazards are named up front instead of surfacing only as post-extraction schema_fail artifacts. Origin: the Ashfield PC|DS two-column interleave and KG scanned/garbled layers were both caught only after extraction on 2026-07-29.",
- "commit_hash": "9563d65f",
+ "justification": "The Site Report page's 'email me this brief' capture (components/reports/PostResultEmailStrip.tsx, already wired into app/reports/intelligence-brief/page.tsx with product='intelligence-brief') has been posting to /api/canibuildit/lead since it shipped, but 'intelligence-brief' was never added to the route's Zod-enforced INTEREST_TYPES enum, so every submission 400'd. Confirmed live via browser network inspection: submitted a real address through the deployed Site Report, captured the actual XHR — status 400 — while the UI showed 'Thanks — we'll be in touch' regardless (that always-show-success behaviour is deliberate, tested design for graceful degradation on genuine transient failures, per PostResultEmailStrip.test.tsx's explicit 'Silent failure — never block the UX' comment; NOT touched here). Fix: add 'intelligence-brief' to INTEREST_TYPES + a branded buildEmailContent case. Also fixed a second bug found on read: the confirmation email's sender name and footer were hardcoded to the 'Can I Build It' consumer brand regardless of product, so an intelligence-brief email would have arrived From: PlotDetect with a 'Can I Build It? canibuildit.com.au' footer once the 400 was fixed — sender/footer now follow the product.",
+ "commit_hash": "5f135276",
  "files": [
-  "scripts/dcp_extract_changed.py",
-  "tests/test_extraction_preflight.py",
-  "tests/test_columnar_reader.py"
+  "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+  "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+  "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts"
  ],
- "addendum_columnar_reader": "Same branch also adds the geometric two-column READER (_find_gutter/_columnar_text, GEOMETRIC_COLUMN_COUNCILS) that ACTS on what the preflight detects: finds the gutter from word x-geometry (no per-council boundary_x, unlike the header-pair COUNCIL_COLUMN_CONFIGS path), reads left-column-then-right per horizontal band, keeps full-width headings in place. Runs only for ashfield/marrickville/city_of_sydney, only after the upright filter, and returns None (plain fallback) on any non-two-column page. End-to-end proof: Ashfield ch.D review-mode extraction \u2014 the preflight_two_column SUSPECT flag CLEARED and provisions recovered rose 546->638; remaining count_drop is vs an inflated baseline (earlier duplicated part-copies), a human-review judgement, not interleave. 8 columnar unit tests incl. single-column-returns-None and full-width-heading-kept-in-place; a caught bug (same-y left+right merged as full-width) fixed via gutter-gap test. Extractor suites 255 green.",
  "pre_impl": {
-  "existing_data": "Post-extraction gates exist (schema_fail, count_drop, coverage_fail, truncation_fail) and stayed untouched; no pre-extraction layout detector existed (prior-art guard hits were SEPP markdown parsers, unrelated). Validated on real PDFs: Ashfield chapter D flags (78/192 two-column pages - the known interleave source); Waverley measures 404/450 but is exempted by evidence (2026-07-28 full fidelity sweep proved its margin-note layout handling).",
-  "assumption_mismatch": "A margin-note layout council could false-flag as two-column; the flag is advisory (suspect line, never blocks extraction) and the PREFLIGHT_TWO_COL_VERIFIED allowlist requires sweep-level evidence to suppress it.",
-  "new_vs_existing": "Pure additive: one pure detector + one measuring function + a report print + a suspect_reason branch ordered AFTER all existing reasons; preflight failure returns {} and changes nothing."
+  "existing_data": "Read PostResultEmailStrip.tsx (generic, reusable, already used by 3 callers: ThreatRadarTool, PropertyAlertsOptIn, intelligence-brief page) and its test suite before writing anything, to avoid duplicating existing lead-capture infrastructure (prior-art sweep). Confirmed via COMPONENT_MAP.md that CompleteSummary/the email strip are the correct, already-existing insertion points -- no new component needed, this is a bugfix not a feature build. Live-verified the 400 with a real submission (network tab) before touching code, and re-verified after the fix that the previously-broken value is now schema-accepted (unit test, since re-deploying to prod is out of scope for this session).",
+  "assumption_mismatch": "Initially assumed the email-capture feature did not exist and needed building. Prior-art sweep found it already existed and was already wired in -- the real problem was a silent server-side validation gap, not a missing feature. Also initially assumed the client's 'always show success' behaviour was an accidental silent-failure bug to fix; reading PostResultEmailStrip.test.tsx showed it is deliberate, tested UX policy for transient-failure graceful degradation across ALL callers (threat-radar, solar-yield, etc.) -- changing it would have broken 2 passing tests and reversed an intentional design decision. Left untouched; fixed only the actual root cause (the enum).",
+  "new_vs_existing": "No new component, no new API route, no new DB table. Extends the existing INTEREST_TYPES enum (1 value) and existing buildEmailContent switch (1 case) in the existing, already-tested /api/canibuildit/lead route that 3 other features already depend on."
  },
  "functions": [
   {
-   "name": "detect_two_column_words",
-   "file_line": "scripts/dcp_extract_changed.py:1806",
-   "input": "list of (x0,x1) word spans plus page width",
-   "output": "True when both lateral bands hold >=25% of words and <5% cross the gutter band",
-   "if_none": "fewer than 30 words or zero page width returns False (sparse pages never flag)"
+   "name": "POST",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:98",
+   "input": "JSON body incl. interest_type (now accepts 'intelligence-brief' as a 12th enum value)",
+   "output": "on valid input: stores the lead, computes a per-product from/replyTo/footer pair (intelligence-brief -> PlotDetect brand; every other existing product -> unchanged Can I Build It brand), sends the branded confirmation email, returns 200 {ok:true}",
+   "if_none": "interest_type outside the enum -> Zod safeParse fails -> 400 (unchanged behaviour for genuinely unknown values, e.g. 'nuclear-plant' -- still rejected, see lead-abuse.test.ts)"
   },
   {
-   "name": "preflight_layout",
-   "file_line": "scripts/dcp_extract_changed.py:1840",
-   "input": "pdf path + council slug; opens the PDF with pdfplumber",
-   "output": "counts of two-column/rotated/garbled/empty pages plus two advisory fail booleans",
-   "if_none": "any exception returns {} and extraction proceeds exactly as before - preflight can never block"
-  },
-  {
-   "name": "detect_repealed_stamp",
-   "file_line": "scripts/dcp_extract_changed.py:1829",
-   "input": "first PREFLIGHT_REPEALED_PAGES pages of text",
-   "output": "the line-anchored \"Repealed by ...\" stamp line, or None",
-   "if_none": "empty/None pages are safe; mid-sentence repeal prose never matches (line-anchored)"
+   "name": "buildEmailContent",
+   "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts:236",
+   "input": "product identifier string (interest_type from the request body), plus the cleaned property address string",
+   "output": "for 'intelligence-brief': {subject: 'Your Site Report — <address>', body: links to verify.plotdetect.com.au/reports/intelligence-brief}; unchanged for all other existing product values",
+   "if_none": "unknown product string falls through to the existing default (granny-flat copy) -- pre-existing behaviour, unchanged"
   }
  ],
  "values": [
   {
-   "value": "PREFLIGHT_TWO_COL_RATIO=0.20, PREFLIGHT_EMPTY_RATIO=0.30, PREFLIGHT_TWO_COL_VERIFIED={'waverley'}",
-   "read_at": "scripts/dcp_extract_changed.py:1783",
-   "if_missing": "not applicable - module constants; thresholds documented inline with their evidence requirement"
+   "value": "INTEREST_TYPES now includes 'intelligence-brief' (was missing -- this was the entire root cause of the 400)",
+   "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:64",
+   "if_missing": "every Site Report 'email me this brief' submission 400s permanently; user sees a false success confirmation and never receives the email or gets stored as a lead (the exact bug this PR fixes)"
+  },
+  {
+   "value": "per-product {fromLine, replyTo, footerLabel, footerUrl} -- PlotDetect brand for intelligence-brief, Can I Build It brand for every other product (unchanged)",
+   "read_at": "frontend-nextjs/app/api/canibuildit/lead/route.ts:199",
+   "if_missing": "before this fix: hardcoded to the Can I Build It brand for ALL products -- an intelligence-brief email would arrive From: PlotDetect (once the 400 is fixed) with a mismatched 'Can I Build It? canibuildit.com.au' footer"
   }
  ],
- "queries": "N/A - no SQL touched.",
+ "queries": [],
  "break_it": [
   {
-   "scenario": "Waverley re-extraction gets smeared as suspect because its margin layout reads as two-column.",
-   "what_happens": "Without the allowlist every Waverley review would carry a false suspect line against a sweep-proven extraction.",
+   "scenario": "A future developer adds a new product to PostResultEmailStrip's callers (a 4th interest_type) without adding it to the server's INTEREST_TYPES enum -- the exact mistake that caused this bug.",
+   "what_happens": "Every submission for that product silently 400s while the client shows 'Thanks — we'll be in touch' (deliberate UX, see above) -- the lead is lost and nobody notices, because success is always shown regardless of the real HTTP status.",
    "mitigated": true,
-   "how": "PREFLIGHT_TWO_COL_VERIFIED exemption, gated on full-sweep evidence; verified live (two_column_fail False for the Waverley PDF).",
-   "repro": "preflight_layout(waverley_pdf, 'waverley')"
+   "how": "Not structurally preventable without changing the deliberate client UX (out of scope, would break tested behaviour) -- but the fix here demonstrates the failure mode explicitly (lead-abuse.test.ts already has a live 'rejects unknown interest_type with 400' test) so the pattern is documented and a future PR review can catch a new caller whose product string isn't in the enum. The comment added at INTEREST_TYPES' first use in this PR names this exact class of bug for the next person extending it.",
+   "repro": "add a 4th PostResultEmailStrip call site with a product value not in INTEREST_TYPES, submit via the UI, observe the UI says success while the network tab shows 400 -- reproduces the exact bug this PR fixes for a 4th time"
   },
   {
-   "scenario": "A corrupt PDF makes pdfplumber raise inside the preflight.",
-   "what_happens": "Preflight prints a skip line and returns {}; extraction and all existing gates behave exactly as before.",
+   "scenario": "The per-product from/replyTo/footer branch only checks interest_type === 'intelligence-brief'; a typo or new value silently falls to the else branch (Can I Build It brand).",
+   "what_happens": "A genuinely new PlotDetect-brand (not canibuildit-brand) product added later would silently get the wrong sender/footer instead of erroring -- a branding bug, not a data-loss bug (email still sends and lead still stores).",
    "mitigated": true,
-   "how": "Whole function wrapped; suspect_reason treats missing preflight as clean.",
-   "repro": "point preflight_layout at a non-PDF file"
+   "how": "Lower severity than the original bug (cosmetic, not silent data loss) and consistent with how buildEmailContent's own switch/default already works in this file. Two regression tests lock the current behaviour for both branches (intelligence-brief brand AND the unchanged canibuildit brand for granny-flat), so any future change to this branch is caught by CI.",
+   "repro": "pytest -- N/A (frontend); npx jest __tests__/api/canibuildit/lead-abuse.test.ts -- both brand tests must stay green"
   },
   {
-   "scenario": "Preflight adds a full pdfplumber pass per chapter and slows the cron.",
-   "what_happens": "Seconds per chapter on the same file the extractor opens anyway.",
+   "scenario": "PostResultEmailStrip's client-side 'always show success' behaviour (untouched by this PR) could mask a FUTURE regression the same way it masked this one.",
+   "what_happens": "Any server-side failure on this endpoint -- a new validation rule, a Supabase outage, a Resend key rotation -- would again show 'Thanks' to every user while silently losing their email, with no client-visible signal.",
+   "mitigated": false,
+   "how": "Deliberately NOT changed in this PR -- it is tested, intentional design (PostResultEmailStrip.test.tsx: 'Silent failure — never block the UX') shared by 3 callers, and changing it is a UX/product decision outside this bugfix's scope, not something to change unilaterally.",
+   "repro": "n/a -- documented as a known, accepted tradeoff, not something this PR claims to fix"
+  },
+  {
+   "scenario": "Before this fix, the canibuildit_leads insert (unchanged code, line 177) was never reached for intelligence-brief submissions -- Zod validation 400'd before execution ever got there, so the insert's own correctness was never in question, only its reachability.",
+   "what_happens": "Reachability, not query logic, was the defect -- a perfectly correct insert that silently never ran for this one interest_type, so no leads with interest_type='intelligence-brief' exist in canibuildit_leads from before this fix.",
    "mitigated": true,
-   "how": "Single pass, no OCR/network; acceptable against multi-minute extractions.",
-   "repro": "time a --review run before/after"
+   "how": "The new happy-path test ('accepts interest_type intelligence-brief and returns ok:true') exercises the full route including this insert with the mocked Supabase client, confirming the call now reaches and passes through the existing insert path unchanged.",
+   "repro": "npx jest __tests__/api/canibuildit/lead-abuse.test.ts -t 'accepts interest_type'"
   }
  ],
  "post_merge": {
-  "db_reset": "Not required.",
+  "db_reset": "Not required -- no schema change, only a Zod enum extension. canibuildit_leads already has the columns this write needs.",
   "secrets": "None.",
   "other_repo": "None.",
-  "manual_verify": "Yes - next --review run prints the Preflight line per chapter and flags two-column/scanned chapters in the SUSPECT summary."
- },
- "addendum_repealed_guard": "Stacked commit adds the repealed-source hard reject: detect_repealed_stamp (pure, line-anchored /^Repealed by/i over front matter) wired into preflight_layout (repealed_stamp key) and extract_chapter, which REFUSES the chapter before extraction (needs_extraction stays TRUE). Origin: 20/23 Woollahra chapters extracted from repeal-stamped archives (2026-07-29 re-source). 6 pure tests: footer variant, terse WDCP2015 variant, case/indent, mid-line prose negative, clean front matter, empty/None pages."
+  "manual_verify": "Yes -- after deploy, submit a real address through verify.plotdetect.com.au/reports/intelligence-brief's 'Email me' strip and confirm (a) the network request now returns 200, (b) the confirmation email arrives From: PlotDetect <info@plotdetect.com.au> with a PlotDetect-branded footer linking to verify.plotdetect.com.au, and (c) the lead appears in canibuildit_leads with interest_type='intelligence-brief'."
+ }
 }
