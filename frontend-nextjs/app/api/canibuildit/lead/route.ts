@@ -319,7 +319,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
             Your Site Report for <strong>${address}</strong> is complete — planning controls,
             environmental constraints and development capacity, each figure traced to its source.
             Visit <a href="https://verify.plotdetect.com.au/reports/intelligence-brief" style="color: #0d9488;">verify.plotdetect.com.au/reports/intelligence-brief</a>
-            to view it again or run another address.
+            to run this or another address again.
           </p>`,
       };
     case 'granny-flat':
