@@ -239,7 +239,7 @@ def _derive(strategy: dict, row: dict) -> str | None:
         # "2.3") would be mistaken for a precinct id.
         comps = [top_digits] + [c for c in rest.split("_") if c]
         joined = ".".join(comps)
-        cmap = strategy.get("components_map", {})
+        cmap = strategy.get("components_map") or {}
         match = None
         for key in sorted(cmap, key=len, reverse=True):
             depth = cmap[key]
