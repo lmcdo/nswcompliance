@@ -249,6 +249,12 @@ function escapeHtml(s: string): string {
 }
 
 export function buildEmailContent(product: string, address: string): { subject: string; body: string } {
+  // address is user-submitted (Zod bounds length only, not character set) and
+  // gets interpolated into an HTML email body across every case below —
+  // escape once here rather than per-case. Subjects use the raw `address`
+  // (plain text, never HTML-rendered; escaping there would show literal
+  // "&amp;" etc. for a genuine address containing "&").
+  const safeAddress = escapeHtml(address);
   switch (product) {
     case 'flood':
     case 'flood-truth':
@@ -257,7 +263,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your flood risk result is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your flood risk check for <strong>${address}</strong> is complete.
+            Your flood risk check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/flood" style="color: #0d9488;">canibuildit.com.au/reports/flood</a>
             to run it again or check another address.
           </p>`,
@@ -269,7 +275,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your solar estimate is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your solar yield check for <strong>${address}</strong> is complete.
+            Your solar yield check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/solar-yield" style="color: #0d9488;">canibuildit.com.au/reports/solar-yield</a>
             to run it again or check another address.
           </p>`,
@@ -280,7 +286,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your shadow analysis is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your shadow analysis for <strong>${address}</strong> is complete.
+            Your shadow analysis for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/shadow" style="color: #0d9488;">canibuildit.com.au/reports/shadow</a>
             to run it again or check another address.
           </p>`,
@@ -291,7 +297,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Threat Radar result is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your DA activity check for <strong>${address}</strong> is complete.
+            Your DA activity check for <strong>${safeAddress}</strong> is complete.
             Visit <a href="https://canibuildit.com.au/reports/threat-radar" style="color: #0d9488;">canibuildit.com.au/reports/threat-radar</a>
             to monitor this address or check another.
           </p>`,
@@ -303,7 +309,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your request is in.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             You asked for an introduction to a builder who does dual occupancies,
-            for <strong>${address}</strong>. We'll email you to arrange it.
+            for <strong>${safeAddress}</strong>. We'll email you to arrange it.
           </p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
             Your upzoning result stays available — run it again any time at
@@ -325,8 +331,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
             counts toward that. We'll email you here when it's ready.
           </p>`,
       };
-    case 'intelligence-brief': {
-      const safeAddress = escapeHtml(address);
+    case 'intelligence-brief':
       return {
         subject: `Your Site Report — ${address}`,
         body: `
@@ -338,7 +343,6 @@ export function buildEmailContent(product: string, address: string): { subject: 
             to run this or another address again.
           </p>`,
       };
-    }
     case 'granny-flat':
     default:
       return {
@@ -346,7 +350,7 @@ export function buildEmailContent(product: string, address: string): { subject: 
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">We're on it.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your granny flat check for <strong>${address}</strong> is running.
+            Your granny flat check for <strong>${safeAddress}</strong> is running.
             We're pulling live aerial imagery, running satellite structure detection,
             and cross-referencing NSW Planning Portal rules — this takes 1–3 minutes.
           </p>

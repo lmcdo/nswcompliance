@@ -137,6 +137,29 @@ describe('buildEmailContent', () => {
     });
   });
 
+  describe('address HTML-escaping — all products that interpolate address into the body', () => {
+    // Regression: this pattern was unescaped in all 8 cases originally; fixed
+    // for intelligence-brief first (see above), then hoisted + applied to the
+    // rest. lga-request is deliberately excluded — its body never references
+    // address at all, so there's nothing to escape there.
+    const MALICIOUS = '14 Street</strong><a href="https://evil.example">click</a><strong>';
+    const PRODUCTS_WITH_ADDRESS_IN_BODY = [
+      'flood', 'solar-yield', 'shadow', 'threat-radar', 'dual-occ-referral', 'granny-flat',
+    ];
+
+    it.each(PRODUCTS_WITH_ADDRESS_IN_BODY)('%s: escapes an attacker-controlled address in the body', (product) => {
+      const { body } = buildEmailContent(product, MALICIOUS);
+      expect(body).not.toContain('<a href="https://evil.example">');
+      expect(body).toContain('&lt;a href=&quot;https://evil.example&quot;&gt;');
+    });
+
+    it('lga-request never interpolates address into the body at all (nothing to escape)', () => {
+      const { body } = buildEmailContent('lga-request', MALICIOUS);
+      expect(body).not.toContain(MALICIOUS);
+      expect(body).not.toContain('evil.example');
+    });
+  });
+
   describe('default fallback', () => {
     it('unknown product falls back to granny-flat copy', () => {
       const unknown = buildEmailContent('unknown-product', ADDR);
