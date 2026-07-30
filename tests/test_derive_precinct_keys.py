@@ -63,6 +63,45 @@ def test_page_range():
     assert derive(s, row(pdf_page=None)) is None
 
 
+PARRA_MAP = {"7": 3, "8": 3, "9.10": 3, "9": 1}
+def _parra(ref):
+    s = {"type": "ref_components", "components_map": PARRA_MAP, "max_top_digits": 1}
+    return derive(s, row(ref_number=ref))
+
+
+def test_ref_components_mixed_depth_per_part():
+    assert _parra("...__7_10_1_3") == "7.10.1"      # Part 7: depth 3
+    assert _parra("...__8_2_6_1") == "8.2.6"          # Part 8: depth 3
+    assert _parra("...__9_3_5_2") == "9"              # Part 9 default: depth 1
+    assert _parra("...__9") == "9"
+    assert _parra("...__9_10_2_3") == "9.10.2"        # Part 9's 9.10 sub-group: depth 3
+    assert _parra("...__9_10") == "9"                 # not enough components for 9.10's depth -> falls back to "9"
+    assert _parra("...__9B_1_1_controls") == "9B"      # letter-suffixed part
+
+
+def test_ref_components_rejects_bare_chunk_counters():
+    """A raw index like '387' must NOT be misread as a real (wrong) precinct number —
+    this is the exact failure mode that would silently mis-key a row."""
+    assert _parra("...__387") is None
+    assert _parra("...__45") is None
+
+
+def test_ref_components_rejects_non_precinct_parts():
+    """Parts outside the map (e.g. Parramatta Part 3 'Residential Development' — a
+    general topic chapter, not a precinct) must derive None, not the raw heading
+    number. Regression guard: an earlier version silently returned the untrimmed
+    value here, which would have newly mis-keyed ~142 deliberately-unkeyed rows."""
+    assert _parra("...__3") is None
+    assert _parra("...__3_2_cont") is None
+    assert _parra("...__2_3") is None
+    assert _parra("...__1_8") is None
+
+
+def test_ref_components_no_match_returns_none():
+    assert _parra("...__R4__high_density_residential_11") is None
+    assert _parra("...__1__bedroom_10_20_of") is None
+
+
 def test_text_heading_full_and_trimmed():
     s_full = {"type": "text_heading"}
     assert derive(s_full, row(provision_text="# 2.1.1 York Street Special Character Area")) == "2.1.1"

@@ -166,6 +166,23 @@ RULES: list[dict] = [
         "validate": True,
         "fingerprint": {"max_page": 265, "min_coverage": 0.95},
     },
+    # Parramatta (532 rows, hand-keyed by a parallel session 2026-07-29 with no
+    # reproducible rule — audit_precinct_keying_coverage.py flags it EXPOSED). Its
+    # refs carry the precinct number at mixed depth per top-level part; ref_components
+    # reproduces 525/532 exactly (validated against every live keyed row), the other
+    # 7 are chunk-counter/zone-prefixed refs with no derivable structure and correctly
+    # return None (matches the other session's note of ~8 page-evidence exceptions).
+    {
+        "name": "parramatta_ref_components",
+        "council": "parramatta",
+        "where": "document_id = 'Parramatta_DCP_2023_(Amendment_4)__parramatta_dcp_2023_full'",
+        "strategy": {
+            "type": "ref_components",
+            "components_map": {"7": 3, "8": 3, "9.10": 3, "9": 1},
+            "max_top_digits": 1,
+        },
+        "validate": True,
+    },
 ]
 
 
@@ -196,6 +213,42 @@ def _derive(strategy: dict, row: dict) -> str | None:
             if lo <= p <= hi:
                 return pid
         return None
+    if t == "ref_components":
+        # Content anchor for refs that carry a dotted/underscored precinct number in
+        # their FINAL "__"-delimited segment, at MIXED depth per top-level part
+        # (Parramatta: Part 7/8 = 3 components; Part 9 = 1, except its 9.10 sub-group
+        # = 3). `components_map` picks the depth by the longest matching dotted prefix
+        # — but only if the ref actually HAS that many components (a bare "9_10"
+        # section-overview heading has 2, not 3, so it correctly falls back to the
+        # shorter "9" prefix instead of deriving the invalid id "9.10").
+        # `max_top_digits` rejects bare chunk-counter refs (e.g. tail "387") that
+        # would otherwise be silently misread as a real (wrong) precinct number.
+        tail = (row.get("ref_number") or "").split("__")[-1]
+        m = re.match(r"([0-9]+[A-Z]?)((?:_[0-9]+)*)", tail)
+        if not m:
+            return None
+        head, rest = m.group(1), m.group(2)
+        dm = re.match(r"([0-9]+)([A-Z]?)", head)
+        top_digits, letter = dm.group(1), dm.group(2)
+        if len(top_digits) > strategy.get("max_top_digits", 1):
+            return None
+        # The map ALSO decides eligibility, not just depth: a top-level part with no
+        # matching key (e.g. Parramatta Part 3 "Residential Development" — a general
+        # topic chapter, not a precinct) must derive None, never fall back to the raw
+        # untrimmed number — otherwise a topic chapter's own heading number ("3",
+        # "2.3") would be mistaken for a precinct id.
+        comps = [top_digits] + [c for c in rest.split("_") if c]
+        joined = ".".join(comps)
+        cmap = strategy.get("components_map", {})
+        match = None
+        for key in sorted(cmap, key=len, reverse=True):
+            depth = cmap[key]
+            if (joined == key or joined.startswith(key + ".")) and len(comps) >= depth:
+                match = depth
+                break
+        if match is None:
+            return None
+        return ".".join(comps[:match]) + letter
     if t == "text_heading":
         # Content anchor: the precinct number in the provision's own leading markdown
         # heading (e.g. "# 5.1.1.4 ..."). Travels WITH the text, so it survives
