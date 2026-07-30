@@ -126,6 +126,15 @@ describe('buildEmailContent', () => {
       expect(body).not.toMatch(/canibuildit\.com\.au/);
       expect(body).toContain(ADDR);
     });
+
+    it('HTML-escapes an attacker-controlled address in the body (not the subject)', () => {
+      const malicious = '14 Street</strong><a href="https://evil.example">click</a><strong>';
+      const { subject, body } = buildEmailContent('intelligence-brief', malicious);
+      expect(body).not.toContain('<a href="https://evil.example">');
+      expect(body).toContain('&lt;a href=&quot;https://evil.example&quot;&gt;');
+      // Subject is plain text (never HTML-rendered) — left unescaped, matches every other product.
+      expect(subject).toContain(malicious);
+    });
   });
 
   describe('default fallback', () => {

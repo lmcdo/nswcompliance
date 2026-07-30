@@ -233,6 +233,21 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+// address is user-submitted (Zod only bounds its length, not its character set)
+// and gets interpolated into an HTML email body — escape it before use in any
+// NEW case here. The 7 pre-existing cases below share this same unescaped
+// interpolation; that's a pre-existing pattern, not introduced by this PR, and
+// out of scope for a lead-capture-400 bugfix — flagged for a follow-up, not
+// silently left or silently expanded into here.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildEmailContent(product: string, address: string): { subject: string; body: string } {
   switch (product) {
     case 'flood':
@@ -310,18 +325,20 @@ export function buildEmailContent(product: string, address: string): { subject: 
             counts toward that. We'll email you here when it's ready.
           </p>`,
       };
-    case 'intelligence-brief':
+    case 'intelligence-brief': {
+      const safeAddress = escapeHtml(address);
       return {
         subject: `Your Site Report — ${address}`,
         body: `
           <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Site Report is ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your Site Report for <strong>${address}</strong> is complete — planning controls,
+            Your Site Report for <strong>${safeAddress}</strong> is complete — planning controls,
             environmental constraints and development capacity, each figure traced to its source.
             Visit <a href="https://verify.plotdetect.com.au/reports/intelligence-brief" style="color: #0d9488;">verify.plotdetect.com.au/reports/intelligence-brief</a>
             to run this or another address again.
           </p>`,
       };
+    }
     case 'granny-flat':
     default:
       return {
