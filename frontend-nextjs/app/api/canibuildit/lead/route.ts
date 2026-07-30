@@ -61,7 +61,7 @@ const leadRateLimiter = redis
 // INPUT SCHEMA
 // ============================================================================
 
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'shadow', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief'] as const;
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -192,10 +192,28 @@ export async function POST(req: NextRequest) {
   // --- 7. Send confirmation email ---
   const addressLabel = cleanAddress ?? 'your property';
   const { subject, body: emailBody } = buildEmailContent(interest_type ?? 'granny-flat', addressLabel);
+  // Sender brand follows the product, not one hardcoded consumer identity —
+  // intelligence-brief is the PlotDetect (verify./brief. subdomain) product,
+  // distinct from the canibuildit.com.au consumer tools every other
+  // interest_type here belongs to.
+  const { fromLine, replyTo, footerLabel, footerUrl } =
+    interest_type === 'intelligence-brief'
+      ? {
+          fromLine: 'PlotDetect <info@plotdetect.com.au>',
+          replyTo: undefined,
+          footerLabel: 'PlotDetect',
+          footerUrl: 'https://verify.plotdetect.com.au',
+        }
+      : {
+          fromLine: 'Can I Build It <info@plotdetect.com.au>',
+          replyTo: 'hello@canibuildit.com.au',
+          footerLabel: 'Can I Build It?',
+          footerUrl: 'https://canibuildit.com.au',
+        };
   try {
     await resend.emails.send({
-      from: 'Can I Build It <info@plotdetect.com.au>',
-      replyTo: 'hello@canibuildit.com.au',
+      from: fromLine,
+      ...(replyTo ? { replyTo } : {}),
       to: [cleanEmail],
       subject,
       html: `
@@ -203,7 +221,7 @@ export async function POST(req: NextRequest) {
           ${emailBody}
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">
-            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            ${footerLabel} &middot; <a href="${footerUrl}" style="color: #0d9488;">${footerUrl.replace('https://', '')}</a>
           </p>
         </div>
       `,
@@ -290,6 +308,18 @@ export function buildEmailContent(product: string, address: string): { subject: 
             You asked for your council's development control plan numbers to
             be loaded. Councils are added in order of demand — this request
             counts toward that. We'll email you here when it's ready.
+          </p>`,
+      };
+    case 'intelligence-brief':
+      return {
+        subject: `Your Site Report — ${address}`,
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Site Report is ready.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your Site Report for <strong>${address}</strong> is complete — planning controls,
+            environmental constraints and development capacity, each figure traced to its source.
+            Visit <a href="https://verify.plotdetect.com.au/reports/intelligence-brief" style="color: #0d9488;">verify.plotdetect.com.au/reports/intelligence-brief</a>
+            to view it again or run another address.
           </p>`,
       };
     case 'granny-flat':

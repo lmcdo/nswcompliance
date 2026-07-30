@@ -113,6 +113,21 @@ describe('buildEmailContent', () => {
     });
   });
 
+  describe('intelligence-brief', () => {
+    it('returns Site Report subject with address', () => {
+      const { subject } = buildEmailContent('intelligence-brief', ADDR);
+      expect(subject).toMatch(/Site Report/i);
+      expect(subject).toContain(ADDR);
+    });
+
+    it('body links to the verify.plotdetect.com.au domain (not canibuildit.com.au)', () => {
+      const { body } = buildEmailContent('intelligence-brief', ADDR);
+      expect(body).toMatch(/verify\.plotdetect\.com\.au/);
+      expect(body).not.toMatch(/canibuildit\.com\.au/);
+      expect(body).toContain(ADDR);
+    });
+  });
+
   describe('default fallback', () => {
     it('unknown product falls back to granny-flat copy', () => {
       const unknown = buildEmailContent('unknown-product', ADDR);
