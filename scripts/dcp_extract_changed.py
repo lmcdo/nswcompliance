@@ -696,7 +696,12 @@ def _clean_page_text(text: str, council: str | None) -> str:
 # per-council boundary_x). Added 2026-07-29 after the semantic sweep showed
 # two-column reading-order interleave dropped whole sections (CoS 5.2.4 table,
 # Ashfield ch.D setback legends, Marrickville part-2/9).
-GEOMETRIC_COLUMN_COUNCILS = {"ashfield", "marrickville", "city_of_sydney"}
+# hornsby added 2026-07-30: preflight SUSPECT triage confirmed genuine
+# interleave — a "Note:" sidebar column mixed mid-sentence into the main body
+# text on multiple pages (part-1-general pp11/21), same failure class as the
+# councils above; no header-pair anchor exists so the geometric reader (not
+# COUNCIL_COLUMN_CONFIGS) is the fit.
+GEOMETRIC_COLUMN_COUNCILS = {"ashfield", "marrickville", "city_of_sydney", "hornsby"}
 
 
 def _find_gutter(words: list[dict], page_width: float) -> float | None:
@@ -1800,7 +1805,13 @@ _REPEALED_STAMP = re.compile(r"^\s*repealed\s+by\b", re.IGNORECASE)
 # flag is suppressed (Waverley: margin-note layout, 2026-07-28 sweep = zero
 # missing provisions / zero wrong values). Add a council here only with that
 # level of evidence.
-PREFLIGHT_TWO_COL_VERIFIED = {"waverley"}
+# blacktown + georges_river added 2026-07-30: preflight SUSPECT triage —
+# multiple body pages sampled (part-a-car-parking pp21/31; both georges_river
+# chapters pp16/26) read as clean single-column prose in correct order. The
+# geometric detector false-positives on their heavily indented
+# lettered/numbered sub-item lists (a)/b)/1./2. hanging indents read as a
+# second lateral band). No extraction change needed — flag was noise.
+PREFLIGHT_TWO_COL_VERIFIED = {"waverley", "blacktown", "georges_river"}
 
 
 def detect_two_column_words(word_spans: list[tuple[float, float]], page_width: float) -> bool:
