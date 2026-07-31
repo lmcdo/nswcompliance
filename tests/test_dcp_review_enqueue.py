@@ -30,6 +30,7 @@ def _load_enqueue():
     junk = re.search(r"_JUNK_REF = .+", src).group(0)
     exec(garble, ns)
     exec(junk, ns)
+    exec(_extract_def(src, "_garble_evidence"), ns)
     exec(_extract_def(src, "strip_garbled_header_lines"), ns)
     exec(_extract_def(src, "classify_row_fidelity"), ns)
     exec(_extract_def(src, "enqueue_review_changes"), ns)

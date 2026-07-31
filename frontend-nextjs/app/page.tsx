@@ -7,6 +7,7 @@ import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 /* ------------------------------------------------------------------ */
 /*  Tool card data                                                     */
@@ -113,10 +114,10 @@ const QUESTIONS = [
 /* ------------------------------------------------------------------ */
 
 const STATS = [
-  { value: '47,000+', label: 'Provisions indexed' },
-  { value: '130+', label: 'LGAs covered' },
-  { value: '8', label: 'Risk layers' },
-  { value: '7', label: 'Gov data sources' },
+  { value: COVERAGE_DISPLAY.provisionsTotal, label: 'Provisions indexed' },
+  { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
+  { value: COVERAGE_DISPLAY.riskLayers, label: 'Risk layers' },
+  { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -166,10 +167,10 @@ const CLIMATE_HAZARDS = [
 
 const PERSONAS = [
   {
-    title: 'Homebuyers',
-    description: 'Check hazards before you bid. Free instant checks, detailed reports for shortlisted properties.',
-    href: '/reports',
-    cta: 'Run a free check',
+    title: 'Homeowners & buyers',
+    description: 'Check hazards before you bid, and what you can build before you plan. Free instant checks; detailed reports for shortlisted properties.',
+    href: '/for/homebuyers',
+    cta: 'See homeowner tools',
   },
   {
     title: 'Conveyancers',
@@ -375,12 +376,12 @@ export default function HomePage() {
                 </ul>
               </div>
 
-              {/* 28 LGA tier */}
+              {/* Numeric-controls tier — council count from lib/coverage.ts */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6">
                 <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 mb-3">
                   Numeric controls
                 </span>
-                <h3 className="font-semibold text-slate-900 mb-3">28 NSW councils</h3>
+                <h3 className="font-semibold text-slate-900 mb-3">{COVERAGE_DISPLAY.dcpNumericCouncils} NSW councils</h3>
                 <ul className="space-y-1.5 text-sm text-slate-600">
                   <li>Setbacks, parking rates, landscaping standards</li>
                   <li>Clause citations from source DCP</li>
@@ -516,7 +517,7 @@ export default function HomePage() {
                 Track DA patterns and approval rates
               </h3>
               <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                DA analytics across 128 NSW councils — approval rates, processing times,
+                DA analytics across {COVERAGE_DISPLAY.totalNswCouncils} NSW councils — approval rates, processing times,
                 common refusal reasons, and trend analysis.
               </p>
               <span className="inline-flex items-center gap-1 text-sm text-violet-600 font-medium group-hover:text-violet-500 transition-colors">

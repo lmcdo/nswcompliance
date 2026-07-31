@@ -153,7 +153,8 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT standard_type, numeric_value, applicable_zones, conditionality, ref_number
+            SELECT standard_type, numeric_value, applicable_zones, conditionality, ref_number,
+                   stale_since, stale_reason
             FROM cdc_eligibility_standards
             WHERE code_name = %s AND manual_verified = TRUE AND is_active = TRUE
             """,
@@ -170,7 +171,8 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         return None
 
     rows = {r[0]: {"numeric_value": r[1], "applicable_zones": r[2],
-                   "conditionality": r[3], "ref_number": r[4]}
+                   "conditionality": r[3], "ref_number": r[4],
+                   "stale_since": r[5], "stale_reason": r[6]}
             for r in fetched}
     if len(rows) != len(fetched):
         # Two active rows for one standard type (index dropped or bypassed):
@@ -185,12 +187,24 @@ def load_cdc_standards(conn, code_name: str = "housing_code") -> Optional[dict]:
         )
         return None
 
+    # Auto-stale (W3): a version change of the source instrument marks rows
+    # stale — values still serve, but consumers surface a notice.
+    # The date and reason must come from the SAME row (Sol #839: independent
+    # max()/next() could pair amendment A's reason with amendment B's date).
+    _stale = sorted(
+        ((v.get("stale_since"), v.get("stale_reason")) for v in rows.values()
+         if v.get("stale_since")),
+        key=lambda x: x[0],
+    )
+    _latest = _stale[-1] if _stale else (None, None)
     candidate = {
         "eligible_zones": rows["eligible_zones"]["applicable_zones"],  # noqa: bracket-access — key guaranteed by guard above
         "min_lot_size": rows["min_lot_size"]["numeric_value"],  # noqa: bracket-access — key guaranteed by guard above
         "min_lot_conditionality": rows["min_lot_size"]["conditionality"],  # noqa: bracket-access — key guaranteed by guard above
         "acid_sulfate_max_class": None,
         "refs": {t: v["ref_number"] for t, v in rows.items()},  # noqa: bracket-access — key guaranteed by guard above
+        "stale_since": _latest[0],
+        "stale_reason": _latest[1],
     }
     ass = rows.get("acid_sulfate_max_class")
     if ass is not None:
@@ -224,6 +238,17 @@ def run_cdc_screen(standards: dict, inputs: CdcScreenInputs) -> CdcScreenResult:
     checks: list[str] = []
     unchecked: list[str] = []
     refs = standards.get("refs") or {}
+
+    # Auto-stale notice (W3): last-reviewed values keep serving, with the
+    # change stated plainly — never a silent stale figure.
+    if standards.get("stale_since"):
+        _since = standards.get("stale_since")
+        _date = _since.date().isoformat() if hasattr(_since, "date") else str(_since)
+        warnings.append(
+            f"Note: {standards.get('stale_reason') or 'the source instrument was amended'} "
+            f"(detected {_date}) after these standards were last reviewed. Figures shown "
+            f"reflect the last review; a re-check against the amended instrument is pending."
+        )
 
     def _cite(standard_type: str) -> str:
         ref = refs.get(standard_type)

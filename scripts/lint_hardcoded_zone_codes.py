@@ -32,6 +32,7 @@ Suppress per-line with:  # noqa: zone-codes  /  // noqa: zone-codes
 Exit 0 = clean, exit 1 = violations found.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -152,6 +153,19 @@ def main() -> int:
             for v in all_violations:
                 print(v)
             return 1
+        return 0
+
+    # A merge commit is not authoring code. `git diff --cached` on a merge stages
+    # everything arriving from the other branch, so without this the check reports
+    # months of pre-existing code (which predates this guard, or was already gated
+    # on its own branch) as brand-new violations and blocks every merge. Found on
+    # this guard's first contact with a real merge.
+    git_dir = subprocess.run(
+        ["git", "rev-parse", "--git-dir"], capture_output=True, text=True
+    ).stdout.strip()
+    if git_dir and os.path.exists(os.path.join(git_dir, "MERGE_HEAD")):
+        print("Zone-code lint: merge commit — skipped "
+              "(incoming code is gated on its own branch, not authored here).")
         return 0
 
     diff_lines = get_staged_diff_lines()

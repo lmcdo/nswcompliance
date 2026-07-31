@@ -4,6 +4,7 @@ import { Clock, FileText, Search, CheckSquare, ArrowRight, Layers, BarChart3 } f
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'For Town Planners & Planning Consultants — PlotDetect',
@@ -38,7 +39,7 @@ const TIME_SAVINGS = [
     task: 'DCP controls extraction',
     before: '30–60 min',
     after: '10 seconds',
-    description: 'Setbacks, parking rates, landscaping, site coverage — numeric fields with clause citations. 29 LGAs, 999+ rows. Full structured provisions for 7 councils.',
+    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with clause citations. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows. Full structured provisions for ${COVERAGE_DISPLAY.dcpFullCouncils} councils.`,
   },
   {
     task: 'SEPP applicability check',
@@ -56,7 +57,7 @@ const TIME_SAVINGS = [
     task: 'Flood depth + bushfire BAL',
     before: '20–30 min (if available)',
     after: 'Instant',
-    description: 'Modelled flood depth at ARI return periods (71 LGAs). Bush Fire Prone Land category and estimated BAL band.',
+    description: `Modelled flood depth at ARI return periods (${COVERAGE_DISPLAY.floodLgas} LGAs). Bush Fire Prone Land category and estimated BAL band.`,
   },
 ];
 

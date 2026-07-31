@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'About — PlotDetect',
@@ -60,7 +61,7 @@ export default function AboutPage() {
             <li>European Space Agency (Sentinel-2 satellite imagery)</li>
             <li>NSW Rural Fire Service (Bush Fire Prone Land dataset)</li>
             <li>NARCliM 2.0 (regional climate model projections)</li>
-            <li>NSW ePlanning Portal (DA and CDC records from 128 councils)</li>
+            <li>NSW ePlanning Portal (DA and CDC records from {COVERAGE_DISPLAY.totalNswCouncils} councils)</li>
             <li>Copernicus EMS (emergency flood mapping)</li>
           </ul>
 

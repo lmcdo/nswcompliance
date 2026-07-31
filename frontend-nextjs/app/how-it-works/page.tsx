@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { HowToJsonLd } from '@/lib/json-ld';
+import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'How It Works — PlotDetect',
@@ -94,7 +95,7 @@ const TOOLS = [
     href: '/reports/threat-radar',
     sources: [
       { name: 'NSW ePlanning Portal (OnlineDA + OnlineCDC)', use: 'All DA and CDC applications lodged across NSW' },
-      { name: 'Automated daily ingestion', use: 'Applications from 128 NSW councils indexed and geocoded daily' },
+      { name: 'Automated daily ingestion', use: `Applications from ${COVERAGE_DISPLAY.totalNswCouncils} NSW councils indexed and geocoded daily` },
     ],
     cadence: 'DA data is refreshed daily from the NSW ePlanning Portal. There is typically a 24–48 hour lag from lodgement to appearance in results.',
     limitations: 'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.',
@@ -114,12 +115,12 @@ const TOOLS = [
     href: '/reports/conveyancing',
     sources: [
       { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, FSR, height, heritage, environmental overlays, LEP provisions' },
-      { name: 'Council DCP provisions', use: 'Setback controls, parking rates, and landscaping standards for 28 LGAs' },
+      { name: 'Council DCP provisions', use: `Setback controls, parking rates, and landscaping standards for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs` },
       { name: 'NSW Rural Fire Service', use: 'Bushfire-prone land status' },
       { name: 'NSW Government spatial overlays', use: 'Flood control lot status from LEP and council flood studies' },
     ],
     cadence: 'Planning Portal data is queried live. DCP provisions are updated when new LGAs are onboarded or instruments are amended.',
-    limitations: 'DCP setback controls are available for 28 LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.',
+    limitations: `DCP setback controls are available for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.`,
   },
   {
     name: 'Climate Risk Score',
@@ -243,6 +244,34 @@ export default function HowItWorksPage() {
               <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Satellite analysis uses published spectral indices with fixed thresholds, not trained classifiers.</li>
               <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Where multiple data sources cover the same property, all are shown independently — we do not blend or average conflicting values.</li>
             </ul>
+          </section>
+
+          {/* --- Where location-specific rules come from --- */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Where location-specific (precinct) rules come from</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              Some council DCP chapters apply only inside mapped areas — town centres, beachfront
+              character areas, named sites. The boundary of each area is defined by a map figure in
+              the adopted DCP document itself, and that figure is the authority. Council online
+              mapping services publish machine-readable copies of those figures, which councils
+              label as a guide only.
+            </p>
+            <p className="text-sm text-gray-600 mb-3">
+              Before a boundary is used to match addresses, it goes through a fixed set of checks:
+            </p>
+            <ul className="text-sm text-gray-600 space-y-2 mb-3">
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Geometry checks — the polygon must be valid, in the expected coordinate system, with area and location consistent with the adopted figure.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Point checks against the adopted figure — real addresses geocoded through the NSW Planning Portal, chosen from inside and outside the mapped area, must match or not match exactly as the DCP figure shows. Negative tests (addresses that must return no match) are part of the set.</li>
+              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Provenance recorded — each stored boundary records the DCP map figure it copies, the geometry source, and the date it was checked.</li>
+            </ul>
+            <p className="text-sm text-gray-600 mb-3">
+              Where an area&apos;s boundary has not passed these checks, its location-specific rules are
+              excluded from results and the report states that site-specific controls may exist for
+              the property — a missing boundary is disclosed, never silently filled in. Where mapped
+              areas overlap, the rules for every applicable area are returned. The per-property
+              legal record of which controls apply remains a Section 10.7 planning certificate
+              issued by the council.
+            </p>
           </section>
 
           {/* --- What this is not --- */}
