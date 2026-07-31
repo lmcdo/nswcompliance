@@ -426,6 +426,7 @@ scripts/
 !scripts/populate_ku_ring_gai_registry.py
 !scripts/survey_dcp.py
 !scripts/check_registry.py
+!scripts/validate_zone_code_validity.py
 !scripts/requirements-monitor.txt
 !scripts/requirements-stats.txt
 !scripts/secondary_dwelling_stats.py
