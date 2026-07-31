@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2026-07-15
-**Session:** latent-scope analysis lane — corpus QA
+**Last Updated:** 2026-08-01
+**Session:** DQ-30 zone-taxonomy-consolidation PR3 close-out; DQ-33 logged
 
 ---
 
@@ -11,6 +11,10 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
+| DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
+| DQ-31: housing-sepp/eligibility route never migrated to the Python single-source-of-truth service — documented over-eligibility bug still live | ⏳ Tracked 2026-07-31, not started | P1 |
+| DQ-30: Applicability tagger (v2_applicable_zones/dev_types) — config/tagger drift + codebase-wide zone-code hardcoding. PR1/PR2/PR3/PR4 done, PR5 retag ran (0% drift verified) | ✅ Fixed 2026-08-01 (worktree fix/zone-taxonomy-consolidation, not yet merged) | P1 — validity, not traffic |
 | DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
@@ -39,6 +43,314 @@
 | DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
 | DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
 | DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-33: Case-sensitive document-naming mismatch causes silent ALL/ALL applicability fallthrough
+
+**Status:** 🔍 Logged 2026-08-01, not sized — found while finishing DQ-30 PR3. Scope
+deliberately not investigated further yet; this entry exists so it isn't lost, not as a
+completed diagnosis.
+**Found:** 2026-08-01
+
+**Problem (as currently understood):** the DCP config lookups in
+`enrichment/extractors/applicability_tagger.py` match `document_id` against config part
+keys using plain case-sensitive substring checks (e.g. `_get_leichhardt_config()`:
+`part_pattern in document_id or part_key in doc`, where `part_pattern`/`part_key` come from
+`LEICHHARDT_CONFIG['parts']`'s Title-Case keys like `"Part A"`, `"Part C Section 1"`). Some
+document IDs use an older, verbose naming convention (matching this casing) and others use a
+newer slug-style convention (different case), so the same substring match silently succeeds
+for one naming generation and silently fails for the other — a failed match falls through to
+the unconditional `{'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL']}` default at
+the end of the method, with no error or warning.
+
+**Confirmed so far:** 18+ Leichhardt rows exhibit this ALL/ALL fallthrough due to the naming
+mismatch. **Not yet checked:** whether the same old-verbose/new-slug split exists for the
+other 6 configured councils (Ashfield, Marrickville, Waverley, Woollahra, City of Sydney,
+Ku-ring-gai) — each has its own `_get_<council>_config()` method with its own matching logic,
+so the exposure needs confirming per-council, not assumed from the Leichhardt case.
+
+**Relationship to DQ-30:** a distinct defect class — DQ-30 is wrong/stale *zone-code values*
+(legacy vs current NSW zone taxonomy); this is a *document-matching* failure that produces the
+same symptom (ALL/ALL, ungated applicability) via a completely different mechanism (naming
+convention drift, not zone taxonomy drift). Found as a side effect of DQ-30 PR3 verification,
+deliberately not folded into that fix.
+
+**Fix:** not started, not sized. Needs: (1) confirming the exact old-verbose vs new-slug
+naming conventions in play and where each originates (extraction pipeline vs onboarding
+script), (2) scoping how many rows/councils are affected before deciding whether to
+case-normalize the match, fix the naming convention at the source, or both.
+
+---
+
+## DQ-32: Capacity engine picks setback/landscaping numbers without checking zone
+
+**Status:** Tracked 2026-07-31, not started — found while checking DQ-30 didn't miss the real engine
+**Found:** 2026-07-31
+
+**Plain version:** `getSetbacks()` in `app/api/capacity/calculate/route.ts` is given the
+property's zone but never uses it in the `dcp_setback_controls` query — it only filters by
+council + dev type. When a council has different numbers for different zones (e.g. Penrith
+`multi_dwelling_housing` landscaping: R1=40%, R3=40%, R4=35%), the query can hand back the
+wrong one. Checked the DB: **168 council/dev-type groups, 560 rows, where this can give a
+wrong number** — not a display bug, a wrong feasibility number shown to a real user.
+
+**Fix:** not started. Needs the query to filter/select by zone against the `condition` text
+column (free text like "zone R4 High Density Residential" — no clean zone column exists),
+designed and tested carefully since it changes what the capacity engine returns.
+
+**Also found (2026-07-31, not investigated further yet):** the scripts that WRITE
+`dcp_setback_controls` in the first place (`scripts/insert_*_parking.py`,
+`insert_*_landscaping.py`, `dcp_extract_changed.py`, `ai_extractor.py`,
+`generate_conveyancing_report.py`, `conveyancing_db.py`, `dcp_preflight.py` — one per
+council onboarding) also hardcode zone-code lists, some with the same retired B1/B2/B4
+codes. Found via `python scripts/lint_hardcoded_zone_codes.py --all` (PR4). Means the
+zone-code problem may go all the way back to how this table's data was written, not just
+how it's queried. Needs its own look — not sized yet.
+
+---
+
+## DQ-31: housing-sepp/eligibility route never migrated to the Python service
+
+**Status:** ⏳ Tracked 2026-07-31, not started — found as a side-effect of DQ-30 PR3, deliberately not folded into it
+**Found:** 2026-07-31
+
+**Problem:** `services/housing_sepp_eligibility.py`'s own docstring states it was written
+specifically to *replace* `frontend-nextjs/app/api/housing-sepp/eligibility/route.ts`'s
+logic — computing `inLMRArea` and TOD catchment **authoritatively** from live gate/polygon
+data, because the frontend route "defaulted [inLMRArea] to true — a silent over-eligibility
+bug" and "used a mock hardcoded station list + Haversine" instead of the real TOD catchment.
+The docstring frames this as done ("the two surfaces can no longer disagree"), but the
+migration never actually happened: the TS route still runs its own independent eligibility
+logic and does not call the Python service. `app/api/upzoning/route.ts` proxies to
+`/pipeline/upzoning` (which internally calls `housing_sepp_eligibility.evaluate_eligibility()`)
+for a *different* frontend surface (the upzoning-check tool, input = bare address); there is
+no equivalent live endpoint for `housing-sepp/eligibility`'s exact request shape
+(`{address, zone, lotSize, developmentType, lga?, coordinates?}` — pre-resolved inputs).
+
+**Why not a drop-in proxy fix:** `evaluate_eligibility()` only returns the eligibility gate
+result (list of `FormEligibility`) — it does not replicate the numeric-standards DB fetch the
+TS route also performs. Migrating this properly means either a new backend endpoint that
+wraps both, or a more surgical partial fix — not a mechanical swap like `/api/upzoning` was.
+Live-route regression risk: `components/compliance/HousingSEPPEligibilityCard.tsx` (rendered
+on the assessment page) depends on the current response shape.
+
+**Fix:** not started. Scope out the new/adapted endpoint before touching the route.
+
+---
+
+## DQ-30: Applicability tagger (v2_applicable_zones / v2_applicable_dev_types) drift + config gaps
+
+**Status:** ✅ Fixed 2026-08-01 — PR1 (shared zone taxonomy source), PR2 (DCP tagger
+config/tagger-drift fixes), PR3 (frontend/Python consolidation), and PR4 (CI guard) all
+complete; PR5 (DB retag) has run — drift re-check shows 0% disagreement between the fixed
+tagger and the stored DB values for the 7 configured councils. Work is on worktree/branch
+`fix/zone-taxonomy-consolidation` (`.claude/worktrees/zone-taxonomy`), not yet merged.
+**Found:** 2026-07-31
+**Priority:** P1 — driven by whether the data is **valid and legitimate**, not by whether
+a given council is currently receiving traffic. Live/staged status is explicitly NOT
+the triage signal for this issue (see `feedback-prioritize-validity-not-traffic.md`).
+Do not close or deprioritize this on "council X isn't live yet" grounds.
+
+**Problem (as originally understood):**
+`enrichment/extractors/applicability_tagger.py` (`ApplicabilityTagger`) writes
+`v2_applicable_zones` / `v2_applicable_dev_types`, consumed as a **hard filter** (not
+just display) by `frontend-nextjs/app/api/provisions/for-property/route.ts` for
+`layer='use_specific'` queries, plus relevance sorting for dev_types. Two distinct defect
+classes found first:
+
+1. **Stale pre-fix rows never retagged.** PR #341 (2026-05-22) added `_get_config_driven()`
+   so councils with a structural config (Waverley, Woollahra, City of Sydney, Ku-ring-gai)
+   stop guessing zones from free text — free-text regex was matching DCP chapter/topic
+   labels as zone codes (e.g. Waverley Part B7 = "Transport" chapter, regex read "B7" as
+   zone B7). `run_applicability_tagging()` only retags rows where `v2_applicable_zones IS
+   NULL` (`enrichment/pipeline.py:671`), so rows tagged before #341 were never revisited.
+   Re-running the (then-current) tagger against every already-tagged row and diffing against
+   the stored value:
+
+   | Council | Tagged rows | Disagree with current code | % |
+   |---|---|---|---|
+   | Waverley | 2,854 | 1,493 | 52.3% |
+   | Ku-ring-gai | 2,524 | 1,011 | 40.1% |
+   | City of Sydney | 742 | 269 | 36.3% |
+   | Woollahra | 6,214 | 226 | 3.6% |
+   | Ashfield / Leichhardt / Marrickville | 21,557 | 0 | 0% |
+
+   Note: 0% drift does NOT mean correct — it means stored value == current code output,
+   which is also wrong if current code itself has always been wrong (see below).
+
+2. **Config-file / tagger-code drift (Marrickville) and undeclared intent (Waverley,
+   Ku-ring-gai, City of Sydney).** `MARRICKVILLE_CONFIG['parts']` in
+   `enrichment/config/marrickville_config.py` was not actually read by
+   `ApplicabilityTagger._get_marrickville_config()` for zone/dev-type values — that method
+   hardcoded its own separate copy inline, and the two had drifted (e.g. Part 4.3 Boarding
+   Houses: config said zones restricted to residential+business, tagger said `ALL`). Waverley's
+   own file header names C1/C2 and D1/D2 as distinct sub-parts with different zones, but
+   `WAVERLEY_CONFIG['parts']` only had one "C" and one "D" key, so both collapsed to the same
+   zone list. Ku-ring-gai's and City of Sydney's `chapter_topics` entries never set
+   `applicable_zones`/`applicable_dev_types` at all (despite being labelled `use_specific`
+   or `precinct`), so `_get_config_driven()` silently defaulted them to `ALL`/`ALL`.
+
+**Verification pass (2026-07-31) found the issue was larger than the initial summary above:**
+
+3. **ROOT CAUSE: the hardcoded zone constants themselves predate the NSW zone reform,
+   and this project already had the fix (`lep_zone_coverage`) sitting unused.**
+   `enrichment/config/{waverley,woollahra,ashfield,leichhardt,marrickville}_config.py` all
+   hardcoded zone-code Python constants (`RESIDENTIAL_ZONES`, `BUSINESS_ZONES =
+   ['B1','B2','B4']`, `INDUSTRIAL_ZONES = ['IN1','IN2']`, etc.) — exactly the
+   pattern `.claude/rules/regulatory-data.md` prohibits ("NEVER hardcode NSW planning
+   regulatory data... flag it and replace before shipping"). Cross-checked against
+   `lep_zone_coverage` (live-scraped LEP land-use table, 26 LGAs, `is_complete=true`,
+   scraped 2026-05-12, previously gate-verified per
+   `memory/project-zone-permissibility-unblocked-2026-07.md`):
+
+   | LGA (real, current) | Actual zones in `lep_zone_coverage` |
+   |---|---|
+   | Waverley | C2, E1, E2, MU1, R2, R3, R4, RE1, RE2, SP2 |
+   | Woollahra | C1, C2, E1, MU1, R2, R3, RE1, RE2, SP2, SP3 |
+   | Sydney (City of Sydney) | E1, E2, E3, E4, MU1, R1, R2, RE1, SP1, SP2, SP5 |
+   | Inner West (Ashfield/Marrickville/Leichhardt's real current LGA) | E1, E2, E3, E4, MU1, R1, R2, R3, R4, RE1, RE2, SP1, SP2, W1, W2, W4 |
+   | Ku-ring-gai | C1, C2, C3, C4, E1, E3, MU1, R1–R5, RE1, RE2, SP1, SP2, W1 |
+
+   **None of these five LGAs has a single B-zone or IN-zone today.** Real April 2023 NSW
+   Employment Zones Reform mapping, confirmed against DPE's own transition table:
+   B1,B2→E1; B3,B8→E2; B5,B6,B7→E3; IN1,IN2→E4; IN3→E5; B4→MU1; IN4→W4. (An earlier
+   attempt at this mapping in `frontend-nextjs/lib/zone-translation.ts` had B4 wrongly
+   under E2, IN1/IN4 wrongly under E4, IN2 wrongly under E5 — corrected in PR1 below.)
+   `MARRICKVILLE_CONFIG`/`ASHFIELD_CONFIG`/`LEICHHARDT_CONFIG` actively tagged every
+   Commercial-part provision with `B1/B2/B4` and every Industrial-part provision with
+   `IN1/IN2` — codes that do not exist in the real Inner West LEP. For Marrickville Part 5
+   (Commercial) this was harmless in practice because `MU1` was unioned into the
+   same list alongside the dead codes, so real MU1-zoned properties still matched. **For
+   Marrickville Part 6, Ashfield Chapter F Part 7, and Leichhardt Part F (Industrial),
+   the zone list was `['IN1','IN2']` with no current-code fallback at all** — meaning,
+   under the hard-filter query in `for-property/route.ts:936-940`, these provisions could
+   not match ANY real property, because no property is zoned IN1/IN2 anymore. This was the
+   exact "hide a rule, nobody would find out" failure the original conversation opened with
+   — not hypothetical, and not confined to the 4 councils with drift.
+
+   This also means the "0% drift" reported for Ashfield/Leichhardt/Marrickville above
+   was misleading on its own: 0% drift only means the code agreed with itself over
+   time — it says nothing about whether the zone codes were ever right. They were not.
+
+4. **Systematic (not manual) config-vs-tagger diff across all 7 config-driven councils**
+   confirmed the 3 Marrickville divergences already listed (Part 4.3, Part 5 dev_types,
+   Part 6 dev_types) and surfaced one new, previously-unknown, latent bug: Ashfield's
+   `chapter_f_parts` lookup in `_get_ashfield_config()` iterated the dict in insertion
+   order and did unanchored substring matching (`f'Part_{part_num}' in document_id`) —
+   `"Part_1"` matched inside `"Part_10"`, so any Chapter F Part 10 document would have been
+   silently mistagged as Part 1 (Dwelling Houses) instead of the correct
+   ALL-zones/ALL-dev-types. Same bug class as the already-fixed DQ-19 (Part 9 pattern
+   collision). **Current DB impact: zero** — no Ashfield document_id matching Part_1X
+   exists yet (checked directly), so this was latent, not live. Confirmed no equivalent
+   collision in Leichhardt/Woollahra/Waverley/CoS/Ku-ring-gai.
+
+5. **The ~9 councils with no structural config at all (Parramatta, Hornsby, Penrith,
+   Blacktown, Campbelltown, Northern Beaches, Georges River, Cumberland, Inner West-as-
+   tagged) are not a staleness issue — they are a standing, since-day-one exposure to the
+   exact blind-text-regex false-positive class PR #341 was written to fix for the other 4,
+   because they were simply never given a config.** ~175 of ~1,124 tagged rows carry
+   multi-zone "kitchen sink" tags (e.g. Northern Beaches: one provision tagged
+   `[B1,B2,B5,B7,E3,IN1,IN2,R2,R3]` — 9 zones on one provision, the signature of text-regex
+   picking up every zone mentioned anywhere in the passage, not genuine applicability).
+   Out of scope for the current fix — needs new structural configs per council, a separate
+   follow-up. Partial investigation for Northern Beaches (only Warringah is actually
+   ingested — 49 rows, one document_id, `v2_dcp_part='unknown'` for every row, no per-part
+   structure to key a config off yet; `docs/DCP_SCOPE_CONFIG_REFERENCE.md` has partial
+   structural knowledge — Parts A-E universal, zone differentiation in Part F — but that's
+   for a *different* config system, `lib/council-configs/{council}.json`'s DA-mode scope
+   filtering, not `enrichment/config/*.py`'s applicability tagging).
+   Cheap interim mitigation identified for these 9 (not yet built): intersect the blind
+   regex's zone matches against `get_valid_zones_for_lga()` (PR1) before returning, killing
+   the "kitchen sink" false-positive class without needing DCP structure knowledge.
+
+6. **The B→E zone-code confusion is codebase-wide, not confined to the DCP tagger — and a
+   correct fix for it already exists but was barely adopted.** Full-repo grep for hardcoded
+   zone-code array literals (not just the applicability tagger) found the same defunct
+   B1-B8/IN1-IN4 codes hardcoded independently in ~20+ locations: `frontend-nextjs/lib/
+   regulatory-constants.ts` (NSW_STANDARD_ZONES, feeds LMR/apartment-eligibility checks
+   across granny flat, CDC screener, exempt/complying, SEE builder), `services/
+   housing_sepp_eligibility.py` (`RESIDENTIAL_ZONES` — confirmed correct on investigation,
+   see PR3 below), and a `HOUSING_SEPP_ZONES = ['R1','R2','R3','R4','B1',
+   'B2','B4']` literal copy-pasted verbatim across 4 separate files (`see-helpers.ts`,
+   `seeBuilders.ts`, `section-aggregation.ts`, `ContextSection.tsx`), among
+   others (`environmental-relevance-filter.ts` — confirmed dead code, `ADGSummaryCard.tsx`
+   — a *separate* real bug found and fixed in PR3, see below, `ComplianceDashboard.tsx` and
+   `pages/api/development-types.ts` — confirmed dead code). None of these imported a shared
+   source or queried `lep_zone_coverage`.
+
+   **This exact problem (B1/B2 vs E1 zone-code mismatch) had already happened once before,
+   in a *different* table/pipeline**, per
+   `.claude/docs/history/2026-01-implementation/ZONE_AND_DEVTYPE_TRANSLATION_CONTEXT.md`
+   (Nov 2025): `dcp_general_requirements.applicable_zones` (the LLM-curated table behind
+   the capacity/compliance API, separate from `regulatory_provisions.v2_applicable_zones`
+   behind the provisions display) had the identical defect. The fix built then —
+   `frontend-nextjs/lib/zone-translation.ts`, `ZONE_TRANSLATION_MAP` — modelled the right
+   *concept* but, on verification, had its own mapping errors (see #3 above). It was also
+   only ever wired into 2 routes (`/api/compliance/constraints`, `/api/compliance/
+   dcp-complete`) — and a full reachability audit found **both of those routes are
+   themselves dead code**, only reachable through the orphaned `ComplianceDashboard.tsx`
+   which nothing in the live app renders. So `zone-translation.ts` had zero live consumers
+   before this fix. The real live critical path for DCP provisions is
+   `ProvisionsByTocStructure.tsx` → `app/assessment/page.tsx`, confirmed via reachability
+   audit, which is what the applicability tagger (PR2) actually feeds.
+
+**Fix — sequenced as PR1 through PR5 (see `~/.claude/plans/twinkly-bouncing-valiant.md` for
+the full plan):**
+- **PR1 (done):** `frontend-nextjs/shared/zone-taxonomy.json` — single corrected
+  legacy↔current alias map, generated by `scripts/generate_zone_taxonomy.py` (CI drift-check
+  via `--check`), consumed by both `frontend-nextjs/lib/zone-translation.ts` (TS) and the new
+  `enrichment/config/zone_taxonomy.py` (Python) — no more independent copies. Added
+  `getValidZonesForLga()` to both `frontend-nextjs/lib/db.ts` and `services/db_config.py`
+  (live query against `lep_zone_coverage`, short in-process cache) for the separate question
+  of "what zones currently exist in LGA X."
+- **PR2 (done):** Marrickville tagger now reads `MARRICKVILLE_CONFIG['parts']` directly
+  instead of a hardcoded shadow copy; Ashfield `Part_1`/`Part_10` collision fixed (word-
+  boundary anchored); Waverley `WAVERLEY_CONFIG['parts']` split into C1/C2 (R2 vs R3,R4) and
+  D1/D2 (E1,E2 vs MU1), matching the file's own documented distinction; Ku-ring-gai's 5
+  residential parts whose name *is* the dev type now set `applicable_dev_types`; all 7
+  configs' zone constants swapped to current-era codes; Woollahra's Part D/F3 direct B-zone
+  literals fixed (not routed through a constant, hardcoded per-entry — same translation
+  applied inline). City of Sydney's `section_4` and Ku-ring-gai's `part_8_mixed_use`/
+  `part_9_non_residential` deliberately NOT filled in — would mean guessing at regulatory
+  scope, not translating something already stated. Extended
+  `tests/enrichment/test_applicability_tagger.py` with regression tests per bug (46 tests
+  total, 13 new, all passing).
+- **PR3 (done):** consolidated live frontend/Python zone hardcodes onto PR1's shared
+  source — `regulatory-constants.ts`, `housing_sepp_eligibility.py`, the granny flat cluster
+  (`app/api/satellite/granny-flat/route.ts`, `app/reports/granny-flat/page.tsx`,
+  `app/api/canibuildit/check/route.ts`, `app/api/og/granny-flat/route.tsx`), and the
+  SEE/CDC/pattern-book cluster (`lib/see/seeBuilders.ts`, `lib/see/section-aggregation.ts`,
+  `lib/pdf/see-helpers.ts`, `components/pdf/ContextSection.tsx`,
+  `components/compliance/ExemptComplyingProvisions.tsx`,
+  `components/compliance/CDCScreener.tsx`, `components/compliance/ADGSummaryCard.tsx`,
+  `app/api/sepp/exempt-complying/route.ts`, and
+  `lib/pattern-book-eligibility/check-exclusions.ts`'s `isZoneEligible()`, whose own
+  `['R1','R2','R3']` literal was the last remaining hardcode — now a new
+  `PATTERN_BOOK_CDC.ELIGIBLE_ZONES` export in `regulatory-constants.ts`, deliberately not
+  merged with `CDC_HOUSING_CODE_ZONES` since Pattern Book excludes R4/RU5). Also found and
+  fixed a **separate real bug** while doing this: `components/compliance/ADGSummaryCard.tsx`'s
+  `APARTMENT_RESTRICTED_ZONES` had current Employment zones E1-E4 mislabelled as "Environment
+  zones," directly contradicting `NSW_STANDARD_ZONES.APARTMENT_PERMITTING` (E1/E2 correctly
+  permit apartments/shop-top housing) — fixed. Also found `app/api/housing-sepp/eligibility/
+  route.ts` has a deeper, separate issue than zone-code staleness (tracked as DQ-31 above, not
+  folded into this fix). Verified clean via `python scripts/lint_hardcoded_zone_codes.py --all`
+  (only pre-existing, out-of-scope hits remain: historical `scripts/fixes/DQ*.py` one-off
+  scripts, the free-text `ZONE_PATTERNS`/`ZONE_CATEGORY_PATTERNS` regex fallback in
+  `applicability_tagger.py` used for the ~9 no-config councils, and other pre-existing files
+  untouched by PR1-3 — none are new hardcodes introduced by this work).
+- **PR4 (done):** CI guard `scripts/lint_hardcoded_zone_codes.py` (following
+  `scripts/lint_bracket_access.py`'s staged-diff pattern) wired into `.githooks/pre-commit`
+  step 8 — fails a commit that introduces a new hardcoded zone-code array in a file that
+  doesn't already import the shared taxonomy, with a `# noqa: zone-codes` escape hatch.
+  Diff-scoped (only checks staged additions), so it does not fail-red on pre-existing
+  hardcodes not yet fixed (the 9 no-config councils, City of Sydney's `section_4`, the
+  historical `scripts/fixes/DQ*.py` scripts).
+- **PR5 (done):** backup + guarded reset of `v2_applicable_zones`/`v2_applicable_dev_types`
+  to NULL for the 7 configured councils' affected rows, re-ran `run_applicability_tagging()`
+  with the fixed tagger. Verified: re-running the drift script (fixed tagger output vs stored
+  DB value) shows **0% disagreement** across all 7 configured councils, confirming the retag
+  matches current code by construction.
 
 ---
 

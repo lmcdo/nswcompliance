@@ -30,10 +30,18 @@ Source PDF: waverley/Waverley_DCP_2022_Full_Version_Amendment5.pdf
 Registry key: waverley/waverley-dcp-2022
 """
 
-# Standard NSW zone codes for Waverley LEP 2012
+# Standard NSW zone codes for Waverley LEP 2012, current as of the 26 April
+# 2023 NSW Employment Zones Reform (DQ-30, .claude/DATA_QUALITY_TRACKER.md).
+# Confirmed against lep_zone_coverage: Waverley's real current zones are
+# C2, E1, E2, MU1, R2, R3, R4, RE1, RE2, SP2 — ZERO B-zones. BUSINESS_ZONES
+# previously hardcoded the retired codes (B1, B2, B4); values here are each
+# legacy code's real current equivalent (see
+# enrichment/config/zone_taxonomy.py): B1,B2->E1; B4->MU1.
 RESIDENTIAL_ZONES = ["R2", "R3", "R4"]
-BUSINESS_ZONES    = ["B1", "B2", "B4"]
-MIXED_USE_ZONES   = ["B4"]
+LOW_DENSITY_ZONES = ["R2"]
+MEDIUM_HIGH_DENSITY_ZONES = ["R3", "R4"]
+BUSINESS_ZONES    = ["E1", "E2"]
+MIXED_USE_ZONES   = ["MU1"]
 SPECIAL_ZONES     = ["SP1", "SP2"]
 ALL_ZONES         = ["ALL"]
 
@@ -88,15 +96,49 @@ WAVERLEY_CONFIG = {
             "layer":           "condition",
             "site_conditions": ["heritage"],
         },
+        # DQ-30: "C" and "D" previously had a single entry each, collapsing
+        # the distinction this file's own header has always documented (C1
+        # Low Density vs C2 Medium-High Density; D1 Commercial vs D2 Mixed
+        # Use) — a C1 (Low Density, should be R2-only) provision was tagged
+        # with R3/R4 too, and vice versa. C1/C2 map directly to the NSW
+        # Standard Instrument's own zone names (R2 IS "Low Density
+        # Residential", R3/R4 ARE "Medium/High Density Residential" — not an
+        # interpretation, the official zone name). D2 (MU1) is equally direct
+        # ("Mixed Use" is the zone's official name). D1's exact zone split
+        # (E1 Local Centre vs E2 Commercial Centre) is NOT independently
+        # source-verified beyond this file's own "Commercial Premises"
+        # description — both are included as the more inclusive reading;
+        # narrow this if the source DCP text is checked. "C"/"D" remain as
+        # fallbacks for a heading with no C1/C2/D1/D2 sub-code.
         "C": {
             "description":       "Residential Development",
             "layer":             "use_specific",
             "applicable_zones":  RESIDENTIAL_ZONES,
         },
+        "C1": {
+            "description":       "Low Density Residential",
+            "layer":             "use_specific",
+            "applicable_zones":  LOW_DENSITY_ZONES,
+        },
+        "C2": {
+            "description":       "Medium to High Density Residential",
+            "layer":             "use_specific",
+            "applicable_zones":  MEDIUM_HIGH_DENSITY_ZONES,
+        },
         "D": {
             "description":       "Non-Residential Development",
             "layer":             "use_specific",
+            "applicable_zones":  BUSINESS_ZONES + MIXED_USE_ZONES,
+        },
+        "D1": {
+            "description":       "Commercial Premises",
+            "layer":             "use_specific",
             "applicable_zones":  BUSINESS_ZONES,
+        },
+        "D2": {
+            "description":       "Mixed Use",
+            "layer":             "use_specific",
+            "applicable_zones":  MIXED_USE_ZONES,
         },
         "E": {
             "description":           "Site-Specific Provisions",

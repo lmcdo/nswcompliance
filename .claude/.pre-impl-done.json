@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-07-27T21:30:00+10:00",
-  "target": "Sol round on PR #830: emptied-by-strip verdict, supersede prior rejected on re-extraction (same-PDF-hash wedge), r.is_active on commit join, watchdog counts all blocking statuses",
-  "findings_summary": "All four Sol findings verified against code: empty stripped text passed as ok (collapse skipped on falsy); content_hash is the PDF hash so extractor fixes re-extract under the SAME hash and hash-scoped rejected still wedges; registry join lacked is_active; watchdog review-blocked query counted pending only. No new tables; one UPDATE statement added to the refresh path."
+  "status": "trivial",
+  "timestamp": "2026-08-01T00:00:00+10:00",
+  "reason": "services/compound_constraints.py: adding a single-line # noqa: zone-codes suppression comment to line 176 (an already-correct current-era-only zone tuple check) so the new PR4 zone-code lint hook stops flagging it. No new query, no schema change, no logic change."
 }

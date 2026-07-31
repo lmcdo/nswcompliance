@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { SoftwareAppJsonLd } from '@/lib/json-ld';
+import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 
@@ -75,7 +76,9 @@ interface ConfirmResult {
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
 
-const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+// DQ-30 (.claude/DATA_QUALITY_TRACKER.md): consolidated onto
+// NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
+const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
 
 function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
   if (lotArea != null && lotArea < 450) {

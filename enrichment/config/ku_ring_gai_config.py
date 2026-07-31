@@ -28,12 +28,31 @@ KU_RING_GAI_CONFIG = {
         # ── Section A: Residential & General ────────────────────────────────
         "part_2_site_analysis":         {"layer": "generic",      "topic": None},
         "part_3_subdivision":           {"layer": "generic",      "topic": None},
+        # DQ-30 (.claude/DATA_QUALITY_TRACKER.md): these were labelled
+        # "use_specific" but never had applicable_dev_types set, so
+        # _get_config_driven() silently defaulted every one to ALL/ALL
+        # regardless of the label — genuinely dev-type-specific rules showed
+        # for every dev type. Fixed for the 5 parts below because each
+        # part's own name IS the dev type, in the tagger's own vocabulary
+        # (DEV_TYPE_PATTERNS in applicability_tagger.py) — not an
+        # interpretation, just wiring the name that was already there.
+        # part_8_mixed_use and part_9_non_residential are NOT fixed here:
+        # "mixed use"/"non-residential" span multiple dev types and zones
+        # and assigning a specific list would mean guessing at regulatory
+        # scope rather than translating something already stated — needs
+        # the source DCP text checked before narrowing, not assumed.
+        #
         # Part 4.1 MUST appear before part_4 (substring collision prevention)
-        "part_4_1_secondary_dwellings": {"layer": "use_specific", "topic": "residential"},
-        "part_4_dwelling_houses":       {"layer": "use_specific", "topic": "residential"},
-        "part_5_dual_occupancy":        {"layer": "use_specific", "topic": "residential"},
-        "part_6_multi_dwelling":        {"layer": "use_specific", "topic": "residential"},
-        "part_7_residential_flat":      {"layer": "use_specific", "topic": "residential"},
+        "part_4_1_secondary_dwellings": {"layer": "use_specific", "topic": "residential",
+                                          "applicable_dev_types": ["secondary_dwelling"]},
+        "part_4_dwelling_houses":       {"layer": "use_specific", "topic": "residential",
+                                          "applicable_dev_types": ["dwelling_house"]},
+        "part_5_dual_occupancy":        {"layer": "use_specific", "topic": "residential",
+                                          "applicable_dev_types": ["dual_occupancy"]},
+        "part_6_multi_dwelling":        {"layer": "use_specific", "topic": "residential",
+                                          "applicable_dev_types": ["multi_dwelling_housing"]},
+        "part_7_residential_flat":      {"layer": "use_specific", "topic": "residential",
+                                          "applicable_dev_types": ["residential_flat_building"]},
         "part_8_mixed_use":             {"layer": "use_specific", "topic": None},
         "part_9_non_residential":       {"layer": "use_specific", "topic": None},
         "part_12_signage":              {"layer": "generic",      "topic": "signage"},

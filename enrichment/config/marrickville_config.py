@@ -20,15 +20,23 @@ Document_id patterns in database:
 - "Marrickville__DCP__2011__-__X__X__Name" (double underscore variant)
 """
 
-# Inner West LEP 2022 zone codes (Marrickville area)
+# Inner West LEP 2022 zone codes (Marrickville area), current as of the 26
+# April 2023 NSW Employment Zones Reform (DQ-30,
+# .claude/DATA_QUALITY_TRACKER.md). Confirmed against lep_zone_coverage:
+# Inner West has ZERO B-zones and ZERO IN-zones today — the constants below
+# previously hardcoded the retired codes (B1/B2/B4, IN1/IN2), which stopped
+# matching any real property after the reform (this was the most severe
+# instance found: Part 6 Industrial provisions were tagged ['IN1','IN2'] with
+# no fallback, meaning they matched zero real properties). Values here are
+# each legacy code's real current equivalent (see
+# enrichment/config/zone_taxonomy.py): B1,B2->E1; B4->MU1; IN1,IN2->E4.
 # Only zones that actually exist in the former Marrickville LGA boundaries.
-# Generic NSW constants (R5, B5-B8, IN3-IN4, E1/E3/E4) removed.
+# Generic NSW constants (R5, B3/B5-B8, IN3-IN4, E2/E3/E5) removed.
 RESIDENTIAL_ZONES = ['R1', 'R2', 'R3', 'R4']
-BUSINESS_ZONES = ['B1', 'B2', 'B4']
-INDUSTRIAL_ZONES = ['IN1', 'IN2']
+BUSINESS_ZONES = ['E1', 'MU1']
+INDUSTRIAL_ZONES = ['E4']
 SPECIAL_ZONES = ['SP1', 'SP2']
 RECREATION_ZONES = ['RE1', 'RE2']
-ENVIRONMENT_ZONES = ['E2']
 MIXED_USE_ZONES = ['MU1']
 
 ALL_ZONES = ['ALL']
@@ -106,7 +114,13 @@ MARRICKVILLE_CONFIG = {
         "2_12": {
             "description": "Signs and Advertising Structures",
             "applicable_zones": ALL_ZONES,
-            "applicable_dev_types": ["signage", "advertising_structure"] + ALL_DEV_TYPES,
+            # DQ-30: was ["signage","advertising_structure"] + ALL_DEV_TYPES,
+            # which mixed the "ALL" sentinel with specific dev-type strings
+            # into a meaningless 3-item list. Part 2.x is General Controls
+            # (applies to ALL development, per this file's own header) —
+            # every other Part 2.x entry is plain ALL_DEV_TYPES; this one
+            # should be too.
+            "applicable_dev_types": ALL_DEV_TYPES,
             "site_conditions": None,
         },
         "2_13": {
@@ -199,13 +213,17 @@ MARRICKVILLE_CONFIG = {
         # Part 5 - Commercial and Mixed Use
         "5": {
             "description": "Commercial and Mixed Use Development",
-            "applicable_zones": BUSINESS_ZONES + MIXED_USE_ZONES,
+            # BUSINESS_ZONES already includes MU1 post-reform (B4->MU1) — no
+            # need to concatenate MIXED_USE_ZONES separately (DQ-30 cleanup).
+            "applicable_zones": BUSINESS_ZONES,
             "applicable_dev_types": ["commercial_premises", "retail_premises", "office_premises", "shop_top_housing", "mixed_use"],
             "site_conditions": None,
         },
         "5_0": {
             "description": "Commercial and Mixed Use Development",
-            "applicable_zones": BUSINESS_ZONES + MIXED_USE_ZONES,
+            # BUSINESS_ZONES already includes MU1 post-reform (B4->MU1) — no
+            # need to concatenate MIXED_USE_ZONES separately (DQ-30 cleanup).
+            "applicable_zones": BUSINESS_ZONES,
             "applicable_dev_types": ["commercial_premises", "retail_premises", "office_premises", "shop_top_housing", "mixed_use"],
             "site_conditions": None,
         },
@@ -241,7 +259,7 @@ MARRICKVILLE_CONFIG = {
         # Part 7.3 - Sex Industry
         "7.3": {
             "description": "Sex Industry and Adult Business Premises",
-            "applicable_zones": ['B4', 'IN1', 'IN2'],
+            "applicable_zones": ['E4', 'MU1'],
             "applicable_dev_types": ["sex_services_premises", "restricted_premises"],
             "site_conditions": None,
         },

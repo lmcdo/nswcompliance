@@ -71,16 +71,31 @@ interface ADGSummaryCardProps {
   onViewAllCriteria?: () => void;
 }
 
-// Zones that typically prohibit or restrict apartment developments
+// Zones that typically prohibit or restrict apartment developments.
+//
+// DQ-30 (.claude/DATA_QUALITY_TRACKER.md): this previously listed
+// 'E1','E2','E3','E4' as "Environment zones (new)" and 'C1'-'C4' as
+// "Conservation zones (old)" — backwards. Under the current NSW Standard
+// Instrument (post 26 April 2023 Employment Zones Reform), C1-C4 ARE the
+// current conservation/environmental zone codes (already correctly listed
+// below); E1-E4 are current EMPLOYMENT zones (Local Centre, Commercial
+// Centre, Productivity Support, General Industrial) — E1/E2 commonly permit
+// shop-top housing and residential flat buildings, the opposite of
+// "restricted" (see NSW_STANDARD_ZONES.APARTMENT_PERMITTING in
+// regulatory-constants.ts, which correctly includes them). The old
+// pre-reform "Environmental" E1-E4 zones this list was actually trying to
+// name were themselves renamed to C1-C4 — already present, so E1-E4 was
+// pure duplication of a now-wrong meaning, not additional coverage.
+// IN1-IN4 (legacy industrial codes, genuinely apartment-restricting) are
+// replaced with their real current equivalents E4/E5.
 const APARTMENT_RESTRICTED_ZONES = [
   'R2',   // Low Density Residential - usually prohibits RFB
   'RU1', 'RU2', 'RU3', 'RU4', 'RU5', 'RU6',  // Rural zones
-  'E1', 'E2', 'E3', 'E4',  // Environment zones (new)
-  'C1', 'C2', 'C3', 'C4',  // Conservation zones (old)
+  'C1', 'C2', 'C3', 'C4',  // Conservation/environmental zones (current codes)
   'W1', 'W2', 'W3',  // Waterway zones
   'SP1', 'SP2',  // Special Purpose (varies)
   'RE1', 'RE2',  // Recreation
-  'IN1', 'IN2', 'IN3', 'IN4',  // Industrial
+  'E4', 'E5',  // General Industrial / Heavy Industrial (current codes; were IN1-IN4)
 ];
 
 // Development types that trigger ADG requirements
