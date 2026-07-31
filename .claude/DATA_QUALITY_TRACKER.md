@@ -15,7 +15,7 @@
 | DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
 | DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
 | DQ-31: housing-sepp/eligibility route never migrated to the Python single-source-of-truth service — documented over-eligibility bug still live | ⏳ Tracked 2026-07-31, not started | P1 |
-| DQ-30: Applicability tagger (v2_applicable_zones/dev_types) — config/tagger drift + codebase-wide zone-code hardcoding. PR1/PR2/PR3/PR4 done, PR5 retag ran (0% drift verified) | ✅ Fixed 2026-08-01 (worktree fix/zone-taxonomy-consolidation, not yet merged) | P1 — validity, not traffic |
+| DQ-30: Applicability tagger — CODE fixed (PR1-4, this PR). **DATA NOT fixed: 286 rows still carry retired zone codes, 14 of them live+actionable in councils the retag covered.** The "0% drift" verification was invalid — it cannot fail. | 🟠 Code fixed, data open 2026-08-01 | P1 — validity, not traffic |
 | DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
@@ -174,11 +174,40 @@ on the assessment page) depends on the current response shape.
 
 ## DQ-30: Applicability tagger (v2_applicable_zones / v2_applicable_dev_types) drift + config gaps
 
-**Status:** ✅ Fixed 2026-08-01 — PR1 (shared zone taxonomy source), PR2 (DCP tagger
-config/tagger-drift fixes), PR3 (frontend/Python consolidation), and PR4 (CI guard) all
-complete; PR5 (DB retag) has run — drift re-check shows 0% disagreement between the fixed
-tagger and the stored DB values for the 7 configured councils. Work is on worktree/branch
-`fix/zone-taxonomy-consolidation` (`.claude/worktrees/zone-taxonomy`), not yet merged.
+**Status:** 🟠 **CODE fixed, DATA still open, 2026-08-01.** An earlier revision of this entry
+said "✅ Fixed" on the strength of a "0% drift" check. **That verification was invalid and the
+status was wrong — corrected here.**
+
+PR1 (shared zone taxonomy source), PR2 (DCP tagger config fixes), PR3 (frontend/Python
+consolidation) and PR4 (CI guard) are complete on branch `fix/zone-taxonomy-consolidation`
+(PR #853, not yet merged). pytest 3223 + jest 917 green.
+
+**Why the verification was invalid.** "0% drift" re-runs the tagger and compares its output to
+the stored DB value. That is a *self-consistency* check: if the code still emits a retired zone
+code, drift is 0% and the data is still wrong. **A check that cannot fail when the bug is
+present is not a verification.** This entry's own text warned about exactly this trap for
+Ashfield/Leichhardt/Marrickville ("0% drift does NOT mean correct") and the metric was used
+anyway.
+
+**Actual DB state, queried against production 2026-08-01** — `regulatory_provisions` still holds
+**286 rows with retired B/IN zone codes**:
+
+| Scope | Rows | Note |
+|---|---|---|
+| ku_ring_gai + woollahra, `is_current` AND `v2_is_actionable` | **14** | **Served today, in councils PR5 covered.** 13 are Ku-ring-gai local-centre provisions tagged `B2`/`B4` (St Ives, Turramurra, Pymble, Gordon) — the original DQ-30 symptom, still live |
+| woollahra, superseded | 71 | Not served, still wrong |
+| NULL `source_council` | 142 | Never in retag scope — invisible to it |
+| 7 no-config councils | 51 | Known out of scope |
+| `dcp_all_provisions.applicable_zones` | 32 | Separate table, never examined |
+
+**The correct check, replacing drift:** every stored zone code must exist in `lep_zone_coverage`
+for that LGA where `is_complete = TRUE`. Exact set membership against ground truth — no regex, no
+false positives, and it *can* fail when the bug is present. It would have caught all 286
+instantly. Where coverage is incomplete it must report `unverifiable`, never `clean`. Spec:
+`~/.claude/plans/ce-dcp-condition-structuring-2026-08.md` §2.5.
+
+**Remaining work:** implement that check, then re-run the retag against it (not against drift),
+including the NULL-council rows and `dcp_all_provisions`.
 **Found:** 2026-07-31
 **Priority:** P1 — driven by whether the data is **valid and legitimate**, not by whether
 a given council is currently receiving traffic. Live/staged status is explicitly NOT
