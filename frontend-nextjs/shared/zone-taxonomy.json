@@ -1,0 +1,109 @@
+{
+  "_comment": "NSW planning zone taxonomy — legacy (pre-26 April 2023) to current zone code alias map. Source of truth for DQ-30 (see .claude/DATA_QUALITY_TRACKER.md). Generated/verified by scripts/generate_zone_taxonomy.py — regenerate via that script rather than hand-editing. Reflects the NSW DPE Employment Zones Reform, effective 26 April 2023, which replaced Business (B1-B8) and Industrial (IN1-IN4) zones with Employment (E1-E5) and Mixed Use (MU1) zones. Consumed by frontend-nextjs/lib/zone-translation.ts (TypeScript) and enrichment/config/zone_taxonomy.py (Python) — do not maintain a separate copy in either language.",
+  "legacyToCurrentAliases": {
+    "E1": [
+      "E1",
+      "B1",
+      "B2"
+    ],
+    "E2": [
+      "E2",
+      "B3",
+      "B8"
+    ],
+    "E3": [
+      "E3",
+      "B5",
+      "B6",
+      "B7"
+    ],
+    "E4": [
+      "E4",
+      "IN1",
+      "IN2"
+    ],
+    "E5": [
+      "E5",
+      "IN3"
+    ],
+    "MU1": [
+      "MU1",
+      "B4"
+    ],
+    "R1": [
+      "R1"
+    ],
+    "R2": [
+      "R2"
+    ],
+    "R3": [
+      "R3"
+    ],
+    "R4": [
+      "R4"
+    ],
+    "R5": [
+      "R5"
+    ],
+    "RE1": [
+      "RE1"
+    ],
+    "RE2": [
+      "RE2"
+    ],
+    "C1": [
+      "C1"
+    ],
+    "C2": [
+      "C2"
+    ],
+    "C3": [
+      "C3"
+    ],
+    "C4": [
+      "C4"
+    ],
+    "W1": [
+      "W1"
+    ],
+    "W2": [
+      "W2"
+    ],
+    "W3": [
+      "W3"
+    ],
+    "W4": [
+      "W4",
+      "IN4"
+    ],
+    "SP1": [
+      "SP1"
+    ],
+    "SP2": [
+      "SP2"
+    ],
+    "SP3": [
+      "SP3"
+    ],
+    "SP4": [
+      "SP4"
+    ],
+    "SP5": [
+      "SP5"
+    ]
+  },
+  "legacyZones": [
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6",
+    "B7",
+    "B8",
+    "IN1",
+    "IN2",
+    "IN3",
+    "IN4"
+  ]
+}

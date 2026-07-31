@@ -3,6 +3,7 @@
 import { Page, Text, View } from '@react-pdf/renderer';
 import { PropertyContext } from '@/lib/pdf/types';
 import { styles } from './styles';
+import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
 
 interface ContextSectionProps {
   property: PropertyContext;
@@ -46,11 +47,9 @@ function determineDevelopmentPathway(property: PropertyContext): {
     };
   }
 
-  // R1/R2/R3/R4/B1/B2/B4 zones = Housing SEPP applies (CDC available)
-  const SEPP_HOUSING_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
   const zoneCode = zone.split(' ')[0]; // "R4 High Density" -> "R4"
 
-  if (SEPP_HOUSING_ZONES.includes(zoneCode)) {
+  if (HOUSING_SEPP_ZONES.includes(zoneCode)) {
     return {
       pathway: 'Complying (CDC)',
       reason: `${zoneCode} zone - Housing SEPP 2021 CDC pathway available for eligible development`
@@ -305,7 +304,7 @@ export function ContextSection({
           <View style={styles.contextTableRow}>
             <Text style={styles.tableCellLabel}>Housing SEPP 2021:</Text>
             <Text style={styles.tableCellValue}>
-              {['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'].includes(zoneDisplay.split(' ')[0])
+              {HOUSING_SEPP_ZONES.includes(zoneDisplay.split(' ')[0])
                 ? `✓ Applies - ${zoneDisplay.split(' ')[0]} zone eligible for complying development (CDC) pathway`
                 : `✗ Does not apply - ${zoneDisplay.split(' ')[0]} zone not covered by Housing SEPP`}
             </Text>

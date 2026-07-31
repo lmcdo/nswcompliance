@@ -7,6 +7,7 @@
 
 import type { PathwayDetermination, SeppAssessableControl, LepAssessableStandard } from './types';
 import type { AmenityData, StreetContextData } from '@/hooks/useSpatialContext';
+import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
 
 // ---------------------------------------------------------------------------
 // Section 3 — Approval Pathway Determination
@@ -77,8 +78,6 @@ export function buildPathwayDetermination(
     requiredReports.push('Site Contamination Assessment (SEPP Resilience and Hazards 2021 Ch.4)');
   }
 
-  // Housing SEPP 2021 eligible zones (derived from SEPP schedule)
-  const HOUSING_SEPP_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
   const zoneCode = zone.split(' ')[0];
 
   if (HOUSING_SEPP_ZONES.includes(zoneCode)) {

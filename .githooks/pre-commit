@@ -127,4 +127,20 @@ if [ "$FAILSOFT_EXIT" -ne 0 ]; then
 fi
 echo "✅ Brief fail-soft lint passed"
 
+# ── 8. Hardcoded zone-code lint ──────────────────────────────────────────────
+echo ""
+echo "🔍 Running zone-code lint on staged .py/.ts/.tsx changes..."
+python scripts/lint_hardcoded_zone_codes.py
+ZONECODE_EXIT=$?
+if [ "$ZONECODE_EXIT" -ne 0 ]; then
+  echo ""
+  echo "❌ Zone-code lint FAILED — new hardcoded NSW zone-code list in staged changes."
+  echo "   Import from shared/zone-taxonomy.json instead (via"
+  echo "   frontend-nextjs/lib/zone-translation.ts or"
+  echo "   enrichment/config/zone_taxonomy.py), or suppress with  # noqa: zone-codes"
+  echo "   if this genuinely isn't a zone code (e.g. a DCP Part/Chapter key)."
+  exit 1
+fi
+echo "✅ Zone-code lint passed"
+
 echo "✅ Pre-commit checks complete"

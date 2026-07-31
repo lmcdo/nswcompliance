@@ -129,9 +129,12 @@ class ApplicabilityTagger:
         # Check Chapter F parts first (most specific)
         if 'Chapter F' in doc or 'Chapter_F' in document_id:
             for part_key, part_config in config.get('chapter_f_parts', {}).items():
-                # Match Part_X patterns
+                # Match Part_X patterns. (?!\d) anchors the match so "Part_1"
+                # cannot match inside "Part_10" — DQ-30, same bug class as the
+                # already-fixed DQ-19 Part-9-pattern-collision.
                 part_num = part_key.replace('Part_', '')
-                if f'Part_{part_num}' in document_id or f'Part {part_num}' in doc:
+                if (re.search(rf'Part_{part_num}(?!\d)', document_id)
+                        or re.search(rf'Part {part_num}(?!\d)', doc)):
                     return {
                         'applicable_zones': part_config.get('applicable_zones', ['ALL']),
                         'applicable_dev_types': part_config.get('applicable_dev_types', ['ALL']),
@@ -206,6 +209,28 @@ class ApplicabilityTagger:
 
         return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
 
+    @staticmethod
+    def _marrickville_part_entry(config: Dict[str, Any], key: str,
+                                  site_conditions: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Look up a Marrickville DCP part's applicability from
+        MARRICKVILLE_CONFIG['parts'] (DQ-30: previously this data was
+        authored in the config file but never actually read here — the
+        method below hardcoded a separate, independently-drifting copy of
+        the same information inline. Reading the config directly means
+        there is exactly one place to edit, and the config file's own
+        comments/structure are no longer decorative.)
+        """
+        # `or {}` (not `.get(x, {})`) at every step: a config key that exists
+        # with an explicit None value (not merely absent) would otherwise
+        # slip past the `.get(key, default)` default and propagate None into
+        # the hard-filter query downstream.
+        entry = (config.get('parts') or {}).get(key) or {}
+        return {
+            'applicable_zones': entry.get('applicable_zones') or ['ALL'],
+            'applicable_dev_types': entry.get('applicable_dev_types') or ['ALL'],
+            'site_conditions': site_conditions if site_conditions is not None else entry.get('site_conditions'),
+        }
+
     def _get_marrickville_config(self, document_id: str) -> Dict[str, Any]:
         """Get applicability config for Marrickville DCP provision."""
         config = MARRICKVILLE_CONFIG
@@ -239,116 +264,66 @@ class ApplicabilityTagger:
             }
 
         # Check for Heritage (Part 8) - before other matches
-        if '8.0' in document_id or '__8__' in document_id or '_8_' in document_id:
-            heritage_config = config.get('parts', {}).get('8', {})
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['ALL'],
-                'site_conditions': ['heritage'],
-                'is_precinct_specific': False,
-            }
-        if 'Heritage' in document_id:
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['ALL'],
-                'site_conditions': ['heritage'],
-                'is_precinct_specific': False,
-            }
+        if '8.0' in document_id or '__8__' in document_id or '_8_' in document_id or 'Heritage' in document_id:
+            entry = self._marrickville_part_entry(config, '8', site_conditions=['heritage'])
+            entry['is_precinct_specific'] = False
+            return entry
 
         # Check for specific development type sections BEFORE generic matching
         # Part 4.1 - Low Density Residential
         if '4.1' in document_id or '__4_1__' in document_id or '_4_1_' in document_id or 'Low_Density' in document_id or 'Low__Density' in document_id:
-            return {
-                'applicable_zones': ['R2'],
-                'applicable_dev_types': ['dwelling_house', 'secondary_dwelling', 'dual_occupancy'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '4.1')
 
         # Part 4.2 - Multi Dwelling Housing
         if '4.2' in document_id or '__4_2__' in document_id or '_4_2_' in document_id or 'Multi_Dwelling' in document_id or 'Multi__Dwelling' in document_id:
-            return {
-                'applicable_zones': ['R3', 'R4'],
-                'applicable_dev_types': ['multi_dwelling_housing', 'residential_flat_building', 'attached_dwelling'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '4.2')
 
         # Part 4.3 - Boarding Houses
         if '4.3' in document_id or '__4_3__' in document_id or '_4_3_' in document_id or 'Boarding' in document_id:
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['boarding_house'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '4.3')
 
         # Part 5 - Commercial and Mixed Use
-        if '5_0' in document_id or '__5__0__' in document_id or '5.0' in document_id:
-            return {
-                'applicable_zones': ['B1', 'B2', 'B4', 'MU1'],
-                'applicable_dev_types': ['commercial_premises', 'retail_premises', 'office_premises', 'shop_top_housing'],
-                'site_conditions': None,
-            }
-        # Also match "Commercial" but NOT "Commercial_Precinct" (which is Part 9)
-        if 'Commercial' in document_id and 'Precinct' not in document_id:
-            return {
-                'applicable_zones': ['B1', 'B2', 'B4', 'MU1'],
-                'applicable_dev_types': ['commercial_premises', 'retail_premises', 'office_premises', 'shop_top_housing'],
-                'site_conditions': None,
-            }
+        # Match "5_0"/"5.0" (section-code doc_ids), OR "Commercial" but NOT
+        # "Commercial_Precinct" (which is Part 9, already handled above).
+        if ('5_0' in document_id or '__5__0__' in document_id or '5.0' in document_id
+                or ('Commercial' in document_id and 'Precinct' not in document_id)):
+            return self._marrickville_part_entry(config, '5')
 
         # Part 6 - Industrial Development
-        if '6_0' in document_id or '__6__0__' in document_id or '6.0' in document_id:
-            return {
-                'applicable_zones': ['IN1', 'IN2'],
-                'applicable_dev_types': ['industrial_development', 'warehouse', 'light_industry'],
-                'site_conditions': None,
-            }
-        # Also match "Industrial" but NOT "Industrial_Precinct" (which is Part 9)
-        if 'Industrial' in document_id and 'Precinct' not in document_id:
-            return {
-                'applicable_zones': ['IN1', 'IN2'],
-                'applicable_dev_types': ['industrial_development', 'warehouse', 'light_industry'],
-                'site_conditions': None,
-            }
+        # Match "6_0"/"6.0", OR "Industrial" but NOT "Industrial_Precinct".
+        if ('6_0' in document_id or '__6__0__' in document_id or '6.0' in document_id
+                or ('Industrial' in document_id and 'Precinct' not in document_id)):
+            return self._marrickville_part_entry(config, '6')
 
         # Part 7.1 - Childcare
         if '7.1' in document_id or '7_1' in document_id or 'childcare' in document_id.lower():
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['child_care_centre', 'centre_based_childcare'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '7.1')
 
         # Part 7.3 - Sex Industry
         if '7.3' in document_id or 'Sex' in document_id:
-            return {
-                'applicable_zones': ['B4', 'IN1', 'IN2'],
-                'applicable_dev_types': ['sex_services_premises', 'restricted_premises'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '7.3')
 
-        # Part 2.x - General Controls (apply to ALL)
-        if re.search(r'[_\-]2[_\.](\d+)[_\-]', document_id) or '__2__' in document_id:
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['ALL'],
-                'site_conditions': None,
-            }
+        # Part 2.x - General Controls (various sub-sections, e.g. "2_10" Parking).
+        # Try the specific sub-section first so entries with a narrower
+        # applicable_dev_types (e.g. none currently, but the config supports
+        # it) aren't silently collapsed to ALL; fall back to the shared
+        # Part-1 default (ALL/ALL) for sub-sections the config doesn't
+        # individually enumerate — same value every enumerated 2.x entry has
+        # anyway, so this loses no fidelity for the common case.
+        part2_match = re.search(r'[_\-]2[_\.](\d+)[_\-]', document_id) or ('__2__' in document_id)
+        if part2_match:
+            part2_key = f'2_{part2_match.group(1)}' if hasattr(part2_match, 'group') else None
+            if part2_key and part2_key in (config.get('parts') or {}):
+                return self._marrickville_part_entry(config, part2_key)
+            return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
 
         # Part 1 - Statutory (apply to ALL)
         if '__1__' in document_id or '_1_' in document_id:
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['ALL'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '1')
 
         # Part 3 - Subdivision
         if '__3__' in document_id or '_3_' in document_id or 'Subdivision' in document_id:
-            return {
-                'applicable_zones': ['ALL'],
-                'applicable_dev_types': ['subdivision'],
-                'site_conditions': None,
-            }
+            return self._marrickville_part_entry(config, '3')
 
         return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
 

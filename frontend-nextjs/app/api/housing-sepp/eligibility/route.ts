@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { HousingSEPPSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { HOUSING_SEPP_LMR } from '@/lib/regulatory-constants';
 
 /**
  * Housing SEPP Eligibility API
@@ -119,8 +120,14 @@ export async function POST(request: NextRequest) {
     // Normalize zone code (e.g., "R2 Low Density Residential" -> "R2")
     const zone = zoneCode.split(' ')[0].toUpperCase();
 
-    // Check if zone is residential
-    const residentialZones = ['R1', 'R2', 'R3', 'R4'];
+    // Check if zone is residential.
+    // DQ-30 (.claude/DATA_QUALITY_TRACKER.md): this exact value is also
+    // HOUSING_SEPP_LMR.ELIGIBLE_ZONES — consolidated (was independently
+    // declared here; also a separate, independent reimplementation of the
+    // same eligibility check as services/housing_sepp_eligibility.py, which
+    // this route does not call — flagged as a further consolidation
+    // candidate, not resolved in this pass).
+    const residentialZones = HOUSING_SEPP_LMR.ELIGIBLE_ZONES as readonly string[];
     if (!residentialZones.includes(zone)) {
       return NextResponse.json({
         success: true,
