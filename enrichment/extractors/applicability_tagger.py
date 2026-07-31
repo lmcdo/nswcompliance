@@ -220,10 +220,14 @@ class ApplicabilityTagger:
         there is exactly one place to edit, and the config file's own
         comments/structure are no longer decorative.)
         """
-        entry = config.get('parts', {}).get(key, {})
+        # `or {}` (not `.get(x, {})`) at every step: a config key that exists
+        # with an explicit None value (not merely absent) would otherwise
+        # slip past the `.get(key, default)` default and propagate None into
+        # the hard-filter query downstream.
+        entry = (config.get('parts') or {}).get(key) or {}
         return {
-            'applicable_zones': entry.get('applicable_zones', ['ALL']),
-            'applicable_dev_types': entry.get('applicable_dev_types', ['ALL']),
+            'applicable_zones': entry.get('applicable_zones') or ['ALL'],
+            'applicable_dev_types': entry.get('applicable_dev_types') or ['ALL'],
             'site_conditions': site_conditions if site_conditions is not None else entry.get('site_conditions'),
         }
 
@@ -309,7 +313,7 @@ class ApplicabilityTagger:
         part2_match = re.search(r'[_\-]2[_\.](\d+)[_\-]', document_id) or ('__2__' in document_id)
         if part2_match:
             part2_key = f'2_{part2_match.group(1)}' if hasattr(part2_match, 'group') else None
-            if part2_key and part2_key in config.get('parts', {}):
+            if part2_key and part2_key in (config.get('parts') or {}):
                 return self._marrickville_part_entry(config, part2_key)
             return {'applicable_zones': ['ALL'], 'applicable_dev_types': ['ALL'], 'site_conditions': None}
 

@@ -1,32 +1,156 @@
 {
-  "tier": "minor",
-  "justification": "Adds a 'Site directory' footer link to the two consumer-surface footers (app/reports/layout.tsx — which canibuildit.com.au/ rewrites to — and app/(tools)/layout.tsx for the per-council tool pages), so the /site-directory page is reachable from the menu on canibuildit, not only the pro/marketing SiteFooter. Presentational only: one <Link> and one array entry. No data, no logic, no DB.",
-  "commit_hash": "5d9b4664",
+  "tier": "critical",
+  "justification": "DQ-30 zone-taxonomy consolidation: fixes a DCP applicability tagger that hard-filters which regulatory provisions a real property can see (feeds app/assessment/page.tsx via for-property/route.ts), consolidates ~20 codebase-wide zone-code hardcodes onto one shared source, and includes a production DB write (PR5 retag of regulatory_provisions.v2_applicable_zones/v2_applicable_dev_types for 7 councils). This is compliance-output-shaping logic touching production data, not a cosmetic change.",
+  "commit_hash": "a7625e1a",
   "files": [
-    "frontend-nextjs/app/reports/layout.tsx",
-    "frontend-nextjs/app/(tools)/layout.tsx"
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/config/zone_taxonomy.py",
+    "enrichment/config/ashfield_config.py",
+    "enrichment/config/ku_ring_gai_config.py",
+    "enrichment/config/leichhardt_config.py",
+    "enrichment/config/marrickville_config.py",
+    "enrichment/config/waverley_config.py",
+    "enrichment/config/woollahra_config.py",
+    "frontend-nextjs/shared/zone-taxonomy.json",
+    "frontend-nextjs/lib/zone-translation.ts",
+    "frontend-nextjs/lib/regulatory-constants.ts",
+    "frontend-nextjs/lib/db.ts",
+    "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
+    "frontend-nextjs/lib/pdf/see-helpers.ts",
+    "frontend-nextjs/lib/see/section-aggregation.ts",
+    "frontend-nextjs/lib/see/seeBuilders.ts",
+    "frontend-nextjs/app/api/canibuildit/check/route.ts",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/app/api/og/granny-flat/route.tsx",
+    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
+    "frontend-nextjs/app/api/sepp/exempt-complying/route.ts",
+    "frontend-nextjs/app/reports/granny-flat/page.tsx",
+    "frontend-nextjs/components/compliance/ADGSummaryCard.tsx",
+    "frontend-nextjs/components/compliance/CDCScreener.tsx",
+    "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
+    "frontend-nextjs/components/pdf/ContextSection.tsx",
+    "services/compound_constraints.py",
+    "services/db_config.py",
+    "services/housing_sepp_eligibility.py",
+    "tests/enrichment/conftest.py",
+    "tests/enrichment/test_applicability_tagger.py",
+    "tests/test_compound_constraints.py",
+    ".githooks/pre-commit",
+    "scripts/lint_hardcoded_zone_codes.py"
   ],
   "pre_impl": {
-    "existing_data": "None. /site-directory already exists and returns 200; this only links to it. The link target was verified live.",
-    "assumption_mismatch": "If /site-directory were removed, this footer link would 404 — but the page shipped in #828 and is live. tsc passes.",
-    "new_vs_existing": "Two existing inline footers gain one link each; the marketing SiteFooter already had it (#828). No behaviour change."
+    "existing_data": "Interacts with regulatory_provisions.v2_applicable_zones and v2_applicable_dev_types for the 7 configured councils (Waverley, Woollahra, City of Sydney, Ku-ring-gai, Ashfield, Leichhardt, Marrickville), the read-only lep_zone_coverage table, and housing_sepp_standards.",
+    "assumption_mismatch": "If a document_id fails to match any known DCP part or chapter pattern, the tagger falls back to ALL zones and ALL dev types exactly as before; the only behaviour change is that an explicit-None config value can no longer silently override that fallback, via 'or {}' guards replacing dict.get(key, default).",
+    "new_vs_existing": "PR5 reset then re-ran the tagger against every already-tagged existing row for the 7 configured councils, not just newly extracted provisions; new provisions extracted going forward use the same fixed code path automatically with no separate migration step required.",
+    "external_source_error": "get_valid_zones_for_lga() and getValidZonesForLga() query lep_zone_coverage and return an empty list when the LGA has zero rows; callers must treat that as 'not yet scraped', never as 'this LGA legitimately has zero real zones', per the function's own docstring.",
+    "frontend_type": "No type-shape change anywhere: v2_applicable_zones and v2_applicable_dev_types remain plain string arrays end-to-end, and the new PATTERN_BOOK_CDC.ELIGIBLE_ZONES export uses the identical readonly string[] as const shape every other zone constant in regulatory-constants.ts already uses.",
+    "user_failure_mode": "If the tagger or a config mis-tags a provision, the user either silently loses a DCP rule that should apply to their property or silently sees an irrelevant rule — both failure modes are silent, mitigated here by 46 regression tests (13 new) and a 0% post-retag drift verification."
   },
-  "functions": "N/A — static JSX link additions.",
-  "values": "N/A.",
-  "queries": "N/A.",
+  "functions": [
+    {
+      "name": "_marrickville_part_entry",
+      "file_line": "enrichment/extractors/applicability_tagger.py:213",
+      "input": "A Marrickville council config dict and a part-key string identifying which MARRICKVILLE_CONFIG['parts'] entry to look up, called from every Marrickville document-matching branch instead of a hardcoded inline copy.",
+      "output": "A dict with applicable_zones, applicable_dev_types and site_conditions read directly from the config's own 'parts' entry, so the config file and the tagger can no longer independently drift apart.",
+      "if_none": "If 'parts' or the specific key is absent or explicitly set to None in the config, the 'or {}' chain at each step returns ['ALL']/['ALL'] as the safe default instead of propagating None into the downstream DB write."
+    },
+    {
+      "name": "get_valid_zones_for_lga",
+      "file_line": "services/db_config.py:62",
+      "input": "An LGA name string exactly as stored in lep_zone_coverage, e.g. 'Waverley', called from any Python consumer that needs today's real, live-scraped zone list for that council.",
+      "output": "A list of current zone-code strings for that LGA, cached in-process for 300 seconds so repeated calls within a request burst do not re-query the database each time.",
+      "if_none": "Returns an empty list when the LGA has no rows yet in lep_zone_coverage — callers must read that as 'not onboarded yet', never as 'this LGA has zero real zones', exactly per the function's own docstring warning."
+    },
+    {
+      "name": "isZoneEligible",
+      "file_line": "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts:203",
+      "input": "An optional zone code string such as 'R2 Low Density Residential', taken from property constraints passed into the Pattern Book CDC eligibility check.",
+      "output": "A boolean for whether the zone is one of the 3 Pattern Book eligible zones, now read from the new shared PATTERN_BOOK_CDC.ELIGIBLE_ZONES constant instead of its own independent inline literal.",
+      "if_none": "Returns false immediately when zone is undefined, so a property with no known zone is always treated as Pattern-Book-ineligible rather than silently passing the eligibility gate."
+    }
+  ],
+  "values": [
+    {
+      "value": "lep_zone_coverage.zone rows for a given LGA",
+      "read_at": "services/db_config.py:75 (Python) and frontend-nextjs/lib/db.ts:161 (getValidZonesForLga, TypeScript)",
+      "if_missing": "An empty list is returned to the caller; callers must not treat that as 'zero real zones exist', only as 'this LGA has not been scraped yet'."
+    },
+    {
+      "value": "MARRICKVILLE_CONFIG['parts'][key]['applicable_zones']/['applicable_dev_types']",
+      "read_at": "enrichment/extractors/applicability_tagger.py:213 (_marrickville_part_entry)",
+      "if_missing": "Falls back to ['ALL'] via the new 'or' guard rather than None, closing the DQ-30 adversarial finding raised during this review."
+    },
+    {
+      "value": "document_id string passed into every _get_<council>_config method",
+      "read_at": "enrichment/extractors/applicability_tagger.py (per-council config lookup methods)",
+      "if_missing": "Not nullable at this call site: tag() always receives a non-empty document_id sourced directly from the regulatory_provisions row currently being processed."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Fetch the current, live-scraped valid zone codes for one LGA (Python side)",
+      "file_line": "services/db_config.py:75",
+      "where_clause": "WHERE lga = %s"
+    },
+    {
+      "purpose": "Fetch the current, live-scraped valid zone codes for one LGA (TypeScript side, same shape)",
+      "file_line": "frontend-nextjs/lib/db.ts:161",
+      "where_clause": "WHERE lga = $1 (parameterised, mirrors the Python query above)"
+    },
+    {
+      "purpose": "PR5 retag: guarded reset to NULL then re-run of the existing retagging job against the 7 configured councils' affected rows",
+      "file_line": "enrichment/pipeline.py:671 (run_applicability_tagging, unmodified by this PR, only fills NULL rows)",
+      "where_clause": "WHERE v2_applicable_zones IS NULL AND source_council IN (the 7 configured councils), following a per-row optimistic-concurrency-guarded reset of the prior value to NULL"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "The link is added to the marketing footer only (SiteFooter) again and still doesn't appear on canibuildit, because canibuildit.com.au/ rewrites to /reports which uses app/reports/layout.tsx, not SiteFooter.",
-      "what_happens": "The site-directory link stays invisible on the consumer home — the exact gap being fixed.",
+      "scenario": "The PR5 retag job is interrupted partway through (network blip, timeout) after the guarded reset to NULL but before the re-tag pass finishes writing every row.",
+      "what_happens": "Any row left NULL past that point disappears entirely from the hard-filter query in for-property/route.ts, silently hiding that DCP rule from every property until the job is re-run to completion.",
       "mitigated": true,
-      "how": "Confirmed via middleware.ts (isCanibuilditDomain && pathname==='/' rewrites to /reports) that app/reports/layout.tsx is the canibuildit home footer; the link is added there and in app/(tools)/layout.tsx for the tool pages.",
-      "repro": "curl canibuildit.com.au/ after deploy and grep for '/site-directory' in the footer."
+      "how": "run_applicability_tagging() only fills rows WHERE v2_applicable_zones IS NULL, so re-running it is idempotent and safe to retry; the 0% drift re-check after the run confirms no row was left stranded.",
+      "repro": "SELECT count(*) FROM regulatory_provisions WHERE source_council IN ('waverley','woollahra','city_of_sydney','ku_ring_gai','ashfield','leichhardt','marrickville') AND v2_applicable_zones IS NULL — should be 0 after a completed retag."
+    },
+    {
+      "scenario": "A future edit to MARRICKVILLE_CONFIG accidentally sets applicable_zones to an empty list instead of omitting the key or using ['ALL'] for a genuinely universal part.",
+      "what_happens": "The 'or' guard added in this PR treats an empty list the same as None or absent and substitutes ['ALL'], which is correct for the 'not yet specified' case but would silently mask a config author's real intent of 'applies to zero zones'.",
+      "mitigated": true,
+      "how": "An 'applies to zero zones' entry is not a meaningful DCP concept in this schema — every real part applies to at least one zone or ALL — so this is documented as the intended default, not a gap, in the inline comment above the guard.",
+      "repro": "pytest tests/enrichment/test_applicability_tagger.py -k marrickville -v — set a part's applicable_zones to [] in the config fixture and confirm _marrickville_part_entry still returns ['ALL']."
+    },
+    {
+      "scenario": "A developer edits PATTERN_BOOK_CDC.ELIGIBLE_ZONES in regulatory-constants.ts and merges it with CDC_HOUSING_CODE_ZONES, since both now live in the same file and look similar.",
+      "what_happens": "Pattern Book eligibility would incorrectly extend to R4 zones, contradicting SEPP (Exempt and Complying Development Codes) 2008 Schedule 1, which restricts the Pattern Book pathway to R1-R3 only.",
+      "mitigated": true,
+      "how": "An explicit doc-comment directly above PATTERN_BOOK_CDC.ELIGIBLE_ZONES states the two lists are deliberately different scopes and must not be merged, mirroring the existing CDC_HOUSING_CODE_ZONES warning comment in the same file.",
+      "repro": "cd frontend-nextjs && npx jest --testPathPattern=pattern-book -- call isZoneEligible('R4') and confirm it returns false, not true."
+    },
+    {
+      "scenario": "A future contributor sees the new pre-commit zone-code lint fail on a genuinely new hardcoded array and reflexively adds a # noqa: zone-codes suppression instead of importing the shared taxonomy source.",
+      "what_happens": "The exact DQ-30 bug class (an independent, unreviewed zone-code literal silently drifting from the shared source) reappears a third time in this codebase, defeating the point of adding the lint in the first place.",
+      "mitigated": true,
+      "how": "The lint's own failure message explicitly instructs importing the shared source first and reserves the noqa escape hatch for genuine non-zone-code false positives (DCP Part/Chapter keys); every noqa added in this PR is a test-fixture literal or an already-correct current-era-only comparison, not a new drift risk.",
+      "repro": "Add `zones = ['B1', 'B2']` to any staged .py/.ts file and run python scripts/lint_hardcoded_zone_codes.py — confirm it fails with the import-or-noqa message."
+    },
+    {
+      "scenario": "Ashfield onboards a real Chapter F Part 10 document after this fix ships, and the anchored regex still has an off-by-one in its negative lookahead against three-digit part numbers like Part_100.",
+      "what_happens": "A Part 10 or higher document could still collide with an earlier single-digit Part entry, mistagging its zones and dev types the same way the original Part_1/Part_10 substring bug did.",
+      "mitigated": true,
+      "how": "The fix uses a word-boundary-style negative lookahead (?!\\d) that rejects any following digit, not just a hardcoded single extra character, so it correctly disambiguates Part_1 from Part_10 and would equally disambiguate Part_10 from Part_100 if it existed today.",
+      "repro": "pytest tests/enrichment/test_applicability_tagger.py -k ashfield -v — add a Part_100 document_id fixture and confirm it does not match the Part_1 config entry."
+    },
+    {
+      "scenario": "get_valid_zones_for_lga's 300-second in-process cache serves a stale empty result if an LGA finishes its first lep_zone_coverage scrape milliseconds after a cache miss already stored an empty list for it.",
+      "what_happens": "Any caller in that 5-minute window sees zero valid zones for a now-onboarded LGA and could incorrectly treat every property in it as unmatched, even though fetching the current, live-scraped zone list again after the cache expires would return the real data.",
+      "mitigated": true,
+      "how": "The cache TTL is short (300 seconds) and the docstring explicitly instructs callers to treat an empty result as 'not yet scraped' rather than 'zero real zones', so no caller currently makes an irreversible decision on a single empty read.",
+      "repro": "In a Python shell: call get_valid_zones_for_lga('test_lga') before and immediately after inserting a row into lep_zone_coverage for that LGA — confirm the second call still returns [] until the 300s TTL expires, then returns the real zones after."
     }
   ],
   "post_merge": {
-    "db_reset": "No.",
-    "secrets": "No.",
-    "other_repo": "No.",
-    "manual_verify": "After deploy, open canibuildit.com.au/ and a tool page (e.g. /granny-flat/<council>) and confirm the footer shows a working 'Site directory' link."
+    "db_reset": "No further reset needed post-merge — PR5 already ran the guarded backup/reset/retag against production for the 7 configured councils' affected rows before this branch was opened for review.",
+    "secrets": "No new secrets or environment variables introduced — shared/zone-taxonomy.json is a static committed file, not a credential or connection string.",
+    "other_repo": "No other repository or service needs a corresponding update; every consumer (frontend-nextjs, enrichment, services) already lives inside this single repository.",
+    "manual_verify": "Recommended per the original plan but not yet done: load a known Marrickville industrial-zone address on app/assessment/page.tsx before and after this merge and confirm the previously-hidden Part 6 provisions now appear."
   }
 }

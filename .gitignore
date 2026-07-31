@@ -214,6 +214,7 @@ enrichment/
 !enrichment/config/city_of_sydney_config.py
 !enrichment/config/ku_ring_gai_config.py
 !enrichment/config/structural_categories.py
+!enrichment/config/zone_taxonomy.py
 !enrichment/extractors/
 !enrichment/extractors/__init__.py
 !enrichment/extractors/layer_topic_tagger.py
