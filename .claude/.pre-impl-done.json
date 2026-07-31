@@ -1,5 +1,5 @@
 {
   "status": "trivial",
-  "timestamp": "2026-08-01T00:00:00+10:00",
-  "reason": "services/compound_constraints.py: adding a single-line # noqa: zone-codes suppression comment to line 176 (an already-correct current-era-only zone tuple check) so the new PR4 zone-code lint hook stops flagging it. No new query, no schema change, no logic change."
+  "timestamp": "2026-08-01T01:00:00+10:00",
+  "reason": "services/db_config.py: adding 'AND is_complete = TRUE' to get_valid_zones_for_lga's existing SELECT against lep_zone_coverage, per a verified Sol cross-review finding -- every other consumer of this table in the codebase (app/api/lep/permissibility, app/api/permissibility/check) already gates on is_complete=TRUE, confirmed real column via grep. Same WHERE clause, one added predicate, no new table/join."
 }

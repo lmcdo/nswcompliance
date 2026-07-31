@@ -164,8 +164,12 @@ export async function getValidZonesForLga(lga: string): Promise<string[]> {
     return cached.zones;
   }
 
+  // is_complete = TRUE: same coverage gate every other lep_zone_coverage
+  // consumer in this codebase already applies (see /api/lep/permissibility,
+  // /api/permissibility/check) -- an interrupted scrape must not be treated
+  // as "this is the complete valid zone list for the LGA."
   const result = await query(
-    'SELECT zone FROM lep_zone_coverage WHERE lga = $1 ORDER BY zone',
+    'SELECT zone FROM lep_zone_coverage WHERE lga = $1 AND is_complete = TRUE ORDER BY zone',
     [lga]
   );
   const zones = result.rows.map((row: { zone: string }) => row.zone);

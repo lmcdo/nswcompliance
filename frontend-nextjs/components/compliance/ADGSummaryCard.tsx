@@ -87,7 +87,10 @@ interface ADGSummaryCardProps {
 // name were themselves renamed to C1-C4 — already present, so E1-E4 was
 // pure duplication of a now-wrong meaning, not additional coverage.
 // IN1-IN4 (legacy industrial codes, genuinely apartment-restricting) are
-// replaced with their real current equivalents E4/E5.
+// replaced with their real current equivalents E3/E4/E5 -- E3 (Productivity
+// Support) generally excludes residential accommodation the same as E4/E5,
+// per NSW_STANDARD_ZONES.INDUSTRIAL in regulatory-constants.ts, which groups
+// E3/E4/E5 together for exactly this reason.
 const APARTMENT_RESTRICTED_ZONES = [
   'R2',   // Low Density Residential - usually prohibits RFB
   'RU1', 'RU2', 'RU3', 'RU4', 'RU5', 'RU6',  // Rural zones
@@ -95,7 +98,7 @@ const APARTMENT_RESTRICTED_ZONES = [
   'W1', 'W2', 'W3',  // Waterway zones
   'SP1', 'SP2',  // Special Purpose (varies)
   'RE1', 'RE2',  // Recreation
-  'E4', 'E5',  // General Industrial / Heavy Industrial (current codes; were IN1-IN4)
+  'E3', 'E4', 'E5',  // Productivity Support / General Industrial / Heavy Industrial (current codes; were IN1-IN4)
 ];
 
 // Development types that trigger ADG requirements

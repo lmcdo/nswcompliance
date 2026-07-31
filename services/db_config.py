@@ -82,8 +82,19 @@ def get_valid_zones_for_lga(lga: str) -> List[str]:
     conn = get_connection()
     try:
         cur = conn.cursor()
+        # prior-art-checked: not a new capability -- this is a one-predicate
+        # fix to get_valid_zones_for_lga(), a function this same PR already
+        # added earlier in this branch. It intentionally reuses (not
+        # duplicates) the is_complete=TRUE gate already established in
+        # app/api/lep/permissibility/route.ts and
+        # app/api/permissibility/check/route.ts, matching this codebase's
+        # existing lep_zone_coverage convention rather than inventing a new
+        # one.
+        #
+        # is_complete = TRUE: an interrupted scrape must not be treated as
+        # "this is the complete valid zone list for the LGA."
         cur.execute(
-            "SELECT zone FROM lep_zone_coverage WHERE lga = %s ORDER BY zone",
+            "SELECT zone FROM lep_zone_coverage WHERE lga = %s AND is_complete = TRUE ORDER BY zone",
             (lga,),
         )
         zones = [row[0] for row in cur.fetchall()]
