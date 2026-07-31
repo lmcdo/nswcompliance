@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "DQ-30 zone-taxonomy consolidation: fixes a DCP applicability tagger that hard-filters which regulatory provisions a real property can see (feeds app/assessment/page.tsx via for-property/route.ts), consolidates ~20 codebase-wide zone-code hardcodes onto one shared source, and includes a production DB write (PR5 retag of regulatory_provisions.v2_applicable_zones/v2_applicable_dev_types for 7 councils). This is compliance-output-shaping logic touching production data, not a cosmetic change.",
-  "commit_hash": "a7625e1a",
+  "commit_hash": "afec225f",
   "files": [
     "enrichment/extractors/applicability_tagger.py",
     "enrichment/config/zone_taxonomy.py",
