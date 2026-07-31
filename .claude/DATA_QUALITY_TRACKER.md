@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line is a zone-only check with no heritage/dev-type/lot gating, unlike this same file's own determineDevelopmentPathway() | 🔍 Logged 2026-08-01, not sized | P1 — liability language on a definitive claim |
 | DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
 | DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
 | DQ-31: housing-sepp/eligibility route never migrated to the Python single-source-of-truth service — documented over-eligibility bug still live | ⏳ Tracked 2026-07-31, not started | P1 |
@@ -43,6 +44,38 @@
 | DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
 | DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
 | DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-34: PDF "Housing SEPP 2021: ✓ Applies" line is an ungated definitive claim
+
+**Status:** 🔍 Logged 2026-08-01, not sized — found via a Sol cross-review of the DQ-30 branch,
+verified against the code, deliberately not fixed here (out of scope for a zone-taxonomy
+consolidation PR).
+**Found:** 2026-08-01
+
+**Problem:** `frontend-nextjs/components/pdf/ContextSection.tsx` has two separate pieces of
+Housing SEPP eligibility logic in the same file. `determineDevelopmentPathway()` (used for the
+main pathway determination) correctly checks `heritage_status` first and returns a hedged reason
+("CDC pathway available for eligible development"). But a second, separate JSX block rendering
+the "Housing SEPP 2021" table row (around line 304) only checks `HOUSING_SEPP_ZONES.includes(zoneCode)`
+and prints an unconditional "✓ Applies — `<zone>` zone eligible for complying development (CDC)
+pathway" with no heritage, dev-type, or lot-size gating at all.
+
+**Confirmed pre-existing:** verified via `git diff main` that this PR only swapped the inline
+zone-code literal for the shared `HOUSING_SEPP_ZONES` constant at this exact line — the
+surrounding "✓ Applies" conditional and copy are unchanged, pre-dating DQ-30. Not introduced or
+worsened by the zone-taxonomy consolidation.
+
+**Risk:** a heritage-listed or otherwise CDC-ineligible property zoned E1/MU1 would show
+"✓ Applies" in the generated PDF, which reads as a definitive eligibility claim despite zone
+membership alone not establishing CDC eligibility — the class of issue
+`.claude/rules/pre-pr-review.md`'s liability-language check exists to catch.
+
+**Fix:** not started, not sized. Needs deciding whether to gate this specific display block on
+the same heritage check `determineDevelopmentPathway()` already does, or reuse
+`determineDevelopmentPathway()`'s result directly instead of re-deriving eligibility inline a
+second time in the same file.
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "DQ-30 zone-taxonomy consolidation: fixes a DCP applicability tagger that hard-filters which regulatory provisions a real property can see (feeds app/assessment/page.tsx via for-property/route.ts), consolidates ~20 codebase-wide zone-code hardcodes onto one shared source, and includes a production DB write (PR5 retag of regulatory_provisions.v2_applicable_zones/v2_applicable_dev_types for 7 councils). This is compliance-output-shaping logic touching production data, not a cosmetic change. Post-push Sol cross-review verified 3 findings against the code and all were fixed: added the codebase's existing is_complete=TRUE coverage gate to both getValidZonesForLga queries, and restored E3 (Productivity Support, apartment-restricting like E4/E5) to ADGSummaryCard.tsx's APARTMENT_RESTRICTED_ZONES, which this PR's earlier pass had dropped without a replacement.",
-  "commit_hash": "bb0f6ac2",
+  "commit_hash": "092a6f30",
   "files": [
     "enrichment/extractors/applicability_tagger.py",
     "enrichment/config/zone_taxonomy.py",
