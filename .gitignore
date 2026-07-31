@@ -425,6 +425,10 @@ scripts/
 !scripts/populate_ku_ring_gai_registry.py
 !scripts/survey_dcp.py
 !scripts/check_registry.py
+# DQ-30 PR4 CI guard — the pre-commit hook invokes this; if it is not tracked,
+# every commit in a fresh clone fails on a missing file.
+!scripts/lint_hardcoded_zone_codes.py
+!scripts/validate_zone_code_validity.py
 !scripts/requirements-monitor.txt
 !scripts/requirements-stats.txt
 !scripts/secondary_dwelling_stats.py
