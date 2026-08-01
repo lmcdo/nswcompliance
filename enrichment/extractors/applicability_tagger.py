@@ -424,9 +424,28 @@ class ApplicabilityTagger:
 
         return dev_types
 
-    def tag(self, text: str, document_id: str = None) -> Tuple[List[str], List[str]]:
+    def tag(self, text: str, document_id: str = None,
+            valid_zones: Optional[Set[str]] = None) -> Tuple[List[str], List[str]]:
         """
         Tag provision with applicable zones and development types.
+
+        ``valid_zones`` (DQ-30): the LGA's real, live-scraped zone list from
+        lep_zone_coverage, via services.db_config.get_valid_zones_for_lga().
+        When supplied, no zone code outside it is ever returned — the invariant
+        the validity gate (scripts/validate_zone_code_validity.py) enforces, moved
+        to write time so bad codes are never stored rather than merely audited
+        later.
+
+        Pass None (the default) to disable filtering. That keeps this a pure
+        function for the golden tests, and keeps behaviour unchanged for any
+        caller that has no LGA context. Filtering is also skipped for an LGA with
+        no complete coverage — unverifiable must never be treated as invalid.
+
+        Why this is needed: the text-regex fallback below matches DCP chapter
+        codes as zone codes ("Part B3" reads as zone B3). That was mitigated for
+        config-driven councils by skipping regex entirely, but the ~9 councils
+        with no structural config still run it blind. 241 rows in production
+        carry codes that do not exist in their LGA as a result.
 
         Strategy:
         1. Detect which council's DCP this is from
@@ -481,6 +500,15 @@ class ApplicabilityTagger:
                 zones.update(text_zones)
             if text_dev_types:
                 dev_types.update(text_dev_types)
+
+        # 2.5 Drop any zone that does not exist in this LGA (DQ-30).
+        # Applied to the FINAL set, not just the regex output, so the stored value
+        # can never contradict lep_zone_coverage regardless of which path produced
+        # it. If this empties the set, step 3 below restores 'ALL' — which is the
+        # honest state: the evidence was a false match, so applicability is
+        # undetermined, exactly as if nothing had been found.
+        if valid_zones:
+            zones = {z for z in zones if z == 'ALL' or z in valid_zones}
 
         # 3. Default to ALL if nothing specific found
         if not zones:

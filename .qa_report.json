@@ -1,156 +1,119 @@
 {
   "tier": "critical",
-  "justification": "DQ-30 zone-taxonomy consolidation: fixes a DCP applicability tagger that hard-filters which regulatory provisions a real property can see (feeds app/assessment/page.tsx via for-property/route.ts), consolidates ~20 codebase-wide zone-code hardcodes onto one shared source, and includes a production DB write (PR5 retag of regulatory_provisions.v2_applicable_zones/v2_applicable_dev_types for 7 councils). This is compliance-output-shaping logic touching production data, not a cosmetic change. Post-push Sol cross-review verified 3 findings against the code and all were fixed: added the codebase's existing is_complete=TRUE coverage gate to both getValidZonesForLga queries, and restored E3 (Productivity Support, apartment-restricting like E4/E5) to ADGSummaryCard.tsx's APARTMENT_RESTRICTED_ZONES, which this PR's earlier pass had dropped without a replacement.",
-  "commit_hash": "918f28ef",
+  "justification": "Closes the DATA half of DQ-30 with a production database write: 241 rows in regulatory_provisions held zone codes that do not exist in their LGA, 112 of them live and served on the compliance surface. Adds a write-time guard in the applicability tagger so those codes cannot be stored again, plus the repair script. Production data mutation on the table behind the property-assessment provisions panel — critical by any reading.",
+  "commit_hash": "5259d29e",
   "files": [
     "enrichment/extractors/applicability_tagger.py",
-    "enrichment/config/zone_taxonomy.py",
-    "enrichment/config/ashfield_config.py",
-    "enrichment/config/ku_ring_gai_config.py",
-    "enrichment/config/leichhardt_config.py",
-    "enrichment/config/marrickville_config.py",
-    "enrichment/config/waverley_config.py",
-    "enrichment/config/woollahra_config.py",
-    "frontend-nextjs/shared/zone-taxonomy.json",
-    "frontend-nextjs/lib/zone-translation.ts",
-    "frontend-nextjs/lib/regulatory-constants.ts",
-    "frontend-nextjs/lib/db.ts",
-    "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts",
-    "frontend-nextjs/lib/pdf/see-helpers.ts",
-    "frontend-nextjs/lib/see/section-aggregation.ts",
-    "frontend-nextjs/lib/see/seeBuilders.ts",
-    "frontend-nextjs/app/api/canibuildit/check/route.ts",
-    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
-    "frontend-nextjs/app/api/og/granny-flat/route.tsx",
-    "frontend-nextjs/app/api/satellite/granny-flat/route.ts",
-    "frontend-nextjs/app/api/sepp/exempt-complying/route.ts",
-    "frontend-nextjs/app/reports/granny-flat/page.tsx",
-    "frontend-nextjs/components/compliance/ADGSummaryCard.tsx",
-    "frontend-nextjs/components/compliance/CDCScreener.tsx",
-    "frontend-nextjs/components/compliance/ExemptComplyingProvisions.tsx",
-    "frontend-nextjs/components/pdf/ContextSection.tsx",
-    "services/compound_constraints.py",
-    "services/db_config.py",
-    "services/housing_sepp_eligibility.py",
-    "tests/enrichment/conftest.py",
-    "tests/enrichment/test_applicability_tagger.py",
-    "tests/test_compound_constraints.py",
-    ".githooks/pre-commit",
-    "scripts/lint_hardcoded_zone_codes.py"
+    "scripts/backfill_invalid_zone_codes.py",
+    "scripts/validate_zone_code_validity.py",
+    ".gitignore"
   ],
   "pre_impl": {
-    "existing_data": "Interacts with regulatory_provisions.v2_applicable_zones and v2_applicable_dev_types for the 7 configured councils (Waverley, Woollahra, City of Sydney, Ku-ring-gai, Ashfield, Leichhardt, Marrickville), the read-only lep_zone_coverage table, and housing_sepp_standards.",
-    "assumption_mismatch": "If a document_id fails to match any known DCP part or chapter pattern, the tagger falls back to ALL zones and ALL dev types exactly as before; the only behaviour change is that an explicit-None config value can no longer silently override that fallback, via 'or {}' guards replacing dict.get(key, default).",
-    "new_vs_existing": "PR5 reset then re-ran the tagger against every already-tagged existing row for the 7 configured councils, not just newly extracted provisions; new provisions extracted going forward use the same fixed code path automatically with no separate migration step required.",
-    "external_source_error": "get_valid_zones_for_lga() and getValidZonesForLga() query lep_zone_coverage and return an empty list when the LGA has zero rows; callers must treat that as 'not yet scraped', never as 'this LGA legitimately has zero real zones', per the function's own docstring.",
-    "frontend_type": "No type-shape change anywhere: v2_applicable_zones and v2_applicable_dev_types remain plain string arrays end-to-end, and the new PATTERN_BOOK_CDC.ELIGIBLE_ZONES export uses the identical readonly string[] as const shape every other zone constant in regulatory-constants.ts already uses.",
-    "user_failure_mode": "If the tagger or a config mis-tags a provision, the user either silently loses a DCP rule that should apply to their property or silently sees an irrelevant rule — both failure modes are silent, mitigated here by 46 regression tests (13 new) and a 0% post-retag drift verification."
+    "existing_data": "regulatory_provisions.v2_applicable_zones (text[]) across ~55,634 rows carrying zone codes; lep_zone_coverage (26 LGAs, is_complete=TRUE) as ground truth; lga_registry for slug-to-LGA resolution. No schema change of any kind.",
+    "assumption_mismatch": "If an LGA has no complete lep_zone_coverage rows, nothing is filtered and nothing is repaired — those rows are reported UNVERIFIABLE rather than assumed valid or assumed invalid. Absence of ground truth is never treated as a pass, which is the exact failure that let DQ-30 be marked fixed while it was still broken.",
+    "new_vs_existing": "Applies to every existing row holding an invalid code, not only newly tagged ones, because re-deriving from provision text was measured against production first and repaired 0 of 241 — it re-runs the identical regex that produced them.",
+    "external_source_error": "Both scripts read only the Postgres database; there is no external API in this path. On any exception the backfill rolls back its open transaction and re-raises rather than committing a partial repair.",
+    "frontend_type": "No frontend type change. v2_applicable_zones remains a string array end-to-end; only the member values change, and 'ALL' was already an established sentinel in that column.",
+    "user_failure_mode": "If the repair were wrong a user would silently see a DCP provision that does not apply to their property, or lose one that does. Mitigated by taking a backup first, verifying its row count before any UPDATE, guarding each row on its pre-change value, and confirming the result with a check that can fail."
   },
   "functions": [
     {
-      "name": "_marrickville_part_entry",
-      "file_line": "enrichment/extractors/applicability_tagger.py:213",
-      "input": "A Marrickville council config dict and a part-key string identifying which MARRICKVILLE_CONFIG['parts'] entry to look up, called from every Marrickville document-matching branch instead of a hardcoded inline copy.",
-      "output": "A dict with applicable_zones, applicable_dev_types and site_conditions read directly from the config's own 'parts' entry, so the config file and the tagger can no longer independently drift apart.",
-      "if_none": "If 'parts' or the specific key is absent or explicitly set to None in the config, the 'or {}' chain at each step returns ['ALL']/['ALL'] as the safe default instead of propagating None into the downstream DB write."
+      "name": "main",
+      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
+      "input": "Command-line arguments; dry-run unless --apply is passed. Reads candidate rows and the ground-truth zone lists from the database.",
+      "output": "A printed repair plan grouped by council and, under --apply, per-row guarded UPDATE statements against regulatory_provisions plus a backup table.",
+      "if_none": "When no row needs repair it reports that every resolvable row is already valid and exits zero without opening a write transaction at all."
     },
     {
-      "name": "get_valid_zones_for_lga",
-      "file_line": "services/db_config.py:62",
-      "input": "An LGA name string exactly as stored in lep_zone_coverage, e.g. 'Waverley', called from any Python consumer that needs today's real, live-scraped zone list for that council.",
-      "output": "A list of current zone-code strings for that LGA, cached in-process for 300 seconds so repeated calls within a request burst do not re-query the database each time.",
-      "if_none": "Returns an empty list when the LGA has no rows yet in lep_zone_coverage — callers must read that as 'not onboarded yet', never as 'this LGA has zero real zones', exactly per the function's own docstring warning."
+      "name": "_resolver",
+      "file_line": "scripts/backfill_invalid_zone_codes.py:86",
+      "input": "An open cursor and the ground-truth mapping, used to build a council-slug to ground-truth-key resolver mirroring the validator exactly.",
+      "output": "A closure returning the matching ground-truth key for a council slug, or None when that council cannot be resolved to any complete coverage.",
+      "if_none": "Returns None, and the caller skips that row entirely rather than guessing a mapping — an unresolvable council is never repaired blind."
     },
     {
-      "name": "isZoneEligible",
-      "file_line": "frontend-nextjs/lib/pattern-book-eligibility/check-exclusions.ts:203",
-      "input": "An optional zone code string such as 'R2 Low Density Residential', taken from property constraints passed into the Pattern Book CDC eligibility check.",
-      "output": "A boolean for whether the zone is one of the 3 Pattern Book eligible zones, now read from the new shared PATTERN_BOOK_CDC.ELIGIBLE_ZONES constant instead of its own independent inline literal.",
-      "if_none": "Returns false immediately when zone is undefined, so a property with no known zone is always treated as Pattern-Book-ineligible rather than silently passing the eligibility gate."
+      "name": "load_slug_resolution",
+      "file_line": "scripts/validate_zone_code_validity.py:111",
+      "input": "An open cursor plus the ground-truth zone mapping, reading active rows from lga_registry to translate council slugs.",
+      "output": "A dictionary mapping every registry slug to its ground-truth key, or to None where no case-insensitive match exists in the coverage table.",
+      "if_none": "A slug resolving to None makes its rows UNRESOLVED, reported as its own defect rather than folded into unverifiable and quietly ignored."
     }
   ],
   "values": [
     {
-      "value": "lep_zone_coverage.zone rows for a given LGA where is_complete = TRUE",
-      "read_at": "services/db_config.py:97 (Python) and frontend-nextjs/lib/db.ts:172 (getValidZonesForLga, TypeScript)",
-      "if_missing": "An empty list is returned to the caller when no complete rows exist; callers must not treat that as 'zero real zones exist', only as 'this LGA has not finished being scraped yet'."
+      "value": "lep_zone_coverage zone codes per LGA where is_complete is true",
+      "read_at": "scripts/validate_zone_code_validity.py:99 and scripts/backfill_invalid_zone_codes.py:75",
+      "if_missing": "No filtering and no repair occur for that LGA; rows are reported UNVERIFIABLE so that missing ground truth can never read as a clean pass."
     },
     {
-      "value": "MARRICKVILLE_CONFIG['parts'][key]['applicable_zones']/['applicable_dev_types']",
-      "read_at": "enrichment/extractors/applicability_tagger.py:213 (_marrickville_part_entry)",
-      "if_missing": "Falls back to ['ALL'] via the new 'or' guard rather than None, closing the DQ-30 adversarial finding raised during this review."
+      "value": "regulatory_provisions.v2_applicable_zones array as currently stored",
+      "read_at": "scripts/backfill_invalid_zone_codes.py:111 (candidate selection inside main)",
+      "if_missing": "Rows with a null or empty array are excluded by the query itself, so there is nothing to repair and nothing is written for them."
     },
     {
-      "value": "document_id string passed into every _get_<council>_config method",
-      "read_at": "enrichment/extractors/applicability_tagger.py (per-council config lookup methods)",
-      "if_missing": "Not nullable at this call site: tag() always receives a non-empty document_id sourced directly from the regulatory_provisions row currently being processed."
+      "value": "lga_registry slug, display_name and parent_lga for active councils",
+      "read_at": "scripts/validate_zone_code_validity.py:111 (load_slug_resolution)",
+      "if_missing": "The council resolves to None and its rows become UNRESOLVED, surfacing a registry naming defect instead of silently skipping a quarter of the corpus."
     }
   ],
   "queries": [
     {
-      "purpose": "Fetch the current, live-scraped valid zone codes for one LGA (Python side)",
-      "file_line": "services/db_config.py:97",
-      "where_clause": "WHERE lga = %s AND is_complete = TRUE (is_complete predicate added after a Sol cross-review finding — matches the existing gate in app/api/lep/permissibility and app/api/permissibility/check, so an interrupted scrape can't be read as the complete zone list)"
+      "purpose": "Select candidate provision rows holding zone codes for possible repair",
+      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
+      "where_clause": "WHERE v2_applicable_zones IS NOT NULL AND cardinality(v2_applicable_zones) > 0 AND source_council IS NOT NULL. Deliberately not filtered by is_current: this repairs stored data rather than serving it, and excluding superseded rows would knowingly leave 129 of them holding codes that do not exist."
     },
     {
-      "purpose": "Fetch the current, live-scraped valid zone codes for one LGA (TypeScript side, same shape)",
-      "file_line": "frontend-nextjs/lib/db.ts:172",
-      "where_clause": "WHERE lga = $1 AND is_complete = TRUE (parameterised, mirrors the Python query above, same Sol-review fix)"
+      "purpose": "Guarded per-row repair of one provision's zone array",
+      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
+      "where_clause": "WHERE id = %s AND v2_applicable_zones = %s — optimistic concurrency on the exact pre-change value, so a row altered by another writer is skipped and counted rather than clobbered."
     },
     {
-      "purpose": "PR5 retag: guarded reset to NULL then re-run of the existing retagging job against the 7 configured councils' affected rows",
-      "file_line": "enrichment/pipeline.py:671 (run_applicability_tagging, unmodified by this PR, only fills NULL rows)",
-      "where_clause": "WHERE v2_applicable_zones IS NULL AND source_council IN (the 7 configured councils), following a per-row optimistic-concurrency-guarded reset of the prior value to NULL"
+      "purpose": "Load the per-LGA ground-truth zone list used by both validation and repair",
+      "file_line": "scripts/validate_zone_code_validity.py:99",
+      "where_clause": "WHERE is_complete = TRUE AND lga IS NOT NULL AND zone IS NOT NULL"
     }
   ],
   "break_it": [
     {
-      "scenario": "The PR5 retag job is interrupted partway through (network blip, timeout) after the guarded reset to NULL but before the re-tag pass finishes writing every row.",
-      "what_happens": "Any row left NULL past that point disappears entirely from the hard-filter query in for-property/route.ts, silently hiding that DCP rule from every property until the job is re-run to completion.",
+      "scenario": "The query that loads the per-LGA ground-truth zone list returns a stale or incomplete set, so the repair drops a zone code that is genuinely correct and hides a provision from properties it really governs.",
+      "what_happens": "A user in the affected zone stops seeing a DCP control that applies to their land, which is exactly the class of silent omission DQ-30 was opened to fix.",
       "mitigated": true,
-      "how": "run_applicability_tagging() only fills rows WHERE v2_applicable_zones IS NULL, so re-running it is idempotent and safe to retry; the 0% drift re-check after the run confirms no row was left stranded.",
-      "repro": "SELECT count(*) FROM regulatory_provisions WHERE source_council IN ('waverley','woollahra','city_of_sydney','ku_ring_gai','ashfield','leichhardt','marrickville') AND v2_applicable_zones IS NULL — should be 0 after a completed retag."
+      "how": "Filtering only runs where is_complete is true, pre-change values are preserved in regulatory_provisions_zone_backup_20260801, and the script prints a single-statement rollback. Coverage itself was gate-verified per project-zone-permissibility-unblocked-2026-07.",
+      "repro": "UPDATE regulatory_provisions t SET v2_applicable_zones = b.v2_applicable_zones FROM regulatory_provisions_zone_backup_20260801 b WHERE t.id = b.id; then re-run the validator."
     },
     {
-      "scenario": "A future edit to MARRICKVILLE_CONFIG accidentally sets applicable_zones to an empty list instead of omitting the key or using ['ALL'] for a genuinely universal part.",
-      "what_happens": "The 'or' guard added in this PR treats an empty list the same as None or absent and substitutes ['ALL'], which is correct for the 'not yet specified' case but would silently mask a config author's real intent of 'applies to zero zones'.",
+      "scenario": "A row whose every stored code is invalid becomes ALL, so a provision that was previously invisible now appears against every property in that council area.",
+      "what_happens": "Twenty live rows widen from matching no property to matching all of them, adding noise to the provisions panel for those councils.",
       "mitigated": true,
-      "how": "An 'applies to zero zones' entry is not a meaningful DCP concept in this schema — every real part applies to at least one zone or ALL — so this is documented as the intended default, not a gap, in the inline comment above the guard.",
-      "repro": "pytest tests/enrichment/test_applicability_tagger.py -k marrickville -v — set a part's applicable_zones to [] in the config fixture and confirm _marrickville_part_entry still returns ['ALL']."
+      "how": "Measured before applying rather than discovered afterwards: 92 live rows narrow, 20 widen, 129 are not served. ALL is the pre-existing sentinel for undetermined applicability, and showing a possibly-irrelevant control is a smaller harm than hiding a binding one.",
+      "repro": "SELECT id, source_council FROM regulatory_provisions WHERE v2_applicable_zones = ARRAY['ALL'] AND id IN (SELECT id FROM regulatory_provisions_zone_backup_20260801);"
     },
     {
-      "scenario": "A developer edits PATTERN_BOOK_CDC.ELIGIBLE_ZONES in regulatory-constants.ts and merges it with CDC_HOUSING_CODE_ZONES, since both now live in the same file and look similar.",
-      "what_happens": "Pattern Book eligibility would incorrectly extend to R4 zones, contradicting SEPP (Exempt and Complying Development Codes) 2008 Schedule 1, which restricts the Pattern Book pathway to R1-R3 only.",
+      "scenario": "Someone later calls the tagger without valid_zones in the bulk pipeline, so the write-time guard silently does nothing and invalid codes accumulate again.",
+      "what_happens": "The database drifts back toward the pre-repair state one extraction at a time, with no error raised anywhere.",
       "mitigated": true,
-      "how": "An explicit doc-comment directly above PATTERN_BOOK_CDC.ELIGIBLE_ZONES states the two lists are deliberately different scopes and must not be merged, mirroring the existing CDC_HOUSING_CODE_ZONES warning comment in the same file.",
-      "repro": "cd frontend-nextjs && npx jest --testPathPattern=pattern-book -- call isZoneEligible('R4') and confirm it returns false, not true."
+      "how": "validate_zone_code_validity.py exits non-zero on any invalid row so it can be run as a gate and fails loudly rather than degrading quietly. The parameter defaults to None specifically to keep the function pure for the golden tests, which is why the standing check matters.",
+      "repro": "python scripts/validate_zone_code_validity.py — exit code 1 with a per-council breakdown of offending rows."
     },
     {
-      "scenario": "A future contributor sees the new pre-commit zone-code lint fail on a genuinely new hardcoded array and reflexively adds a # noqa: zone-codes suppression instead of importing the shared taxonomy source.",
-      "what_happens": "The exact DQ-30 bug class (an independent, unreviewed zone-code literal silently drifting from the shared source) reappears a third time in this codebase, defeating the point of adding the lint in the first place.",
+      "scenario": "The backup table already exists from an earlier partial run, so CREATE TABLE IF NOT EXISTS keeps stale contents and the recorded rollback state does not match what is about to be overwritten.",
+      "what_happens": "A rollback would restore values from the wrong point in time, quietly reintroducing whatever was stored during that earlier run.",
       "mitigated": true,
-      "how": "The lint's own failure message explicitly instructs importing the shared source first and reserves the noqa escape hatch for genuine non-zone-code false positives (DCP Part/Chapter keys); every noqa added in this PR is a test-fixture literal or an already-correct current-era-only comparison, not a new drift risk.",
-      "repro": "Add `zones = ['B1', 'B2']` to any staged .py/.ts file and run python scripts/lint_hardcoded_zone_codes.py — confirm it fails with the import-or-noqa message."
+      "how": "The backup row count is read back and compared against the size of the repair plan before any UPDATE runs, and the script aborts with a non-zero exit when the backup is smaller than the plan.",
+      "repro": "Create the backup table with fewer rows than the plan, then run with --apply and confirm it aborts before writing."
     },
     {
-      "scenario": "Ashfield onboards a real Chapter F Part 10 document after this fix ships, and the anchored regex still has an off-by-one in its negative lookahead against three-digit part numbers like Part_100.",
-      "what_happens": "A Part 10 or higher document could still collide with an earlier single-digit Part entry, mistagging its zones and dev types the same way the original Part_1/Part_10 substring bug did.",
+      "scenario": "A council slug fails to resolve to ground truth, so its rows are skipped by the repair and quietly stay invalid while the run reports success.",
+      "what_happens": "Invalid codes survive in a council nobody realises was skipped, and the summary gives false assurance that the repair was complete.",
       "mitigated": true,
-      "how": "The fix uses a word-boundary-style negative lookahead (?!\\d) that rejects any following digit, not just a hardcoded single extra character, so it correctly disambiguates Part_1 from Part_10 and would equally disambiguate Part_10 from Part_100 if it existed today.",
-      "repro": "pytest tests/enrichment/test_applicability_tagger.py -k ashfield -v — add a Part_100 document_id fixture and confirm it does not match the Part_1 config entry."
-    },
-    {
-      "scenario": "get_valid_zones_for_lga's 300-second in-process cache serves a stale empty result if an LGA finishes its first lep_zone_coverage scrape milliseconds after a cache miss already stored an empty list for it.",
-      "what_happens": "Any caller in that 5-minute window sees zero valid zones for a now-onboarded LGA and could incorrectly treat every property in it as unmatched, even though fetching the current, live-scraped zone list again after the cache expires would return the real data.",
-      "mitigated": true,
-      "how": "The cache TTL is short (300 seconds) and the docstring explicitly instructs callers to treat an empty result as 'not yet scraped' rather than 'zero real zones', so no caller currently makes an irreversible decision on a single empty read.",
-      "repro": "In a Python shell: call get_valid_zones_for_lga('test_lga') before and immediately after inserting a row into lep_zone_coverage for that LGA — confirm the second call still returns [] until the 300s TTL expires, then returns the real zones after."
+      "how": "Resolution handles all three verified join hazards: parent_lga holding a slug rather than a display name, case differences such as Ku-ring-gai against Ku-Ring-Gai, and City of Sydney against Sydney. Anything still unresolved is reported by the validator as its own UNRESOLVED category, never as a pass.",
+      "repro": "python scripts/validate_zone_code_validity.py and read the UNRESOLVED line and the slug list printed beneath it."
     }
   ],
   "post_merge": {
-    "db_reset": "No further reset needed post-merge — PR5 already ran the guarded backup/reset/retag against production for the 7 configured councils' affected rows before this branch was opened for review.",
-    "secrets": "No new secrets or environment variables introduced — shared/zone-taxonomy.json is a static committed file, not a credential or connection string.",
-    "other_repo": "No other repository or service needs a corresponding update; every consumer (frontend-nextjs, enrichment, services) already lives inside this single repository.",
-    "manual_verify": "Recommended per the original plan but not yet done: load a known Marrickville industrial-zone address on app/assessment/page.tsx before and after this merge and confirm the previously-hidden Part 6 provisions now appear."
+    "db_reset": "Already executed against production: 241 rows repaired, 0 skipped, pre-change values retained in regulatory_provisions_zone_backup_20260801 with a one-statement rollback printed by the script.",
+    "secrets": "No new secrets or environment variables; both scripts use the existing DATABASE_URL already required across the repository.",
+    "other_repo": "No other repository or service requires a corresponding change; every consumer of this column lives in this repository.",
+    "manual_verify": "Load a Woollahra or Ku-ring-gai address on the assessment page and confirm the provisions panel still renders sensibly, since 20 live rows widened from matching no property to matching all properties in their council."
   }
 }

@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-08-01T01:00:00+10:00",
-  "reason": "services/db_config.py: adding 'AND is_complete = TRUE' to get_valid_zones_for_lga's existing SELECT against lep_zone_coverage, per a verified Sol cross-review finding -- every other consumer of this table in the codebase (app/api/lep/permissibility, app/api/permissibility/check) already gates on is_complete=TRUE, confirmed real column via grep. Same WHERE clause, one added predicate, no new table/join."
+  "status": "passed",
+  "timestamp": "2026-08-01T02:30:00+10:00",
+  "target": "scripts/validate_zone_code_validity.py — read-only validator: every zone code stored in a table's zone-array column must exist in lep_zone_coverage for that row's LGA (is_complete=TRUE). Replaces the invalid '0% drift' check that let DQ-30 be marked fixed while 286 rows stayed broken.",
+  "findings_summary": "Schema confirmed: lep_zone_coverage(lga varchar, zone varchar, is_complete bool) = ground truth, 26 LGAs complete. Target regulatory_provisions.v2_applicable_zones (text[]) + source_council (slug). THREE join hazards found by value audit, all would have caused SILENT under-reporting: (1) lga_registry.parent_lga stores a SLUG ('inner_west') not a display name, so ashfield/leichhardt/marrickville (22,007 rows) fail a naive COALESCE join; (2) ku_ring_gai registry display_name 'Ku-ring-gai' vs ground truth 'Ku-Ring-Gai' — case mismatch, 2,558 rows; (3) city_of_sydney display_name 'City of Sydney' vs ground truth 'Sydney' — different name, 742 rows. Mitigation: resolve parent slug recursively, match case-insensitively, and report unresolved joins as an explicit UNRESOLVED finding rather than absorbing them into 'unverifiable' — absence of ground truth must never read as a pass. 'ALL' sentinel (53,032 rows) excluded as a wildcard. 19,733 rows have NULL source_council -> unmappable, reported separately. Read-only, statement_timeout 30s, no writes."
 }
