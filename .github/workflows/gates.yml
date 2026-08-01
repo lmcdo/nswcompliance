@@ -29,6 +29,7 @@
 #                                       revisiting: the last measured kill rate was
 #                                       13%, so test COUNT is not evidence of cover.
 #   6.  jscpd duplication ratchet       duplication
+#   6b. fabricated-verdict lint         python-tests (no DB or network needed)
 #   7.  Sol cross-review (advisory)     DROPPED. Non-blocking by design, needs a paid
 #                                       API key, and is a review aid not a gate.
 #
@@ -66,6 +67,8 @@ jobs:
           else
             echo "::warning::mutation-baselines.json absent — ratchet NOT enforced"
           fi
+      - name: Fabricated-verdict lint (report surfaces)
+        run: python scripts/lint_fabricated_verdicts.py
       - name: Brief field-coverage ratchet
         run: |
           if [ -f scripts/brief_field_coverage_ratchet.py ]; then

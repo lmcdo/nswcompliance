@@ -223,9 +223,11 @@ export function ContextSection({
           <View style={styles.dataTable}>
             <View style={styles.contextTableRow}>
               <Text style={styles.tableCellValue}>
-                {additional_local_provisions && additional_local_provisions.length > 0
-                  ? additional_local_provisions.join('; ')
-                  : 'Not applicable - no additional local provisions apply to this property'}
+                {additional_local_provisions === undefined
+                  ? 'Not assessed - local provision data unavailable for this property'
+                  : additional_local_provisions.length > 0
+                    ? additional_local_provisions.join('; ')
+                    : 'None apply to this property'}
               </Text>
             </View>
           </View>

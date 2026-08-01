@@ -1,116 +1,116 @@
 {
   "tier": "standard",
-  "justification": "Changes what an exported, user-facing PDF asserts about a specific property: which clause it cites, whether the Housing SEPP applies, and whether the site sits in a TOD catchment. No schema or pipeline change, but wrong content in a document someone relies on is the most expensive kind of defect this codebase can ship.",
-  "commit_hash": "6bfdae9e",
+  "justification": "Adds a gate over what reports ASSERT, and changes three report surfaces plus the pre-push policy. The conveyancing fix changes what a paid PDF says when a spatial query fails, which is a behaviour change to customer-facing output; the Sol change can now block a push. Both are cheap to get wrong quietly.",
+  "commit_hash": "6db9ad25",
   "files": [
-    "scripts/conveyancing_db.py",
+    "scripts/lint_fabricated_verdicts.py",
+    "scripts/generate_conveyancing_report.py",
+    "frontend-nextjs/lib/see/propertyContext.ts",
     "frontend-nextjs/components/pdf/ContextSection.tsx",
-    "tests/test_conveyancing_clause_citation.py",
-    "frontend-nextjs/__tests__/components/pdf-context-claims.test.ts",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx",
+    "frontend-nextjs/components/pdf/see-pages/Page4Dcp.tsx",
+    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
+    "tests/test_fabricated_verdicts.py",
+    ".githooks/pre-commit",
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
+    ".gitignore"
   ],
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_conveyancing_clause_citation.py -q && cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts",
-    "fails_when": "clause_ref reverts to rows[0][7] (5 of 7 Python tests fail), the Housing SEPP line goes back to testing the zone alone, the TOD line reverts to asserting the property is outside a catchment, or any SEPP reverts to a bare 'Not applicable' verdict (4 of 8 Jest tests fail). Both directions were mutation-verified by restoring the original code and watching exactly those tests go red. Two further defects were found by a GPT-5.6 cross-review of this diff and fixed before merge: an absent property.zone became 'Unknown' and rendered as a definitive 'Does not apply' verdict (the same assert-without-data defect as the TOD line, two lines away), and `dh_setbacks or sd_setbacks` skipped the secondary-dwelling list whenever any dwelling-house control existed, dropping a real citation when the dwelling-house clause was blank."
+    "command": "python scripts/lint_fabricated_verdicts.py && python -m pytest tests/test_fabricated_verdicts.py -q",
+    "fails_when": "A report surface asserts a site verdict with no interpolation and no branch that could change it. Anchored to two reference cases run on every change: the PRE-FIX ContextSection.tsx (the real DQ-36 TOD line) must exit 1, and current main must exit 0. The first version of this lint FAILED that anchor — it reported PASSED on the very file DQ-36 came from, because it tested interpolation across a window and a neighbouring line's template literal masked the hardcoded one."
   },
   "pre_impl": {
-    "existing_data": "dcp_setback_controls via fetch_dcp_setbacks, and PropertyContext passed into ContextSection. Established by reading: the function drops rows with two `continue` guards (needs_review, and a zone_specific condition naming other zones) yet cited rows[0]; and ContextSection is passed no TOD or LMR field at all, confirmed by grepping the component for tod/TOD/lmr/LMR - zero hits.",
-    "assumption_mismatch": "Expected DQ-34 to be the worst thing in that table. It was not. The hardcoded TOD line is a categorical claim about the site with no data path behind it, so it could never be right for a property inside a catchment; DQ-34 at least had a correct answer half the time. Also assumed this was the conveyancing PDF - it is not. ContextSection feeds ProvisionReport, reached from the live assessment page via ProvisionsByTocStructure; the conveyancing PDF is generated in Python.",
-    "new_vs_existing": "No new surface. Both fixes are corrections inside existing render paths. The Housing SEPP gate reuses the heritage condition already written in determineDevelopmentPathway in the same file rather than introducing a second eligibility rule - having two was the defect."
+    "existing_data": "36 files across frontend-nextjs/components/pdf, frontend-nextjs/lib/pdf and the three Python conveyancing modules. Sweep result: 4 findings needing a decision, plus 2 verified false positives now annotated. Scope was bounded deliberately to surfaces a paying customer reads; the rest of the app was NOT swept and is called out as such.",
+    "assumption_mismatch": "Expected the class to be large and concentrated in React. It is neither. Only one live React instance remained after PR 858, and the worst finding was in Python: get_unique_overlays catches every exception and returns an empty result, so a PostGIS outage produced the same empty `flagged` list as a genuinely unconstrained property, and the PDF printed 'No constraints identified for this property'. A clean bill of health from a query that never ran, on the section a conveyancer buys the report for.",
+    "new_vs_existing": "No existing check inspects whether a rendered verdict is backed by received data. liability_language_check scans wording, lint_hardcoded_zone_codes scans values, validate_schema_contract compares code to catalog, lint_brief_failsoft guards the brief's service layer. The findings-plus-named-escape shape is copied from the zone-code lint rather than invented."
   },
   "functions": [
     {
-      "name": "fetch_dcp_setbacks",
-      "file_line": "scripts/conveyancing_db.py:140",
-      "input": "a database connection, an LGA slug and the property zone code",
-      "output": "the rendered setback control lists plus a clause_ref now taken from a control that survived the filters",
-      "if_none": "when every row is filtered out the clause reference is an empty string rather than a reference to a control the reader cannot see"
+      "name": "scan_file",
+      "file_line": "scripts/lint_fabricated_verdicts.py:151",
+      "input": "a path to a TypeScript, TSX or Python file in the report surfaces",
+      "output": "a list of findings, each classified as either FABRICATED or UNDETERMINED with its line and text",
+      "if_none": "an empty list means no verdict strings matched, which is reported as zero findings rather than as an assertion that the file is clean"
+    },
+    {
+      "name": "_window",
+      "file_line": "scripts/lint_fabricated_verdicts.py:141",
+      "input": "the file's lines, the finding index, and how many lines of context to take",
+      "output": "the surrounding source text used for the escape-comment search and, with a tighter span, the branch test",
+      "if_none": "near the top of a file the slice is clamped, so a finding on line one still gets a valid window rather than raising"
     }
   ],
-  "values": "N/A - no new business value is read; the change corrects which existing value is cited and what is claimed.",
+  "values": "N/A - the lint reads source text, not business values.",
   "queries": [
     {
-      "purpose": "select the DCP setback controls for this council, from which the cited clause is now drawn",
-      "file_line": "scripts/conveyancing_db.py:299",
-      "where_clause": "the existing SELECT is unchanged and already scopes on lga and excludes needs_review rows; this change only alters which of the returned rows supplies clause_ref, and the per-row needs_review and zone-mismatch guards remain"
+      "purpose": "none added; the conveyancing fix only reinterprets the covered_layers value already returned by the existing overlay query",
+      "file_line": "scripts/generate_conveyancing_report.py:4069",
+      "where_clause": "no new SQL. get_unique_overlays keeps its existing point/polygon predicates; this change reads its covered_layers return value to tell a completed screen from a failed one"
     }
   ],
   "break_it": [
     {
-      "scenario": "The SELECT in fetch_dcp_setbacks returns rows for the council but every one is dropped by the needs_review or zone-mismatch guard, and the caller renders a setback section anyway with a dangling clause reference.",
-      "what_happens": "The query is unchanged and still scopes on lga with needs_review excluded, but the per-row guards can empty both rendered lists. clause_ref is now derived from those lists, so it becomes an empty string and the section carries no citation rather than a false one.",
+      "scenario": "The lint cannot detect the very defect it was written for, and ships looking green.",
+      "what_happens": "It did exactly that. Version one tested interpolation across a 6-line window, so the Housing SEPP template literal above the TOD line masked it and the pre-fix file reported PASSED.",
       "mitigated": true,
-      "how": "test_no_citation_is_invented_when_everything_is_filtered_out drives the real function with a single needs_review row and asserts clause_ref == ''.",
-      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k invented -q"
+      "how": "Interpolation is now tested on the literal only. Both reference cases are asserted in the test suite, so the anchor cannot rot.",
+      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k founding -q"
     },
     {
-      "scenario": "The PDF cites a clause that the same function deliberately suppressed because it is under review after a DCP amendment.",
-      "what_happens": "clause_ref came from rows[0] of the raw query, which may be a suppressed row. Now taken from the first control that survived the filters.",
+      "scenario": "A PostGIS outage makes a paid conveyancing report state that the property has no constraints.",
+      "what_happens": "get_unique_overlays returns ([], set(), {}) on any exception, so flagged was empty and the report printed 'No constraints identified for this property'. Now covered_layers distinguishes a screen that ran from one that did not, and the third state says plainly that it is not a finding of unconstrained.",
       "mitigated": true,
-      "how": "test_leading_row_under_review_is_not_cited, run against the real function with a stubbed connection.",
-      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k under_review -q"
+      "how": "Three-state branch plus tests asserting the old two-state expression cannot return.",
+      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k ConveyancingConstraintScreen -q"
     },
     {
-      "scenario": "The PDF cites a clause that applies to a DIFFERENT zone than the property, which is worse than citing nothing.",
-      "what_happens": "Same root cause; the zone-mismatch guard dropped the row from display but not from the citation.",
+      "scenario": "The lint is TypeScript-shaped and flags every Python if-guarded verdict, so nobody trusts it.",
+      "what_happens": "Four false positives in the conveyancing report on the first Python run, all guarded by `if is_strata:` which the TS-only branch pattern could not see.",
       "mitigated": true,
-      "how": "test_leading_row_for_another_zone_is_not_cited.",
-      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k another_zone -q"
+      "how": "Python statement and ternary forms added, with a test that reproduces the strata block shape.",
+      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k python_if_guarded -q"
     },
     {
-      "scenario": "Everything is filtered out and the code invents a reference anyway.",
-      "what_happens": "Returns an empty clause_ref so the caller renders nothing. An invented citation is worse than an absent one when citation is the product claim.",
+      "scenario": "The branch window is so wide that any nearby conditional excuses a hardcoded verdict, quietly disarming the gate.",
+      "what_happens": "At 14 lines the founding case downgraded from FABRICATED to non-blocking UNDETERMINED. The window was tuned against both reference cases: at 5 the strata blocks still false-positived, at 6 they clear and the founding case still blocks.",
       "mitigated": true,
-      "how": "test_no_citation_is_invented_when_everything_is_filtered_out.",
-      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k invented -q"
+      "how": "Escape comments keep the wide window; the branch test uses the tight one. Both anchors are tested.",
+      "repro": "python scripts/lint_fabricated_verdicts.py --quiet; echo $?"
     },
     {
-      "scenario": "A heritage property gets a PDF saying both 'DA - CDC not permitted' and 'Housing SEPP applies - eligible for CDC'.",
-      "what_happens": "It did. The SEPP line tested zone only. Now gated on the same heritage condition as determineDevelopmentPathway, and a zone match reads as the zone test passing rather than an eligibility verdict.",
+      "scenario": "Someone silences a finding with a bare escape comment and no justification.",
+      "what_happens": "The escape pattern required only a non-space character, so `{/* verdict-ok: */}` passed because the closing `*/}` counted as the reason.",
       "mitigated": true,
-      "how": "Jest guards assert the old zone-only string cannot return and that the heritage check is present.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'zone alone'"
+      "how": "The reason must now begin with a letter; a bare escape no longer clears a finding.",
+      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k bare_escape -q"
     },
     {
-      "scenario": "The PDF states the property is not within 400m of a metro station without ever checking.",
-      "what_happens": "It was hardcoded, and the component receives no TOD data, so no input could change it. Now reports that TOD was not assessed and points at the Portal maps.",
+      "scenario": "An absent local-provision fetch renders as a finding that no local provisions apply.",
+      "what_happens": "additionalLocalProvisions collapsed 'assessed, none' and 'never assessed' both to undefined, and two components printed a definitive negative. Now undefined means not assessed, empty array means assessed with none.",
       "mitigated": true,
-      "how": "Jest guard asserts the hardcoded sentence is absent and the not-assessed wording is present.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'TOD catchment'"
+      "how": "Blast radius checked before writing: the only other consumer, seeBuilders, uses `?? []`, so an empty array is a no-op there.",
+      "repro": "grep -n 'Not assessed - local provision data unavailable' frontend-nextjs/components/pdf/ContextSection.tsx"
     },
     {
-      "scenario": "Someone re-adds a bare 'Not applicable' verdict for a SEPP whose applicability depends on a proposal the report never sees.",
-      "what_happens": "Four such lines shipped. The guard now fails if any reappears, and requires at least four scope-worded replacements.",
+      "scenario": "Sol blocks on everything, one finding in three is wrong, and people start pushing with --no-verify.",
+      "what_happens": "Blocking is scoped to HIGH severity AND a diff touching served or printed output; everything else stays advisory. The block message states the false-positive rate and names the escape.",
       "mitigated": true,
-      "how": "Counts occurrences rather than checking one string, so removing three and leaving one still fails.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'proposal-dependent'"
+      "how": "SOL_OVERRIDE must carry a reason of at least 15 characters, which is echoed into the push output so the justification exists on the record.",
+      "repro": "sh -n .githooks/pre-push && grep -n 'SOL_OVERRIDE' .githooks/pre-push"
     },
     {
-      "scenario": "The source-level Jest guards trip on the explanatory comments that document the old wording, forcing the fix to be undocumented.",
-      "what_happens": "Comments and JSX comment blocks are stripped before matching, so the guard asserts on what the component renders, not on prose about it.",
+      "scenario": "The lint file lands untracked because scripts/ is whitelist-ignored, so the gate exists on one machine only.",
+      "what_happens": "Explicit whitelist entry added and tracking confirmed rather than assumed.",
       "mitigated": true,
-      "how": "Strip step covers block comments, JSX comment expressions and line comments; verified by the suite passing with the old strings quoted in comments.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts"
-    },
-    {
-      "scenario": "A property with no zone data gets a PDF stating the Housing SEPP does not apply — a definitive negative derived from nothing.",
-      "what_happens": "zoneDisplay falls back to 'Unknown', which is not in HOUSING_SEPP_ZONES, so the not-covered branch fired. Now an absent zone short-circuits to 'Not assessed - zoning data unavailable'.",
-      "mitigated": true,
-      "how": "hasZone guard ahead of the membership test; Jest asserts both the wording and the guard exist. Raised by cross-review, not by me — I had just fixed the identical class two lines below.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'missing zone'"
-    },
-    {
-      "scenario": "A rendered secondary-dwelling control carries a real clause but the PDF shows no citation, because a dwelling-house control with a blank clause existed.",
-      "what_happens": "`dh_setbacks or sd_setbacks` stopped at the truthy dwelling-house list. Both lists are now searched in order.",
-      "mitigated": true,
-      "how": "test_blank_dwelling_clause_falls_through_to_the_secondary_dwelling_citation.",
-      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k falls_through_to_the_secondary -q"
+      "how": "git ls-files --error-unmatch on the new script before commit.",
+      "repro": "git ls-files --error-unmatch scripts/lint_fabricated_verdicts.py"
     }
   ],
   "post_merge": {
-    "db_reset": "None. No schema or data change.",
-    "secrets": "None.",
+    "db_reset": "None. No schema or data change; the conveyancing fix only reinterprets an existing return value.",
+    "secrets": "None new. Sol blocking uses the OpenAI key already required by the advisory step; with no key the review is skipped and the push proceeds.",
     "other_repo": "None.",
-    "manual_verify": "Export the provisions PDF for a heritage-listed property and confirm the SEPP table no longer says the Housing SEPP applies while the pathway says DA, and that the TOD row reads 'Not assessed in this report'. Then export for a property whose leading DCP control is under review and confirm the cited clause matches a control actually listed."
+    "manual_verify": "Generate a conveyancing report with the database unreachable and confirm the callout reads 'Constraint screening did not complete' rather than 'No constraints identified'. Then push a change under frontend-nextjs/components/pdf with a deliberate HIGH-severity defect and confirm the push is blocked and names the SOL_OVERRIDE escape."
   }
 }

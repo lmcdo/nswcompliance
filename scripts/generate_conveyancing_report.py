@@ -4056,10 +4056,29 @@ def generate_pdf(
         "extent detail:",
         S("ch", fontSize=9, textColor=WHITE, fontName="Helvetica-Bold", leading=13),
     )
-    alert_suffix = (
-        f"  <b>{len(flagged)} constraint(s) identified at this property — see Risk Summary.</b>"
-        if flagged else "  No constraints identified for this property."
-    )
+    # Three states, not two (DQ-36 class).
+    #
+    # `get_unique_overlays` catches every exception and returns ([], set(), {}), so a
+    # PostGIS outage produces exactly the same empty `flagged` list as a genuinely
+    # unconstrained property. This line then printed "No constraints identified for
+    # this property" — a clean bill of health on a paid conveyancing report, off the
+    # back of a query that never ran. Flood, bushfire, biodiversity and landslide are
+    # precisely what the report is bought for.
+    #
+    # `covered_layers` is the discriminator: non-empty means the screen actually ran.
+    _screen_ran = bool(covered_layers)
+    if flagged:
+        alert_suffix = (
+            f"  <b>{len(flagged)} constraint(s) identified at this property — "
+            f"see Risk Summary.</b>"
+        )
+    elif _screen_ran:
+        alert_suffix = "  No constraints identified for this property."
+    else:
+        alert_suffix = (
+            "  <b>Constraint screening did not complete — this is not a finding that "
+            "the property is unconstrained. Re-run before relying on this section.</b>"
+        )
     callout_body = Paragraph(
         delta_body_text + alert_suffix,
         S("cb", fontSize=8, textColor=colors.HexColor("#134E4A"), leading=12),

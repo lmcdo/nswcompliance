@@ -259,21 +259,55 @@ else
   echo "node not available — skipping duplication ratchet."
 fi
 
-# ── [7] Advisory: GPT-5.6 Sol cross-review (non-blocking) ────────────────────
+# ── [7] GPT-5.6 Sol cross-review — BLOCKING on HIGH for served/printed output ─
 # A different-model-family (OpenAI) second opinion on the pushed diff, scored
-# against .claude/rules/pre-pr-review.md. Findings are CANDIDATES to verify by
-# hand — Sol can be confidently wrong (it once returned a 0.91 HIGH that was a
-# false positive), so this NEVER blocks a push and is NOT a merge gate.
-# Runs automatically when source code changed and an OpenAI key is available
-# (OPENAI_API_KEY env or a repo .env / .env.local). Costs ~$0.30 + ~20s.
-# Disable:  export SOL_REVIEW=0    Force on:  export SOL_REVIEW=1 (default)
+# against .claude/rules/pre-pr-review.md.
+#
+# Why it blocks at all: it found a real defect on both PRs it was run against
+# (2026-08-01) — an unreachable-code regression that made two Marrickville DCP
+# parts fall through to ALL, and a null-guard that printed a definitive "does not
+# apply" from missing zone data. The full gate stack passed both times. An
+# advisory line that scrolls past the end of a push is not a control.
+#
+# Why it blocks NARROWLY: roughly one finding in three has been invalid. Blocking
+# on everything would train people to bypass it, which is worse than not having
+# it. So: HIGH severity AND the diff touches output a customer reads. Everything
+# else stays advisory.
+SOL_SCOPED_PATHS='^(frontend-nextjs/(app/api|components/pdf|lib/pdf)/|scripts/generate_conveyancing_report\.py|scripts/conveyancing_db\.py|services/conveyancing\.py)'
+SOL_TOUCHES_OUTPUT=$(echo "$CHANGED_CODE" | grep -E "$SOL_SCOPED_PATHS" || true)
+
 if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$CHANGED_CODE" ] && [ -f scripts/cross_review.py ]; then
   echo ""
-  echo "=== [7] Sol cross-review (advisory, non-blocking) ==="
-  # `|| true` guarantees a clean exit even on findings, missing key, or API error
-  # (set -e is active above) — a review outage must never stop a push.
-  python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
-  echo "(advisory only — verify each finding against the code; never a merge gate)"
+  if [ -n "$SOL_TOUCHES_OUTPUT" ]; then
+    echo "=== [7] Sol cross-review (BLOCKING on HIGH — diff touches served/printed output) ==="
+    SOL_RC=0
+    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 --fail-on high || SOL_RC=$?
+    if [ "$SOL_RC" -ne 0 ]; then
+      # A HIGH finding can still be wrong. The escape is deliberate and costs a
+      # sentence: verify it, and if it is a false positive say why in one line.
+      if [ -n "$SOL_OVERRIDE" ] && [ ${#SOL_OVERRIDE} -ge 15 ]; then
+        echo ""
+        echo "⚠  Sol HIGH finding overridden: $SOL_OVERRIDE"
+        echo "   (recorded here only — repeat it in the PR body)"
+      else
+        echo ""
+        echo "Sol reported a HIGH finding on output a customer reads. Push blocked."
+        echo ""
+        echo "  1. Verify the finding against the code. It is wrong roughly 1 time in 3."
+        echo "  2. If it is REAL   — fix it."
+        echo "  3. If it is WRONG  — re-push with a one-line reason, e.g."
+        echo "       SOL_OVERRIDE=\"finding assumes X, but Y guards it at line N\" git push"
+        echo ""
+        echo "  Emergency bypass (leaves no reason on record): git push --no-verify"
+        exit 1
+      fi
+    fi
+  else
+    echo "=== [7] Sol cross-review (advisory — diff does not touch served/printed output) ==="
+    # `|| true`: set -e is active, and a review outage must never stop a push.
+    python scripts/cross_review.py --base "$DUP_BASE" --max-diff-kb 512 || true
+    echo "(advisory only — verify each finding against the code; never a merge gate)"
+  fi
 fi
 
 echo ""
