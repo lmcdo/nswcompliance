@@ -1,159 +1,115 @@
 {
   "tier": "standard",
-  "justification": "Adds a gate that runs in CI and pre-push, the repo's first GitHub Actions workflow, AND fixes the live defect that gate found. Read-only against production, but it can block every push, and the parking-rates repoint changes what a user-facing tool returns — a wrong number there is worse than no number. Locked with 25 Python tests and 24 Jest tests.",
-  "commit_hash": "238fa346",
+  "justification": "Changes the write path of the applicability tagger and adds two production columns to regulatory_provisions (55,696 rows). Additive and nullable, but it touches the field behind the hard zone filter in for-property/route.ts, so a regression would mis-serve provisions.",
+  "commit_hash": "8260f6b4",
   "files": [
-    ".githooks/pre-push",
-    ".github/workflows/gates.yml",
-    ".gitignore",
-    "frontend-nextjs/__tests__/lib/lga-slug.test.ts",
-    "frontend-nextjs/__tests__/lib/parking-rate-selection.test.ts",
-    "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
-    "frontend-nextjs/app/api/tod/parking-rates/route.ts",
-    "frontend-nextjs/components/tod/TODParkingCalculator.tsx",
-    "frontend-nextjs/lib/lga-slug.ts",
-    "frontend-nextjs/lib/parking-rate-selection.ts",
-    "requirements-test.txt",
-    "scripts/schema_contract_baseline.json",
-    "scripts/validate_schema_contract.py",
-    "tests/test_columnar_reader.py",
-    "tests/test_schema_contract.py"
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/pipeline.py",
+    "migrations/062_applicability_provenance.sql",
+    "tests/test_applicability_provenance.py"
   ],
   "falsifiable_check": {
-    "command": "python scripts/validate_schema_contract.py",
-    "fails_when": "Any SQL identifier in frontend-nextjs/app/api/** or services/** names a table or alias-qualified column that information_schema does not have and that is not already listed in scripts/schema_contract_baseline.json — OR a baseline entry no longer occurs, so the baseline can only shrink. Demonstrated red three ways before being accepted: (1) with no baseline it reported 18 real findings and exited 1; (2) injecting `SELECT id FROM table_that_does_not_exist` into services/ produced '1 NEW' and exit 1; (3) adding a fictitious already-fixed entry to the baseline produced 'baseline entr(ies) no longer occur' and exit 1. It also cannot pass by silence: with no reachable DATABASE_URL it exits 2, and with an unreadable baseline it exits 2. Additionally, the 8 tod/parking-rates entries were FIXED in this PR rather than shipped baselined; the ratchet then failed with 'baseline entries no longer occur' until they were deleted, which is the shrink-only rule demonstrating itself on real work. Baseline is now 10, all dead-code or deployed-but-unproven; zero LIVE entries remain. Every one of the original 18 was re-confirmed by direct information_schema query (8 tables + 7 columns checked individually, 0 contradicted) rather than trusted from the parser that had produced 34 phantoms."
+    "command": "python -m pytest tests/test_applicability_provenance.py -q",
+    "fails_when": "_resolve stops distinguishing the four outcomes (a stub returning a constant fails either the asserted or the defaulted cases), tag() stops returning exactly two values, the validity-gate rejection stops being distinct from never-found, or APPLICABILITY_SOURCES drifts from the CHECK constraint in migration 062. Separately verified against production: an out-of-vocabulary value is REJECTED by the constraint and a valid one accepted (both rolled back), so the CHECK is not decoration."
   },
   "pre_impl": {
-    "existing_data": "information_schema.tables + information_schema.columns, scoped to the connection's real search_path (public, extensions — confirmed via current_schemas(true)). 122 tables. pg_stat_user_tables.n_live_tup was rejected as a source after it reported 1 row for `documents` where count(*) = 335.",
-    "assumption_mismatch": "Assumed a text-based SQL reader would be accurate; it was not. The first run produced 60 table findings of which 34 were phantoms — `set` from `ON CONFLICT DO UPDATE SET`, `the` from an LLM system prompt, `for` from a log line, `regexp_replace` from a set-returning function, and CTE names defined in a different template fragment from the one that used them. Measured before trusting, then fixed: AST-based docstring exclusion for Python, a SQL-opener test, function-call and DO-UPDATE guards, and file-level CTE collection. Final state: 18 distinct findings, all 18 individually re-verified against information_schema as genuinely absent.",
-    "new_vs_existing": "No existing check compares a SQL identifier to the catalog. Opened and rejected: tests/test_dcp_schema_gate.py (inspects extracted provision text, not the catalog), scripts/brief_contract_drift.py (service output keys vs typed contracts), scripts/lint_bracket_access.py and lint_brief_failsoft.py (source lints, no DB), ~20 scripts/check_*_schema.py one-off diagnostics (non-gating, one hardcoded table each), scripts/validate_zone_code_validity.py (validates stored DATA against ground truth — same three-state discipline deliberately reused, different axis). The baseline mechanism copies the convention of scripts/check_test_baselines.py and scripts/brief_field_coverage_ratchet.py; neither exposes a reusable loader."
+    "existing_data": "regulatory_provisions had 65 columns / 55,696 rows before; 67 after. Measured 2026-08-01: 19,072 of 19,957 served rows (95.6%) carry ALL for both zones and dev types with no record of why. The tagger returned ALL from seven distinct code paths, all writing the identical value.",
+    "assumption_mismatch": "Assumed ALL mostly meant a mis-tag. It does not - a falsifiable probe found only 0.50% demonstrably zone-specific. The defect is that ALL is UNATTRIBUTABLE, not that it is wrong, so the fix records provenance and changes no tag value.",
+    "new_vs_existing": "No existing column or table records tagger provenance (checked the regulatory_provisions column list directly). The constrained-vocabulary plus DB CHECK pattern is copied from control_type_vocabulary.py rather than invented. tag() keeps its two-value contract; provenance arrives via a new tag_with_provenance()."
   },
   "functions": [
     {
-      "name": "iter_sql_literals",
-      "file_line": "scripts/validate_schema_contract.py:263",
-      "input": "a file Path and its full source text, for either a .py or a .ts file",
-      "output": "yields each string literal that both contains a SQL verb and opens with a SQL keyword, with its line number",
-      "if_none": "the file contributes no statements at all and is silently counted as scanned but empty, which is correct for the many API routes that hold no SQL"
+      "name": "_resolve",
+      "file_line": "enrichment/extractors/applicability_tagger.py:130",
+      "input": "a config entry dict or None, plus one applicability key name",
+      "output": "a tuple of the resolved list and the source label explaining where that list came from",
+      "if_none": "a None or empty entry returns ALL with source no_config, never implying a decision was made"
     },
     {
-      "name": "analyse_sql",
-      "file_line": "scripts/validate_schema_contract.py:280",
-      "input": "one SQL string plus the set of CTE names collected across the whole file",
-      "output": "base table references, an alias to table binding map, CTE names, alias qualified columns, and a count of statements whose bare columns were not checked",
-      "if_none": "an empty reference list is returned and nothing is reported for that statement, so a parse miss produces a false negative rather than a false accusation"
+      "name": "_from_entry",
+      "file_line": "enrichment/extractors/applicability_tagger.py:164",
+      "input": "a config entry plus optional site conditions and extra keys",
+      "output": "the config result dict now carrying zone_source and dev_type_source beside the values",
+      "if_none": "a None entry still returns a well formed dict whose two sources both read no_config"
     },
     {
-      "name": "load_catalog",
-      "file_line": "scripts/validate_schema_contract.py:418",
-      "input": "no arguments; reads DATABASE_URL or SUPABASE_DB_URL from the environment or a discovered .env file",
-      "output": "the set of table names and a mapping of table name to column names, for the public and extensions schemas, all lower cased",
-      "if_none": "exits with code 2 rather than returning an empty catalog, because an empty catalog would mark every reference invalid and a missing catalog must never read as a pass"
-    },
-    {
-      "name": "load_baseline",
-      "file_line": "scripts/validate_schema_contract.py:359",
-      "input": "the repository root path and an optional baseline file path",
-      "output": "the parsed baseline dictionary of accepted known defects keyed by file and reference",
-      "if_none": "a missing file yields an empty entry list so nothing is suppressed, while an unreadable file exits 2 rather than guessing whether it suppresses nothing or everything"
+      "name": "tag_with_provenance",
+      "file_line": "enrichment/extractors/applicability_tagger.py:541",
+      "input": "provision text, document id, and the optional valid zone set for that LGA",
+      "output": "zones, dev types, and a dict of the two source labels drawn from the closed vocabulary",
+      "if_none": "with no document id the sources read no_document_id rather than a label implying a config decided"
     }
   ],
-  "values": "N/A — the gate reads no business values from the database, only catalog identifiers.",
+  "values": "N/A - no business values are read; the change records provenance for values already computed.",
   "queries": [
     {
-      "purpose": "list every table and view visible on the connection search path so a referenced table can be confirmed to exist",
-      "file_line": "scripts/validate_schema_contract.py:439",
-      "where_clause": "WHERE table_schema IN ('public','extensions') — scoped to the real search path confirmed via current_schemas(true); a read only session with statement_timeout 30s"
-    },
-    {
-      "purpose": "list every column of every visible table so an alias qualified column reference can be confirmed to exist",
-      "file_line": "scripts/validate_schema_contract.py:444",
-      "where_clause": "WHERE table_schema IN ('public','extensions') — same scope and same read only session; no user table is read and nothing is written"
+      "purpose": "persist the two provenance labels alongside the tags during a retag run",
+      "file_line": "enrichment/pipeline.py:761",
+      "where_clause": "WHERE id = %s - single row by primary key, inside the existing batched retag loop which already scopes on v2_applicable_zones IS NULL"
     }
   ],
   "break_it": [
     {
-      "scenario": "A prose string containing a SQL verb donates its next word as a table name, so the gate reports defects that do not exist and gets switched off.",
-      "what_happens": "Observed for real (an LLM system prompt and a logger.warning line). Python literals are now extracted via ast with docstrings excluded by structure, every literal must also OPEN with a SQL keyword, and a stopword list backstops both. Locked by TestProseIsNotSql (6 tests).",
+      "scenario": "The provenance column is added but every row gets the same label, so it looks populated and answers nothing.",
+      "what_happens": "Four outcomes are asserted mutually distinct; a constant-returning stub fails either the asserted or the defaulted half.",
       "mitigated": true,
-      "how": "Observed for real (an LLM system prompt and a logger.warning line). Python literals are now extracted via ast with docstrings excluded by structure, every literal must also OPEN with a SQL keyword, and a stopword list backstops both. Locked by TestProseIsNotSql (6 tests).",
-      "repro": "python - <<'E'\nopen('services/__probe.py','w').write('Q = \"\"\"You select WHICH facts matter, from the verified set.\"\"\"')\nE\npython scripts/validate_schema_contract.py | grep -c 'the'   # must not report a table named 'the'; then rm services/__probe.py"
+      "how": "Explicit test that the four labels collapse to no fewer than four distinct values.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k four_outcomes -q"
     },
     {
-      "scenario": "A CTE or derived table is reported as a missing base table.",
-      "what_happens": "CTE names are collected across the WHOLE file, not per literal, because queries are assembled from several template fragments. `AS MATERIALIZED` is recognised. `FROM (` and `FROM func(` are skipped. Locked by TestIgnoresNonTables (7 tests).",
+      "scenario": "Old rows are backfilled with a guessed source, fabricating the very fact the column exists to record.",
+      "what_happens": "The migration contains no UPDATE. Existing rows stay NULL, documented as unknown-origin and explicitly not a pass.",
       "mitigated": true,
-      "how": "CTE names are collected across the WHOLE file, not per literal, because queries are assembled from several template fragments. `AS MATERIALIZED` is recognised. `FROM (` and `FROM func(` are skipped. Locked by TestIgnoresNonTables (7 tests).",
-      "repro": "printf 'const q = `WITH document_filtered AS MATERIALIZED (SELECT 1) SELECT * FROM document_filtered`;' > frontend-nextjs/app/api/__probe.ts && python scripts/validate_schema_contract.py | grep document_filtered   # must print nothing; then rm the probe"
+      "how": "test_migration_does_not_backfill asserts no UPDATE statement exists in the migration.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k backfill -q"
     },
     {
-      "scenario": "INSERT INTO t (a, b) is skipped because the '(' guard meant for set-returning functions also matches the column list — the gate silently stops checking every INSERT.",
-      "what_happens": "Caught by my own test on first run (test_update_and_insert_and_delete failed). The guard now applies only to FROM/JOIN. This found 2 further real defects the previous version missed.",
+      "scenario": "The Python vocabulary and the DB CHECK drift, so the pipeline writes a label the database rejects at 3am.",
+      "what_happens": "Every member of APPLICABILITY_SOURCES is asserted present in the migration SQL, and the constraint was verified live to reject an unknown value.",
       "mitigated": true,
-      "how": "Caught by my own test on first run (test_update_and_insert_and_delete failed). The guard now applies only to FROM/JOIN. This found 2 further real defects the previous version missed.",
-      "repro": "python -m pytest tests/test_schema_contract.py::TestDetectsTableReferences::test_update_and_insert_and_delete -q   # asserts INSERT INTO t_ins is still detected"
+      "how": "test_every_source_appears_in_the_migration plus a live accept/reject probe against production, both rolled back.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k migration -q"
     },
     {
-      "scenario": "The gate is adopted, 18 pre-existing defects make CI permanently red, and everyone learns to ignore it — worse than no gate.",
-      "what_happens": "Shrink-only baseline: the 18 known findings are accepted, each annotated with its verified reachability verdict (7 dead-code, 8 LIVE, 3 deployed-but-unproven). A NEW finding fails. A FIXED finding also fails until deleted from the baseline, so it cannot become a permanent amnesty. The count is printed on every run as 'defects, not exemptions'.",
+      "scenario": "Adding a third return value breaks every existing caller of tag().",
+      "what_happens": "tag() still returns exactly two values and delegates to tag_with_provenance; both are asserted to agree on the values.",
       "mitigated": true,
-      "how": "Shrink-only baseline: the 18 known findings are accepted, each annotated with its verified reachability verdict (7 dead-code, 8 LIVE, 3 deployed-but-unproven). A NEW finding fails. A FIXED finding also fails until deleted from the baseline, so it cannot become a permanent amnesty. The count is printed on every run as 'defects, not exemptions'.",
-      "repro": "python scripts/validate_schema_contract.py --quiet; echo $?   # must print 0 with '18 pre-existing', not a wall of red"
+      "how": "TestBackwardCompatibility pins the arity and the value agreement across three shapes of input.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k Backward -q"
     },
     {
-      "scenario": "Silence reads as success: no DATABASE_URL, or a corrupt baseline, and the gate exits 0.",
-      "what_happens": "Both exit 2. In CI the schema job is SKIPPED (visibly not-run) for forks and Dependabot, which cannot read secrets, rather than passing green. Locked by TestSilenceIsNeverSuccess (3 tests).",
+      "scenario": "A zone code found then rejected as invalid for the LGA looks identical to one never found, hiding that a bad code was caught.",
+      "what_happens": "The validity gate sets filtered_to_all, distinct from no_config and excluded from TRUSTED_ALL_SOURCES.",
       "mitigated": true,
-      "how": "Both exit 2. In CI the schema job is SKIPPED (visibly not-run) for forks and Dependabot, which cannot read secrets, rather than passing green. Locked by TestSilenceIsNeverSuccess (3 tests).",
-      "repro": "python -m pytest tests/test_schema_contract.py::TestSilenceIsNeverSuccess -q   # asserts exit 2 for absent DATABASE_URL and for a corrupt baseline"
+      "how": "test_validity_gate_rejection_is_distinct_from_never_found.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k validity_gate -q"
     },
     {
-      "scenario": "The pre-push hook runs under `set -e`, so a bare invocation aborts the hook on exit 2 and blocks the push for the one case that is meant to be a skip.",
-      "what_happens": "Invoked as `python ... || SCHEMA_RESULT=$?`, which is exempt from set -e. Hook verified with `sh -n`.",
+      "scenario": "The migration runs against production and damages the 55,696 existing rows.",
+      "what_happens": "Purely additive DDL with IF NOT EXISTS throughout, no UPDATE, no DROP, no CASCADE. Verified live: 55,696 rows before and after, both columns nullable, zero rows populated.",
       "mitigated": true,
-      "how": "Invoked as `python ... || SCHEMA_RESULT=$?`, which is exempt from set -e. Hook verified with `sh -n`.",
-      "repro": "sh -n .githooks/pre-push && sh -c 'set -e; R=0; python -c \"import sys; sys.exit(2)\" || R=$?; echo continued-with=$R'   # must print continued-with=2, not abort"
+      "how": "test_migration_is_additive_only blocks DROP/TRUNCATE/DELETE/CASCADE in the file; row count compared before and after the real run.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k additive -q"
     },
     {
-      "scenario": "Line numbers in the baseline churn on unrelated edits, so the ratchet fails for reasons unconnected to any defect.",
-      "what_happens": "Findings are keyed by (file, reference), never by line. Lines are shown in output only. Same lesson as keying provisions by clause rather than page.",
+      "scenario": "A blanket string replace matches an 8-space `return` inside a 12-space line, dedenting it to method level and making every branch below unreachable.",
+      "what_happens": "It happened. Marrickville Part 1 and Part 3 silently fell through to no_config/ALL. The full 3,332-test suite stayed GREEN because nothing exercised those two parts; a GPT-5.6 cross-review found it. Fixed, and a parametrised reachability test now covers all five Marrickville parts.",
       "mitigated": true,
-      "how": "Findings are keyed by (file, reference), never by line. Lines are shown in output only. Same lesson as keying provisions by clause rather than page.",
-      "repro": "python - <<'E'\nimport json;p='scripts/schema_contract_baseline.json';d=json.load(open(p,encoding='utf-8'));d['entries'][0]['file']='moved/elsewhere.ts';json.dump(d,open(p,'w'),indent=2)\nE\npython scripts/validate_schema_contract.py | grep 'no longer occur'   # must flag it; then git checkout -- the baseline"
+      "how": "The guard asserts on SOURCE not value: Part 1 legitimately resolves to ALL, so asserting zones==['ALL'] would have passed while broken. Mutation-verified — re-dedenting the return fails exactly the Part 1 and Part 3 cases.",
+      "repro": "python -m pytest tests/test_applicability_provenance.py -k Reachable -q"
     },
     {
-      "scenario": "The new script lands untracked because scripts/ is whitelist-ignored, so the gate exists locally and nowhere else.",
-      "what_happens": "Root cause fixed: .gitignore line 402 was `scripts/`, which excludes the DIRECTORY, and git cannot re-include a file whose parent directory is excluded — so every `!scripts/...` line below it was inert. Changed to `scripts/*` so the whitelist actually works, then both new files confirmed with `git ls-files --error-unmatch`. Blast radius checked: no other file became visible.",
+      "scenario": "The migration's idempotency guard checks pg_constraint by NAME only, so a same-named constraint on any other table makes a re-run skip the CHECK and leave the column ungated.",
+      "what_happens": "conname is unique per (table, name), not globally. Raised by cross-review; the guard is now scoped with conrelid = 'public.regulatory_provisions'::regclass.",
       "mitigated": true,
-      "how": "Root cause fixed: .gitignore line 402 was `scripts/`, which excludes the DIRECTORY, and git cannot re-include a file whose parent directory is excluded — so every `!scripts/...` line below it was inert. Changed to `scripts/*` so the whitelist actually works, then both new files confirmed with `git ls-files --error-unmatch`. Blast radius checked: no other file became visible.",
-      "repro": "git ls-files --error-unmatch scripts/validate_schema_contract.py scripts/schema_contract_baseline.json   # must exit 0; a non-zero exit means the file is ignored and the gate would not ship"
-    },
-    {
-      "scenario": "The parking repoint returns a visitor-parking rate as though it were the dwelling rate, so the number is wrong and nothing errors.",
-      "what_happens": "`condition` is a row selector, not a footnote. Measured live: of 123 (lga, dev_type) car_parking groups, 27 have exactly one unconditioned row, 96 have none, 0 have more than one. selectParkingRate states a single rate ONLY for the 27; otherwise it returns every row with its condition and says no single rate covers the type. It never breaks a tie by ordering.",
-      "mitigated": true,
-      "how": "Logic extracted to lib/parking-rate-selection.ts and unit-tested (8 tests) instead of being inlined and untestable. A stub returning rows[0] fails the conditioned tests; a stub returning none fails the single tests.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/lib/parking-rate-selection.test.ts"
-    },
-    {
-      "scenario": "The LGA join key is wrong, the query returns zero rows, and zero rows reads as 'this council has no parking requirement'.",
-      "what_happens": "The portal supplies display names ('City of Sydney'); dcp_setback_controls is keyed by slug ('city_of_sydney'). toLgaSlug returns null rather than '' for absent input so the caller skips the tier instead of querying WHERE lga = '' and reading the empty result as an answer.",
-      "mitigated": true,
-      "how": "Mapping extracted to lib/lga-slug.ts from the copy already inside app/api/dcp/structured-controls, which now imports it — a third divergent copy is how DQ-30 happened. 11 tests including every genuine rename.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/lib/lga-slug.test.ts"
-    },
-    {
-      "scenario": "A tier crashes and the endpoint still answers, so an outage is indistinguishable from a genuine 'no parking rate applies'.",
-      "what_happens": "Each tier now records into `degraded[]` on exception; every response carries it. When nothing is found AND a tier errored, the response is 503 with unavailable:true and an explicit 'this is not a finding that no rate exists'. A clean miss stays 200 with unavailable:false. The QA silent-failure scanner then flagged the new catches and was RIGHT: `degraded` was in the payload but nothing rendered it, so end-to-end the user still saw nothing. Rather than suppress the scanner, each tier was extracted behind runTier() whose catch returns an explicit { ok: false }, and TODParkingCalculator now renders a role=alert banner listing which sources could not be read.",
-      "mitigated": true,
-      "how": "All three qa-ignore: silent-failure annotations in this route were removed rather than kept — an exception is a defect, and 'no rows' already falls through without one. Not resolved by a qa-ignore: the scanner's objection was a real gap in the fix, and suppressing it would have repeated the exact pattern this PR exists to remove.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/lib/parking-rate-selection.test.ts   # asserts return { ok: false } + degraded.push + no qa-ignore in the route"
+      "how": "Scoped predicate added. The constraint already exists correctly on the right table in production, so this only affects future re-runs.",
+      "repro": "grep -n \"conrelid = 'public.regulatory_provisions'::regclass\" migrations/062_applicability_provenance.sql"
     }
   ],
   "post_merge": {
-    "db_reset": "None. Read-only; no migration, no write.",
-    "secrets": "Requires a DATABASE_URL repository secret for the CI schema-contract job. Until it is set, that job fails (exit 2) rather than passing — deliberate. The other three CI jobs need no secrets.",
+    "db_reset": "None. Migration 062 is already applied to production and is additive. Rollback if ever needed: ALTER TABLE regulatory_provisions DROP COLUMN v2_zone_source, DROP COLUMN v2_dev_type_source.",
+    "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "1. Add the DATABASE_URL secret in repo settings. 2. Confirm the gates workflow runs on this PR and that python-tests / frontend-tests / qa-and-liability pass and schema-contract passes with 18 baselined. 3. Confirm a fork/Dependabot PR shows schema-contract as skipped, not green."
+    "manual_verify": "The columns are live but every row is NULL until a retag runs. run_applicability_tagging only revisits rows WHERE v2_applicable_zones IS NULL, so a full-corpus retag is a separate, user-approved operation. Until then the honest reading of the corpus is unchanged: 95.6% ALL, origin unknown."
   }
 }
