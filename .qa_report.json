@@ -1,116 +1,123 @@
 {
   "tier": "standard",
-  "justification": "Adds a gate over what reports ASSERT, and changes three report surfaces plus the pre-push policy. The conveyancing fix changes what a paid PDF says when a spatial query fails, which is a behaviour change to customer-facing output; the Sol change can now block a push. Both are cheap to get wrong quietly.",
-  "commit_hash": "6db9ad25",
+  "justification": "Changes who is told they are eligible to build. The endpoint resolved its single most consequential input in the claimant's favour whenever it was absent, and the AI path invented four site measurements to force an answer. Over-eligibility is the expensive direction of this error: someone acts on it.",
+  "commit_hash": "2ed1687c",
   "files": [
-    "scripts/lint_fabricated_verdicts.py",
-    "scripts/generate_conveyancing_report.py",
-    "frontend-nextjs/lib/see/propertyContext.ts",
-    "frontend-nextjs/components/pdf/ContextSection.tsx",
-    "frontend-nextjs/components/pdf/see-pages/Page2SiteContext.tsx",
-    "frontend-nextjs/components/pdf/see-pages/Page4Dcp.tsx",
-    "frontend-nextjs/lib/pdf/granny-flat-report.tsx",
-    "tests/test_fabricated_verdicts.py",
-    ".githooks/pre-commit",
-    ".githooks/pre-push",
-    ".github/workflows/gates.yml",
-    ".gitignore"
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "frontend-nextjs/__tests__/api/housing-sepp-lmr-default.test.ts",
+    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
+    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
+    "frontend-nextjs/lib/ai/router.ts"
   ],
   "falsifiable_check": {
-    "command": "python scripts/lint_fabricated_verdicts.py && python -m pytest tests/test_fabricated_verdicts.py -q",
-    "fails_when": "A report surface asserts a site verdict with no interpolation and no branch that could change it. Anchored to two reference cases run on every change: the PRE-FIX ContextSection.tsx (the real DQ-36 TOD line) must exit 1, and current main must exit 0. The first version of this lint FAILED that anchor — it reported PASSED on the very file DQ-36 came from, because it tested interpolation across a window and a neighbouring line's template literal masked the hardcoded one."
+    "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts",
+    "fails_when": "`inLMRArea = isLMRArea !== false` returns, the router re-hardcodes isLMRArea: true, or any of the invented defaults (zone || 'R2', lotSize || 450, lotWidth || 12) come back. Mutation-verified: restoring the old default plus the router's hardcoded true fails 4 of the 6 tests. Two further HIGH findings were caught by the new blocking Sol gate on this very push and fixed before merge: the three-state input was collapsing back to a two-state `isEligible: false` response (so 'never assessed' and 'confirmed outside' were indistinguishable to any consumer rendering the boolean), and omitting the zone param dropped the zone FILTER entirely, returning other zones' provisions as applicable to this property."
   },
   "pre_impl": {
-    "existing_data": "36 files across frontend-nextjs/components/pdf, frontend-nextjs/lib/pdf and the three Python conveyancing modules. Sweep result: 4 findings needing a decision, plus 2 verified false positives now annotated. Scope was bounded deliberately to surfaces a paying customer reads; the rest of the app was NOT swept and is called out as such.",
-    "assumption_mismatch": "Expected the class to be large and concentrated in React. It is neither. Only one live React instance remained after PR 858, and the worst finding was in Python: get_unique_overlays catches every exception and returns an empty result, so a PostGIS outage produced the same empty `flagged` list as a genuinely unconstrained property, and the PDF printed 'No constraints identified for this property'. A clean bill of health from a query that never ran, on the section a conveyancer buys the report for.",
-    "new_vs_existing": "No existing check inspects whether a rendered verdict is backed by received data. liability_language_check scans wording, lint_hardcoded_zone_codes scans values, validate_schema_contract compares code to catalog, lint_brief_failsoft guards the brief's service layer. The findings-plus-named-escape shape is copied from the zone-code lint rather than invented."
+    "existing_data": "Two eligibility implementations exist. services/housing_sepp_eligibility.py computes the LMR gate from the live 776 exclusion layer and fails CONSERVATIVE on any query failure; its own docstring names the TS route's behaviour as 'a silent over-eligibility bug'. The live assessment page supplies isLMRArea from isLMRApplicable(zone, lga), a zone/LGA lookup rather than the exclusion layer, so the two can still disagree — that consolidation stays open.",
+    "assumption_mismatch": "Expected one defect in the route. Found three, and the two worst were in the AI router, not the route: it hardcoded isLMRArea: true and substituted zone 'R2', lot size 450 and lot width 12 when the real values were missing; and a second handler in the same file returned R2's DCP provisions for any property whose zone was unknown. The tracker entry described only the route.",
+    "new_vs_existing": "No new endpoint or surface. The full migration onto the Python service is deliberately NOT attempted here — evaluate_eligibility() returns only the gate result, not the numeric-standards fetch the route also performs, so a swap is not mechanical and the live HousingSEPPEligibilityCard depends on the current response shape."
   },
   "functions": [
     {
-      "name": "scan_file",
-      "file_line": "scripts/lint_fabricated_verdicts.py:151",
-      "input": "a path to a TypeScript, TSX or Python file in the report surfaces",
-      "output": "a list of findings, each classified as either FABRICATED or UNDETERMINED with its line and text",
-      "if_none": "an empty list means no verdict strings matched, which is reported as zero findings rather than as an assertion that the file is clean"
-    },
-    {
-      "name": "_window",
-      "file_line": "scripts/lint_fabricated_verdicts.py:141",
-      "input": "the file's lines, the finding index, and how many lines of context to take",
-      "output": "the surrounding source text used for the escape-comment search and, with a tighter span, the branch test",
-      "if_none": "near the top of a file the slice is clamped, so a finding on line one still gets a valid window rather than raising"
+      "name": "handleHousingSeppCheck",
+      "file_line": "frontend-nextjs/lib/ai/router.ts:651",
+      "input": "the property context assembled by the AI assistant for the current address",
+      "output": "the eligibility response, or a refusal naming which inputs were missing when the property is not fully known",
+      "if_none": "a missing zone, lot size or lot width now stops the check and says so is not a finding of ineligibility, instead of substituting defaults"
     }
   ],
-  "values": "N/A - the lint reads source text, not business values.",
-  "queries": [
+  "values": [
     {
-      "purpose": "none added; the conveyancing fix only reinterprets the covered_layers value already returned by the existing overlay query",
-      "file_line": "scripts/generate_conveyancing_report.py:4069",
-      "where_clause": "no new SQL. get_unique_overlays keeps its existing point/polygon predicates; this change reads its covered_layers return value to tell a completed screen from a failed one"
+      "value": "isLMRArea — whether the property sits in a low/mid-rise reform area, the gate the whole eligibility result turns on",
+      "read_at": "request time from the caller; the live page derives it from isLMRApplicable(zone, lga), the AI path no longer supplies it at all",
+      "if_missing": "treated as NOT ASSESSED and the dependent forms report that they cannot be confirmed, rather than defaulting to true and reporting eligible"
     }
   ],
+  "queries": "N/A - no SQL changed; the numeric-standards fetch in the route is untouched.",
   "break_it": [
     {
-      "scenario": "The lint cannot detect the very defect it was written for, and ships looking green.",
-      "what_happens": "It did exactly that. Version one tested interpolation across a 6-line window, so the Housing SEPP template literal above the TOD line masked it and the pre-fix file reported PASSED.",
+      "scenario": "A caller omits isLMRArea and the endpoint reports the property eligible for LMR forms it may not qualify for.",
+      "what_happens": "That was the shipped behaviour: `isLMRArea !== false` made undefined mean true. Now only an explicit boolean true opens the gate.",
       "mitigated": true,
-      "how": "Interpolation is now tested on the literal only. Both reference cases are asserted in the test suite, so the anchor cannot rot.",
-      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k founding -q"
+      "how": "Test asserts the old expression cannot return and that a typeof boolean check guards it.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'omitted isLMRArea'"
     },
     {
-      "scenario": "A PostGIS outage makes a paid conveyancing report state that the property has no constraints.",
-      "what_happens": "get_unique_overlays returns ([], set(), {}) on any exception, so flagged was empty and the report printed 'No constraints identified for this property'. Now covered_layers distinguishes a screen that ran from one that did not, and the third state says plainly that it is not a finding of unconstrained.",
+      "scenario": "Not-assessed and confirmed-outside read identically, so a user cannot tell a gap from a finding.",
+      "what_happens": "Both are ineligible but they are different statements. The unassessed branch now says so and states it is not a finding that the property is outside an LMR area.",
       "mitigated": true,
-      "how": "Three-state branch plus tests asserting the old two-state expression cannot return.",
-      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k ConveyancingConstraintScreen -q"
+      "how": "lmrAreaKnown selects the wording; asserted by test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'distinguishes'"
     },
     {
-      "scenario": "The lint is TypeScript-shaped and flags every Python if-guarded verdict, so nobody trusts it.",
-      "what_happens": "Four false positives in the conveyancing report on the first Python run, all guarded by `if is_strata:` which the TS-only branch pattern could not see.",
+      "scenario": "The AI answers an eligibility question for a property whose zone, lot size and width are all unknown, using invented values.",
+      "what_happens": "It did — zone 'R2', 450 sqm, 12 m, plus a hardcoded in-LMR-area true. Four fabricated site facts feeding a definitive answer. Missing inputs now return a refusal naming them.",
       "mitigated": true,
-      "how": "Python statement and ternary forms added, with a test that reproduces the strata block shape.",
-      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k python_if_guarded -q"
+      "how": "Tests assert each default literal is absent and that the refusal wording exists.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'invent'"
     },
     {
-      "scenario": "The branch window is so wide that any nearby conditional excuses a hardcoded verdict, quietly disarming the gate.",
-      "what_happens": "At 14 lines the founding case downgraded from FABRICATED to non-blocking UNDETERMINED. The window was tuned against both reference cases: at 5 the strata blocks still false-positived, at 6 they clear and the founding case still blocks.",
+      "scenario": "The AI returns another zone's DCP provisions as though they were this property's.",
+      "what_happens": "handleDcpProvisionLookup used zone || 'R2', so an unknown zone silently answered with R2 provisions. The param is now omitted; for-property treats zone as optional and its predicate already admits ALL-tagged provisions.",
       "mitigated": true,
-      "how": "Escape comments keep the wide window; the branch test uses the tight one. Both anchors are tested.",
-      "repro": "python scripts/lint_fabricated_verdicts.py --quiet; echo $?"
+      "how": "Checked the route accepts a missing zone before changing the caller rather than assuming it.",
+      "repro": "grep -n \"searchParams.get('zone')\" frontend-nextjs/app/api/provisions/for-property/route.ts"
     },
     {
-      "scenario": "Someone silences a finding with a bare escape comment and no justification.",
-      "what_happens": "The escape pattern required only a non-space character, so `{/* verdict-ok: */}` passed because the closing `*/}` counted as the reason.",
+      "scenario": "The response shape changes and the live HousingSEPPEligibilityCard breaks.",
+      "what_happens": "No field was added or removed. Only the eligibilityReason string differs, on a branch that already existed and already returned isEligible false.",
       "mitigated": true,
-      "how": "The reason must now begin with a letter; a bare escape no longer clears a finding.",
-      "repro": "python -m pytest tests/test_fabricated_verdicts.py -k bare_escape -q"
+      "how": "The live page passes an explicit boolean from isLMRApplicable, so its behaviour is unchanged; only callers that omitted the field are affected, which is the defect.",
+      "repro": "cd frontend-nextjs && npx jest && npx tsc --noEmit --skipLibCheck"
     },
     {
-      "scenario": "An absent local-provision fetch renders as a finding that no local provisions apply.",
-      "what_happens": "additionalLocalProvisions collapsed 'assessed, none' and 'never assessed' both to undefined, and two components printed a definitive negative. Now undefined means not assessed, empty array means assessed with none.",
+      "scenario": "A test asserts a phrase that spans a TypeScript string concatenation and can never match the source.",
+      "what_happens": "It happened twice in this session. The assertion now matches within a single literal.",
       "mitigated": true,
-      "how": "Blast radius checked before writing: the only other consumer, seeBuilders, uses `?? []`, so an empty array is a no-op there.",
-      "repro": "grep -n 'Not assessed - local provision data unavailable' frontend-nextjs/components/pdf/ContextSection.tsx"
+      "how": "Comment on the assertion records why the phrase is truncated.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts"
     },
     {
-      "scenario": "Sol blocks on everything, one finding in three is wrong, and people start pushing with --no-verify.",
-      "what_happens": "Blocking is scoped to HIGH severity AND a diff touching served or printed output; everything else stays advisory. The block message states the false-positive rate and names the escape.",
+      "scenario": "The input is three-state but the RESPONSE is two-state, so a consumer renders 'not eligible' for a check that never ran.",
+      "what_happens": "Exactly what the first pass shipped. `assessmentStatus: 'eligible' | 'ineligible' | 'not_assessed'` is now returned alongside the unchanged `isEligible`, so existing consumers keep working and new ones can distinguish the states.",
       "mitigated": true,
-      "how": "SOL_OVERRIDE must carry a reason of at least 15 characters, which is echoed into the push output so the justification exists on the record.",
-      "repro": "sh -n .githooks/pre-push && grep -n 'SOL_OVERRIDE' .githooks/pre-push"
+      "how": "Caught by the blocking Sol gate on this push — the fix I had just written contained the same defect class it was fixing. Tests assert the union type and the conditional.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'machine-readable status'"
     },
     {
-      "scenario": "The lint file lands untracked because scripts/ is whitelist-ignored, so the gate exists on one machine only.",
-      "what_happens": "Explicit whitelist entry added and tracking confirmed rather than assumed.",
+      "scenario": "Omitting the zone from a zone-dependent DCP lookup returns OTHER zones' provisions as this property's.",
+      "what_happens": "My first fix replaced an invented 'R2' with no zone at all, which drops the filter rather than narrowing it — a wider version of the same wrong answer. The handler now refuses when the zone is unknown.",
       "mitigated": true,
-      "how": "git ls-files --error-unmatch on the new script before commit.",
-      "repro": "git ls-files --error-unmatch scripts/lint_fabricated_verdicts.py"
+      "how": "Refusal states it is not a finding that no provisions apply, matching the pattern used elsewhere in this PR.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'zone is unknown'"
+    },
+    {
+      "scenario": "A DCP lookup runs with a zone but no council, returning another council's provisions for that zone as this property's.",
+      "what_happens": "Cross-review's third catch. Zone alone was not sufficient scope. The handler now requires zone AND (lga or formerCouncil), and names whichever is missing.",
+      "mitigated": true,
+      "how": "Explicit guards rather than a collected list, so TypeScript also narrows context.zone at the call site.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'zone is unknown'"
+    },
+    {
+      "scenario": "A missing station distance is reported as a negative determination rather than an unrun check.",
+      "what_happens": "My mechanical patch had stamped assessmentStatus 'ineligible' onto every isEligible:false branch, including the one whose reason says the distance is required. That branch is now 'not_assessed'.",
+      "mitigated": true,
+      "how": "Caught by cross-review; the blanket edit is exactly the kind of change that introduces this.",
+      "repro": "grep -n \"assessmentStatus: 'not_assessed'\" frontend-nextjs/app/api/housing-sepp/eligibility/route.ts"
+    },
+    {
+      "scenario": "The card keeps rendering isEligible alone, so an unassessed property still shows a grey 'Not Eligible' badge despite the new status.",
+      "what_happens": "It would have. HousingSEPPEligibilityCard is the only in-repo consumer and rendered the boolean at four places; it now shows an amber 'Not Assessed' state first. assessmentStatus is optional there, so an older response still type-checks and falls back to the previous two-state rendering.",
+      "mitigated": true,
+      "how": "Fixing the API without the consumer would have left the wrong answer on screen — the point of the change.",
+      "repro": "grep -n 'notAssessed' frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx"
     }
   ],
   "post_merge": {
-    "db_reset": "None. No schema or data change; the conveyancing fix only reinterprets an existing return value.",
-    "secrets": "None new. Sol blocking uses the OpenAI key already required by the advisory step; with no key the review is skipped and the push proceeds.",
+    "db_reset": "None.",
+    "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "Generate a conveyancing report with the database unreachable and confirm the callout reads 'Constraint screening did not complete' rather than 'No constraints identified'. Then push a change under frontend-nextjs/components/pdf with a deliberate HIGH-severity defect and confirm the push is blocked and names the SOL_OVERRIDE escape."
+    "manual_verify": "Ask the assistant a Housing SEPP question for an address whose lot dimensions are unknown and confirm it now says which inputs are missing rather than answering. On the assessment page, confirm the Housing SEPP card is unchanged for a property where isLMRArea is supplied."
   }
 }

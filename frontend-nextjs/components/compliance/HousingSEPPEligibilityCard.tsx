@@ -14,6 +14,7 @@ import {
   Home,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   Info,
   Building,
   FileText
@@ -50,6 +51,12 @@ interface EligibilityResult {
   displayName: string;
   description: string;
   isEligible: boolean;
+  /**
+   * Optional so an older API response still type-checks. Rendering `isEligible`
+   * alone printed a grey "Not Eligible" badge for a property whose LMR area was
+   * never assessed — a negative determination from a check that did not run.
+   */
+  assessmentStatus?: 'eligible' | 'ineligible' | 'not_assessed';
   eligibilityReason: string;
   standards: DevelopmentStandard[];
   effectiveDate: string;
@@ -160,13 +167,19 @@ function filterStandardsForLotSize(standards: DevelopmentStandard[], lotSize: nu
 
 function EligibilityRow({ result, lotSize }: { result: EligibilityResult; lotSize: number }) {
   const [expanded, setExpanded] = useState(false);
+  // A check that did not run is neither eligible nor ineligible. Older responses
+  // carry no assessmentStatus, so absence falls back to the existing two-state
+  // rendering rather than mislabelling everything as unassessed.
+  const notAssessed = result.assessmentStatus === 'not_assessed';
   const filteredStandards = filterStandardsForLotSize(result.standards, lotSize);
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
-      <div className={`rounded-lg border ${result.isEligible
-        ? 'border-purple-200 bg-purple-50/50'
-        : 'border-gray-200 bg-gray-50/50'
+      <div className={`rounded-lg border ${notAssessed
+        ? 'border-amber-200 bg-amber-50/50'
+        : result.isEligible
+          ? 'border-purple-200 bg-purple-50/50'
+          : 'border-gray-200 bg-gray-50/50'
         }`}>
         <CollapsibleTrigger asChild>
           <Button
@@ -174,7 +187,9 @@ function EligibilityRow({ result, lotSize }: { result: EligibilityResult; lotSiz
             className="w-full p-3 h-auto justify-between hover:bg-transparent"
           >
             <div className="flex items-center gap-3">
-              {result.isEligible ? (
+              {notAssessed ? (
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              ) : result.isEligible ? (
                 <CheckCircle2 className="w-5 h-5 text-purple-600 flex-shrink-0" />
               ) : (
                 <XCircle className="w-5 h-5 text-gray-400 flex-shrink-0" />
@@ -189,7 +204,11 @@ function EligibilityRow({ result, lotSize }: { result: EligibilityResult; lotSiz
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {result.isEligible ? (
+              {notAssessed ? (
+                <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                  Not Assessed
+                </Badge>
+              ) : result.isEligible ? (
                 <Badge className="bg-purple-100 text-purple-800 border-purple-200">
                   Eligible
                 </Badge>

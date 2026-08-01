@@ -16,7 +16,7 @@
 | DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line was a zone-only check, contradicting this same file's own determineDevelopmentPathway() on heritage land | ✅ Fixed 2026-08-01 | P1 — liability language on a definitive claim |
 | DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
 | DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
-| DQ-31: housing-sepp/eligibility route never migrated to the Python single-source-of-truth service — documented over-eligibility bug still live | ⏳ Tracked 2026-07-31, not started | P1 |
+| DQ-31: housing-sepp/eligibility over-eligibility — absent `isLMRArea` meant "yes"; the AI router additionally hardcoded `isLMRArea: true` and invented `zone`/`lotSize`/`lotWidth`. **Over-eligibility CLOSED 2026-08-01; full consolidation onto the Python service still open.** | 🟠 Wrong answer fixed, consolidation open | P1 |
 | DQ-30: Applicability tagger — CODE fixed (PR1-4, this PR). **DATA NOT fixed: 286 rows still carry retired zone codes, 14 of them live+actionable in councils the retag covered.** The "0% drift" verification was invalid — it cannot fail. | 🟠 Code fixed, data open 2026-08-01 | P1 — validity, not traffic |
 | DQ-29: Doubled-character OCR corruption in provision_text — 845 header lines stripped (backup saved); 22 scrambled-body rows remain for re-extraction | 🟡 Partially fixed 2026-07-15 | P1 |
 | DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
@@ -170,7 +170,33 @@ wraps both, or a more surgical partial fix — not a mechanical swap like `/api/
 Live-route regression risk: `components/compliance/HousingSEPPEligibilityCard.tsx` (rendered
 on the assessment page) depends on the current response shape.
 
-**Fix:** not started. Scope out the new/adapted endpoint before touching the route.
+**Fixed 2026-08-01 — the wrong ANSWER, not the duplication.** Full consolidation onto
+`services/housing_sepp_eligibility.py` remains open (it returns only the gate result, not the
+numeric-standards fetch the TS route also performs, so it is not a drop-in). What was closed:
+
+1. `const inLMRArea = isLMRArea !== false` → an ABSENT input meant "yes, in an LMR area", the
+   single input the endpoint turns on, resolved in the claimant's favour. Now three-state:
+   true / false / not-assessed, with not-assessed yielding "cannot confirm" rather than
+   eligible — matching the Python service's fail-conservative contract.
+2. **`lib/ai/router.ts` was worse than the route.** It hardcoded `isLMRArea: true` and
+   substituted `zone || 'R2'`, `lotSize || 450`, `lotWidth || 12` — inventing four site
+   measurements to force an answer for a property whose real values were unknown. Missing
+   inputs now stop the check.
+3. A SECOND fabrication in the same file: `handleDcpProvisionLookup` used `zone || 'R2'`, so
+   an unknown zone returned **R2's DCP provisions** presented as this property's. The zone
+   param is now omitted (it is optional on `for-property`, route.ts:297).
+
+**Still open after this fix (raised by cross-review, verified, deliberately not fixed here):**
+the endpoint treats a caller-supplied `isLMRArea: true` as authoritative, but the live page
+derives it from `isLMRApplicable(zone, lga)` — a zone/LGA heuristic, NOT the parcel-level 776
+exclusion layer that `services/housing_sepp_eligibility.py` uses. A parcel individually excluded
+from the reform area can therefore still be reported eligible. Fixing it properly IS the
+consolidation described above, not a patch: the alternative — refusing to trust any client
+boolean — would make the Housing SEPP card read "Not Assessed" for every property until the
+server-side derivation is wired, which is a product decision, not a code cleanup.
+
+Same class as DQ-36: a verdict asserted from data nobody supplied. Guarded by
+`frontend-nextjs/__tests__/api/housing-sepp-lmr-default.test.ts` (6 tests, mutation-verified).
 
 ---
 
