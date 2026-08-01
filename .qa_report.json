@@ -1,123 +1,125 @@
 {
-  "tier": "standard",
-  "justification": "Changes who is told they are eligible to build. The endpoint resolved its single most consequential input in the claimant's favour whenever it was absent, and the AI path invented four site measurements to force an answer. Over-eligibility is the expensive direction of this error: someone acts on it.",
-  "commit_hash": "2ed1687c",
+  "tier": "critical",
+  "justification": "A 22,007-row production write that NARROWS what a property is shown. Every other change today widened applicability or corrected a false claim; this one removes provisions from result sets, and hiding a binding control is the failure mode that matters. It also changes user-facing copy on the assessment page.",
+  "commit_hash": "c386fc6a",
   "files": [
-    ".claude/DATA_QUALITY_TRACKER.md",
-    "frontend-nextjs/__tests__/api/housing-sepp-lmr-default.test.ts",
-    "frontend-nextjs/app/api/housing-sepp/eligibility/route.ts",
-    "frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx",
-    "frontend-nextjs/lib/ai/router.ts"
+    "enrichment/extractors/applicability_tagger.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "tests/test_applicability_slug_docids.py",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "falsifiable_check": {
-    "command": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts",
-    "fails_when": "`inLMRArea = isLMRArea !== false` returns, the router re-hardcodes isLMRArea: true, or any of the invented defaults (zone || 'R2', lotSize || 450, lotWidth || 12) come back. Mutation-verified: restoring the old default plus the router's hardcoded true fails 4 of the 6 tests. Two further HIGH findings were caught by the new blocking Sol gate on this very push and fixed before merge: the three-state input was collapsing back to a two-state `isEligible: false` response (so 'never assessed' and 'confirmed outside' were indistinguishable to any consumer rendering the boolean), and omitting the zone param dropped the zone FILTER entirely, returning other zones' provisions as applicable to this property."
+    "command": "SELECT coalesce(v2_zone_source,'(NULL)'), count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IN ('marrickville','ashfield','leichhardt') GROUP BY 1;  -- plus: python -m pytest tests/test_applicability_slug_docids.py -q",
+    "fails_when": "The predicted distribution was stated BEFORE the write: config_all 7,761, config_specific 815, no_config 1,278. It fails if those counts differ materially, if any row carries a narrowed zone set while v2_zone_source is still 'no_config' (which would mean it was narrowed without a config matching — a guess), or if any written zone code is absent from lep_zone_coverage for Inner West. All three were run after the write: distribution matched exactly, guessed-narrowing count 0, invalid codes 0. The test suite additionally fails if a resolver returns a key the config does not declare."
   },
   "pre_impl": {
-    "existing_data": "Two eligibility implementations exist. services/housing_sepp_eligibility.py computes the LMR gate from the live 776 exclusion layer and fails CONSERVATIVE on any query failure; its own docstring names the TS route's behaviour as 'a silent over-eligibility bug'. The live assessment page supplies isLMRArea from isLMRApplicable(zone, lga), a zone/LGA lookup rather than the exclusion layer, so the two can still disagree — that consolidation stays open.",
-    "assumption_mismatch": "Expected one defect in the route. Found three, and the two worst were in the AI router, not the route: it hardcoded isLMRArea: true and substituted zone 'R2', lot size 450 and lot width 12 when the real values were missing; and a second handler in the same file returned R2's DCP provisions for any property whose zone was unknown. The tracker entry described only the route.",
-    "new_vs_existing": "No new endpoint or surface. The full migration onto the Python service is deliberately NOT attempted here — evaluate_eligibility() returns only the gate result, not the numeric-standards fetch the route also performs, so a swap is not mechanical and the live HousingSEPPEligibilityCard depends on the current response shape."
+    "existing_data": "107 distinct document_ids / 9,854 served rows / 22,007 total rows across the three councils, enumerated in full rather than sampled. Config key vocabularies read directly: MARRICKVILLE_CONFIG parts + precincts, ASHFIELD_CONFIG chapters + chapter_f_parts, LEICHHARDT_CONFIG parts. Zone codes cross-checked against lep_zone_coverage for Inner West.",
+    "assumption_mismatch": "The tracker said the section code lives in ref_number and the matchers should be taught to read it, implying a signature change. Reading the real data showed the part is already in the document_id as a slug, so no extra field and no signature change was needed. Second mismatch: I expected 9,854 rows to narrow. Only 815 narrow on zones and 882 on dev types; 7,673 resolve to configs that themselves say ALL, so for those the value is unchanged and only the provenance improves from unattributable to attributable.",
+    "new_vs_existing": "No new surface. Slug resolution was added inside the three existing config getters, tried before the legacy verbose patterns, which are retained for any older document_id. The re-tag script exists because enrichment/pipeline.py::run_applicability_tagging only revisits rows WHERE v2_applicable_zones IS NULL and would skip every affected row; its safety shape is copied from scripts/backfill_invalid_zone_codes.py.",
+    "external_source_error": "No external API is called. The only source is the local DCP config files plus lep_zone_coverage, read read-only for verification. If a config file were unreadable the tagger raises at import and the re-tag script never reaches its write phase; if lep_zone_coverage were empty the standing zone-validity gate reports unverifiable rather than clean, which is the documented three-state.",
+    "frontend_type": "The narrowed arrays cross into TypeScript as v2_applicable_zones and v2_applicable_dev_types on the provision rows. Both were already string[] | null and neither changed shape, so no boundary type moved. The one new frontend value is anyDevTypeSpecific, a boolean derived in-component from those arrays with an Array.isArray guard, so a null or absent field reads false rather than throwing.",
+    "user_failure_mode": "The expensive failure is a provision that applies being hidden from a property, because the user would never know it was missing — the opposite direction is only noise. Mitigated by refusing to resolve any config key the council has not declared, which leaves 1,278 served rows deliberately at ALL/no_config, and by verifying after the write that zero rows were narrowed while still recording no_config. Visibly, a Marrickville dwelling-house scope now excludes the commercial and industrial parts; the scope copy states that some provisions are filtered rather than claiming none are."
   },
   "functions": [
     {
-      "name": "handleHousingSeppCheck",
-      "file_line": "frontend-nextjs/lib/ai/router.ts:651",
-      "input": "the property context assembled by the AI assistant for the current address",
-      "output": "the eligibility response, or a refusal naming which inputs were missing when the property is not fully known",
-      "if_none": "a missing zone, lot size or lot width now stops the check and says so is not a finding of ineligibility, instead of substituting defaults"
+      "name": "_marrickville_slug_key",
+      "file_line": "enrichment/extractors/applicability_tagger.py:223",
+      "input": "a slug-form document_id such as part4_s1_low_density or part9_p47_victoria_road",
+      "output": "a tuple of the entry kind and the config key, only when that key is declared in MARRICKVILLE_CONFIG",
+      "if_none": "returns None for any slug whose derived key the config does not declare, so the row stays ALL with source no_config rather than being narrowed on a guess"
+    },
+    {
+      "name": "_ashfield_slug_key",
+      "file_line": "enrichment/extractors/applicability_tagger.py:250",
+      "input": "a slug-form document_id such as chapter_e1_heritage or chapter_f_part_7",
+      "output": "the chapter or chapter-F part key when ASHFIELD_CONFIG declares it",
+      "if_none": "chapter_e2_haberfield returns None on purpose because no Chapter E2 is declared; its 118 rows stay ALL rather than inheriting another chapter's zones"
+    },
+    {
+      "name": "_leichhardt_slug_key",
+      "file_line": "enrichment/extractors/applicability_tagger.py:269",
+      "input": "a slug-form document_id such as part_c_s2_urban_character or part_f_food",
+      "output": "the part key, preferring the more specific Section form before the bare part",
+      "if_none": "appendices, technical manuals and amendments return None and stay ALL, because they are not parts"
+    },
+    {
+      "name": "build_plan",
+      "file_line": "scripts/retag_applicability_slug_docids.py:76",
+      "input": "an open read cursor over the three councils' rows",
+      "output": "the rows whose tag values change, the rows whose provenance alone changes, and the predicted distribution",
+      "if_none": "an empty plan writes nothing; the script is dry-run by default so a wrong plan cannot reach the database without an explicit flag"
     }
   ],
   "values": [
     {
-      "value": "isLMRArea — whether the property sits in a low/mid-rise reform area, the gate the whole eligibility result turns on",
-      "read_at": "request time from the caller; the live page derives it from isLMRApplicable(zone, lga), the AI path no longer supplies it at all",
-      "if_missing": "treated as NOT ASSESSED and the dependent forms report that they cannot be confirmed, rather than defaulting to true and reporting eligible"
+      "value": "v2_applicable_zones and v2_applicable_dev_types for 1,928 rows, plus provenance for all 22,007",
+      "read_at": "planning time from regulatory_provisions, then re-read by the per-row UPDATE guard at write time",
+      "if_missing": "62 rows hold NULL; the guard uses IS NOT DISTINCT FROM against a coalesced empty array so those rows are updated rather than silently skipped, which a plain equality guard would have done"
     }
   ],
-  "queries": "N/A - no SQL changed; the numeric-standards fetch in the route is untouched.",
+  "queries": [
+    {
+      "purpose": "read every row for the three councils so the new tag can be computed and compared against what is stored",
+      "file_line": "scripts/retag_applicability_slug_docids.py:85",
+      "where_clause": "WHERE source_council = ANY(%s) with the three councils bound as a parameter; the UPDATE is separately scoped WHERE id = %s plus a null-safe comparison on both previous values, so no unscoped write is possible"
+    }
+  ],
   "break_it": [
     {
-      "scenario": "A caller omits isLMRArea and the endpoint reports the property eligible for LMR forms it may not qualify for.",
-      "what_happens": "That was the shipped behaviour: `isLMRArea !== false` made undefined mean true. Now only an explicit boolean true opens the gate.",
+      "scenario": "A slug is resolved to the nearest available config key, narrowing a provision onto zones the council never assigned it — a hidden control.",
+      "what_happens": "Resolution is config-authoritative: a derived key is discarded unless the config declares it. chapter_e2_haberfield (118 rows) and part2_s21 (131 rows) deliberately stay ALL for exactly this reason.",
       "mitigated": true,
-      "how": "Test asserts the old expression cannot return and that a typeof boolean check guards it.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'omitted isLMRArea'"
+      "how": "TestNeverInventsAKeyTheConfigLacks asserts each unresolvable case returns None, and asserts the key really is absent from the config first so the test cannot pass for the wrong reason.",
+      "repro": "python -m pytest tests/test_applicability_slug_docids.py -k NeverInvents -q"
     },
     {
-      "scenario": "Not-assessed and confirmed-outside read identically, so a user cannot tell a gap from a finding.",
-      "what_happens": "Both are ineligible but they are different statements. The unassessed branch now says so and states it is not a finding that the property is outside an LMR area.",
+      "scenario": "The matcher fix is wrong and a re-tag writes 9,854 bad rows.",
+      "what_happens": "The hundred-row sample was re-run first: Inner West rows resolving went 0/52 to 44/52, and the 8 that still do not resolve are the unmapped documents. Only then was the blast radius computed, and only then the write.",
       "mitigated": true,
-      "how": "lmrAreaKnown selects the wording; asserted by test.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'distinguishes'"
+      "how": "Dry-run is the default and prints the full plan; the plan was reconciled against an independent validation script over all 107 document_ids before --apply.",
+      "repro": "python scripts/retag_applicability_slug_docids.py    # dry run, writes nothing"
     },
     {
-      "scenario": "The AI answers an eligibility question for a property whose zone, lot size and width are all unknown, using invented values.",
-      "what_happens": "It did — zone 'R2', 450 sqm, 12 m, plus a hardcoded in-LMR-area true. Four fabricated site facts feeding a definitive answer. Missing inputs now return a refusal naming them.",
+      "scenario": "The 62 NULL-valued rows are silently skipped by the concurrency guard, so the write reports success while leaving them untagged.",
+      "what_happens": "It would have. The guard was written as `v2_applicable_zones = %s`, and NULL = anything is NULL, so all 62 would have failed the predicate. Found by inspecting the planned values before applying.",
       "mitigated": true,
-      "how": "Tests assert each default literal is absent and that the refusal wording exists.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'invent'"
+      "how": "Guard rewritten as coalesce(...) IS NOT DISTINCT FROM. The run reported 22,007 updated and 0 skipped, which is how the fix was confirmed rather than assumed.",
+      "repro": "grep -n 'IS NOT DISTINCT FROM' scripts/retag_applicability_slug_docids.py"
     },
     {
-      "scenario": "The AI returns another zone's DCP provisions as though they were this property's.",
-      "what_happens": "handleDcpProvisionLookup used zone || 'R2', so an unknown zone silently answered with R2 provisions. The param is now omitted; for-property treats zone as optional and its predicate already admits ALL-tagged provisions.",
+      "scenario": "Provisions are narrowed and the assessment page keeps telling users nothing was removed.",
+      "what_happens": "It would have. Leichhardt is the sort_only council and its copy asserted 'all N provisions apply regardless of dev type — does not remove any'. Correcting the tagger gave Leichhardt Part F real dev types, making the sentence false for those provisions.",
       "mitigated": true,
-      "how": "Checked the route accepts a missing zone before changing the caller rather than assuming it.",
-      "repro": "grep -n \"searchParams.get('zone')\" frontend-nextjs/app/api/provisions/for-property/route.ts"
+      "how": "The copy is now derived from the provisions actually loaded (anyDevTypeSpecific) rather than assumed, so it stays true whichever way the corpus goes. This is the DQ-31 lesson applied: an API fix that stops before the UI is invisible.",
+      "repro": "grep -n 'anyDevTypeSpecific' frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
     },
     {
-      "scenario": "The response shape changes and the live HousingSEPPEligibilityCard breaks.",
-      "what_happens": "No field was added or removed. Only the eligibilityReason string differs, on a branch that already existed and already returned isEligible false.",
+      "scenario": "A narrowed row is written with a zone code that does not exist in that LGA, reintroducing DQ-30.",
+      "what_happens": "Every code written was checked against lep_zone_coverage for Inner West after the write: E1, E4, MU1, R1, R2, R3, R4 — all present, none retired. The existing zone-validity gate also passes.",
       "mitigated": true,
-      "how": "The live page passes an explicit boolean from isLMRApplicable, so its behaviour is unchanged; only callers that omitted the field are affected, which is the defect.",
+      "how": "The tagger's valid_zones filter from DQ-30 is untouched, and the standing validator was re-run post-write.",
+      "repro": "python scripts/validate_zone_code_validity.py --quiet"
+    },
+    {
+      "scenario": "A count or empty-state elsewhere in the UI breaks when a section shrinks to zero.",
+      "what_happens": "Checked rather than assumed: the only provision counts are the export label and the scope copy, both derived from the filtered list. No empty-state assumes ALL, and zero rows hold an empty zone array, which under the live predicate would match no zone at all.",
+      "mitigated": true,
+      "how": "Consumer traced before the write, per the sequence, not after.",
       "repro": "cd frontend-nextjs && npx jest && npx tsc --noEmit --skipLibCheck"
     },
     {
-      "scenario": "A test asserts a phrase that spans a TypeScript string concatenation and can never match the source.",
-      "what_happens": "It happened twice in this session. The assertion now matches within a single literal.",
+      "scenario": "The provenance flag is computed before the provisions it reads, throwing at render.",
+      "what_happens": "It was — anyDevTypeSpecific was inserted at line 355 while allProvisions is declared at 647. TypeScript caught it as a use-before-declaration once node_modules was linked into the worktree.",
       "mitigated": true,
-      "how": "Comment on the assertion records why the phrase is truncated.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts"
-    },
-    {
-      "scenario": "The input is three-state but the RESPONSE is two-state, so a consumer renders 'not eligible' for a check that never ran.",
-      "what_happens": "Exactly what the first pass shipped. `assessmentStatus: 'eligible' | 'ineligible' | 'not_assessed'` is now returned alongside the unchanged `isEligible`, so existing consumers keep working and new ones can distinguish the states.",
-      "mitigated": true,
-      "how": "Caught by the blocking Sol gate on this push — the fix I had just written contained the same defect class it was fixing. Tests assert the union type and the conditional.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'machine-readable status'"
-    },
-    {
-      "scenario": "Omitting the zone from a zone-dependent DCP lookup returns OTHER zones' provisions as this property's.",
-      "what_happens": "My first fix replaced an invented 'R2' with no zone at all, which drops the filter rather than narrowing it — a wider version of the same wrong answer. The handler now refuses when the zone is unknown.",
-      "mitigated": true,
-      "how": "Refusal states it is not a finding that no provisions apply, matching the pattern used elsewhere in this PR.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'zone is unknown'"
-    },
-    {
-      "scenario": "A DCP lookup runs with a zone but no council, returning another council's provisions for that zone as this property's.",
-      "what_happens": "Cross-review's third catch. Zone alone was not sufficient scope. The handler now requires zone AND (lga or formerCouncil), and names whichever is missing.",
-      "mitigated": true,
-      "how": "Explicit guards rather than a collected list, so TypeScript also narrows context.zone at the call site.",
-      "repro": "cd frontend-nextjs && npx jest __tests__/api/housing-sepp-lmr-default.test.ts -t 'zone is unknown'"
-    },
-    {
-      "scenario": "A missing station distance is reported as a negative determination rather than an unrun check.",
-      "what_happens": "My mechanical patch had stamped assessmentStatus 'ineligible' onto every isEligible:false branch, including the one whose reason says the distance is required. That branch is now 'not_assessed'.",
-      "mitigated": true,
-      "how": "Caught by cross-review; the blanket edit is exactly the kind of change that introduces this.",
-      "repro": "grep -n \"assessmentStatus: 'not_assessed'\" frontend-nextjs/app/api/housing-sepp/eligibility/route.ts"
-    },
-    {
-      "scenario": "The card keeps rendering isEligible alone, so an unassessed property still shows a grey 'Not Eligible' badge despite the new status.",
-      "what_happens": "It would have. HousingSEPPEligibilityCard is the only in-repo consumer and rendered the boolean at four places; it now shows an amber 'Not Assessed' state first. assessmentStatus is optional there, so an older response still type-checks and falls back to the previous two-state rendering.",
-      "mitigated": true,
-      "how": "Fixing the API without the consumer would have left the wrong answer on screen — the point of the change.",
-      "repro": "grep -n 'notAssessed' frontend-nextjs/components/compliance/HousingSEPPEligibilityCard.tsx"
+      "how": "Moved below its dependency; 0 TS errors. Same ordering mistake as an earlier PR today, which is why the type check was run before committing rather than after.",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit --skipLibCheck"
     }
   ],
   "post_merge": {
-    "db_reset": "None.",
+    "db_reset": "Already applied. 22,007 rows updated, 0 skipped. Backup table regulatory_provisions_dq33_backup_20260801 holds all four columns for every touched row; rollback SQL is printed by the script and recorded in the tracker.",
     "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "Ask the assistant a Housing SEPP question for an address whose lot dimensions are unknown and confirm it now says which inputs are missing rather than answering. On the assessment page, confirm the Housing SEPP card is unchanged for a property where isLMRArea is supplied."
+    "manual_verify": "Open the assessment page for a Marrickville R2 address in DA mode and confirm the commercial and industrial parts no longer appear for a dwelling-house scope, while heritage and the Part 2 general controls still do. Then a Leichhardt address: confirm the scope copy reads the 'small number are written for specific development types' wording rather than 'does not remove any'."
   }
 }

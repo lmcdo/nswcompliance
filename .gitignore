@@ -603,3 +603,4 @@ latent-scope-data/
 !scripts/validate_schema_contract.py
 !scripts/schema_contract_baseline.json
 !scripts/lint_fabricated_verdicts.py
+!scripts/retag_applicability_slug_docids.py
