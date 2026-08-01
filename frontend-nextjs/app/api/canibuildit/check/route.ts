@@ -7,6 +7,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { getCachedAddressCheck, setCachedAddressCheck } from '@/lib/cache';
+import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
 const NSW_EPLANNING_BASE = 'https://api.apps1.nsw.gov.au/eplanning/data/v0';
@@ -103,7 +104,9 @@ const NSW_HEADERS = {
 const SEPP_MIN_M2 = 450;
 // SEPP (Housing) 2021 cl 49 "residential zone" definition: R1, R2, R3, R4, R5 (Large Lot Residential).
 // R5 and RU5 are the same zone under different LEP generations — include both.
-const PERMITTED_ZONES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+// DQ-30: this exact value is also NSW_STANDARD_ZONES.RESIDENTIAL — consolidated
+// (.claude/DATA_QUALITY_TRACKER.md), was independently declared in 4 files.
+const PERMITTED_ZONES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
 
 type CheckResult = 'pass' | 'fail' | 'unknown';
 

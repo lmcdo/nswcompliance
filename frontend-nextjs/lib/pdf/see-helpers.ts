@@ -2,6 +2,7 @@
 // No state, no React hooks, no side effects — safe to unit-test directly.
 
 import { SectionAssessment } from '@/lib/see/types';
+import { HOUSING_SEPP_ZONES } from '@/lib/regulatory-constants';
 
 // ---------------------------------------------------------------------------
 // String helpers
@@ -69,8 +70,6 @@ export function determineDevelopmentPathway(
       reason: 'Heritage conservation area — CDC and exempt development restricted',
     };
   }
-  // Housing SEPP 2021 eligible zones (derived from the SEPP schedule — these are the statutory zone codes)
-  const HOUSING_SEPP_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
   const zoneCode = zone.split(' ')[0];
   if (HOUSING_SEPP_ZONES.includes(zoneCode)) {
     return {

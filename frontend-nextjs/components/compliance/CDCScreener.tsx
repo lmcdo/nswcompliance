@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CDC_HOUSING_CODE_ZONES } from '@/lib/regulatory-constants';
 
 interface CDCCriterion {
   label: string;
@@ -81,7 +82,7 @@ function evaluateCriteria(
   });
 
   // ── 2. Residential zone ──────────────────────────────────────────────────
-  const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
+  const residentialZones = CDC_HOUSING_CODE_ZONES;
   const isResidential = residentialZones.includes(zoneCode);
   criteria.push({
     label: 'Housing Code applicability',

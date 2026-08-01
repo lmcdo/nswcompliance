@@ -1,10 +1,13 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 
 // SIX Maps is in Australia — cross-Pacific from Vercel US takes 10-15s
 export const maxDuration = 30;
 
-const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+// DQ-30 (.claude/DATA_QUALITY_TRACKER.md): consolidated onto
+// NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
+const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
 
 const NSW_ZONE_NAMES: Record<string, string> = {
   R1: 'General Residential', R2: 'Low Density Residential',

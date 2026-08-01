@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { NSW_STANDARD_ZONES } from '@/lib/regulatory-constants';
 import {
   satelliteRateLimiter,
   getClientIdentifier,
@@ -306,7 +307,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Gate 3: Zone not in eligible residential set
-  const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+  // DQ-30 (.claude/DATA_QUALITY_TRACKER.md): consolidated onto
+  // NSW_STANDARD_ZONES.RESIDENTIAL — was independently declared in 4 files.
+  const ELIGIBLE_ZONE_PREFIXES = NSW_STANDARD_ZONES.RESIDENTIAL as readonly string[];
   const zone: string | null = (propData.property as { zone?: string | null })?.zone ?? null;
   if (zone) {
     const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
