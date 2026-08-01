@@ -602,3 +602,4 @@ latent-scope-data/
 # is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
 !scripts/validate_schema_contract.py
 !scripts/schema_contract_baseline.json
+!scripts/lint_fabricated_verdicts.py

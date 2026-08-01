@@ -799,6 +799,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {
               n: '3',
               title: 'Check adjacent properties',
+              // verdict-ok: next-steps advice about OTHER addresses, hedged with "may";
+              // asserts nothing about the subject site.
               body: 'Nearby properties with larger lots or different zone/heritage status may be eligible. Use plotdetect.com.au to run checks on alternative addresses.',
             },
           ]).map((step) => (
