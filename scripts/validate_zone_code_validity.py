@@ -67,11 +67,16 @@ WILDCARD = "ALL"
 # ~/.claude/plans/ce-dcp-condition-structuring-2026-08.md
 TARGETS = {
     "regulatory_provisions": ("v2_applicable_zones", "source_council"),
-    # A VIEW, and its LGA column is `lga` not `source_council` — verified against
-    # information_schema, not assumed. Validated anyway because it is a surface
-    # consumers read; overlap with regulatory_provisions is expected.
-    "dcp_all_provisions": ("applicable_zones", "lga"),
 }
+
+# DELIBERATELY NOT A TARGET: `dcp_all_provisions`. It is a VIEW over
+# `zz_legacy_dcp_general_provisions` (listed under "NEVER READ — frozen legacy"
+# in DB_SCHEMA.md) UNION `dcp_precinct_provisions` (empty). It holds 32 rows with
+# invalid zone codes, but a repo-wide grep finds ZERO code reading it, so those
+# rows reach no user. Gating on permanently-failing dead data trains people to
+# ignore a red check, which costs more than it catches.
+# RE-ADD IT the moment anything reads this view or its underlying tables.
+_EXCLUDED = {"dcp_all_provisions": "legacy view, no consumers (DB_SCHEMA.md never-read list)"}
 
 
 def _connect():
@@ -113,7 +118,17 @@ def load_slug_resolution(cur, truth: dict[str, set[str]]) -> dict[str, str | Non
       2. its parent's display_name, resolving parent_lga as the slug it is
     Matching is case-folded so 'Ku-ring-gai' reaches 'Ku-Ring-Gai'.
     """
-    cur.execute("SELECT slug, display_name, parent_lga FROM lga_registry")
+    # prior-art-checked: not a new capability — adds one WHERE predicate to a
+    # query already in this same function (added earlier in this branch). The
+    # guard's suggestions are unrelated satellite/report modules matched on
+    # generic words; is_active=TRUE is the convention already used by every
+    # other lga_registry consumer, which is what this adopts rather than invents.
+    #
+    # An inactive registry entry may carry a stale display_name and would join to
+    # the wrong ground truth. Rows whose LGA stops resolving are reported
+    # UNRESOLVED, never silently passed.
+    cur.execute("SELECT slug, display_name, parent_lga FROM lga_registry "
+                "WHERE is_active = TRUE")
     rows = cur.fetchall()
     display_by_slug = {s: (d or "").strip() for s, d, _ in rows}
     parent_by_slug = {s: p for s, _, p in rows}

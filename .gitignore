@@ -431,6 +431,7 @@ scripts/
 # every commit in a fresh clone fails on a missing file.
 !scripts/lint_hardcoded_zone_codes.py
 !scripts/validate_zone_code_validity.py
+!scripts/backfill_invalid_zone_codes.py
 !scripts/requirements-monitor.txt
 !scripts/requirements-stats.txt
 !scripts/secondary_dwelling_stats.py
