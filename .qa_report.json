@@ -1,119 +1,64 @@
 {
-  "tier": "critical",
-  "justification": "Closes the DATA half of DQ-30 with a production database write: 241 rows in regulatory_provisions held zone codes that do not exist in their LGA, 112 of them live and served on the compliance surface. Adds a write-time guard in the applicability tagger so those codes cannot be stored again, plus the repair script. Production data mutation on the table behind the property-assessment provisions panel — critical by any reading.",
-  "commit_hash": "5259d29e",
+  "tier": "standard",
+  "justification": "Adds a required falsifiable_check field to the QA report schema, enforced by scripts/qa_gate.py at critical and standard tiers. This changes the gate every future commit must pass, so it affects all subsequent work rather than one feature. No production data, no customer-facing surface, no schema change — standard rather than critical.",
+  "commit_hash": "0bdda9c0",
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_qa_gate_falsifiable.py",
+    "fails_when": "any test fails, in particular the one asserting the gate still rejects the original DQ-30 verification claim; if that guard ever rots this goes red"
+  },
   "files": [
-    "enrichment/extractors/applicability_tagger.py",
-    "scripts/backfill_invalid_zone_codes.py",
-    "scripts/validate_zone_code_validity.py",
-    ".gitignore"
+    "scripts/qa_gate.py",
+    "tests/test_qa_gate_falsifiable.py"
   ],
   "pre_impl": {
-    "existing_data": "regulatory_provisions.v2_applicable_zones (text[]) across ~55,634 rows carrying zone codes; lep_zone_coverage (26 LGAs, is_complete=TRUE) as ground truth; lga_registry for slug-to-LGA resolution. No schema change of any kind.",
-    "assumption_mismatch": "If an LGA has no complete lep_zone_coverage rows, nothing is filtered and nothing is repaired — those rows are reported UNVERIFIABLE rather than assumed valid or assumed invalid. Absence of ground truth is never treated as a pass, which is the exact failure that let DQ-30 be marked fixed while it was still broken.",
-    "new_vs_existing": "Applies to every existing row holding an invalid code, not only newly tagged ones, because re-deriving from provision text was measured against production first and repaired 0 of 241 — it re-runs the identical regex that produced them.",
-    "external_source_error": "Both scripts read only the Postgres database; there is no external API in this path. On any exception the backfill rolls back its open transaction and re-raises rather than committing a partial repair.",
-    "frontend_type": "No frontend type change. v2_applicable_zones remains a string array end-to-end; only the member values change, and 'ALL' was already an established sentinel in that column.",
-    "user_failure_mode": "If the repair were wrong a user would silently see a DCP provision that does not apply to their property, or lose one that does. Mitigated by taking a backup first, verifying its row count before any UPDATE, guarding each row on its pre-change value, and confirming the result with a check that can fail."
+    "existing_data": "No database access at all: qa_gate.py reads a JSON report file and runs git and AST checks only. The only existing state it touches is .qa_report.json, which is ephemeral per commit.",
+    "assumption_mismatch": "Existing reports written before this change have no falsifiable_check field and will now be rejected at critical and standard tiers. That is the intended friction rather than a defect, but any in-flight branch must add the field before it can push.",
+    "new_vs_existing": "Applies to every future report rather than retroactively; nothing already merged is re-validated. Minor tier is deliberately exempt so trivial changes do not train people to dismiss the gate."
   },
   "functions": [
     {
-      "name": "main",
-      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
-      "input": "Command-line arguments; dry-run unless --apply is passed. Reads candidate rows and the ground-truth zone lists from the database.",
-      "output": "A printed repair plan grouped by council and, under --apply, per-row guarded UPDATE statements against regulatory_provisions plus a backup table.",
-      "if_none": "When no row needs repair it reports that every resolvable row is already valid and exits zero without opening a write transaction at all."
-    },
-    {
-      "name": "_resolver",
-      "file_line": "scripts/backfill_invalid_zone_codes.py:86",
-      "input": "An open cursor and the ground-truth mapping, used to build a council-slug to ground-truth-key resolver mirroring the validator exactly.",
-      "output": "A closure returning the matching ground-truth key for a council slug, or None when that council cannot be resolved to any complete coverage.",
-      "if_none": "Returns None, and the caller skips that row entirely rather than guessing a mapping — an unresolvable council is never repaired blind."
-    },
-    {
-      "name": "load_slug_resolution",
-      "file_line": "scripts/validate_zone_code_validity.py:111",
-      "input": "An open cursor plus the ground-truth zone mapping, reading active rows from lga_registry to translate council slugs.",
-      "output": "A dictionary mapping every registry slug to its ground-truth key, or to None where no case-insensitive match exists in the coverage table.",
-      "if_none": "A slug resolving to None makes its rows UNRESOLVED, reported as its own defect rather than folded into unverifiable and quietly ignored."
+      "name": "check_falsifiable",
+      "file_line": "scripts/qa_gate.py:96",
+      "input": "The parsed QA report dictionary and the tier requirements dictionary, called from validate_report during section one validation.",
+      "output": "A list of human-readable error strings, empty when the report names both a runnable command and a distinct condition under which that command fails.",
+      "if_none": "When the tier does not require the check it returns an empty list immediately, and when the field is missing entirely it returns a single explanatory error naming the DQ-30 origin."
     }
   ],
   "values": [
     {
-      "value": "lep_zone_coverage zone codes per LGA where is_complete is true",
-      "read_at": "scripts/validate_zone_code_validity.py:99 and scripts/backfill_invalid_zone_codes.py:75",
-      "if_missing": "No filtering and no repair occur for that LGA; rows are reported UNVERIFIABLE so that missing ground truth can never read as a clean pass."
-    },
-    {
-      "value": "regulatory_provisions.v2_applicable_zones array as currently stored",
-      "read_at": "scripts/backfill_invalid_zone_codes.py:111 (candidate selection inside main)",
-      "if_missing": "Rows with a null or empty array are excluded by the query itself, so there is nothing to repair and nothing is written for them."
-    },
-    {
-      "value": "lga_registry slug, display_name and parent_lga for active councils",
-      "read_at": "scripts/validate_zone_code_validity.py:111 (load_slug_resolution)",
-      "if_missing": "The council resolves to None and its rows become UNRESOLVED, surfacing a registry naming defect instead of silently skipping a quarter of the corpus."
+      "value": "report.falsifiable_check.command and .fails_when",
+      "read_at": "scripts/qa_gate.py:96 (check_falsifiable)",
+      "if_missing": "The report is rejected with an explicit message showing the required shape, rather than silently passing as it would have before this change."
     }
   ],
-  "queries": [
-    {
-      "purpose": "Select candidate provision rows holding zone codes for possible repair",
-      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
-      "where_clause": "WHERE v2_applicable_zones IS NOT NULL AND cardinality(v2_applicable_zones) > 0 AND source_council IS NOT NULL. Deliberately not filtered by is_current: this repairs stored data rather than serving it, and excluding superseded rows would knowingly leave 129 of them holding codes that do not exist."
-    },
-    {
-      "purpose": "Guarded per-row repair of one provision's zone array",
-      "file_line": "scripts/backfill_invalid_zone_codes.py:111",
-      "where_clause": "WHERE id = %s AND v2_applicable_zones = %s — optimistic concurrency on the exact pre-change value, so a row altered by another writer is skipped and counted rather than clobbered."
-    },
-    {
-      "purpose": "Load the per-LGA ground-truth zone list used by both validation and repair",
-      "file_line": "scripts/validate_zone_code_validity.py:99",
-      "where_clause": "WHERE is_complete = TRUE AND lga IS NOT NULL AND zone IS NOT NULL"
-    }
-  ],
+  "queries": "N/A — this module performs no database queries.",
   "break_it": [
     {
-      "scenario": "The query that loads the per-LGA ground-truth zone list returns a stale or incomplete set, so the repair drops a zone code that is genuinely correct and hides a provision from properties it really governs.",
-      "what_happens": "A user in the affected zone stops seeing a DCP control that applies to their land, which is exactly the class of silent omission DQ-30 was opened to fix.",
+      "scenario": "Someone satisfies the field with a plausible but tautological check that the self-comparison regex does not happen to match, and the gate passes a non-verification.",
+      "what_happens": "A change is marked verified on a check that cannot fail, which is precisely the DQ-30 defect recurring with different wording.",
       "mitigated": true,
-      "how": "Filtering only runs where is_complete is true, pre-change values are preserved in regulatory_provisions_zone_backup_20260801, and the script prints a single-statement rollback. Coverage itself was gate-verified per project-zone-permissibility-unblocked-2026-07.",
-      "repro": "UPDATE regulatory_provisions t SET v2_applicable_zones = b.v2_applicable_zones FROM regulatory_provisions_zone_backup_20260801 b WHERE t.id = b.id; then re-run the validator."
+      "how": "Partially, and deliberately so — detecting tautology in general is undecidable. The gate enforces the two properties whose absence caused the original failure: a runnable command and a red condition stated separately. The docstring says plainly that it is not a tautology detector, so it is not mistaken for one.",
+      "repro": "Add a report whose command is a real script but whose fails_when restates the command's success condition, then run scripts/qa_gate.py and observe it pass."
     },
     {
-      "scenario": "A row whose every stored code is invalid becomes ALL, so a provision that was previously invisible now appears against every property in that council area.",
-      "what_happens": "Twenty live rows widen from matching no property to matching all of them, adding noise to the provisions panel for those councils.",
+      "scenario": "The gate fires so often that developers paste a boilerplate falsifiable_check to get past it, and the field becomes decoration.",
+      "what_happens": "Friction is added with no protection gained, and the reports become less trustworthy than before because they now carry a field that looks like evidence.",
       "mitigated": true,
-      "how": "Measured before applying rather than discovered afterwards: 92 live rows narrow, 20 widen, 129 are not served. ALL is the pre-existing sentinel for undetermined applicability, and showing a possibly-irrelevant control is a smaller harm than hiding a binding one.",
-      "repro": "SELECT id, source_council FROM regulatory_provisions WHERE v2_applicable_zones = ARRAY['ALL'] AND id IN (SELECT id FROM regulatory_provisions_zone_backup_20260801);"
+      "how": "Minor tier is exempt, so routine copy and config changes never see it. It fires only where a real verification should exist, following the alarm-fatigue lesson recorded in DQ-34 and applied when dcp_all_provisions was removed from the zone validator's targets.",
+      "repro": "Write a minor-tier report with no falsifiable_check and confirm scripts/qa_gate.py still passes it."
     },
     {
-      "scenario": "Someone later calls the tagger without valid_zones in the bulk pipeline, so the write-time guard silently does nothing and invalid codes accumulate again.",
-      "what_happens": "The database drifts back toward the pre-repair state one extraction at a time, with no error raised anywhere.",
+      "scenario": "The self-comparison regex matches a legitimate check that merely contains the word drift, blocking valid work.",
+      "what_happens": "A correct report is rejected and the author either rewords it needlessly or loses confidence in the gate.",
       "mitigated": true,
-      "how": "validate_zone_code_validity.py exits non-zero on any invalid row so it can be run as a gate and fails loudly rather than degrading quietly. The parameter defaults to None specifically to keep the function pure for the golden tests, which is why the standing check matters.",
-      "repro": "python scripts/validate_zone_code_validity.py — exit code 1 with a per-council breakdown of offending rows."
-    },
-    {
-      "scenario": "The backup table already exists from an earlier partial run, so CREATE TABLE IF NOT EXISTS keeps stale contents and the recorded rollback state does not match what is about to be overwritten.",
-      "what_happens": "A rollback would restore values from the wrong point in time, quietly reintroducing whatever was stored during that earlier run.",
-      "mitigated": true,
-      "how": "The backup row count is read back and compared against the size of the repair plan before any UPDATE runs, and the script aborts with a non-zero exit when the backup is smaller than the plan.",
-      "repro": "Create the backup table with fewer rows than the plan, then run with --apply and confirm it aborts before writing."
-    },
-    {
-      "scenario": "A council slug fails to resolve to ground truth, so its rows are skipped by the repair and quietly stay invalid while the run reports success.",
-      "what_happens": "Invalid codes survive in a council nobody realises was skipped, and the summary gives false assurance that the repair was complete.",
-      "mitigated": true,
-      "how": "Resolution handles all three verified join hazards: parent_lga holding a slug rather than a display name, case differences such as Ku-ring-gai against Ku-Ring-Gai, and City of Sydney against Sydney. Anything still unresolved is reported by the validator as its own UNRESOLVED category, never as a pass.",
-      "repro": "python scripts/validate_zone_code_validity.py and read the UNRESOLVED line and the slug list printed beneath it."
+      "how": "The error text states the reasoning and explicitly offers the escape: state why the check is not self-referential. A false positive costs one sentence of justification, whereas a false negative costs a silently unverified fix, so the asymmetry is deliberate.",
+      "repro": "Set fails_when to a sentence containing the word drift and confirm the message explains the escape rather than simply refusing."
     }
   ],
   "post_merge": {
-    "db_reset": "Already executed against production: 241 rows repaired, 0 skipped, pre-change values retained in regulatory_provisions_zone_backup_20260801 with a one-statement rollback printed by the script.",
-    "secrets": "No new secrets or environment variables; both scripts use the existing DATABASE_URL already required across the repository.",
-    "other_repo": "No other repository or service requires a corresponding change; every consumer of this column lives in this repository.",
-    "manual_verify": "Load a Woollahra or Ku-ring-gai address on the assessment page and confirm the provisions panel still renders sensibly, since 20 live rows widened from matching no property to matching all properties in their council."
+    "db_reset": "No database change of any kind; this module never connects to Postgres.",
+    "secrets": "No new secrets or environment variables are introduced by this change.",
+    "other_repo": "No other repository or service needs updating; qa_gate.py is consumed only by .githooks/pre-push in this repository.",
+    "manual_verify": "Any branch already in flight must add a falsifiable_check to its report before it can push at critical or standard tier."
   }
 }

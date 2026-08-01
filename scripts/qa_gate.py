@@ -34,6 +34,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 5,
         "min_words_per_field": 8,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "standard": {
         "pre_impl_fields": ["existing_data", "assumption_mismatch", "new_vs_existing"],
@@ -41,6 +42,7 @@ TIER_REQUIREMENTS = {
         "min_break_it": 3,
         "min_words_per_field": 5,
         "sections_required": [1, 2, 3, 4, 5, 6, 7],
+        "require_falsifiable_check": True,
     },
     "minor": {
         "pre_impl_fields": [],
@@ -48,8 +50,107 @@ TIER_REQUIREMENTS = {
         "min_break_it": 1,
         "min_words_per_field": 3,
         "sections_required": [1, 6, 7],
+        # Deliberately NOT required at minor tier: a copy tweak has no meaningful
+        # falsifiable check, and a gate that fires on every trivial change gets
+        # dismissed by muscle memory within a week (DQ-34's alarm-fatigue lesson).
+        # Rare and meaningful, or it protects nothing.
+        "require_falsifiable_check": False,
     },
 }
+
+# ─── Falsifiability gate ─────────────────────────────────────────────────────
+# ORIGIN: 2026-08-01. DQ-30 was marked "Fixed" on a "0% drift" check, which
+# re-ran the tagger and compared its output to the stored value. That is a
+# SELF-COMPARISON: when the code itself is wrong, drift is 0% and the data is
+# still broken. It could not fail. 241 rows — 112 live and served — survived it.
+# The project already had the rule in writing ("a completion check must be able
+# to fail"); it did not prevent this, because a rule in a document is not
+# enforcement. This is the enforcement.
+#
+# It asks the one question a tautological check cannot answer:
+#   WHAT COMMAND, AND WHAT MAKES IT GO RED?
+
+_SELF_COMPARISON_RE = re.compile(
+    # 1. The word itself.
+    r"\bdrift\b"
+    # 2. Comparing output explicitly to itself.
+    r"|compare[sd]?\s+(?:the\s+)?(?:code|output|result)s?\s+(?:to|against|with)\s+"
+    r"(?:it|its|itself|the\s+same)"
+    r"|matches?\s+(?:the\s+)?(?:current|existing)\s+(?:code|output)"
+    # 3. The DESCRIBED form, which the first version missed and a test caught:
+    #    re-run / recompute, then compare the result to what is already stored.
+    #    Note this deliberately requires a re-derivation verb — comparing STORED
+    #    data against an external AUTHORITY ("stored zone codes absent from
+    #    lep_zone_coverage") is the correct pattern and must not be flagged.
+    r"|(?:re-?run|re-?comput\w*|re-?generat\w*|re-?derive\w*)"
+    r".{0,60}?(?:compare\w*|differs?|diff\b|match\w*|same)"
+    r".{0,40}?(?:stored|existing|previous|current|already)",
+    re.I | re.S,
+)
+
+_LOOKS_RUNNABLE_RE = re.compile(
+    r"(python|pytest|npx|npm|psql|bash|\./|SELECT\b|\.py\b|\.sh\b|\.ts\b)", re.I
+)
+
+
+def check_falsifiable(report: dict, reqs: dict) -> list[str]:
+    """Require a named check plus the condition under which it FAILS.
+
+    This is NOT a tautology detector — that is undecidable in general. It
+    enforces the two things whose absence let the original defect through: a
+    runnable command, and an explicit red condition stated separately from the
+    command itself.
+    """
+    errors: list[str] = []
+    if not reqs.get("require_falsifiable_check"):
+        return errors
+
+    fc = report.get("falsifiable_check")
+    if not isinstance(fc, dict) or not fc:
+        return [
+            "Section 1 falsifiable_check: MISSING. Add "
+            '"falsifiable_check": {"command": "<what you ran>", '
+            '"fails_when": "<what makes it go red>"}. '
+            "Ask: if the bug were still present, would this go red? If not, it is "
+            "not a verification. (Origin: DQ-30 was marked Fixed on a check that "
+            "could not fail.)"
+        ]
+
+    command = str(fc.get("command", "")).strip()
+    fails_when = str(fc.get("fails_when", "")).strip()
+
+    errors.extend(validate_non_empty(command, "Section 1 falsifiable_check.command"))
+    errors.extend(validate_non_empty(fails_when, "Section 1 falsifiable_check.fails_when"))
+    if not command or not fails_when:
+        return errors
+
+    if not _LOOKS_RUNNABLE_RE.search(command):
+        errors.append(
+            f"Section 1 falsifiable_check.command ('{command[:60]}') does not look "
+            "runnable. Name the actual command or query, not a description of one — "
+            "a check nobody can execute is not a check."
+        )
+
+    errors.extend(validate_min_words(
+        fails_when, "Section 1 falsifiable_check.fails_when", reqs["min_words_per_field"]
+    ))
+
+    if _SELF_COMPARISON_RE.search(command) or _SELF_COMPARISON_RE.search(fails_when):
+        errors.append(
+            "Section 1 falsifiable_check: reads as a SELF-COMPARISON (re-running the "
+            "code and checking it agrees with itself). That cannot fail when the code "
+            "is wrong — exactly how DQ-30 was marked Fixed while 112 live rows stayed "
+            "broken. Compare against an external authority instead (e.g. "
+            "lep_zone_coverage for zone codes), or state why this is not self-referential."
+        )
+
+    if fails_when.strip().lower() == command.strip().lower():
+        errors.append(
+            "Section 1 falsifiable_check: fails_when merely repeats command. State the "
+            "CONDITION that turns it red, not the command again."
+        )
+
+    return errors
 
 FILE_LINE_PATTERN = re.compile(r'([\w/\\._-]+):(\d+)')
 
@@ -1087,6 +1188,8 @@ def validate_report(
         errors.append("Section 1: missing tier justification")
     if not files:
         errors.append("Section 1: no files listed")
+
+    errors.extend(check_falsifiable(report, reqs))
 
     # --- Section 2: Pre-implementation ---
     if 2 in reqs["sections_required"]:
