@@ -72,6 +72,38 @@ else
 fi
 echo ""
 
+# ── 1d. Schema contract — code's SQL identifiers vs the live catalog ─────────
+# Catches a table/column that was renamed or dropped out from under a query.
+# Nothing else does: SQL identifiers sit inside template literals and Python
+# strings, invisible to tsc and to every test that avoids a real database.
+#
+# Needs DATABASE_URL. When it is absent (bare worktree, no .env) the check is
+# SKIPPED and says so — it is not reported as a pass, and CI (.github/workflows/
+# gates.yml) runs it unconditionally on every PR, so nothing relies on this
+# local run having happened.
+
+echo "=== [1d/5] Schema contract (SQL identifiers vs live catalog) ==="
+if [ -f scripts/validate_schema_contract.py ]; then
+  # `|| SCHEMA_RESULT=$?` keeps this exempt from the `set -e` above; a bare
+  # invocation would abort the hook on exit 2 and block the push for the one
+  # case that is meant to be a skip.
+  SCHEMA_RESULT=0
+  python scripts/validate_schema_contract.py --quiet 2>&1 || SCHEMA_RESULT=$?
+  if [ $SCHEMA_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $SCHEMA_RESULT -ne 0 ]; then
+    echo ""
+    echo "Schema contract FAILED. Push blocked."
+    echo "A NEW query references a table/column the database does not have,"
+    echo "or a baseline entry is now fixed and must be deleted."
+    echo "Detail: python scripts/validate_schema_contract.py"
+    exit 1
+  fi
+else
+  echo "  Skipping (no schema contract script)."
+fi
+echo ""
+
 # ── 2. Frontend Jest tests ──────────────────────────────────────────────────
 
 echo "=== [2/4] Running frontend Jest tests ==="

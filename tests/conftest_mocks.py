@@ -104,6 +104,18 @@ except ImportError:
     sys.modules["rasterio"] = rio_mock
     sys.modules["rasterio.transform"] = MagicMock()
     sys.modules["rasterio.crs"] = MagicMock()
+    # A MagicMock does not satisfy `import rasterio.windows` — Python resolves a
+    # dotted import through sys.modules, not through attribute access, and raises
+    # "'rasterio' is not a package". Every submodule that any module under test
+    # imports by name has to be registered, exactly as numpy.typing/numpy.random
+    # are above. Missing this made 6 flood_truth tests fail in a clean
+    # requirements-test.txt environment while passing in a dev checkout that has
+    # real rasterio installed — the suite silently depended on the fat env.
+    sys.modules["rasterio.windows"] = MagicMock()
+    sys.modules["rasterio.warp"] = MagicMock()
+    sys.modules["rasterio.mask"] = MagicMock()
+    sys.modules["rasterio.features"] = MagicMock()
+    sys.modules["rasterio.enums"] = MagicMock()
 
 # ── whitebox: try real import, mock only if unavailable ─────────────────────
 try:

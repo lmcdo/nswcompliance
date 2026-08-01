@@ -1,0 +1,181 @@
+# Server-side enforcement of the gates that, until now, only ever ran locally.
+#
+# Why this file exists: every quality gate in this repo lived in .githooks/, which
+# runs only if someone has executed `git config core.hooksPath .githooks` in that
+# particular checkout, on that particular machine, and did not pass --no-verify.
+# With ~17 worktrees in play that is an unknown subset. Nothing re-checked on the
+# server: .github/ contained dependabot.yml and no workflows at all.
+#
+# MAPPING TO .githooks/pre-push — every step accounted for, nothing dropped silently.
+#
+#   pre-push step                       where it lands here
+#   ----------------------------------  --------------------------------------------
+#   0.  push-to-main guard              NOT PORTABLE. It inspects the refs being
+#                                       pushed, which CI never sees. The server-side
+#                                       equivalent is a GitHub branch-protection rule
+#                                       on `main` — not yet configured. GAP.
+#   --  pr_overlap_guard (advisory)     DROPPED. Warns an author that their files
+#                                       overlap an open PR. Useful before pushing,
+#                                       meaningless after.
+#   1.  pytest                          python-tests
+#   1b. mutation-count baselines        python-tests
+#   1c. brief field-coverage ratchet    python-tests
+#   1d. schema contract                 schema-contract
+#   2.  jest                            frontend-tests
+#   3.  qa_gate                         qa-and-liability
+#   4.  liability language scan         qa-and-liability
+#   5.  mutmut (opt-in, MUTMUT=1)       DROPPED. Already opt-in and non-blocking
+#                                       locally, and needs a WSL venv. Worth
+#                                       revisiting: the last measured kill rate was
+#                                       13%, so test COUNT is not evidence of cover.
+#   6.  jscpd duplication ratchet       duplication
+#   7.  Sol cross-review (advisory)     DROPPED. Non-blocking by design, needs a paid
+#                                       API key, and is a review aid not a gate.
+#
+# Where pre-push SKIPS a check because a local checkout lacks node_modules, CI always
+# has them — so for everything it does run, CI is the stronger of the two.
+name: gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # pre-push [1/4] + [1b] + [1c]
+  python-tests:
+    name: Python tests + ratchets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - name: pytest
+        run: python -m pytest tests/ -x -q --tb=short
+      - name: Mutation-count baselines (counts never drop)
+        run: |
+          if [ -f mutation-baselines.json ] && [ -f scripts/check_test_baselines.py ]; then
+            python scripts/check_test_baselines.py mutation-baselines.json
+          else
+            echo "::warning::mutation-baselines.json absent — ratchet NOT enforced"
+          fi
+      - name: Brief field-coverage ratchet
+        run: |
+          if [ -f scripts/brief_field_coverage_ratchet.py ]; then
+            python scripts/brief_field_coverage_ratchet.py
+          else
+            echo "::warning::ratchet script absent — NOT enforced"
+          fi
+
+  # pre-push [2/4] — and unlike pre-push, this can never self-skip for missing deps
+  frontend-tests:
+    name: Jest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend-nextjs/package-lock.json
+      - run: npm ci
+        working-directory: frontend-nextjs
+      - run: npx jest --ci --silent
+        working-directory: frontend-nextjs
+
+  # pre-push [3/4] + [4/4]
+  qa-and-liability:
+    name: QA report + liability language
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # both checks diff against the merge-base
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - name: QA report validation
+        run: |
+          if [ ! -f .qa_report.json ]; then
+            echo "::warning::.qa_report.json absent — QA gate NOT enforced on this ref"
+            exit 0
+          fi
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          FILES=$(git diff --name-only "$BASE"...HEAD -- '*.py' '*.ts' '*.tsx' '*.jsx' || true)
+          if [ -n "$FILES" ]; then
+            python scripts/qa_gate.py .qa_report.json --diff-files $FILES
+          else
+            python scripts/qa_gate.py .qa_report.json
+          fi
+      - name: Liability language scan
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          python scripts/liability_language_check.py --diff-base "$BASE"
+
+  # pre-push [6] — copy-paste ratchet. Threshold 8% lives in .jscpd.json
+  # (baseline 6.77%, 2026-06-19). Blocks on a real breach, never on tool failure,
+  # matching the local step.
+  duplication:
+    name: Duplication ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: jscpd
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          CHANGED=$(git diff --name-only "$BASE"...HEAD \
+            | grep -E '^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$' \
+            | grep -vE '(test|__tests__|\.spec\.)' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No source code changed — ratchet not applicable."
+            exit 0
+          fi
+          set +e
+          OUT=$(npx --yes jscpd@4 2>&1); RC=$?
+          set -e
+          echo "$OUT" | grep -iE "duplicated lines|too many duplicates" | tail -2
+          if [ $RC -ne 0 ] && echo "$OUT" | grep -qi "too many duplicates"; then
+            echo "::error::Duplication exceeds the 8% ratchet. Reuse or refactor rather than copy-paste."
+            exit 1
+          fi
+          if [ $RC -ne 0 ]; then
+            echo "::warning::jscpd could not run cleanly — ratchet NOT enforced on this run"
+          fi
+
+  # New. Needs the live catalog, so it needs the DATABASE_URL secret.
+  #
+  # Three-state at the CI level, deliberately: this job is SKIPPED (not passed) on
+  # forks and Dependabot PRs, which cannot see repository secrets. A skipped job
+  # reads as "not checked" in the UI; a green one would read as "checked and fine",
+  # which is the exact conflation this gate exists to prevent. When the job DOES
+  # run and the secret is missing, the script exits 2 and the job fails — silence
+  # is never treated as a pass.
+  schema-contract:
+    name: Schema contract (code vs live catalog)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - name: Validate every SQL identifier against the live schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_schema_contract.py

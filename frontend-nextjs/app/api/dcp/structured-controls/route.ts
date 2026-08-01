@@ -15,29 +15,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { captureServerException } from '@/lib/posthog-server';
+import { toLgaSlug } from '@/lib/lga-slug';
 
 export const dynamic = 'force-dynamic';
 
-// Map formerCouncil slug → dcp_setback_controls.lga value(s)
-// Most are 1:1 (formerCouncil === lga slug).
-// Inner West former councils (ashfield, leichhardt, marrickville) previously
-// also queried 'inner_west', but those rows have been migrated to their
-// correct former council slugs (PR #384).
+// Map formerCouncil slug → dcp_setback_controls.lga value(s).
+// Most are 1:1 (formerCouncil === lga slug). Inner West former councils
+// (ashfield, leichhardt, marrickville) previously also queried 'inner_west',
+// but those rows have been migrated to their correct former council slugs
+// (PR #384) — which is why this map is empty rather than deleted: it is the
+// hook for any future council that needs a one-to-many expansion.
 const COUNCIL_TO_LGA: Record<string, string[]> = {};
 
-// LGA display names that differ from their dcp_setback_controls.lga slug
-const LGA_NAME_TO_SLUG: Record<string, string> = {
-  city_of_parramatta: 'parramatta',
-  sydney: 'city_of_sydney',
-  the_hills_shire: 'the_hills',
-  city_of_canada_bay: 'canada_bay',
-  city_of_ryde: 'ryde',
-  strathfield_municipal: 'strathfield',
-};
-
+// The display-name → slug table moved to lib/lga-slug.ts when /api/tod/parking-rates
+// needed the same mapping; a third copy of a lookup table that can drift is how
+// DQ-30 happened. Behaviour here is unchanged.
 function getLgaSlugs(council: string): string[] {
-  let normalized = council.toLowerCase().replace(/[-\s]+/g, '_').replace(/[^a-z0-9_]/g, '');
-  normalized = LGA_NAME_TO_SLUG[normalized] || normalized;
+  const normalized = toLgaSlug(council);
+  if (!normalized) return [];
   return COUNCIL_TO_LGA[normalized] || [normalized];
 }
 

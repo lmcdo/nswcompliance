@@ -5,8 +5,20 @@ no existing geometric column reader (the header-pair COUNCIL_COLUMN_CONFIGS path
 needs anchor words and per-council boundary_x).
 """
 import importlib.util
+import os
 import sys
 from pathlib import Path
+
+# dcp_extract_changed reads R2 credentials with os.environ[...] at module scope, so
+# merely importing it explodes without them. On a dev machine that never shows,
+# because python-dotenv walks up and finds the repo-root .env — including from a
+# worktree, where it reaches the parent checkout's file. CI has no .env, so this
+# was the last thing standing between the suite and a clean run there.
+# Same setdefault pattern as tests/test_dcp_schema_gate.py; values are unused.
+for _k in ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
+           "R2_BUCKET_NAME", "R2_ENDPOINT_URL", "R2_PUBLIC_URL"):
+    os.environ.setdefault(_k, "test")
+os.environ.setdefault("DATABASE_URL", "postgresql://localhost/test")
 
 spec = importlib.util.spec_from_file_location(
     "dcp_extract_changed", Path(__file__).parent.parent / "scripts" / "dcp_extract_changed.py"
