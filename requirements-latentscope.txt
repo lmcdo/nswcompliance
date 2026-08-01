@@ -15,7 +15,7 @@
 latent-scope>=0.6.0
 
 # Used directly by scripts/latent_scope_dup_audit.py.
-pandas>=3.0.3
+pandas>=3.0.5
 pyarrow>=25.0.0            # parquet read/write for the export + audit
 numpy>=1.24
 scikit-learn>=1.3        # TF-IDF + SVD (offline embedder) and NearestNeighbors
