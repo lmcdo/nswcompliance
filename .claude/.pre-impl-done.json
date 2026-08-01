@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-08-01T01:00:00+10:00",
-  "reason": "services/db_config.py: adding 'AND is_complete = TRUE' to get_valid_zones_for_lga's existing SELECT against lep_zone_coverage, per a verified Sol cross-review finding -- every other consumer of this table in the codebase (app/api/lep/permissibility, app/api/permissibility/check) already gates on is_complete=TRUE, confirmed real column via grep. Same WHERE clause, one added predicate, no new table/join."
+  "status": "passed",
+  "timestamp": "2026-08-01T12:00:00+10:00",
+  "target": "scripts/qa_gate.py — add a required falsifiable_check field (command + fails_when) to the QA report schema for critical/standard tiers, with a self-comparison heuristic.",
+  "findings_summary": "No DB access involved: qa_gate.py reads a JSON file and runs git/AST checks only — verified by reading its imports and _connect-free structure. Verified before writing: (1) TIER_REQUIREMENTS is a per-tier dict at scripts/qa_gate.py:30-52 with the shape assumed; (2) qa_gate.py IS wired into .githooks/pre-push:108, so the new field is enforced on every push and cannot be forgotten; (3) PreToolUse hooks can block on Write content — .claude/hooks/prior-art-guard.py reads tool_input.content/new_string and sys.exit(2)s, confirming the pattern for the follow-up status-linter. Deliberately NOT required at minor tier: a gate that fires on trivial changes gets dismissed by muscle memory (DQ-34 alarm-fatigue lesson). Existing reports lacking the field will now fail at critical/standard — intended, that is the friction. Rollout risk: any in-flight branch must add the field before pushing."
 }
