@@ -283,7 +283,28 @@ def fetch_dcp_setbacks(
         else:
             dh_setbacks.append(entry)
 
-    first_ref = rows[0][7] or ""
+    # Cite a clause that SURVIVED the filters above, never rows[0].
+    #
+    # Two `continue` guards drop rows before they reach the report: a control
+    # flagged needs_review after a DCP amendment, and a zone_specific control whose
+    # condition names zones that exclude this property's zone. rows[0] is the raw
+    # query's first row, so it can be one of those — meaning `clause_ref`, the
+    # citation a conveyancer reads, could point at a control this very function
+    # decided NOT to show, including one for a different zone entirely.
+    #
+    # Citing the source is the product's core claim, so a citation that does not
+    # match the rendered controls is worse than no citation. If everything was
+    # filtered out, return "" and let the caller render nothing rather than
+    # inventing a reference.
+    # Both lists are searched, not `dh_setbacks or sd_setbacks`: a dwelling-house
+    # control can be rendered with a blank section_ref while a secondary-dwelling
+    # control alongside it carries a real one. The `or` form would stop at the
+    # non-empty dh list and silently emit no citation even though a shown control
+    # had one.
+    first_ref = next(
+        (e["clause"] for e in [*dh_setbacks, *sd_setbacks] if e.get("clause")),
+        "",
+    )
 
     # Canterbury-Bankstown: two former regimes stored together — flag for render
     caveat: Optional[str] = None
