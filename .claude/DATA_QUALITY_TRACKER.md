@@ -11,7 +11,9 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
-| DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line is a zone-only check with no heritage/dev-type/lot gating, unlike this same file's own determineDevelopmentPathway() | 🔍 Logged 2026-08-01, not sized | P1 — liability language on a definitive claim |
+| DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
+| DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
+| DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line was a zone-only check, contradicting this same file's own determineDevelopmentPathway() on heritage land | ✅ Fixed 2026-08-01 | P1 — liability language on a definitive claim |
 | DQ-33: Case-sensitive document-naming mismatch (old-verbose vs new-slug convention) causes silent ALL/ALL applicability fallthrough — 18+ Leichhardt rows confirmed, other councils unchecked | 🔍 Logged 2026-08-01, not sized | P1 — silent fallthrough class |
 | DQ-32: Capacity engine ignores zone when picking setback/landscaping numbers — 560 rows across 168 lga/dev-type groups can return the wrong value | ⏳ Tracked 2026-07-31, not started | P1 |
 | DQ-31: housing-sepp/eligibility route never migrated to the Python single-source-of-truth service — documented over-eligibility bug still live | ⏳ Tracked 2026-07-31, not started | P1 |
@@ -169,6 +171,41 @@ Live-route regression risk: `components/compliance/HousingSEPPEligibilityCard.ts
 on the assessment page) depends on the current response shape.
 
 **Fix:** not started. Scope out the new/adapted endpoint before touching the route.
+
+---
+
+## DQ-35 / DQ-34 / DQ-36: wrong content in an exported PDF (fixed 2026-08-01)
+
+**DQ-35 — a citation to a control the report deliberately hid.**
+`scripts/conveyancing_db.py::fetch_dcp_setbacks` builds the rendered control lists by
+skipping rows two ways: `needs_review` (a control flagged after a DCP amendment, suppressed
+on purpose) and a `zone_specific` control whose `condition` names zones excluding this
+property. It then set `clause_ref = rows[0][7]` — the RAW query's first row. So the single
+clause reference a conveyancer reads could point at a suppressed control, or at one that
+applies to a different zone entirely. Fixed to take the first clause from the rows that
+survived; empty when nothing survived, because an invented reference is worse than none.
+
+**DQ-34 — one PDF, two contradictory answers.**
+`ContextSection.tsx` decided "Housing SEPP 2021: ✓ Applies — zone eligible for complying
+development (CDC) pathway" from the ZONE ALONE, while `determineDevelopmentPathway()` in the
+same file correctly checks heritage first and returns "Development Application (DA) — CDC and
+exempt development not permitted". On heritage-listed land the exported PDF printed both, in
+the same table. Now gated identically, and a zone match is reported as the zone test passing
+rather than as an eligibility verdict on a proposal the report has never seen.
+
+**DQ-36 — a site fact asserted without ever checking it.** (found while fixing DQ-34)
+The same table hardcoded `Transport Oriented Development: ✗ Not applicable — Property not
+within 400m of metro station or 800m of strategic centre`. The component is passed no TOD or
+LMR catchment data at all, so no code path could ever print anything else: for any property
+inside a catchment the PDF stated a falsehood about that site. Now reports "Not assessed in
+this report" and points at the Portal TOD maps. Four further SEPPs (Design Quality,
+Affordable Rental Housing, Seniors/Disability, Build-to-Rent) asserted "✗ Not applicable"
+about proposals the report never sees; they now state their scope instead, which is the part
+that is actually known.
+
+Guarded by `tests/test_conveyancing_clause_citation.py` (7) and
+`frontend-nextjs/__tests__/components/pdf-context-claims.test.ts` (8). Both mutation-verified:
+restoring the old code fails them.
 
 ---
 

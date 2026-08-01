@@ -1,115 +1,116 @@
 {
   "tier": "standard",
-  "justification": "Changes the write path of the applicability tagger and adds two production columns to regulatory_provisions (55,696 rows). Additive and nullable, but it touches the field behind the hard zone filter in for-property/route.ts, so a regression would mis-serve provisions.",
-  "commit_hash": "8260f6b4",
+  "justification": "Changes what an exported, user-facing PDF asserts about a specific property: which clause it cites, whether the Housing SEPP applies, and whether the site sits in a TOD catchment. No schema or pipeline change, but wrong content in a document someone relies on is the most expensive kind of defect this codebase can ship.",
+  "commit_hash": "6bfdae9e",
   "files": [
-    "enrichment/extractors/applicability_tagger.py",
-    "enrichment/pipeline.py",
-    "migrations/062_applicability_provenance.sql",
-    "tests/test_applicability_provenance.py"
+    "scripts/conveyancing_db.py",
+    "frontend-nextjs/components/pdf/ContextSection.tsx",
+    "tests/test_conveyancing_clause_citation.py",
+    "frontend-nextjs/__tests__/components/pdf-context-claims.test.ts",
+    ".claude/DATA_QUALITY_TRACKER.md"
   ],
   "falsifiable_check": {
-    "command": "python -m pytest tests/test_applicability_provenance.py -q",
-    "fails_when": "_resolve stops distinguishing the four outcomes (a stub returning a constant fails either the asserted or the defaulted cases), tag() stops returning exactly two values, the validity-gate rejection stops being distinct from never-found, or APPLICABILITY_SOURCES drifts from the CHECK constraint in migration 062. Separately verified against production: an out-of-vocabulary value is REJECTED by the constraint and a valid one accepted (both rolled back), so the CHECK is not decoration."
+    "command": "python -m pytest tests/test_conveyancing_clause_citation.py -q && cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts",
+    "fails_when": "clause_ref reverts to rows[0][7] (5 of 7 Python tests fail), the Housing SEPP line goes back to testing the zone alone, the TOD line reverts to asserting the property is outside a catchment, or any SEPP reverts to a bare 'Not applicable' verdict (4 of 8 Jest tests fail). Both directions were mutation-verified by restoring the original code and watching exactly those tests go red. Two further defects were found by a GPT-5.6 cross-review of this diff and fixed before merge: an absent property.zone became 'Unknown' and rendered as a definitive 'Does not apply' verdict (the same assert-without-data defect as the TOD line, two lines away), and `dh_setbacks or sd_setbacks` skipped the secondary-dwelling list whenever any dwelling-house control existed, dropping a real citation when the dwelling-house clause was blank."
   },
   "pre_impl": {
-    "existing_data": "regulatory_provisions had 65 columns / 55,696 rows before; 67 after. Measured 2026-08-01: 19,072 of 19,957 served rows (95.6%) carry ALL for both zones and dev types with no record of why. The tagger returned ALL from seven distinct code paths, all writing the identical value.",
-    "assumption_mismatch": "Assumed ALL mostly meant a mis-tag. It does not - a falsifiable probe found only 0.50% demonstrably zone-specific. The defect is that ALL is UNATTRIBUTABLE, not that it is wrong, so the fix records provenance and changes no tag value.",
-    "new_vs_existing": "No existing column or table records tagger provenance (checked the regulatory_provisions column list directly). The constrained-vocabulary plus DB CHECK pattern is copied from control_type_vocabulary.py rather than invented. tag() keeps its two-value contract; provenance arrives via a new tag_with_provenance()."
+    "existing_data": "dcp_setback_controls via fetch_dcp_setbacks, and PropertyContext passed into ContextSection. Established by reading: the function drops rows with two `continue` guards (needs_review, and a zone_specific condition naming other zones) yet cited rows[0]; and ContextSection is passed no TOD or LMR field at all, confirmed by grepping the component for tod/TOD/lmr/LMR - zero hits.",
+    "assumption_mismatch": "Expected DQ-34 to be the worst thing in that table. It was not. The hardcoded TOD line is a categorical claim about the site with no data path behind it, so it could never be right for a property inside a catchment; DQ-34 at least had a correct answer half the time. Also assumed this was the conveyancing PDF - it is not. ContextSection feeds ProvisionReport, reached from the live assessment page via ProvisionsByTocStructure; the conveyancing PDF is generated in Python.",
+    "new_vs_existing": "No new surface. Both fixes are corrections inside existing render paths. The Housing SEPP gate reuses the heritage condition already written in determineDevelopmentPathway in the same file rather than introducing a second eligibility rule - having two was the defect."
   },
   "functions": [
     {
-      "name": "_resolve",
-      "file_line": "enrichment/extractors/applicability_tagger.py:130",
-      "input": "a config entry dict or None, plus one applicability key name",
-      "output": "a tuple of the resolved list and the source label explaining where that list came from",
-      "if_none": "a None or empty entry returns ALL with source no_config, never implying a decision was made"
-    },
-    {
-      "name": "_from_entry",
-      "file_line": "enrichment/extractors/applicability_tagger.py:164",
-      "input": "a config entry plus optional site conditions and extra keys",
-      "output": "the config result dict now carrying zone_source and dev_type_source beside the values",
-      "if_none": "a None entry still returns a well formed dict whose two sources both read no_config"
-    },
-    {
-      "name": "tag_with_provenance",
-      "file_line": "enrichment/extractors/applicability_tagger.py:541",
-      "input": "provision text, document id, and the optional valid zone set for that LGA",
-      "output": "zones, dev types, and a dict of the two source labels drawn from the closed vocabulary",
-      "if_none": "with no document id the sources read no_document_id rather than a label implying a config decided"
+      "name": "fetch_dcp_setbacks",
+      "file_line": "scripts/conveyancing_db.py:140",
+      "input": "a database connection, an LGA slug and the property zone code",
+      "output": "the rendered setback control lists plus a clause_ref now taken from a control that survived the filters",
+      "if_none": "when every row is filtered out the clause reference is an empty string rather than a reference to a control the reader cannot see"
     }
   ],
-  "values": "N/A - no business values are read; the change records provenance for values already computed.",
+  "values": "N/A - no new business value is read; the change corrects which existing value is cited and what is claimed.",
   "queries": [
     {
-      "purpose": "persist the two provenance labels alongside the tags during a retag run",
-      "file_line": "enrichment/pipeline.py:761",
-      "where_clause": "WHERE id = %s - single row by primary key, inside the existing batched retag loop which already scopes on v2_applicable_zones IS NULL"
+      "purpose": "select the DCP setback controls for this council, from which the cited clause is now drawn",
+      "file_line": "scripts/conveyancing_db.py:299",
+      "where_clause": "the existing SELECT is unchanged and already scopes on lga and excludes needs_review rows; this change only alters which of the returned rows supplies clause_ref, and the per-row needs_review and zone-mismatch guards remain"
     }
   ],
   "break_it": [
     {
-      "scenario": "The provenance column is added but every row gets the same label, so it looks populated and answers nothing.",
-      "what_happens": "Four outcomes are asserted mutually distinct; a constant-returning stub fails either the asserted or the defaulted half.",
+      "scenario": "The SELECT in fetch_dcp_setbacks returns rows for the council but every one is dropped by the needs_review or zone-mismatch guard, and the caller renders a setback section anyway with a dangling clause reference.",
+      "what_happens": "The query is unchanged and still scopes on lga with needs_review excluded, but the per-row guards can empty both rendered lists. clause_ref is now derived from those lists, so it becomes an empty string and the section carries no citation rather than a false one.",
       "mitigated": true,
-      "how": "Explicit test that the four labels collapse to no fewer than four distinct values.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k four_outcomes -q"
+      "how": "test_no_citation_is_invented_when_everything_is_filtered_out drives the real function with a single needs_review row and asserts clause_ref == ''.",
+      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k invented -q"
     },
     {
-      "scenario": "Old rows are backfilled with a guessed source, fabricating the very fact the column exists to record.",
-      "what_happens": "The migration contains no UPDATE. Existing rows stay NULL, documented as unknown-origin and explicitly not a pass.",
+      "scenario": "The PDF cites a clause that the same function deliberately suppressed because it is under review after a DCP amendment.",
+      "what_happens": "clause_ref came from rows[0] of the raw query, which may be a suppressed row. Now taken from the first control that survived the filters.",
       "mitigated": true,
-      "how": "test_migration_does_not_backfill asserts no UPDATE statement exists in the migration.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k backfill -q"
+      "how": "test_leading_row_under_review_is_not_cited, run against the real function with a stubbed connection.",
+      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k under_review -q"
     },
     {
-      "scenario": "The Python vocabulary and the DB CHECK drift, so the pipeline writes a label the database rejects at 3am.",
-      "what_happens": "Every member of APPLICABILITY_SOURCES is asserted present in the migration SQL, and the constraint was verified live to reject an unknown value.",
+      "scenario": "The PDF cites a clause that applies to a DIFFERENT zone than the property, which is worse than citing nothing.",
+      "what_happens": "Same root cause; the zone-mismatch guard dropped the row from display but not from the citation.",
       "mitigated": true,
-      "how": "test_every_source_appears_in_the_migration plus a live accept/reject probe against production, both rolled back.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k migration -q"
+      "how": "test_leading_row_for_another_zone_is_not_cited.",
+      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k another_zone -q"
     },
     {
-      "scenario": "Adding a third return value breaks every existing caller of tag().",
-      "what_happens": "tag() still returns exactly two values and delegates to tag_with_provenance; both are asserted to agree on the values.",
+      "scenario": "Everything is filtered out and the code invents a reference anyway.",
+      "what_happens": "Returns an empty clause_ref so the caller renders nothing. An invented citation is worse than an absent one when citation is the product claim.",
       "mitigated": true,
-      "how": "TestBackwardCompatibility pins the arity and the value agreement across three shapes of input.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k Backward -q"
+      "how": "test_no_citation_is_invented_when_everything_is_filtered_out.",
+      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k invented -q"
     },
     {
-      "scenario": "A zone code found then rejected as invalid for the LGA looks identical to one never found, hiding that a bad code was caught.",
-      "what_happens": "The validity gate sets filtered_to_all, distinct from no_config and excluded from TRUSTED_ALL_SOURCES.",
+      "scenario": "A heritage property gets a PDF saying both 'DA - CDC not permitted' and 'Housing SEPP applies - eligible for CDC'.",
+      "what_happens": "It did. The SEPP line tested zone only. Now gated on the same heritage condition as determineDevelopmentPathway, and a zone match reads as the zone test passing rather than an eligibility verdict.",
       "mitigated": true,
-      "how": "test_validity_gate_rejection_is_distinct_from_never_found.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k validity_gate -q"
+      "how": "Jest guards assert the old zone-only string cannot return and that the heritage check is present.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'zone alone'"
     },
     {
-      "scenario": "The migration runs against production and damages the 55,696 existing rows.",
-      "what_happens": "Purely additive DDL with IF NOT EXISTS throughout, no UPDATE, no DROP, no CASCADE. Verified live: 55,696 rows before and after, both columns nullable, zero rows populated.",
+      "scenario": "The PDF states the property is not within 400m of a metro station without ever checking.",
+      "what_happens": "It was hardcoded, and the component receives no TOD data, so no input could change it. Now reports that TOD was not assessed and points at the Portal maps.",
       "mitigated": true,
-      "how": "test_migration_is_additive_only blocks DROP/TRUNCATE/DELETE/CASCADE in the file; row count compared before and after the real run.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k additive -q"
+      "how": "Jest guard asserts the hardcoded sentence is absent and the not-assessed wording is present.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'TOD catchment'"
     },
     {
-      "scenario": "A blanket string replace matches an 8-space `return` inside a 12-space line, dedenting it to method level and making every branch below unreachable.",
-      "what_happens": "It happened. Marrickville Part 1 and Part 3 silently fell through to no_config/ALL. The full 3,332-test suite stayed GREEN because nothing exercised those two parts; a GPT-5.6 cross-review found it. Fixed, and a parametrised reachability test now covers all five Marrickville parts.",
+      "scenario": "Someone re-adds a bare 'Not applicable' verdict for a SEPP whose applicability depends on a proposal the report never sees.",
+      "what_happens": "Four such lines shipped. The guard now fails if any reappears, and requires at least four scope-worded replacements.",
       "mitigated": true,
-      "how": "The guard asserts on SOURCE not value: Part 1 legitimately resolves to ALL, so asserting zones==['ALL'] would have passed while broken. Mutation-verified — re-dedenting the return fails exactly the Part 1 and Part 3 cases.",
-      "repro": "python -m pytest tests/test_applicability_provenance.py -k Reachable -q"
+      "how": "Counts occurrences rather than checking one string, so removing three and leaving one still fails.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'proposal-dependent'"
     },
     {
-      "scenario": "The migration's idempotency guard checks pg_constraint by NAME only, so a same-named constraint on any other table makes a re-run skip the CHECK and leave the column ungated.",
-      "what_happens": "conname is unique per (table, name), not globally. Raised by cross-review; the guard is now scoped with conrelid = 'public.regulatory_provisions'::regclass.",
+      "scenario": "The source-level Jest guards trip on the explanatory comments that document the old wording, forcing the fix to be undocumented.",
+      "what_happens": "Comments and JSX comment blocks are stripped before matching, so the guard asserts on what the component renders, not on prose about it.",
       "mitigated": true,
-      "how": "Scoped predicate added. The constraint already exists correctly on the right table in production, so this only affects future re-runs.",
-      "repro": "grep -n \"conrelid = 'public.regulatory_provisions'::regclass\" migrations/062_applicability_provenance.sql"
+      "how": "Strip step covers block comments, JSX comment expressions and line comments; verified by the suite passing with the old strings quoted in comments.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts"
+    },
+    {
+      "scenario": "A property with no zone data gets a PDF stating the Housing SEPP does not apply — a definitive negative derived from nothing.",
+      "what_happens": "zoneDisplay falls back to 'Unknown', which is not in HOUSING_SEPP_ZONES, so the not-covered branch fired. Now an absent zone short-circuits to 'Not assessed - zoning data unavailable'.",
+      "mitigated": true,
+      "how": "hasZone guard ahead of the membership test; Jest asserts both the wording and the guard exist. Raised by cross-review, not by me — I had just fixed the identical class two lines below.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/pdf-context-claims.test.ts -t 'missing zone'"
+    },
+    {
+      "scenario": "A rendered secondary-dwelling control carries a real clause but the PDF shows no citation, because a dwelling-house control with a blank clause existed.",
+      "what_happens": "`dh_setbacks or sd_setbacks` stopped at the truthy dwelling-house list. Both lists are now searched in order.",
+      "mitigated": true,
+      "how": "test_blank_dwelling_clause_falls_through_to_the_secondary_dwelling_citation.",
+      "repro": "python -m pytest tests/test_conveyancing_clause_citation.py -k falls_through_to_the_secondary -q"
     }
   ],
   "post_merge": {
-    "db_reset": "None. Migration 062 is already applied to production and is additive. Rollback if ever needed: ALTER TABLE regulatory_provisions DROP COLUMN v2_zone_source, DROP COLUMN v2_dev_type_source.",
+    "db_reset": "None. No schema or data change.",
     "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "The columns are live but every row is NULL until a retag runs. run_applicability_tagging only revisits rows WHERE v2_applicable_zones IS NULL, so a full-corpus retag is a separate, user-approved operation. Until then the honest reading of the corpus is unchanged: 95.6% ALL, origin unknown."
+    "manual_verify": "Export the provisions PDF for a heritage-listed property and confirm the SEPP table no longer says the Housing SEPP applies while the pathway says DA, and that the TOD row reads 'Not assessed in this report'. Then export for a property whose leading DCP control is under review and confirm the cited clause matches a control actually listed."
   }
 }
