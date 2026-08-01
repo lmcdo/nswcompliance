@@ -26,7 +26,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from enrichment.extractors.numeric_extractor import NumericExtractor
 from enrichment.extractors.site_condition_tagger import SiteConditionTagger
 from enrichment.extractors.type_classifier import TypeClassifier
-from enrichment.extractors.applicability_tagger import ApplicabilityTagger
+from enrichment.extractors.applicability_tagger import (
+    ApplicabilityTagger,
+    TRUSTED_ALL_SOURCES,
+)
 from enrichment.extractors.layer_topic_tagger import LayerTopicTagger
 from enrichment.extractors.actionable_classifier import ActionableClassifier
 from enrichment.extractors.gemini_actionability_classifier import (
@@ -687,6 +690,10 @@ def run_applicability_tagging(
     stats = {
         "total_processed": 0,
         "with_specific_zones": 0,
+        # Counts ALLs that were DEFAULTED rather than decided — the number this
+        # provenance work exists to make answerable. Initialised here rather than
+        # via .get(k, 0) so an explicit None can never reach `+ 1`.
+        'undetermined_zone_all': 0,
         "with_specific_dev_types": 0,
         "all_zones": 0,
         "all_dev_types": 0,
@@ -718,8 +725,15 @@ def run_applicability_tagging(
                 break
 
             try:
-                zones, dev_types = tagger.tag(prov['provision_text'], prov['document_id'])
-                updates.append((zones, dev_types, prov['id']))
+                zones, dev_types, prov_src = tagger.tag_with_provenance(
+                    prov['provision_text'], prov['document_id'])
+                updates.append((zones, dev_types,
+                                prov_src['zone_source'], prov_src['dev_type_source'],
+                                prov['id']))
+                # Track how many ALLs were DECIDED vs defaulted — the number the
+                # whole provenance column exists to make answerable.
+                if 'ALL' in zones and prov_src['zone_source'] not in TRUSTED_ALL_SOURCES:
+                    stats['undetermined_zone_all'] += 1
 
                 if 'ALL' not in zones:
                     stats['with_specific_zones'] += 1
@@ -739,19 +753,22 @@ def run_applicability_tagging(
                 processed += 1
 
         if updates and not dry_run:
-            for zones, dev_types, prov_id in updates:
+            for zones, dev_types, zone_src, dev_src, prov_id in updates:
                 cur.execute("""
                     UPDATE regulatory_provisions
                     SET v2_applicable_zones = %s,
-                        v2_applicable_dev_types = %s
+                        v2_applicable_dev_types = %s,
+                        v2_zone_source = %s,
+                        v2_dev_type_source = %s
                     WHERE id = %s
-                """, (zones, dev_types, prov_id))
+                """, (zones, dev_types, zone_src, dev_src, prov_id))
             conn.commit()
 
         pct = (processed / total) * 100 if total > 0 else 100
         print(f"Processed {processed}/{total} ({pct:.1f}%) - "
               f"Specific zones: {stats['with_specific_zones']}, "
-              f"Specific dev types: {stats['with_specific_dev_types']}")
+              f"Specific dev types: {stats['with_specific_dev_types']}, "
+              f"UNDETERMINED zone ALL: {stats['undetermined_zone_all']}")
 
     stats['total_processed'] = processed
     cur.close()
