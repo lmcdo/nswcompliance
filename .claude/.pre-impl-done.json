@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-01T12:00:00+10:00",
-  "target": "scripts/qa_gate.py — add a required falsifiable_check field (command + fails_when) to the QA report schema for critical/standard tiers, with a self-comparison heuristic.",
-  "findings_summary": "No DB access involved: qa_gate.py reads a JSON file and runs git/AST checks only — verified by reading its imports and _connect-free structure. Verified before writing: (1) TIER_REQUIREMENTS is a per-tier dict at scripts/qa_gate.py:30-52 with the shape assumed; (2) qa_gate.py IS wired into .githooks/pre-push:108, so the new field is enforced on every push and cannot be forgotten; (3) PreToolUse hooks can block on Write content — .claude/hooks/prior-art-guard.py reads tool_input.content/new_string and sys.exit(2)s, confirming the pattern for the follow-up status-linter. Deliberately NOT required at minor tier: a gate that fires on trivial changes gets dismissed by muscle memory (DQ-34 alarm-fatigue lesson). Existing reports lacking the field will now fail at critical/standard — intended, that is the friction. Rollout risk: any in-flight branch must add the field before pushing."
+  "timestamp": "2026-08-01T00:00:00Z",
+  "target": "scripts/validate_schema_contract.py + scripts/schema_contract_baseline.json + .github/workflows/gates.yml — schema-contract gate (read-only catalog validator, shrink-only baseline, CI enforcement)",
+  "findings_summary": "Read-only: two information_schema SELECTs, no writes, ~4s, 30s timeout. 18 invalid references found and each re-verified individually against information_schema (18/18 genuinely absent, zero false positives). No entity mapping, no batch loop, no numeric parsing. Main risk was English prose misread as SQL (60 raw findings, 34 phantoms) — closed via AST docstring exclusion + SQL-opener test, locked by 22 tests."
 }

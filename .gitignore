@@ -399,8 +399,12 @@ frontend-nextjs/public/pdfjs/
 # Frontend misc
 # vercel.json needs to be in git for region config
 
-# Scripts directory (working scripts) - EXCEPT Phase 3+ SEPP utilities
-scripts/
+# Scripts directory (working scripts) - EXCEPT the explicitly named ones below.
+# MUST be `scripts/*`, not `scripts/`: git cannot re-include a file whose PARENT
+# DIRECTORY is excluded, so with `scripts/` every `!scripts/...` line below was
+# inert and new files were silently untracked. The already-tracked ones survived
+# only because gitignore does not apply to files already in the index.
+scripts/*
 !scripts/pr_overlap_guard.py
 !scripts/r2_pdf_uploader.py
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
@@ -593,3 +597,8 @@ latent-scope-data/
 !scripts/ingest_sydney_water_gsp.py
 !docs/servicing/
 !docs/servicing/**
+
+# Schema-contract gate — scripts/ is whitelist-only (line 402), so a new file here
+# is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
+!scripts/validate_schema_contract.py
+!scripts/schema_contract_baseline.json
