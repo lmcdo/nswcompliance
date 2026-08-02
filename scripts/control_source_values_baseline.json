@@ -1,6 +1,6 @@
 {
   "note": "Controls whose stored value no named rule derives from their own source_text. Keyed id -> digest of the value, unit and quote, so editing an accepted row to a DIFFERENT unsupported value makes it a new finding rather than leaving it accepted. Shrink-only: a row that becomes explained must be removed, and --write-baseline refuses to add ids without --allow-growth.",
-  "count": 25,
+  "count": 24,
   "accepted": {
     "1": "ab13fe41afaa2e68",
     "2": "54981fba5f0bcfbb",
@@ -18,7 +18,6 @@
     "632": "54e23abc21ac73b8",
     "635": "eedc4b095f9f5fba",
     "636": "eedc4b095f9f5fba",
-    "690": "7dce751cec03b2b1",
     "692": "ea369713e70cb37b",
     "693": "59420e03d880ca5f",
     "778": "9d2aeabf1daebef4",
@@ -113,5 +112,5 @@
     1088,
     1089
   ],
-  "valueless_note": "Ids of controls that record a rule with no number at all. Tracked as a SET, not a count: control A losing its value while control B gains one leaves the count at 83 and hides A entirely. A migration that NULLs a real value moves the row here and would otherwise pass as 'nothing to check' \u2014 the check cannot tell an intentional blank from a lost value, so it watches which rows are blank."
+  "valueless_note": "Ids of controls that record a rule with no number at all. Tracked as a SET, not a count: control A losing its value while control B gains one leaves the count at 83 and hides A entirely. A migration that NULLs a real value moves the row here and would otherwise pass as 'nothing to check' — the check cannot tell an intentional blank from a lost value, so it watches which rows are blank."
 }
