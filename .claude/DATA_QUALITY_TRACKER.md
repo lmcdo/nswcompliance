@@ -238,12 +238,38 @@ Five further holes found in adversarial review and closed:
   equal" test was False and the row fell through into a match. NaN and infinity
   are now findings.
 
-None of these fourteen changed the finding count — it stayed at 25 throughout —
+- a clause label with a **space** was still a quantity: the number-token guard
+  only caught a label glued on (`s4.3.6`), so *"Clause 4.3: minimum setback is
+  6m"* explained a stored **4.3** — the citation vouching for the value it is
+  supposed to be evidence against. Clause/Part/Table/Control/Figure/Objective and
+  eleven more labels are now excluded.
+- `written_numeral`'s unit guard read the position straight after the numeral, so
+  *"three **full** hours"* put a word where the unit scan looked and the conflict
+  went undetected. It now reads the noun the rule itself matched.
+- `implied_single_unit_rate` invented its numerator: *"Visitor parking must be
+  considered for every 4 dwellings"* became 1/4 although the quote states no
+  quantity. The implied "one" must now be written as something ("**a** parking
+  **space** for every 4 dwellings").
+- `fraction_literal` had no column gate, so *"At least 1/3 of the landscaped
+  area"* could explain a stored 0.333 **metre** setback. Same gate as the rates.
+- a row whose value is **NULLed by a migration** moved into `no_value_stored` and
+  passed as "nothing to check". The check cannot tell an intentional blank from a
+  lost one, so the count is now ratcheted in the baseline (83) and a rise fails.
+
+None of these eighteen changed the finding count — it stayed at 25 throughout —
 which is the point: they closed paths by which a *future* wrong value would have
 passed, not paths that were hiding current ones. Two were measured against live
 data before being applied, to confirm they cost no legitimate row: whole-number
 exactness affects 5 rows and all 5 are exact products, and the rate column gate
 affects 0 of the 90 rate-explained rows.
+
+**Where the hardening stopped, and why.** Seven rounds of adversarial review each
+returned real findings, and the count of *data* findings did not move after the
+first. That is the signal to stop: the remaining suggestions harden a check that
+no longer changes its answer. One was declined outright — failing every exact
+match that sits in a multi-quantity quote would put 571 of 839 rows in the finding
+list, which is a re-statement of the method's ceiling rather than a defect list.
+Closing that genuinely means reading clauses instead of matching numbers.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to

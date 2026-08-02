@@ -27,5 +27,7 @@
     "885": "4e41e21fd4bfd455",
     "1119": "26a08a3ff58b70b4",
     "1120": "150fab7da3e80bfe"
-  }
+  },
+  "valueless_rows": 83,
+  "valueless_note": "Controls that record a rule with no number at all. Ratcheted because a migration that NULLed a real value would otherwise move the row into no_value_stored and pass silently \u2014 the check cannot tell an intentional blank from a lost one, so it watches the count instead."
 }

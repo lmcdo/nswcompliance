@@ -145,7 +145,8 @@ def load_baseline(repo: Path, path: str | None) -> dict:
         raise SystemExit(2)
 
 
-def write_baseline(repo: Path, path: str | None, accepted: dict) -> None:
+def write_baseline(repo: Path, path: str | None, accepted: dict,
+                   valueless: int) -> None:
     p = repo / (path or DEFAULT_BASELINE)
     p.write_text(
         json.dumps({
@@ -157,6 +158,13 @@ def write_baseline(repo: Path, path: str | None, accepted: dict) -> None:
                     "--write-baseline refuses to add ids without --allow-growth.",
             "count": len(accepted),
             "accepted": {str(k): v for k, v in sorted(accepted.items())},
+            "valueless_rows": valueless,
+            "valueless_note": "Controls that record a rule with no number at all. "
+                              "Ratcheted because a migration that NULLed a real "
+                              "value would otherwise move the row into "
+                              "no_value_stored and pass silently — the check "
+                              "cannot tell an intentional blank from a lost one, "
+                              "so it watches the count instead.",
         }, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -301,7 +309,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
                   f"bypass. Fix the data or add the rule; pass --allow-growth only "
                   f"with a reason recorded in the PR.", file=sys.stderr)
             return 2
-        write_baseline(repo, args.baseline, current)
+        write_baseline(repo, args.baseline, current,
+                       counts[NO_VALUE_STORED])
         return 0
     # A row is unknown when its id is absent from the baseline OR its value, unit
     # or quote has changed since it was accepted there.
@@ -343,6 +352,19 @@ def main() -> int:  # pragma: no cover - CLI entry point
               f"the value, correct the quote, or — if this is a derivation the rules "
               f"do not yet name — add the rule. Do NOT widen the baseline to make "
               f"this pass.", file=sys.stderr)
+        return 1
+
+    # A control that used to carry a number and now carries none is not "nothing
+    # to check" — it is a lost value. The check cannot tell an intentional blank
+    # from a lost one, so it watches the count.
+    accepted_valueless = baseline.get("valueless_rows")
+    if accepted_valueless is not None and counts[NO_VALUE_STORED] > accepted_valueless:
+        print(f"\nFAILED: {counts[NO_VALUE_STORED] - accepted_valueless} more "
+              f"controls now record no number at all ({accepted_valueless} -> "
+              f"{counts[NO_VALUE_STORED]}).\nA value that disappeared reads as "
+              f"'nothing to check' and would otherwise pass silently. Confirm the "
+              f"blanks are intentional, then re-run with --write-baseline.",
+              file=sys.stderr)
         return 1
 
     if fixed:

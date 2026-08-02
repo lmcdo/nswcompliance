@@ -273,8 +273,15 @@ _COUNTED_NOUN = (r"spaces?|cars?|garages?|parking|bays?|metres?|meters?|m|m2|"
                  r"hours?|storeys?|storys?|stories|dwellings?|units?|bedrooms?|"
                  r"beds?|trees?|zones?|lots?|rooms?|percent")
 _COUNTED_NUMERAL_RE = re.compile(
-    rf"\b(?P<word>{_WORD_NUMBER_ALT})\b(?:\s+[a-z-]+){{0,2}}?\s+(?:{_COUNTED_NOUN})\b",
-    re.I)
+    rf"\b(?P<word>{_WORD_NUMBER_ALT})\b(?:\s+[a-z-]+){{0,2}}?\s+"
+    rf"(?P<noun>{_COUNTED_NOUN})\b", re.I)
+
+# The unwritten "one" in "AN additional car parking SPACE for every 4 dwellings".
+# Without it there is no numerator at all, written or implied — "Visitor parking
+# must be considered for every 4 dwellings" states no quantity, and deriving 1/4
+# from it invents the numerator outright.
+_SINGULAR_ARTICLE_RE = re.compile(
+    rf"\b(?:a|an)\b(?:\s+[a-z-]+){{0,4}}?\s+(?:{_COUNTED_NOUN})\b", re.I)
 
 
 # A numbered-list marker: "2. Front fences and walls are not to impede..." at the
@@ -285,13 +292,29 @@ _COUNTED_NUMERAL_RE = re.compile(
 # of a list item in a clause about front FENCE height.
 _LIST_ORDINAL_RE = re.compile(r"(?:^|\n|\|)\s*(\d+)\.\s+(?=[A-Za-z])")
 
+# A number that is a CITATION, not a quantity: "Clause 4.3:", "Part 6", "Table 2",
+# "Control 12", "Figure 5A", "Objective 3". The lookbehind on the number token
+# only catches a label glued to it ('s4.3.6', 'DS9.2'); a labelled number with a
+# space survived, so a stored 4.3 was explained by 'Clause 4.3: minimum setback
+# is 6m' — a citation explaining the value it is supposed to be evidence against.
+_CLAUSE_LABEL_RE = re.compile(
+    r"\b(?:clause|clauses|section|sections|part|parts|table|tables|figure|"
+    r"figures|control|controls|objective|objectives|item|items|chapter|schedule|"
+    r"appendix|diagram|note|paragraph|subclause)\s+(\d+(?:\.\d+)*)", re.I)
+
 
 def _quantity_spans(source: str) -> list[tuple[float, int, int]]:
-    """(value, start, end) for every number that is a QUANTITY, not an ordinal."""
-    ordinals = {m.start(1) for m in _LIST_ORDINAL_RE.finditer(source)}
+    """(value, start, end) for every number that is a QUANTITY.
+
+    Excludes numbered-list ordinals and clause citations. Both are numbers that
+    identify a piece of text rather than measure anything, and both were observed
+    explaining stored values they had nothing to do with.
+    """
+    skip = {m.start(1) for m in _LIST_ORDINAL_RE.finditer(source)}
+    skip |= {m.start(1) for m in _CLAUSE_LABEL_RE.finditer(source)}
     out: list[tuple[float, int, int]] = []
     for match in _NUMBER_RE.finditer(source):
-        if match.start() in ordinals:
+        if match.start() in skip:
             continue
         parsed = _as_float(match.group(0))
         if parsed is not None:
@@ -554,8 +577,14 @@ def _rule_implied_single_unit_rate(value: float, source: str, unit) -> Optional[
     """
     if stored_family(unit) in ("length", "area", "time"):
         return None
-    for a, b, evidence, _lead in _rate_candidates(source):
+    for a, b, evidence, lead in _rate_candidates(source):
         if a is not None:
+            continue
+        # The implied "one" has to be written as SOMETHING. "An additional car
+        # parking space for every 4 dwellings" says one space; "Visitor parking
+        # must be considered for every 4 dwellings" states no quantity at all,
+        # and deriving 1/4 from it invents the numerator outright.
+        if not _SINGULAR_ARTICLE_RE.search(lead):
             continue
         if _close(value, 1.0 / b):
             return f"{evidence!r} with an implied numerator of 1"
@@ -563,7 +592,14 @@ def _rule_implied_single_unit_rate(value: float, source: str, unit) -> Optional[
 
 
 def _rule_fraction_literal(value: float, source: str, unit) -> Optional[str]:
-    """A fraction written as a fraction: 'min 1/3' stored as 0.333."""
+    """A fraction written as a fraction: 'min 1/3' stored as 0.333.
+
+    Refused on a length, area or time column, like the rate rules: "At least 1/3
+    of the landscaped area must be deep soil" must not explain a stored 0.333
+    METRE setback on a row whose source_text was attached to the wrong control.
+    """
+    if stored_family(unit) in ("length", "area", "time"):
+        return None
     for numerator, denominator in _FRACTION_RE.findall(source):
         a, b = _as_float(numerator), _as_float(denominator)
         if a is None or b in (None, 0):
@@ -624,7 +660,14 @@ def _rule_written_numeral(value: float, source: str, unit) -> Optional[str]:
         # Same guard the exact rule carries: "a minimum of three hours of
         # sunlight" must not explain a 3 metre setback just because it spells
         # the number out instead of writing it.
-        if _family_conflict(source, match.end("word"), unit):
+        #
+        # Checked against the NOUN the regex matched, not the position after the
+        # numeral: "three full hours" put the word 'full' where the unit would be,
+        # so the trailing-unit scan saw nothing and the conflict went undetected.
+        family = stored_family(unit)
+        noun_family = _UNIT_FAMILY.get(match.group("noun").lower())
+        if (family and noun_family and noun_family != family
+                and {family, noun_family} != {"rate", "count"}):
             continue
         return f"written numeral in {match.group(0).strip()!r}"
     return None

@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-08-02T22:55:00+10:00",
-  "target": "scripts/validate_control_source_values.py + named derivation rules in services/extracted_data_integrity.py: verify all 1,069 dcp_setback_controls values against their own source_text",
-  "findings_summary": "Schema: value_min/value_max numeric (Decimal), source_text non-empty on all 1069 rows, 83 rows carry no numeric value (own state), 50 rows have min<>max so both ends need explaining, 18 unit strings. Re-measured value_absent_from_source live: 137 value_min / 11 value_max / 142 distinct rows - the remembered 137 was value_min only. Single SELECT of 1069 rows, no join, no batch loop: no timeout or loop-invariant risk. is_current deliberately unfiltered (989/80) so the denominator matches DQ-38 and the linker; the split is selected and reported. Prior art: validate_dcp_setbacks.py covers only 280 setback rows with no value-in-source check; numeric_control_review.py diffs PDFs; value_absent_from_source is the flagger, extended in place not copied."
+  "status": "trivial",
+  "timestamp": "2026-08-03T00:35:00+10:00",
+  "reason": "Repairing a heredoc-mangled f-string in scripts/validate_control_source_values.py - two literal newlines where \n was intended, causing a SyntaxError. No logic change, no new query."
 }

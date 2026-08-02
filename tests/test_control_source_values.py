@@ -51,6 +51,21 @@ class TestExactDigitMatch:
         assert rule_of(4.3, "s4.3.6: Walls minimum 900mm from side boundaries") \
             != "exact_digit_match"
 
+    def test_a_spaced_clause_label_is_also_a_citation(self):
+        # The lookbehind only catches a label glued to the number ('s4.3.6'). A
+        # labelled number with a space survived, so 'Clause 4.3: minimum setback
+        # is 6m' explained a stored 4.3 — the citation vouching for the value it
+        # is supposed to be evidence against.
+        assert rule_of(4.3, "Clause 4.3: minimum setback is 6m", "m") == UNEXPLAINED
+        assert rule_of(6, "Clause 4.3: minimum setback is 6m", "m") \
+            == "exact_digit_match"
+
+    @pytest.mark.parametrize("label", ["Part", "Table", "Control", "Figure",
+                                       "Objective", "Section", "Schedule"])
+    def test_every_citation_label_is_excluded(self, label):
+        assert rule_of(7, f"{label} 7 sets out the following controls", "m") \
+            == UNEXPLAINED
+
     def test_a_numbered_list_ordinal_does_not_explain_a_value(self):
         # Camden control 693: a front_setback of 2.0 m was "explained" by the '2'
         # of a list item, in a clause about front FENCE height. A long quote
@@ -267,6 +282,13 @@ class TestImpliedSingleUnitRate:
         # a finding, not become 1/5.
         assert rule_of(0.2, "2 spaces per 5 dwellings") == UNEXPLAINED
 
+    def test_the_implied_one_must_actually_be_written_as_something(self):
+        # "An additional car parking SPACE for every 4 dwellings" says one space.
+        # "Visitor parking must be considered for every 4 dwellings" states no
+        # quantity at all, and deriving 1/4 from it invents the numerator.
+        assert rule_of(0.25, "Visitor parking must be considered for every 4 "
+                             "dwellings", "spaces/dwelling") == UNEXPLAINED
+
 
 class TestFractionLiteral:
     def test_a_fraction_written_as_a_fraction(self):
@@ -279,6 +301,12 @@ class TestFractionLiteral:
 
     def test_an_unrelated_fraction_does_not_explain_a_different_value(self):
         assert rule_of(0.75, "visitor min 1/11 per dwelling") == UNEXPLAINED
+
+    def test_a_fraction_does_not_explain_a_setback(self):
+        # Same class as the rate rules: a landscaping fraction must not vouch for
+        # a value stored in metres on a row with the wrong source_text attached.
+        assert rule_of(0.333, "At least 1/3 of the landscaped area must be deep "
+                              "soil", "m") == UNEXPLAINED
 
 
 class TestAreaFromDimensions:
@@ -313,6 +341,13 @@ class TestWrittenNumeral:
         # requiring it to count something, an objective's number explains a
         # setback the clause contradicts.
         assert rule_of(1, "Objective one: provide a minimum 6m front setback", "m") \
+            == UNEXPLAINED
+
+    def test_a_word_between_the_numeral_and_its_noun_does_not_defeat_the_guard(self):
+        # "three full hours" put 'full' where the unit scan looked, so the
+        # conflict went undetected and a 3 METRE setback was explained by a
+        # sunlight requirement. The guard reads the noun the rule matched.
+        assert rule_of(3, "a minimum of three full hours of sunlight", "m") \
             == UNEXPLAINED
 
     def test_a_numeral_counting_something_still_explains_it(self):
