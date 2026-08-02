@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "4fd7ab4d",
+  "commit_hash": "a30eb131",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -22,9 +22,12 @@
     "mutation_evidence": "three mutants injected into the rules, all three killed by tests/test_control_source_values.py: forcing the derived-value tolerance to always match, replacing exact numeric matching with a substring test, and letting the implied-rate rule fire when a numerator was written"
   },
   "pre_impl": {
-    "schema_confirmed": "value_min/value_max numeric (Decimal), source_text text and non-empty on all 1,069 rows, 83 rows carry no numeric value, 50 rows have min<>max, 18 distinct unit strings",
-    "population": "all 1,069 rows, is_current deliberately unfiltered (989 current / 80 superseded) so the denominator reconciles with DQ-38 and link_controls_to_provisions.py; the split is selected and reported",
-    "timeout_risk": "one read-only SELECT of 1,069 rows, no join, no batch loop - neither timeout nor loop-invariant applies"
+    "existing_data": "All 1,069 controls read, not sampled. Confirmed from information_schema that value_min/value_max are numeric (Decimal in psycopg2) and source_text is text. Measured directly: 0 rows have an empty source_text so every row has a quote to check against, 83 rows carry no numeric value at all and need their own state, 50 rows have min != max so both ends need explaining, and there are 18 distinct unit strings dominated by spaces/dwelling 371, m 278 and %% 200. is_current splits 989 current / 80 superseded. One read-only SELECT of 1,069 rows with no join, so no batching and no timeout risk.",
+    "assumption_mismatch": "The remembered figure was '137 rows flagged table-wide'. Re-measured live it is 137 on value_min, 11 on value_max and 142 distinct rows - the original number counted one column. Second and larger mismatch: the task framed the flags as mostly-derivations to be separated from mismatches, which held (961 of 986 are derivable), but the harder problem turned out to be the opposite direction. Two rules were quietly explaining rows on evidence that is not a quantity at all: numbers inside clause references (s4.3.6 explaining a stored 4.3) and numbered-list ordinals (Camden 693, a 2.0 m front setback explained by the '2' of a list item in a clause about front fence height). Closing those returned 6 rows to the finding list. Third: percentage_phrasing measures 0 rows in production - it is reachable and unit-tested, but every real percentage row is a literal match first.",
+    "new_vs_existing": "No existing check compares a control's stored NUMBER to its own quoted source_text. scripts/validate_dcp_setbacks.py covers only the ~280 setback rows and its four signals (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER) never compare value to quote. scripts/validate_controls_provenance.py (#866) classifies provenance from the repo. scripts/link_controls_to_provisions.py (#867) matches quotes against the corpus and is capped at 42 rows by ingestion coverage. scripts/numeric_control_review.py diffs against a re-downloaded PDF. services/extracted_data_integrity.py:value_absent_from_source is the existing flagger and is extended in place, not copied. The baseline-beside-the-script layout, the 0/1/2 exit codes and the shrink-only rule are reused from scripts/validate_schema_contract.py.",
+    "external_source_error": "The only external source is the Supabase connection. No DATABASE_URL exits 2 with an explicit 'nothing was checked, which is not a pass' message rather than reporting a clean run, and both the pre-push step and the CI job treat 2 as a skip and 1 as a failure. An unreadable baseline file also exits 2 rather than being treated as an empty accepted set, because a silently-empty baseline would flag all 25 known rows as new and the natural response to that noise is to regenerate the baseline, which disarms the gate. The script performs no write of any kind.",
+    "frontend_type": "None. This check adds no API surface and no column; it reads dcp_setback_controls and prints. Nothing in frontend-nextjs consumes its output. The states it emits are internal strings compared only against RULE_NAMES, UNEXPLAINED and NO_VALUE_STORED, all exported from the module so a caller cannot drift from a hand-copied literal.",
+    "user_failure_mode": "The user-visible failure this guards against is a served number that its own cited source does not support - a Waverley deep-soil control served as 10%% while the clause quoted beside it reads 'a minimum 50%% of the landscaped area must be deep soil zone'. A professional acting on that number and then reading the quote would find them contradicting each other, which is worse for trust than having no number. The check's own worst failure is the reverse: a rule that explains a row on evidence that is not a quantity removes a real defect from the finding list permanently and silently, which is why every rule must return the substring it matched and why two false-pass channels were closed before this shipped."
   },
   "functions": [
     {
@@ -58,14 +61,14 @@
   ],
   "values": [
     {
-      "name": "UNEXPLAINED",
-      "meaning": "no named rule derives the stored number from the row's own quoted source_text - this is the finding, not an error state",
-      "not": "it does NOT mean the number is wrong; it means nothing in the quote supports it, which is a question for a human against the source PDF"
+      "value": "the state assigned to each of the 1,069 rows - one of ten named rules, UNEXPLAINED, or no_value_stored",
+      "read_at": "computed per row from value_min, value_max, source_text and unit at check time; nothing is stored back to the database",
+      "if_missing": "a row whose values are all absent becomes no_value_stored, counted separately and reported separately. Folding it into the explained bucket would overstate the pass rate by about 8 percentage points, and 'nothing to check' is not 'checked and fine'."
     },
     {
-      "name": "no_value_stored",
-      "meaning": "the row records a control with no number at all (83 rows) - counted as its own state",
-      "not": "deliberately NOT counted as a pass; folding it into the explained bucket would overstate the pass rate by about 8 percentage points"
+      "value": "the accepted-unexplained id list in scripts/control_source_values_baseline.json (25 ids)",
+      "read_at": "load time, before any row is compared against it",
+      "if_missing": "a missing file is an empty baseline, which is correct for a fresh clone. An UNREADABLE file exits 2 instead, because treating a corrupt baseline as empty would turn 25 known rows into new failures and invite a regeneration that silently raises the accepted ceiling."
     }
   ],
   "queries": [
@@ -80,54 +83,63 @@
       "scenario": "A stored value equals a number that is part of a clause reference in its own quote, for example a control storing 4.3 whose source_text opens with the citation 's4.3.6'.",
       "what_happens": "The exact-match rule reports the row as verified on the strength of its own citation, and the row leaves the finding list permanently even though nothing in the clause supports the number.",
       "mitigated": true,
-      "how": "The number token carries lookarounds that reject any digit run preceded by a word character or a dot, so 's4.3.6' and 'DS9.2' yield no quantities at all. Closing this cost 5 rows their explanation."
+      "how": "The number token carries lookarounds that reject any digit run preceded by a word character or a dot, so 's4.3.6' and 'DS9.2' yield no quantities at all. Closing this cost 5 rows their explanation.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_clause_reference_does_not_explain_a_value -q"
     },
     {
       "scenario": "A stored value equals a numbered-list ordinal in its own quote - Camden control 693 stores a 2.0 m front setback against a clause about front FENCE height whose second list item begins '2.'.",
       "what_happens": "The row reads as an exact match, so a setback taken from a fencing clause is presented as verified against its source.",
       "mitigated": true,
-      "how": "_quantity_spans drops any number that begins a line or table cell and is followed by a dot and a word. This was live, not hypothetical: it hid control 693 until the exclusion was added."
+      "how": "_quantity_spans drops any number that begins a line or table cell and is followed by a dot and a word. This was live, not hypothetical: it hid control 693 until the exclusion was added.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numbered_list_ordinal_does_not_explain_a_value -q"
     },
     {
       "scenario": "The text says '2 spaces per 5 dwellings' and the row stores 0.2 rather than 0.4, so the implied-unity rate rule could derive 1/5 and call it explained.",
       "what_happens": "A value the quote plainly contradicts is reported as derived from that quote, which is the precise failure the whole check exists to prevent.",
       "mitigated": true,
-      "how": "The implied-unity rule refuses to fire when any number or written numeral appears in the lead-in to the rate, and a test asserts that exact case stays UNEXPLAINED."
+      "how": "The implied-unity rule refuses to fire when any number or written numeral appears in the lead-in to the rate, and a test asserts that exact case stays UNEXPLAINED.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_refuses_when_a_numerator_was_written -q"
     },
     {
       "scenario": "A percentage rule divides an arbitrary number in the text by 100 until something matches the stored value, for example reaching a stored 35 from a quoted floor area of 3500 square metres.",
       "what_happens": "An arithmetic coincidence between two unrelated numbers is presented as provenance for the stored value.",
       "mitigated": true,
-      "how": "The percentage rule matches only numbers immediately followed by a literal '%' or the words 'per cent', so no bare number can be scaled into an explanation."
+      "how": "The percentage rule matches only numbers immediately followed by a literal '%' or the words 'per cent', so no bare number can be scaled into an explanation.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_bare_number_is_never_read_as_a_percentage -q"
     },
     {
       "scenario": "City of Sydney control 883 stores a front setback of 0 against a quote reading 'where no front setback is shown on the map', and a nil-phrase rule treats the phrase as a control of zero.",
       "what_happens": "A sentence about the map being silent is converted into a numeric control, inventing a requirement the DCP never made.",
       "mitigated": true,
-      "how": "The nil rule requires the word 'required' after the nil phrase, so 'no additional parking is required' matches and 'no front setback is shown' does not. A test pins both directions."
+      "how": "The nil rule requires the word 'required' after the nil phrase, so 'no additional parking is required' matches and 'no front setback is shown' does not. A test pins both directions.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_map_being_silent_is_not_a_control_of_zero -q"
     },
     {
       "scenario": "The number-token lookahead is written too tightly and rejects a number that ends a sentence, such as the 3 in 'Maximum: up to 3.'",
       "what_happens": "Correct rows lose their explanation and appear in the finding list, which trains a reader to dismiss the list - the same failure as a list full of false positives, in reverse.",
       "mitigated": true,
-      "how": "The lookahead rejects only a dot followed by a digit, and a regression test asserts a sentence-final number still matches exactly."
+      "how": "The lookahead rejects only a dot followed by a digit, and a regression test asserts a sentence-final number still matches exactly.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_number_at_the_end_of_a_sentence_still_matches -q"
     },
     {
       "scenario": "A control stores a range where one end is quoted and the other is not, for example City of Sydney 885 storing min 3 and max 8 against a qualitative clause about rear building lines.",
       "what_happens": "Reporting the row on its explained end alone would present a range as verified when its upper bound came from nowhere.",
       "mitigated": true,
-      "how": "explain_row marks the whole row UNEXPLAINED if any stored end is unexplained, and reports the most-derived rule when all ends pass so a row cannot present as a stronger match than it earned."
+      "how": "explain_row marks the whole row UNEXPLAINED if any stored end is unexplained, and reports the most-derived rule when all ends pass so a row cannot present as a stronger match than it earned.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_both_ends_of_a_range_must_be_explained -q"
     },
     {
       "scenario": "The baseline file is corrupted or truncated to an empty list while the 25 known unexplained rows are still present.",
       "what_happens": "Every pre-existing row reads as new, the gate fails loudly on work nobody did, and the natural response is to regenerate the baseline - which silently disarms the gate.",
       "mitigated": true,
-      "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set."
+      "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set.",
+      "repro": "printf 'not json' > scripts/control_source_values_baseline.json && python scripts/validate_control_source_values.py; echo $?  # expect 2, then restore with git checkout scripts/control_source_values_baseline.json"
     }
   ],
   "post_merge": {
-    "data_defects_not_fixed": "The 25 baselined rows are real data defects and are NOT fixed by this PR - each needs a ruling against the source PDF. Take the four Waverley deep-soil rows first (10%/15% stored against a quote saying 50%), then the three Cumberland setbacks (4.0/5.5/8.0 m against a table whose only front figure is 6m).",
-    "gap_found_in_a_neighbouring_check": "fabricated_values does not catch 'needs PDF verification' - its marker pattern has 'to be verified' but not this wording, which is why controls 1119 and 1120 store a number against a quote that admits it is unverified.",
-    "watch": "The baseline is shrink-only. If a future PR raises the count, the reason belongs in the PR body: widening it to make the gate pass defeats the gate."
+    "db_reset": "No database write of any kind - this check is read-only, so there is nothing to roll back. The 25 baselined rows are real data defects and are NOT fixed here; each needs a ruling against the source PDF. Take the four Waverley deep-soil rows first (631, 632 store 10%% and 635, 636 store 15%% against a quote saying 50%%), then the three Cumberland setbacks (31, 32 front 4.0/5.5 m and 30 rear 8.0 m against a table whose only front figure is 'Minimum 6m').",
+    "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
+    "other_repo": "None.",
+    "manual_verify": "Run `python scripts/validate_control_source_values.py` and confirm 1,069 rows across exhaustive states, 961 of 986 derivable, 25 unexplained, 0 NEW, exit 0. Then prove it can fail: delete three ids from scripts/control_source_values_baseline.json, re-run, and confirm 'NEW (not in the baseline): 3' with exit 1 before restoring the file. Add --show-evidence to audit the substring each derived row matched rather than trusting the rule name."
   }
 }
