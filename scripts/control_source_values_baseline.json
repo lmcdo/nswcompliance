@@ -1,0 +1,31 @@
+{
+  "note": "Control ids whose stored value no named rule derives from their own source_text. Shrink-only: fixing a row lowers this ceiling. Adding to it requires an explicit --write-baseline and should carry a reason in the PR.",
+  "count": 25,
+  "ids": [
+    1,
+    2,
+    3,
+    6,
+    13,
+    30,
+    31,
+    32,
+    229,
+    255,
+    517,
+    606,
+    631,
+    632,
+    635,
+    636,
+    690,
+    692,
+    693,
+    778,
+    883,
+    884,
+    885,
+    1119,
+    1120
+  ]
+}

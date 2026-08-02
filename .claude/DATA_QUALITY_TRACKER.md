@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-39: **25 of 986 stored control values are not derivable from their own quoted `source_text`.** Four Waverley deep-soil rows store 10%/15% against a quote that says 50%; three Cumberland setbacks store 4.0/5.5/8.0 m against a quote whose only figure is "Minimum 6m"; two rows store a number while their own quote says "needs PDF verification". Now gated for all 1,069 rows. | 🟠 Measured + gated 2026-08-02, data not fixed | P1 — the number IS the product |
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
 | DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
 | DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line was a zone-only check, contradicting this same file's own determineDevelopmentPathway() on heritage land | ✅ Fixed 2026-08-01 | P1 — liability language on a definitive claim |
@@ -78,6 +79,120 @@ membership alone not establishing CDC eligibility — the class of issue
 the same heritage check `determineDevelopmentPathway()` already does, or reuse
 `determineDevelopmentPathway()`'s result directly instead of re-deriving eligibility inline a
 second time in the same file.
+
+---
+
+## DQ-39: 25 control values their own quote does not support (2026-08-02)
+
+**Status:** MEASURED + GATED for all 1,069 rows. Data NOT fixed — each row needs a
+ruling against the source PDF, which is extraction work.
+
+**What changed the coverage.** DQ-38 established that only 42 controls can be
+checked against the provisions corpus, because 14 of 30 councils have no provisions
+ingested. But every row already carries `source_text` — the sentence its number was
+taken from. Checking a number against **its own quote** needs no corpus, no PDF and
+no ingestion, so it covers **all 1,069 instead of 42.** That is a 25× increase in
+what is machine-checkable, achieved by changing the question rather than the data.
+
+**The flag was not the answer.** `value_absent_from_source` flags rows whose digits
+do not appear in their quote. Re-measured live: **137 on `value_min`, 11 on
+`value_max`, 142 distinct rows** (the remembered "137 table-wide" was `value_min`
+only). Reading a sample showed most were legitimate derivations — "900mm" stored as
+0.9, "one space per 3 dwellings" stored as 0.333. **A list of flags where most
+entries are fine is a list people stop reading**, and that is how a real mismatch
+survives inside it.
+
+So each derivation is now a NAMED rule that must produce the substring it matched.
+Every row lands in exactly one state (`scripts/validate_control_source_values.py`):
+
+| state | rows | |
+|---|---|---|
+| `exact_digit_match` | 839 | the number is literally in the quote |
+| `ratio_or_rate` | 88 | "1 space per 4 dwellings" → 0.25 |
+| `unit_conversion` | 19 | "900mm" → 0.9 m |
+| `area_from_dimensions` | 5 | "3m x 3m" → 9 |
+| `written_numeral` | 4 | "one car space" → 1 |
+| `fraction_literal` | 2 | "min 1/3" → 0.333 |
+| `implied_single_unit_rate` | 2 | "a space for every 4 dwellings" → 0.25 |
+| `explicit_nil_requirement` | 1 | "no additional parking is required" → 0 |
+| `built_to_boundary_zero` | 1 | "may be built to the rear boundary" → 0 |
+| `percentage_phrasing` | 0 | reachable, but every real row hits the exact rule first |
+| **`UNEXPLAINED`** | **25** | **the finding** |
+| `no_value_stored` | 83 | a rule with no number — counted separately, NOT a pass |
+
+**961 of the 986 rows carrying a number (97.5%) are derivable from their own quote.**
+
+### The 25, grouped by what is actually wrong
+
+**A. The stored number contradicts the quote — 7 rows, the serious ones.**
+- Waverley `deep_soil_min` **631, 632 store 10%** and **635, 636 store 15%**, against
+  a quote that reads *"A minimum 50% of the landscaped area must be deep soil zone."*
+  50 appears nowhere near 10 or 15. Four served rows.
+- Cumberland **31 (front 4.0 m), 32 (front 5.5 m), 30 (rear 8.0 m)** all quote the
+  same setbacks table whose only front figure is *"Minimum 6m"* and which states no
+  rear setback at all.
+
+**B. The quote is an admission that the value is unverified — 2 rows.**
+- **1119** Cumberland POS stores 24 m² with `source_text` = *"...(needs PDF
+  verification for numeric values)"*; **1120** Campbelltown POS stores 24 m² with
+  *"(needs PDF verification — garbled extraction)"*. Note `fabricated_values`
+  should catch this shape and does not: its marker pattern has "to be verified"
+  but not "needs PDF verification".
+
+**C. The quote is about a different control — 2 rows.**
+- **693** Camden `front_setback` 2.0 m quoted from a clause about **front fence
+  height** (1.2 m). This row also exposed the check's own worst false-pass: it
+  was briefly "explained" by the `2` of a numbered list item, until numbered-list
+  ordinals were excluded from quantity matching.
+- **255** Campbelltown `car_parking` 2 spaces quoted from a clause about a
+  **36 m² undercover parking area**.
+
+**D. The quote is qualitative and the number is an assumption — 11 rows.**
+690, 692 (Camden — "average setback of the 2 nearest dwelling houses"), 3
+(Ku-ring-gai objectives text), 883, 884, 885 (City of Sydney — "consistent with the
+Building setbacks map", heritage character), 606 (Sutherland — "determined by either
+a specified minimum distance or the average"), 13 (Woollahra — envelope defined by a
+Figure), 1, 2, 6 (Marrickville — garbled OCR objectives text with no numbers in it;
+DQ-29 territory).
+
+**E. A correct value whose derivation is deliberately not machine-named — 3 rows.**
+- **229** Georges River: *"1 garage space and 1 driveway space per dwelling"* → 2.
+  Plainly right, but a rule that summed arbitrary numbers from a quote could
+  "explain" almost any value, so it stays a finding rather than getting a rule.
+- **778** Ryde: *"Up to 2 spaces per dwelling house"* → max 2 is quoted, **min 1 is
+  not**. **517** Marrickville stores 0 against *"1 per principal dwelling and
+  secondary dwelling combined"* and belongs in group A on a re-read.
+
+### Why this check can fail
+Two ways: a NEW unexplained row fails against the baseline, and a value edited to
+something its quote does not support becomes unexplained on the next run.
+**Demonstrated firing** — three ids removed from the baseline produced
+`NEW (not in the baseline): 3` and exit 1. The baseline is shrink-only.
+
+Mutation-checked, because a rule that always explained would make this a check that
+cannot fail: forcing the tolerance to always match, replacing exact matching with a
+substring test, and letting the implied-rate rule ignore a written numerator were
+all **killed by the tests**.
+
+### What it does NOT prove
+That the number is correct — only that it is consistent with the sentence stored
+beside it. If the quote itself was mis-transcribed, both agree and this passes.
+That failure mode belongs to the extraction gates.
+
+### Named false-explanation traps the rules refuse
+- a numbered-list ordinal explaining a value (this one was live: it hid Camden 693)
+- a clause reference explaining a value (`s4.3.6` must not explain a stored 4.3)
+- a bare number read as millimetres, or divided by 100 to reach a percentage
+- `2 spaces per 5 dwellings` stored as 0.2 being "explained" as 1/5
+- City of Sydney's *"where no front setback is shown on the map"* explaining a
+  stored 0 — the map being silent is not a control of zero
+
+Two of those were not hypothetical. Excluding clause references cost 5 rows their
+explanation and excluding list ordinals cost 1 more — six rows that had been
+reading as verified on the strength of a citation or a bullet number.
+
+**Wired:** pre-push `[1f/5]` and CI (`gates.yml`, schema-contract job — the one with
+live DB access). Exit 2 on no `DATABASE_URL` is a skip, never a pass.
 
 ---
 

@@ -189,3 +189,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_controls_provenance.py --quiet
+      # Mirrors pre-push step [1f/5]. Covers all 1,069 controls rather than the 42
+      # the corpus can reach, because it checks each number against the quote
+      # stored beside it. Exits 1 on any value no named rule derives that is not
+      # already in the baseline.
+      - name: Validate control values against their own source text
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/validate_control_source_values.py
