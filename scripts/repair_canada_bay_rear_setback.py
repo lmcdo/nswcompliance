@@ -93,13 +93,15 @@ def build_plan(cur):
     """Return the live pre-state if it still matches, else None (already done
     or diverged — caller reports which)."""
     cur.execute(
-        """SELECT id, value_min, control_type, is_current, source_text, condition
+        """SELECT id, value_min, control_type, is_current, source_text,
+                  condition, needs_review
              FROM dcp_setback_controls WHERE id = %s""", (CONTROL_ID,))
     row = cur.fetchone()
     if row is None:
         raise SystemExit(f"ERROR: control {CONTROL_ID} not found. Refusing to "
                          f"guess at a table that has changed shape.")
-    _, value_min, control_type, is_current, source_text, condition = row
+    (_, value_min, control_type, is_current, source_text, condition,
+     needs_review) = row
     pre_ok = (
         value_min is not None and f"{float(value_min):g}" == EXPECT_VALUE
         and control_type == "rear_setback"
@@ -108,8 +110,16 @@ def build_plan(cur):
         and EXPECT_QUOTE_MARKER in source_text
         and len(source_text) == EXPECT_QUOTE_LEN
         and condition is None
+        and needs_review is False
     )
     return row if pre_ok else None
+
+
+# The UPDATE clears needs_review, so the guard must pin its pre-state too — a
+# flag raised by another process for an UNRELATED defect between plan and
+# apply must not be silently erased (Sol finding, 2026-08-03). The observed
+# pre-state (recon 2026-08-03) is FALSE; the backup carries the column, so a
+# rollback restores whatever was there.
 
 
 def main() -> int:  # pragma: no cover - CLI entry point
@@ -197,7 +207,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
                       last_verified_at = CURRENT_DATE, needs_review = FALSE
                 WHERE id = %s AND control_type = 'rear_setback'
                   AND value_min = %s AND is_current = TRUE
-                  AND source_text = %s AND condition IS NULL""",
+                  AND source_text = %s AND condition IS NULL
+                  AND needs_review = FALSE""",
             (NEW_VALUE, NEW_SOURCE_TEXT, NEW_CONDITION, REASON,
              CONTROL_ID, EXPECT_VALUE, old_source_text))
         written = cur.rowcount

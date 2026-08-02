@@ -222,19 +222,23 @@ def main() -> int:  # pragma: no cover - CLI entry point
                     (new_cur, reason, control_id, old_val, old_cur,
                      pre_text, pre_cond))
             written += cur.rowcount
+        # All-or-nothing: verify BEFORE committing — committing first and then
+        # reporting PARTIAL APPLY would leave a half-repair persisted under an
+        # error exit (Sol finding, 2026-08-03; same class as the refile fix).
+        if written != len(todo):
+            conn.rollback()
+            print(f"\nGUARD MISS: {len(todo) - written} of {len(todo)} rows "
+                  f"changed after planning. EVERYTHING rolled back — nothing "
+                  f"written. Re-run to rebuild the plan. Exiting 2.",
+                  file=sys.stderr)
+            return 2
         conn.commit()
-        print(f"  updated {written} rows ({len(todo) - written} skipped by the guard)")
+        print(f"  updated {written} rows (all planned rows matched their guard)")
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t SET value_min = b.value_min,"
               f" is_current = b.is_current, condition = b.condition,"
               f" review_reason = b.review_reason, reviewed_at = b.reviewed_at,"
               f" last_verified_at = b.last_verified_at"
               f" FROM {args.backup_table} b WHERE t.id = b.id;")
-        if written != len(todo):
-            print(f"\nPARTIAL APPLY: {len(todo) - written} of {len(todo)} rows were "
-                  f"skipped because their values changed after planning. Re-run to "
-                  f"rebuild the plan. Exiting 2 so this is not read as clean.",
-                  file=sys.stderr)
-            return 2
         return 0
     except Exception as exc:  # noqa: BLE001
         conn.rollback()

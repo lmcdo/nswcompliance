@@ -489,6 +489,32 @@ def main() -> int:  # pragma: no cover - CLI entry point
                 return 2
 
         new_ids = []
+        if todo_inserts:
+            # prior-art-checked: reuse not viable because no committed code
+            # serializes writers of dcp_setback_controls; the guard's blog-page
+            # suggestions are content pages, not writers. Lock shape is
+            # PostgreSQL-native pg_advisory_xact_lock, no new capability.
+            # Serialize concurrent --apply runs: the dup-check above is
+            # check-then-insert, so two simultaneous runs could both see "no
+            # served twin" and double-insert (Sol finding, 2026-08-03). The
+            # advisory xact lock is held through commit and released with it,
+            # and the dup-check is repeated under the lock.
+            cur.execute("SELECT pg_advisory_xact_lock("
+                        "hashtext('dcp_setback_controls_repair'))")
+            for r in todo_inserts:
+                cur.execute(
+                    """SELECT 1 FROM dcp_setback_controls
+                        WHERE lga = %s AND dev_type = %s AND control_type = %s
+                          AND section_ref = %s AND is_current""",
+                    (r["lga"], r["dev_type"], r["control_type"],
+                     r["section_ref"]))
+                if cur.fetchone():
+                    conn.rollback()
+                    print(f"ERROR: a served twin for "
+                          f"{r['lga']}/{r['control_type']} appeared after "
+                          f"planning (concurrent run?). EVERYTHING rolled "
+                          f"back. Exiting 2.", file=sys.stderr)
+                    return 2
         for r in todo_inserts:
             cur.execute(
                 """INSERT INTO dcp_setback_controls
