@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a blocking gate over the table that is the product's differentiator. The direction of risk is asymmetric: a value whose own note admits it was assumed, served as if extracted, is the fabricated-verdict class applied to regulatory numbers. 28 such rows exist and all are already retired, so this passes today and exists solely to stop the 29th being served. Shipped alongside an adjudication of all 25 UNEXPLAINED controls against source PDFs, which retracted a previously-published finding.",
-  "commit_hash": "165f4736",
+  "commit_hash": "55d358cf",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -14,7 +14,9 @@
     ".gitignore",
     ".claude/.pre-impl-done.json",
     "docs/qa/controls-adjudication-2026-08.md",
-    "scripts/repair_camden_front_setbacks.py"
+    "scripts/repair_camden_front_setbacks.py",
+    "migrations/053_secondary_street_setback_control_type.sql",
+    "scripts/refile_secondary_street_setbacks.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/validate_control_source_values.py",
@@ -297,6 +299,13 @@
       "mitigated": true,
       "how": "The failure message re-tests each marker field individually and names every one that fired, falling back to an explicit '(marker field not isolated)' rather than guessing.",
       "repro": "python -m pytest tests/test_control_source_values.py -k TestFabricationGate -q"
+    },
+    {
+      "scenario": "A pattern-based re-type sweeps in rows whose quote mentions a secondary street only in passing.",
+      "what_happens": "blacktown 107 (\"Secondary DWELLING building setback from street 6m\" - a PRIMARY street setback for a granny flat) gets re-filed as a secondary-street control, along with a fence-height clause, a duplex streetscape clause, a tandem-dwelling clause and a garage setback. Six rows silently mislabelled by the fix meant to correct labelling.",
+      "mitigated": true,
+      "how": "Caught in dry run. The pattern now requires secondary to directly qualify street/road/frontage; truncated quotes are excluded outright on the same doctrine as TRUNCATED_EVIDENCE; and one row that still slipped through (fairfield 714, a garage setback) is excluded by id with the reason recorded in code rather than by widening the regex.",
+      "repro": "python scripts/refile_secondary_street_setbacks.py   # dry run: expect 20 rows, none of ids 107/693/702/704/714"
     }
   ],
   "post_merge": {
