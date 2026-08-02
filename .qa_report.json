@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "99ca2adb",
+  "commit_hash": "c9b50fe4",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -32,28 +32,28 @@
   "functions": [
     {
       "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:476",
+      "file_line": "services/extracted_data_integrity.py:528",
       "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
       "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
       "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
       "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:500",
+      "file_line": "services/extracted_data_integrity.py:552",
       "input": "one control row plus the names of its value columns, its source-text column and its unit column",
       "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
       "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
     },
     {
       "name": "_quantity_spans",
-      "file_line": "services/extracted_data_integrity.py:265",
+      "file_line": "services/extracted_data_integrity.py:284",
       "input": "the raw source text of one control, which may contain clause references and numbered-list markers alongside real quantities",
       "output": "value and character span for every number that is a quantity, with numbered-list ordinals removed",
       "if_none": "text with no quantities yields an empty list, so the exact rule finds nothing and the row falls through to the derived rules rather than matching on a citation"
     },
     {
       "name": "_rate_candidates",
-      "file_line": "services/extracted_data_integrity.py:341",
+      "file_line": "services/extracted_data_integrity.py:386",
       "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
       "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
       "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
@@ -134,6 +134,20 @@
       "mitigated": true,
       "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set.",
       "repro": "printf 'not json' > scripts/control_source_values_baseline.json && python scripts/validate_control_source_values.py; echo $?  # expect 2, then restore with git checkout scripts/control_source_values_baseline.json"
+    },
+    {
+      "scenario": "The rounding tolerance for derived values is a flat absolute number, so it is simultaneously too loose for small rates and too tight for coarsely-rounded ones.",
+      "what_happens": "A stored 0.005 passes against a quoted rate of 1 per 1000 dwellings (0.001), five times too large; and tightening the same flat number rejects two real rows that store 2/3 as 0.67 and 1/3 as 0.33.",
+      "mitigated": true,
+      "how": "The tolerance is half of the STORED value's own last decimal place, AND capped by a 5 percent relative bound so a whole number cannot absorb a large absolute gap. Both bounds must hold.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"tolerance or rounding or absorb\" -q"
+    },
+    {
+      "scenario": "The written-numeral rule matches the common English word \"one\" anywhere in the quote, without it counting anything.",
+      "what_happens": "A clause reading \"Objective one: provide a minimum 6m front setback\" explains a stored 1 m setback that the same sentence contradicts.",
+      "mitigated": true,
+      "how": "The numeral must be followed within two words by a noun the control could be measured in, so \"one car parking space\" matches and \"Objective one:\" does not.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numeral_that_is_not_counting_anything_does_not_explain_a_value -q"
     }
   ],
   "post_merge": {

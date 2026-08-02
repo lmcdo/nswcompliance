@@ -174,8 +174,16 @@ def value_absent_from_source(
 # rounding tolerance. Exact matching does not and must not use one — 0.9 and 0.899
 # are different numbers, and letting them match would silently accept a typo.
 _EXACT_TOL = 1e-9
-_DERIVED_ABS_TOL = 0.005
-_DERIVED_REL_TOL = 0.005
+# A flat absolute tolerance is wrong in both directions here. Too loose and it
+# dominates small values — a stored 0.005 against a quoted "1 space per 1000
+# dwellings" (0.001) sat inside a flat 0.005, so a rate five times too large
+# passed as derived. Too tight and it rejects honest rounding — the table stores
+# 2/3 as 0.67 and 1/3 as both 0.33 and 0.333, so the precision is not uniform.
+#
+# So the tolerance comes from the STORED value's own precision (half of its last
+# decimal place) AND is capped by a relative bound, so a whole number cannot
+# absorb a large absolute gap. Both must hold.
+_DERIVED_REL_TOL = 0.05
 
 _WORD_NUMBERS = {
     "nil": 0.0, "zero": 0.0, "none": 0.0, "half": 0.5,
@@ -252,6 +260,17 @@ _DIMENSIONS_RE = re.compile(
 
 _WORD_NUMBER_RE = re.compile(rf"\b({_WORD_NUMBER_ALT})\b", re.I)
 
+# A written numeral that is actually COUNTING something. "one" is a common English
+# word: without this, "Objective one: provide a minimum 6m front setback" explains
+# a stored 1 m setback. The numeral must be followed, within two words, by a noun
+# the control could be measured in.
+_COUNTED_NOUN = (r"spaces?|cars?|garages?|parking|bays?|metres?|meters?|m|m2|"
+                 r"hours?|storeys?|storys?|stories|dwellings?|units?|bedrooms?|"
+                 r"beds?|trees?|zones?|lots?|rooms?|percent")
+_COUNTED_NUMERAL_RE = re.compile(
+    rf"\b(?P<word>{_WORD_NUMBER_ALT})\b(?:\s+[a-z-]+){{0,2}}?\s+(?:{_COUNTED_NOUN})\b",
+    re.I)
+
 
 # A numbered-list marker: "2. Front fences and walls are not to impede..." at the
 # start of a line or a table cell. These are ordinals, not quantities, and they
@@ -286,9 +305,35 @@ def _as_float(token: str) -> Optional[float]:
         return None
 
 
-def _close(a: float, b: float) -> bool:
-    """Equal within the rounding a person applies when storing a derived value."""
-    return abs(a - b) <= max(_DERIVED_ABS_TOL, _DERIVED_REL_TOL * abs(b))
+def _decimal_places(value) -> int:
+    """How precisely the value was stored. repr() gives the shortest round-trip
+    form, so 0.67 reports 2 and 0.333 reports 3 — the precision a writer chose.
+
+    A None or unparseable value returns 9, the tightest bucket, so an unknown
+    precision can never widen the tolerance. Callers reach this with a float
+    today; failing closed costs nothing and stops that becoming an assumption.
+    """
+    if value is None:
+        return 9
+    try:
+        text = repr(float(value))
+    except (TypeError, ValueError):
+        return 9
+    if "e" in text or "E" in text:
+        return 9
+    return len(text.split(".")[1].rstrip("0")) if "." in text else 0
+
+
+def _close(stored: float, derived: float) -> bool:
+    """Equal within the rounding a person applies when storing a derived value.
+
+    Both bounds must hold. The absolute bound is half of the stored value's last
+    decimal place, so 0.67 accepts 2/3 while 0.005 rejects 0.001. The relative
+    bound stops a whole number from absorbing a large absolute gap.
+    """
+    gap = abs(stored - derived)
+    absolute = 0.5 * (10.0 ** -_decimal_places(stored))
+    return gap <= absolute and gap <= max(_EXACT_TOL, _DERIVED_REL_TOL * abs(derived))
 
 
 def _rule_exact_digit_match(value: float, source: str, unit) -> Optional[str]:
@@ -422,7 +467,14 @@ def _rule_built_to_boundary(value: float, source: str, unit) -> Optional[str]:
 
 
 def _rule_area_from_dimensions(value: float, source: str, unit) -> Optional[str]:
-    """An area quoted as dimensions ('3m x 3m') stored as the product."""
+    """An area quoted as dimensions ('3m x 3m') stored as the product.
+
+    Gated on an area unit: without it, '9' in a `spaces/dwelling` column would be
+    explained by a 3 m x 3 m parking bay — a number that happens to match an area
+    the row is not measuring.
+    """
+    if unit not in (None, "", "m2", "m²", "sqm"):
+        return None
     for first, second in _DIMENSIONS_RE.findall(source):
         a, b = _as_float(first), _as_float(second)
         if a is None or b is None:
@@ -435,14 +487,14 @@ def _rule_area_from_dimensions(value: float, source: str, unit) -> Optional[str]
 def _rule_written_numeral(value: float, source: str, unit) -> Optional[str]:
     """The number is spelled out ('three hours', 'nil parking').
 
-    Last in the order on purpose. Common words like 'one' appear in text that has
-    nothing to do with the value, so this rule is the most likely to explain a row
-    for the wrong reason — anything it catches should be read with that in mind.
+    Last in the order on purpose, and the numeral must be COUNTING something:
+    'one' is an ordinary English word, and without that requirement 'Objective
+    one: provide a minimum 6m front setback' explains a stored 1 m setback.
     """
-    for token in _WORD_NUMBER_RE.findall(source):
-        parsed = _WORD_NUMBERS[token.lower()]
+    for match in _COUNTED_NUMERAL_RE.finditer(source):
+        parsed = _WORD_NUMBERS[match.group("word").lower()]
         if abs(parsed - value) <= _EXACT_TOL:
-            return f"written numeral {token.lower()!r}"
+            return f"written numeral in {match.group(0).strip()!r}"
     return None
 
 

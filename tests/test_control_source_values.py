@@ -146,6 +146,27 @@ class TestRatioOrRate:
         assert rule_of(0.5, "A total of 2 storeys. Parking per 4 dwellings applies") \
             == UNEXPLAINED
 
+    def test_a_rate_five_times_too_large_is_not_within_tolerance(self):
+        # Sol finding, verified: a flat 0.005 absolute tolerance swallowed this.
+        # 1/1000 is 0.001; a stored 0.005 is five times that and must not pass.
+        assert rule_of(0.005, "1 space per 1000 dwellings") == UNEXPLAINED
+
+    def test_two_decimal_rounding_is_accepted(self):
+        # The table stores 2/3 as 0.67 and 1/3 as both 0.33 and 0.333, so the
+        # tolerance comes from the stored value's own precision. A flat tolerance
+        # tight enough for the case above rejected both of these real rows.
+        assert rule_of(0.67, "2 spaces per 3 self-contained units") == "ratio_or_rate"
+        assert rule_of(0.33, "Minimum 1 space per 3 dwellings") == "ratio_or_rate"
+
+    def test_three_decimal_rounding_is_also_accepted(self):
+        assert rule_of(0.333, "1 space per 3 dwellings") == "ratio_or_rate"
+        assert rule_of(0.091, "visitor min 1 per 11 dwellings") == "ratio_or_rate"
+
+    def test_a_whole_number_cannot_absorb_a_large_absolute_gap(self):
+        # Half of the last decimal place of a whole number is 0.5, which alone
+        # would let a derived 5.6 explain a stored 6. The relative bound stops it.
+        assert rule_of(6, "28 spaces per 5 dwellings") == UNEXPLAINED
+
 
 class TestImpliedSingleUnitRate:
     def test_an_unwritten_numerator_of_one(self):
@@ -178,6 +199,13 @@ class TestAreaFromDimensions:
     def test_the_product_must_actually_equal_the_stored_value(self):
         assert rule_of(12, "3m x 3m private open space", "m2") == UNEXPLAINED
 
+    def test_it_refuses_when_the_stored_unit_is_not_an_area(self):
+        # Sol finding, verified: without the unit gate, '9' in a spaces/dwelling
+        # column is explained by a 3m x 3m parking bay — an area the row is not
+        # measuring.
+        assert rule_of(9, "Provide a 3m x 3m parking area", "spaces/dwelling") \
+            == UNEXPLAINED
+
 
 class TestWrittenNumeral:
     def test_a_spelled_out_number(self):
@@ -190,6 +218,19 @@ class TestWrittenNumeral:
 
     def test_a_written_numeral_that_is_not_the_stored_value(self):
         assert rule_of(4, "a minimum of three hours of sunlight") == UNEXPLAINED
+
+    def test_a_numeral_that_is_not_counting_anything_does_not_explain_a_value(self):
+        # Sol finding, verified: 'one' is an ordinary English word. Without
+        # requiring it to count something, an objective's number explains a
+        # setback the clause contradicts.
+        assert rule_of(1, "Objective one: provide a minimum 6m front setback", "m") \
+            == UNEXPLAINED
+
+    def test_a_numeral_counting_something_still_explains_it(self):
+        assert rule_of(1, "provided with a minimum of one single garage") \
+            == "written_numeral"
+        assert rule_of(3, "a minimum of three hours of direct sunlight", "hours") \
+            == "written_numeral"
 
 
 class TestExplicitNilRequirement:

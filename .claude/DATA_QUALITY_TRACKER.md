@@ -171,12 +171,24 @@ split is now printed, because `exact_digit_match` otherwise reads as stronger
 evidence than a number-matching check can give. Closing it properly means reading
 clauses rather than matching numbers, which is a different tool.
 
-Two further holes found in review and closed:
+Five further holes found in adversarial review and closed:
 - a value stored with **no source_text at all** returned `no_value_stored` and
   passed as "nothing to check". It is now `MISSING_SOURCE_TEXT`, a failing state.
   0 rows are in it today — which is exactly why it needed one.
 - the gate blocked on superseded rows. Only `is_current` rows can fail now (19 of
-  the 25); the 6 superseded are reported, never silently dropped.
+  the 25); the 6 superseded are reported, never silently dropped. The test is
+  `is False`, not falsy, so a future nullable column fails closed.
+- **the rounding tolerance was wrong in both directions.** A flat 0.005 let a
+  stored 0.005 pass against a quoted "1 space per 1000 dwellings" (0.001) — five
+  times too large. Tightening it to 0.0005 then rejected two honest rows, because
+  the table stores 2/3 as **0.67** and 1/3 as both **0.33** and **0.333**. The
+  tolerance now comes from the stored value's own precision (half its last decimal
+  place) AND a 5% relative bound, so a whole number cannot absorb a large gap.
+- `area_from_dimensions` ignored the unit, so "3m x 3m" could explain a 9 in a
+  `spaces/dwelling` column. Now gated on an area unit.
+- `written_numeral` matched "one" anywhere, so *"Objective one: provide a minimum
+  6m front setback"* explained a stored 1 m setback. The numeral must now be
+  counting something within two words.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to

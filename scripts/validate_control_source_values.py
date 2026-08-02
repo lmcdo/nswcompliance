@@ -249,8 +249,11 @@ def main() -> int:  # pragma: no cover - CLI entry point
     # CI on one would block a release over historical data — but it is still
     # reported, because silently dropping it would shrink the check's coverage
     # without saying so.
-    new = [row for row in unknown if row["is_current"]]
-    new_superseded = [row for row in unknown if not row["is_current"]]
+    # `is False`, not falsy: is_current is NOT NULL today, but if that ever
+    # changed a NULL would read as superseded and quietly stop blocking. Fail
+    # closed — anything that is not explicitly superseded can block.
+    new = [row for row in unknown if row["is_current"] is not False]
+    new_superseded = [row for row in unknown if row["is_current"] is False]
     fixed = sorted(known - set(ids))
 
     print(f"\n=== baseline ===")
