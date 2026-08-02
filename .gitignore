@@ -607,3 +607,5 @@ latent-scope-data/
 !scripts/validate_controls_provenance.py
 !scripts/link_controls_to_provisions.py
 !scripts/measure_control_quote_gap.py
+!scripts/validate_control_source_values.py
+!scripts/control_source_values_baseline.json

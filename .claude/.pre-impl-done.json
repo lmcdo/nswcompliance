@@ -1,6 +1,5 @@
 {
-  "status": "passed",
-  "timestamp": "2026-08-02T21:40:00+10:00",
-  "target": "Verify all 1,069 dcp_setback_controls values against their own source_text: named derivation rules in services/extracted_data_integrity.py + standing check script + tests. Also a docstring-only correction in scripts/link_controls_to_provisions.py.",
-  "findings_summary": "Schema: value_min/value_max are numeric (Decimal), source_text text NOT NULL in practice (0 empty of 1069), 83 rows carry no numeric value at all (need their own state), 50 rows have min<>max. 18 distinct unit strings, dominated by spaces/dwelling 371, m 278, %% 200. Re-measured value_absent_from_source live: 137 flagged on value_min, 11 on value_max, 142 distinct rows (the remembered 137 was value_min only). Sample of the 142 shows the real categories: mm->m conversion (900mm->0.9, 1500mm->1.5), ratio (1 per 4 dwellings->0.25, 1 per 10 beds->0.1), zero phrasing (nil/built to the boundary->0), and at least one genuine mismatch (id=606 stores 5.5 with no digit in its text). No batch loop, no join, single SELECT of 1069 rows - no timeout or loop-invariant risk. Prior art checked: scripts/validate_dcp_setbacks.py covers only the 280 setback rows with CONFLICT/FOREIGN/MAGNITUDE/PLACEHOLDER and has no value-in-source check; scripts/numeric_control_review.py diffs against PDFs, not source_text; services/extracted_data_integrity.py:value_absent_from_source is the flagger to extend, not duplicate."
+  "status": "trivial",
+  "timestamp": "2026-08-03T00:35:00+10:00",
+  "reason": "Repairing a heredoc-mangled f-string in scripts/validate_control_source_values.py - two literal newlines where \n was intended, causing a SyntaxError. No logic change, no new query."
 }

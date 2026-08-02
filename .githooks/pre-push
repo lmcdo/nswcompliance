@@ -124,6 +124,30 @@ if [ -f scripts/validate_controls_provenance.py ]; then
 else
   echo "  Skipping (no controls provenance script)."
 fi
+
+echo "=== [1f/5] Control values vs their own source_text ==="
+if [ -f scripts/validate_control_source_values.py ]; then
+  # Same `|| RESULT=$?` shape as [1d]/[1e]: 2 is "no DATABASE_URL" (a skip), 1 is
+  # a real finding. Unlike provenance, this one covers all 1,069 rows rather than
+  # the 42 the corpus can reach, because it compares each number to the quote
+  # stored beside it instead of to the provisions corpus.
+  SRCVAL_RESULT=0
+  python scripts/validate_control_source_values.py 2>&1 || SRCVAL_RESULT=$?
+  if [ $SRCVAL_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $SRCVAL_RESULT -ne 0 ]; then
+    echo ""
+    echo "Control source-value check FAILED. Push blocked."
+    echo "A control's stored number is not derivable from its own quoted"
+    echo "source_text by any named rule, and is not in the accepted baseline."
+    echo "Either correct the value, correct the quote, or add the rule that names"
+    echo "the derivation. Widening the baseline to make this pass defeats it."
+    echo "Detail: python scripts/validate_control_source_values.py --show-evidence"
+    exit 1
+  fi
+else
+  echo "  Skipping (no control source-value script)."
+fi
 echo ""
 
 # ── 2. Frontend Jest tests ──────────────────────────────────────────────────

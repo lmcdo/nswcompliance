@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-39: **25 of 986 stored control values are not derivable from their own quoted `source_text`.** Four Waverley deep-soil rows store 10%/15% against a quote that says 50%; three Cumberland setbacks store 4.0/5.5/8.0 m against a quote whose only figure is "Minimum 6m"; two rows store a number while their own quote says "needs PDF verification". Now gated for all 1,069 rows. | 🟠 Measured + gated 2026-08-02, data not fixed | P1 — the number IS the product |
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
 | DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
 | DQ-34: ContextSection.tsx PDF "Housing SEPP 2021: ✓ Applies" line was a zone-only check, contradicting this same file's own determineDevelopmentPathway() on heritage land | ✅ Fixed 2026-08-01 | P1 — liability language on a definitive claim |
@@ -78,6 +79,228 @@ membership alone not establishing CDC eligibility — the class of issue
 the same heritage check `determineDevelopmentPathway()` already does, or reuse
 `determineDevelopmentPathway()`'s result directly instead of re-deriving eligibility inline a
 second time in the same file.
+
+---
+
+## DQ-39: 25 control values their own quote does not support (2026-08-02)
+
+**Status:** MEASURED + GATED for all 1,069 rows. Data NOT fixed — each row needs a
+ruling against the source PDF, which is extraction work.
+
+**What changed the coverage.** DQ-38 established that only 42 controls can be
+checked against the provisions corpus, because 14 of 30 councils have no provisions
+ingested. But every row already carries `source_text` — the sentence its number was
+taken from. Checking a number against **its own quote** needs no corpus, no PDF and
+no ingestion, so it covers **all 1,069 instead of 42.** That is a 25× increase in
+what is machine-checkable, achieved by changing the question rather than the data.
+
+**The flag was not the answer.** `value_absent_from_source` flags rows whose digits
+do not appear in their quote. Re-measured live: **137 on `value_min`, 11 on
+`value_max`, 142 distinct rows** (the remembered "137 table-wide" was `value_min`
+only). Reading a sample showed most were legitimate derivations — "900mm" stored as
+0.9, "one space per 3 dwellings" stored as 0.333. **A list of flags where most
+entries are fine is a list people stop reading**, and that is how a real mismatch
+survives inside it.
+
+So each derivation is now a NAMED rule that must produce the substring it matched.
+Every row lands in exactly one state (`scripts/validate_control_source_values.py`):
+
+| state | rows | |
+|---|---|---|
+| `exact_digit_match` | 839 | the number is literally in the quote |
+| `ratio_or_rate` | 88 | "1 space per 4 dwellings" → 0.25 |
+| `unit_conversion` | 19 | "900mm" → 0.9 m |
+| `area_from_dimensions` | 5 | "3m x 3m" → 9 |
+| `written_numeral` | 4 | "one car space" → 1 |
+| `fraction_literal` | 2 | "min 1/3" → 0.333 |
+| `implied_single_unit_rate` | 2 | "a space for every 4 dwellings" → 0.25 |
+| `explicit_nil_requirement` | 1 | "no additional parking is required" → 0 |
+| `built_to_boundary_zero` | 1 | "may be built to the rear boundary" → 0 |
+| `percentage_phrasing` | 0 | reachable, but every real row hits the exact rule first |
+| **`UNEXPLAINED`** | **25** | **the finding** |
+| `no_value_stored` | 83 | a rule with no number — counted separately, NOT a pass |
+
+**961 of the 986 rows carrying a number (97.5%) are derivable from their own quote.**
+
+### The 25, grouped by what is actually wrong
+
+**A. The stored number contradicts the quote — 7 rows, the serious ones.**
+- Waverley `deep_soil_min` **631, 632 store 10%** and **635, 636 store 15%**, against
+  a quote that reads *"A minimum 50% of the landscaped area must be deep soil zone."*
+  50 appears nowhere near 10 or 15. Four served rows.
+- Cumberland **31 (front 4.0 m), 32 (front 5.5 m), 30 (rear 8.0 m)** all quote the
+  same setbacks table whose only front figure is *"Minimum 6m"* and which states no
+  rear setback at all.
+
+**B. The quote is an admission that the value is unverified — 2 rows.**
+- **1119** Cumberland POS stores 24 m² with `source_text` = *"...(needs PDF
+  verification for numeric values)"*; **1120** Campbelltown POS stores 24 m² with
+  *"(needs PDF verification — garbled extraction)"*. Note `fabricated_values`
+  should catch this shape and does not: its marker pattern has "to be verified"
+  but not "needs PDF verification".
+
+**C. The quote is about a different control — 2 rows.**
+- **693** Camden `front_setback` 2.0 m quoted from a clause about **front fence
+  height** (1.2 m). This row also exposed the check's own worst false-pass: it
+  was briefly "explained" by the `2` of a numbered list item, until numbered-list
+  ordinals were excluded from quantity matching.
+- **255** Campbelltown `car_parking` 2 spaces quoted from a clause about a
+  **36 m² undercover parking area**.
+
+**D. The quote is qualitative and the number is an assumption — 11 rows.**
+690, 692 (Camden — "average setback of the 2 nearest dwelling houses"), 3
+(Ku-ring-gai objectives text), 883, 884, 885 (City of Sydney — "consistent with the
+Building setbacks map", heritage character), 606 (Sutherland — "determined by either
+a specified minimum distance or the average"), 13 (Woollahra — envelope defined by a
+Figure), 1, 2, 6 (Marrickville — garbled OCR objectives text with no numbers in it;
+DQ-29 territory).
+
+**E. A correct value whose derivation is deliberately not machine-named — 3 rows.**
+- **229** Georges River: *"1 garage space and 1 driveway space per dwelling"* → 2.
+  Plainly right, but a rule that summed arbitrary numbers from a quote could
+  "explain" almost any value, so it stays a finding rather than getting a rule.
+- **778** Ryde: *"Up to 2 spaces per dwelling house"* → max 2 is quoted, **min 1 is
+  not**. **517** Marrickville stores 0 against *"1 per principal dwelling and
+  secondary dwelling combined"* and belongs in group A on a re-read.
+
+### How strong is an exact match, really?
+**571 of the 839 exact matches (68.1%) sit in a quote that holds more than one
+distinct quantity.** The stored value appears in its source — but so do others, so
+the match is *consistent*, not *pinned*. Only 268 are uniquely attributable. That
+split is now printed, because `exact_digit_match` otherwise reads as stronger
+evidence than a number-matching check can give. Closing it properly means reading
+clauses rather than matching numbers, which is a different tool.
+
+Five further holes found in adversarial review and closed:
+- a value stored with **no source_text at all** returned `no_value_stored` and
+  passed as "nothing to check". It is now `MISSING_SOURCE_TEXT`, a failing state.
+  0 rows are in it today — which is exactly why it needed one.
+- the gate blocked on superseded rows. Only `is_current` rows can fail now (19 of
+  the 25); the 6 superseded are reported, never silently dropped. The test is
+  `is False`, not falsy, so a future nullable column fails closed.
+- **the rounding tolerance was wrong in both directions.** A flat 0.005 let a
+  stored 0.005 pass against a quoted "1 space per 1000 dwellings" (0.001) — five
+  times too large. Tightening it to 0.0005 then rejected two honest rows, because
+  the table stores 2/3 as **0.67** and 1/3 as both **0.33** and **0.333**. The
+  tolerance now comes from the stored value's own precision (half its last decimal
+  place) AND a 5% relative bound, so a whole number cannot absorb a large gap.
+- `area_from_dimensions` ignored the unit, so "3m x 3m" could explain a 9 in a
+  `spaces/dwelling` column. Now gated on an area unit.
+- `written_numeral` matched "one" anywhere, so *"Objective one: provide a minimum
+  6m front setback"* explained a stored 1 m setback. The numeral must now be
+  counting something within two words.
+- the rate rule offered **every** number before a "per" as a numerator, so
+  *"Minimum setback 6m and provide 1 space per 4 dwellings"* could explain a
+  stored 1.5 as 6/4 — a rate assembled from two unrelated clauses. Only the
+  nearest number can be a numerator now.
+- `percentage_phrasing` also accepted `pct * 100`, so a quoted 35% explained a
+  stored 3500. Nobody stores a percentage that way; that direction existed only to
+  manufacture matches, and is gone.
+- **the baseline was never made to shrink.** A repaired row stayed accepted
+  forever, so restoring its old value later would not have failed. A baseline
+  entry that is now explained is a **failure** with the one command to fix it —
+  and `--write-baseline` refuses to ADD ids without `--allow-growth`, so the
+  remedy cannot double as the bypass.
+- **the baseline was keyed on `id` alone**, so a baselined control could have its
+  value swapped for a *different* unsupported number, or lose its quote entirely,
+  and stay accepted. It now stores `id -> digest(value_min, value_max, unit,
+  source_text)`, so any change to what the check reads makes the row new again.
+- `unit_conversion` accepted both directions, so a quoted "0.9mm" explained a
+  stored 900 m. One direction only now.
+- a matched quantity whose text says it measures something else explained a value
+  anyway — *"a minimum of 3 hours of sunlight"* explained a **3 metre** setback.
+  A trailing unit in a different family (length / area / ratio / time / count /
+  rate) now disqualifies the match, and only when BOTH sides are known, so an
+  unlabelled number is never rejected on a guess.
+- **the unit guard existed in one rule and its stored-unit map covered 6 strings.**
+  `spaces/dwelling` and its eight siblings — **450+ rows, the largest unit group in
+  the table** — fell outside it, so those rows were treated as "unknown unit" and
+  the guard never fired for them. The map now resolves by prefix (`%…` → ratio,
+  `spaces/…` → rate), and the guard is applied in `written_numeral` too, not only
+  in exact matching. `percentage_phrasing` is gated on a ratio column (a quoted
+  35% was explaining a 0.35 **metre** setback) and `unit_conversion` on a length
+  column (it also accepted `m2` and unlabelled columns).
+- the lead-in to a rate was cut on any `.`, **which split decimals**:
+  *"0.5 spaces per 4 dwellings"* left `5 spaces` and produced 5/4, so a stored
+  1.25 passed against a quote stating 0.125. The cut now ignores a full stop
+  between two digits.
+
+- a **whole-number** stored value got half-a-unit of slack, so *"24 spaces per 25
+  dwellings"* (0.96) explained a stored **1**. Rounding a rate to a whole number is
+  a judgement, not a derivation the text states; whole numbers must now match
+  exactly. All five whole-number derived rows are exact products, so this cost
+  nothing.
+- the rate rules had **no column gate**, so *"1 visitor space per 4 dwellings"*
+  could explain a stored 0.25 **metre** setback on a row whose `source_text` was
+  attached to the wrong control. Refused on length, area and time columns.
+- a **NaN** stored value read as explained. Postgres `numeric` accepts NaN and
+  every comparison against it is False, so the exact rule's own "skip if not
+  equal" test was False and the row fell through into a match. NaN and infinity
+  are now findings.
+
+- a clause label with a **space** was still a quantity: the number-token guard
+  only caught a label glued on (`s4.3.6`), so *"Clause 4.3: minimum setback is
+  6m"* explained a stored **4.3** — the citation vouching for the value it is
+  supposed to be evidence against. Clause/Part/Table/Control/Figure/Objective and
+  eleven more labels are now excluded.
+- `written_numeral`'s unit guard read the position straight after the numeral, so
+  *"three **full** hours"* put a word where the unit scan looked and the conflict
+  went undetected. It now reads the noun the rule itself matched.
+- `implied_single_unit_rate` invented its numerator: *"Visitor parking must be
+  considered for every 4 dwellings"* became 1/4 although the quote states no
+  quantity. The implied "one" must now be written as something ("**a** parking
+  **space** for every 4 dwellings").
+- `fraction_literal` had no column gate, so *"At least 1/3 of the landscaped
+  area"* could explain a stored 0.333 **metre** setback. Same gate as the rates.
+- a row whose value is **NULLed by a migration** moved into `no_value_stored` and
+  passed as "nothing to check". The check cannot tell an intentional blank from a
+  lost one, so the count is now ratcheted in the baseline (83) and a rise fails.
+
+None of these eighteen changed the finding count — it stayed at 25 throughout —
+which is the point: they closed paths by which a *future* wrong value would have
+passed, not paths that were hiding current ones. Two were measured against live
+data before being applied, to confirm they cost no legitimate row: whole-number
+exactness affects 5 rows and all 5 are exact products, and the rate column gate
+affects 0 of the 90 rate-explained rows.
+
+**Where the hardening stopped, and why.** Seven rounds of adversarial review each
+returned real findings, and the count of *data* findings did not move after the
+first. That is the signal to stop: the remaining suggestions harden a check that
+no longer changes its answer. One was declined outright — failing every exact
+match that sits in a multi-quantity quote would put 571 of 839 rows in the finding
+list, which is a re-statement of the method's ceiling rather than a defect list.
+Closing that genuinely means reading clauses instead of matching numbers.
+
+### Why this check can fail
+Two ways: a NEW unexplained row fails against the baseline, and a value edited to
+something its quote does not support becomes unexplained on the next run.
+**Demonstrated firing** — three ids removed from the baseline produced
+`NEW (not in the baseline): 3` and exit 1. The baseline is shrink-only.
+
+Mutation-checked, because a rule that always explained would make this a check that
+cannot fail: forcing the tolerance to always match, replacing exact matching with a
+substring test, and letting the implied-rate rule ignore a written numerator were
+all **killed by the tests**.
+
+### What it does NOT prove
+That the number is correct — only that it is consistent with the sentence stored
+beside it. If the quote itself was mis-transcribed, both agree and this passes.
+That failure mode belongs to the extraction gates.
+
+### Named false-explanation traps the rules refuse
+- a numbered-list ordinal explaining a value (this one was live: it hid Camden 693)
+- a clause reference explaining a value (`s4.3.6` must not explain a stored 4.3)
+- a bare number read as millimetres, or divided by 100 to reach a percentage
+- `2 spaces per 5 dwellings` stored as 0.2 being "explained" as 1/5
+- City of Sydney's *"where no front setback is shown on the map"* explaining a
+  stored 0 — the map being silent is not a control of zero
+
+Two of those were not hypothetical. Excluding clause references cost 5 rows their
+explanation and excluding list ordinals cost 1 more — six rows that had been
+reading as verified on the strength of a citation or a bullet number.
+
+**Wired:** pre-push `[1f/5]` and CI (`gates.yml`, schema-contract job — the one with
+live DB access). Exit 2 on no `DATABASE_URL` is a skip, never a pass.
 
 ---
 

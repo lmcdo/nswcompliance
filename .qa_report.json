@@ -1,170 +1,216 @@
 {
   "tier": "critical",
-  "justification": "A production write to the table that is the product's differentiator, and the direction of risk is asymmetric: a WRONG link would let a later automated check compare a number against someone else's clause and report a confident false verdict, which is worse than the current state of no link at all. Small in row count (34) but it establishes a relationship other code will trust.",
-  "commit_hash": "23d370ff",
+  "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
+  "commit_hash": "577d1091",
   "files": [
-    "scripts/link_controls_to_provisions.py",
-    "tests/test_controls_provision_links.py",
-    "scripts/validate_controls_provenance.py",
+    "services/extracted_data_integrity.py",
+    "scripts/validate_control_source_values.py",
+    "scripts/control_source_values_baseline.json",
+    "tests/test_control_source_values.py",
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
     ".claude/DATA_QUALITY_TRACKER.md",
-    ".claude/.pre-impl-done.json",
+    "docs/extracted-data-integrity.md",
     ".gitignore",
-    "scripts/measure_control_quote_gap.py",
-    "tests/test_control_quote_gap.py"
+    ".claude/.pre-impl-done.json"
   ],
   "falsifiable_check": {
-    "command": "python scripts/link_controls_to_provisions.py   # dry-run, writes nothing; plus: python -m pytest tests/test_controls_provision_links.py -q",
-    "fails_when": "Predicted BEFORE the final write: 13 rows updated (10 new links + 3 stale links cleared), 0 skipped by the guard, 42 linked in total afterwards. All matched. It fails if any link is dangling (0; the FK blocks it), crosses to a different council (0), points at a superseded or non-actionable provision (0), if the pre-existing human link on control 3 was changed (it was preserved; provision 98149 is current), or if a linked control's quote is absent from its linked provision text (41 of 42 present; the exception is control 3, whose link a different method made). Re-running plans 0 writes, which is the idempotency check. The suite fails if the matcher links on zero matches, on several matches, or on a quote under 30 characters."
+    "command": "python scripts/validate_control_source_values.py",
+    "passes_when": "every one of the 1,069 controls is either derivable from its own source_text by a named rule, or already listed in scripts/control_source_values_baseline.json",
+    "fails_when": "a control value no named rule derives is not in the baseline - either newly written, or an existing value edited to something its own quote no longer supports",
+    "demonstrated_failing": "three ids removed from the baseline produced 'NEW (not in the baseline): 3' and exit code 1; restoring the baseline returned exit 0",
+    "mutation_evidence": "three mutants injected into the rules, all three killed by tests/test_control_source_values.py: forcing the derived-value tolerance to always match, replacing exact numeric matching with a substring test, and letting the implied-rate rule fire when a numerator was written"
   },
   "pre_impl": {
-    "existing_data": "All 1,069 controls and all 505 provision document_ids read, not sampled. Confirmed from information_schema that provision_id is a nullable integer with a real FK to regulatory_provisions(id), and that dcp_setback_controls.lga is an lga_registry.slug via FK fk_dcp_setback_lga. Heaviest per-council provision fetch (Waverley, 2,965 rows) measured at 0.86s, so no batching is needed. Verified by grep that nothing in the frontend or Python reads provision_id, so no served output can change.",
-    "assumption_mismatch": "The task assumed linking was a matching problem. It is a coverage problem: 14 of 30 control LGAs have ZERO provisions ingested (450 controls) and a further 545 sit in councils whose specific chapter was never ingested, so only 41 of 1,069 are linkable at all. Second: source_council does not consistently hold the slug — only 16 of 30 match exactly, so resolution goes through lga_registry.display_name. Third: restricting candidates to current, actionable provisions IMPROVED the result rather than narrowing it, because it removes superseded duplicates of the same clause — ambiguity fell 23 to 2 and linkable rose 35 to 41. Fourth: the initial post-write verification reported 14 of 35 quotes present because it compared un-normalised SQL text; re-run with the matcher's own normalisation it was 34 of 35. The check was wrong, not the links.",
-    "new_vs_existing": "No existing linker. scripts/validate_controls_provenance.py (#866) classifies provenance but writes nothing; it is extended here to report link coverage rather than duplicated. The safety shape (dry-run default, backup table, per-row optimistic guard, printed rollback, 30s timeout) is copied from scripts/retag_applicability_slug_docids.py and scripts/backfill_invalid_zone_codes.py. The lga -> source_council resolution reuses the lga_registry approach from #854 instead of a new hand-written map.",
-    "external_source_error": "The only external source is the Supabase connection. No DATABASE_URL exits 2 with an explicit 'nothing was checked, which is not a pass' message rather than reporting a clean plan. Any exception during planning or writing is caught, the transaction is rolled back, and the exit code is 2 — so a partial write cannot be mistaken for success. The backup table is created and its row count compared against the plan BEFORE the first UPDATE, and the run aborts if it is smaller. There is no third-party API and no network call beyond the database.",
-    "frontend_type": "None. provision_id is not read anywhere in frontend-nextjs or Python — verified by grep across *.ts, *.tsx and *.py before writing, which is why this write cannot change served output. If it is surfaced later the type is `number | null` at every boundary, because 1,034 of 1,069 rows are legitimately NULL and always will be for councils absent from the corpus; any consumer that assumes a link exists would be wrong for 97% of the table.",
-    "user_failure_mode": "No user-visible failure today, since nothing renders the column. The failure this design guards against is future and severe: if a wrong link were written, a later automated check would compare a control's number against someone else's clause and could report a confident 'this value does not match its source' — or worse, silently confirm a wrong number as verified. That is the fabricated-verdict class from DQ-36 applied to the controls table, which is why only exact single matches link and why 553 rows are deliberately left NULL rather than linked on a best guess."
+    "existing_data": "All 1,069 controls read, not sampled. Confirmed from information_schema that value_min/value_max are numeric (Decimal in psycopg2) and source_text is text. Measured directly: 0 rows have an empty source_text so every row has a quote to check against, 83 rows carry no numeric value at all and need their own state, 50 rows have min != max so both ends need explaining, and there are 18 distinct unit strings dominated by spaces/dwelling 371, m 278 and %% 200. is_current splits 989 current / 80 superseded. One read-only SELECT of 1,069 rows with no join, so no batching and no timeout risk.",
+    "assumption_mismatch": "The remembered figure was '137 rows flagged table-wide'. Re-measured live it is 137 on value_min, 11 on value_max and 142 distinct rows - the original number counted one column. Second and larger mismatch: the task framed the flags as mostly-derivations to be separated from mismatches, which held (961 of 986 are derivable), but the harder problem turned out to be the opposite direction. Two rules were quietly explaining rows on evidence that is not a quantity at all: numbers inside clause references (s4.3.6 explaining a stored 4.3) and numbered-list ordinals (Camden 693, a 2.0 m front setback explained by the '2' of a list item in a clause about front fence height). Closing those returned 6 rows to the finding list. Third: percentage_phrasing measures 0 rows in production - it is reachable and unit-tested, but every real percentage row is a literal match first.",
+    "new_vs_existing": "No existing check compares a control's stored NUMBER to its own quoted source_text. scripts/validate_dcp_setbacks.py covers only the ~280 setback rows and its four signals (CONFLICT, FOREIGN, MAGNITUDE, PLACEHOLDER) never compare value to quote. scripts/validate_controls_provenance.py (#866) classifies provenance from the repo. scripts/link_controls_to_provisions.py (#867) matches quotes against the corpus and is capped at 42 rows by ingestion coverage. scripts/numeric_control_review.py diffs against a re-downloaded PDF. services/extracted_data_integrity.py:value_absent_from_source is the existing flagger and is extended in place, not copied. The baseline-beside-the-script layout, the 0/1/2 exit codes and the shrink-only rule are reused from scripts/validate_schema_contract.py.",
+    "external_source_error": "The only external source is the Supabase connection. No DATABASE_URL exits 2 with an explicit 'nothing was checked, which is not a pass' message rather than reporting a clean run, and both the pre-push step and the CI job treat 2 as a skip and 1 as a failure. An unreadable baseline file also exits 2 rather than being treated as an empty accepted set, because a silently-empty baseline would flag all 25 known rows as new and the natural response to that noise is to regenerate the baseline, which disarms the gate. The script performs no write of any kind.",
+    "frontend_type": "None. This check adds no API surface and no column; it reads dcp_setback_controls and prints. Nothing in frontend-nextjs consumes its output. The states it emits are internal strings compared only against RULE_NAMES, UNEXPLAINED and NO_VALUE_STORED, all exported from the module so a caller cannot drift from a hand-copied literal.",
+    "user_failure_mode": "The user-visible failure this guards against is a served number that its own cited source does not support - a Waverley deep-soil control served as 10%% while the clause quoted beside it reads 'a minimum 50%% of the landscaped area must be deep soil zone'. A professional acting on that number and then reading the quote would find them contradicting each other, which is worse for trust than having no number. The check's own worst failure is the reverse: a rule that explains a row on evidence that is not a quantity removes a real defect from the finding list permanently and silently, which is why every rule must return the substring it matched and why two false-pass channels were closed before this shipped."
   },
   "functions": [
     {
-      "name": "find_single_match",
-      "file_line": "scripts/link_controls_to_provisions.py:132",
-      "input": "a normalised quote and the list of (provision_id, normalised_text) pairs for that council",
-      "output": "the provision id only when exactly one provision contains the quote, plus the raw hit count",
-      "if_none": "returns None for zero matches, for several matches, and for a quote under 30 characters — the caller cannot tell the difference and cannot link on any of them"
+      "name": "explain_value",
+      "file_line": "services/extracted_data_integrity.py:716",
+      "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
+      "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
+      "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
-      "name": "classify",
-      "file_line": "scripts/link_controls_to_provisions.py:144",
-      "input": "the same quote and provision list, for one control",
-      "output": "exactly one outcome name, so the reported counts always sum to the table size",
-      "if_none": "an empty provision list returns council_has_no_provisions, which is deliberately distinct from no_provision_contains_the_quote — that distinction is the finding of this work"
+      "name": "explain_row",
+      "file_line": "services/extracted_data_integrity.py:745",
+      "input": "one control row plus the names of its value columns, its source-text column and its unit column",
+      "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
+      "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
     },
     {
-      "name": "quoted_clause",
-      "file_line": "scripts/link_controls_to_provisions.py:127",
-      "input": "a control's raw source_text, which may carry an appended citation",
-      "output": "the part that should appear verbatim in the provision, lowercased and whitespace-collapsed",
-      "if_none": "None or empty yields an empty string, which fails the length floor and so can never link"
+      "name": "_quantity_spans",
+      "file_line": "services/extracted_data_integrity.py:315",
+      "input": "the raw source text of one control, which may contain clause references and numbered-list markers alongside real quantities",
+      "output": "value and character span for every number that is a quantity, with numbered-list ordinals removed",
+      "if_none": "text with no quantities yields an empty list, so the exact rule finds nothing and the row falls through to the derived rules rather than matching on a citation"
     },
     {
-      "name": "build_plan",
-      "file_line": "scripts/link_controls_to_provisions.py:157",
-      "input": "an open cursor; reads every control and, per council, that council's provisions",
-      "output": "the rows to write plus the full outcome breakdown including rows deliberately left NULL",
-      "if_none": "an empty plan writes nothing, and the script is dry-run by default so a wrong plan cannot reach the database without an explicit flag"
-    },
-    {
-      "name": "longest_run_fraction",
-      "file_line": "scripts/measure_control_quote_gap.py:114",
-      "input": "a control's quote and one provision's word list",
-      "output": "the longest contiguous shared word-run as a fraction of the quote's length — 1.0 when the sentence is present, 0.0 when it is absent",
-      "if_none": "an empty quote or an empty provision returns 0.0 rather than dividing by zero, so a row with nothing to compare reads as absent, never as verbatim"
-    },
-    {
-      "name": "band_for",
-      "file_line": "scripts/measure_control_quote_gap.py:127",
-      "input": "a single run fraction between 0.0 and 1.0, produced by longest_run_fraction for one control against its best candidate provision",
-      "output": "exactly one of four named bands, so every measured row lands in one state",
-      "if_none": "there is no None branch — the final threshold is 0.0, so a fraction always names a band; a collapsed banding function is caught by the test asserting all four are reachable"
-    },
-    {
-      "name": "chapter_tokens",
-      "file_line": "scripts/measure_control_quote_gap.py:108",
-      "input": "either a control's source_chapter_key such as 'chapter-f-dev-category' or a provision's document_id such as 'Inner_West_Ashfield_DCP_2016__chapter_f_dev_category'",
-      "output": "comparable tokens with council name, instrument and year stripped, so the two vocabularies can be tested against each other",
-      "if_none": "None or empty yields an empty set, which is a subset of everything — so measure() branches on the empty case FIRST and records no_chapter_key instead of a false chapter_ingested"
+      "name": "_rate_candidates",
+      "file_line": "services/extracted_data_integrity.py:527",
+      "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
+      "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
+      "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
     }
   ],
   "values": [
     {
-      "value": "dcp_setback_controls.provision_id for 13 rows — 10 set from NULL, 3 cleared to NULL",
-      "read_at": "planning time from the control row, then re-asserted by the UPDATE guard at write time",
-      "if_missing": "the guard is `provision_id IS NOT DISTINCT FROM %s` against the planned previous value; a plain equality guard would skip every row whose previous value is NULL, which is most of them. An earlier version also asserted `AND provision_id IS NULL`, which had to be removed once clearing a stale link required writing over a non-NULL id — a NULL-only guard would have silently skipped exactly the rows that most needed fixing."
+      "value": "the state assigned to each of the 1,069 rows - one of ten named rules, UNEXPLAINED, or no_value_stored",
+      "read_at": "computed per row from value_min, value_max, source_text and unit at check time; nothing is stored back to the database",
+      "if_missing": "a row whose values are all absent becomes no_value_stored, counted separately and reported separately. Folding it into the explained bucket would overstate the pass rate by about 8 percentage points, and 'nothing to check' is not 'checked and fine'."
+    },
+    {
+      "value": "the accepted-unexplained id list in scripts/control_source_values_baseline.json (25 ids)",
+      "read_at": "load time, before any row is compared against it",
+      "if_missing": "a missing file is an empty baseline, which is correct for a fresh clone. An UNREADABLE file exits 2 instead, because treating a corrupt baseline as empty would turn 25 known rows into new failures and invite a regeneration that silently raises the accepted ceiling."
     }
   ],
   "queries": [
     {
-      "purpose": "read one council's provisions so a control's quote can be matched against them",
-      "file_line": "scripts/link_controls_to_provisions.py:160",
-      "where_clause": "WHERE p.is_current AND p.v2_is_actionable AND (p.source_council = %s OR lower(p.source_council) = lower(r.display_name) OR lower(replace(p.source_council,' ','_')) = %s), joined to lga_registry with r.is_active. The currency filter is required, not optional: without it the first run linked 3 controls to a superseded provision. All three council forms are needed because only 16 of 30 control LGAs match source_council exactly. Scoped to one council per execution, so a control can never match another council's clause — verified post-write with 0 cross-council links. The UPDATE is separately scoped WHERE id = %s AND provision_id IS NOT DISTINCT FROM the planned previous value."
+      "purpose": "Read every control with the quoted source_text its number was taken from, so each stored value can be checked against its own sentence rather than against the provisions corpus.",
+      "file_line": "scripts/validate_control_source_values.py:fetch_rows",
+      "where_clause": "None, deliberately: is_current is SELECTED and its split reported (989 current / 80 superseded) rather than filtered, because filtering would shrink the denominator away from DQ-38's 1,069 and stop this script reconciling with link_controls_to_provisions.py. Read-only, 60s timeout."
     }
   ],
   "break_it": [
     {
-      "scenario": "A control is linked to the nearest or best-scoring provision, so a later check compares its number against the wrong clause and reports a confident false verdict.",
-      "what_happens": "Only an exact single substring match links. Zero matches, several matches and a too-short quote all return None, and each is reported as its own outcome rather than being quietly rounded into a link.",
+      "scenario": "A stored value equals a number that is part of a clause reference in its own quote, for example a control storing 4.3 whose source_text opens with the citation 's4.3.6'.",
+      "what_happens": "The exact-match rule reports the row as verified on the strength of its own citation, and the row leaves the finding list permanently even though nothing in the clause supports the number.",
       "mitigated": true,
-      "how": "Substring containment, not similarity — there is no score and no threshold. Three tests drive the refusal directions independently.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k RefusesWhenItCannotBeSure -q"
+      "how": "The number token carries lookarounds that reject any digit run preceded by a word character or a dot, so 's4.3.6' and 'DS9.2' yield no quantities at all. Closing this cost 5 rows their explanation.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_clause_reference_does_not_explain_a_value -q"
     },
     {
-      "scenario": "The run overwrites a human-made link with a machine guess.",
-      "what_happens": "It would have. The dry run showed control 3 (already pointing at provision 98149) being re-pointed to 97850, because the same clause exists as more than one provision row. Found by inspecting the plan for non-NULL previous values before applying.",
+      "scenario": "A stored value equals a numbered-list ordinal in its own quote - Camden control 693 stores a 2.0 m front setback against a clause about front FENCE height whose second list item begins '2.'.",
+      "what_happens": "The row reads as an exact match, so a setback taken from a fencing clause is presented as verified against its source.",
       "mitigated": true,
-      "how": "PRESERVE_EXISTING_LINKS keeps the human's link and counts the disagreement, and the UPDATE carries AND provision_id IS NULL so even a stale plan cannot clobber one. Verified post-write: control 3 still points at 98149.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k ExistingLinks -q"
+      "how": "_quantity_spans drops any number that begins a line or table cell and is followed by a dot and a word. This was live, not hypothetical: it hid control 693 until the exclusion was added.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numbered_list_ordinal_does_not_explain_a_value -q"
     },
     {
-      "scenario": "Every row fails to match because the extractor's appended citation is not in the provision text, making the ceiling look far worse than it is.",
-      "what_happens": "The trailing citation is stripped before matching. Without that the linkable count collapses and the wrong conclusion gets drawn about corpus coverage.",
+      "scenario": "The text says '2 spaces per 5 dwellings' and the row stores 0.2 rather than 0.4, so the implied-unity rate rule could derive 1/5 and call it explained.",
+      "what_happens": "A value the quote plainly contradicts is reported as derived from that quote, which is the precise failure the whole check exists to prevent.",
       "mitigated": true,
-      "how": "A non-citation parenthetical is deliberately KEPT, so stripping cannot widen matching and link something wrong — under-match rather than over-strip.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k citation -q"
+      "how": "The implied-unity rule refuses to fire when any number or written numeral appears in the lead-in to the rate, and a test asserts that exact case stays UNEXPLAINED.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_refuses_when_a_numerator_was_written -q"
     },
     {
-      "scenario": "The council resolution silently matches nothing, so every control is reported as unlinkable and the ceiling is blamed on ingestion when it is really a join bug.",
-      "what_happens": "Caught in the pre-impl audit: only 16 of 30 lga slugs equal source_council, so a single-form join would have reported 30 of 30 councils as empty. Resolution goes through lga_registry.display_name.",
+      "scenario": "A percentage rule divides an arbitrary number in the text by 100 until something matches the stored value, for example reaching a stored 35 from a quoted floor area of 3500 square metres.",
+      "what_happens": "An arithmetic coincidence between two unrelated numbers is presented as provenance for the stored value.",
       "mitigated": true,
-      "how": "council_has_no_provisions is counted separately from no_provision_contains_the_quote, so a join bug would show as ALL councils empty rather than hiding inside a single number.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k no_provisions -q"
+      "how": "The percentage rule matches only numbers immediately followed by a literal '%' or the words 'per cent', so no bare number can be scaled into an explanation.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_bare_number_is_never_read_as_a_percentage -q"
     },
     {
-      "scenario": "A link points at a provision belonging to a different council.",
-      "what_happens": "Structurally impossible — provisions are fetched per council and matched only within that set. Verified anyway after the write: 0 cross-council links, 0 dangling links.",
+      "scenario": "City of Sydney control 883 stores a front setback of 0 against a quote reading 'where no front setback is shown on the map', and a nil-phrase rule treats the phrase as a control of zero.",
+      "what_happens": "A sentence about the map being silent is converted into a numeric control, inventing a requirement the DCP never made.",
       "mitigated": true,
-      "how": "The FK to regulatory_provisions(id) additionally makes a dangling id impossible at the database level.",
-      "repro": "see DQ-38 in .claude/DATA_QUALITY_TRACKER.md for the verification queries"
+      "how": "The nil rule requires the word 'required' after the nil phrase, so 'no additional parking is required' matches and 'no front setback is shown' does not. A test pins both directions.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_map_being_silent_is_not_a_control_of_zero -q"
     },
     {
-      "scenario": "Link coverage becomes a gate, so pushes fail because a council was never ingested rather than because anything is broken.",
-      "what_happens": "Coverage is advisory in validate_controls_provenance.py and never affects an exit code. 450 controls belong to councils with no provisions at all, so requiring a link would fail on absent corpus.",
+      "scenario": "The number-token lookahead is written too tightly and rejects a number that ends a sentence, such as the 3 in 'Maximum: up to 3.'",
+      "what_happens": "Correct rows lose their explanation and appear in the finding list, which trains a reader to dismiss the list - the same failure as a list full of false positives, in reverse.",
       "mitigated": true,
-      "how": "The exit code still depends solely on the unverifiable count from #866.",
-      "repro": "python scripts/validate_controls_provenance.py --quiet   # exit 0 with 35 of 1069 linked"
+      "how": "The lookahead rejects only a dot followed by a digit, and a regression test asserts a sentence-final number still matches exactly.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_number_at_the_end_of_a_sentence_still_matches -q"
     },
     {
-      "scenario": "The post-write verification passes vacuously and nobody notices the links are wrong.",
-      "what_happens": "The first verification query reported only 14 of 35 quotes present, which looked like 21 bad links. It compared un-normalised SQL text while the matcher normalises whitespace; re-run correctly it is 34 of 35. The verification was wrong, not the links.",
+      "scenario": "A control stores a range where one end is quoted and the other is not, for example City of Sydney 885 storing min 3 and max 8 against a qualitative clause about rear building lines.",
+      "what_happens": "Reporting the row on its explained end alone would present a range as verified when its upper bound came from nowhere.",
       "mitigated": true,
-      "how": "The check now reuses the script's own normalise() and quoted_clause() so it tests the same question the write answered.",
-      "repro": "the discrepancy and its resolution are recorded in DQ-38"
+      "how": "explain_row marks the whole row UNEXPLAINED if any stored end is unexplained, and reports the most-derived rule when all ends pass so a row cannot present as a stronger match than it earned.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_both_ends_of_a_range_must_be_explained -q"
     },
     {
-      "scenario": "A control is linked to a SUPERSEDED clause, so a later automated check compares a live number against withdrawn text.",
-      "what_happens": "It happened. The first run wrote 3 links to Marrickville provision 102098 (is_current=False) because the candidate set was not filtered. Found by measuring link currency after the write rather than assuming it.",
+      "scenario": "The baseline file is corrupted or truncated to an empty list while the 25 known unexplained rows are still present.",
+      "what_happens": "Every pre-existing row reads as new, the gate fails loudly on work nobody did, and the natural response is to regenerate the baseline - which silently disarms the gate.",
       "mitigated": true,
-      "how": "The candidate query now requires p.is_current AND p.v2_is_actionable, and any existing link pointing outside that set is re-pointed or cleared. Verified post-write: 0 links to a superseded provision.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k current_and_actionable -q"
+      "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set.",
+      "repro": "printf 'not json' > scripts/control_source_values_baseline.json && python scripts/validate_control_source_values.py; echo $?  # expect 2, then restore with git checkout scripts/control_source_values_baseline.json"
     },
     {
-      "scenario": "A stale link is silently RETAINED because the row no longer matches anything current.",
-      "what_happens": "It would have. Staleness was only handled inside the `linkable` branch, and all 3 affected rows fell into no_provision_contains_the_quote instead — so the repair pass skipped precisely the rows it existed to fix.",
+      "scenario": "The stored-unit map covers only six literal strings, so the largest unit group in the table falls outside it and the unit guard never fires for those rows.",
+      "what_happens": "A row whose column says spaces/dwelling is treated as having an unknown unit, so a quote mentioning only '3 hours of sunlight' explains a stored parking rate of 3. That is over 450 rows.",
       "mitigated": true,
-      "how": "Staleness is now tested BEFORE the outcome branch, and a stale link with no current match is CLEARED rather than kept. Verified: controls 1, 2 and 6 are now NULL.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k StaleLinks -q"
+      "how": "The stored unit resolves by prefix as well as exact match: anything starting '%' is a ratio and anything containing 'spaces/' is a rate. rate and count stay compatible so '2 spaces per dwelling' still explains a spaces/dwelling value.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k parking_column -q"
     },
     {
-      "scenario": "The backup does not cover the rows about to change, so the printed rollback cannot undo the run.",
-      "what_happens": "It did not. CREATE TABLE IF NOT EXISTS kept the earlier run's table and the count check passed spuriously — 34 >= 13, while covering none of the 10 new rows.",
+      "scenario": "The unit guard is applied to exact matching only, so every other rule can still explain a value from a quantity the text says measures something else.",
+      "what_happens": "written_numeral explains a 3 metre setback from 'three hours of sunlight'; percentage_phrasing explains a 0.35 metre setback from 'Minimum 35% landscaped area'; unit_conversion explains a 0.9 square metre value from a quoted 900mm.",
       "mitigated": true,
-      "how": "The guard now asserts every planned id is present in the backup, not just a row count. Demonstrated firing before the real run: '10 planned rows missing', abort before any UPDATE.",
-      "repro": "python -m pytest tests/test_controls_provision_links.py -k COVERAGE -q"
+      "how": "written_numeral carries the same family check, percentage_phrasing is gated on a ratio column and unit_conversion on a length column; an unlabelled column is refused rather than assumed to be metres.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"percentage_does_not_explain_a_length or convert_into_an_area\" -q"
+    },
+    {
+      "scenario": "The lead-in to a rate is truncated at any full stop, which also splits a decimal numerator.",
+      "what_happens": "'0.5 spaces per 4 dwellings' leaves '5 spaces' as the lead, so the rule derives 5/4 and a stored 1.25 passes against a quote that states 0.125.",
+      "mitigated": true,
+      "how": "The break pattern ignores a full stop sitting between two digits, so 0.5 survives while genuine sentence and table-cell breaks still end the lead.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_decimal_numerator_survives_the_sentence_break_cut -q"
+    },
+    {
+      "scenario": "A stored WHOLE number receives half a unit of rounding slack, because half of its last decimal place is 0.5.",
+      "what_happens": "A quoted '24 spaces per 25 dwellings' derives 0.96 and explains a stored 1, so a rate somebody rounded by judgement reads as a derivation the text states.",
+      "mitigated": true,
+      "how": "A whole-number stored value must match its derivation exactly. Measured first: all five whole-number derived rows are exact products such as 3m x 3m equals 9.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_whole_number_must_match_its_derivation_exactly -q"
+    },
+    {
+      "scenario": "The rate and fraction rules carry no column gate, so a parking rate or a landscaping fraction in the quote can explain a value stored in metres when the wrong source_text was attached to a row.",
+      "what_happens": "'1 visitor space per 4 dwellings' explains a stored 0.25 metre setback, so a setback with no support at all reads as derived from its source.",
+      "mitigated": true,
+      "how": "Both rate rules and the fraction rule refuse a length, area or time column. Measured first: 0 of the 90 rate-explained rows sit on such a column.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"parking_rate_does_not_explain_a_setback or fraction_does_not_explain_a_setback\" -q"
+    },
+    {
+      "scenario": "A Postgres numeric column holds NaN, and every floating point comparison against NaN evaluates False.",
+      "what_happens": "The exact rule's own 'skip when not equal' test is False for NaN, so the row falls through the skip and is returned as an exact match rather than a finding.",
+      "mitigated": true,
+      "how": "explain_value rejects NaN and infinity before any rule runs, returning UNEXPLAINED so a non-finite stored value can never read as supported.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_nan_and_infinity_are_findings_not_matches -q"
+    },
+    {
+      "scenario": "A clause label separated from its number by a space is treated as a quantity, because the number-token guard only rejects a label glued on such as s4.3.6.",
+      "what_happens": "'Clause 4.3: minimum setback is 6m' explains a stored 4.3, so the citation vouches for the very value it is supposed to be evidence against.",
+      "mitigated": true,
+      "how": "Clause, Part, Table, Control, Figure, Objective and eleven more labels are excluded from quantity matching, alongside numbered-list ordinals.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"spaced_clause_label or every_citation_label\" -q"
+    },
+    {
+      "scenario": "The written-numeral unit guard inspects the text position immediately after the numeral, which is not where the noun is when a word sits between them.",
+      "what_happens": "'a minimum of three full hours of sunlight' puts 'full' where the unit scan looks, so no conflict is detected and a 3 metre setback is explained by a sunlight requirement.",
+      "mitigated": true,
+      "how": "The guard reads the noun the rule itself captured rather than rescanning the text, so an intervening adjective cannot hide the conflict.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_word_between_the_numeral_and_its_noun_does_not_defeat_the_guard -q"
+    },
+    {
+      "scenario": "The implied-unity rate rule assumes a numerator of one whenever no number precedes the rate, even when the quote states no quantity at all.",
+      "what_happens": "'Visitor parking must be considered for every 4 dwellings' yields 1/4 and explains a stored 0.25, inventing the numerator outright.",
+      "mitigated": true,
+      "how": "The implied one must be written as something: an indefinite article followed within four words by a counted noun, as in 'an additional car parking space for every 4 dwellings'.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_the_implied_one_must_actually_be_written_as_something -q"
+    },
+    {
+      "scenario": "A migration NULLs the value of a control that previously carried one, so the row moves into the no_value_stored state.",
+      "what_happens": "The row leaves the checked population entirely and CI passes, even though a served number has silently disappeared - the check cannot tell an intentional blank from a lost value.",
+      "mitigated": true,
+      "how": "The count of valueless rows is ratcheted in the baseline at 83 and a rise fails with exit 1, so blanks have to be confirmed deliberately.",
+      "repro": "Set valueless_rows to 80 in scripts/control_source_values_baseline.json, run python scripts/validate_control_source_values.py and confirm exit 1, then git checkout the baseline"
     }
   ],
   "post_merge": {
-    "db_reset": "Already applied in two runs. Final state: 42 linked of 1,069. The second run wrote 13 rows (10 new links, 3 stale links cleared), 0 skipped. Backups: dcp_setback_controls_provlink_backup_20260802b (13 rows, this run) and dcp_setback_controls_provlink_backup_20260802 (34 rows, restores the pre-any-change state). Rollback SQL is printed by the script and recorded in DQ-38.",
-    "secrets": "None.",
+    "db_reset": "No database write of any kind - this check is read-only, so there is nothing to roll back. The 25 baselined rows are real data defects and are NOT fixed here; each needs a ruling against the source PDF. Take the four Waverley deep-soil rows first (631, 632 store 10%% and 635, 636 store 15%% against a quote saying 50%%), then the three Cumberland setbacks (31, 32 front 4.0/5.5 m and 30 rear 8.0 m against a table whose only front figure is 'Minimum 6m').",
+    "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
     "other_repo": "None.",
-    "manual_verify": "Run `python scripts/validate_controls_provenance.py` and confirm 534 / 535 / 0 with exit 0 plus 'machine-checkable (linked to a provision): 42'. Then run `python scripts/link_controls_to_provisions.py` and confirm 41 linkable, 41 already correct and 0 rows to write — that is the idempotency check."
+    "manual_verify": "Run `python scripts/validate_control_source_values.py` and confirm 1,069 rows across exhaustive states, 961 of 986 derivable, 25 unexplained, 0 NEW, exit 0. Then prove it can fail: delete three ids from scripts/control_source_values_baseline.json, re-run, and confirm 'NEW (not in the baseline): 3' with exit 1 before restoring the file. Add --show-evidence to audit the substring each derived row matched rather than trusting the rule name.",
+    "watch": "The baseline is shrink-only and content-addressed, and the valueless-row count is ratcheted alongside it. If a future PR raises either, the reason belongs in the PR body. Seven rounds of adversarial review each returned real findings while the count of DATA findings never moved off 25 - that is where the hardening stopped, because the remaining suggestions harden a check that no longer changes its answer. The known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching."
   }
 }
