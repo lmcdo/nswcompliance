@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "A production write to the table that is the product's differentiator, and the direction of risk is asymmetric: a WRONG link would let a later automated check compare a number against someone else's clause and report a confident false verdict, which is worse than the current state of no link at all. Small in row count (34) but it establishes a relationship other code will trust.",
-  "commit_hash": "0c57b1b5",
+  "commit_hash": "23d370ff",
   "files": [
     "scripts/link_controls_to_provisions.py",
     "tests/test_controls_provision_links.py",

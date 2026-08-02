@@ -307,6 +307,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
             return 2
 
         written = 0
+        skipped: list[int] = []
         for control_id, provision_id, previous in plan:
             # Optimistic-concurrency guard. IS NOT DISTINCT FROM, not `=`: the
             # previous value is almost always NULL here and `NULL = NULL` is NULL,
@@ -317,12 +318,27 @@ def main() -> int:  # pragma: no cover - CLI entry point
                    WHERE id = %s AND provision_id IS NOT DISTINCT FROM %s""",
                 (provision_id, control_id, previous),
             )
-            written += cur.rowcount
+            if cur.rowcount:
+                written += cur.rowcount
+            else:
+                skipped.append(control_id)
         conn.commit()
-        print(f"  updated {written:,} rows "
-              f"({len(plan) - written:,} skipped by the guard)")
+        print(f"  updated {written:,} rows ({len(skipped):,} skipped by the guard)")
         print(f"\nROLLBACK:\n  UPDATE dcp_setback_controls t SET provision_id = "
               f"b.provision_id FROM {args.backup_table} b WHERE t.id = b.id;")
+        if skipped:
+            # A partial apply used to print the skip count and still exit 0, so a
+            # scheduled re-run would report success having done half the repair.
+            # It exits 2 instead. The successful UPDATEs are NOT rolled back: each
+            # one is independently correct, and discarding correct links to punish
+            # an unrelated concurrent edit would lose real work. The plan is stale,
+            # not wrong — re-running rebuilds it against current values.
+            print(f"\nPARTIAL APPLY: {len(skipped)} of {len(plan)} planned rows were "
+                  f"skipped because their provision_id changed after planning — "
+                  f"controls {skipped}. The {written} writes that succeeded stand "
+                  f"and are correct; re-run to rebuild the plan for the rest. "
+                  f"Exiting 2 so this is not read as a clean run.", file=sys.stderr)
+            return 2
         return 0
     except Exception as exc:  # noqa: BLE001
         conn.rollback()
