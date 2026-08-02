@@ -234,6 +234,11 @@ _RATE_TAIL_RE = re.compile(
 # external additional visitor car parking space shall be provided for every ...".
 _RATE_LOOKBACK_CHARS = 80
 
+# What ends the lead-in to a rate. A full stop counts only when it is NOT between
+# two digits, so "0.5 spaces per 4 dwellings" keeps its 0.5 instead of being cut
+# down to "5 spaces".
+_LEAD_BREAK_RE = re.compile(r"(?<!\d)\.(?!\d)|[;|\n]")
+
 # A number or written numeral, for scanning the lead-in text of a rate.
 _ANY_NUMBER_RE = re.compile(rf"{_NUMBER_TOKEN}|\b(?:{_WORD_NUMBER_ALT})\b", re.I)
 
@@ -359,8 +364,30 @@ _UNIT_FAMILY = {
     "bed": "count", "beds": "count", "bedroom": "count", "bedrooms": "count",
     "tree": "count", "trees": "count",
 }
-_STORED_UNIT_FAMILY = {"m": "length", "m2": "area", "m²": "area", "%": "ratio",
-                       "hours": "time", "storeys": "count"}
+_STORED_UNIT_EXACT = {"m": "length", "m2": "area", "sqm": "area",
+                      "hours": "time", "storeys": "count"}
+
+
+def stored_family(unit) -> Optional[str]:
+    """Which KIND of thing the row's own column measures, or None if unknown.
+
+    Prefix rules because the column is free text: every real value is one of
+    'm', 'm2', 'hours', 'storeys', something starting '%' (200+ rows, including
+    '% of landscaped area' and '% impervious'), or something containing
+    'spaces/' (450+ rows across spaces/dwelling, visitor_spaces/dwelling,
+    spaces/room, spaces/bed and five more). Leaving those unrecognised is what
+    let a 'spaces/dwelling' row be explained by '3 hours of sunlight'.
+    """
+    text = (unit or "").strip().lower()
+    if not text:
+        return None
+    if text in _STORED_UNIT_EXACT:
+        return _STORED_UNIT_EXACT[text]
+    if text.startswith("%"):
+        return "ratio"
+    if "spaces/" in text or text.startswith("spaces"):
+        return "rate"
+    return None
 
 
 def _family_conflict(source: str, end: int, unit) -> bool:
@@ -370,15 +397,23 @@ def _family_conflict(source: str, end: int, unit) -> bool:
     this does not recognise, is never rejected on these grounds. Rejecting on a
     guess would manufacture findings, which is the mirror of the failure the rule
     exists to prevent.
+
+    'rate' is deliberately compatible with 'count': a `spaces/dwelling` value is
+    genuinely written as "1 space per 4 dwellings", so counted nouns beside it are
+    the expected phrasing, not a conflict.
     """
-    stored_family = _STORED_UNIT_FAMILY.get((unit or "").strip())
-    if not stored_family:
+    family = stored_family(unit)
+    if not family:
         return False
     match = _TRAILING_UNIT_RE.match(source, end)
     if not match:
         return False
     text_family = _UNIT_FAMILY.get(re.sub(r"\s+", " ", match.group(1).lower()))
-    return bool(text_family) and text_family != stored_family
+    if not text_family:
+        return False
+    if {family, text_family} == {"rate", "count"}:
+        return False
+    return text_family != family
 
 
 def _rule_exact_digit_match(value: float, source: str, unit) -> Optional[str]:
@@ -405,7 +440,12 @@ def _rule_percentage_phrasing(value: float, source: str, unit) -> Optional[str]:
     Only that direction. Multiplying a quoted percentage BY 100 was also accepted
     once, which let a stored 3500 be "explained" by a quoted 35% — nobody stores a
     percentage that way, and the rule existed only to manufacture matches.
+
+    Gated on the stored column measuring a ratio (or being unlabelled): without
+    that, a quoted "Minimum 35% landscaped area" explained a 0.35 METRE setback.
     """
+    if stored_family(unit) not in (None, "ratio"):
+        return None
     for token in _PERCENT_RE.findall(source):
         pct = _as_float(token)
         if pct is None:
@@ -418,12 +458,16 @@ def _rule_percentage_phrasing(value: float, source: str, unit) -> Optional[str]:
 def _rule_unit_conversion(value: float, source: str, unit) -> Optional[str]:
     """A length quoted in mm or cm and stored in metres (or the reverse).
 
-    Only fires when the stored unit is metres or unrecorded — converting a value
-    whose column says 'spaces/dwelling' would be nonsense. One direction only:
-    dividing BY the factor was also accepted once, so a quoted "0.9mm" explained a
-    stored 900 m. Nothing is ever quoted in millimetres and stored in kilometres.
+    LENGTH only. 'm2' was allowed too, so a quoted "900mm" explained a 0.9 square
+    metre value — a different kind of thing. An unlabelled unit is also refused
+    here rather than assumed to be metres, because a conversion is a claim about
+    what the number measures and 49 rows carry no unit at all.
+
+    One direction only: dividing BY the factor was accepted once, so a quoted
+    "0.9mm" explained a stored 900 m. Nothing is quoted in millimetres and stored
+    in kilometres.
     """
-    if unit not in (None, "", "m", "m2"):
+    if stored_family(unit) != "length":
         return None
     for token, raw_unit in _LENGTH_RE.findall(source):
         parsed = _as_float(token)
@@ -451,11 +495,13 @@ def _rate_candidates(source: str):
         start = max(0, match.start() - _RATE_LOOKBACK_CHARS)
         lead = source[start:match.start()]
         # A sentence or table-cell break ends the lead: a number on the other side
-        # of it belongs to a different control.
-        for separator in (".", ";", "|", "\n"):
-            cut = lead.rfind(separator)
-            if cut != -1:
-                lead = lead[cut + 1:]
+        # of it belongs to a different control. Cutting on a bare "." also split
+        # DECIMALS — "0.5 spaces per 4 dwellings" left "5 spaces" as the lead and
+        # produced 5/4, so a stored 1.25 passed against a quote stating 0.125.
+        cut = _LEAD_BREAK_RE.search(lead)
+        while cut:
+            lead = lead[cut.end():]
+            cut = _LEAD_BREAK_RE.search(lead)
         numerators = _ANY_NUMBER_RE.findall(lead)
         if not numerators:
             yield None, b, match.group(0).strip(), lead
@@ -553,8 +599,14 @@ def _rule_written_numeral(value: float, source: str, unit) -> Optional[str]:
     """
     for match in _COUNTED_NUMERAL_RE.finditer(source):
         parsed = _WORD_NUMBERS[match.group("word").lower()]
-        if abs(parsed - value) <= _EXACT_TOL:
-            return f"written numeral in {match.group(0).strip()!r}"
+        if abs(parsed - value) > _EXACT_TOL:
+            continue
+        # Same guard the exact rule carries: "a minimum of three hours of
+        # sunlight" must not explain a 3 metre setback just because it spells
+        # the number out instead of writing it.
+        if _family_conflict(source, match.end("word"), unit):
+            continue
+        return f"written numeral in {match.group(0).strip()!r}"
     return None
 
 

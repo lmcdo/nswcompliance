@@ -77,11 +77,24 @@ class TestExactDigitMatch:
         assert rule_of(3, "a minimum of 3 hours of sunlight to living areas", "m") \
             == UNEXPLAINED
 
-    def test_the_unit_check_only_fires_when_both_sides_are_known(self):
-        # An unlabelled number, or a stored unit the map does not know, must NOT
-        # be rejected — inventing findings is the mirror of inventing passes.
+    def test_an_unlabelled_quantity_is_never_rejected_on_a_guess(self):
+        # The guard needs BOTH sides. A number the text does not label must still
+        # match — inventing findings is the mirror of inventing passes.
         assert rule_of(3, "a minimum of 3 to the boundary", "m") == "exact_digit_match"
-        assert rule_of(3, "a minimum of 3 hours", "spaces/dwelling") \
+        assert rule_of(3, "a minimum of 3 in total", None) == "exact_digit_match"
+
+    def test_a_parking_column_is_recognised_and_rejects_a_time_quantity(self):
+        # 'spaces/dwelling' used to fall outside the stored-unit map, so it was
+        # treated as unknown and a quote about hours explained a parking rate.
+        # 450+ rows carry a 'spaces/...' unit, so this was the largest blind spot.
+        assert rule_of(3, "a minimum of 3 hours of sunlight", "spaces/dwelling") \
+            == UNEXPLAINED
+
+    def test_a_parking_column_still_accepts_counted_nouns(self):
+        # 'rate' and 'count' are deliberately compatible: a spaces/dwelling value
+        # is genuinely written as "2 spaces per dwelling", so a counted noun beside
+        # it is the expected phrasing, not a conflict.
+        assert rule_of(2, "2 spaces per dwelling are required", "spaces/dwelling") \
             == "exact_digit_match"
 
     def test_a_matching_unit_family_still_explains_the_value(self):
@@ -96,8 +109,13 @@ class TestExactDigitMatch:
 
 class TestPercentagePhrasing:
     def test_a_percentage_stored_as_a_fraction(self):
-        assert rule_of(0.35, "Minimum 35% of the site as landscaped area") \
+        assert rule_of(0.35, "Minimum 35% of the site as landscaped area", "%") \
             == "percentage_phrasing"
+
+    def test_a_percentage_does_not_explain_a_length(self):
+        # Without a unit gate, "Minimum 35% landscaped area" explained a 0.35
+        # METRE setback — the arithmetic works and the meaning does not.
+        assert rule_of(0.35, "Minimum 35% landscaped area", "m") == UNEXPLAINED
 
     def test_a_percentage_stored_as_written_takes_the_exact_rule_first(self):
         # Ordering matters: this is a literal match, not a conversion, and the
@@ -128,6 +146,16 @@ class TestUnitConversion:
 
     def test_a_bare_number_is_not_treated_as_millimetres(self):
         assert rule_of(0.9, "control 900 applies to this lot", "m") == UNEXPLAINED
+
+    def test_it_does_not_convert_into_an_area_column(self):
+        # 'm2' was allowed alongside 'm', so a quoted 900mm explained a 0.9 SQUARE
+        # metre value — a different kind of thing.
+        assert rule_of(0.9, "a setback of 900mm applies", "m2") == UNEXPLAINED
+
+    def test_it_does_not_convert_into_an_unlabelled_column(self):
+        # A conversion is a claim about what the number measures; 49 rows carry no
+        # unit, and assuming metres for them would be that claim made up.
+        assert rule_of(0.9, "a setback of 900mm applies", None) == UNEXPLAINED
 
     def test_it_converts_in_one_direction_only(self):
         # Dividing BY the factor was also accepted once, so a quoted "0.9mm"
@@ -174,6 +202,15 @@ class TestRatioOrRate:
     def test_a_number_across_a_sentence_break_is_not_a_numerator(self):
         assert rule_of(0.5, "A total of 2 storeys. Parking per 4 dwellings applies") \
             == UNEXPLAINED
+
+    def test_a_decimal_numerator_survives_the_sentence_break_cut(self):
+        # Cutting the lead-in on a bare "." split decimals: "0.5 spaces per 4
+        # dwellings" left "5 spaces" and produced 5/4, so a stored 1.25 passed
+        # against a quote stating 0.125.
+        assert rule_of(1.25, "0.5 spaces per 4 dwellings", "spaces/dwelling") \
+            == UNEXPLAINED
+        assert rule_of(0.125, "0.5 spaces per 4 dwellings", "spaces/dwelling") \
+            == "ratio_or_rate"
 
     def test_a_rate_is_not_assembled_from_two_unrelated_clauses(self):
         # Offering every number in the lead-in as a numerator let 6/4 explain a

@@ -209,9 +209,25 @@ Five further holes found in adversarial review and closed:
   stored 900 m. One direction only now.
 - a matched quantity whose text says it measures something else explained a value
   anyway — *"a minimum of 3 hours of sunlight"* explained a **3 metre** setback.
-  A trailing unit in a different family (length / area / ratio / time / count) now
-  disqualifies the match, and only when BOTH sides are known, so an unlabelled
-  number is never rejected on a guess.
+  A trailing unit in a different family (length / area / ratio / time / count /
+  rate) now disqualifies the match, and only when BOTH sides are known, so an
+  unlabelled number is never rejected on a guess.
+- **the unit guard existed in one rule and its stored-unit map covered 6 strings.**
+  `spaces/dwelling` and its eight siblings — **450+ rows, the largest unit group in
+  the table** — fell outside it, so those rows were treated as "unknown unit" and
+  the guard never fired for them. The map now resolves by prefix (`%…` → ratio,
+  `spaces/…` → rate), and the guard is applied in `written_numeral` too, not only
+  in exact matching. `percentage_phrasing` is gated on a ratio column (a quoted
+  35% was explaining a 0.35 **metre** setback) and `unit_conversion` on a length
+  column (it also accepted `m2` and unlabelled columns).
+- the lead-in to a rate was cut on any `.`, **which split decimals**:
+  *"0.5 spaces per 4 dwellings"* left `5 spaces` and produced 5/4, so a stored
+  1.25 passed against a quote stating 0.125. The cut now ignores a full stop
+  between two digits.
+
+None of these eleven changed the finding count — it stayed at 25 throughout —
+which is the point: they closed paths by which a *future* wrong value would have
+passed, not paths that were hiding current ones.
 
 ### Why this check can fail
 Two ways: a NEW unexplained row fails against the baseline, and a value edited to
