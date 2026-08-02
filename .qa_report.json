@@ -1,118 +1,147 @@
 {
-  "tier": "standard",
-  "justification": "Read-only. No migration, no production write, no change to served output. It adds a standing gate and corrects a published number in the retrospective. Standard rather than critical because nothing it does can alter what a customer is shown; the risk is a gate that passes vacuously, which is what the tests target.",
-  "commit_hash": "b6dbc113",
+  "tier": "critical",
+  "justification": "A production write to the table that is the product's differentiator, and the direction of risk is asymmetric: a WRONG link would let a later automated check compare a number against someone else's clause and report a confident false verdict, which is worse than the current state of no link at all. Small in row count (34) but it establishes a relationship other code will trust.",
+  "commit_hash": "26f1a544",
   "files": [
+    "scripts/link_controls_to_provisions.py",
+    "tests/test_controls_provision_links.py",
     "scripts/validate_controls_provenance.py",
-    "tests/test_controls_provenance.py",
-    ".claude/hooks/gitignore-trap-guard.py",
-    ".claude/settings.json",
-    ".githooks/pre-push",
-    ".github/workflows/gates.yml",
     ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/.pre-impl-done.json",
     ".gitignore"
   ],
   "falsifiable_check": {
-    "command": "python scripts/validate_controls_provenance.py  # plus: python -m pytest tests/test_controls_provenance.py -q",
-    "fails_when": "Exit 1 if any dcp_setback_controls row is `unverifiable` — no committed script regenerates it AND it lacks source_text + section_ref. Exit 2 if it could not run (no DATABASE_URL, empty table, no writer files found), because nothing verified is not a pass. Predicted BEFORE running: reproducible 534, traceable 535, unverifiable 0. Actual matched exactly. Both failure exits were demonstrated live: exit 2 against an empty writer tree, and exit 1 over a synthetic row carrying no provenance."
+    "command": "python scripts/link_controls_to_provisions.py   # dry-run, writes nothing; plus: python -m pytest tests/test_controls_provision_links.py -q",
+    "fails_when": "Predicted BEFORE the final write: 13 rows updated (10 new links + 3 stale links cleared), 0 skipped by the guard, 42 linked in total afterwards. All matched. It fails if any link is dangling (0; the FK blocks it), crosses to a different council (0), points at a superseded or non-actionable provision (0), if the pre-existing human link on control 3 was changed (it was preserved; provision 98149 is current), or if a linked control's quote is absent from its linked provision text (41 of 42 present; the exception is control 3, whose link a different method made). Re-running plans 0 writes, which is the idempotency check. The suite fails if the matcher links on zero matches, on several matches, or on a quote under 30 characters."
   },
   "pre_impl": {
-    "existing_data": "All 1,069 rows read, not sampled. Column list taken from information_schema (the table uses `lga`, `value_min`/`value_max` — not `council`/`value_m`). Measured: all 382 manual rows carry source_text AND section_ref, 0 orphaned; provision_id populated on 1 row of 1,069 table-wide; pdf_page 185, last_verified_at 972, source_chapter_key 1,069.",
-    "assumption_mismatch": "Two. (1) The brief expected a traceable/partial/orphaned split among the 382 with orphans to chase; there are none, so that job does not exist. (2) The premise that extraction_method identifies hand-made rows is false — 330 pipeline-labelled rows have no committed literal and 177 manual-labelled rows do, so the honest split is 534/535, worse than the 36% the retrospective published. Separately, services/extracted_data_integrity.value_absent_from_source flags 49 manual rows, but reading them shows unit and ratio derivations ('900mm' -> 0.9, '1 space per 3 dwellings' -> 0.333), not fabrications, so they are NOT reported as untraceable.",
-    "new_vs_existing": "Extends rather than duplicates. services/extracted_data_integrity.py checks whether a VALUE is right; scripts/validate_dcp_setbacks.py checks setback SEMANTICS; this checks whether a ROW can be accounted for at all — a row can pass every semantic check and still be unattributable. value_absent_from_source is imported and reused rather than reimplemented. Follows the ground-truth-set shape of scripts/validate_zone_code_validity.py. No new column and no migration: all three states are derived from existing columns, so they cannot go stale. needs_review was considered and rejected because four production routes already consume it."
+    "existing_data": "All 1,069 controls and all 505 provision document_ids read, not sampled. Confirmed from information_schema that provision_id is a nullable integer with a real FK to regulatory_provisions(id), and that dcp_setback_controls.lga is an lga_registry.slug via FK fk_dcp_setback_lga. Heaviest per-council provision fetch (Waverley, 2,965 rows) measured at 0.86s, so no batching is needed. Verified by grep that nothing in the frontend or Python reads provision_id, so no served output can change.",
+    "assumption_mismatch": "The task assumed linking was a matching problem. It is a coverage problem: 14 of 30 control LGAs have ZERO provisions ingested (450 controls) and a further 545 sit in councils whose specific chapter was never ingested, so only 41 of 1,069 are linkable at all. Second: source_council does not consistently hold the slug — only 16 of 30 match exactly, so resolution goes through lga_registry.display_name. Third: restricting candidates to current, actionable provisions IMPROVED the result rather than narrowing it, because it removes superseded duplicates of the same clause — ambiguity fell 23 to 2 and linkable rose 35 to 41. Fourth: the initial post-write verification reported 14 of 35 quotes present because it compared un-normalised SQL text; re-run with the matcher's own normalisation it was 34 of 35. The check was wrong, not the links.",
+    "new_vs_existing": "No existing linker. scripts/validate_controls_provenance.py (#866) classifies provenance but writes nothing; it is extended here to report link coverage rather than duplicated. The safety shape (dry-run default, backup table, per-row optimistic guard, printed rollback, 30s timeout) is copied from scripts/retag_applicability_slug_docids.py and scripts/backfill_invalid_zone_codes.py. The lga -> source_council resolution reuses the lga_registry approach from #854 instead of a new hand-written map.",
+    "external_source_error": "The only external source is the Supabase connection. No DATABASE_URL exits 2 with an explicit 'nothing was checked, which is not a pass' message rather than reporting a clean plan. Any exception during planning or writing is caught, the transaction is rolled back, and the exit code is 2 — so a partial write cannot be mistaken for success. The backup table is created and its row count compared against the plan BEFORE the first UPDATE, and the run aborts if it is smaller. There is no third-party API and no network call beyond the database.",
+    "frontend_type": "None. provision_id is not read anywhere in frontend-nextjs or Python — verified by grep across *.ts, *.tsx and *.py before writing, which is why this write cannot change served output. If it is surfaced later the type is `number | null` at every boundary, because 1,034 of 1,069 rows are legitimately NULL and always will be for councils absent from the corpus; any consumer that assumes a link exists would be wrong for 97% of the table.",
+    "user_failure_mode": "No user-visible failure today, since nothing renders the column. The failure this design guards against is future and severe: if a wrong link were written, a later automated check would compare a control's number against someone else's clause and could report a confident 'this value does not match its source' — or worse, silently confirm a wrong number as verified. That is the fabricated-verdict class from DQ-36 applied to the controls table, which is why only exact single matches link and why 553 rows are deliberately left NULL rather than linked on a best guess."
   },
   "functions": [
     {
-      "name": "harvest_committed_literals",
-      "file_line": "scripts/validate_controls_provenance.py:99",
-      "input": "a repository root; globs scripts/*.py and enrichment paths for files mentioning the table",
-      "output": "a map of every string literal of 25+ chars to the files holding it, parsed via ast",
-      "if_none": "an empty map makes main() exit 2 rather than reporting every row unattributable, which would be a vacuous failure rather than a finding"
+      "name": "find_single_match",
+      "file_line": "scripts/link_controls_to_provisions.py:109",
+      "input": "a normalised quote and the list of (provision_id, normalised_text) pairs for that council",
+      "output": "the provision id only when exactly one provision contains the quote, plus the raw hit count",
+      "if_none": "returns None for zero matches, for several matches, and for a quote under 30 characters — the caller cannot tell the difference and cannot link on any of them"
     },
     {
-      "name": "classify_rows",
-      "file_line": "scripts/validate_controls_provenance.py:133",
-      "input": "the table rows plus the harvested literal map",
-      "output": "exactly one of reproducible / traceable / unverifiable per row, with the evidence for it",
-      "if_none": "a row with no source_text and no section_ref is unverifiable, the only state that fails; whitespace-only values count as absent"
+      "name": "classify",
+      "file_line": "scripts/link_controls_to_provisions.py:121",
+      "input": "the same quote and provision list, for one control",
+      "output": "exactly one outcome name, so the reported counts always sum to the table size",
+      "if_none": "an empty provision list returns council_has_no_provisions, which is deliberately distinct from no_provision_contains_the_quote — that distinction is the finding of this work"
     },
     {
-      "name": "label_reality_mismatches",
-      "file_line": "scripts/validate_controls_provenance.py:165",
-      "input": "the fully classified rows, each already carrying its derived provenance state alongside the extraction_method the writer claimed",
-      "output": "counts of rows whose extraction_method disagrees with the derived state, in both directions",
-      "if_none": "advisory only — it never affects the exit code, because a real PDF pipeline legitimately holds no hardcoded literal"
+      "name": "quoted_clause",
+      "file_line": "scripts/link_controls_to_provisions.py:104",
+      "input": "a control's raw source_text, which may carry an appended citation",
+      "output": "the part that should appear verbatim in the provision, lowercased and whitespace-collapsed",
+      "if_none": "None or empty yields an empty string, which fails the length floor and so can never link"
+    },
+    {
+      "name": "build_plan",
+      "file_line": "scripts/link_controls_to_provisions.py:134",
+      "input": "an open cursor; reads every control and, per council, that council's provisions",
+      "output": "the rows to write plus the full outcome breakdown including rows deliberately left NULL",
+      "if_none": "an empty plan writes nothing, and the script is dry-run by default so a wrong plan cannot reach the database without an explicit flag"
     }
   ],
   "values": [
     {
-      "value": "the provenance state of each of 1,069 controls",
-      "read_at": "derived at check time from source_text, section_ref and the repo; never stored",
-      "if_missing": "a row missing both provenance fields is reported by id, lga and control_type and the gate exits 1"
+      "value": "dcp_setback_controls.provision_id for 13 rows — 10 set from NULL, 3 cleared to NULL",
+      "read_at": "planning time from the control row, then re-asserted by the UPDATE guard at write time",
+      "if_missing": "the guard is `provision_id IS NOT DISTINCT FROM %s` against the planned previous value; a plain equality guard would skip every row whose previous value is NULL, which is most of them. An earlier version also asserted `AND provision_id IS NULL`, which had to be removed once clearing a stale link required writing over a non-NULL id — a NULL-only guard would have silently skipped exactly the rows that most needed fixing."
     }
   ],
   "queries": [
     {
-      "purpose": "read every control row so a provenance state can be derived for each",
-      "file_line": "scripts/validate_controls_provenance.py:206",
-      "where_clause": "No WHERE clause, deliberately, and it is a read-only SELECT on a 1,069-row table. Filtering to is_current would leave superseded rows unattributed, so they would come back unaccounted for if ever reinstated. The session is read-only with a 30s timeout."
+      "purpose": "read one council's provisions so a control's quote can be matched against them",
+      "file_line": "scripts/link_controls_to_provisions.py:160",
+      "where_clause": "WHERE p.is_current AND p.v2_is_actionable AND (p.source_council = %s OR lower(p.source_council) = lower(r.display_name) OR lower(replace(p.source_council,' ','_')) = %s), joined to lga_registry with r.is_active. The currency filter is required, not optional: without it the first run linked 3 controls to a superseded provision. All three council forms are needed because only 16 of 30 control LGAs match source_council exactly. Scoped to one council per execution, so a control can never match another council's clause — verified post-write with 0 cross-council links. The UPDATE is separately scoped WHERE id = %s AND provision_id IS NOT DISTINCT FROM the planned previous value."
     }
   ],
   "break_it": [
     {
-      "scenario": "The gate passes because it silently classifies everything as traceable, so it can never go red.",
-      "what_happens": "Four tests drive the unverifiable state directly — missing source_text, missing ref, ref-only, and whitespace-only. The CLI was also run over a synthetic bad row and returned exit 1.",
+      "scenario": "A control is linked to the nearest or best-scoring provision, so a later check compares its number against the wrong clause and reports a confident false verdict.",
+      "what_happens": "Only an exact single substring match links. Zero matches, several matches and a too-short quote all return None, and each is reported as its own outcome rather than being quietly rounded into a link.",
       "mitigated": true,
-      "how": "classify_rows is pure and DB-free precisely so the failing state can be reached in a test. A `return []` mutation fails test_every_row_gets_exactly_one_state.",
-      "repro": "python -m pytest tests/test_controls_provenance.py -k TheCheckCanFail -q"
+      "how": "Substring containment, not similarity — there is no score and no threshold. Three tests drive the refusal directions independently.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k RefusesWhenItCannotBeSure -q"
     },
     {
-      "scenario": "Attribution is invented from prose: a row's text appears in a COMMENT or docstring and the row is called reproducible.",
-      "what_happens": "It would, if the harvest grepped source. It parses with ast and only counts real string constants.",
+      "scenario": "The run overwrites a human-made link with a machine guess.",
+      "what_happens": "It would have. The dry run showed control 3 (already pointing at provision 98149) being re-pointed to 97850, because the same clause exists as more than one provision row. Found by inspecting the plan for non-NULL previous values before applying.",
       "mitigated": true,
-      "how": "test_a_literal_in_a_comment_is_not_harvested asserts the comment case is not attributed.",
-      "repro": "python -m pytest tests/test_controls_provenance.py -k comment -q"
+      "how": "PRESERVE_EXISTING_LINKS keeps the human's link and counts the disagreement, and the UPDATE carries AND provision_id IS NULL so even a stale plan cannot clobber one. Verified post-write: control 3 still points at 98149.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k ExistingLinks -q"
     },
     {
-      "scenario": "No writer files are found (wrong root, moved directory) and all 1,069 rows are reported unattributable — a 1,069-row false alarm.",
-      "what_happens": "Exit 2 with an explicit 'nothing was verified' message, not exit 1.",
+      "scenario": "Every row fails to match because the extractor's appended citation is not in the provision text, making the ceiling look far worse than it is.",
+      "what_happens": "The trailing citation is stripped before matching. Without that the linkable count collapses and the wrong conclusion gets drawn about corpus coverage.",
       "mitigated": true,
-      "how": "Demonstrated live against an empty directory. Three states in the exit codes too: 0 pass, 1 finding, 2 could-not-run.",
-      "repro": "python scripts/validate_controls_provenance.py --root <empty dir>   # exit 2"
+      "how": "A non-citation parenthetical is deliberately KEPT, so stripping cannot widen matching and link something wrong — under-match rather than over-strip.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k citation -q"
     },
     {
-      "scenario": "A short literal like 'Table 4' matches many rows and manufactures reproducible status.",
-      "what_happens": "Literals under 25 characters are not harvested. The shortest real source_text is 30 chars, so the floor costs no recall.",
+      "scenario": "The council resolution silently matches nothing, so every control is reported as unlinkable and the ceiling is blamed on ingestion when it is really a join bug.",
+      "what_happens": "Caught in the pre-impl audit: only 16 of 30 lga slugs equal source_council, so a single-form join would have reported 30 of 30 councils as empty. Resolution goes through lga_registry.display_name.",
       "mitigated": true,
-      "how": "test_a_short_literal_is_below_the_attribution_floor asserts the short case is absent from the harvest.",
-      "repro": "python -m pytest tests/test_controls_provenance.py -k floor -q"
+      "how": "council_has_no_provisions is counted separately from no_provision_contains_the_quote, so a join bug would show as ALL councils empty rather than hiding inside a single number.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k no_provisions -q"
     },
     {
-      "scenario": "One unparseable writer file aborts the harvest, silently demoting every row to traceable.",
-      "what_happens": "SyntaxError is caught per file and the harvest continues.",
+      "scenario": "A link points at a provision belonging to a different council.",
+      "what_happens": "Structurally impossible — provisions are fetched per council and matched only within that set. Verified anyway after the write: 0 cross-council links, 0 dangling links.",
       "mitigated": true,
-      "how": "test_a_syntax_error_does_not_abort_the_harvest pairs a broken file with a good one and asserts the good literal still lands.",
-      "repro": "python -m pytest tests/test_controls_provenance.py -k syntax_error -q"
+      "how": "The FK to regulatory_provisions(id) additionally makes a dangling id impossible at the database level.",
+      "repro": "see DQ-38 in .claude/DATA_QUALITY_TRACKER.md for the verification queries"
     },
     {
-      "scenario": "The label/reality mismatch is treated as a failure, so 330 legitimate pipeline rows block every push.",
-      "what_happens": "It is advisory and never touches the exit code. A genuine PDF-extraction pipeline holds no hardcoded text, so absence of a literal is not evidence of a defect. Confirming those rows would mean re-reading council PDFs, which the extraction runbook forbids.",
+      "scenario": "Link coverage becomes a gate, so pushes fail because a council was never ingested rather than because anything is broken.",
+      "what_happens": "Coverage is advisory in validate_controls_provenance.py and never affects an exit code. 450 controls belong to councils with no provisions at all, so requiring a link would fail on absent corpus.",
       "mitigated": true,
-      "how": "label_reality_mismatches is print-only; the exit code depends solely on the unverifiable count.",
-      "repro": "grep -n 'unverifiable' scripts/validate_controls_provenance.py"
+      "how": "The exit code still depends solely on the unverifiable count from #866.",
+      "repro": "python scripts/validate_controls_provenance.py --quiet   # exit 0 with 35 of 1069 linked"
     },
     {
-      "scenario": "The new PostToolUse hook fires on every new file and becomes the alarm nobody reads.",
-      "what_happens": "It fires only when git check-ignore reports the path ignored AND it is untracked, under four directories. Tested in three directions: ignored+untracked warns, tracked stays silent, out-of-scope stays silent.",
+      "scenario": "The post-write verification passes vacuously and nobody notices the links are wrong.",
+      "what_happens": "The first verification query reported only 14 of 35 quotes present, which looked like 21 bad links. It compared un-normalised SQL text while the matcher normalises whitespace; re-run correctly it is 34 of 35. The verification was wrong, not the links.",
       "mitigated": true,
-      "how": "git ls-files --error-unmatch was deliberately NOT used as the trigger: at PostToolUse a new file is legitimately untracked, so it would fire on every new file and be ignored within a day. It is printed as the commit-time follow-up instead.",
-      "repro": "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"scripts/probe.py\"}}' | python .claude/hooks/gitignore-trap-guard.py"
+      "how": "The check now reuses the script's own normalise() and quoted_clause() so it tests the same question the write answered.",
+      "repro": "the discrepancy and its resolution are recorded in DQ-38"
+    },
+    {
+      "scenario": "A control is linked to a SUPERSEDED clause, so a later automated check compares a live number against withdrawn text.",
+      "what_happens": "It happened. The first run wrote 3 links to Marrickville provision 102098 (is_current=False) because the candidate set was not filtered. Found by measuring link currency after the write rather than assuming it.",
+      "mitigated": true,
+      "how": "The candidate query now requires p.is_current AND p.v2_is_actionable, and any existing link pointing outside that set is re-pointed or cleared. Verified post-write: 0 links to a superseded provision.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k current_and_actionable -q"
+    },
+    {
+      "scenario": "A stale link is silently RETAINED because the row no longer matches anything current.",
+      "what_happens": "It would have. Staleness was only handled inside the `linkable` branch, and all 3 affected rows fell into no_provision_contains_the_quote instead — so the repair pass skipped precisely the rows it existed to fix.",
+      "mitigated": true,
+      "how": "Staleness is now tested BEFORE the outcome branch, and a stale link with no current match is CLEARED rather than kept. Verified: controls 1, 2 and 6 are now NULL.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k StaleLinks -q"
+    },
+    {
+      "scenario": "The backup does not cover the rows about to change, so the printed rollback cannot undo the run.",
+      "what_happens": "It did not. CREATE TABLE IF NOT EXISTS kept the earlier run's table and the count check passed spuriously — 34 >= 13, while covering none of the 10 new rows.",
+      "mitigated": true,
+      "how": "The guard now asserts every planned id is present in the backup, not just a row count. Demonstrated firing before the real run: '10 planned rows missing', abort before any UPDATE.",
+      "repro": "python -m pytest tests/test_controls_provision_links.py -k COVERAGE -q"
     }
   ],
   "post_merge": {
-    "db_reset": "None. Read-only; no migration and no write. The 1,069 rows are unchanged.",
+    "db_reset": "Already applied in two runs. Final state: 42 linked of 1,069. The second run wrote 13 rows (10 new links, 3 stale links cleared), 0 skipped. Backups: dcp_setback_controls_provlink_backup_20260802b (13 rows, this run) and dcp_setback_controls_provlink_backup_20260802 (34 rows, restores the pre-any-change state). Rollback SQL is printed by the script and recorded in DQ-38.",
     "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "Run `python scripts/validate_controls_provenance.py` and confirm 534 / 535 / 0 with exit 0. Then confirm the CI schema-contract job shows the new 'Validate controls provenance' step green. The hook only takes effect in sessions started after merge, since .claude/settings.json is read at session start."
+    "manual_verify": "Run `python scripts/validate_controls_provenance.py` and confirm 534 / 535 / 0 with exit 0 plus 'machine-checkable (linked to a provision): 42'. Then run `python scripts/link_controls_to_provisions.py` and confirm 41 linkable, 41 already correct and 0 rows to write — that is the idempotency check."
   }
 }

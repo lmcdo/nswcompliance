@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "timestamp": "2026-08-01T00:00:00Z",
-  "target": "scripts/validate_schema_contract.py + scripts/schema_contract_baseline.json + .github/workflows/gates.yml — schema-contract gate (read-only catalog validator, shrink-only baseline, CI enforcement)",
-  "findings_summary": "Read-only: two information_schema SELECTs, no writes, ~4s, 30s timeout. 18 invalid references found and each re-verified individually against information_schema (18/18 genuinely absent, zero false positives). No entity mapping, no batch loop, no numeric parsing. Main risk was English prose misread as SQL (60 raw findings, 34 phantoms) — closed via AST docstring exclusion + SQL-opener test, locked by 22 tests."
+  "timestamp": "2026-08-02T06:45:00Z",
+  "target": "Link dcp_setback_controls.provision_id -> regulatory_provisions.id where a control's quoted source_text matches exactly one provision in that council (scripts/link_controls_to_provisions.py)",
+  "findings_summary": "Ceiling is 35 of 1,069: 450 controls belong to 14 LGAs with zero provisions, 530 have no provision containing their quote, 23 ambiguous, 31 quote under 30 chars. lga is an lga_registry slug but source_council holds slug OR display_name (16/30 exact), so resolution goes through the registry. Heaviest per-council fetch 0.86s, no batching needed. provision_id has a real FK and nothing consumes it, so no served output can change."
 }

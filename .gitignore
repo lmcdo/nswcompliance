@@ -605,3 +605,4 @@ latent-scope-data/
 !scripts/lint_fabricated_verdicts.py
 !scripts/retag_applicability_slug_docids.py
 !scripts/validate_controls_provenance.py
+!scripts/link_controls_to_provisions.py
