@@ -102,6 +102,28 @@ if [ -f scripts/validate_schema_contract.py ]; then
 else
   echo "  Skipping (no schema contract script)."
 fi
+
+echo "=== [1e/5] Controls provenance (every numeric control accounted for) ==="
+if [ -f scripts/validate_controls_provenance.py ]; then
+  # Same `|| RESULT=$?` shape as [1d]: exit 2 means no DATABASE_URL, which is a
+  # skip, and a bare invocation would abort the hook under `set -e`.
+  PROV_RESULT=0
+  python scripts/validate_controls_provenance.py --quiet 2>&1 || PROV_RESULT=$?
+  if [ $PROV_RESULT -eq 2 ]; then
+    echo "⏭  Skipped: no DATABASE_URL reachable — NOT verified locally. CI enforces this."
+  elif [ $PROV_RESULT -ne 0 ]; then
+    echo ""
+    echo "Controls provenance FAILED. Push blocked."
+    echo "A row in dcp_setback_controls has no provenance of any kind: no committed"
+    echo "script regenerates it and it carries no source_text + section_ref to"
+    echo "re-check it against. An unattributable control is indistinguishable from"
+    echo "a guess, which is the whole differentiator this table represents."
+    echo "Detail: python scripts/validate_controls_provenance.py"
+    exit 1
+  fi
+else
+  echo "  Skipping (no controls provenance script)."
+fi
 echo ""
 
 # ── 2. Frontend Jest tests ──────────────────────────────────────────────────

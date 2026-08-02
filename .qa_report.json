@@ -1,125 +1,118 @@
 {
-  "tier": "critical",
-  "justification": "A 22,007-row production write that NARROWS what a property is shown. Every other change today widened applicability or corrected a false claim; this one removes provisions from result sets, and hiding a binding control is the failure mode that matters. It also changes user-facing copy on the assessment page.",
-  "commit_hash": "c386fc6a",
+  "tier": "standard",
+  "justification": "Read-only. No migration, no production write, no change to served output. It adds a standing gate and corrects a published number in the retrospective. Standard rather than critical because nothing it does can alter what a customer is shown; the risk is a gate that passes vacuously, which is what the tests target.",
+  "commit_hash": "b6dbc113",
   "files": [
-    "enrichment/extractors/applicability_tagger.py",
-    "scripts/retag_applicability_slug_docids.py",
-    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
-    "tests/test_applicability_slug_docids.py",
-    ".claude/DATA_QUALITY_TRACKER.md"
+    "scripts/validate_controls_provenance.py",
+    "tests/test_controls_provenance.py",
+    ".claude/hooks/gitignore-trap-guard.py",
+    ".claude/settings.json",
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".gitignore"
   ],
   "falsifiable_check": {
-    "command": "SELECT coalesce(v2_zone_source,'(NULL)'), count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable AND source_council IN ('marrickville','ashfield','leichhardt') GROUP BY 1;  -- plus: python -m pytest tests/test_applicability_slug_docids.py -q",
-    "fails_when": "The predicted distribution was stated BEFORE the write: config_all 7,761, config_specific 815, no_config 1,278. It fails if those counts differ materially, if any row carries a narrowed zone set while v2_zone_source is still 'no_config' (which would mean it was narrowed without a config matching — a guess), or if any written zone code is absent from lep_zone_coverage for Inner West. All three were run after the write: distribution matched exactly, guessed-narrowing count 0, invalid codes 0. The test suite additionally fails if a resolver returns a key the config does not declare."
+    "command": "python scripts/validate_controls_provenance.py  # plus: python -m pytest tests/test_controls_provenance.py -q",
+    "fails_when": "Exit 1 if any dcp_setback_controls row is `unverifiable` — no committed script regenerates it AND it lacks source_text + section_ref. Exit 2 if it could not run (no DATABASE_URL, empty table, no writer files found), because nothing verified is not a pass. Predicted BEFORE running: reproducible 534, traceable 535, unverifiable 0. Actual matched exactly. Both failure exits were demonstrated live: exit 2 against an empty writer tree, and exit 1 over a synthetic row carrying no provenance."
   },
   "pre_impl": {
-    "existing_data": "107 distinct document_ids / 9,854 served rows / 22,007 total rows across the three councils, enumerated in full rather than sampled. Config key vocabularies read directly: MARRICKVILLE_CONFIG parts + precincts, ASHFIELD_CONFIG chapters + chapter_f_parts, LEICHHARDT_CONFIG parts. Zone codes cross-checked against lep_zone_coverage for Inner West.",
-    "assumption_mismatch": "The tracker said the section code lives in ref_number and the matchers should be taught to read it, implying a signature change. Reading the real data showed the part is already in the document_id as a slug, so no extra field and no signature change was needed. Second mismatch: I expected 9,854 rows to narrow. Only 815 narrow on zones and 882 on dev types; 7,673 resolve to configs that themselves say ALL, so for those the value is unchanged and only the provenance improves from unattributable to attributable.",
-    "new_vs_existing": "No new surface. Slug resolution was added inside the three existing config getters, tried before the legacy verbose patterns, which are retained for any older document_id. The re-tag script exists because enrichment/pipeline.py::run_applicability_tagging only revisits rows WHERE v2_applicable_zones IS NULL and would skip every affected row; its safety shape is copied from scripts/backfill_invalid_zone_codes.py.",
-    "external_source_error": "No external API is called. The only source is the local DCP config files plus lep_zone_coverage, read read-only for verification. If a config file were unreadable the tagger raises at import and the re-tag script never reaches its write phase; if lep_zone_coverage were empty the standing zone-validity gate reports unverifiable rather than clean, which is the documented three-state.",
-    "frontend_type": "The narrowed arrays cross into TypeScript as v2_applicable_zones and v2_applicable_dev_types on the provision rows. Both were already string[] | null and neither changed shape, so no boundary type moved. The one new frontend value is anyDevTypeSpecific, a boolean derived in-component from those arrays with an Array.isArray guard, so a null or absent field reads false rather than throwing.",
-    "user_failure_mode": "The expensive failure is a provision that applies being hidden from a property, because the user would never know it was missing — the opposite direction is only noise. Mitigated by refusing to resolve any config key the council has not declared, which leaves 1,278 served rows deliberately at ALL/no_config, and by verifying after the write that zero rows were narrowed while still recording no_config. Visibly, a Marrickville dwelling-house scope now excludes the commercial and industrial parts; the scope copy states that some provisions are filtered rather than claiming none are."
+    "existing_data": "All 1,069 rows read, not sampled. Column list taken from information_schema (the table uses `lga`, `value_min`/`value_max` — not `council`/`value_m`). Measured: all 382 manual rows carry source_text AND section_ref, 0 orphaned; provision_id populated on 1 row of 1,069 table-wide; pdf_page 185, last_verified_at 972, source_chapter_key 1,069.",
+    "assumption_mismatch": "Two. (1) The brief expected a traceable/partial/orphaned split among the 382 with orphans to chase; there are none, so that job does not exist. (2) The premise that extraction_method identifies hand-made rows is false — 330 pipeline-labelled rows have no committed literal and 177 manual-labelled rows do, so the honest split is 534/535, worse than the 36% the retrospective published. Separately, services/extracted_data_integrity.value_absent_from_source flags 49 manual rows, but reading them shows unit and ratio derivations ('900mm' -> 0.9, '1 space per 3 dwellings' -> 0.333), not fabrications, so they are NOT reported as untraceable.",
+    "new_vs_existing": "Extends rather than duplicates. services/extracted_data_integrity.py checks whether a VALUE is right; scripts/validate_dcp_setbacks.py checks setback SEMANTICS; this checks whether a ROW can be accounted for at all — a row can pass every semantic check and still be unattributable. value_absent_from_source is imported and reused rather than reimplemented. Follows the ground-truth-set shape of scripts/validate_zone_code_validity.py. No new column and no migration: all three states are derived from existing columns, so they cannot go stale. needs_review was considered and rejected because four production routes already consume it."
   },
   "functions": [
     {
-      "name": "_marrickville_slug_key",
-      "file_line": "enrichment/extractors/applicability_tagger.py:223",
-      "input": "a slug-form document_id such as part4_s1_low_density or part9_p47_victoria_road",
-      "output": "a tuple of the entry kind and the config key, only when that key is declared in MARRICKVILLE_CONFIG",
-      "if_none": "returns None for any slug whose derived key the config does not declare, so the row stays ALL with source no_config rather than being narrowed on a guess"
+      "name": "harvest_committed_literals",
+      "file_line": "scripts/validate_controls_provenance.py:99",
+      "input": "a repository root; globs scripts/*.py and enrichment paths for files mentioning the table",
+      "output": "a map of every string literal of 25+ chars to the files holding it, parsed via ast",
+      "if_none": "an empty map makes main() exit 2 rather than reporting every row unattributable, which would be a vacuous failure rather than a finding"
     },
     {
-      "name": "_ashfield_slug_key",
-      "file_line": "enrichment/extractors/applicability_tagger.py:250",
-      "input": "a slug-form document_id such as chapter_e1_heritage or chapter_f_part_7",
-      "output": "the chapter or chapter-F part key when ASHFIELD_CONFIG declares it",
-      "if_none": "chapter_e2_haberfield returns None on purpose because no Chapter E2 is declared; its 118 rows stay ALL rather than inheriting another chapter's zones"
+      "name": "classify_rows",
+      "file_line": "scripts/validate_controls_provenance.py:133",
+      "input": "the table rows plus the harvested literal map",
+      "output": "exactly one of reproducible / traceable / unverifiable per row, with the evidence for it",
+      "if_none": "a row with no source_text and no section_ref is unverifiable, the only state that fails; whitespace-only values count as absent"
     },
     {
-      "name": "_leichhardt_slug_key",
-      "file_line": "enrichment/extractors/applicability_tagger.py:269",
-      "input": "a slug-form document_id such as part_c_s2_urban_character or part_f_food",
-      "output": "the part key, preferring the more specific Section form before the bare part",
-      "if_none": "appendices, technical manuals and amendments return None and stay ALL, because they are not parts"
-    },
-    {
-      "name": "build_plan",
-      "file_line": "scripts/retag_applicability_slug_docids.py:76",
-      "input": "an open read cursor over the three councils' rows",
-      "output": "the rows whose tag values change, the rows whose provenance alone changes, and the predicted distribution",
-      "if_none": "an empty plan writes nothing; the script is dry-run by default so a wrong plan cannot reach the database without an explicit flag"
+      "name": "label_reality_mismatches",
+      "file_line": "scripts/validate_controls_provenance.py:165",
+      "input": "the fully classified rows, each already carrying its derived provenance state alongside the extraction_method the writer claimed",
+      "output": "counts of rows whose extraction_method disagrees with the derived state, in both directions",
+      "if_none": "advisory only — it never affects the exit code, because a real PDF pipeline legitimately holds no hardcoded literal"
     }
   ],
   "values": [
     {
-      "value": "v2_applicable_zones and v2_applicable_dev_types for 1,928 rows, plus provenance for all 22,007",
-      "read_at": "planning time from regulatory_provisions, then re-read by the per-row UPDATE guard at write time",
-      "if_missing": "62 rows hold NULL; the guard uses IS NOT DISTINCT FROM against a coalesced empty array so those rows are updated rather than silently skipped, which a plain equality guard would have done"
+      "value": "the provenance state of each of 1,069 controls",
+      "read_at": "derived at check time from source_text, section_ref and the repo; never stored",
+      "if_missing": "a row missing both provenance fields is reported by id, lga and control_type and the gate exits 1"
     }
   ],
   "queries": [
     {
-      "purpose": "read every row for the three councils so the new tag can be computed and compared against what is stored",
-      "file_line": "scripts/retag_applicability_slug_docids.py:85",
-      "where_clause": "WHERE source_council = ANY(%s) with the three councils bound as a parameter; the UPDATE is separately scoped WHERE id = %s plus a null-safe comparison on both previous values, so no unscoped write is possible"
+      "purpose": "read every control row so a provenance state can be derived for each",
+      "file_line": "scripts/validate_controls_provenance.py:206",
+      "where_clause": "No WHERE clause, deliberately, and it is a read-only SELECT on a 1,069-row table. Filtering to is_current would leave superseded rows unattributed, so they would come back unaccounted for if ever reinstated. The session is read-only with a 30s timeout."
     }
   ],
   "break_it": [
     {
-      "scenario": "A slug is resolved to the nearest available config key, narrowing a provision onto zones the council never assigned it — a hidden control.",
-      "what_happens": "Resolution is config-authoritative: a derived key is discarded unless the config declares it. chapter_e2_haberfield (118 rows) and part2_s21 (131 rows) deliberately stay ALL for exactly this reason.",
+      "scenario": "The gate passes because it silently classifies everything as traceable, so it can never go red.",
+      "what_happens": "Four tests drive the unverifiable state directly — missing source_text, missing ref, ref-only, and whitespace-only. The CLI was also run over a synthetic bad row and returned exit 1.",
       "mitigated": true,
-      "how": "TestNeverInventsAKeyTheConfigLacks asserts each unresolvable case returns None, and asserts the key really is absent from the config first so the test cannot pass for the wrong reason.",
-      "repro": "python -m pytest tests/test_applicability_slug_docids.py -k NeverInvents -q"
+      "how": "classify_rows is pure and DB-free precisely so the failing state can be reached in a test. A `return []` mutation fails test_every_row_gets_exactly_one_state.",
+      "repro": "python -m pytest tests/test_controls_provenance.py -k TheCheckCanFail -q"
     },
     {
-      "scenario": "The matcher fix is wrong and a re-tag writes 9,854 bad rows.",
-      "what_happens": "The hundred-row sample was re-run first: Inner West rows resolving went 0/52 to 44/52, and the 8 that still do not resolve are the unmapped documents. Only then was the blast radius computed, and only then the write.",
+      "scenario": "Attribution is invented from prose: a row's text appears in a COMMENT or docstring and the row is called reproducible.",
+      "what_happens": "It would, if the harvest grepped source. It parses with ast and only counts real string constants.",
       "mitigated": true,
-      "how": "Dry-run is the default and prints the full plan; the plan was reconciled against an independent validation script over all 107 document_ids before --apply.",
-      "repro": "python scripts/retag_applicability_slug_docids.py    # dry run, writes nothing"
+      "how": "test_a_literal_in_a_comment_is_not_harvested asserts the comment case is not attributed.",
+      "repro": "python -m pytest tests/test_controls_provenance.py -k comment -q"
     },
     {
-      "scenario": "The 62 NULL-valued rows are silently skipped by the concurrency guard, so the write reports success while leaving them untagged.",
-      "what_happens": "It would have. The guard was written as `v2_applicable_zones = %s`, and NULL = anything is NULL, so all 62 would have failed the predicate. Found by inspecting the planned values before applying.",
+      "scenario": "No writer files are found (wrong root, moved directory) and all 1,069 rows are reported unattributable — a 1,069-row false alarm.",
+      "what_happens": "Exit 2 with an explicit 'nothing was verified' message, not exit 1.",
       "mitigated": true,
-      "how": "Guard rewritten as coalesce(...) IS NOT DISTINCT FROM. The run reported 22,007 updated and 0 skipped, which is how the fix was confirmed rather than assumed.",
-      "repro": "grep -n 'IS NOT DISTINCT FROM' scripts/retag_applicability_slug_docids.py"
+      "how": "Demonstrated live against an empty directory. Three states in the exit codes too: 0 pass, 1 finding, 2 could-not-run.",
+      "repro": "python scripts/validate_controls_provenance.py --root <empty dir>   # exit 2"
     },
     {
-      "scenario": "Provisions are narrowed and the assessment page keeps telling users nothing was removed.",
-      "what_happens": "It would have. Leichhardt is the sort_only council and its copy asserted 'all N provisions apply regardless of dev type — does not remove any'. Correcting the tagger gave Leichhardt Part F real dev types, making the sentence false for those provisions.",
+      "scenario": "A short literal like 'Table 4' matches many rows and manufactures reproducible status.",
+      "what_happens": "Literals under 25 characters are not harvested. The shortest real source_text is 30 chars, so the floor costs no recall.",
       "mitigated": true,
-      "how": "The copy is now derived from the provisions actually loaded (anyDevTypeSpecific) rather than assumed, so it stays true whichever way the corpus goes. This is the DQ-31 lesson applied: an API fix that stops before the UI is invisible.",
-      "repro": "grep -n 'anyDevTypeSpecific' frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
+      "how": "test_a_short_literal_is_below_the_attribution_floor asserts the short case is absent from the harvest.",
+      "repro": "python -m pytest tests/test_controls_provenance.py -k floor -q"
     },
     {
-      "scenario": "A narrowed row is written with a zone code that does not exist in that LGA, reintroducing DQ-30.",
-      "what_happens": "Every code written was checked against lep_zone_coverage for Inner West after the write: E1, E4, MU1, R1, R2, R3, R4 — all present, none retired. The existing zone-validity gate also passes.",
+      "scenario": "One unparseable writer file aborts the harvest, silently demoting every row to traceable.",
+      "what_happens": "SyntaxError is caught per file and the harvest continues.",
       "mitigated": true,
-      "how": "The tagger's valid_zones filter from DQ-30 is untouched, and the standing validator was re-run post-write.",
-      "repro": "python scripts/validate_zone_code_validity.py --quiet"
+      "how": "test_a_syntax_error_does_not_abort_the_harvest pairs a broken file with a good one and asserts the good literal still lands.",
+      "repro": "python -m pytest tests/test_controls_provenance.py -k syntax_error -q"
     },
     {
-      "scenario": "A count or empty-state elsewhere in the UI breaks when a section shrinks to zero.",
-      "what_happens": "Checked rather than assumed: the only provision counts are the export label and the scope copy, both derived from the filtered list. No empty-state assumes ALL, and zero rows hold an empty zone array, which under the live predicate would match no zone at all.",
+      "scenario": "The label/reality mismatch is treated as a failure, so 330 legitimate pipeline rows block every push.",
+      "what_happens": "It is advisory and never touches the exit code. A genuine PDF-extraction pipeline holds no hardcoded text, so absence of a literal is not evidence of a defect. Confirming those rows would mean re-reading council PDFs, which the extraction runbook forbids.",
       "mitigated": true,
-      "how": "Consumer traced before the write, per the sequence, not after.",
-      "repro": "cd frontend-nextjs && npx jest && npx tsc --noEmit --skipLibCheck"
+      "how": "label_reality_mismatches is print-only; the exit code depends solely on the unverifiable count.",
+      "repro": "grep -n 'unverifiable' scripts/validate_controls_provenance.py"
     },
     {
-      "scenario": "The provenance flag is computed before the provisions it reads, throwing at render.",
-      "what_happens": "It was — anyDevTypeSpecific was inserted at line 355 while allProvisions is declared at 647. TypeScript caught it as a use-before-declaration once node_modules was linked into the worktree.",
+      "scenario": "The new PostToolUse hook fires on every new file and becomes the alarm nobody reads.",
+      "what_happens": "It fires only when git check-ignore reports the path ignored AND it is untracked, under four directories. Tested in three directions: ignored+untracked warns, tracked stays silent, out-of-scope stays silent.",
       "mitigated": true,
-      "how": "Moved below its dependency; 0 TS errors. Same ordering mistake as an earlier PR today, which is why the type check was run before committing rather than after.",
-      "repro": "cd frontend-nextjs && npx tsc --noEmit --skipLibCheck"
+      "how": "git ls-files --error-unmatch was deliberately NOT used as the trigger: at PostToolUse a new file is legitimately untracked, so it would fire on every new file and be ignored within a day. It is printed as the commit-time follow-up instead.",
+      "repro": "echo '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"scripts/probe.py\"}}' | python .claude/hooks/gitignore-trap-guard.py"
     }
   ],
   "post_merge": {
-    "db_reset": "Already applied. 22,007 rows updated, 0 skipped. Backup table regulatory_provisions_dq33_backup_20260801 holds all four columns for every touched row; rollback SQL is printed by the script and recorded in the tracker.",
+    "db_reset": "None. Read-only; no migration and no write. The 1,069 rows are unchanged.",
     "secrets": "None.",
     "other_repo": "None.",
-    "manual_verify": "Open the assessment page for a Marrickville R2 address in DA mode and confirm the commercial and industrial parts no longer appear for a dwelling-house scope, while heritage and the Part 2 general controls still do. Then a Leichhardt address: confirm the scope copy reads the 'small number are written for specific development types' wording rather than 'does not remove any'."
+    "manual_verify": "Run `python scripts/validate_controls_provenance.py` and confirm 534 / 535 / 0 with exit 0. Then confirm the CI schema-contract job shows the new 'Validate controls provenance' step green. The hook only takes effect in sessions started after merge, since .claude/settings.json is read at session start."
   }
 }

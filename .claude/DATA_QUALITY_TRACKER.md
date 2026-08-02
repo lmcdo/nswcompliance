@@ -81,6 +81,65 @@ second time in the same file.
 
 ---
 
+## DQ-37: `extraction_method` is not a provenance signal (measured 2026-08-02, no data change)
+
+**Status:** MEASURED + GATED. No production write — the states are derived, not stored.
+
+**What it is.** `dcp_setback_controls.extraction_method` was being read as if it
+recorded how a row was produced. It does not. Measured against the repo:
+
+| claimed method | a committed script regenerates it | it does not |
+|---|---|---|
+| `text_extraction` | 187 | **253** |
+| `mistral_ocr` | 170 | **77** |
+| `manual` | **145** | 205 |
+| `manual_curation` | **32** | 0 |
+
+So 330 rows labelled pipeline-extracted have no committed literal, and 177 rows
+labelled hand-made are regenerable from a tracked script. The label and the
+reality are close to uncorrelated.
+
+**Why it drifted.** `scripts/insert_inner_west_landscaping.py` stamps
+`extraction_method: "text_extraction"` onto hand-typed dict literals, and
+`scripts/update_needs_review_controls.py:226` overwrites the column outright.
+Neither is wrong locally; together they make the column a claim rather than a fact.
+
+**Consequence for the retrospective.** `ce-reliability-retrospective-and-asset-inventory-2026-08.md`
+§5.5 read "382 of 1,069 (36%) unreproducible" off this column. Measured against the
+repo the split is **534 reproducible / 535 not** — half the table, not 36%. The
+number was worse than reported, and it was worse because the measurement trusted a
+self-reported field. Same shape as DQ-30's "0% drift": a check that compared code
+to itself.
+
+**What was NOT concluded.** Absence of a committed literal does not prove a row is
+unreproducible — a genuine PDF-extraction pipeline holds no hardcoded text. Proving
+those 330 would mean re-running extraction over council PDFs, which
+`docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md` exists to stop. So
+the mismatch is reported as advisory and never as a failure.
+
+**The three states, all derived from existing columns:**
+`reproducible` 534 (verbatim literal in a committed writer) / `traceable` 535
+(`source_text` + `section_ref`, so re-checkable) / `unverifiable` **0**.
+
+**Falsifiable check:** `python scripts/validate_controls_provenance.py`
+— exit 1 if any row is `unverifiable`, exit 2 if it could not run (nothing verified
+is not a pass). Wired into pre-push `[1e/5]` and the CI `schema-contract` job.
+Predicted 534 / 535 / 0 before running; actual matched exactly. Demonstrated failing
+on a synthetic row with no provenance, and on an empty writer tree.
+
+**No migration.** A stored status column was considered and rejected: it goes stale
+the moment a writer changes, whereas a derived one cannot. `needs_review` was also
+considered and rejected — it is already consumed by four production routes
+(`dcp/structured-controls`, `capacity/calculate`, `tod/parking-rates`,
+`internal/setback-review`) and repurposing it would change served output.
+
+**Open, not chased:** `provision_id` is populated on 1 row of 1,069 — table-wide
+dead, so no manual row is missing it relative to any other row. Linking controls to
+`regulatory_provisions.id` would make state (b) machine-checkable rather than
+human-checkable, and is the natural next step before §5.6 grows the table.
+
+---
+
 ## DQ-33: Case-sensitive document-naming mismatch causes silent ALL/ALL applicability fallthrough
 
 **Status:** 🔍 Logged 2026-08-01, not sized — found while finishing DQ-30 PR3. Scope
