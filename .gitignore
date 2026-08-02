@@ -598,6 +598,11 @@ latent-scope-data/
 !docs/servicing/
 !docs/servicing/**
 
+# QA evidence docs — docs/ is whitelist-only (line 371), so a new file here is
+# silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
+!docs/qa/
+!docs/qa/**
+
 # Schema-contract gate — scripts/ is whitelist-only (line 402), so a new file here
 # is silently untracked unless named. Verify with: git ls-files --error-unmatch <path>
 !scripts/validate_schema_contract.py

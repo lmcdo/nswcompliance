@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-40: **28 controls whose `control_type` contradicts their own quote — 26 SERVED.** A secondary-street setback (2–4m) served as the primary front setback (4.5–6m), across ≥10 councils. 24 of the 28 PASS the value checker: the number matches, the control is wrong. A class that check structurally cannot see. | 🔴 Measured 2026-08-03, not fixed | P1 — understates the requirement |
 | DQ-39: **25 of 986 stored control values are not derivable from their own quoted `source_text`.** Four Waverley deep-soil rows store 10%/15% against a quote that says 50%; three Cumberland setbacks store 4.0/5.5/8.0 m against a quote whose only figure is "Minimum 6m"; two rows store a number while their own quote says "needs PDF verification". Now gated for all 1,069 rows. | 🟠 Measured + gated 2026-08-02, data not fixed | P1 — the number IS the product |
 | DQ-36: Provisions PDF hardcoded "Transport Oriented Development: ✗ Not applicable — property not within 400m of metro station"; the component receives NO TOD data, so the claim was unconditional. Four further SEPPs asserted "✗ Not applicable" for a proposal the report never sees. | ✅ Fixed 2026-08-01 | P1 — false statement of site fact |
 | DQ-35: conveyancing_db.fetch_dcp_setbacks cited rows[0] from the UNFILTERED list, so clause_ref could name a control the function had just suppressed (needs_review) or excluded as belonging to a DIFFERENT zone | ✅ Fixed 2026-08-01 | P1 — citation is the product claim |
@@ -124,13 +125,26 @@ Every row lands in exactly one state (`scripts/validate_control_source_values.py
 
 ### The 25, grouped by what is actually wrong
 
-**A. The stored number contradicts the quote — 7 rows, the serious ones.**
-- Waverley `deep_soil_min` **631, 632 store 10%** and **635, 636 store 15%**, against
-  a quote that reads *"A minimum 50% of the landscaped area must be deep soil zone."*
-  50 appears nowhere near 10 or 15. Four served rows.
-- Cumberland **31 (front 4.0 m), 32 (front 5.5 m), 30 (rear 8.0 m)** all quote the
-  same setbacks table whose only front figure is *"Minimum 6m"* and which states no
-  rear setback at all.
+> **ADJUDICATED 2026-08-03 against source PDFs — group A below was WRONG.**
+> Full evidence: `docs/qa/controls-adjudication-2026-08.md`. Verdicts on all 25:
+> **12 CORRECT, 8 EXTRACTION_ERROR, 3 NO_NUMERIC_CONTROL_IN_SOURCE, 2 UNVERIFIABLE.**
+> Every one of the 11 rows whose source had to be fetched proved CORRECT.
+
+**A. RETRACTED — the four Waverley rows are CORRECT.**
+Waverley `deep_soil_min` 631/632 (10%) and 635/636 (15%) are right. The control is
+a **two-clause derivation** and `source_text` stored only the second clause:
+C1.9(c) *"minimum of **20%** of the total site area … as landscaped area"* ×
+C1.9(d) *"minimum **50%** of the landscaped area must be deep soil"* = **10% of
+site**; C2.9(b) **30%** × C2.9(c) **50%** = **15%**. Verified verbatim at pages 204
+and 233 of WDCP 2022 (v1.1-2026-03-16). Calling these the most serious finding was
+an assertion from a partial quote — the same error this workstream keeps repeating.
+
+Of the Cumberland three, only two are errors, and **30 is CORRECT**: Table 1 p.B8
+reads *"Rear Setback — Minimum 8m"*. It was flagged because all four Cumberland
+rows share a `source_text` truncated at exactly **400 characters**, severing the
+rear/corner/secondary rows of the table. **31** (4.0 m) is the *Secondary Frontage*
+setback and **32** (5.5 m) is the *garage* setback, both stored as `front_setback`;
+both are already `is_current=FALSE`.
 
 **B. The quote is an admission that the value is unverified — 2 rows.**
 - **1119** Cumberland POS stores 24 m² with `source_text` = *"...(needs PDF

@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-08-03T00:35:00+10:00",
-  "reason": "Repairing a heredoc-mangled f-string in scripts/validate_control_source_values.py - two literal newlines where \n was intended, causing a SyntaxError. No logic change, no new query."
+  "status": "passed",
+  "timestamp": "2026-08-03T09:20:00+10:00",
+  "target": "Wire services/extracted_data_integrity.fabricated_values as a gate inside scripts/validate_control_source_values.py — fail when a row that self-labels as assumed/placeholder is is_current=TRUE.",
+  "findings_summary": "Measured live: fabricated_values with marker_fields=[condition, review_reason, source_text] flags 28 of 1069 rows on value_min, and ALL 28 are is_current=FALSE, so the gate passes today and blocks the next served placeholder. The batch spans ~14 councils and two default values: a 24 m2 private_open_space and a 3-hour solar_access_hours, each with a condition reading 'Assumed standard NSW POS min' or 'standard NSW pattern'. No new query needed: validate_control_source_values.py already SELECTs condition and review_reason alongside every row, so this reuses the existing read. Prior art checked: scripts/validate_dcp_setbacks.py already calls fabricated_values but only over the ~280 setback rows and only as an ADVISORY signal (PLACEHOLDER, severity advisory) that never affects its exit code; this extends the same function to all 1,069 rows as a blocking check on served rows only. No writes."
 }

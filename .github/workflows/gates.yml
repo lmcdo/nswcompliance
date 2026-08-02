@@ -193,6 +193,9 @@ jobs:
       # the corpus can reach, because it checks each number against the quote
       # stored beside it. Exits 1 on any value no named rule derives that is not
       # already in the baseline.
+      # Also gates fabricated_values over all 1,069 rows: a value whose own
+      # condition/review_reason admits it was assumed must not be SERVED. All 28
+      # such rows are already is_current=FALSE, so this passes today.
       - name: Validate control values against their own source text
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

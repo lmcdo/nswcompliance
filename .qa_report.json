@@ -1,7 +1,7 @@
 {
   "tier": "critical",
-  "justification": "Adds a gate over the table that is the product's differentiator, and the direction of risk is asymmetric: a FALSE EXPLANATION removes a real defect from the finding list permanently and silently, which is strictly worse than a false finding a human dismisses in a minute. Two live false-pass channels were found and closed during the work (clause references, numbered-list ordinals), so the risk is demonstrated, not theoretical.",
-  "commit_hash": "577d1091",
+  "justification": "Adds a blocking gate over the table that is the product's differentiator. The direction of risk is asymmetric: a value whose own note admits it was assumed, served as if extracted, is the fabricated-verdict class applied to regulatory numbers. 28 such rows exist and all are already retired, so this passes today and exists solely to stop the 29th being served. Shipped alongside an adjudication of all 25 UNEXPLAINED controls against source PDFs, which retracted a previously-published finding.",
+  "commit_hash": "3cb165bc",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -12,14 +12,15 @@
     ".claude/DATA_QUALITY_TRACKER.md",
     "docs/extracted-data-integrity.md",
     ".gitignore",
-    ".claude/.pre-impl-done.json"
+    ".claude/.pre-impl-done.json",
+    "docs/qa/controls-adjudication-2026-08.md"
   ],
   "falsifiable_check": {
     "command": "python scripts/validate_control_source_values.py",
-    "passes_when": "every one of the 1,069 controls is either derivable from its own source_text by a named rule, or already listed in scripts/control_source_values_baseline.json",
-    "fails_when": "a control value no named rule derives is not in the baseline - either newly written, or an existing value edited to something its own quote no longer supports",
-    "demonstrated_failing": "three ids removed from the baseline produced 'NEW (not in the baseline): 3' and exit code 1; restoring the baseline returned exit 0",
-    "mutation_evidence": "three mutants injected into the rules, all three killed by tests/test_control_source_values.py: forcing the derived-value tolerance to always match, replacing exact numeric matching with a substring test, and letting the implied-rate rule fire when a numerator was written"
+    "passes_when": "every control is derivable from its own source_text by a named rule or is in the baseline, AND no control whose own condition/review_reason/source_text admits the value was assumed is is_current",
+    "fails_when": "a served control carries a self-declared assumption (exit 1), or an underivable value is not baselined, or a baselined row changed or became explained without the baseline being updated",
+    "demonstrated_failing": "the fabrication marker was driven directly: it fires on a served row whose condition reads 'Assumed standard NSW POS min', does NOT fire on the same row with condition 'Read from Table 1 page B8', and does NOT fire once the value is set to NULL - which is the fixed state the doctrine asks for, so the gate cannot punish the correct response to its own finding. Live run reports 28 flagged / 0 served / exit 0.",
+    "mutation_evidence": "five tests drive the served-vs-retired distinction and both refusal directions; a marker that always fired would fail the honest-clause and NULL-value tests, and one that never fired would fail the assumed-row and review_reason/source_text tests"
   },
   "pre_impl": {
     "existing_data": "All 1,069 controls read, not sampled. Confirmed from information_schema that value_min/value_max are numeric (Decimal in psycopg2) and source_text is text. Measured directly: 0 rows have an empty source_text so every row has a quote to check against, 83 rows carry no numeric value at all and need their own state, 50 rows have min != max so both ends need explaining, and there are 18 distinct unit strings dominated by spaces/dwelling 371, m 278 and %% 200. is_current splits 989 current / 80 superseded. One read-only SELECT of 1,069 rows with no join, so no batching and no timeout risk.",
@@ -57,6 +58,13 @@
       "input": "the source text, scanned for every 'per N' / 'for every N' phrase and the numbers preceding each one",
       "output": "every plausible numerator and denominator pair with its evidence, nearest numerator first, stopping at a sentence or table-cell break",
       "if_none": "yields a None numerator when nothing numeric precedes the rate, which is the signal the implied-unity rule uses to decide whether assuming 1 is safe"
+    },
+    {
+      "name": "fabricated_values",
+      "file_line": "services/extracted_data_integrity.py:60",
+      "input": "one control row plus the columns where a writer would confess - condition, review_reason and source_text - and the value column to test",
+      "output": "the row, when it BOTH stores a value and carries language admitting that value was assumed, guessed or awaiting verification",
+      "if_none": "a row storing no value is never flagged however candid its note, because NULL-with-an-explanation is the honest state the gate wants; flagging it would punish the correct fix and push writers to delete the note instead of the guess"
     }
   ],
   "values": [
@@ -204,13 +212,27 @@
       "mitigated": true,
       "how": "The count of valueless rows is ratcheted in the baseline at 83 and a rise fails with exit 1, so blanks have to be confirmed deliberately.",
       "repro": "Set valueless_rows to 80 in scripts/control_source_values_baseline.json, run python scripts/validate_control_source_values.py and confirm exit 1, then git checkout the baseline"
+    },
+    {
+      "scenario": "A placeholder value is written with a candid note ('Assumed standard NSW POS min - verify against DCP') and the row is left is_current, so it reaches production.",
+      "what_happens": "A guessed regulatory number is served as though it were extracted from a council document, and nothing objects - the value checker cannot flag it because the row's source_text does not have to contain the number for the row to be a guess.",
+      "mitigated": true,
+      "how": "fabricated_values now runs over all 1,069 rows inside the gate and exits 1 when any flagged row is is_current. Scoped to served rows because all 28 existing ones are retired, so the gate passes today rather than being born red and immediately baselined away.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k TestFabricationGate -q"
+    },
+    {
+      "scenario": "The fix for a fabricated row is to null its value, and the gate keeps flagging it anyway.",
+      "what_happens": "The gate punishes the correct response to its own finding, so the only way to make it green is to delete the honest note - which destroys the provenance the note was carrying.",
+      "mitigated": true,
+      "how": "fabricated_values flags only rows that BOTH carry a value AND match the marker, so a NULL value with an honest note is clean. That is the state assert_clean_row already steers writers toward, and a test pins it.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_null_value_with_an_honest_note_is_clean -q"
     }
   ],
   "post_merge": {
-    "db_reset": "No database write of any kind - this check is read-only, so there is nothing to roll back. The 25 baselined rows are real data defects and are NOT fixed here; each needs a ruling against the source PDF. Take the four Waverley deep-soil rows first (631, 632 store 10%% and 635, 636 store 15%% against a quote saying 50%%), then the three Cumberland setbacks (31, 32 front 4.0/5.5 m and 30 rear 8.0 m against a table whose only front figure is 'Minimum 6m').",
+    "db_reset": "No database write of any kind - this PR is read-only. The adjudication in docs/qa/controls-adjudication-2026-08.md rules on all 25 UNEXPLAINED controls but changes no data. 8 EXTRACTION_ERROR rows await a write pass; 6 of those are already is_current=FALSE, and the two still served are camden 690 (front 3.5m, should be 4.5m per Table 4-2) and camden 692 (front 4.0m, taken from a driveway crossover width). Separately DQ-40 records 26 SERVED rows whose control_type contradicts their own quote - larger than the 25 and not addressed here.",
     "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
     "other_repo": "None.",
-    "manual_verify": "Run `python scripts/validate_control_source_values.py` and confirm 1,069 rows across exhaustive states, 961 of 986 derivable, 25 unexplained, 0 NEW, exit 0. Then prove it can fail: delete three ids from scripts/control_source_values_baseline.json, re-run, and confirm 'NEW (not in the baseline): 3' with exit 1 before restoring the file. Add --show-evidence to audit the substring each derived row matched rather than trusting the rule name.",
+    "manual_verify": "Run python scripts/validate_control_source_values.py and confirm the new section 'self-declared assumptions (fabricated_values)' reports 28 flagged / 0 served, with exit 0. Then confirm it can fail by running the TestFabricationGate tests, which drive a served assumed row directly rather than mutating production data.",
     "watch": "The baseline is shrink-only and content-addressed, and the valueless-row count is ratcheted alongside it. If a future PR raises either, the reason belongs in the PR body. Seven rounds of adversarial review each returned real findings while the count of DATA findings never moved off 25 - that is where the hardening stopped, because the remaining suggestions harden a check that no longer changes its answer. The known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching."
   }
 }

@@ -114,6 +114,8 @@ if [ -f scripts/validate_controls_provenance.py ]; then
   elif [ $PROV_RESULT -ne 0 ]; then
     echo ""
     echo "Controls provenance FAILED. Push blocked."
+    echo "Scope note: this covers all 1,069 rows regardless of is_current — an"
+    echo "unattributable control is a defect whether or not it is currently served."
     echo "A row in dcp_setback_controls has no provenance of any kind: no committed"
     echo "script regenerates it and it carries no source_text + section_ref to"
     echo "re-check it against. An unattributable control is indistinguishable from"
@@ -138,8 +140,9 @@ if [ -f scripts/validate_control_source_values.py ]; then
   elif [ $SRCVAL_RESULT -ne 0 ]; then
     echo ""
     echo "Control source-value check FAILED. Push blocked."
-    echo "A control's stored number is not derivable from its own quoted"
-    echo "source_text by any named rule, and is not in the accepted baseline."
+    echo "Either a control's stored number is not derivable from its own quoted"
+    echo "source_text by any named rule and is not in the accepted baseline, or a"
+    echo "SERVED control carries a value its own note admits was assumed."
     echo "Either correct the value, correct the quote, or add the rule that names"
     echo "the derivation. Widening the baseline to make this pass defeats it."
     echo "Detail: python scripts/validate_control_source_values.py --show-evidence"
