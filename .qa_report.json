@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Adds a blocking gate over the table that is the product's differentiator. The direction of risk is asymmetric: a value whose own note admits it was assumed, served as if extracted, is the fabricated-verdict class applied to regulatory numbers. 28 such rows exist and all are already retired, so this passes today and exists solely to stop the 29th being served. Shipped alongside an adjudication of all 25 UNEXPLAINED controls against source PDFs, which retracted a previously-published finding.",
-  "commit_hash": "3cb165bc",
+  "commit_hash": "165f4736",
   "files": [
     "services/extracted_data_integrity.py",
     "scripts/validate_control_source_values.py",
@@ -13,7 +13,8 @@
     "docs/extracted-data-integrity.md",
     ".gitignore",
     ".claude/.pre-impl-done.json",
-    "docs/qa/controls-adjudication-2026-08.md"
+    "docs/qa/controls-adjudication-2026-08.md",
+    "scripts/repair_camden_front_setbacks.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/validate_control_source_values.py",
@@ -33,14 +34,14 @@
   "functions": [
     {
       "name": "explain_value",
-      "file_line": "services/extracted_data_integrity.py:716",
+      "file_line": "services/extracted_data_integrity.py:735",
       "input": "one stored numeric value, the row's own quoted source_text, and the row's unit string so that unit-sensitive rules can refuse to fire",
       "output": "the name of the first rule that derives the value from the text, paired with the exact substring that rule matched",
       "if_none": "returns UNEXPLAINED with no evidence when no rule fires, and NO_VALUE_STORED when the value is absent or non-numeric or the quote is empty - three outcomes kept distinct, because 'nothing to check' is not 'checked and fine'"
     },
     {
       "name": "explain_row",
-      "file_line": "services/extracted_data_integrity.py:745",
+      "file_line": "services/extracted_data_integrity.py:764",
       "input": "one control row plus the names of its value columns, its source-text column and its unit column",
       "output": "exactly one state for the row plus the per-field rule and evidence, so the printed counts always sum to the table size",
       "if_none": "a row whose values are all absent becomes NO_VALUE_STORED rather than passing; a row with one unexplained end of a range becomes UNEXPLAINED even though its other end was explained"
@@ -65,6 +66,13 @@
       "input": "one control row plus the columns where a writer would confess - condition, review_reason and source_text - and the value column to test",
       "output": "the row, when it BOTH stores a value and carries language admitting that value was assumed, guessed or awaiting verification",
       "if_none": "a row storing no value is never flagged however candid its note, because NULL-with-an-explanation is the honest state the gate wants; flagging it would punish the correct fix and push writers to delete the note instead of the guess"
+    },
+    {
+      "name": "evidence_is_truncated",
+      "file_line": "services/extracted_data_integrity.py:727",
+      "input": "one control's stored source_text, which may have been severed by the extractor's 400-character limit",
+      "output": "true only when the quote is exactly at the limit AND does not end in terminal punctuation - the pair that separates a cut from a coincidence",
+      "if_none": "None or an empty quote returns false, because absent evidence is already handled by MISSING_SOURCE_TEXT and NO_VALUE_STORED; conflating the three would hide which of them a row is in"
     }
   ],
   "values": [
@@ -142,6 +150,55 @@
       "mitigated": true,
       "how": "load_baseline treats a missing file as an empty baseline but refuses to run at all on an unreadable one, exiting 2 rather than continuing with a silently empty accepted set.",
       "repro": "printf 'not json' > scripts/control_source_values_baseline.json && python scripts/validate_control_source_values.py; echo $?  # expect 2, then restore with git checkout scripts/control_source_values_baseline.json"
+    },
+    {
+      "scenario": "The rounding tolerance for derived values is a flat absolute number, so it is simultaneously too loose for small rates and too tight for coarsely-rounded ones.",
+      "what_happens": "A stored 0.005 passes against a quoted rate of 1 per 1000 dwellings (0.001), five times too large; and tightening the same flat number rejects two real rows that store 2/3 as 0.67 and 1/3 as 0.33.",
+      "mitigated": true,
+      "how": "The tolerance is half of the STORED value's own last decimal place, AND capped by a 5 percent relative bound so a whole number cannot absorb a large absolute gap. Both bounds must hold.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"tolerance or rounding or absorb\" -q"
+    },
+    {
+      "scenario": "The written-numeral rule matches the common English word 'one' anywhere in the quote, without it counting anything at all.",
+      "what_happens": "A clause reading 'Objective one: provide a minimum 6m front setback' explains a stored 1 m setback that the same sentence contradicts.",
+      "mitigated": true,
+      "how": "The numeral must be followed within two words by a noun the control could be measured in, so 'one car parking space' matches and 'Objective one:' does not.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_numeral_that_is_not_counting_anything_does_not_explain_a_value -q"
+    },
+    {
+      "scenario": "Every number preceding a 'per' phrase is offered as a possible numerator, so a rate can be assembled from two clauses that have nothing to do with each other.",
+      "what_happens": "'Minimum setback 6m and provide 1 space per 4 dwellings' explains a stored 1.5 as 6 divided by 4, when the parking rate the sentence actually states is 0.25.",
+      "mitigated": true,
+      "how": "Only the number immediately before the rate phrase is offered as its numerator, and the lead-in is cut at any sentence or table-cell break.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_a_rate_is_not_assembled_from_two_unrelated_clauses -q"
+    },
+    {
+      "scenario": "A row already in the baseline is repaired so it becomes explained, but nobody removes it from the baseline file.",
+      "what_happens": "The row stays permanently accepted, so if its old unsupported value is ever restored the gate still exits 0 - the ratchet only ever loosens.",
+      "mitigated": true,
+      "how": "A baseline entry that is now explained FAILS with exit 1 naming the ids to remove, and --write-baseline refuses to add ids without an explicit --allow-growth so the remedy cannot double as the bypass.",
+      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['999999']='x';json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
+    },
+    {
+      "scenario": "A control already accepted in the baseline has its stored value edited from one unsupported number to a DIFFERENT unsupported number, or loses its quote entirely.",
+      "what_happens": "Keyed on id alone, the row stays accepted and the gate exits 0, so a brand new defect inherits an old row's exemption.",
+      "mitigated": true,
+      "how": "The baseline stores id -> a digest of the value, unit and source_text, so any change to the inputs the check reads makes the row new again. Demonstrated by rewriting the digest for control 631 and confirming it reappears as BLOCKING with exit 1.",
+      "repro": "python -c \"import json,io;p='scripts/control_source_values_baseline.json';d=json.load(io.open(p));d['accepted']['631']='0'*16;json.dump(d,io.open(p,'w'),indent=2)\" && python scripts/validate_control_source_values.py; echo $?  # expect 1, then git checkout the baseline"
+    },
+    {
+      "scenario": "A quantity in the quote carries an explicit unit that measures a different kind of thing from the row's own column.",
+      "what_happens": "'a minimum of 3 hours of sunlight' explains a stored 3 METRE setback, because the digits match and nothing checks what the text says the number measures.",
+      "mitigated": true,
+      "how": "A matched quantity whose trailing unit belongs to a different family (length, area, ratio, time, count) than the stored unit is skipped. It fires only when BOTH sides are known, so an unlabelled number is never rejected on a guess - inventing findings is the mirror of inventing passes.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k \"labelled_as_another_kind or unit_check_only_fires\" -q"
+    },
+    {
+      "scenario": "The unit-conversion rule accepts both multiplying and dividing by the conversion factor.",
+      "what_happens": "A quoted '0.9mm' explains a stored 900 m, because 0.9 divided by 0.001 is 900.",
+      "mitigated": true,
+      "how": "One direction only. Nothing in this domain is quoted in millimetres and stored in kilometres, so the reverse direction existed only to manufacture matches.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k test_it_converts_in_one_direction_only -q"
     },
     {
       "scenario": "The stored-unit map covers only six literal strings, so the largest unit group in the table falls outside it and the unit guard never fires for those rows.",
@@ -226,6 +283,20 @@
       "mitigated": true,
       "how": "fabricated_values flags only rows that BOTH carry a value AND match the marker, so a NULL value with an honest note is clean. That is the state assert_clean_row already steers writers toward, and a test pins it.",
       "repro": "python -m pytest tests/test_control_source_values.py -k test_a_null_value_with_an_honest_note_is_clean -q"
+    },
+    {
+      "scenario": "A control's source_text was cut off by the extractor at its 400-character limit, and the stored number happens to fall inside the surviving window.",
+      "what_happens": "exact_digit_match fires and the row reads as verified, when whether it passed or failed depended purely on which side of the cut the number landed. Cumberland 28 (front 6m, served) passed this way while cumberland 30 (rear 8m, CORRECT) was falsely flagged - both from the same severed quote.",
+      "mitigated": true,
+      "how": "explain_row tests for truncation BEFORE consulting any rule and returns TRUNCATED_EVIDENCE, a failing state. Detection needs length exactly 400 AND no terminal punctuation, so a genuinely complete quote of that length is not condemned. 23 rows move out of 'explained', lowering the reported figure from 97.5% to 95.7% - the honest direction.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k TestTruncatedEvidence -q"
+    },
+    {
+      "scenario": "The fabrication gate blocks a served row but prints whichever marker field is merely non-empty, rather than the field that actually matched.",
+      "what_happens": "A row whose admission sits in source_text is reported showing an unrelated condition, so whoever fixes it edits the wrong field and the row stays fabricated.",
+      "mitigated": true,
+      "how": "The failure message re-tests each marker field individually and names every one that fired, falling back to an explicit '(marker field not isolated)' rather than guessing.",
+      "repro": "python -m pytest tests/test_control_source_values.py -k TestFabricationGate -q"
     }
   ],
   "post_merge": {
@@ -233,6 +304,6 @@
     "secrets": "None. DATABASE_URL is already present in CI as a secret and is used by the existing schema-contract job this step joins.",
     "other_repo": "None.",
     "manual_verify": "Run python scripts/validate_control_source_values.py and confirm the new section 'self-declared assumptions (fabricated_values)' reports 28 flagged / 0 served, with exit 0. Then confirm it can fail by running the TestFabricationGate tests, which drive a served assumed row directly rather than mutating production data.",
-    "watch": "The baseline is shrink-only and content-addressed, and the valueless-row count is ratcheted alongside it. If a future PR raises either, the reason belongs in the PR body. Seven rounds of adversarial review each returned real findings while the count of DATA findings never moved off 25 - that is where the hardening stopped, because the remaining suggestions harden a check that no longer changes its answer. The known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching."
+    "watch": "The baseline is shrink-only and content-addressed, and the valueless-row count is ratcheted alongside it. If a future PR raises either, the reason belongs in the PR body. Seven rounds of adversarial review each returned real findings while the count of DATA findings never moved off 25 - that is where the hardening stopped, because the remaining suggestions harden a check that no longer changes its answer. The known ceiling is that 571 of 839 exact matches are consistent-but-not-pinned, which needs clause reading rather than number matching. DURING this change the baseline shrank by one: control 690 became explained because its source_text was replaced with a fuller, verbatim-correct extract covering the lot-size tiers. That write was not mine (the repair script sets value_min/condition/review_reason only, and the table has no triggers), and the content-addressed baseline is what caught it. Truncated cohort is therefore 22, not 23."
   }
 }

@@ -95,6 +95,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from services.extracted_data_integrity import (  # noqa: E402
     FAILING_STATES,
+    TRUNCATED_EVIDENCE,
     MISSING_SOURCE_TEXT,
     NO_VALUE_STORED,
     RULE_NAMES,
@@ -111,7 +112,8 @@ FABRICATION_MARKER_FIELDS = ["condition", "review_reason", "source_text"]
 
 VALUE_FIELDS = ["value_min", "value_max"]
 DEFAULT_BASELINE = "scripts/control_source_values_baseline.json"
-STATES = (*RULE_NAMES, UNEXPLAINED, MISSING_SOURCE_TEXT, NO_VALUE_STORED)
+STATES = (*RULE_NAMES, UNEXPLAINED, MISSING_SOURCE_TEXT, TRUNCATED_EVIDENCE,
+          NO_VALUE_STORED)
 
 
 def fingerprint(row: dict) -> str:
@@ -391,10 +393,19 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"\nFAILED: {len(served_fabricated)} controls carry a value their own "
               f"note admits is assumed, and are being served.", file=sys.stderr)
         for row in served_fabricated[:args.limit_print]:
-            note = (row.get("condition") or row.get("review_reason") or "")[:110]
+            # Name the field that actually MATCHED. Printing whichever field is
+            # merely non-empty pointed at an unrelated `condition` while the real
+            # admission sat in source_text — which sends the fix to the wrong place.
+            matched = [f for f in FABRICATION_MARKER_FIELDS
+                       if fabricated_values([row], value_field="value_min",
+                                            marker_fields=[f])
+                       or fabricated_values([row], value_field="value_max",
+                                            marker_fields=[f])]
             print(f"  id={row['id']} {row['lga']}/{row['control_type']} "
-                  f"min={row['value_min']} max={row['value_max']}\n"
-                  f"      note: {note!r}", file=sys.stderr)
+                  f"min={row['value_min']} max={row['value_max']}", file=sys.stderr)
+            for field in matched or ["(marker field not isolated)"]:
+                print(f"      {field}: {str(row.get(field) or '')[:110]!r}",
+                      file=sys.stderr)
         print("\nStore the value as NULL — a rule that exists with an unknown value "
               "is honest; a guess presented as extracted is not. That is the same "
               "doctrine assert_clean_row enforces at write time.", file=sys.stderr)

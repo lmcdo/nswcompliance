@@ -15,9 +15,11 @@ from services.extracted_data_integrity import (
     MISSING_SOURCE_TEXT,
     NO_VALUE_STORED,
     RULE_NAMES,
+    TRUNCATED_EVIDENCE,
     UNEXPLAINED,
     explain_row,
     explain_value,
+    evidence_is_truncated,
     fabricated_values,
 )
 
@@ -486,6 +488,56 @@ class TestExplainRow:
                             source_field="source_text", unit_field="unit")
         assert result["fields"]["value_min"]["rule"] == "unit_conversion"
         assert result["fields"]["value_max"]["rule"] == NO_VALUE_STORED
+
+
+class TestTruncatedEvidence:
+    """A severed quote is not evidence either way.
+
+    23 rows carry a source_text of exactly 400 characters, every one ending
+    mid-word. Both failure directions were observed in one council: cumberland 30
+    (rear 8m, CORRECT) was falsely FLAGGED because 'Minimum 8m' fell outside the
+    cut, and cumberland 28 (front 6m, served) falsely PASSED because 'Minimum 6m'
+    happened to fall inside it. Which way a truncated row lands is luck.
+    """
+
+    def test_a_quote_cut_at_the_limit_mid_word_is_truncated(self):
+        assert evidence_is_truncated("x" * 399 + "a")
+
+    def test_a_complete_quote_of_the_same_length_is_not(self):
+        # Length alone is not the signal — a real 400-char quote ends in
+        # punctuation. Without this the check would condemn correct rows.
+        assert not evidence_is_truncated("x" * 399 + ".")
+
+    def test_a_short_quote_is_never_truncated(self):
+        assert not evidence_is_truncated("Front setback minimum 6m.")
+        assert not evidence_is_truncated(None)
+        assert not evidence_is_truncated("")
+
+    def test_truncation_beats_a_rule_that_would_otherwise_fire(self):
+        # The whole point: cumberland 28 stores 6.0 and its severed quote DOES
+        # contain '6m', so exact_digit_match would fire. It must not — the number
+        # surviving the cut is luck, not verification.
+        quote = ("|  Setbacks  |   |\n|  Front Setback (primary frontage) | "
+                 "Minimum 6m\nDwelling house shall align with the street")
+        quote = quote + "x" * (400 - len(quote) - 1) + "r"
+        assert len(quote) == 400
+        row = {"value_min": 6.0, "value_max": None, "unit": "m",
+               "source_text": quote}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                             source_field="source_text", unit_field="unit")
+        assert result["state"] == TRUNCATED_EVIDENCE
+
+    def test_truncated_evidence_is_a_failing_state(self):
+        assert TRUNCATED_EVIDENCE in FAILING_STATES
+
+    def test_a_row_with_no_value_is_still_no_value_stored(self):
+        # Ordering: nothing to check outranks can't-check-it. Otherwise 83 rows
+        # that legitimately hold no number would be reported as unverifiable.
+        row = {"value_min": None, "value_max": None, "unit": None,
+               "source_text": "x" * 399 + "a"}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                             source_field="source_text", unit_field="unit")
+        assert result["state"] == NO_VALUE_STORED
 
 
 class TestFabricationGate:
