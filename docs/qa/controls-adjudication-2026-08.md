@@ -207,3 +207,29 @@ setback of 6.0 metres…"), quote replaced in the same UPDATE (rule 2b). C10
 **End state:** category A 28 → **3** (884 / 570 / 895, each with a stated
 blocker), category B 6 → **0**, truncated 21 → 19, value-checker baseline
 41 → 38 (shrink-only), checker exit 0.
+
+## Sol cross-review of this pass (pre-push gate, 2026-08-03)
+
+Sol raised 6 findings. Each was verified against the code; **all 6 were real —
+no overrides**:
+
+1–3. The repair scripts (cb701, camden, missing-primary) classified any row not
+matching its pre-state as "already done" and exited 0 — a row broken a *third*
+way would have been silently blessed. All three now prove the intended
+POST-state for skipped rows and exit 2 on divergence. Verified live: every
+dry-run now reports "proven already in post-state" for all applied rows.
+
+4. The insert dup-check was currency-blind: a retired twin would have counted
+as "the served control exists". Now: a served twin skips, a retired-only twin
+aborts for human adjudication.
+
+5. The refile UPDATE guard pinned only id + control_type; it now pins the full
+evidentiary pre-state (source_text, value_min via IS NOT DISTINCT FROM,
+is_current).
+
+6. **Materialised in production and repaired:** the shared UPDATE stamped
+`last_verified_at = CURRENT_DATE` on 682/714/716 — rows flagged or retired,
+not verified correct (the camden-692 doctrine: a retired row is not a verified
+one; neither is a flagged one). Reverted from the backup table (3 rows,
+predicted 3) and the script now stamps only rows whose stored content was
+verified against source this pass.

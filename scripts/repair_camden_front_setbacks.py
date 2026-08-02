@@ -85,7 +85,13 @@ PLAN = [
 
 
 def build_plan(cur) -> tuple[list, list]:
-    """Rows still matching their expected pre-state, and rows already repaired."""
+    """Rows still matching their expected pre-state, and rows PROVEN repaired.
+
+    A row matching neither its pre-state nor its intended post-state is a
+    divergence, and classifying it as done would be a silent failure — e.g.
+    690 hand-edited to 9.9m would previously land in `done` and --apply would
+    exit 0 while the invalid setback stayed served (Sol finding, 2026-08-03).
+    """
     cur.execute(
         """SELECT id, value_min, is_current, condition
            FROM dcp_setback_controls WHERE id = ANY(%s) ORDER BY id""",
@@ -94,7 +100,8 @@ def build_plan(cur) -> tuple[list, list]:
     live = {r[0]: r for r in cur.fetchall()}
     todo, done = [], []
     for spec in PLAN:
-        control_id, expect_val, expect_cur = spec[0], spec[1], spec[2]
+        (control_id, expect_val, expect_cur,
+         new_val, new_cur, new_cond, _reason) = spec
         row = live.get(control_id)
         if row is None:
             raise SystemExit(f"ERROR: control {control_id} not found. Refusing to "
@@ -103,8 +110,20 @@ def build_plan(cur) -> tuple[list, list]:
         expected = None if expect_val is None else f"{float(expect_val):g}"
         if actual_val == expected and row[2] == expect_cur:
             todo.append(spec)
-        else:
+            continue
+        # Intended post-state: corrected value (or unchanged value for a pure
+        # retirement), target currency, and the new condition where one is set.
+        target_val = expected if new_val is None else f"{float(new_val):g}"
+        post_ok = (actual_val == target_val and row[2] == new_cur
+                   and (new_cond is None or row[3] == new_cond))
+        if post_ok:
             done.append((control_id, actual_val, row[2]))
+        else:
+            print(f"ERROR: control {control_id} matches neither its pre-state "
+                  f"nor its intended post-state (value={actual_val}, "
+                  f"current={row[2]}). Refusing to classify a divergence as "
+                  f"done. Exiting 2.", file=sys.stderr)
+            raise SystemExit(2)
     return todo, done
 
 

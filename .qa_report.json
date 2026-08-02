@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Corrects served regulatory numbers in dcp_setback_controls, the product's core table: canada_bay 701 served a rear setback 4x under the actual control; ryde's and burwood's general primaries existed nowhere so no gate could examine them; fairfield served Chapter-5C narrow-lot values under secondary_dwelling. Wrong served numbers are the silent-liability class, which is the critical tier's definition. Standard would understate it; there is no higher tier.",
- "commit_hash": "c29f90c3",
+ "commit_hash": "666189e9",
  "falsifiable_check": {
   "command": "python scripts/validate_control_source_values.py && python -m pytest tests/test_control_source_values.py tests/enrichment/test_control_type_vocabulary.py -q",
   "passes_when": "every stored control value is derivable from its own source_text by a named rule or sits in the shrink-only baseline; no served row carries a self-declared assumption; the SQL CHECK constraint, the Python CANONICAL_CONTROL_TYPES set and (via the database-marked test) every distinct control_type in production agree; and a quote at exactly the 400-char extractor cap is TRUNCATED_EVIDENCE regardless of its final character",
@@ -10,20 +10,22 @@
   "mutation_evidence": "evidence_is_truncated hardcoded False -> the mid-word and punctuation tests fail; hardcoded True -> the short-quote/None/empty tests fail. Dropping secondary_street_setback from CANONICAL_CONTROL_TYPES -> test_migration_matches_python_vocabulary fails AND test_every_db_control_type_is_canonical fails against production (20 live rows). Reverting 701's value in the DB while keeping the C9 quote -> 1.5 is not derivable from the C9 quote and the row is not baselined -> checker exits non-zero."
  },
  "files": [
-  "scripts/repair_canada_bay_rear_setback.py",
-  "scripts/repair_missing_primary_controls.py",
-  "scripts/measure_control_type_mismatch.py",
-  "scripts/control_source_values_baseline.json",
-  "services/extracted_data_integrity.py",
-  "tests/test_control_source_values.py",
+  ".claude/.pre-impl-done.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".gitignore",
+  "docs/qa/controls-adjudication-2026-08.md",
   "enrichment/config/control_type_vocabulary.py",
-  "migrations/enforce_control_type_vocabulary.sql",
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
   "frontend-nextjs/lib/see/responseTemplates.ts",
-  ".claude/DATA_QUALITY_TRACKER.md",
-  "docs/qa/controls-adjudication-2026-08.md",
-  ".gitignore",
-  ".claude/.pre-impl-done.json"
+  "migrations/enforce_control_type_vocabulary.sql",
+  "scripts/control_source_values_baseline.json",
+  "scripts/measure_control_type_mismatch.py",
+  "scripts/refile_secondary_street_setbacks.py",
+  "scripts/repair_camden_front_setbacks.py",
+  "scripts/repair_canada_bay_rear_setback.py",
+  "scripts/repair_missing_primary_controls.py",
+  "services/extracted_data_integrity.py",
+  "tests/test_control_source_values.py"
  ],
  "pre_impl": {
   "existing_data": "dcp_setback_controls (1,069 -> 1,071 rows): 8 rows updated by id with per-row pre-state guards, 2 inserted; backup tables dcp_setback_controls_cb701_repair_20260803 and dcp_setback_controls_missing_primary_20260803. Also the shrink-only checker baseline (41 -> 38) and the control_type CHECK constraint (migration 054, already applied 2026-08-02 \u2014 file-side sync only here).",
@@ -172,6 +174,7 @@
     ]
    }
   },
-  "detector_after": "A=3 open (884/570/895, blockers stated), B=0, truncated=19; checker exit 0, baseline 41->38"
+  "detector_after": "A=3 open (884/570/895, blockers stated), B=0, truncated=19; checker exit 0, baseline 41->38",
+  "sol_review": "6 findings raised at the pre-push gate; all 6 verified REAL against the code, no overrides. 1-3: repair scripts now prove intended post-state for skipped rows (exit 2 on divergence); 4: dup-check aborts on retired-only twin; 5: refile guard pins full evidentiary pre-state; 6: last_verified_at wrongly stamped on flagged/retired rows 682/714/716 \u2014 reverted from backup (3 rows, predicted 3), stamp now conditional on source-verification."
  }
 }

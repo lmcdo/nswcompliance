@@ -86,8 +86,15 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 STAMP = "[adjudicated 2026-08-03]"
 
 # --- UPDATE plan -----------------------------------------------------------
-# (id, guard_sql_fragment, guard_params, set_sql_fragment, set_params, label)
+# (id, guard_sql_fragment, guard_params, set_sql_fragment, set_params,
+#  review_reason, label, post_guard_sql_fragment, verify_stamp)
 # Guards compare against the pre-state read during planning (recon 2026-08-03).
+# post_guard proves a skipped row actually reached its intended post-state —
+# "not pre-state" alone also matches a row broken a third way, and calling
+# that done would be a silent failure (Sol finding, 2026-08-03).
+# verify_stamp: last_verified_at is set ONLY where the stored content was
+# verified against source in this pass. A needs_review flag or a retirement is
+# not a verification (the camden-692 doctrine; Sol finding, 2026-08-03).
 
 RYDE_680_QUOTE = (
     "a. The rear of the dwelling is to be set back from the rear boundary a "
@@ -127,6 +134,9 @@ UPDATES = [
         f"nowhere and is inserted separately. Quote replaced in the same "
         f"write (rule 2b).",
         "ryde 680: front -> rear, full s2.9.3(a) quote",
+        "control_type = 'rear_setback' AND value_min = 8.0 AND is_current "
+        "AND condition LIKE 'General rear setback%%'",
+        True,
     ),
     (
         681,
@@ -143,6 +153,9 @@ UPDATES = [
         f"a+b+c block) — and conditioned so the exception stops reading as "
         f"the rule.",
         "ryde 681: s2.9.3(b) quote + condition",
+        "control_type = 'rear_setback' AND value_min = 4.0 AND is_current "
+        "AND condition LIKE 'Allotments wider%%'",
+        True,
     ),
     (
         682,
@@ -157,6 +170,9 @@ UPDATES = [
         f"s2.9.2(a)/(b) printed p.26 — 900mm one storey, 1.5m two storey — "
         f"stored NOWHERE. Fail closed pending extraction of the general rows.",
         "ryde 682: needs_review (preference served as control)",
+        "control_type = 'side_setback' AND value_min = 4.0 AND is_current "
+        "AND needs_review = TRUE",
+        False,
     ),
     (
         691,
@@ -171,6 +187,9 @@ UPDATES = [
         f"P4-8), now quoted directly. Same convention as rows 1063/1064. "
         f"Quote replaced in the same write (rule 2b).",
         "camden 691: Table 4-2 side-setback quote",
+        "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
+        "AND source_text LIKE 'Camden DCP 2019 Part 4 Table 4-2%%'",
+        True,
     ),
     (
         707,
@@ -185,6 +204,9 @@ UPDATES = [
         f"describes; the general side setback row is inserted separately "
         f"from Table 3.",
         "burwood 707: garage-wall condition",
+        "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
+        "AND condition LIKE 'Garage walls%%'",
+        True,
     ),
     (
         714,
@@ -201,6 +223,10 @@ UPDATES = [
         f"front setback, so there is no correct value to substitute "
         f"(camden-692 model).",
         "fairfield 714: retire (no front setback exists for secondary dwellings)",
+        "control_type = 'front_setback' AND value_min = 6.0 "
+        "AND is_current = FALSE "
+        "AND review_reason LIKE '[adjudicated 2026-08-03] retired%%'",
+        False,
     ),
     (
         715,
@@ -218,6 +244,9 @@ UPDATES = [
         f"actual secondary-dwelling control 5B.2.3.1(a) (printed p.176), now "
         f"quoted directly. Quote replaced in the same write (rule 2b).",
         "fairfield 715: 5B.2.3.1(a) quote + condition",
+        "control_type = 'side_setback' AND value_min = 0.9 AND is_current "
+        "AND source_text LIKE 'a) Secondary dwellings%%'",
+        True,
     ),
     (
         716,
@@ -232,6 +261,9 @@ UPDATES = [
         f"value change was not authorised in this pass; fail closed rather "
         f"than serve a 6.7x overstatement.",
         "fairfield 716: needs_review (5C value under secondary_dwelling)",
+        "control_type = 'rear_setback' AND value_min = 6.0 AND is_current "
+        "AND needs_review = TRUE",
+        False,
     ),
 ]
 
@@ -315,24 +347,59 @@ def main() -> int:  # pragma: no cover - CLI entry point
         todo_updates, done_updates = [], []
         for spec in UPDATES:
             control_id, guard, gparams = spec[0], spec[1], spec[2]
+            post_guard = spec[7]
             # {guard} pins the row's is_current / needs_review pre-state.
             cur.execute(
                 f"SELECT 1 FROM dcp_setback_controls WHERE id = %s AND {guard}",
-                (control_id, *gparams))
-            (todo_updates if cur.fetchone() else done_updates).append(spec)
+                (control_id,))
+            if cur.fetchone():
+                todo_updates.append(spec)
+                continue
+            # Not in the pre-state: it must PROVE it reached the intended
+            # post-state to count as done. Anything else is a divergence, and
+            # continuing would commit the rest of the adjudication around a
+            # row in an unknown state (Sol finding, 2026-08-03).
+            cur.execute(
+                f"SELECT 1 FROM dcp_setback_controls WHERE id = %s "
+                f"AND {post_guard}", (control_id,))
+            if cur.fetchone():
+                done_updates.append(spec)
+                continue
+            print(f"ERROR: control {control_id} matches neither its pre-state "
+                  f"nor its intended post-state — refusing to classify a "
+                  f"divergence as done. Nothing written. Exiting 2.",
+                  file=sys.stderr)
+            return 2
 
         todo_inserts, done_inserts = [], []
         for r in INSERTS:
             cur.execute(
-                """SELECT id FROM dcp_setback_controls
+                """SELECT id, is_current FROM dcp_setback_controls
                     WHERE lga = %s AND dev_type = %s AND control_type = %s
                       AND COALESCE(condition, '') = COALESCE(%s, '')""",
                 (r["lga"], r["dev_type"], r["control_type"], r["condition"]))
-            (done_inserts if cur.fetchone() else todo_inserts).append(r)
+            matches = cur.fetchall()
+            if any(m[1] for m in matches):
+                # A SERVED twin exists — the control is genuinely present.
+                done_inserts.append(r)
+            elif matches:
+                # Only RETIRED twins exist. Skipping here would report the
+                # served control as present while nothing serves it; blindly
+                # inserting would shadow the retired row's history. Either
+                # needs a human ruling (Sol finding, 2026-08-03).
+                print(f"ERROR: only RETIRED row(s) "
+                      f"{[m[0] for m in matches]} match the planned insert "
+                      f"for {r['lga']}/{r['control_type']}/{r['dev_type']} — "
+                      f"reactivate-vs-insert needs adjudication. Nothing "
+                      f"written. Exiting 2.", file=sys.stderr)
+                return 2
+            else:
+                todo_inserts.append(r)
 
         print("\n=== MISSING_PRIMARY adjudication ===")
         print(f"  updates planned : {len(todo_updates)} of {len(UPDATES)}"
-              f"  (already done/diverged: {[s[0] for s in done_updates]})")
+              f"  (proven already in post-state: "
+              f"{[s[0] for s in done_updates]})")
         for spec in todo_updates:
             print(f"    {spec[6]}")
         print(f"  inserts planned : {len(todo_inserts)} of {len(INSERTS)}"
@@ -373,11 +440,16 @@ def main() -> int:  # pragma: no cover - CLI entry point
             print(f"  backed up {len(ids)} rows to {args.backup_table}")
 
         written = 0
-        for control_id, guard, gparams, set_frag, set_params, reason, label in todo_updates:
+        for (control_id, guard, gparams, set_frag, set_params, reason, label,
+             _post_guard, verify_stamp) in todo_updates:
+            # last_verified_at only where the stored content was verified
+            # against source THIS pass — a needs_review flag or a retirement
+            # is not a verification (camden-692 doctrine).
+            stamp = ", last_verified_at = CURRENT_DATE" if verify_stamp else ""
             cur.execute(
                 f"""UPDATE dcp_setback_controls
-                       SET {set_frag}, review_reason = %s, reviewed_at = NOW(),
-                           last_verified_at = CURRENT_DATE
+                       SET {set_frag}, review_reason = %s, reviewed_at = NOW()
+                           {stamp}
                      WHERE id = %s AND {guard}""",
                 (*set_params, reason, control_id, *gparams))
             written += cur.rowcount

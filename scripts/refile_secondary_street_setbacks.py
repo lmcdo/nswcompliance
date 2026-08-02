@@ -53,7 +53,7 @@ import sys
 # streetscape clause, a two-dwellings-in-tandem clause and a garage setback.
 SELECT_SQL = """
     SELECT id, lga, dev_type, value_min, unit, is_current, control_type,
-           left(source_text, 90) AS quote, left(coalesce(condition, ''), 60) AS cond
+           source_text AS quote, left(coalesce(condition, ''), 60) AS cond
       FROM dcp_setback_controls
      WHERE control_type = 'front_setback'
        AND source_text ~* 'secondary[ /-]*(corner[ /-]*)?(street|road|frontage)'
@@ -117,7 +117,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
         for control_id, lga, dev, vmin, unit, cur_flag, _ct, quote, cond in plan:
             print(f"    {control_id:<5} {lga}/{dev} = {vmin}{unit or ''} "
                   f"served={cur_flag}")
-            print(f"          quote: {quote!r}")
+            print(f"          quote: {quote[:90]!r}")
             print(f"          cond : {cond!r}")
 
         if not args.apply:
@@ -146,15 +146,22 @@ def main() -> int:  # pragma: no cover - CLI entry point
         print(f"  backed up {len(ids)} rows to {args.backup_table}")
 
         written = 0
-        for control_id, *_rest in plan:
-            # Guarded on the type read at plan time, so a concurrent re-type is
-            # skipped rather than clobbered.
+        for (control_id, _lga, _dev, vmin, _unit, cur_flag, _ct,
+             quote, _cond) in plan:
+            # Guarded on the FULL evidentiary pre-state read at plan time —
+            # type alone is not enough: a row whose source_text was replaced
+            # after planning may no longer establish a secondary-street
+            # control at all (Sol finding, 2026-08-03). IS NOT DISTINCT FROM
+            # for the nullable value_min.
             cur.execute(
                 """UPDATE dcp_setback_controls
                       SET control_type = 'secondary_street_setback',
                           review_reason = %s, reviewed_at = NOW()
-                    WHERE id = %s AND control_type = 'front_setback'""",
-                (REASON, control_id))
+                    WHERE id = %s AND control_type = 'front_setback'
+                      AND source_text = %s
+                      AND value_min IS NOT DISTINCT FROM %s
+                      AND is_current = %s""",
+                (REASON, control_id, quote, vmin, cur_flag))
             written += cur.rowcount
         conn.commit()
         print(f"  re-typed {written} rows ({len(plan) - written} skipped by the guard)")

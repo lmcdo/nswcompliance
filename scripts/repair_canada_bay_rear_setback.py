@@ -137,14 +137,31 @@ def main() -> int:  # pragma: no cover - CLI entry point
         plan = build_plan(cur)
         print("\n=== canada_bay 701 rear-setback repair ===")
         if plan is None:
+            # Not in the pre-state: prove it reached the intended POST-state
+            # before calling it done. "Not pre-state" alone also matches a row
+            # someone broke a third way, and exit 0 on that would be a silent
+            # failure (Sol finding, 2026-08-03).
             cur.execute(
-                """SELECT value_min, control_type, is_current,
-                          left(source_text, 60)
+                """SELECT value_min, control_type, is_current, source_text,
+                          condition
                      FROM dcp_setback_controls WHERE id = %s""", (CONTROL_ID,))
-            print(f"  pre-state no longer matches — already repaired or "
-                  f"diverged. Live row: {cur.fetchone()}")
-            print("  Nothing planned, nothing written.")
-            return 0
+            live = cur.fetchone()
+            repaired = (
+                live is not None
+                and live[0] is not None and f"{float(live[0]):g}" == "6"
+                and live[1] == "rear_setback" and live[2] is True
+                and live[3] == NEW_SOURCE_TEXT and live[4] == NEW_CONDITION
+            )
+            if repaired:
+                print("  already repaired — the live row matches the intended "
+                      "post-state exactly. Nothing planned, nothing written.")
+                return 0
+            print(f"  DIVERGED: row 701 matches neither the pre-state nor the "
+                  f"intended post-state (value_min={live[0] if live else None}, "
+                  f"type={live[1] if live else None}, served="
+                  f"{live[2] if live else None}). Refusing to guess. Exiting 2.",
+                  file=sys.stderr)
+            return 2
         print(f"  rows to write (predicted): 1")
         print(f"  control {CONTROL_ID}: value_min {EXPECT_VALUE} -> {NEW_VALUE}, "
               f"quote -> C9 (rule 2b), condition scoped")
