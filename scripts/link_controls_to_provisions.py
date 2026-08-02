@@ -58,8 +58,31 @@ SAFETY
 ------
 Backup table first, aborts if the backup is smaller than the plan, per-row UPDATE
 guarded on the value read during planning, 30s statement timeout, rollback SQL
-printed on completion. Nothing currently reads provision_id (verified by grep), so
-no served output can change either way.
+printed on completion.
+
+WHAT READS provision_id — corrected 2026-08-02
+----------------------------------------------
+An earlier version of this docstring said "nothing reads provision_id (verified by
+grep)". Retracted: the grep it cited had not finished when its output was read.
+Re-checked, three readers exist and none of them renders the column:
+
+  * frontend-nextjs/app/api/internal/setback-review/[id]/route.ts — SELECTs it only
+    to copy onto the superseding row when a reviewer corrects a value. NULL carries
+    through as NULL and the column is never returned to the client.
+  * scripts/validate_dcp_health.py — orphaned-backlink check. Clearing a stale link
+    REMOVES a finding there; it cannot create one.
+  * scripts/verify_setback_source_texts.py — LEFT JOIN, prints '' when NULL.
+
+Not a reader despite appearances: the "Referenced Legislation" accordion
+(components/compliance/ReferencedLegislationAccordion.tsx) takes its provision_id
+from regulatory_provisions_clean / quantitative_standards via
+lib/database/prp-k7-client.ts — a different table. It also guards NULL
+(`{ref.provision_id && ...}`), so a missing id drops the "View Full Text" button
+rather than erroring, and its only mount point (components/dashboard/AnalysisTabs.tsx)
+is imported by nothing.
+
+So a NULL provision_id degrades to "no link shown", which is already the state of
+1,027 of the 1,069 rows. No served output changes either way.
 """
 from __future__ import annotations
 

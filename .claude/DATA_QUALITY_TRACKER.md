@@ -81,9 +81,12 @@ second time in the same file.
 
 ---
 
-## DQ-38: controls cannot be machine-checked because the corpus lacks their chapters (2026-08-02)
+## DQ-38: only 42 of 1,069 controls can be machine-checked against the corpus (2026-08-02)
 
-**Status:** 42 links live. Ceiling reported, not chased.
+**Status:** 42 links live. Ceiling reported, not chased. **Heading and cause corrected
+2026-08-02** — the original title asserted a single cause ("the corpus lacks their
+chapters") that is measurably false for most of the affected rows. See *Why the other
+545 do not match* below.
 
 **What it is.** DQ-37 left 535 controls in state `traceable` — a human can re-check
 them against a clause reference. Linking each to `regulatory_provisions.provision_id`
@@ -105,20 +108,66 @@ superseded Marrickville provision** (controls 1, 2, 6 -> provision 102098,
 `is_current=False`). Those are now cleared to NULL — pointing a future automated
 check at withdrawn text is worse than admitting there is no link.
 
-**The finding is the ceiling, not the 35.** 14 of 30 control LGAs have zero
+**The finding is the ceiling, not the 41.** 14 of 30 control LGAs have zero
 provisions ingested — Canterbury-Bankstown (68 controls), Canada Bay (40), Bayside
 (38), Fairfield (33), Wingecarribee (32), Sutherland Shire (32), Randwick (28),
 Liverpool (27), Burwood (27), Strathfield (25), The Hills (23), Ryde (23), Camden
-(23), plus `nsw_statewide` (31). A further 530 belong to councils that ARE in the
-corpus but whose specific chapter was never ingested. So controls are unauditable
-by machine because of **ingestion coverage**, not because of a matching problem.
-Fixing that is extraction work, explicitly out of scope per
-`docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md`.
+(23), plus `nsw_statewide` (31). **That 450 figure was measured directly and stands.**
+
+### Why the other 545 do not match — CORRECTED, and still partly unknown
+
+The first version of this entry said those 545 "belong to councils that ARE in the
+corpus but whose specific chapter was never ingested." **That is false for most of
+them**, and it was asserted rather than measured. Marrickville has 8,413 provisions
+loaded, Ashfield 7,429, Woollahra 6,546; the chapters are there and the quotes still
+do not match. Measured 2026-08-02 by `scripts/measure_control_quote_gap.py`:
+
+| test | result |
+|---|---|
+| a provision document exists for the control's own `source_chapter_key` | **339 / 545 (62.2%)** |
+| no ingested document for that chapter — original explanation holds | 206 / 545 (37.8%) |
+| quote IS in the corpus, but only on a provision excluded by `is_current`/`v2_is_actionable` | 15 |
+
+Independently, by longest contiguous shared word-run against the best provision in
+that council (a set-overlap score was tried first and discarded — a long provision
+contains all the words of a short quote by chance, so it proved nothing):
+
+| how much of the quote appears verbatim | rows |
+|---|---|
+| ≥80% — the sentence IS there; substring match failed on punctuation/OCR alone | 57 (10.5%) |
+| 40–80% — partly verbatim | 119 (21.8%) |
+| 20–40% — fragmentary | 236 (43.3%) |
+| <20% — not present in any recognisable form | 133 (24.4%) |
+
+**The cause is mixed, and for the majority it is UNKNOWN.** What is established:
+"chapter not ingested" is disproven for 62% of these rows, and the 57 verbatim rows
+prove both the chapter and the sentence are present — those fail on normalisation,
+not coverage. What is NOT established: the low-overlap bands are equally consistent
+with "someone summarised the clause in their own words" and with "that sentence is
+absent from the ingested text", and this measurement cannot tell them apart. One
+weak supporting signal for the paraphrase hypothesis: **61 of 545 (11.2%) source_texts
+OPEN with a document citation** ("Ashfield DCP 2016 A-Part8 Table 2: ..."), which is
+editorial framing a sentence inside a PDF would not contain. That is 11%, not a
+cause for the other 89%. **Do not write a cause into this entry without measuring it.**
+
+Two named limits of the chapter test, so its 62.2% is not over-read: it compares
+identifier token-sets (`chapter-f-dev-category` vs
+`Inner_West_Ashfield_DCP_2016__chapter_f_dev_category`) after stripping council/year
+noise, so a chapter whose key diverges by more than separators reads as "not ingested"
+when it is present, and two chapters sharing a token-set could read as ingested when
+the wrong one is. `section_ref` was tried as the test first and abandoned: **0 of 530**
+control `section_ref` values exist as a `ref_number` in their council, because the two
+columns use unrelated vocabularies ('chapter-f-dev-category/DS5.2' vs a clause number)
+— that 0 measures the vocabulary gap, not the corpus.
+
+Closing the 206-row coverage half is extraction work, out of scope per
+`docs/EXTRACTION_WHY_IT_RECURS_AND_THE_DURABLE_FIX_2026-07.md`. The 57 verbatim rows
+are a normalisation fix and are worth doing. The rest needs a cause before it needs a fix.
 
 **Why only exact single matches were written.** A wrong link is worse than no link:
 it would let a later check compare a number against someone else's clause and report
 a confident false verdict. Matching is substring containment on normalised text — no
-similarity score, so no threshold to tune wrong. The 23 ambiguous and 530 unmatched
+similarity score, so no threshold to tune wrong. The 2 ambiguous and 545 unmatched
 stay NULL.
 
 **Caught during the dry run:** the plan would have OVERWRITTEN the one pre-existing
@@ -140,12 +189,13 @@ stale plan cannot clobber a link written since.
 
 **Falsifiable check:** `python scripts/link_controls_to_provisions.py` (dry-run
 default). Predicted before the final write: 13 rows written (10 new + 3 cleared),
-0 skipped, 42 linked after. All matched. Post-write verification: 0 dangling links (FK), 0 links crossing
-to a different council, control 3 preserved, and **34 of 35 quotes verified present
-inside the linked provision text** — the one exception being control 3, whose link
-a different method made. Note the first verification query reported 14/35 because it
-compared un-normalised SQL text; re-run with the matcher's own normalisation it is
-34/35. The check was wrong, not the links.
+0 skipped, 42 linked after. All matched. Post-write verification, **re-run against the
+live DB 2026-08-02**: 42 links, 0 dangling (FK), 0 pointing at a superseded or
+non-actionable provision, controls 1/2/6 confirmed NULL, and **41 of 42 quotes verified
+present inside the linked provision text** — the one exception being control 3, whose
+link a different method made. Note an earlier verification query reported 14/35 because
+it compared un-normalised SQL text; re-run with the matcher's own normalisation it
+passes. The check was wrong, not the links.
 
 **Rollback:** `dcp_setback_controls_provlink_backup_20260802b` (13 rows, holding the
 pre-run provision_id and is_current for every changed row), SQL printed by the
