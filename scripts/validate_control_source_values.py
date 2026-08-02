@@ -121,9 +121,13 @@ def fingerprint(row: dict) -> str:
     or lose its quote entirely — and stay accepted, because the id had not moved.
     The digest covers exactly the inputs the check reads, so any change to them
     makes the row new again.
+
+    `is_current` is part of it too: only current rows block, so a superseded row
+    flipping to current is the moment an accepted-but-unsupported value starts
+    being served. Without it the digest still matched and the flip passed.
     """
     payload = "|".join(str(row.get(f)) for f in
-                       (*VALUE_FIELDS, "unit", "source_text"))
+                       (*VALUE_FIELDS, "unit", "source_text", "is_current"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
@@ -146,7 +150,7 @@ def load_baseline(repo: Path, path: str | None) -> dict:
 
 
 def write_baseline(repo: Path, path: str | None, accepted: dict,
-                   valueless: int) -> None:
+                   valueless: set) -> None:
     p = repo / (path or DEFAULT_BASELINE)
     p.write_text(
         json.dumps({
@@ -158,13 +162,15 @@ def write_baseline(repo: Path, path: str | None, accepted: dict,
                     "--write-baseline refuses to add ids without --allow-growth.",
             "count": len(accepted),
             "accepted": {str(k): v for k, v in sorted(accepted.items())},
-            "valueless_rows": valueless,
-            "valueless_note": "Controls that record a rule with no number at all. "
-                              "Ratcheted because a migration that NULLed a real "
-                              "value would otherwise move the row into "
-                              "no_value_stored and pass silently — the check "
-                              "cannot tell an intentional blank from a lost one, "
-                              "so it watches the count instead.",
+            "valueless_rows": sorted(valueless),
+            "valueless_note": "Ids of controls that record a rule with no number "
+                              "at all. Tracked as a SET, not a count: control A "
+                              "losing its value while control B gains one leaves "
+                              "the count at 83 and hides A entirely. A migration "
+                              "that NULLs a real value moves the row here and "
+                              "would otherwise pass as 'nothing to check' — the "
+                              "check cannot tell an intentional blank from a lost "
+                              "value, so it watches which rows are blank.",
         }, indent=2) + "\n",
         encoding="utf-8",
     )
@@ -293,6 +299,8 @@ def main() -> int:  # pragma: no cover - CLI entry point
 
     repo = Path(__file__).resolve().parents[1]
     current = {row["id"]: fingerprint(row) for row in failing}
+    valueless_ids = {row["id"] for row in rows
+                     if row["_result"]["state"] == NO_VALUE_STORED}
     baseline = load_baseline(repo, args.baseline)
     known = {int(k): v for k, v in (baseline.get("accepted") or {}).items()}
 
@@ -310,7 +318,7 @@ def main() -> int:  # pragma: no cover - CLI entry point
                   f"with a reason recorded in the PR.", file=sys.stderr)
             return 2
         write_baseline(repo, args.baseline, current,
-                       counts[NO_VALUE_STORED])
+                       valueless_ids)
         return 0
     # A row is unknown when its id is absent from the baseline OR its value, unit
     # or quote has changed since it was accepted there.
@@ -355,17 +363,18 @@ def main() -> int:  # pragma: no cover - CLI entry point
         return 1
 
     # A control that used to carry a number and now carries none is not "nothing
-    # to check" — it is a lost value. The check cannot tell an intentional blank
-    # from a lost one, so it watches the count.
+    # to check" — it is a lost value. Compared as a SET: a count would sit still
+    # while one row lost its value and another gained one, hiding the loss.
     accepted_valueless = baseline.get("valueless_rows")
-    if accepted_valueless is not None and counts[NO_VALUE_STORED] > accepted_valueless:
-        print(f"\nFAILED: {counts[NO_VALUE_STORED] - accepted_valueless} more "
-              f"controls now record no number at all ({accepted_valueless} -> "
-              f"{counts[NO_VALUE_STORED]}).\nA value that disappeared reads as "
-              f"'nothing to check' and would otherwise pass silently. Confirm the "
-              f"blanks are intentional, then re-run with --write-baseline.",
-              file=sys.stderr)
-        return 1
+    if accepted_valueless is not None:
+        newly_blank = sorted(valueless_ids - set(accepted_valueless))
+        if newly_blank:
+            print(f"\nFAILED: {len(newly_blank)} controls now record no number at "
+                  f"all that previously did — {newly_blank}.\nA value that "
+                  f"disappeared reads as 'nothing to check' and would otherwise "
+                  f"pass silently. Confirm the blanks are intentional, then re-run "
+                  f"with --write-baseline.", file=sys.stderr)
+            return 1
 
     if fixed:
         # This FAILS rather than advising. A baseline that is never made to shrink

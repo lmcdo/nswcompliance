@@ -292,6 +292,15 @@ _SINGULAR_ARTICLE_RE = re.compile(
 # of a list item in a clause about front FENCE height.
 _LIST_ORDINAL_RE = re.compile(r"(?:^|\n|\|)\s*(\d+)\.\s+(?=[A-Za-z])")
 
+# A SECTION HEADING at the start of a line: "2.1 Objectives", "4.1A.3 Building
+# Setbacks". The list-ordinal pattern needs a trailing dot and so missed these,
+# and a heading number is no more a quantity than a clause reference is — a 2.1 m
+# control whose quote opens "2.1 Objectives" was reading as an exact match on its
+# own heading. The following word must be Capitalised, which is what distinguishes
+# a heading from a measurement ("6 metres minimum" is untouched).
+_SECTION_HEADING_RE = re.compile(
+    r"(?:^|\n|\|)\s*(\d+(?:\.\d+)+[A-Za-z]?(?:\.\d+)*)\.?\s+(?=[A-Z])")
+
 # A number that is a CITATION, not a quantity: "Clause 4.3:", "Part 6", "Table 2",
 # "Control 12", "Figure 5A", "Objective 3". The lookbehind on the number token
 # only catches a label glued to it ('s4.3.6', 'DS9.2'); a labelled number with a
@@ -377,7 +386,7 @@ def _close(stored: float, derived: float) -> bool:
 # carrying an explicit unit cannot explain a value stored in an incompatible one:
 # "a minimum of 3 hours of sunlight" must not explain a 3 metre setback.
 _TRAILING_UNIT_RE = re.compile(
-    r"\s*(mm|cm|m2|sqm|metres?|meters?|m|%|per\s?cent|hours?|storeys?|"
+    r"\s*(mm|cm|m2|m²|sqm|square\s+metres?|metres?|meters?|m|%|per\s?cent|hours?|storeys?|"
     r"stories|spaces?|dwellings?|units?|beds?|bedrooms?|trees?|days?|years?)"
     r"(?![a-z0-9])", re.I)
 
@@ -386,7 +395,11 @@ _TRAILING_UNIT_RE = re.compile(
 _UNIT_FAMILY = {
     "mm": "length", "cm": "length", "m": "length", "metre": "length",
     "metres": "length", "meter": "length", "meters": "length",
+    # 'm²' must be listed BOTH here and in the trailing-unit alternation ahead of
+    # bare 'm', or "3m²" matches only the 'm' and a landscaped AREA reads as a
+    # length — the row's own square-metre marker disappearing into a substring.
     "m2": "area", "m²": "area", "sqm": "area",
+    "square metre": "area", "square metres": "area",
     "%": "ratio", "per cent": "ratio", "percent": "ratio",
     "hour": "time", "hours": "time", "day": "time", "days": "time",
     "year": "time", "years": "time",
