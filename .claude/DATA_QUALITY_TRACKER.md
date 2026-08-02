@@ -128,6 +128,11 @@ do not match. Measured 2026-08-02 by `scripts/measure_control_quote_gap.py`:
 | no ingested document for that chapter — original explanation holds | 206 / 545 (37.8%) |
 | quote IS in the corpus, but only on a provision excluded by `is_current`/`v2_is_actionable` | 15 |
 
+Of those 545, **498 are `is_current` and 47 are superseded control versions.** The
+population is deliberately unfiltered so it reconciles with the linker, which also
+reads all 1,069 — but note the linker links superseded controls too, which is
+harmless and worth knowing.
+
 Independently, by longest contiguous shared word-run against the best provision in
 that council (a set-overlap score was tried first and discarded — a long provision
 contains all the words of a short quote by chance, so it proved nothing):

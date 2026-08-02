@@ -1,14 +1,16 @@
 {
   "tier": "critical",
   "justification": "A production write to the table that is the product's differentiator, and the direction of risk is asymmetric: a WRONG link would let a later automated check compare a number against someone else's clause and report a confident false verdict, which is worse than the current state of no link at all. Small in row count (34) but it establishes a relationship other code will trust.",
-  "commit_hash": "26f1a544",
+  "commit_hash": "93ad5086",
   "files": [
     "scripts/link_controls_to_provisions.py",
     "tests/test_controls_provision_links.py",
     "scripts/validate_controls_provenance.py",
     ".claude/DATA_QUALITY_TRACKER.md",
     ".claude/.pre-impl-done.json",
-    ".gitignore"
+    ".gitignore",
+    "scripts/measure_control_quote_gap.py",
+    "tests/test_control_quote_gap.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/link_controls_to_provisions.py   # dry-run, writes nothing; plus: python -m pytest tests/test_controls_provision_links.py -q",
@@ -25,31 +27,52 @@
   "functions": [
     {
       "name": "find_single_match",
-      "file_line": "scripts/link_controls_to_provisions.py:109",
+      "file_line": "scripts/link_controls_to_provisions.py:132",
       "input": "a normalised quote and the list of (provision_id, normalised_text) pairs for that council",
       "output": "the provision id only when exactly one provision contains the quote, plus the raw hit count",
       "if_none": "returns None for zero matches, for several matches, and for a quote under 30 characters — the caller cannot tell the difference and cannot link on any of them"
     },
     {
       "name": "classify",
-      "file_line": "scripts/link_controls_to_provisions.py:121",
+      "file_line": "scripts/link_controls_to_provisions.py:144",
       "input": "the same quote and provision list, for one control",
       "output": "exactly one outcome name, so the reported counts always sum to the table size",
       "if_none": "an empty provision list returns council_has_no_provisions, which is deliberately distinct from no_provision_contains_the_quote — that distinction is the finding of this work"
     },
     {
       "name": "quoted_clause",
-      "file_line": "scripts/link_controls_to_provisions.py:104",
+      "file_line": "scripts/link_controls_to_provisions.py:127",
       "input": "a control's raw source_text, which may carry an appended citation",
       "output": "the part that should appear verbatim in the provision, lowercased and whitespace-collapsed",
       "if_none": "None or empty yields an empty string, which fails the length floor and so can never link"
     },
     {
       "name": "build_plan",
-      "file_line": "scripts/link_controls_to_provisions.py:134",
+      "file_line": "scripts/link_controls_to_provisions.py:157",
       "input": "an open cursor; reads every control and, per council, that council's provisions",
       "output": "the rows to write plus the full outcome breakdown including rows deliberately left NULL",
       "if_none": "an empty plan writes nothing, and the script is dry-run by default so a wrong plan cannot reach the database without an explicit flag"
+    },
+    {
+      "name": "longest_run_fraction",
+      "file_line": "scripts/measure_control_quote_gap.py:114",
+      "input": "a control's quote and one provision's word list",
+      "output": "the longest contiguous shared word-run as a fraction of the quote's length — 1.0 when the sentence is present, 0.0 when it is absent",
+      "if_none": "an empty quote or an empty provision returns 0.0 rather than dividing by zero, so a row with nothing to compare reads as absent, never as verbatim"
+    },
+    {
+      "name": "band_for",
+      "file_line": "scripts/measure_control_quote_gap.py:127",
+      "input": "a run fraction",
+      "output": "exactly one of four named bands, so every measured row lands in one state",
+      "if_none": "there is no None branch — the final threshold is 0.0, so a fraction always names a band; a collapsed banding function is caught by the test asserting all four are reachable"
+    },
+    {
+      "name": "chapter_tokens",
+      "file_line": "scripts/measure_control_quote_gap.py:108",
+      "input": "a control's source_chapter_key or a provision's document_id",
+      "output": "comparable tokens with council name, instrument and year stripped, so the two vocabularies can be tested against each other",
+      "if_none": "None or empty yields an empty set, which is a subset of everything — so measure() branches on the empty case FIRST and records no_chapter_key instead of a false chapter_ingested"
     }
   ],
   "values": [

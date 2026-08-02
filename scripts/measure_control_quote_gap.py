@@ -153,8 +153,14 @@ def _fetch_council_provisions(cur, lga: str) -> list[tuple]:
 
 def measure(cur) -> tuple[Counter, dict, Counter, Counter]:
     """Walk every control; measure only those the linker could not match."""
+    # DELIBERATELY UNFILTERED on is_current. This must describe the SAME population
+    # as link_controls_to_provisions.py, which reads all 1,069 rows, or the two
+    # scripts' numbers stop reconciling and DQ-38's table becomes unverifiable. The
+    # column is selected and the split is reported instead, so the 80 superseded
+    # rows are visible rather than silently mixed in.
     cur.execute(
-        """SELECT id, lga, source_text, source_chapter_key, extraction_method
+        """SELECT id, lga, source_text, source_chapter_key, extraction_method,
+                  is_current
            FROM dcp_setback_controls ORDER BY lga, id"""
     )
     columns = [d[0] for d in cur.description]
@@ -188,6 +194,8 @@ def measure(cur) -> tuple[Counter, dict, Counter, Counter]:
                 continue
 
             totals["measured"] += 1
+            totals["measured_is_current" if row["is_current"]
+                   else "measured_superseded"] += 1
             key_tokens = chapter_tokens(row["source_chapter_key"])
             if not key_tokens:
                 verdict = "no_chapter_key"
@@ -239,6 +247,10 @@ def main() -> int:  # pragma: no cover - CLI entry point
     for key in ("skipped_matched_exactly", "skipped_council_has_no_provisions",
                 "skipped_quote_too_short"):
         print(f"  {key:<44}: {totals[key]:>5}")
+    print(f"  of the measured, is_current TRUE            : "
+          f"{totals['measured_is_current']:>5}")
+    print(f"  of the measured, superseded (is_current FALSE): "
+          f"{totals['measured_superseded']:>5}")
 
     print("\n=== test 1: does a provision document exist for the control's chapter? ===")
     for key in ("chapter_ingested", "chapter_not_ingested", "no_chapter_key"):
