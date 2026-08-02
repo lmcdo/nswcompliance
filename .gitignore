@@ -614,3 +614,6 @@ latent-scope-data/
 !scripts/measure_control_quote_gap.py
 !scripts/validate_control_source_values.py
 !scripts/control_source_values_baseline.json
+!scripts/repair_camden_front_setbacks.py
+!scripts/refile_secondary_street_setbacks.py
+!scripts/measure_control_type_mismatch.py

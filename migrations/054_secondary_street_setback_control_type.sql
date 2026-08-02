@@ -1,4 +1,4 @@
--- 053 — add `secondary_street_setback` to the control_type vocabulary.
+-- 054 — add `secondary_street_setback` to the control_type vocabulary.
 --
 -- WHY
 -- ---
