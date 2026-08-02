@@ -710,7 +710,30 @@ NO_VALUE_STORED = "no_value_stored"
 # this state today (0 of 1,069), which is exactly why it needs a state — the
 # check would otherwise wave through the first one that appears.
 MISSING_SOURCE_TEXT = "MISSING_SOURCE_TEXT"
-FAILING_STATES = (UNEXPLAINED, MISSING_SOURCE_TEXT)
+# The quote was cut off by the extractor, so it is not evidence either way. 23
+# rows carry a source_text of exactly 400 characters, every one ending mid-word.
+# Both failure directions were observed in the same council: cumberland 30 (rear
+# 8m, CORRECT) was FALSELY FLAGGED because "Minimum 8m" fell outside the cut,
+# and cumberland 28 (front 6m, served) FALSELY PASSES because "Minimum 6m"
+# happened to fall inside it. A verdict from a severed quote is not a verdict.
+TRUNCATED_EVIDENCE = "TRUNCATED_EVIDENCE"
+FAILING_STATES = (UNEXPLAINED, MISSING_SOURCE_TEXT, TRUNCATED_EVIDENCE)
+
+# The extractor's hard limit. Anything at exactly this length is treated as a
+# cut. An earlier version exempted quotes ending in punctuation ("a complete
+# quote would end in a full stop") — but a cut can land immediately AFTER
+# punctuation, so a terminal '.' at the cap separates nothing: at exactly the
+# limit a complete quote is indistinguishable from a severed one, and evidence
+# that cannot be told from severed evidence is not evidence. (All 21 at-limit
+# rows measured 2026-08-03 end mid-word, so closing the escape changed no
+# verdict; it closes the hole for the next extraction.)
+TRUNCATION_LIMIT = 400
+
+
+def evidence_is_truncated(source_text) -> bool:
+    """True when the quote sits at the extractor's hard limit — cut, or
+    indistinguishable from one."""
+    return len(str(source_text or "")) == TRUNCATION_LIMIT
 
 
 def explain_value(value, source_text, unit=None) -> tuple[str, Optional[str]]:
@@ -761,6 +784,11 @@ def explain_row(row: dict, *, value_fields: list[str], source_field: str,
     checked = {f: r for f, r in per_field.items() if r["rule"] != NO_VALUE_STORED}
     if not checked:
         state = NO_VALUE_STORED
+    elif evidence_is_truncated(row.get(source_field)):
+        # Checked BEFORE the rules are consulted. Whether a rule happens to fire
+        # depends on which side of the cut the number landed on, so an explained
+        # verdict here would be luck reported as verification.
+        state = TRUNCATED_EVIDENCE
     elif any(r["rule"] == MISSING_SOURCE_TEXT for r in checked.values()):
         state = MISSING_SOURCE_TEXT
     elif any(r["rule"] == UNEXPLAINED for r in checked.values()):

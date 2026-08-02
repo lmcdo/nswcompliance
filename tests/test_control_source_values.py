@@ -15,9 +15,12 @@ from services.extracted_data_integrity import (
     MISSING_SOURCE_TEXT,
     NO_VALUE_STORED,
     RULE_NAMES,
+    TRUNCATED_EVIDENCE,
     UNEXPLAINED,
     explain_row,
     explain_value,
+    evidence_is_truncated,
+    fabricated_values,
 )
 
 
@@ -485,6 +488,114 @@ class TestExplainRow:
                             source_field="source_text", unit_field="unit")
         assert result["fields"]["value_min"]["rule"] == "unit_conversion"
         assert result["fields"]["value_max"]["rule"] == NO_VALUE_STORED
+
+
+class TestTruncatedEvidence:
+    """A severed quote is not evidence either way.
+
+    23 rows carry a source_text of exactly 400 characters, every one ending
+    mid-word. Both failure directions were observed in one council: cumberland 30
+    (rear 8m, CORRECT) was falsely FLAGGED because 'Minimum 8m' fell outside the
+    cut, and cumberland 28 (front 6m, served) falsely PASSED because 'Minimum 6m'
+    happened to fall inside it. Which way a truncated row lands is luck.
+    """
+
+    def test_a_quote_cut_at_the_limit_mid_word_is_truncated(self):
+        assert evidence_is_truncated("x" * 399 + "a")
+
+    def test_a_quote_at_the_limit_is_truncated_even_ending_in_punctuation(self):
+        # A cut can land immediately AFTER punctuation, so a terminal '.' at
+        # the cap separates nothing: at exactly the extractor limit a complete
+        # quote is indistinguishable from a severed one, and evidence that
+        # cannot be told from severed evidence is not evidence. (The prior
+        # punctuation exemption let exactly this shape be judged on a cut
+        # quote.)
+        assert evidence_is_truncated("x" * 399 + ".")
+
+    def test_a_short_quote_is_never_truncated(self):
+        assert not evidence_is_truncated("Front setback minimum 6m.")
+        assert not evidence_is_truncated(None)
+        assert not evidence_is_truncated("")
+
+    def test_truncation_beats_a_rule_that_would_otherwise_fire(self):
+        # The whole point: cumberland 28 stores 6.0 and its severed quote DOES
+        # contain '6m', so exact_digit_match would fire. It must not — the number
+        # surviving the cut is luck, not verification.
+        quote = ("|  Setbacks  |   |\n|  Front Setback (primary frontage) | "
+                 "Minimum 6m\nDwelling house shall align with the street")
+        quote = quote + "x" * (400 - len(quote) - 1) + "r"
+        assert len(quote) == 400
+        row = {"value_min": 6.0, "value_max": None, "unit": "m",
+               "source_text": quote}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                             source_field="source_text", unit_field="unit")
+        assert result["state"] == TRUNCATED_EVIDENCE
+
+    def test_truncated_evidence_is_a_failing_state(self):
+        assert TRUNCATED_EVIDENCE in FAILING_STATES
+
+    def test_a_row_with_no_value_is_still_no_value_stored(self):
+        # Ordering: nothing to check outranks can't-check-it. Otherwise 83 rows
+        # that legitimately hold no number would be reported as unverifiable.
+        row = {"value_min": None, "value_max": None, "unit": None,
+               "source_text": "x" * 399 + "a"}
+        result = explain_row(row, value_fields=["value_min", "value_max"],
+                             source_field="source_text", unit_field="unit")
+        assert result["state"] == NO_VALUE_STORED
+
+
+class TestFabricationGate:
+    """The gate that blocks a value whose own note admits it was assumed.
+
+    All 28 such rows in the live table are already is_current=FALSE, so this
+    passes today. It exists to stop the 29th being SERVED — which is why every
+    test here drives the served/not-served distinction, not just the marker.
+    """
+
+    MARKERS = ["condition", "review_reason", "source_text"]
+
+    def _assumed_row(self, **over):
+        row = {"id": 1, "value_min": 24, "value_max": None,
+               "source_text": "DCP s2.8 Private Open Space exists",
+               "condition": "Assumed standard NSW POS min - verify against DCP",
+               "review_reason": None, "is_current": True}
+        row.update(over)
+        return row
+
+    def test_it_fires_on_a_value_whose_note_says_assumed(self):
+        assert fabricated_values([self._assumed_row()], value_field="value_min",
+                                 marker_fields=self.MARKERS)
+
+    def test_it_does_not_fire_on_a_row_that_cites_a_real_clause(self):
+        row = self._assumed_row(condition="Read from Table 1 page B8")
+        assert not fabricated_values([row], value_field="value_min",
+                                     marker_fields=self.MARKERS)
+
+    def test_a_null_value_with_an_honest_note_is_clean(self):
+        # This is the FIXED state the doctrine asks for: the rule exists, the
+        # value is unknown, and the row says so. It must not be flagged, or the
+        # gate would punish the correct response to its own finding.
+        row = self._assumed_row(value_min=None, value_max=None)
+        assert not fabricated_values([row], value_field="value_min",
+                                     marker_fields=self.MARKERS)
+
+    def test_the_marker_reads_review_reason_and_source_text_too(self):
+        # A writer confesses wherever there is room. Reading only `condition`
+        # would miss it.
+        for field in ("review_reason", "source_text"):
+            row = self._assumed_row(condition=None,
+                                    **{field: "standard NSW pattern assumed"})
+            assert fabricated_values([row], value_field="value_min",
+                                     marker_fields=self.MARKERS), field
+
+    def test_a_max_only_row_is_still_caught(self):
+        # The gate checks value_min AND value_max; a row carrying only an upper
+        # bound is just as fabricated.
+        row = self._assumed_row(value_min=None, value_max=24)
+        assert not fabricated_values([row], value_field="value_min",
+                                     marker_fields=self.MARKERS)
+        assert fabricated_values([row], value_field="value_max",
+                                 marker_fields=self.MARKERS)
 
 
 class TestStatesAreExhaustive:

@@ -1,5 +1,6 @@
 {
-  "status": "trivial",
-  "timestamp": "2026-08-03T00:35:00+10:00",
-  "reason": "Repairing a heredoc-mangled f-string in scripts/validate_control_source_values.py - two literal newlines where \n was intended, causing a SyntaxError. No logic change, no new query."
+  "status": "passed",
+  "timestamp": "2026-08-03T12:00:00+10:00",
+  "target": "Sol-review hardening of the four controls repair/refile scripts: exact post-state guards (source_text/condition params), section_ref-keyed insert identity, camden evidentiary guard, refile pre-commit rowcount check",
+  "findings_summary": "same investigation as the close-out pass — all rows/columns already recon'd live this session; no new tables, no new query shapes beyond adding equality predicates on already-read columns"
 }
